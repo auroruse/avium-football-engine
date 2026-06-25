@@ -11,46 +11,46 @@ const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? k);
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 const C = {
-  goal:["{t}'s {n} fires into the net!","{n} scores for {t}! Clinical.","{t}'s {n} slots it past the keeper!","What a strike from {t}'s {n}!","{n} buries it! {t} have scored!","Cool as you like from {t}'s {n}!","{n} finishes from close range!","Composure from {t}'s {n}. Slotted home.","{t}'s {n} finds the bottom corner!","Buried! {n} gives {t} a goal!","Tucked away by {t}'s {n}. Keeper no chance.","That's in! {n} for {t}!","{n} strikes for {t}! Low into the corner.","Clinical finish from {t}'s {n}. Never in doubt."],
-  goal_opener:[" Deadlock broken!"," That opens the scoring!"," First blood!"," First goal of the game!"],
-  goal_equalizer:[" It's level!"," The equalizer!"," Pegged back!"," Back on level terms!"],
-  goal_lead:[" {t} take the lead!"," Advantage {t}!"," {t} ahead now!"],
-  goal_pullback:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"],
-  goal_consolation:[" Consolation for {t}."," {t} get one back, but still trailing."," Too little too late for {t}."],
-  goal_extend:[" The lead grows!"," {t} pulling away!"," Breathing room for {t}."," {t} extend their advantage!"],
-  goal_late:[" Late drama!"," What a time to score!"," In the dying minutes!"," Drama at the death!"],
-  save:["Shot on target! {o}'s keeper denies {t}'s {n}.","Good stop from {t}'s {n}'s effort.","Fingertip save! {t}'s {n} thought that was in.","{t}'s {n} forces a save. {o} keeper holds.","Smart save! {o}'s keeper reads {t}'s {n} well.","Comfortable save from {t}'s {n}'s shot.","Strong hands from {o}'s keeper. {t}'s {n} denied.","Straight at the keeper. {t}'s {n} should have done better."],
-  miss:["{t}'s {n} shoots wide.","{t}'s {n} fires over the bar.","{n} drags it wide. Off target.","Blazed over by {t}'s {n}.","{t}'s {n} pulls it across the face of goal. Wide.","{n} snatches at it. Over for {t}.","Skied! {t}'s {n} puts it into the stands.","Wide of the mark from {t}'s {n}."],
-  foul:["Foul by {t}'s {n}. Free kick {o}.","{t}'s {n} goes through the back of the man. Free kick.","{t}'s {n} clips the ankle. Referee blows.","{t}'s {n} catches {o}'s player late. Free kick.","{t}'s {n} pulls back the shirt. Given.","{t}'s {n} bundles into the challenge. Foul.","Clumsy from {t}'s {n}. Free kick {o}.","Body check from {t}'s {n}. Referee intervenes."],
-  yellow:["Yellow card. {t}'s {n} into the book.","Booking for {t}'s {n}. Reckless.","Card shown to {t}'s {n}. Cynical challenge.","That's a yellow for {t}'s {n}. Can't argue with that.","{t}'s {n} picks up a booking. Needless.","In the book. {t}'s {n} will need to be careful now."],
-  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} off! Down to {c}.","That's two bookings! {t}'s {n} has to go. {c} men remain."],
-  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! Down to {c}!","Off! {t}'s {n} sees a straight red. {c} men.","Violent conduct! {t}'s {n} given a straight red. Down to {c}."],
-  pen_scored:["SCORED! {t}'s {n} sends the keeper the wrong way!","Converted! {t}'s {n} rolls it home!","No mistake from {t}'s {n}!","Coolly dispatched by {t}'s {n}!","Into the corner! {t}'s {n} makes no mistake!"],
-  pen_saved:["SAVED! The keeper guesses right against {t}'s {n}!","SAVED! The keeper gets a hand to {n}'s penalty!","Penalty saved! {t}'s {n} can't beat the keeper!"],
-  pen_missed:["Over the bar! {t}'s {n} blazes it high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}."],
-  offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","Offside. {t}'s {n} went too early.","Linesman's flag. {t}'s {n} just beyond the last man.","Run well-timed? No. {t}'s {n} is offside."],
-  corner_goal:["{t}'s {n} heads it in from the corner! GOAL!","Towering header from {t}'s {n}! GOAL!","Planted in by {t}'s {n} from the set piece!","Up rises {t}'s {n}! Headed home from the corner!","Bullet header from {t}'s {n}! The delivery was perfect!"],
-  corner_save:["Header from {t}'s {n} — keeper saves!","Good delivery, but {o}'s keeper holds from {n}!","Strong header from {n} — saved!","{t}'s {n} gets up well but the keeper tips it over!"],
-  corner_miss:["Header from {t}'s {n} — over the bar!","{t}'s {n} can't keep the header down!","Free header for {n} — off target!","{t}'s {n} gets a head to it but can't direct it.","Glanced wide by {t}'s {n}. Needed to hit the target."],
-  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out, but only as far as {t}.","Partially cleared. {t} keep the pressure on."],
-  corner_clear:["{o} clear their lines.","{o} deal with the corner.","Headed away by {o}.","{o} punch it clear. Danger averted.","Strong defending from {o}. Corner dealt with."],
-  free_kick:["Free kick {t}. Into the wall.","{t}'s {n} over the free kick. Curls it wide.","{t}'s {n} takes the free kick. Blocked.","{t}'s {n} strikes the free kick. Just over."],
-  woodwork:["{t}'s {n} hits the post!","Off the bar! {t}'s {n} so close.","Rattles the crossbar! {t}'s {n} can't believe it.","The frame of the goal denies {t}'s {n}!","Against the post from {t}'s {n}! Agonizing.","{t}'s {n} crashes it against the woodwork!","Off the inside of the post! {t}'s {n} nearly had it."],
-  own_goal:["Own goal! {o}'s {n} turns it into his own net!","Calamitous from {o}'s {n}! Into his own goal!","Disaster for {o}'s {n}! Puts it past his own keeper!","It's an own goal! {n} can only watch as it goes in off him.","Unlucky! {o}'s {n} deflects it past his own goalkeeper."],
-  gk_error:["Goalkeeper error! {n} pounces for {t}!","Howler from the keeper! {t}'s {n} can't believe his luck!","Fumble! The keeper spills it and {t}'s {n} taps it in!","Gift for {t}! Keeper misjudges and {n} finishes into an empty net.","The keeper makes a hash of it! {t}'s {n} rolls it into the empty goal."],
-  deflection:["Deflection! Wrong-foots the keeper and it's in!","Wicked deflection and {t}'s {n} gets the goal!","It took a nick off a defender! Nothing the keeper could do.","Deflected past the keeper! {t}'s {n} won't care how it went in.","It's in off a defender! {t}'s {n} claims it."],
-  woodwork_save:["Tipped onto the post by {o}'s keeper!","Great save pushed onto the bar!","Fingertips! Onto the woodwork and away!","Incredible save onto the frame of the goal!"],
-  neutral:["{t} passing it around the back. Patient.","Cagey spell. Neither side committing.","{t} probe down the flank. Cross cleared.","Midfield tussle. Scrapping for every ball.","{o} press high. {t} play through it.","{t} in {o}'s half. Looking for openings.","Half chance. {t}'s {n} lays it off, move breaks down.","Long ball from {o}. Headed away.","End-to-end briefly. Ball bouncing in midfield.","{t} building from the back. Methodical.","{t} trying to find a way through. {o} compact.","Sideways from {t}. No route forward yet.","Ball out for a throw-in. {t} regroup.","Scrappy period. Neither team finding a rhythm.","{o} soak up pressure. Organized.","{t}'s {n} tries a through ball. Cut out."],
+  goal:["{t}'s {n} fires into the net!","{n} scores for {t}! Clinical.","{t}'s {n} slots it past the keeper!","What a strike from {t}'s {n}!","{n} buries it! {t} have scored!","Cool as you like from {t}'s {n}!","{n} finishes from close range!","Composure from {t}'s {n}. Slotted home.","{t}'s {n} finds the bottom corner!","Buried! {n} gives {t} a goal!","Tucked away by {t}'s {n}. Keeper no chance.","That's in! {n} for {t}!","{n} strikes for {t}! Low into the corner.","Clinical finish from {t}'s {n}. Never in doubt.","{t}'s {n} smashes it home!","Placed into the far corner by {t}'s {n}!","Side-footed past the keeper. {n} for {t}!","{n} drills it low and hard. {t} score!","Sweetly struck by {t}'s {n}!","Rifled in by {t}'s {n}! No stopping that.","Instinctive finish from {t}'s {n}!","{t}'s {n} pokes it home from six yards!","Lashed into the roof of the net! {n} for {t}!","{n} ghosts in unmarked and finishes for {t}!","{t}'s {n} chips the keeper! Audacious!","Emphatic from {t}'s {n}. Hammered in.","{t}'s {n} squeezes it inside the near post!","Guided into the corner by {t}'s {n}!","Tidy finish. {t}'s {n} picks the spot.","Wrong-footed the keeper! {t}'s {n} scores!"],
+  goal_opener:[" Deadlock broken!"," That opens the scoring!"," First blood!"," First goal of the game!"," And it's the breakthrough!"," The wait is over!"],
+  goal_equalizer:[" It's level!"," The equalizer!"," Pegged back!"," Back on level terms!"," All square now!"," Drawn level!"],
+  goal_lead:[" {t} take the lead!"," Advantage {t}!"," {t} ahead now!"," {t} go in front!"],
+  goal_pullback:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"," {t} give themselves hope!"],
+  goal_consolation:[" Consolation for {t}."," {t} get one back, but still trailing."," Too little too late for {t}."," Small comfort for {t}."],
+  goal_extend:[" The lead grows!"," {t} pulling away!"," Breathing room for {t}."," {t} extend their advantage!"," {t} are running riot!"," Comfortable now for {t}."],
+  goal_late:[" Late drama!"," What a time to score!"," In the dying minutes!"," Drama at the death!"," Against the run of play in stoppage time!"," Scenes at the death!"],
+  save:["Shot on target! {o}'s keeper denies {t}'s {n}.","Good stop from {t}'s {n}'s effort.","Fingertip save! {t}'s {n} thought that was in.","{t}'s {n} forces a save. {o} keeper holds.","Smart save! {o}'s keeper reads {t}'s {n} well.","Comfortable save from {t}'s {n}'s shot.","Strong hands from {o}'s keeper. {t}'s {n} denied.","Straight at the keeper. {t}'s {n} should have done better.","Low save! {o}'s keeper gets down well.","Diving save from {t}'s {n}'s header!","Parried away! {o}'s keeper pushes {t}'s {n}'s shot clear.","Solid save at the near post from {t}'s {n}'s effort.","Full stretch! {o}'s keeper just gets a glove to it.","Point-blank save! {t}'s {n} denied at close range.","Reflex save! {o}'s keeper somehow keeps it out.","Blocked by the keeper's legs! {t}'s {n} can't convert.","Caught cleanly by {o}'s keeper. {t}'s {n} didn't trouble him.","Pushed wide! {o}'s keeper at full stretch from {t}'s {n}.","Acrobatic stop! {o}'s keeper tips {t}'s {n}'s effort over.","Routine save. {t}'s {n} hits it too centrally."],
+  miss:["{t}'s {n} shoots wide.","{t}'s {n} fires over the bar.","{n} drags it wide. Off target.","Blazed over by {t}'s {n}.","{t}'s {n} pulls it across the face of goal. Wide.","{n} snatches at it. Over for {t}.","Skied! {t}'s {n} puts it into the stands.","Wide of the mark from {t}'s {n}.","{t}'s {n} leans back and lifts it over.","Miscued! {t}'s {n} gets it all wrong.","Scuffed shot from {t}'s {n}. Easy for the keeper.","Rushed it. {t}'s {n} needed to take a touch.","Shanked wide by {t}'s {n}!","Way off target. {t}'s {n} slices it horribly.","{t}'s {n} curls it over from a good position.","Had time but couldn't find the target. {t}'s {n} wasteful.","Wild effort from {t}'s {n}. Into row Z.","{t}'s {n} swings and misses the ball completely!","{t}'s {n} catches it on the shin. Harmless.","{t}'s {n} hits the side netting. Close but no cigar."],
+  foul:["Foul by {t}'s {n}. Free kick {o}.","{t}'s {n} goes through the back of the man. Free kick.","{t}'s {n} clips the ankle. Referee blows.","{t}'s {n} catches {o}'s player late. Free kick.","{t}'s {n} pulls back the shirt. Given.","{t}'s {n} bundles into the challenge. Foul.","Clumsy from {t}'s {n}. Free kick {o}.","Body check from {t}'s {n}. Referee intervenes.","Slide tackle from {t}'s {n}. Caught the man.","Wrestled to the ground. {t}'s {n} gives away the foul.","{t}'s {n} barges into the back. Foul given.","Trip by {t}'s {n}. Too eager.","Cynical foul from {t}'s {n}. Stops the break.","{t}'s {n} uses an arm across the chest. Free kick.","{t}'s {n} stands on the ankle. Accidental but still a foul.","Shove from {t}'s {n}. Easy decision for the referee."],
+  yellow:["Yellow card. {t}'s {n} into the book.","Booking for {t}'s {n}. Reckless.","Card shown to {t}'s {n}. Cynical challenge.","That's a yellow for {t}'s {n}. Can't argue with that.","{t}'s {n} picks up a booking. Needless.","In the book. {t}'s {n} will need to be careful now.","{t}'s {n} booked for persistent fouling.","Yellow card. {t}'s {n} knew exactly what he was doing.","{t}'s {n} carded for simulation. Referee not fooled.","{t}'s {n} picks up a caution. Walking a tightrope now."],
+  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} off! Down to {c}.","That's two bookings! {t}'s {n} has to go. {c} men remain.","Off for a second booking! {t}'s {n} leaves {t} with {c}.","Can't believe it! {t}'s {n} picks up a second yellow. {c} men."],
+  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! Down to {c}!","Off! {t}'s {n} sees a straight red. {c} men.","Violent conduct! {t}'s {n} given a straight red. Down to {c}.","Serious foul play! {t}'s {n} walks. {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red. Down to {c}."],
+  pen_scored:["SCORED! {t}'s {n} sends the keeper the wrong way!","Converted! {t}'s {n} rolls it home!","No mistake from {t}'s {n}!","Coolly dispatched by {t}'s {n}!","Into the corner! {t}'s {n} makes no mistake!","Ice cold! {t}'s {n} buries it!","Smashed down the middle! {t}'s {n} converts!","Stuttered run, keeper dives early. {t}'s {n} rolls it in."],
+  pen_saved:["SAVED! The keeper guesses right against {t}'s {n}!","SAVED! The keeper gets a hand to {n}'s penalty!","Penalty saved! {t}'s {n} can't beat the keeper!","Read it perfectly! The keeper dives low to deny {t}'s {n}!","Kept out! {t}'s {n} goes left, so does the keeper!"],
+  pen_missed:["Over the bar! {t}'s {n} blazes it high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}.","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Barely troubled the corner."],
+  offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","Offside. {t}'s {n} went too early.","Linesman's flag. {t}'s {n} just beyond the last man.","Run well-timed? No. {t}'s {n} is offside.","{t}'s {n} strays offside. Good work from the defensive line.","Offside trap works. {t}'s {n} caught out.","Marginal call. {t}'s {n} flagged offside."],
+  corner_goal:["{t}'s {n} heads it in from the corner! GOAL!","Towering header from {t}'s {n}! GOAL!","Planted in by {t}'s {n} from the set piece!","Up rises {t}'s {n}! Headed home from the corner!","Bullet header from {t}'s {n}! The delivery was perfect!","Flicked in at the near post! {t}'s {n} from the corner!","Back-post header! {t}'s {n} rises highest!","Volleyed in from the corner! {t}'s {n} with a sweet strike!"],
+  corner_save:["Header from {t}'s {n} — keeper saves!","Good delivery, but {o}'s keeper holds from {n}!","Strong header from {n} — saved!","{t}'s {n} gets up well but the keeper tips it over!","Firm header from {t}'s {n}. Straight at the keeper.","Diving header from {t}'s {n}! Keeper pushes it wide!"],
+  corner_miss:["Header from {t}'s {n} — over the bar!","{t}'s {n} can't keep the header down!","Free header for {n} — off target!","{t}'s {n} gets a head to it but can't direct it.","Glanced wide by {t}'s {n}. Needed to hit the target.","Completely miscued by {t}'s {n}. Should have scored.","{t}'s {n} rises but heads it into the ground. Bounces wide.","Headed wide from six yards! {t}'s {n} won't want to see that again."],
+  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out, but only as far as {t}.","Partially cleared. {t} keep the pressure on.","Punched out by the keeper but {t} gather.","Cleared to the edge of the box. {t} reload."],
+  corner_clear:["{o} clear their lines.","{o} deal with the corner.","Headed away by {o}.","{o} punch it clear. Danger averted.","Strong defending from {o}. Corner dealt with.","Commanding from {o}'s keeper. Claimed easily.","{o} get a decisive head on it. Cleared."],
+  free_kick:["Free kick {t}. Into the wall.","{t}'s {n} over the free kick. Curls it wide.","{t}'s {n} takes the free kick. Blocked.","{t}'s {n} strikes the free kick. Just over.","Worked short by {t}. Move breaks down.","{t}'s {n} whips it in. Headed clear by {o}.","{t}'s {n} floats the free kick in. {o} deal with it.","Direct free kick from {t}'s {n}. Dipping but over."],
+  woodwork:["{t}'s {n} hits the post!","Off the bar! {t}'s {n} so close.","Rattles the crossbar! {t}'s {n} can't believe it.","The frame of the goal denies {t}'s {n}!","Against the post from {t}'s {n}! Agonizing.","{t}'s {n} crashes it against the woodwork!","Off the inside of the post! {t}'s {n} nearly had it.","Cracks the bar! {t}'s {n} had the keeper beaten.","Thumps the upright! {t}'s {n} inches away.","Thunderbolt against the crossbar from {t}'s {n}!"],
+  own_goal:["Own goal! {o}'s {n} turns it into his own net!","Calamitous from {o}'s {n}! Into his own goal!","Disaster for {o}'s {n}! Puts it past his own keeper!","It's an own goal! {n} can only watch as it goes in off him.","Unlucky! {o}'s {n} deflects it past his own goalkeeper.","Sliced into his own net by {o}'s {n}!","Horror show! {o}'s {n} heads it past his own keeper!"],
+  gk_error:["Goalkeeper error! {n} pounces for {t}!","Howler from the keeper! {t}'s {n} can't believe his luck!","Fumble! The keeper spills it and {t}'s {n} taps it in!","Gift for {t}! Keeper misjudges and {n} finishes into an empty net.","The keeper makes a hash of it! {t}'s {n} rolls it into the empty goal.","Terrible backpass! {t}'s {n} nips in and scores!","Goalkeeper caught off his line! {t}'s {n} lobs it home!"],
+  deflection:["Deflection! Wrong-foots the keeper and it's in!","Wicked deflection and {t}'s {n} gets the goal!","It took a nick off a defender! Nothing the keeper could do.","Deflected past the keeper! {t}'s {n} won't care how it went in.","It's in off a defender! {t}'s {n} claims it.","Big deflection takes it past the keeper! {t} score!","Ricochets off two defenders and in! {t}'s {n} gets the credit."],
+  woodwork_save:["Tipped onto the post by {o}'s keeper!","Great save pushed onto the bar!","Fingertips! Onto the woodwork and away!","Incredible save onto the frame of the goal!","Pushed onto the post! Brilliant from {o}'s keeper!"],
+  neutral:["{t} passing it around the back. Patient.","Cagey spell. Neither side committing.","{t} probe down the flank. Cross cleared.","Midfield tussle. Scrapping for every ball.","{o} press high. {t} play through it.","{t} in {o}'s half. Looking for openings.","Half chance. {t}'s {n} lays it off, move breaks down.","Long ball from {o}. Headed away.","End-to-end briefly. Ball bouncing in midfield.","{t} building from the back. Methodical.","{t} trying to find a way through. {o} compact.","Sideways from {t}. No route forward yet.","Ball out for a throw-in. {t} regroup.","Scrappy period. Neither team finding a rhythm.","{o} soak up pressure. Organized.","{t}'s {n} tries a through ball. Cut out.","Lots of bodies behind the ball from {o}.","Quiet spell. {t} keeping the ball without threatening.","Ball pinballing in midfield. No one in control.","{o} dropping deep. Inviting {t} onto them.","{t} switching the play from side to side.","Tactical foul from {o}. {t} momentum broken.","Nothing doing. {t} probing but {o} have numbers back.","Drinks break. Both managers issuing instructions.","Bit of handbags in midfield. Referee calms it down."],
 };
 
 // ═══ ZONE COMMENTARY ═════════════════════════════════════════════════════════
 const CZ = {
-  buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {t}'s {n} looks up.","{t} probing through the middle. {n} involved.","{t}'s {n} carries it forward. Space ahead.","Ball switched by {t}. {n} picks it up wide.","{t} patient. {t}'s {n} picks the pass.","Good move from {t}. {n} advances.","{n} plays a one-two and breaks into {o}'s half.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} receives and turns.","Neat combination play from {t}. {n} carrying it forward.","{t}'s {n} clips it over the top. {t} advancing."],
-  neutral:["{t} controlling the tempo.","Midfield contest. {o} pressing.","Cagey. Neither side committing.","Throw-in {t}. Worked short.","Loose ball in midfield. Scrappy.","Ball bobbling in midfield. {t}'s {n} recycles.","{t} knocking it around. No urgency.","Both sides happy to keep possession.","{t}'s {n} sprays it wide. Pace slows.","{o} win it back. Sideways. {t} press to recover.","Brief spell of {t} possession. Nothing doing.","Stop-start in the middle third."],
-  enter_box:["{t}'s {n} feeds it into the area!","Dangerous position. {t}'s {n} inside the box!","{t} work it through! {n} in behind!","{n} picks it up in a dangerous area for {t}!","{t}'s {n} cuts inside and gets a shot away!","Lovely pass and {t}'s {n} is through on goal!","{t}'s {n} drives into the penalty area!","Chance! {t}'s {n} is in space in the box!"],
-  pressure:["Still {t}. Relentless pressure.","{o} under the cosh. {t} keep coming.","{t} camped in {o}'s box. Sustained pressure.","{o} pinned back. {t} won't let up.","{t} keep recycling. {o} can't get out.","Wave after wave from {t}. {o} hanging on."],
-  counter:["COUNTER! {t} catch {o} high up the pitch! {n} leads the break!","{t} break at pace! {n} drives forward!","Long ball over the top! {t}'s {n} is through!","Turnover! {t}'s {n} sprints into space!","{t} hit {o} on the break! {n} racing clear!","Quick transition from {t}! {n} has numbers forward!","Intercepted! {t}'s {n} launches the counter!","{o} caught out! {t}'s {n} breaks with pace!"],
-  sustain:["{t} working it around the edge of the box.","{t} keep probing. {o} holding firm.","{t}'s {n} looks for an opening. Recycled.","Patient from {t}. Waiting for the gap.","{t}'s {n} tries to thread it through. Blocked.","{t} moving it side to side. {o} staying compact.","{t}'s {n} shifts it onto the other foot. Blocked.","{o} standing firm. {t} can't find a way through."],
+  buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {t}'s {n} looks up.","{t} probing through the middle. {n} involved.","{t}'s {n} carries it forward. Space ahead.","Ball switched by {t}. {n} picks it up wide.","{t} patient. {t}'s {n} picks the pass.","Good move from {t}. {n} advances.","{n} plays a one-two and breaks into {o}'s half.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} receives and turns.","Neat combination play from {t}. {n} carrying it forward.","{t}'s {n} clips it over the top. {t} advancing.","{t}'s {n} plays a diagonal into space. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the first man and drives on.","{t} overloading the right side. {n} involved.","{t}'s {n} drops deep to collect, spins, and plays it forward.","Sharp pass from {t}'s {n}. {t} through the first line of pressure.","Lovely touch from {t}'s {n}. {t} advancing with purpose now.","Crossfield ball from {t}'s {n}. Play shifted to the other flank."],
+  neutral:["{t} controlling the tempo.","Midfield contest. {o} pressing.","Cagey. Neither side committing.","Throw-in {t}. Worked short.","Loose ball in midfield. Scrappy.","Ball bobbling in midfield. {t}'s {n} recycles.","{t} knocking it around. No urgency.","Both sides happy to keep possession.","{t}'s {n} sprays it wide. Pace slows.","{o} win it back. Sideways. {t} press to recover.","Brief spell of {t} possession. Nothing doing.","Stop-start in the middle third.","Stalemate in the middle of the park.","{t} trying to find the tempo. {o} denying them space.","{t}'s {n} holds it up. Looking for support.","Neither side able to establish a foothold.","{o} content to sit and wait. {t} circulating.","{t}'s {n} plays it backwards. Lacking ideas.","{t} with the ball but no penetration.","Physical battle in the middle. No quarter given."],
+  enter_box:["{t}'s {n} feeds it into the area!","Dangerous position. {t}'s {n} inside the box!","{t} work it through! {n} in behind!","{n} picks it up in a dangerous area for {t}!","{t}'s {n} cuts inside and gets a shot away!","Lovely pass and {t}'s {n} is through on goal!","{t}'s {n} drives into the penalty area!","Chance! {t}'s {n} is in space in the box!","Threaded through! {t}'s {n} latches onto it!","One on one! {t}'s {n} bearing down on goal!","{t}'s {n} peels off the back. Ball played in!","In behind! {t}'s {n} is clean through!"],
+  pressure:["Still {t}. Relentless pressure.","{o} under the cosh. {t} keep coming.","{t} camped in {o}'s box. Sustained pressure.","{o} pinned back. {t} won't let up.","{t} keep recycling. {o} can't get out.","Wave after wave from {t}. {o} hanging on.","{t} suffocating {o}. Backs to the wall.","{o} haven't touched the ball in minutes. {t} dominant.","{t} laying siege. It feels like a matter of time.","Bombardment from {t}. {o}'s defense under enormous pressure."],
+  counter:["COUNTER! {t} catch {o} high up the pitch! {n} leads the break!","{t} break at pace! {n} drives forward!","Long ball over the top! {t}'s {n} is through!","Turnover! {t}'s {n} sprints into space!","{t} hit {o} on the break! {n} racing clear!","Quick transition from {t}! {n} has numbers forward!","Intercepted! {t}'s {n} launches the counter!","{o} caught out! {t}'s {n} breaks with pace!","{t} spring the trap! {n} galloping upfield!","Three on two! {t}'s {n} carrying it on the counter!","{o} overcommitted! {t}'s {n} exploits the space!","Released in behind! {t}'s {n} with acres of space!"],
+  sustain:["{t} working it around the edge of the box.","{t} keep probing. {o} holding firm.","{t}'s {n} looks for an opening. Recycled.","Patient from {t}. Waiting for the gap.","{t}'s {n} tries to thread it through. Blocked.","{t} moving it side to side. {o} staying compact.","{t}'s {n} shifts it onto the other foot. Blocked.","{o} standing firm. {t} can't find a way through.","{t} patient in possession. Looking for the killer ball.","{t}'s {n} drops a shoulder. Defender stays with him.","Good defending from {o}. {t} recycling possession.","{t} trying to create something from nothing. {o} resolute."],
 };
 
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
@@ -708,15 +708,15 @@ function lmAdvance(prev, rng, home, away, mutate) {
     case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 Half time. "+s.score[0]+"\u2013"+s.score[1]});}break;
     case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+15);s.stamina.away=Math.min(100,s.stamina.away+15);s.events.push({min:"",type:"phase",text:"\u26BD Second half underway!"});break;
     case "second_half": s.minute++;playMin();if(s.minute>=90)toStop("second_half");break;
-    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){if(s.forceResult&&s.score[0]===s.score[1]){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 Full time. "+s.score[0]+"\u2013"+s.score[1]+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 Full time! "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name});}}break;
+    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 Full time. "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 Full time! "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
     case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.events.push({min:"",type:"phase",text:"\u26BD Extra time begins!"});break;
     case "et_first": s.minute++;playMin();if(s.minute>=105)toStop("et_first");break;
     case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 ET half time. "+s.score[0]+"\u2013"+s.score[1]});}break;
     case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+5);s.stamina.away=Math.min(100,s.stamina.away+5);s.events.push({min:"",type:"phase",text:"\u26BD ET second half!"});break;
     case "et_second": s.minute++;playMin();if(s.minute>=120)toStop("et_second");break;
-    case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){if(s.score[0]===s.score[1]){s.phase="penalties";
+    case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
         const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
-        s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=s.score[0]>s.score[1]?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]});}}break;
+        s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
     case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(tk==="home"?home.skill:away.skill,s.stats[tk].reds,s.minute);const gE=lmEffSkill(ok==="home"?home.skill:away.skill,s.stats[ok].reds,s.minute);
       // Pick taker from order
       const ordKey=tk+"Order",idxKey=tk+"Idx";
@@ -1593,6 +1593,8 @@ details>summary{cursor:pointer;user-select:none;list-style:none;transition:color
 details>summary:hover{color:#d3ebd3 !important;}
 details>summary::-webkit-details-marker{display:none;}
 details>summary .dta{display:inline-block;margin-right:6px;transition:transform 0.15s;}
+details[id^="doc-"]>summary+p{margin-top:12px;}
+details[id^="doc-"]>summary+div{margin-top:12px;}
 details[open]>summary .dta{transform:rotate(90deg);}
 .team-row{transition:background 0.15s;}
 .team-row:hover{background:#141a14 !important;}
@@ -1643,7 +1645,7 @@ export default function App() {
   const [lmA, setLmA] = useState(Math.min(1, PRESET_DEF.length - 1));
   const [lmForce, setLmForce] = useState(true);
   const [lmAllowTac, setLmAllowTac] = useState(true);
-  const [lmHomeAdv, setLmHomeAdv] = useState(false);
+  const [lmHomeAdv, setLmHomeAdv] = useState(null);
   const [lm2ndLeg, setLm2ndLeg] = useState(false);
   const [lmMatch, setLmMatch] = useState(null);
   const [lmStartScore, setLmStartScore] = useState([0, 0]);
@@ -1981,14 +1983,14 @@ export default function App() {
   const loadPreset = (preset) => { setTeams(preset); setShowBulk(false); setBulkText(""); setLmMatch(null); setLmH(0); setLmA(Math.min(1, preset.length - 1)); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv ? "home" : null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
+  const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
     init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     init.bench = {home: hSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill })); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv ? "home" : null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq2 = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq2 = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
     init.players = {home: hSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
@@ -2737,7 +2739,7 @@ export default function App() {
             </div>
             <div style={{ borderTop: "1px solid #1a221a", paddingTop: 16, marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"], [lmHomeAdv, e => setLmHomeAdv(e), "Home Advantage", "+3% skill bonus"], [lm2ndLeg, e => { setLm2ndLeg(e); if (!e) setLmStartScore([0, 0]); }, "2nd Leg", "Aggregate scoring"]].map(([checked, onChange, label, sub], i) => (
+                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"]].map(([checked, onChange, label, sub], i) => (
                   <label key={i} onClick={() => onChange(!checked)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
                     <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#3d5343" : "#1a221a", border: "1px solid " + (checked ? "#627661" : "#2a3a2a"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
                       <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#d3ebd3" : "#3b4a3b", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
@@ -2749,16 +2751,34 @@ export default function App() {
                   </label>
                 ))}
               </div>
-              {lm2ndLeg && <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1a221a" }}>
-                <div style={{ fontSize: 10, color: "#4c5a4c", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>1ST LEG RESULT</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                  <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teams[lmH]?.name}</span>
-                  <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                  <span style={{ color: "#3b4a3b", fontSize: 14 }}>–</span>
-                  <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                  <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teams[lmA]?.name}</span>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1a221a" }}>
+                <div style={{ fontSize: 10, color: "#4c5a4c", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #1a221a" }}>
+                  {[["home", teams[lmH]?.name || "Home"], [null, "Neutral"], ["away", teams[lmA]?.name || "Away"]].map(([val, label]) => (
+                    <button key={label} onClick={() => setLmHomeAdv(val)} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "#3d5343" : "transparent", color: lmHomeAdv === val ? "#d3ebd3" : "#4c5a4c", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid #1a221a" : "none" }}>{label}</button>
+                  ))}
                 </div>
-              </div>}
+                <div style={{ fontSize: 9, color: "#3b4a3b", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
+              </div>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1a221a" }}>
+                <div style={{ fontSize: 10, color: "#4c5a4c", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>AGGREGATE SCORING</div>
+                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #1a221a" }}>
+                  {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
+                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "#3d5343" : "transparent", color: lm2ndLeg === val ? "#d3ebd3" : "#4c5a4c", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid #1a221a" : "none" }}>{label}</button>
+                  ))}
+                </div>
+                {lm2ndLeg && <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 9, color: "#3b4a3b", textAlign: "center", marginBottom: 6 }}>1st leg result</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#0a0f0c", border: "1px solid #1a221a", borderRadius: 6, padding: "8px 12px" }}>
+                    <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teams[lmH]?.name}</span>
+                    <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
+                    <span style={{ color: "#3b4a3b", fontSize: 14 }}>–</span>
+                    <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
+                    <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teams[lmA]?.name}</span>
+                  </div>
+                </div>}
+                {!lm2ndLeg && <div style={{ fontSize: 9, color: "#3b4a3b", textAlign: "center", marginTop: 4 }}>Single match</div>}
+              </div>
             </div>
             {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
           </div>)}
@@ -3953,7 +3973,7 @@ export default function App() {
               {tGroups.map((g, gi) => (<div key={gi} style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 5, padding: "10px 8px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: "#627661", textAlign: "center", marginBottom: 6, ...mono }}>GROUP {g.label}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#4c5a4c" }}><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, g.standings.length, tConfig.qualZones); return (<tr key={ri} style={{ borderTop: "1px solid #151e15" }}><td style={{ padding: "2px 3px", color: zone ? zone.color : "#666", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "#555", textAlign: "center" }}>{r.p}</td><td style={{ padding: "2px", textAlign: "center", color: r.gf - r.ga > 0 ? "#d3ebd3" : r.gf - r.ga < 0 ? "#bf616a" : "#555" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#3d5343", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, g.standings.length, tConfig.qualZones); return (<tr key={ri} style={{ borderTop: "1px solid #151e15" }}><td style={{ padding: "2px 3px", color: zone ? zone.color : "#666", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "#555", textAlign: "center" }}>{r.p}</td><td style={{ padding: "2px", textAlign: "center", color: r.gf - r.ga > 0 ? "#d3ebd3" : r.gf - r.ga < 0 ? "#bf616a" : "#555" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#3d5343", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
               </div>))}
             </div>
             {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
@@ -4237,7 +4257,24 @@ export default function App() {
             const H2 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#627661", marginTop: 24, marginBottom: 10, ...ui }}>{children}</div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "#d3ebd3", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "#b0b8b0" }}>{children}</p>;
-            const Stat = ({text}) => <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "#627661", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary><div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "#0a0f0c", borderRadius: 4, marginTop: 4, lineHeight: 1.8 }}>{text}</div></details>;
+            const Stat = ({text}) => {
+              const items = text.split(" \u00b7 ").map(s => {
+                const tempo = s.match(/^(Max|Min) tempo: (.+)$/);
+                if (tempo) return { name: tempo[1] + " tempo", value: tempo[2], neutral: false, positive: false, isTempo: true };
+                const m = s.match(/^(.+?)\s+([\+\-]?\d+\.?\d*x?)$/);
+                if (!m) return { name: s, value: "", neutral: true };
+                const isM = m[2].endsWith("x"); const n = parseFloat(m[2]);
+                const neut = isM ? n === 1 : n === 0;
+                return { name: m[1], value: m[2], neutral: neut, positive: isM ? n > 1 : n > 0, isMulti: isM };
+              });
+              return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "#627661", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "#0a0f0c", borderRadius: 5, marginTop: 6, border: "1px solid #1a221a" }}>
+                {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "#5e9c6b0a" : it.isTempo ? "#d087700a" : "#bf616a0a", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid #5e9c6b33" : it.isTempo ? "2px solid #d0877033" : "2px solid #bf616a33" }}>
+                  <span style={{ color: "#627661", fontSize: 10 }}>{it.name}</span>
+                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "#2a3a2a" : it.positive ? "#5e9c6b" : it.isTempo ? "#d08770" : "#bf616a" }}>{it.value}</span>
+                </div>)}
+              </div></details>;
+            };
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "#d3ebd3" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
             const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "#627661", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<>
@@ -4245,8 +4282,16 @@ export default function App() {
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#3b4a3b", marginBottom: 8 }}>Contents</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {tocLink("doc-overview", "Overview")}
-                {tocLink("doc-skill", "Skill")}
+                {tocLink("doc-engine", "How Matches Play Out")}
+                <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
+                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                </div>
+                {tocLink("doc-dynamics", "Match Dynamics")}
+                <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
+                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                </div>
                 {tocLink("doc-modifiers", "Modifiers")}
+                {tocLink("doc-skill", "Skill")}
                 {tocLink("doc-playstyles", "Playstyles")}
                 {tocLink("doc-formations", "Formations")}
                 {tocLink("doc-tactics", "Tactics")}
@@ -4258,13 +4303,9 @@ export default function App() {
                   <span style={{ color: "#627661", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>DEFENSE</span>
                   {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
-                {tocLink("doc-engine", "How Matches Play Out")}
+                {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                </div>
-                {tocLink("doc-dynamics", "Match Dynamics")}
-                <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#4c5a4c", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-bulkimport", "Bulk Import")}
               </div>
@@ -4273,31 +4314,12 @@ export default function App() {
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-overview"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Overview</H1></summary>
             <P>Match outcomes are determined by three layers. Skill sets the baseline: a higher-skilled team wins more often, creates more chances, presses more effectively, and converts at a higher rate. Tactical setup (playstyle, formation, and tactics) modifies the probabilities that govern each minute of play, trading strength in one area for weakness in another. The engine then simulates minute by minute, resolving possession, movement, shots, fouls, and set pieces through those modified probabilities.</P>
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-skill"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Skill</H1></summary>
             <P>A number from 25 to 100 representing overall team quality. Skill feeds into every probability calculation in the engine: pressing effectiveness, advance rate, shot conversion, save probability, counter-attack success, and penalty conversion. Most formulas use the ratio between the two teams' effective skill, so a 90 vs 70 matchup produces the same relative advantage as 60 vs 47. Effective skill is the base number modified at runtime by red cards (each reduces it by 15%, compounding), momentum (up to +8% after scoring), stamina (up to -25% when exhausted), home advantage (+3% when enabled), and extra-time fatigue (-0.4% per minute past 90').</P>
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
-
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
-            <P>Playstyles, formations, and tactics all modify the same set of parameters. Every team carries a playstyle and a formation; their modifiers combine at runtime (additive parameters sum, multiplicative parameters multiply), then tactics apply on top.</P>
-            <div style={{ background: "#0a0f0c", borderRadius: 8, border: "1px solid #1a221a", padding: "14px 16px", marginBottom: 10 }}>
-              <Mod name="Press" desc="(multiplier) — How effectively the team wins the ball back." />
-              <Mod name="Advance" desc="(additive) — Bonus to the probability of moving the ball forward one zone per minute." />
-              <Mod name="Hold" desc="(additive) — Bonus to the probability of retaining possession without advancing." />
-              <Mod name="Long ball" desc="(additive) — Bonus to the probability of skipping a zone with a direct pass." />
-              <Mod name="Box shot" desc="(additive) — Bonus to generating a shot inside the opponent's box. Primary driver of shot volume." />
-              <Mod name="Goal prob" desc="(additive) — Modifier to base conversion rate per shot. Small changes compound significantly." />
-              <Mod name="Counter" desc="(multiplier) — How likely the team launches a counter-attack after winning the ball." />
-              <Mod name="Counter shot" desc="(additive) — Bonus shot probability during counter-attacks." />
-              <Mod name="Defense" desc="(additive) — Reduces opponent's shot probability in the box. Primary driver of solidity." />
-              <Mod name="Long-range" desc="(additive) — Modifier to long-range shot frequency from outside the box." />
-              <Mod name="Corners" desc="(multiplier) — Modifies corner frequency from crosses in attacking territory." />
-              <Mod name="Tactic clamp" desc="(maxT/minT) — Restricts the range of the automatic tempo system." />
-            </div>
-
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-playstyles"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Playstyles</H1></summary>
 
@@ -4325,13 +4347,13 @@ export default function App() {
 
             <H3>Counter</H3>
             <P>Built to absorb pressure and punish opponents on the break. The counter multiplier (2.0x) and counter shot bonus (+0.10) are both the highest in the game, meaning the team is lethal in transition. Defensive solidity is strong, and goal conversion is elevated because the chances that do come tend to be high-quality breakaways. The cost is territorial: the team concedes possession, rarely presses, advances slowly, and generates few chances from open play. The box shot penalty means the team relies almost entirely on counters and set pieces for goals. Tempo caps at Offensive to prevent the system from abandoning its defensive shape.</P>
-            <Stat text="Press 0.3x · Advance -0.06 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0.02 · Counter 2.0x · Counter shot +0.10 · Defense +0.08 · Long-range +0 · Corners 1.0x · Max tempo: Offensive" />
+            <Stat text="Press 0.3x · Advance -0.06 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0.02 · Counter 2.0x · Counter shot +0.10 · Defense +0.08 · Long-range +0 · Corners 1.0x" />
 
             <H3>Park the Bus</H3>
             <P>Maximum defensive solidity at the expense of everything else. The defense modifier (+0.10) is the highest in the game, reducing the opponent's shooting opportunities substantially. Counter ability is elevated, providing an outlet on the break. The cost is across the board: pressing is nearly nonexistent, advance rate is deeply negative, hold drops, box shot probability craters, and corners are rare. The tempo system enforces a minimum of Defensive, meaning a Park the Bus team will never play balanced or higher regardless of scoreline. Effective when protecting a lead or when a massive skill gap needs to be neutralized, but the team will struggle to score if it falls behind.</P>
             <Stat text="Press 0.1x · Advance -0.10 · Hold -0.05 · Long ball +0.02 · Box shot -0.06 · Goal prob +0 · Counter 1.3x · Counter shot +0.05 · Defense +0.10 · Long-range -0.04 · Corners 0.7x · Min tempo: Defensive" />
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-formations"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Formations</H1></summary>
 
@@ -4385,7 +4407,7 @@ export default function App() {
             <P>The most defensive formation. Five at the back produces the highest defensive modifier in the game. Two strikers wait for the break with the strongest counter multiplier among formations (1.30x) and a counter shot bonus. Long ball gets a boost for direct transitions. The cost is everywhere else: press is weak, advance is negative, and corner generation is low. This formation concedes few chances and creates fewer, relying on counters for goals. Effective when protecting a lead or absorbing pressure from a stronger team.</P>
             <Stat text="Press 0.8x · Advance -0.02 · Hold +0 · Long ball +0.03 · Box shot +0 · Goal prob +0 · Counter 1.30x · Counter shot +0.02 · Defense +0.07 · Long-range +0 · Corners 0.85x" />
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tactics"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tactics</H1></summary>
             <P>Fourteen individual instructions that fine-tune behavior on top of playstyle and formation. Grouped into three categories. All default to "No Instruction" (zero effect). Each instruction also affects stamina drain; aggressive settings tire the team faster, conservative settings preserve energy.</P>
@@ -4462,7 +4484,7 @@ export default function App() {
             <P><strong style={{color:"#d3ebd3",fontSize:10}}>Get Stuck In</strong> — Players commit to tackles aggressively. Press effectiveness increases. Foul rate rises substantially, and card chance rises even more. Generates more turnovers but also more fouls, more cards, and more penalties. Best for teams that need to disrupt the opponent's rhythm and are willing to risk the disciplinary consequences.</P>
             <Stat text="Stay On Feet: press 0.95x, foul rate 0.75x, card chance 0.65x · Get Stuck In: press 1.08x, foul rate 1.3x, card chance 1.4x" />
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-engine"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>How Matches Play Out</H1></summary>
 
@@ -4499,7 +4521,7 @@ export default function App() {
             <P>Offsides trigger at a 6% base rate when advancing into the final third or box, modified by the opponent's defensive line and defensive line behavior settings.</P>
             <P>Penalties convert at a base 78% rate, scaled by the skill ratio (floored at 55%, capped at 90%). 7% miss entirely. The rest are saved, with a 30% chance of producing a corner from the rebound.</P>
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-dynamics"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Match Dynamics</H1></summary>
 
@@ -4531,12 +4553,104 @@ export default function App() {
             <H2 id="doc-extra">Extra time and penalties</H2>
             <P>Knockout matches drawn at full time proceed to extra time: two 15-minute halves. Effective skill degrades by 0.4% per minute past the 90th (capped at -12% by minute 120). If still level, a penalty shootout: five kicks per side, then sudden death. Each kick resolves individually. A winner is declared the moment the outcome is mathematically decided.</P>
 
-            </details><div style={{ borderTop: "1px solid #1a221a", marginTop: 28, marginBottom: 0 }} />
+            </details>
+
+            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
+
+            <H3 id="doc-tourney-modes">Modes</H3>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league. Groups Only is also used for Monte Carlo simulations where you want to run many group stages without a knockout.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones (or by the Qualify Per Group fallback if no advance zones are set). Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
+            <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
+
+            <H3 id="doc-tourney-zones">Qualification Zones</H3>
+            <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range (e.g., 1 to 2), a label, a color, and a type.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats where there is no knockout stage.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament with Direct Qualification produces 16 teams for the knockout.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a single ranked pool table (sorted by points, then goal difference, goals for, and skill). A configurable number of the best-performing teams qualify. This is how the 2026 World Cup handles third-placed teams: 12 groups produce 12 third-placed teams, the best 8 advance.</P>
+            <P>The pool ranking table updates live during the group stage as results come in. Zones are evaluated top-to-bottom in the editor, so if two zones overlap, the first one takes priority. Zones integrate with the knockout bracket builder and handle byes automatically for non-power-of-2 team counts.</P>
+
+            <H3 id="doc-tourney-tiebreakers">Tiebreakers</H3>
+            <P>When two teams have equal points, the tiebreaker priority determines their order. The priority is configurable and the order matters. Points are always checked first; skill is always the final fallback.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Goal Difference</strong> compares total goals scored minus goals conceded.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Goals For</strong> rewards attacking teams. A team with 15 scored and 10 conceded ranks above one with 8 scored and 3 conceded despite the latter having a better goal difference.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Head-to-Head</strong> extracts the results between the two tied teams specifically: their H2H points, then H2H goal difference, then H2H goals for. This is the primary tiebreaker in UEFA competitions.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Wins</strong> counts total wins regardless of goal difference. Some South American leagues prioritize this.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Median-Buchholz</strong> (Swiss only) sums each team's opponents' final points, removes the highest and lowest, and compares. Rewards teams that faced stronger opposition. Standard in chess-style Swiss systems.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Manual</strong> (Double Stage only) stops automated tiebreaking at its position in the priority list. When two teams are tied at a qualification zone boundary after all criteria above Manual are exhausted, a swap button appears in the standings table. The user resolves the tie by swapping team positions. Advancement to the knockout stage is blocked until all zone-boundary ties are resolved.</P>
+
+            <H3 id="doc-tourney-presets">Presets</H3>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>League</strong> — Single stage, 1 group, double round-robin, first-listed home advantage. Champion (gold, cosmetic) and Relegation (red, cosmetic) zones. Tiebreakers: GD, GF, H2H, Wins.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Old World Cup</strong> — Double stage, 8 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout with third-place match.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>New World Cup</strong> — Double stage, 12 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct) plus best 8 third-placed teams (pool). 32-team seeded knockout with third-place match.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Old UCL</strong> — Double stage, 8 groups of 4, double round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout, two-legged ties with away goals.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>New UCL</strong> — Double stage, 1 group of 36, Swiss format (8 rounds). Top 8 advance directly, 9th to 24th advance to playoff round. Seeded knockout, two-legged ties, no away goals. Tiebreakers: GD, GF, Buchholz, H2H, Wins.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Cup</strong> — Single stage knockout. Seeded bracket, single-leg, weaker team gets home advantage.</P>
+
+            </details>
+
+            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
+            <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
+            <div style={{ background: "#0a0f0c", borderRadius: 8, border: "1px solid #1a221a", overflow: "hidden", marginBottom: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+                <thead><tr style={{ borderBottom: "1px solid #1a221a" }}>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "#627661", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>PARAMETER</th>
+                  <th style={{ padding: "8px 10px", textAlign: "center", color: "#627661", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em", width: 50 }}>TYPE</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "#627661", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>EFFECT</th>
+                </tr></thead>
+                <tbody>
+                {[
+                  ["Press", "×", "Pressing effectiveness when winning the ball back"],
+                  ["Advance", "+", "Probability of moving the ball forward one zone"],
+                  ["Hold", "+", "Probability of retaining possession without advancing"],
+                  ["Long ball", "+", "Probability of skipping a zone with a direct pass"],
+                  ["Box shot", "+", "Generating a shot inside the box — primary driver of shot volume"],
+                  ["Goal prob", "+", "Base conversion rate per shot — small changes compound"],
+                  ["Counter", "×", "Launching a counter-attack after winning the ball"],
+                  ["Counter shot", "+", "Shot probability during counter-attacks"],
+                  ["Defense", "+", "Reduces opponent shot probability — primary driver of solidity"],
+                  ["Long-range", "+", "Long-range shot frequency from outside the box"],
+                  ["Corners", "×", "Corner frequency from crosses in attacking territory"],
+                  ["Tactic clamp", "⌐", "Restricts the automatic tempo range (maxT/minT)"],
+                ].map(([name, type, desc], i) => (
+                  <tr key={i} style={{ borderBottom: i < 11 ? "1px solid #0f1612" : "none" }}>
+                    <td style={{ padding: "7px 12px", color: "#d3ebd3", fontWeight: 600, fontSize: 11 }}>{name}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "#3d534322" : type === "+" ? "#4a7ab522" : "#d0877022", color: type === "×" ? "#5e9c6b" : type === "+" ? "#4a7ab5" : "#d08770", border: "1px solid " + (type === "×" ? "#5e9c6b33" : type === "+" ? "#4a7ab533" : "#d0877033") }}>{type}</span></td>
+                    <td style={{ padding: "7px 12px", color: "#888" }}>{desc}</td>
+                  </tr>
+                ))}
+                </tbody>
+              </table>
+            </div>
+            <P>Multiplier parameters (×) scale the base value. A press of 1.5× means 50% more effective pressing. Additive parameters (+) shift the probability directly. A box shot of +0.04 adds 4 percentage points to the chance of generating a shot in the box each minute.</P>
+
+            </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
             <P>Tab-separated, one team per line. Columns in order:</P>
             <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "#0a0f0c", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
             <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In").</P>
+
+            </details>
+
+            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
+
+            <H3 id="doc-tourney-modes">Modes</H3>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones. Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
+            <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
+
+            <H3 id="doc-tourney-zones">Qualification Zones</H3>
+            <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range, a label, a color, and a type.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament produces 16 teams for the knockout.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a ranked pool table (sorted by points, goal difference, goals for, skill). A configurable number of the best-performing teams qualify. The pool ranking updates live during the group stage.</P>
+
+            <H3 id="doc-tourney-tiebreakers">Tiebreakers</H3>
+            <P>When two teams have equal points, the configurable tiebreaker priority determines their order. Points are always first; skill is always the final fallback.</P>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>Goal Difference</strong> — total goals scored minus conceded. <strong style={{color:"#d3ebd3",fontSize:10}}>Goals For</strong> — rewards attacking play. <strong style={{color:"#d3ebd3",fontSize:10}}>Head-to-Head</strong> — results between the two tied teams (pts, GD, GF). <strong style={{color:"#d3ebd3",fontSize:10}}>Wins</strong> — total wins. <strong style={{color:"#d3ebd3",fontSize:10}}>Median-Buchholz</strong> (Swiss only) — opponents' points minus best and worst. <strong style={{color:"#d3ebd3",fontSize:10}}>Manual</strong> (Double Stage only) — stops automated tiebreaking; swap buttons appear on tied teams at zone boundaries.</P>
+
+            <H3 id="doc-tourney-presets">Presets</H3>
+            <P><strong style={{color:"#d3ebd3",fontSize:10}}>League</strong> — 1 group, double round-robin, home and away, champion + relegation zones. <strong style={{color:"#d3ebd3",fontSize:10}}>Old World Cup</strong> — 8 groups of 4, top 2 advance, 16-team knockout. <strong style={{color:"#d3ebd3",fontSize:10}}>New World Cup</strong> — 12 groups of 4, top 2 advance + best 8 thirds, 32-team knockout. <strong style={{color:"#d3ebd3",fontSize:10}}>Old UCL</strong> — 8 groups of 4, double round-robin, two-legged knockout. <strong style={{color:"#d3ebd3",fontSize:10}}>New UCL</strong> — 36-team Swiss, top 8 advance + 9th-24th playoff, Median-Buchholz tiebreaker. <strong style={{color:"#d3ebd3",fontSize:10}}>Cup</strong> — single-elimination bracket.</P>
 
             </details>
             </>);
