@@ -1275,6 +1275,9 @@ function parseBulk(text) {
   const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","setPieces","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
   Object.entries(STRAT_LABELS).forEach(([key, {vals}]) => { const m = {}; vals.forEach(([v, l]) => { m[l.toLowerCase()] = v; }); m["no instruction"] = 0; m["standard"] = vals.find(([v]) => v === 0) ? 0 : 0; stratLookup[key] = m; });
+  // Full-label aliases (TSV uses long labels, STRAT_LABELS uses short display labels)
+  const aliases = {approachPlay:{"play out of defence":-1,"pass into space":1},chanceCreation:{"work ball into box":-1,"shoot on sight":1},dribbling:{"be more disciplined":-1,"run at defence":1},creativity:{"be more disciplined":-1,"be more expressive":1},setPieces:{"play for set pieces":1},possLost:{"counter-press":1},possWon:{"hold shape":-1},tackling:{"stay on feet":-1,"get stuck in":1},dlBehavior:{"drop off":-1,"step up":1,"offside trap":2},gkDist:{"short":-1,"long":1},passingDir:{"much shorter":-2,"much more direct":2,"more direct":1,"shorter":-1},pressingLOE:{"much lower":-2,"much higher":2,"lower":-1,"higher":1},defLine:{"much lower":-2,"much higher":2,"lower":-1,"higher":1}};
+  Object.entries(aliases).forEach(([key, map]) => { if (stratLookup[key]) Object.assign(stratLookup[key], map); });
   const resolveStrat = (key, str) => { if (!str) return 0; const s = str.trim().toLowerCase(); return stratLookup[key]?.[s] ?? 0; };
 
   const isCode = (s) => /^[A-Za-z0-9]{1,4}$/.test(s.trim());
