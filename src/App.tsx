@@ -3457,7 +3457,7 @@ export default function App() {
                     <span style={{ color: "#5a6e5a", fontSize: 7, textAlign: "center" }}>A</span>
                     <span style={{ color: "#5a6e5a", fontSize: 7, textAlign: "center" }}>RTG</span>
                     <span></span>
-                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
@@ -3466,7 +3466,7 @@ export default function App() {
                       <span style={{ fontSize: 7, color: isOff?"#bf616a":"#3b4a3b", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #1a221a", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
