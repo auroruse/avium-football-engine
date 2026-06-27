@@ -8,6 +8,11 @@ class RNG {
 }
 const pick = (rng, a) => a[Math.floor(rng.u() * a.length)];
 const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? k);
+const TIER_CONV = [1.0, 1.12, 1.25];
+const TIER_ATK_W = [1.0, 1.4, 2.0];
+const TIER_GK_SAVE = [0, 0.02, 0.04];
+const TIER_DEF_SHOT = [0, 0.012, 0.025];
+const TIER_PEN = [0, 0.05, 0.12];
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 const C = {
@@ -202,15 +207,18 @@ function lmGoalContext(s, rng, atk, nm) {
 }
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
-  if(s.xG) s.xG[atk] = (s.xG[atk]||0) + 0.04 * sm;
   const r = rng.u();
   const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner");
-  if (r < 0.04 * sm) {
+  const cGoalP = 0.04 * sm * TIER_CONV[scorer.tier || 0];
+  const cGk = s.players[def].find(p => p.pos === "GK");
+  const cGkBonus = TIER_GK_SAVE[cGk?.tier || 0];
+  if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
+  if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
-    scorer.goals++;scorer.rating=Math.min(10,+(scorer.rating+1.0).toFixed(1));assistPlayer(rng,s.players[atk],scorer.name);
+    scorer.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],scorer.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
     s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + fill(pick(rng,C.corner_goal),{t:nm[atk],o:nm[def],n:scorer.name}) + lmGoalContext(s,rng,atk,nm)});
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
-  } else if (r < 0.10 * sm) {
+  } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
     s.events.push({min:dm, type:"save", team:atk, text:"\uD83E\uDDE4 " + fill(pick(rng,C.corner_save),{t:nm[atk],o:nm[def],n:scorer.name})});
     if (rng.u() < 0.25) {
@@ -255,8 +263,9 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
 function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
   const shooter = pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal");
   s.stats[atk].shots++;
-  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5);
-  const saveP = 0.16+0.16*defE/(atkE+defE);
+  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * TIER_CONV[shooter.tier || 0];
+  const sGk = s.players[def].find(p => p.pos === "GK");
+  const saveP = 0.16+0.16*defE/(atkE+defE) + TIER_GK_SAVE[sGk?.tier || 0];
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -264,9 +273,8 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     const isDeflection = rng.u() < 0.08;
     const finalMethod = isDeflection ? "deflection" : (method||null);
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
-    shooter.goals++;shooter.rating=Math.min(10,+(shooter.rating+1.0).toFixed(1));
-    const ast=assistPlayer(rng,s.players[atk],shooter.name);
-    s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(1,+(p.rating-0.15).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.08).toFixed(1));});
+    shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(ast)ast.rating=Math.max(1,Math.min(10,+(ast.rating+0.5*assistAtkMult(ast.atkW)*aCtx).toFixed(2)));}
+    s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(1,+(p.rating-0.12).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.04).toFixed(2));});
     let txt;
     if (isDeflection) { txt = fill(pick(rng,C.deflection),{t:nm[atk],o:nm[def],n:shooter.name}); }
     else { txt = fill(pick(rng,C.goal),{t:nm[atk],o:nm[def],n:shooter.name}); }
@@ -279,8 +287,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     if (gkErrRoll < 0.012) {
       // GK error → goal
       s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:"gk-error"});
-      shooter.goals++;shooter.rating=Math.min(10,+(shooter.rating+1.0).toFixed(1));
-      assistPlayer(rng,s.players[atk],shooter.name);
+      shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],shooter.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
       const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.max(1,+(gk.rating-0.8).toFixed(1));
       s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.08).toFixed(1));});
       let txt = fill(pick(rng,C.gk_error),{t:nm[atk],o:nm[def],n:shooter.name});
@@ -290,13 +297,13 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
       s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      ratePlayer(s.players[atk],shooter.name,0.15);
+      ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});
       s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+fill(pick(rng,C.woodwork_save),{t:nm[atk],o:nm[def],n:shooter.name})});
       if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Off the woodwork for a corner."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
       // Normal save
-      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(1));ratePlayer(s.players[atk],shooter.name,0.2);}
+      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});}
       s.events.push({min:dm,type:"save",team:atk,text:"\uD83E\uDDE4 "+fill(pick(rng,C.save),{t:nm[atk],o:nm[def],n:shooter.name})});
       if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Corner "+nm[atk]+"."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
@@ -311,12 +318,12 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     // Miss — check for woodwork (15%)
     if (rng.u() < 0.18) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      ratePlayer(s.players[atk],shooter.name,0.1);
+      ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});
       s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+fill(pick(rng,C.woodwork),{t:nm[atk],o:nm[def],n:shooter.name})});
       if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Rebounds off the woodwork for a corner."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
-      ratePlayer(s.players[atk],shooter.name,-0.05);s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+fill(pick(rng,C.miss),{t:nm[atk],o:nm[def],n:shooter.name})});
+      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+fill(pick(rng,C.miss),{t:nm[atk],o:nm[def],n:shooter.name})});
       if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Behind for a corner! "+nm[atk]+"."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
@@ -336,7 +343,7 @@ function lmHandleCard(s, rng, dm, team, fouler, nm, cardChance) {
     s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+fill(pick(rng,C.straight_red),{t:nm[team],n:fn,c:s.players[team].length})});
     s.stoppageBank+=60;
   } else if (s.booked[team].includes(fn)) {
-    s.stats[team].yellows++; s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
+    s.stats[team].yellows++; s.stats[team].reds++; s.stats[team].secondYellows=(s.stats[team].secondYellows||0)+1; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
     s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+fill(pick(rng,C.second_yellow),{t:nm[team],n:fn,c:s.players[team].length})});
     s.stoppageBank+=60;
   } else {
@@ -424,7 +431,7 @@ function lmSimMinute(s, rng, home, away) {
       s.events.push({min:dm,type:"penalty",team:po,text:"\uD83C\uDFAF PENALTY! Foul by "+nm[op]+"'s "+fouler.name+"!"});s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
       const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty");
-      const skillF2=Math.min(1,poE/85);
+      const skillF2=Math.min(1,poE/85+TIER_PEN[taker.tier||0]);
       const zW2=[18+skillF2*8,8-skillF2*3,18+skillF2*8,20+skillF2*6,10-skillF2*4,20+skillF2*6];
       const zT2=zW2.reduce((a,b)=>a+b,0);let zR2=rng.u()*zT2,zone2=0;for(let i=0;i<6;i++){zR2-=zW2[i];if(zR2<=0){zone2=i;break;}}
       const missP2=[0.14,0.04,0.14,0.07,0.02,0.07][zone2];
@@ -440,12 +447,12 @@ function lmSimMinute(s, rng, home, away) {
         s.possession=op;s.pressure=0;
       }else if(isSave2){
         s.stats[po].shots++;s.stats[po].onTarget++;
-        ratePlayer(s.players[po],taker.name,-0.4);s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+fill(pick(rng,C.pen_saved),{t:nm[po],n:taker.name})});
+        ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.6).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+fill(pick(rng,C.pen_saved),{t:nm[po],n:taker.name})});
         if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Rebound cleared for a corner!"});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
         else{s.possession=op;s.pressure=0;}
       }else{
         s.score[po==="home"?0:1]++;s.stats[po].shots++;s.stats[po].onTarget++;
-        if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;taker.rating=Math.min(10,+(taker.rating+1.0).toFixed(1));
+        if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
         s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(1,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.05).toFixed(1));});
         s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+fill(pick(rng,C.pen_scored),{t:nm[po],n:taker.name})+lmGoalContext(s,rng,po,nm)});
         s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;
@@ -465,12 +472,13 @@ function lmSimMinute(s, rng, home, away) {
     s.pressure++;
     if(s.pressure>1)s.events.push({min:dm,type:"press",text:fill(pick(rng,CZ.pressure),{t:nm[po],o:nm[op]})});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
-    let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef;
+    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? TIER_DEF_SHOT[p.tier || 0] : 0), 0);
+    let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm);return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
-    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");if(rng.u()<0.4)ratePlayer(s.players[po],sp.name,0.08);return fill(pick(rng,CZ.sustain),{t:nm[po],o:nm[op],n:sp.name});})()});return;}
+    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return fill(pick(rng,CZ.sustain),{t:nm[po],o:nm[op],n:sp.name});})()});return;}
     // Cleared
     s.possession=op;s.pressure=0;
     const defR=opE/(poE+opE),cl=rng.u();
@@ -489,11 +497,11 @@ function lmSimMinute(s, rng, home, away) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po],"longGoal");const lrGoal=0.05*Math.pow(poE/opE,0.5),lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po],"longGoal");const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;lrScorer.rating=Math.min(10,+(lrScorer.rating+1.0).toFixed(1));assistPlayer(rng,s.players[po],lrScorer.name);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+nm[po]+"'s "+lrScorer.name+" fires from distance! GOAL!"+lmGoalContext(s,rng,po,nm)});s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
-    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 Long-range effort from "+nm[po]+"'s "+lrScorer.name+". "+nm[op]+" keeper saves."});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Corner "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[po],lrScorer.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+nm[po]+"'s "+lrScorer.name+" fires from distance! GOAL!"+lmGoalContext(s,rng,po,nm)});s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
+    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 Long-range effort from "+nm[po]+"'s "+lrScorer.name+". "+nm[op]+" keeper saves."});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Corner "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+nm[po]+"'s "+lrScorer.name+" lets fly from range. Wide."});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Behind for a corner! "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
   }
@@ -606,7 +614,7 @@ function lmSimMinute(s, rng, home, away) {
       const sn = side === "home" ? home.name : away.name;
       s.stoppageBank += 60; s.stats[side].injuries++;
       if (s.subs[side] < 3) {
-        s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2);
+        s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
         s.events.push({min:dm,type:"injury",team:side,text:"\uD83C\uDFE5 "+sn+"'s "+injured.name+" goes down injured."+(wasBooked ? " Was on a yellow." : "")+" Forced substitution."});
@@ -638,20 +646,16 @@ function lmSimMinute(s, rng, home, away) {
         // GK: reward for clean intervals, penalize for being beaten often
         if (p.pos === "GK") {
           const gaConceded = side === "home" ? s.score[1] : s.score[0];
-          if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.06).toFixed(2)); // clean sheet running bonus
-          // GK involvement: possession dominant team's GK does less → slight drift down if not tested
+          if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.07).toFixed(2));
           if (pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
         }
-        // DEF: reward for defensive solidity (team not conceding)
         if (p.pos === "DEF") {
           const gaConceded = side === "home" ? s.score[1] : s.score[0];
-          if (gaConceded === 0 && s.minute >= 20) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
-          // DEF under pressure: opposition has lots of shots → slight penalty for being tested
+          if (gaConceded === 0 && s.minute >= 20) p.rating = Math.min(10, +(p.rating + 0.06).toFixed(2));
           if (s.stats[op].onTarget > s.minute/10) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
         }
-        // MID: reward for possession dominance
         if (p.pos === "MID") {
-          if (pct > 0.55) p.rating = Math.min(10, +(p.rating + 0.03).toFixed(2));
+          if (pct > 0.55) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
           if (pct < 0.42) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
         }
         // FWD: penalize quiet games (no goals, no assists, low involvement)
@@ -670,8 +674,8 @@ function lmSimMinute(s, rng, home, away) {
       const ga = side === "home" ? s.score[1] : s.score[0];
       if (ga === 0 && !s._cleanSheetApplied?.[side]) {
         s.players[side].forEach(p => {
-          if (p.pos === "GK") p.rating = Math.min(10, +(p.rating + 0.4).toFixed(2));
-          if (p.pos === "DEF") p.rating = Math.min(10, +(p.rating + 0.2).toFixed(2));
+          if (p.pos === "GK") p.rating = Math.min(10, +(p.rating + 0.5).toFixed(2));
+          if (p.pos === "DEF") p.rating = Math.min(10, +(p.rating + 0.3).toFixed(2));
         });
         if (!s._cleanSheetApplied) s._cleanSheetApplied = {};
         s._cleanSheetApplied[side] = true;
@@ -724,7 +728,7 @@ function lmAdvance(prev, rng, home, away, mutate) {
       if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty");p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty");}
       const tName=tk==="home"?home.name:away.name;
       // Zone-based penalty: zones 0-5 = [TL,TC,TR,BL,BC,BR], dive 0-2 = [L,C,R]
-      const skillF=Math.min(1,kE/85); // 0-1 skill factor
+      const skillF=Math.min(1,kE/85+TIER_PEN[taker.tier||0]);
       const zW=[18+skillF*8, 8-skillF*3, 18+skillF*8, 20+skillF*6, 10-skillF*4, 20+skillF*6]; // corner-heavy for good takers
       const zT=zW.reduce((a,b)=>a+b,0); let zR=rng.u()*zT, zone=0; for(let i=0;i<6;i++){zR-=zW[i];if(zR<=0){zone=i;break;}}
       const missP=[0.14,0.04,0.14,0.07,0.02,0.07][zone]; // miss chance by zone
@@ -773,7 +777,7 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   for(let i=0;i<300&&s.phase!=="finished";i++){if(s.phase==="full_time"&&!ftS)ftS=[...s.score];lmAdvance(s,rng,home,away,true);}
   if(!ftS)ftS=[...s.score];
   const penH=s.penalties?.home?.filter(k=>k?.scored).length||0,penA=s.penalties?.away?.filter(k=>k?.scored).length||0;
-  return{ftHome:ftS[0],ftAway:ftS[1],et:(s.score[0]!==ftS[0]||s.score[1]!==ftS[1])?{home:s.score[0]-ftS[0],away:s.score[1]-ftS[1]}:null,pen:s.penalties?.decided?{home:penH,away:penA}:null};
+  return{ftHome:ftS[0],ftAway:ftS[1],et:(s.score[0]!==ftS[0]||s.score[1]!==ftS[1])?{home:s.score[0]-ftS[0],away:s.score[1]-ftS[1]}:null,pen:s.penalties?.decided?{home:penH,away:penA}:null,cards:{home:{yellows:s.stats.home.yellows,reds:s.stats.home.reds,secondYellows:s.stats.home.secondYellows||0,injuries:s.stats.home.injuries},away:{yellows:s.stats.away.yellows,reds:s.stats.away.reds,secondYellows:s.stats.away.secondYellows||0,injuries:s.stats.away.injuries}}};
 }
 
 
@@ -784,7 +788,7 @@ function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeFor
   // Aggregate from bracket perspective: bracket-home total = leg1 home goals + leg2 away goals
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway; // away goals for tiebreaker
-  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null };
+  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   // Tied on aggregate AND away goals — use ET/pens from leg 2 (swap perspective)
@@ -795,14 +799,14 @@ function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeFor
 
 function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat) {
   const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat);
-  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null };
+  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards} };
 }
 function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
   const l2 = simInstantMatch(rng, awaySkill, homeSkill, true, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat);
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
-  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null };
+  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   if (l2.et) { result.et = {home:l2.et.away, away:l2.et.home}; result.agg.home += l2.et.away; result.agg.away += l2.et.home; }
@@ -1337,10 +1341,12 @@ function pickPlayer(rng, players, type) {
   const w = POS_W[type] || POS_W.any;
   // For pure atkW types (goal/longGoal/penalty): use atkW directly
   // For other types when atkW available: blend position weight + atkW for formation-specific distribution
+  const useTier = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner";
   const weighted = players.map(p => {
-    if (pureAtk) return {p, w: p.atkW || 0};
+    const tw = useTier ? TIER_ATK_W[p.tier || 0] : 1;
+    if (pureAtk) return {p, w: (p.atkW || 0) * tw};
     const posW = w[p.pos] || 10;
-    if (hasAtk && (type === "any" || type === "corner")) return {p, w: posW + (p.atkW || 0) * 0.8};
+    if (hasAtk && (type === "any" || type === "corner")) return {p, w: (posW + (p.atkW || 0) * 0.8) * tw};
     return {p, w: posW};
   });
   const total = weighted.reduce((s,x) => s + x.w, 0);
@@ -1354,14 +1360,19 @@ function ratePlayer(players, name, delta) {
   const p = players.find(x => x.name === name);
   if (p) p.rating = Math.max(1, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
-function assistPlayer(rng, players, scorer) {
+const goalAtkMult = (atkW) => 0.9 + 0.6 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
+const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
+const goalCtxMult = (score, ti) => { const us=score[ti],them=score[1-ti],d=us-them; if(us===0&&them===0)return 1.15; if(d===-1)return 1.2; if(d===0)return 1.15; if(d>0)return Math.max(0.8,1.1-d*0.1); return 0.9; };
+function assistPlayer(rng, players, scorer, delta) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
   const a = pickPlayer(rng, others, "any");
   a.assists++;
-  a.rating = Math.max(1, Math.min(10, +(a.rating + 0.5).toFixed(1)));
+  a.rating = Math.max(1, Math.min(10, +(a.rating + (delta != null ? delta : 0.5)).toFixed(2)));
   return a;
 }
+function parseTier(raw) { if (!raw) return {name:raw,tier:0}; const s=raw.trimEnd(); if (s.endsWith("[*]")) return {name:s.slice(0,-3).trim(),tier:2}; if (s.endsWith("[+]")) return {name:s.slice(0,-3).trim(),tier:1}; return {name:s,tier:0}; }
+const tierSuffix = (t) => t===2?" [*]":t===1?" [+]":"";
 function buildSquad(formation, names) {
   const n = names || [];
   const dg = (formation || "4-3-3").split("-").map(Number);
@@ -1392,6 +1403,7 @@ function buildSquad(formation, names) {
   const benchPos = ["GK", "DEF", "MID", "MID", "FWD"];
   const benchAtk = [0, 8, 25, 35, 60];
   for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], bench: true, atkW: benchAtk[i] });
+  sq.forEach(p => { const {name,tier} = parseTier(p.name); p.name = name; p.tier = tier; });
   return sq;
 }
 
@@ -1579,7 +1591,7 @@ table{border-spacing:0;}
   .grid-2col{grid-template-columns:1fr !important;gap:10px 0 !important;}
   .grid-2col>.divider-col{display:none !important;}
   .grid-3col{grid-template-columns:1fr 1fr !important;}
-  .grid-4col{grid-template-columns:1fr 1fr !important;}
+  .grid-4col{grid-template-columns:1fr !important;}
   .pre-match-grid{grid-template-columns:1fr !important;}
 }
 details{border:none;border-bottom:none;}
@@ -1598,6 +1610,7 @@ const T_PRESETS = {
   cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
+const TB = (t) => t===2?<span style={{color:"#c9a84c",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#7a9e7a",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("live");
   const [teamsOpen, setTeamsOpen] = useState(true);
@@ -1761,6 +1774,7 @@ export default function App() {
   // ─── TOURNAMENT ───
   const [tPhase, setTPhase] = useState("setup");
   const [tPlayerStats, setTPlayerStats] = useState({});
+  const [tLeaderboard, setTLeaderboard] = useState(null);
   const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
@@ -1774,6 +1788,7 @@ export default function App() {
   const [tKoEdit, setTKoEdit] = useState(null); // {ri, mi, h:"", a:""} for knockout manual score
   const [tScoreError, setTScoreError] = useState("");
   const [tHomeAdvOverrides, setTHomeAdvOverrides] = useState({});
+  const [tLiveTarget, setTLiveTarget] = useState(null);
   const tToggleHA = (key) => setTHomeAdvOverrides(p => { const c = p[key] || null; const n = c === null ? "home" : c === "home" ? "away" : c === "away" ? "off" : null; const nm = { ...p }; if (n === null) delete nm[key]; else nm[key] = n; return nm; });
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
 
@@ -1782,7 +1797,7 @@ export default function App() {
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
   const removeTeam = (i) => setTeams(t => t.filter((_, j) => j !== i));
-  const updateTeam = (i, f, v) => setTeams(t => t.map((tm, j) => { if (j !== i) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; nt.squad = buildSquad(v, names); } return nt; }));
+  const updateTeam = (i, f, v) => setTeams(t => t.map((tm, j) => { if (j !== i) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; const tiers = tm.squad ? tm.squad.map(p => p.tier || 0) : null; nt.squad = buildSquad(v, names); if (tiers) nt.squad.forEach((p, i) => { if (i < tiers.length) p.tier = tiers[i]; }); } return nt; }));
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(p); setShowBulk(false); setBulkText(""); setLmMatch(null); setLmH(0); setLmA(Math.min(1, p.length - 1)); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); } };
   // Capture finished live match result for tournament import
@@ -1803,10 +1818,9 @@ export default function App() {
         homeCode: teams[lmH]?.code, awayCode: teams[lmA]?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
         goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
-        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0})),
-        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0})),
-        penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null,
-        applied: false, timestamp: Date.now()
+        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
+        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
+        penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
       });
     }
   }, [lmPhase]);
@@ -1816,15 +1830,19 @@ export default function App() {
     if (!lastLiveResult) return;
     const lr = lastLiveResult;
     const hg = lr.homeScore, ag = lr.awayScore;
+    const isFlipped = target.flipped;
+    const hPlayers = isFlipped ? lr.awayPlayers : lr.homePlayers;
+    const aPlayers = isFlipped ? lr.homePlayers : lr.awayPlayers;
+    const penData = lr.penalties ? (isFlipped ? { homeScore: lr.penalties.awayScore, awayScore: lr.penalties.homeScore } : lr.penalties) : null;
 
     const buildStatsUpdate = (teamObj, players) => {
       if (!teamObj || !players?.length) return {};
       const entries = {};
       players.forEach(p => {
         const k = teamObj.name + "|" + p.name;
-        entries[k] = { name:p.name, pos:p.pos, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
+        entries[k] = { name:p.name, pos:p.pos, tier:p.tier||0, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: 1, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0 };
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0 };
       });
       return entries;
     };
@@ -1835,7 +1853,7 @@ export default function App() {
       const ng = JSON.parse(JSON.stringify(tGroups));
       const gm = ng[target.gi].schedule[target.ri][target.mi];
       gm.result = { ftHome: hg, ftAway: ag };
-      if (lr.penalties) { gm.result.penHome = lr.penalties.homeScore; gm.result.penAway = lr.penalties.awayScore; }
+      if (penData) { gm.result.penHome = penData.homeScore; gm.result.penAway = penData.awayScore; }
       homeTeamObj = gm.home;
       awayTeamObj = gm.away;
       ng[target.gi].standings = recalcStandings(ng[target.gi], tConfig.tiebreakers);
@@ -1843,14 +1861,14 @@ export default function App() {
     } else if (target.type === "ko") {
       const nk = JSON.parse(JSON.stringify(tKO));
       if (!nk.rounds?.[target.ri]) return;
-      const m = nk.rounds[target.ri].matches[target.mi];
+      const m = target.tp ? nk.thirdPlace : nk.rounds[target.ri].matches[target.mi];
       if (!m) return;
       homeTeamObj = m.home;
       awayTeamObj = m.away;
       const isTwoLeg = tConfig.koLegs === 2;
       if (!isTwoLeg) {
         const res = { ftHome: hg, ftAway: ag };
-        if (lr.penalties) { res.pen = { home: lr.penalties.homeScore, away: lr.penalties.awayScore }; }
+        if (penData) { res.pen = { home: penData.homeScore, away: penData.awayScore }; }
         m.result = res;
       } else if (target.leg === 1) {
         m.result = { twoLeg: true, partial: true, leg1: { home: hg, away: ag } };
@@ -1860,37 +1878,119 @@ export default function App() {
         const res = { twoLeg: true, leg1: l1, leg2: { home: hg, away: ag }, agg: { home: aggH, away: aggA } };
         if (aggH === aggA) {
           if (l1.away !== ag) { res.awayGoalsRule = true; }
-          else if (lr.penalties) { res.pen = { home: lr.penalties.homeScore, away: lr.penalties.awayScore }; }
+          else if (penData) { res.pen = { home: penData.homeScore, away: penData.awayScore }; }
         }
         m.result = res;
       }
-      // Propagate results: advance winner, populate 3rd place losers, detect champion
       propagateKO(nk);
       setTKO(nk);
     }
 
-    // Apply player stats in a single setState call
     if (homeTeamObj && awayTeamObj) {
-      const homeEntries = buildStatsUpdate(homeTeamObj, lr.homePlayers);
-      const awayEntries = buildStatsUpdate(awayTeamObj, lr.awayPlayers);
+      const homeEntries = buildStatsUpdate(homeTeamObj, hPlayers);
+      const awayEntries = buildStatsUpdate(awayTeamObj, aPlayers);
       setTPlayerStats(prev => {
-        const next = {...prev};
+        const next = {};
+        for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
+        const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
+        for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, reds:0, suspended:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, tier:v.tier||0, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0 };
           next[k].goals += v.goals;
           next[k].assists += v.assists;
           next[k].matches += v.matches;
           next[k].totalRating += v.totalRating;
           next[k].yellows += v.yc;
-          next[k].reds += v.rc;
-          if (v.rc) next[k].suspended = (next[k].suspended||0) + 1;
-          if (next[k].yellows >= 2 && !v.rc) { next[k].suspended = (next[k].suspended||0) + 1; next[k].yellows -= 2; }
+          if (v.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
+          if (v.inj) { const r = Math.random(); next[k].injOut = (next[k].injOut||0) + (r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5); }
         }
         return next;
       });
     }
 
-    setLastLiveResult(prev => ({...prev, applied: true}));
+  };
+
+  const tPlayLive = (target) => {
+    let homeTeam, awayTeam, matchObj;
+    if (target.type === "group") {
+      matchObj = tGroups[target.gi].schedule[target.ri][target.mi];
+      homeTeam = matchObj.home; awayTeam = matchObj.away;
+    } else {
+      matchObj = target.tp ? tKO.thirdPlace : tKO.rounds[target.ri].matches[target.mi];
+      homeTeam = matchObj.home; awayTeam = matchObj.away;
+    }
+    if (!homeTeam || !awayTeam) return;
+    const hi = teams.findIndex(t => t.name === homeTeam.name);
+    const ai = teams.findIndex(t => t.name === awayTeam.name);
+    if (hi === -1 || ai === -1) return;
+
+    const isL2 = target.type === "ko" && target.leg === 2 && tConfig.koLegs === 2;
+    const liveHi = isL2 ? ai : hi;
+    const liveAi = isL2 ? hi : ai;
+
+    const unavail = new Set();
+    for (const [k, v] of Object.entries(tPlayerStats)) {
+      if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k);
+    }
+
+    const forceResult = target.type === "ko";
+    let startScore = [0, 0];
+    if (isL2 && matchObj.result?.leg1) {
+      startScore = [matchObj.result.leg1.away, matchObj.result.leg1.home];
+    }
+
+    let homeAdv = null;
+    if (target.type === "group") {
+      const haKey = `g_${target.gi}_${target.ri}_${target.mi}`;
+      homeAdv = tGetHA(haKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
+    } else {
+      const koHAKey = target.tp ? "tp" : `ko_${target.ri}_${target.mi}`;
+      const haVal = tGetHA(koHAKey, resolveKOHomeAdv(matchObj, tConfig));
+      if (isL2) { homeAdv = haVal === "home" ? "away" : haVal === "away" ? "home" : null; }
+      else { homeAdv = haVal; }
+    }
+
+    const buildLiveSquad = (teamName, teamIdx) => {
+      const sq = teams[teamIdx]?.squad || buildSquad(teams[teamIdx]?.formation, null);
+      const starters = sq.filter(p => !p.bench);
+      const bench = sq.filter(p => p.bench);
+      const keyOf = (name) => teamName + "|" + name;
+      const unavailStarters = starters.filter(p => unavail.has(keyOf(p.name)));
+      const availStarters = starters.filter(p => !unavail.has(keyOf(p.name)));
+      const availBench = bench.filter(p => !unavail.has(keyOf(p.name)));
+      const used = new Set();
+      const replacements = [];
+      for (const out of unavailStarters) {
+        let rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
+        if (!rep) rep = availBench.find(p => p.pos !== "GK" && !used.has(p.name));
+        if (!rep) rep = availBench.find(p => !used.has(p.name));
+        if (rep) { replacements.push(rep); used.add(rep.name); }
+      }
+      return { starters: [...availStarters, ...replacements], bench: availBench.filter(p => !used.has(p.name)) };
+    };
+
+    const hSquad = buildLiveSquad(teams[liveHi].name, liveHi);
+    const aSquad = buildLiveSquad(teams[liveAi].name, liveAi);
+    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+
+    lmRng.current = new RNG(Date.now());
+    const init = createMatchState();
+    init.forceResult = forceResult;
+    init.styles = { home: teams[liveHi].style || "balanced", away: teams[liveAi].style || "balanced" };
+    init.formations = { home: teams[liveHi].formation || "4-3-3", away: teams[liveAi].formation || "4-3-3" };
+    init.allowTacChange = {home:true, away:true};
+    init.homeAdv = homeAdv;
+    init.strategy = { home: { ...STRAT_DEF, ...(teams[liveHi].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[liveAi].strategy || {}) } };
+    init.score = [0, 0];
+    init.startScore = startScore;
+    init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
+    init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
+
+    setLmH(liveHi); setLmA(liveAi);
+    setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv);
+    setTLiveTarget({...target, flipped: isL2});
+    setLmMatch(init); setManualSub({side:null,off:null}); setTab("live");
   };
 
   // Auto-save tournament state to persistent storage
@@ -1900,7 +2000,7 @@ export default function App() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        const state = { v: 2, teams, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, lastLiveResult, ts: Date.now() };
+        const state = { v: 2, teams, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, ts: Date.now() };
         localStorage.setItem("avium-engine-autosave", JSON.stringify(state));
       } catch (e) { /* storage unavailable */ }
     }, 1500); // debounce 1.5s
@@ -1922,7 +2022,6 @@ export default function App() {
             if (state.tPhase) setTPhase(state.tPhase);
             if (state.lmH !== undefined) setLmH(state.lmH);
             if (state.lmA !== undefined) setLmA(state.lmA);
-            if (state.lastLiveResult) setLastLiveResult(state.lastLiveResult);
           }
         }
       } catch (e) { /* no saved data or storage unavailable */ }
@@ -1942,7 +2041,7 @@ export default function App() {
       const form = t.formation || "4-3-3";
       const strat = {...STRAT_DEF, ...(t.strategy || {})};
       const tactics = stratKeys.map(k => valToLabel[k]?.[strat[k]] || "No Instruction");
-      const players = (t.squad || []).map(p => p.name).join("\t");
+      const players = (t.squad || []).map(p => p.name + tierSuffix(p.tier)).join("\t");
       return [code, t.name, t.skill, style, form, ...tactics, players].join("\t");
     }).join("\n");
   };
@@ -1955,15 +2054,15 @@ export default function App() {
   const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
-    init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    init.bench = {home: hSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.bench = {home: hSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill })); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq2 = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq2 = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
-    init.players = {home: hSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    init.bench = {home: hSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.bench = {home: hSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setLmMatch(s); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
     setLmMatch(prev => {
@@ -2080,66 +2179,110 @@ export default function App() {
   const tSwissAllDone = tConfig.matchFormat === "swiss" && tSwissRoundsPlayed >= tConfig.swissRounds && tSwissCurrentDone;
 
 
-  const accumulateMatchStats = (teamObj, goalsFor, goalsAgainst, isWin, isDraw) => {
-    // Card generation: ~1.8 yellows + 0.04 reds per team per match
-    
-    if (!teamObj?.squad) return;
+  const accumulateMatchStats = (teamObj, goalsFor, goalsAgainst, isWin, isDraw, simCards, unavailSet) => {
+    if (!teamObj?.squad) return null;
     const rng2 = new RNG(Date.now() + Math.random() * 99999);
-    const sq = teamObj.squad.filter(p => !p.bench);
-    const key = (pName) => teamObj.name + "|" + pName;
-    // Generate cards (~1.6 yellows, ~4% red per team-match)
+    const starters = teamObj.squad.filter(p => !p.bench);
+    const bench = teamObj.squad.filter(p => p.bench);
+    const keyOf = (pName) => teamObj.name + "|" + pName;
+    const available = unavailSet ? starters.filter(p => !unavailSet.has(keyOf(p.name))) : starters;
+    const replacements = bench.slice(0, starters.length - available.length);
+    const sq = [...available, ...replacements];
+    const key = keyOf;
+    const subCandidates = bench.filter(p => p.pos !== "GK" && !sq.some(s => s.name === p.name) && (!unavailSet || !unavailSet.has(keyOf(p.name))));
+    const nSubs = Math.min(subCandidates.length, rng2.u() < 0.15 ? 1 : rng2.u() < 0.55 ? 2 : 3);
+    const matchSubs = []; const subUsed = new Set();
+    for (let si = 0; si < nSubs; si++) { const rem = subCandidates.filter(p => !subUsed.has(p.name)); if (!rem.length) break; const pk = rem[Math.floor(rng2.u() * rem.length)]; matchSubs.push(pk); subUsed.add(pk.name); }
+    const allOnPitch = [...sq, ...matchSubs];
+    const nYellows = simCards ? (simCards.yellows||0) : (rng2.u() < 0.25 ? 0 : rng2.u() < 0.55 ? 1 : rng2.u() < 0.8 ? 2 : 3);
     const cardedYellows = [];
-    const nYellows = rng2.u() < 0.25 ? 0 : rng2.u() < 0.55 ? 1 : rng2.u() < 0.8 ? 2 : 3;
     for (let cy = 0; cy < nYellows; cy++) {
-      const cp = pickPlayer(rng2, sq.map(p=>({name:p.name,pos:p.pos})), "foul");
+      const cp = pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul");
       cardedYellows.push(cp.name);
     }
-    const redName = rng2.u() < 0.04 ? pickPlayer(rng2, sq.map(p=>({name:p.name,pos:p.pos})), "foul").name : null;
-    // Generate goalscorers
+    const redName = (simCards ? (simCards.reds||0) > 0 : rng2.u() < 0.04) ? pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul").name : null;
+    const injName = (simCards ? (simCards.injuries||0) > 0 : rng2.u() < 0.07) ? allOnPitch[Math.floor(rng2.u() * allOnPitch.length)]?.name : null;
+    const injDur = injName ? ((() => { const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
     const scorers = [];
-    const sqWithAtk = sq.map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0}));
+    const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
+    const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
     for (let g = 0; g < goalsFor; g++) {
-      const s = pickPlayer(rng2, sqWithAtk.filter(p => p.pos !== "GK"), "goal");
-      scorers.push(s.name);
+      if (subGoalPool.length > 0 && rng2.u() < 0.2) { scorers.push(pickPlayer(rng2, subGoalPool, "goal").name); }
+      else { scorers.push(pickPlayer(rng2, starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,tier:0}], "goal").name); }
     }
-    // Generate assisters (one per goal, different from scorer)
     const assisters = [];
+    const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
     for (let g = 0; g < goalsFor; g++) {
-      const others = sqWithAtk.filter(p => p.name !== scorers[g] && p.pos !== "GK");
-      if (others.length > 0) {
-        const a = pickPlayer(rng2, others, "any");
-        assisters.push(a.name);
-      }
+      const others = allOutfield.filter(p => p.name !== scorers[g]);
+      if (others.length > 0) { assisters.push(pickPlayer(rng2, others, "any").name); }
     }
+    const playerRtgs = {};
+    sq.forEach(p => {
+      let rtg = isDraw ? 6.5 : isWin ? 7.0 : 6.0;
+      rtg += (rng2.u() - 0.4) * 1.0;
+      const gCount = scorers.filter(n => n === p.name).length;
+      const aCount = assisters.filter(n => n === p.name).length;
+      rtg += gCount * goalAtkMult(p.atkW) + aCount * 0.4 * assistAtkMult(p.atkW);
+      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.1;
+      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.06;
+      playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
+    });
+    matchSubs.forEach(p => {
+      let rtg = isDraw ? 6.3 : isWin ? 6.8 : 5.8;
+      rtg += (rng2.u() - 0.4) * 0.8;
+      const gCount = scorers.filter(n => n === p.name).length;
+      const aCount = assisters.filter(n => n === p.name).length;
+      rtg += gCount * 1.2 * goalAtkMult(p.atkW) + aCount * 0.5 * assistAtkMult(p.atkW);
+      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.1;
+      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.06;
+      playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
+    });
+    const csBonus = goalsAgainst === 0;
+    allOnPitch.forEach(p => {
+      if (!playerRtgs[p.name]) return;
+      const pr = playerRtgs[p.name];
+      if (p.pos === "GK") { if (csBonus) pr.rtg += 0.6; else pr.rtg += Math.min(0.3, rng2.u() * 0.1 + goalsAgainst * 0.03); }
+      else if (p.pos === "DEF") { if (csBonus) pr.rtg += 0.35; else if (goalsAgainst === 1) pr.rtg += 0.2; else if (goalsAgainst === 2) pr.rtg += 0.1; }
+      else if (p.pos === "MID") { pr.rtg += (rng2.u() - 0.3) * 0.3; if (goalsFor >= 2) pr.rtg += 0.08; }
+      pr.rtg = Math.max(3, Math.min(10, pr.rtg));
+    });
     setTPlayerStats(prev => {
-      const next = {...prev};
+      const next = {};
+      for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
+      const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
       sq.forEach(p => {
         const k = key(p.name);
-        if (!next[k]) next[k] = {name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,goals:0,assists:0,matches:0,totalRating:0};
+        if (!next[k]) next[k] = initP(p);
         next[k].matches++;
-        // Base rating
-        let rtg = isDraw ? 6.5 : isWin ? 7.0 : 6.0;
-        rtg += (rng2.u() - 0.4) * 1.0;
-        // Goal/assist bonuses
-        const gCount = scorers.filter(n => n === p.name).length;
-        const aCount = assisters.filter(n => n === p.name).length;
-        next[k].goals += gCount;
-        next[k].assists += aCount;
-        rtg += gCount * 1.0 + aCount * 0.4;
-        // Conceding penalty for DEF/GK
-        if (goalsAgainst > 0 && (p.pos === "GK" || p.pos === "DEF")) rtg -= goalsAgainst * 0.1;
-        rtg = Math.max(3, Math.min(10, rtg));
-        next[k].totalRating += rtg;
-      // Cards & suspensions
-      if (cardedYellows.includes(p.name)) {
-        next[k].yellows = (next[k].yellows||0) + 1;
-        if (next[k].yellows % 2 === 0) next[k].suspended = (next[k].suspended||0) + 1; // 2 yellows = 1 match ban
-      }
-      if (redName === p.name) {
-        next[k].reds = (next[k].reds||0) + 1;
-        next[k].suspended = (next[k].suspended||0) + 1;
-      }
+        const pr = playerRtgs[p.name];
+        next[k].goals += pr.gCount;
+        next[k].assists += pr.aCount;
+        next[k].totalRating += pr.rtg;
+        next[k].yellows = (next[k].yellows||0) + cardedYellows.filter(n => n === p.name).length;
+        if (redName === p.name) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
+        if (p.name === injName) { next[k].injOut = (next[k].injOut||0) + injDur; }
       });
+      matchSubs.forEach(p => {
+        const k = key(p.name);
+        if (!next[k]) next[k] = initP(p);
+        next[k].subApp = (next[k].subApp||0) + 1;
+        const pr = playerRtgs[p.name];
+        next[k].goals += pr.gCount;
+        next[k].assists += pr.aCount;
+        next[k].totalRating += pr.rtg;
+        next[k].yellows = (next[k].yellows||0) + cardedYellows.filter(n => n === p.name).length;
+        if (redName === p.name) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
+        if (p.name === injName) { next[k].injOut = (next[k].injOut||0) + injDur; }
+      });
+      return next;
+    });
+    return { redKey: redName ? keyOf(redName) : null, injKey: injName ? keyOf(injName) : null, injDur };
+  };
+  const decrementBans = (teamNames) => {
+    setTPlayerStats(prev => {
+      const next = {};
+      for (const k of Object.keys(prev)) next[k] = {...prev[k]};
+      for (const k of Object.keys(next)) { if (teamNames.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
       return next;
     });
   };
@@ -2152,8 +2295,10 @@ export default function App() {
     const ng = JSON.parse(JSON.stringify(tGroups));
     const gm = ng[gi].schedule[ri][mi];
     gm.result = { ftHome: hg, ftAway: ag };
-    accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag);
-    accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag);
+    decrementBans(new Set([gm.home.name, gm.away.name]));
+    const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
+    accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, null, mUnavail);
+    accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, null, mUnavail);
     ng[gi].standings = recalcStandings(ng[gi], tConfig.tiebreakers);
     setTGroups(ng); setTEdit(null); setTScoreError("");
   };
@@ -2180,8 +2325,7 @@ export default function App() {
         propagateKO(ko);
       }
       setTKO(ko); setTKoEdit(null); setTScoreError("");
-      // Accumulate player stats for manual KO result
-      if (result && !result.partial) { const km = tp ? ko.thirdPlace : ko.rounds[ri].matches[mi]; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); if(km?.home)accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen); if(km?.away)accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen); }
+      if (result && !result.partial) { const km = tp ? ko.thirdPlace : ko.rounds[ri].matches[mi]; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } if(km?.home)accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail); if(km?.away)accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail); }
       const fm = ko.rounds[ko.rounds.length - 1].matches[0];
       if (fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial))) setTPhase("complete"); else setTPhase("knockout");
     };
@@ -2225,17 +2369,31 @@ export default function App() {
     const run = () => {
     const rng = new RNG(Date.now());
     const ng = JSON.parse(JSON.stringify(tGroups));
-    ng.forEach((g, gi) => {
-      g.schedule.forEach((rd, ri) => rd.forEach((m, mi) => {
+    const maxRds = Math.max(...ng.map(g => g.schedule.length));
+    const localBans = {};
+    for (const [k, v] of Object.entries(tPlayerStats)) {
+      if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { team: v.team, suspended: v.suspended||0, injOut: v.injOut||0 };
+    }
+    const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
+    const applyBan = (info) => { if (info?.redKey) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    for (let ri = 0; ri < maxRds; ri++) {
+      if (targetRi !== -1 && targetRi !== ri) continue;
+      const teams = new Set();
+      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => { if (m.result) return; if (targetMi !== -1 && targetMi !== mi) return; if (m.home?.name) teams.add(m.home.name); if (m.away?.name) teams.add(m.away.name); }); });
+      if (teams.size > 0) {
+        decrementBans(teams);
+        for (const k of Object.keys(localBans)) { const tn = k.substring(0, k.indexOf("|")); if (teams.has(tn)) { if (localBans[k].suspended > 0) localBans[k].suspended--; if (localBans[k].injOut > 0) localBans[k].injOut--; } }
+      }
+      const unavailSet = buildUnavail();
+      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => {
         if (m.result) return;
-        const match = (targetGi === -1 || targetGi === gi) && (targetRi === -1 || targetRi === ri) && (targetMi === -1 || targetMi === mi);
-        if (!match) return;
+        if (targetMi !== -1 && targetMi !== mi) return;
         m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy);
-        accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway);
-        accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway);
-      }));
-      g.standings = recalcStandings(g, tConfig.tiebreakers);
-    });
+        applyBan(accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet));
+        applyBan(accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet));
+      }); });
+    }
+    ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
     setTGroups(ng); if (bulk) setLoading(false);
     };
     if (bulk) { setLoading(true); setTimeout(run, 40); } else run();
@@ -2353,7 +2511,16 @@ export default function App() {
     const run = () => {
     const rng = new RNG(Date.now());
     const ko = JSON.parse(JSON.stringify(tKO));
+    const localBans = {};
+    for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
+    const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
+    const applyBan = (info) => { if (info?.redKey) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    const decLocal = (tms) => { for (const k of Object.keys(localBans)) { const tn = k.substring(0, k.indexOf("|")); if (tms.has(tn)) { if (localBans[k].suspended > 0) localBans[k].suspended--; if (localBans[k].injOut > 0) localBans[k].injOut--; } } };
     for (let ri = 0; ri < ko.rounds.length; ri++) {
+      const koTeams = new Set();
+      ko.rounds[ri].matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (targetRi!==-1&&targetRi!==ri) return; if (targetMi!==-1&&targetMi!==mi) return; koTeams.add(m.home.name); koTeams.add(m.away.name); });
+      if (koTeams.size > 0) { decrementBans(koTeams); decLocal(koTeams); }
+      const unavailSet = buildUnavail();
       ko.rounds[ri].matches.forEach((m, mi) => {
         if (!m.home || !m.away) return;
         if (m.result && !m.result.partial) return;
@@ -2364,17 +2531,16 @@ export default function App() {
         m.result = tSimKOMatch(rng, m, legTarget, `ko_${ri}_${mi}`);
           if(m.result && !m.result.partial) {
             if (m.result.twoLeg) {
-              // Track each leg separately for more accurate match counts
               const l1h=m.result.leg1?.home||0,l1a=m.result.leg1?.away||0;
-              accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a);
-              accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a);
+              applyBan(accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet));
+              applyBan(accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet));
               const l2h=m.result.leg2?.home||0,l2a=m.result.leg2?.away||0;
-              accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a);
-              accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a);
+              applyBan(accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet));
+              applyBan(accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet));
             } else {
               const kw=koWinner(m); const hg=m.result.ftHome+(m.result.et?.home||0); const ag=m.result.ftAway+(m.result.et?.away||0);
-              accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen);
-              accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen);
+              applyBan(accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet));
+              applyBan(accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet));
             }
           }
       });
@@ -2383,18 +2549,18 @@ export default function App() {
     const tp = ko.thirdPlace;
     if (tp?.home && tp?.away && (targetRi === -1 || targetRi === -2)) {
       const tpDone = tp.result && !tp.result.partial;
-      if (!tpDone) { tp.result = tSimKOMatch(rng, tp, legTarget, "tp"); if(tp.result&&!tp.result.partial){
+      if (!tpDone) { const tpTeams = new Set([tp.home.name,tp.away.name]); decrementBans(tpTeams); decLocal(tpTeams); const tpUnavail = buildUnavail(); tp.result = tSimKOMatch(rng, tp, legTarget, "tp"); if(tp.result&&!tp.result.partial){
             if (tp.result.twoLeg) {
               const tl1h=tp.result.leg1?.home||0,tl1a=tp.result.leg1?.away||0;
-              accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a);
-              accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a);
+              applyBan(accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail));
+              applyBan(accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail));
               const tl2h=tp.result.leg2?.home||0,tl2a=tp.result.leg2?.away||0;
-              accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a);
-              accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a);
+              applyBan(accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail));
+              applyBan(accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail));
             } else {
               const tw=koWinner(tp); const hg2=tp.result.ftHome+(tp.result.et?.home||0); const ag2=tp.result.ftAway+(tp.result.et?.away||0);
-              accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen);
-              accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen);
+              applyBan(accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail));
+              applyBan(accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail));
             }
           }}
     }
@@ -2436,7 +2602,7 @@ export default function App() {
         </div>
         {teamsOpen && (<>
         {showExport && (<div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#6b7a6b", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "#3d5343", color: "#fff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#6b7a6b", margin: "0 0 8px" }}>Tab-separated: Code ⇥ Name ⇥ Skill ⇥ Playstyle ⇥ Formation ⇥ 14 tactics ⇥ 16 players (optional)</p><p style={{ fontSize: 10, color: "#5a6e5a", margin: "0 0 8px" }}>Code is optional (auto-generated from name). Only Name is required; all other columns are optional.</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#3d5343", color: "#fff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#5a6e5a" }}>Replaces current list</span></div></div>)}
+        {showBulk && (<div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#6b7a6b", margin: "0 0 8px" }}>Tab-separated: Code ⇥ Name ⇥ Skill ⇥ Playstyle ⇥ Formation ⇥ 14 tactics ⇥ 16 players (optional)</p><p style={{ fontSize: 10, color: "#5a6e5a", margin: "0 0 8px" }}>Code is optional (auto-generated from name). Only Name is required; all other columns are optional. Player tiers: append [+] (above-avg) or [*] (star) to names.</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#3d5343", color: "#fff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#5a6e5a" }}>Replaces current list</span></div></div>)}
         <div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid #1a221a" }}>
             <div style={{ display: "flex", gap: 4, flex: 1 }}>
@@ -2536,10 +2702,13 @@ export default function App() {
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 6px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
                         onFocus={e => { e.target.style.borderColor = "#2a3a2a"; e.target.style.background = "#141a14"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[pi] = {...ns[pi], tier: ((p.tier||0)+1)%3}; updateTeam(i, "squad", ns); }}
+                          style={{ cursor: "pointer", width: 14, textAlign: "center", fontSize: 11, flexShrink: 0, color: p.tier===2?"#c9a84c":p.tier===1?"#7a9e7a":"#2a3a2a", fontWeight: 700, userSelect: "none" }}
+                          title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
                       </div>
                     ))}
                   </div>
-                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, marginTop: 8 }}>BENCH</div>
+                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, marginTop: 8 }}>BENCH</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 16px" }}>
                     {bench.map((p, pi) => (
                       <div key={pi} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0" }}>
@@ -2550,6 +2719,9 @@ export default function App() {
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 6px", fontSize: 11, border: "1px solid transparent", background: "transparent", color: "#8a9b8a" }}
                         onFocus={e => { e.target.style.borderColor = "#2a3a2a"; e.target.style.background = "#141a14"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[11+pi] = {...ns[11+pi], tier: ((p.tier||0)+1)%3}; updateTeam(i, "squad", ns); }}
+                          style={{ cursor: "pointer", width: 14, textAlign: "center", fontSize: 11, flexShrink: 0, color: p.tier===2?"#c9a84c":p.tier===1?"#7a9e7a":"#2a3a2a", fontWeight: 700, userSelect: "none" }}
+                          title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
                       </div>
                     ))}
                   </div>
@@ -2675,7 +2847,7 @@ export default function App() {
                       <span></span>
                       {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
                         <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                        <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                        <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                         <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                         <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                         <span style={{ textAlign: "center", color: p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
@@ -2684,7 +2856,7 @@ export default function App() {
                       <span style={{ gridColumn: "1/-1", borderTop: "1px solid #1a221a", marginTop: 2, marginBottom: 2 }}></span>
                       {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                         <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                        <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                        <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                         <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                         <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                         <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
@@ -2999,14 +3171,14 @@ export default function App() {
               </div>);
             })()}
 
-            {lmMatch.phase === "finished" && <>
-              {lastLiveResult && !lastLiveResult.applied && <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
-                <span style={{ fontSize: 10, color: "#81a1c1" }}>📥 Result saved: {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}. Import in Tournament tab.</span>
-              </div>}
-              {lastLiveResult?.applied && <div style={{ background: "#a3be8c22", border: "1px solid #a3be8c44", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
-                <span style={{ fontSize: 10, color: "#a3be8c" }}>✓ Result applied to tournament.</span>
-              </div>}
-            </>}
+            {lmMatch.phase === "finished" && tLiveTarget && lastLiveResult && <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>
+                <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "#3d5343", border: "none", borderRadius: 4, color: "#d3ebd3", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
+                <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 4, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
+                <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
+              </div>
+            </div>}
             {/* Match Summary */}
             {lmMatch.phase === "finished" && (()=>{
               const R = (arr) => arr[Math.floor(Math.random()*arr.length)];
@@ -3287,7 +3459,7 @@ export default function App() {
                     <span></span>
                     {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                      <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                       <span style={{ textAlign: "center", color: p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
@@ -3296,7 +3468,7 @@ export default function App() {
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #1a221a", marginTop: 2, marginBottom: 2 }}></span>
                     {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                      <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                       <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
@@ -3336,7 +3508,7 @@ export default function App() {
                               style={{ fontSize: 8, padding: "2px 5px", borderRadius: 3, cursor: "pointer",
                                 background: isActive && manualSub.off === p.name ? "#3d534344" : "#141a14",
                                 border: isActive && manualSub.off === p.name ? "1px solid #3d5343" : "1px solid #1a221a",
-                                color: POS_CLR[p.pos]||"#888" }}>{p.name}</span>
+                                color: POS_CLR[p.pos]||"#888" }}>{p.name}{TB(p.tier)}</span>
                           ))}
                         </div>
                       </div>
@@ -3349,7 +3521,7 @@ export default function App() {
                               <span key={pi} onClick={() => executeManualSub(side, manualSub.off, p.name)}
                                 style={{ fontSize: 8, padding: "2px 5px", borderRadius: 3, cursor: "pointer",
                                   background: "#141a14", border: "1px solid #1a221a",
-                                  color: POS_CLR[p.pos]||"#888" }}>{p.name}</span>
+                                  color: POS_CLR[p.pos]||"#888" }}>{p.name}{TB(p.tier)}</span>
                             ))}
                           </div>
                         </div>
@@ -3456,14 +3628,14 @@ export default function App() {
           {Object.keys(tPlayerStats).length > 0 && (
             <div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c9a84c", marginBottom: 12, textAlign: "center", paddingBottom: 8, borderBottom: "1px solid #141a14" }}>Tournament Leaders</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0 14px" }} className="grid-4col">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 18px" }} className="grid-4col">
                 {/* Top Scorers */}
-                <div>
-                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>TOP SCORERS</div>
-                  {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(a.matches-b.matches)).slice(0,10).map((p,i) => (
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "#4c5a4c" }}>▸</span></div>
+                  {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
                       <span style={{ color: "#4c5a4c", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
                       <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                       <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                       <span style={{ color: "#d3ebd3", fontWeight: 700, width: 18, textAlign: "right", ...mono }}>{p.goals}</span>
@@ -3471,12 +3643,12 @@ export default function App() {
                   ))}
                 </div>
                 {/* Top Assisters */}
-                <div>
-                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>TOP ASSISTS</div>
-                  {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(a.matches-b.matches)).slice(0,10).map((p,i) => (
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "#4c5a4c" }}>▸</span></div>
+                  {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
                       <span style={{ color: "#4c5a4c", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
                       <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                       <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                       <span style={{ color: "#d3ebd3", fontWeight: 700, width: 18, textAlign: "right", ...mono }}>{p.assists}</span>
@@ -3484,40 +3656,91 @@ export default function App() {
                   ))}
                 </div>
                 {/* Top Rated */}
-                <div>
-                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>BEST RATING</div>
-                  {Object.values(tPlayerStats).filter(p=>p.matches>=1).sort((a,b)=>(b.totalRating/b.matches)-(a.totalRating/a.matches)).slice(0,10).map((p,i) => {
-                    const avg = (p.totalRating/p.matches);
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "#4c5a4c" }}>▸</span></div>
+                  {Object.values(tPlayerStats).filter(p=>(p.matches+(p.subApp||0))>=1).sort((a,b)=>(b.totalRating/(b.matches+(b.subApp||0)))-(a.totalRating/(a.matches+(a.subApp||0)))).slice(0,10).map((p,i) => {
+                    const avg = (p.totalRating/(p.matches+(p.subApp||0)));
                     return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
                       <span style={{ color: "#4c5a4c", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
                       <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                       <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                       <span style={{ color: avg>=7.5?"#a3be8c":avg>=6.5?"#c5c8c6":"#bf616a", fontWeight: 700, width: 24, textAlign: "right", ...mono }}>{avg.toFixed(1)}</span>
                     </div>);
                   })}
                 </div>
-                {/* Discipline */}
-                <div>
-                  <div style={{ fontSize: 9, color: "#8a9b8a", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>DISCIPLINE</div>
-                  {Object.values(tPlayerStats).filter(p=>(p.yellows||0)>0||(p.reds||0)>0).sort((a,b)=>((b.reds||0)*3+(b.yellows||0))-((a.reds||0)*3+(a.yellows||0))).slice(0,10).map((p,i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                      <span style={{ color: "#4c5a4c", width: 14, textAlign: "right", flexShrink: 0, ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: (p.suspended||0) > 0 ? "#bf616a" : "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                      <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                      <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, width: 44, justifyContent: "flex-end", flexShrink: 0 }}>
-                        {(p.yellows||0) > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><span style={{ color: "#ebcb8b", fontWeight: 700, fontSize: 10, ...mono }}>{p.yellows}</span><span style={{ width: 6, height: 8, background: "#ebcb8b", borderRadius: 1, display: "inline-block" }} /></span>}
-                        {(p.reds||0) > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><span style={{ color: "#bf616a", fontWeight: 700, fontSize: 10, ...mono }}>{p.reds}</span><span style={{ width: 6, height: 8, background: "#bf616a", borderRadius: 1, display: "inline-block" }} /></span>}
-                      </span>
-                    </div>
-                  ))}
-                  {Object.values(tPlayerStats).filter(p=>(p.yellows||0)>0||(p.reds||0)>0).length === 0 && <div style={{ fontSize: 9, color: "#3b4a3b", fontStyle: "italic", padding: "4px 0" }}>No cards yet</div>}
-                </div>
               </div>
+              {(() => {
+                const unavail = Object.values(tPlayerStats).filter(p => (p.suspended||0) > 0 || (p.injOut||0) > 0)
+                  .flatMap(p => {
+                    const rows = [];
+                    if ((p.suspended||0) > 0) rows.push({...p, reason: "red", out: p.suspended});
+                    if ((p.injOut||0) > 0) rows.push({...p, reason: "inj", out: p.injOut});
+                    return rows;
+                  }).sort((a,b) => b.out - a.out);
+                if (!unavail.length) return null;
+                return (
+                  <details style={{ marginTop: 12, borderTop: "1px solid #141a14", paddingTop: 10 }}>
+                    <summary style={{ fontSize: 9, color: "#bf616a", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
+                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
+                      {unavail.map((p,i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
+                          <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
+                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
+                          <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
+                          <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
+                            {p.reason === "red"
+                              ? <span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1}} />
+                              : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="#c07070"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="#c07070"/></svg>}
+                            <span style={{ color: p.reason === "red" ? "#bf616a" : "#c07070", fontSize: 8, ...mono }}>{p.out}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })()}
             </div>
           )}
+          {tLeaderboard && (() => {
+            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : "BEST RATING";
+            const all = Object.values(tPlayerStats);
+            const tApp = p => p.matches + (p.subApp||0);
+            const sorted = tLeaderboard === "goals"
+              ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
+              : tLeaderboard === "assists"
+              ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
+              : all.filter(p=>tApp(p)>=1).sort((a,b)=>(b.totalRating/tApp(b))-(a.totalRating/tApp(a)));
+            return (
+              <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid #141a14" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "#c9a84c" }}>{title}</span>
+                    <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "#627661", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
+                  </div>
+                  <div style={{ overflowY: "auto", flex: 1 }}>
+                    {sorted.map((p, i) => {
+                      const ap = p.matches + (p.subApp||0);
+                      const avg = ap ? (p.totalRating/ap) : 0;
+                      const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : avg;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid #0a0d0a" : "none" }}>
+                          <span style={{ color: "#4c5a4c", width: 20, textAlign: "right", fontSize: 9, ...mono }}>{i+1}</span>
+                          <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
+                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
+                          <span style={{ color: "#627661", fontSize: 8, width: 28, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
+                          <span style={{ color: "#8a9b8a", fontSize: 8, width: 16, textAlign: "center", flexShrink: 0, ...mono }}>{ap}</span>
+                          <span style={{ color: tLeaderboard === "rating" ? (avg>=7.5?"#a3be8c":avg>=6.5?"#c5c8c6":"#bf616a") : "#d3ebd3", fontWeight: 700, width: 26, textAlign: "right", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</span>
+                        </div>
+                      );
+                    })}
+                    {sorted.length === 0 && <div style={{ color: "#4c5a4c", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {/* SETUP */}
           {tPhase === "setup" && (<div>
             <div style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
@@ -3890,7 +4113,7 @@ export default function App() {
               {(()=>{ const maxRds = Math.max(...tGroups.map(g => g.schedule.length)); const firstOpen = Array.from({length:maxRds},(_,ri)=>ri).findIndex(ri => !tGroups.every(g => (g.schedule[ri]||[]).every(m => m.result))); return Array.from({length:maxRds},(_,ri)=>ri).map(ri => { const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result)); return (<details key={ri} open={ri === firstOpen} style={{ marginBottom: 8 }}>
                 <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", cursor: "pointer", userSelect: "none", borderBottom: "1px solid #1a221a" }}>
                   <div style={{ fontSize: 10, color: rdDone ? "#3b4a3b" : "#3d5343", fontWeight: 600, letterSpacing: 2 }}><span className="dta">▶</span>ROUND {ri + 1} {rdDone && <span style={{ color: "#3b4a3b" }}>✓</span>}</div>
-                  {!rdDone && <button onClick={e => {e.preventDefault();tScorinate(-1, ri, -1)}} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#627661" }}>▶ Sim Round</button>}
+                  {!rdDone && ri === firstOpen && <button onClick={e => {e.preventDefault();tScorinate(-1, ri, -1)}} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#627661" }}>▶ Sim Round</button>}
                 </summary>
                 <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 0 12px", borderBottom: "1px solid #1a221a" }}>
                   {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
@@ -3899,8 +4122,8 @@ export default function App() {
                       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "#d3ebd3" : m.result.ftHome < m.result.ftAway ? "#666" : "#ebcb8b") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "#3d5343", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
                       <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "#1a221a" : haVal === "off" ? "#bf616a" : "#3d5343", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
                       {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 2, color: "#c5c8c6", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "#4c5a4c", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 2, color: "#c5c8c6", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "#3d5343", border: "none", color: "#d3ebd3", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 2, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
-                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "#3d5343", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>{lastLiveResult && !lastLiveResult.applied && <button onClick={() => importLiveToMatch({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }} title={"Import: "+lastLiveResult.homeName+" "+lastLiveResult.homeScore+"–"+lastLiveResult.awayScore+" "+lastLiveResult.awayName}>📥</button>}</span>
-                        : <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>{lastLiveResult && !lastLiveResult.applied && <button onClick={() => importLiveToMatch({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title={"Import: "+lastLiveResult.homeName+" "+lastLiveResult.homeScore+"–"+lastLiveResult.awayScore+" "+lastLiveResult.awayName}>📥</button>}</span>}
+                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "#3d5343", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button></span>
+                        : ri === firstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "#2a3a2a" }}>–</span>}
                       <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#d3ebd3" : m.result.ftAway < m.result.ftHome ? "#666" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "#3d5343", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                     </div>); })}
                   </div>))}
@@ -4020,6 +4243,7 @@ export default function App() {
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
                         {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
                           : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 2, color: "#3d5343", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
                         <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? "#3d5343" : "#2a3a2a", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
@@ -4113,16 +4337,12 @@ export default function App() {
                     </>))}
                     {/* Left → Center connector */}
                     {leftRounds.length > 0 && connector(leftRounds[leftRounds.length-1].matches, "left")}
-                    {/* Center: Final + 3rd place */}
-                    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0, marginTop: hdrH, position: "relative", height: actualH }}>
+                    {/* Center: Final */}
+                    <div style={{ flexShrink: 0, marginTop: hdrH, position: "relative", height: actualH, width: colW }}>
                       <div style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", width: "100%" }}>
                         <div style={{ fontSize: 8, color: "#c9a84c", textAlign: "center", letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>FINAL</div>
                         {miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}
                       </div>
-                      {tKO.thirdPlace && <div style={{ position: "absolute", bottom: 0, width: "100%" }}>
-                        <div style={{ fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>3RD PLACE</div>
-                        {miniCard(tKO.thirdPlace, -2, 0, 0)}
-                      </div>}
                     </div>
                     {/* Center → Right connector */}
                     {rightRounds.length > 0 && connector(rightRounds[rightRounds.length-1].matches, "right")}
@@ -4135,6 +4355,12 @@ export default function App() {
                       {i < arr.length - 1 && connector(arr[i+1].matches, "right")}
                     </>))}
                   </div>
+                  {tKO.thirdPlace && <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>3RD PLACE</div>
+                      {miniCard(tKO.thirdPlace, -2, 0, 0)}
+                    </div>
+                  </div>}
                 </div>
               );
             })()}
@@ -4157,9 +4383,9 @@ export default function App() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: m.result && koWinner(m) === m.home ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400 }}>{koHAVal === "home" && <span style={{ color: "#3d5343", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</div>{m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#3d5343") : "#3b4a3b", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}</div>
                           <div style={{ textAlign: "center", padding: "4px 0" }}>
                             {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#4c5a4c"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#4c5a4c"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#4c5a4c"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><span style={{ color: "#4c5a4c", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#3d5343", border: "none", color: "#d3ebd3", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a2a", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                              : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button></span>
+                              : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
                               : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#3d5343", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button></span>
-                              : m.home && m.away ? <span style={{ display: "flex", gap: 4, justifyContent: "center" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>{lastLiveResult && !lastLiveResult.applied && <>{tConfig.koLegs===2?<><button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import L1">📥1</button><button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import L2">📥2</button></>:<button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import live result">📥</button>}</>}</span>
+                              : m.home && m.away ? <span style={{ display: "flex", gap: 4, justifyContent: "center" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
                                 : <span style={{ ...mono, fontSize: 10, color: "#333" }}>–</span>}
                           </div>
                           <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: m.result && koWinner(m) === m.away ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, textAlign: "right" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{koHAVal === "away" && <span style={{ color: "#3d5343", fontSize: 7, marginLeft: 2 }}>H</span>}</div>
@@ -4169,9 +4395,9 @@ export default function App() {
                           <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{koHAVal === "home" && <span style={{ color: "#3d5343", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</span>
                           {m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#3d5343") : "#3b4a3b", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}
                           {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#4c5a4c"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#4c5a4c"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#4c5a4c"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><span style={{ color: "#4c5a4c", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#3d5343", border: "none", color: "#d3ebd3", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a2a", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                            : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button></span>
+                            : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
                             : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#3d5343", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button></span>
-                            : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>{lastLiveResult && !lastLiveResult.applied && <>{tConfig.koLegs===2?<><button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import L1">📥1</button><button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import L2">📥2</button></>:<button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import live result">📥</button>}</>}</span>
+                            : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
                               : <span style={{ ...mono, fontSize: 10, color: "#333", margin: "0 6px" }}>–</span>}
                           <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{koHAVal === "away" && <span style={{ color: "#3d5343", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                         </div>
@@ -4189,9 +4415,9 @@ export default function App() {
                     <span style={{ fontSize: 11, color: tKO.thirdPlace.result && koWinner(tKO.thirdPlace) === tKO.thirdPlace.home ? "#d3ebd3" : "#999", flex: 1 }}>{tpHAVal === "home" && <span style={{ color: "#3d5343", fontSize: 7, marginRight: 2 }}>H</span>}{tKO.thirdPlace.home?.name || "TBD"}</span>
                     {tKO.thirdPlace.home && tKO.thirdPlace.away && <button onClick={() => tToggleHA("tp")} style={{ background: "none", border: "none", color: tpHAVal ? (tpHAVal === "off" ? "#bf616a" : "#3d5343") : "#3b4a3b", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: tpHAVal ? 1 : 0.4 }}>H</button>}
                     {tKoEdit && tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#4c5a4c"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#4c5a4c"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#4c5a4c"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><span style={{ color: "#4c5a4c", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141a14", border: "1px solid #2a3a2a", borderRadius: 3, color: "#c5c8c6", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#3d5343", border: "none", color: "#d3ebd3", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a2a", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                      : tKO.thirdPlace.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(tKO.thirdPlace)}</span><button onClick={() => tScorinateKO(-2, -1, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button></span>
+                      : tKO.thirdPlace.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(tKO.thirdPlace)}</span><button onClick={() => tScorinateKO(-2, -1, 2)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,tp:true,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
                       : tKO.thirdPlace.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#3d5343", fontWeight: 600 }}>{koResultText(tKO.thirdPlace)}</span><button onClick={() => setTKoEdit({ ri: -2, mi: -1, h: String(tKO.thirdPlace.result.twoLeg ? tKO.thirdPlace.result.leg1.home : tKO.thirdPlace.result.ftHome), a: String(tKO.thirdPlace.result.twoLeg ? tKO.thirdPlace.result.leg1.away : tKO.thirdPlace.result.ftAway), tp: true, ...(tKO.thirdPlace.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(tKO.thirdPlace.result.leg2.away), l2a:String(tKO.thirdPlace.result.leg2.home)} : {}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button></span>
-                      : tKO.thirdPlace.home && tKO.thirdPlace.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(-2, -1)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: -2, mi: -1, h: "", a: "", tp: true, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button></span>
+                      : tKO.thirdPlace.home && tKO.thirdPlace.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(-2, -1)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: -2, mi: -1, h: "", a: "", tp: true, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,tp:true,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
                         : <span style={{ ...mono, fontSize: 10, color: "#333", margin: "0 6px" }}>–</span>}
                     <span style={{ fontSize: 11, color: tKO.thirdPlace.result && koWinner(tKO.thirdPlace) === tKO.thirdPlace.away ? "#d3ebd3" : "#999", flex: 1, textAlign: "right" }}>{tKO.thirdPlace.away?.name || "TBD"}{tpHAVal === "away" && <span style={{ color: "#3d5343", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                   </div>
@@ -4210,7 +4436,7 @@ export default function App() {
                       <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{koHAVal === "home" && <span style={{ color: "#3d5343", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || "TBD"}</span>
                       {m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#3d5343") : "#3b4a3b", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}
                       {m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#c9a84c", fontWeight: 600 }}>{koResultText(m)}</span></span>
-                        : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>{lastLiveResult && !lastLiveResult.applied && <button onClick={() => importLiveToMatch({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Import live result">📥</button>}</span>
+                        : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#3d5343", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false })} style={{ background: "none", border: "1px solid #2a3a2a", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
                         : <span style={{ ...mono, fontSize: 10, color: "#333", margin: "0 6px" }}>–</span>}
                       <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#d3ebd3" : "#999", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || "TBD"}{koHAVal === "away" && <span style={{ color: "#3d5343", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                     </div>
@@ -4599,7 +4825,7 @@ export default function App() {
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
             <P>Tab-separated, one team per line. Columns in order:</P>
             <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "#0a0f0c", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
-            <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In").</P>
+            <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with [+] (above-average) or [*] (star) to set their tier — this affects selection weight, conversion rate, GK saves, and defensive impact.</P>
 
             </details>
 
