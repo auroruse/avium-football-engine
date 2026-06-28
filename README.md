@@ -1,8 +1,8 @@
 # Avium Football Engine
 
-Browser-based football match simulator built for the [Avium Cinematic Universe](https://github.com/auroruse/avium-football-engine) roleplay setting. Single-file React app, zero backend.
+Browser-based football match simulator built for [Avium](https://www.nationstates.net/page=dispatch/id=1815726). Single-file React app, zero backend.
 
-**[Live App](https://auroruse.github.io/avium-football-engine/)**
+**[Live App](https://auroruse.github.io/avium-football-engine/)** | **[Discord](https://discord.gg/zVhxZXFea4)**
 
 ## Features
 
