@@ -4332,11 +4332,15 @@ export default function App() {
                     </>))}
                     {/* Left → Center connector */}
                     {leftRounds.length > 0 && connector(leftRounds[leftRounds.length-1].matches, "left")}
-                    {/* Center: Final */}
+                    {/* Center: Final + 3rd Place */}
                     <div style={{ flexShrink: 0, marginTop: hdrH, position: "relative", height: actualH, width: colW }}>
                       <div style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", width: "100%" }}>
                         <div style={{ fontSize: 8, color: "#c9a84c", textAlign: "center", letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>FINAL</div>
                         {miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}
+                        {tKO.thirdPlace && <div style={{ marginTop: 20 }}>
+                          <div style={{ fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>3RD PLACE</div>
+                          {miniCard(tKO.thirdPlace, -2, 0, 0)}
+                        </div>}
                       </div>
                     </div>
                     {/* Center → Right connector */}
@@ -4350,12 +4354,6 @@ export default function App() {
                       {i < arr.length - 1 && connector(arr[i+1].matches, "right")}
                     </>))}
                   </div>
-                  {tKO.thirdPlace && <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>3RD PLACE</div>
-                      {miniCard(tKO.thirdPlace, -2, 0, 0)}
-                    </div>
-                  </div>}
                 </div>
               );
             })()}
