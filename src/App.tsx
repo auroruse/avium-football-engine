@@ -4321,7 +4321,7 @@ export default function App() {
 
               return (
                 <div id="bracket-export" style={{ background: "#0f1310", border: "1px solid #1a221a", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
-                  <div style={{ display: "flex", alignItems: "stretch", gap: 0, minWidth: "fit-content" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {/* Left half */}
                     {leftRounds.map((lr, i) => (<>
                       {i > 0 && connector(leftRounds[i-1].matches, "left")}
@@ -4332,17 +4332,23 @@ export default function App() {
                     </>))}
                     {/* Left → Center connector */}
                     {leftRounds.length > 0 && connector(leftRounds[leftRounds.length-1].matches, "left")}
-                    {/* Center: Final + 3rd Place */}
-                    <div style={{ flexShrink: 0, marginTop: hdrH, position: "relative", height: actualH, width: colW }}>
-                      <div style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", width: "100%" }}>
-                        <div style={{ fontSize: 8, color: "#c9a84c", textAlign: "center", letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>FINAL</div>
-                        {miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}
-                        {tKO.thirdPlace && <div style={{ marginTop: 20 }}>
-                          <div style={{ fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, fontWeight: 600, marginBottom: 4 }}>3RD PLACE</div>
-                          {miniCard(tKO.thirdPlace, -2, 0, 0)}
-                        </div>}
-                      </div>
-                    </div>
+                    {/* Center: Final + 3rd Place — pixel positions matching SVG export */}
+                    {(() => {
+                      const cAH = cardH - gap;
+                      const fTop = actualH / 2 - cAH / 2;
+                      const tpTop = fTop + cAH + 24;
+                      const centerH = tKO.thirdPlace ? tpTop + cAH : actualH;
+                      return (
+                        <div style={{ flexShrink: 0, marginTop: hdrH, position: "relative", height: centerH, width: colW }}>
+                          <div style={{ position: "absolute", top: fTop - 14, left: 0, right: 0, fontSize: 8, color: "#c9a84c", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>FINAL</div>
+                          <div style={{ position: "absolute", top: fTop, left: 0, right: 0 }}>{miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}</div>
+                          {tKO.thirdPlace && <>
+                            <div style={{ position: "absolute", top: tpTop - 14, left: 0, right: 0, fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>3RD PLACE</div>
+                            <div style={{ position: "absolute", top: tpTop, left: 0, right: 0 }}>{miniCard(tKO.thirdPlace, -2, 0, 0)}</div>
+                          </>}
+                        </div>
+                      );
+                    })()}
                     {/* Center → Right connector */}
                     {rightRounds.length > 0 && connector(rightRounds[rightRounds.length-1].matches, "right")}
                     {/* Right half (reversed) */}
