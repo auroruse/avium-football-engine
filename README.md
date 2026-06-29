@@ -31,7 +31,7 @@ Browser-based football match simulator built for [Avium](https://www.nationstate
 - Post-match flow: view report, then import result, replay, or abandon
 
 ### Team Management
-- 69-team Avium preset with full squads, tactics, and strategies
+- 62-team Avium preset with full squads, tactics, and strategies
 - 46-team European club preset
 - Bulk import/export via TSV
 - Per-player tier system (standard / key player / star)
