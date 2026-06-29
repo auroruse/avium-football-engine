@@ -8,11 +8,12 @@ class RNG {
 }
 const pick = (rng, a) => a[Math.floor(rng.u() * a.length)];
 const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? k);
-const TIER_CONV = [1.0, 1.12, 1.25];
-const TIER_ATK_W = [1.0, 1.4, 2.0];
-const TIER_GK_SAVE = [0, 0.02, 0.04];
-const TIER_DEF_SHOT = [0, 0.012, 0.025];
+const TIER_CONV = [1.0, 1.08, 1.18];
+const TIER_ATK_W = [1.0, 1.25, 1.6];
+const TIER_GK_SAVE = [0, 0.035, 0.07];
+const TIER_DEF_SHOT = [0, 0.02, 0.04];
 const TIER_PEN = [0, 0.05, 0.12];
+const TIER_MID_CTRL = [0, 0.015, 0.03];
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 const C = {
@@ -406,7 +407,8 @@ function lmSimMinute(s, rng, home, away) {
   // Pressing
   const pressDiff=Math.max(0,(opE-poE)/(opE+poE));
   let pressMult=opM.press;
-  const pressChance=0.28*Math.tanh(5*pressDiff)*pressMult;
+  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? TIER_MID_CTRL[p.tier || 0] : 0), 0);
+  const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
   if(pressChance>0&&rng.u()<pressChance){
     s.possession=op;s.possCount[op]++;
     s.events.push({min:dm,type:"press",text:nm[op]+" press and win it back."});
@@ -515,7 +517,8 @@ function lmSimMinute(s, rng, home, away) {
   const advBase=0.42;
   const advSkill=0.28*(poE-opE)/(poE+opE);
   const advZone=dg===1?-0.06:dg>=3?0.05:0;
-  let advP=advBase+advSkill+advZone+poM.adv;
+  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? TIER_MID_CTRL[p.tier || 0] : 0), 0);
+  let advP=advBase+advSkill+advZone+poM.adv+poMidTier-opMidTier;
   const pT=s.tactics[po],oT=s.tactics[op];
   if(pT==="ultra")advP+=0.09;else if(pT==="atk")advP+=0.05;
   if(oT==="def")advP-=0.04;if(oT==="park")advP-=0.08;
