@@ -1,4 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import aviumTSV from "./presets/avium.tsv?raw";
+import nl1TSV from "./presets/nl1.tsv?raw";
+import nl2TSV from "./presets/nl2.tsv?raw";
+import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
+import plTSV from "./presets/premier-league.tsv?raw";
+import bunTSV from "./presets/bundesliga.tsv?raw";
+import llTSV from "./presets/la-liga.tsv?raw";
+import l1TSV from "./presets/ligue-1.tsv?raw";
+import lpTSV from "./presets/liga-portugal.tsv?raw";
+import slTSV from "./presets/super-lig.tsv?raw";
+import edTSV from "./presets/eredivisie.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -16,48 +27,64 @@ const TIER_PEN = [0, 0.05, 0.12];
 const TIER_MID_CTRL = [0, 0.015, 0.03];
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
-const C = {
-  goal:["{t}'s {n} fires into the net!","{n} scores for {t}! Clinical.","{t}'s {n} slots it past the keeper!","What a strike from {t}'s {n}!","{n} buries it! {t} have scored!","Cool as you like from {t}'s {n}!","{n} finishes from close range!","Composure from {t}'s {n}. Slotted home.","{t}'s {n} finds the bottom corner!","Buried! {n} gives {t} a goal!","Tucked away by {t}'s {n}. Keeper no chance.","That's in! {n} for {t}!","{n} strikes for {t}! Low into the corner.","Clinical finish from {t}'s {n}. Never in doubt.","{t}'s {n} smashes it home!","Placed into the far corner by {t}'s {n}!","Side-footed past the keeper. {n} for {t}!","{n} drills it low and hard. {t} score!","Sweetly struck by {t}'s {n}!","Rifled in by {t}'s {n}! No stopping that.","Instinctive finish from {t}'s {n}!","{t}'s {n} pokes it home from six yards!","Lashed into the roof of the net! {n} for {t}!","{n} ghosts in unmarked and finishes for {t}!","{t}'s {n} chips the keeper! Audacious!","Emphatic from {t}'s {n}. Hammered in.","{t}'s {n} squeezes it inside the near post!","Guided into the corner by {t}'s {n}!","Tidy finish. {t}'s {n} picks the spot.","Wrong-footed the keeper! {t}'s {n} scores!"],
-  goal_opener:[" Deadlock broken!"," That opens the scoring!"," First blood!"," First goal of the game!"," And it's the breakthrough!"," The wait is over!"],
-  goal_equalizer:[" It's level!"," The equalizer!"," Pegged back!"," Back on level terms!"," All square now!"," Drawn level!"],
-  goal_lead:[" {t} take the lead!"," Advantage {t}!"," {t} ahead now!"," {t} go in front!"],
-  goal_pullback:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"," {t} give themselves hope!"],
-  goal_consolation:[" Consolation for {t}."," {t} get one back, but still trailing."," Too little too late for {t}."," Small comfort for {t}."],
-  goal_extend:[" The lead grows!"," {t} pulling away!"," Breathing room for {t}."," {t} extend their advantage!"," {t} are running riot!"," Comfortable now for {t}."],
-  goal_late:[" Late drama!"," What a time to score!"," In the dying minutes!"," Drama at the death!"," Against the run of play in stoppage time!"," Scenes at the death!"],
-  save:["Shot on target! {o}'s keeper denies {t}'s {n}.","Good stop from {t}'s {n}'s effort.","Fingertip save! {t}'s {n} thought that was in.","{t}'s {n} forces a save. {o} keeper holds.","Smart save! {o}'s keeper reads {t}'s {n} well.","Comfortable save from {t}'s {n}'s shot.","Strong hands from {o}'s keeper. {t}'s {n} denied.","Straight at the keeper. {t}'s {n} should have done better.","Low save! {o}'s keeper gets down well.","Diving save from {t}'s {n}'s header!","Parried away! {o}'s keeper pushes {t}'s {n}'s shot clear.","Solid save at the near post from {t}'s {n}'s effort.","Full stretch! {o}'s keeper just gets a glove to it.","Point-blank save! {t}'s {n} denied at close range.","Reflex save! {o}'s keeper somehow keeps it out.","Blocked by the keeper's legs! {t}'s {n} can't convert.","Caught cleanly by {o}'s keeper. {t}'s {n} didn't trouble him.","Pushed wide! {o}'s keeper at full stretch from {t}'s {n}.","Acrobatic stop! {o}'s keeper tips {t}'s {n}'s effort over.","Routine save. {t}'s {n} hits it too centrally."],
-  miss:["{t}'s {n} shoots wide.","{t}'s {n} fires over the bar.","{n} drags it wide. Off target.","Blazed over by {t}'s {n}.","{t}'s {n} pulls it across the face of goal. Wide.","{n} snatches at it. Over for {t}.","Skied! {t}'s {n} puts it into the stands.","Wide of the mark from {t}'s {n}.","{t}'s {n} leans back and lifts it over.","Miscued! {t}'s {n} gets it all wrong.","Scuffed shot from {t}'s {n}. Easy for the keeper.","Rushed it. {t}'s {n} needed to take a touch.","Shanked wide by {t}'s {n}!","Way off target. {t}'s {n} slices it horribly.","{t}'s {n} curls it over from a good position.","Had time but couldn't find the target. {t}'s {n} wasteful.","Wild effort from {t}'s {n}. Into row Z.","{t}'s {n} swings and misses the ball completely!","{t}'s {n} catches it on the shin. Harmless.","{t}'s {n} hits the side netting. Close but no cigar."],
-  foul:["Foul by {t}'s {n}. Free kick {o}.","{t}'s {n} goes through the back of the man. Free kick.","{t}'s {n} clips the ankle. Referee blows.","{t}'s {n} catches {o}'s player late. Free kick.","{t}'s {n} pulls back the shirt. Given.","{t}'s {n} bundles into the challenge. Foul.","Clumsy from {t}'s {n}. Free kick {o}.","Body check from {t}'s {n}. Referee intervenes.","Slide tackle from {t}'s {n}. Caught the man.","Wrestled to the ground. {t}'s {n} gives away the foul.","{t}'s {n} barges into the back. Foul given.","Trip by {t}'s {n}. Too eager.","Cynical foul from {t}'s {n}. Stops the break.","{t}'s {n} uses an arm across the chest. Free kick.","{t}'s {n} stands on the ankle. Accidental but still a foul.","Shove from {t}'s {n}. Easy decision for the referee."],
-  yellow:["Yellow card. {t}'s {n} into the book.","Booking for {t}'s {n}. Reckless.","Card shown to {t}'s {n}. Cynical challenge.","That's a yellow for {t}'s {n}. Can't argue with that.","{t}'s {n} picks up a booking. Needless.","In the book. {t}'s {n} will need to be careful now.","{t}'s {n} booked for persistent fouling.","Yellow card. {t}'s {n} knew exactly what he was doing.","{t}'s {n} carded for simulation. Referee not fooled.","{t}'s {n} picks up a caution. Walking a tightrope now."],
-  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} off! Down to {c}.","That's two bookings! {t}'s {n} has to go. {c} men remain.","Off for a second booking! {t}'s {n} leaves {t} with {c}.","Can't believe it! {t}'s {n} picks up a second yellow. {c} men."],
-  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! Down to {c}!","Off! {t}'s {n} sees a straight red. {c} men.","Violent conduct! {t}'s {n} given a straight red. Down to {c}.","Serious foul play! {t}'s {n} walks. {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red. Down to {c}."],
-  pen_scored:["SCORED! {t}'s {n} sends the keeper the wrong way!","Converted! {t}'s {n} rolls it home!","No mistake from {t}'s {n}!","Coolly dispatched by {t}'s {n}!","Into the corner! {t}'s {n} makes no mistake!","Ice cold! {t}'s {n} buries it!","Smashed down the middle! {t}'s {n} converts!","Stuttered run, keeper dives early. {t}'s {n} rolls it in."],
-  pen_saved:["SAVED! The keeper guesses right against {t}'s {n}!","SAVED! The keeper gets a hand to {n}'s penalty!","Penalty saved! {t}'s {n} can't beat the keeper!","Read it perfectly! The keeper dives low to deny {t}'s {n}!","Kept out! {t}'s {n} goes left, so does the keeper!"],
-  pen_missed:["Over the bar! {t}'s {n} blazes it high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}.","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Barely troubled the corner."],
-  offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","Offside. {t}'s {n} went too early.","Linesman's flag. {t}'s {n} just beyond the last man.","Run well-timed? No. {t}'s {n} is offside.","{t}'s {n} strays offside. Good work from the defensive line.","Offside trap works. {t}'s {n} caught out.","Marginal call. {t}'s {n} flagged offside."],
-  corner_goal:["{t}'s {n} heads it in from the corner! GOAL!","Towering header from {t}'s {n}! GOAL!","Planted in by {t}'s {n} from the set piece!","Up rises {t}'s {n}! Headed home from the corner!","Bullet header from {t}'s {n}! The delivery was perfect!","Flicked in at the near post! {t}'s {n} from the corner!","Back-post header! {t}'s {n} rises highest!","Volleyed in from the corner! {t}'s {n} with a sweet strike!"],
-  corner_save:["Header from {t}'s {n} — keeper saves!","Good delivery, but {o}'s keeper holds from {n}!","Strong header from {n} — saved!","{t}'s {n} gets up well but the keeper tips it over!","Firm header from {t}'s {n}. Straight at the keeper.","Diving header from {t}'s {n}! Keeper pushes it wide!"],
-  corner_miss:["Header from {t}'s {n} — over the bar!","{t}'s {n} can't keep the header down!","Free header for {n} — off target!","{t}'s {n} gets a head to it but can't direct it.","Glanced wide by {t}'s {n}. Needed to hit the target.","Completely miscued by {t}'s {n}. Should have scored.","{t}'s {n} rises but heads it into the ground. Bounces wide.","Headed wide from six yards! {t}'s {n} won't want to see that again."],
-  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out, but only as far as {t}.","Partially cleared. {t} keep the pressure on.","Punched out by the keeper but {t} gather.","Cleared to the edge of the box. {t} reload."],
-  corner_clear:["{o} clear their lines.","{o} deal with the corner.","Headed away by {o}.","{o} punch it clear. Danger averted.","Strong defending from {o}. Corner dealt with.","Commanding from {o}'s keeper. Claimed easily.","{o} get a decisive head on it. Cleared."],
-  free_kick:["Free kick {t}. Into the wall.","{t}'s {n} over the free kick. Curls it wide.","{t}'s {n} takes the free kick. Blocked.","{t}'s {n} strikes the free kick. Just over.","Worked short by {t}. Move breaks down.","{t}'s {n} whips it in. Headed clear by {o}.","{t}'s {n} floats the free kick in. {o} deal with it.","Direct free kick from {t}'s {n}. Dipping but over."],
-  woodwork:["{t}'s {n} hits the post!","Off the bar! {t}'s {n} so close.","Rattles the crossbar! {t}'s {n} can't believe it.","The frame of the goal denies {t}'s {n}!","Against the post from {t}'s {n}! Agonizing.","{t}'s {n} crashes it against the woodwork!","Off the inside of the post! {t}'s {n} nearly had it.","Cracks the bar! {t}'s {n} had the keeper beaten.","Thumps the upright! {t}'s {n} inches away.","Thunderbolt against the crossbar from {t}'s {n}!"],
-  own_goal:["Own goal! {o}'s {n} turns it into his own net!","Calamitous from {o}'s {n}! Into his own goal!","Disaster for {o}'s {n}! Puts it past his own keeper!","It's an own goal! {n} can only watch as it goes in off him.","Unlucky! {o}'s {n} deflects it past his own goalkeeper.","Sliced into his own net by {o}'s {n}!","Horror show! {o}'s {n} heads it past his own keeper!"],
-  gk_error:["Goalkeeper error! {n} pounces for {t}!","Howler from the keeper! {t}'s {n} can't believe his luck!","Fumble! The keeper spills it and {t}'s {n} taps it in!","Gift for {t}! Keeper misjudges and {n} finishes into an empty net.","The keeper makes a hash of it! {t}'s {n} rolls it into the empty goal.","Terrible backpass! {t}'s {n} nips in and scores!","Goalkeeper caught off his line! {t}'s {n} lobs it home!"],
-  deflection:["Deflection! Wrong-foots the keeper and it's in!","Wicked deflection and {t}'s {n} gets the goal!","It took a nick off a defender! Nothing the keeper could do.","Deflected past the keeper! {t}'s {n} won't care how it went in.","It's in off a defender! {t}'s {n} claims it.","Big deflection takes it past the keeper! {t} score!","Ricochets off two defenders and in! {t}'s {n} gets the credit."],
-  woodwork_save:["Tipped onto the post by {o}'s keeper!","Great save pushed onto the bar!","Fingertips! Onto the woodwork and away!","Incredible save onto the frame of the goal!","Pushed onto the post! Brilliant from {o}'s keeper!"],
-  neutral:["{t} passing it around the back. Patient.","Cagey spell. Neither side committing.","{t} probe down the flank. Cross cleared.","Midfield tussle. Scrapping for every ball.","{o} press high. {t} play through it.","{t} in {o}'s half. Looking for openings.","Half chance. {t}'s {n} lays it off, move breaks down.","Long ball from {o}. Headed away.","End-to-end briefly. Ball bouncing in midfield.","{t} building from the back. Methodical.","{t} trying to find a way through. {o} compact.","Sideways from {t}. No route forward yet.","Ball out for a throw-in. {t} regroup.","Scrappy period. Neither team finding a rhythm.","{o} soak up pressure. Organized.","{t}'s {n} tries a through ball. Cut out.","Lots of bodies behind the ball from {o}.","Quiet spell. {t} keeping the ball without threatening.","Ball pinballing in midfield. No one in control.","{o} dropping deep. Inviting {t} onto them.","{t} switching the play from side to side.","Tactical foul from {o}. {t} momentum broken.","Nothing doing. {t} probing but {o} have numbers back.","Drinks break. Both managers issuing instructions.","Bit of handbags in midfield. Referee calms it down."],
+// ═══ MATCH COMMENTARY ════════════════════════════════════════════════════════
+const CM = {
+  goal:["{n} strikes and it's in! {t} score!","Drilled low into the corner by {t}'s {n}!","{t}'s {n} picks the spot! Past the keeper!","Swept home by {t}'s {n}! First-time finish!","Buried! {n} makes no mistake for {t}!","Cool as ice from {t}'s {n}. Placed into the far corner.","Side-footed past the keeper by {t}'s {n}!","Emphatic from {t}'s {n}! Hammered into the roof of the net!","{n} slots it through the keeper's legs! {t} score!","Instinctive finish! {t}'s {n} reacted first!","{t}'s {n} volleys it home! Sweet connection!","Tucked away by {t}'s {n}. The keeper was rooted.","One touch, one finish. {t}'s {n} is deadly.","{n} ghosts in at the back post and finishes! {t} score!","Bent past the keeper's despairing dive! {t}'s {n}!","Smashed home by {t}'s {n}! Keeper had zero chance!","{t}'s {n} opens the body and guides it in!","Guided into the bottom corner! Sublime from {t}'s {n}!","Wrong-footed the keeper! {n} scores for {t}!","Low drive from {t}'s {n} squirms under the keeper!","{n} pounces! Close range and in for {t}!","{t}'s {n} squeezes it inside the near post!","Half-volley from {t}'s {n}! Thumped into the net!","Dinked over the onrushing keeper! Audacity from {t}'s {n}!","{t}'s {n} finds the far corner from a tight angle!","Controlled and dispatched in one movement! {t}'s {n}!","Lashed into the top corner by {t}'s {n}! Rocket!","{n} scores and wheels away! {t} celebrate!","Clinical from {t}'s {n}. Picked the spot and buried it.","Rifled into the net! {t}'s {n} gave the keeper no chance!","{t}'s {n} takes a touch to steady and drills it home!","First-time finish from {t}'s {n}! Pure instinct!","Chested down and slotted home. Composure from {t}'s {n}.","Curled into the far corner by {t}'s {n}! Exquisite!","{t}'s {n} cracks it across goal and in at the far post!"],
+  goal_ctr:["GOAL on the counter! {t}'s {n} finishes the break!","{t}'s {n} completes the counter-attack! Ruthless!","Caught them cold! {t}'s {n} slots it home on the break!","From their box to ours! {t}'s {n} finishes a devastating break!","Counter-attack football at its finest! {t}'s {n} converts!","{t} caught {o} flat-footed! {n} finishes!","Lightning break and {t}'s {n} makes no mistake!","Blistering counter! {t}'s {n} caps it with a cool finish!","{o} left exposed and {t}'s {n} punishes them!","Three passes and it's in! {t}'s {n} completes the devastation!","{t}'s {n} races clear and beats the keeper! Textbook counter!","From defense to attack in seconds! {t}'s {n} applies the finish!"],
+  goal_lr:["{t}'s {n} tries from distance... IT'S IN! What a hit!","THUNDERBOLT from {t}'s {n}! From 25 yards! Incredible!","{t}'s {n} lets fly from range and it sails in! Screamer!","Long-range effort from {t}'s {n}! Dips under the bar! GOAL!","Arrowed into the net from 30 yards! {t}'s {n} with a worldie!","{t}'s {n} catches it perfectly from outside the box! It flies in!","From downtown! {t}'s {n} hammers it past the keeper from range!","{t}'s {n} fancies it from distance... and he's right to! GOAL!","Knuckling effort from {t}'s {n}! The keeper could only watch!","Outside the boot from {t}'s {n}! Bends and dips in from 25 yards!","What a strike from {t}'s {n}! Keeper beaten all ends up from distance!","{t}'s {n} lines one up from range... top corner! Sensational!"],
+  corner_goal:["{t}'s {n} rises highest! Towering header from the corner!","Planted into the net! {t}'s {n} heads home from the set piece!","Bullet header from {t}'s {n}! Perfect delivery, perfect finish!","Flicked in at the near post by {t}'s {n}! Great movement!","Back-post header! {t}'s {n} was completely unmarked!","Volleyed home from the corner! {t}'s {n} with a sweet connection!","{t}'s {n} powers the header in! Nothing the keeper could do!","Glanced in off {t}'s {n}! Clever header redirecting the ball!","Up rises {t}'s {n}! Headed home with conviction!","{t}'s {n} beats the marker and nods it in!","Thumping header from {t}'s {n}! Inch-perfect delivery!","{t}'s {n} climbs above the defender and heads it home!"],
+  own_goal:["{o}'s {n} turns it into his own net! Disaster!","{o}'s {n} can only watch as it deflects past his own keeper!","Calamitous from {o}'s {n}! Sliced into his own goal!","Own goal! {o}'s {n} gets the final touch! Wrong net!","Horrible moment for {o}'s {n}! Past his own goalkeeper!","{o}'s {n} tries to clear and puts it in his own net!","Unlucky deflection off {o}'s {n}! Into the corner of his own goal!","It comes off {o}'s {n} and loops over the keeper! Own goal!","{o}'s {n} misjudges it completely! Past his keeper and in!","Nightmare for {o}'s {n}! The ball ricochets off him and in!"],
+  deflection:["Deflection! Wicked bounce off a defender and past the keeper! {t}'s {n} gets the credit.","Cruel deflection wrong-foots the keeper! {t}'s {n} will take it!","It took a nick! Nothing the keeper could do. Goal {t}, {n}.","Deflected past the keeper! {t}'s {n} won't care how it went in!","Ricochets off a defender and nestles in the corner! {t}'s {n} claims it.","Big deflection sends it past the rooted keeper! Lucky break for {t}'s {n}!","Off one defender, off another, and in! {t}'s {n} gets the goal!","A huge deflection loops the ball into the net! {n} for {t}!"],
+  gk_error:["HOWLER from the keeper! {t}'s {n} can't believe his luck!","Fumbled! The keeper spills it and {t}'s {n} pounces!","Gift-wrapped! Keeper misjudges and {t}'s {n} rolls it into an empty net!","The keeper makes a hash of it! {t}'s {n} taps into an open goal!","Terrible backpass! {t}'s {n} nips in and the keeper is stranded!","Keeper caught off his line! {t}'s {n} lobs it home!","Horror show in goal! Through the keeper's legs and {t}'s {n} scores!","Spilled by the keeper! {t}'s {n} first to react! Pokes it home!","Keeper error! Tried to play out and {t}'s {n} intercepts and finishes!","The keeper palms it straight to {t}'s {n}! Gift of a goal!"],
+  pen_scored:["Sends the keeper the wrong way! {t}'s {n} converts!","Rolls it home! {t}'s {n} makes no mistake from the spot!","Coolly dispatched by {t}'s {n}! Into the corner!","Smashed down the middle! The keeper dived and {t}'s {n} buried it!","Stuttered run, keeper commits, and {t}'s {n} rolls it in!","BURIED into the top corner! {t}'s {n} gives the keeper no chance!","Ice cold from {t}'s {n}! Side-footed into the bottom corner!","Power and placement from {t}'s {n}! Smashes it home!","{t}'s {n} waits for the keeper to move... rolls it the other way!","Driven low and hard by {t}'s {n}! Converted from twelve yards!"],
+  gx_opener:[" First blood!"," That opens the scoring!"," The deadlock is broken!"," First goal of the match!"," And that's the breakthrough!"," The wait is over!"," The opener!"," They've broken through!"],
+  gx_equal:[" Level!"," The equalizer!"," All square!"," Pegged back!"," Drawn level!"," {t} are back on terms!"," Back to parity!"," That changes everything!"],
+  gx_lead:[" {t} take the lead!"," {t} go in front!"," Advantage {t}!"," {t} are ahead!"," {t} with their noses in front!"," {t} move into the lead!"],
+  gx_extend:[" {t} pulling away!"," Breathing room for {t}!"," {t} extend the advantage!"," {t} are running away with it!"," Comfortable now for {t}!"," The lead grows!"," {t} turning the screw!"," This is becoming a rout for {t}!"],
+  gx_pull:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"," {t} give themselves hope!"," The deficit is cut!"],
+  gx_consol:[" Consolation for {t}."," Small comfort for {t}."," {t} get one back, but it's too late."," A matter of pride for {t}."," Too little too late for {t}."," {t} salvage some dignity."],
+  gx_late:[" In the dying minutes!"," Late drama!"," What a time to score!"," Scenes at the death!"," Against the clock!"," You couldn't write this!"," Stoppage time heroics!"," The stadium erupts!"],
+  save:["Straight at the keeper from {t}'s {n}. Comfortable save.","{o}'s keeper dives low and holds {t}'s {n}'s effort.","Great save! {o}'s keeper denies {t}'s {n}!","Fingertip save! {t}'s {n} thought that was in!","Strong hands from {o}'s keeper to keep out {t}'s {n}'s drive.","Parried away! {o}'s keeper pushes {t}'s {n}'s shot wide!","Point-blank save! {t}'s {n} denied from close range!","Reflex save! {o}'s keeper reacts brilliantly to {t}'s {n}!","Smothered by {o}'s keeper! {t}'s {n} couldn't find a way past!","Low save! {t}'s {n}'s effort kept out.","{t}'s {n} tests the keeper, who holds comfortably.","Diving save! {o}'s keeper gets a glove to {t}'s {n}'s effort!","Blocked by the keeper's legs! {t}'s {n} frustrated!","Pushed wide by {o}'s keeper at full stretch!","Acrobatic stop! {t}'s {n}'s effort tipped over!","Palmed over the bar! Big save to deny {t}'s {n}!","{o}'s keeper reads it early and smothers {t}'s {n}'s shot.","What a stop! {o}'s keeper springs across to deny {t}'s {n}!","One-handed save! {t}'s {n} can't believe it!","Tipped wide! Superb reflexes to deny {t}'s {n}!","{t}'s {n} forces a save. Tipped around the post.","Beaten the defense but not the keeper! {t}'s {n} denied!","Right at him. {t}'s {n} should have placed it better.","Decent save. {t}'s {n}'s shot lacked conviction.","Sharp stop to palm away {t}'s {n}'s drive!"],
+  corner_save:["Header from {t}'s {n} — keeper saves! Good reflexes!","Powerful header from {t}'s {n} but {o}'s keeper holds!","{t}'s {n} gets a head on it — saved! Tipped over!","Firm header from {t}'s {n}. Straight at the keeper.","Diving header from {t}'s {n}! {o}'s keeper pushes it wide!","{t}'s {n} meets the delivery but the keeper reacts well!","Glancing header from {t}'s {n} — {o}'s keeper plucks it out of the air!","Strong header from {t}'s {n} but the keeper was equal to it!","{o}'s keeper punches away {t}'s {n}'s header! Commanding!","{t}'s {n} rises well but can't beat the keeper! Good save!"],
+  save_lr:["Effort from distance by {t}'s {n}. {o}'s keeper holds.","Struck from range by {t}'s {n}! {o}'s keeper pushes it away!","Long-range drive from {t}'s {n}. Good save, pushed wide!","{t}'s {n} tries from outside the box. {o}'s keeper tips it over!","Ambitious from {t}'s {n} but the keeper reads it all the way.","Dipping shot from {t}'s {n}! {o}'s keeper backpedals and saves!","{t}'s {n} lets rip from 25 yards. Beaten away!","Long-range effort from {t}'s {n} stings the keeper's palms!"],
+  miss:["{t}'s {n} fires wide! Off target.","Over the bar from {t}'s {n}! Leaned back too far.","{n} drags it wide. Poor effort for {t}.","Blazed over by {t}'s {n}! Not even close.","Pulled across the face of goal by {t}'s {n}. Wide.","{n} snatches at it! Over the bar for {t}.","Into the stands from {t}'s {n}! Way too much on it.","Wide of the mark from {t}'s {n}. Should have hit the target.","Miscued from {t}'s {n}! Gets it all wrong.","Scuffed by {t}'s {n}. Bobbles harmlessly wide.","{t}'s {n} had time but couldn't find the target. Wasteful.","Sliced horribly by {t}'s {n}! Miles off target.","{t}'s {n} curls it over from a promising position.","Wild effort from {t}'s {n}! Row Z.","Shanked by {t}'s {n}! Terrible connection.","{t}'s {n} swings a boot and misses the ball entirely!","Drags it wide. {t}'s {n} won't want to see that again.","Hurried his shot. {t}'s {n} needed another touch.","Ballooned over from {t}'s {n}! Had the goal at his mercy.","Off-balance from {t}'s {n}. Drifts harmlessly wide.","Scooped over by {t}'s {n}! Agonizing.","Side-netting from {t}'s {n}. Close but wrong side of the post.","{t}'s {n} leans back and lifts it over the crossbar.","Skewed wide by {t}'s {n}! The chance is gone.","{t}'s {n} catches it on the shin. Harmless."],
+  corner_miss:["Header from {t}'s {n} — over the bar! Couldn't keep it down.","{t}'s {n} gets a free header but can't direct it! Over.","Glanced wide by {t}'s {n}. Needed to hit the target.","Completely miscued by {t}'s {n}! Should have scored.","Free header for {t}'s {n} — off target! Big miss.","{t}'s {n} can't keep the header down! Over from six yards.","Headed wide from point-blank! {t}'s {n} kicking himself.","{t}'s {n} gets across the front post but the header drifts wide.","Up rises {t}'s {n} but the header sails over. So close.","{t}'s {n} heads it into the ground. Bounces wide."],
+  miss_lr:["{t}'s {n} tries from range. Sails over.","Ambitious from {t}'s {n}! The shot from distance curls wide.","{t}'s {n} lets fly from 30 yards. Not troubling anyone.","Speculative from {t}'s {n}. Drifts wide of the far post.","{t}'s {n} has a go from outside the box. Over the bar.","{t}'s {n} strikes from distance. Whistles past the post.","{t}'s {n} fancies one from range but fires over.","Long-range punt from {t}'s {n}. Easy for the keeper."],
+  woodwork:["{t}'s {n} hits the post! So close!","Off the bar! {t}'s {n} inches away!","Rattles the crossbar! {t}'s {n} nearly had it!","Against the post from {t}'s {n}! Agonizing!","Crashes against the frame of the goal! {t}'s {n} can't believe it!","Off the inside of the post and away! Denied by the woodwork!","Thunderbolt from {t}'s {n} smacks the crossbar!","Thumps the upright! {t}'s {n} had the keeper beaten!","The post comes to {o}'s rescue! {t}'s {n} was so close!","It comes back off the bar! {t}'s {n} holds his head!","Cannons off the crossbar! Millimeters away for {t}'s {n}!","The frame of the goal denies {t}'s {n}! It just wouldn't go in!"],
+  woodwork_save:["Tipped onto the post by {o}'s keeper! Incredible!","Fingertips push it onto the bar! Brilliant save!","Pushed onto the frame of the goal by {o}'s keeper!","Onto the woodwork via the keeper's glove! What a save!","The keeper gets just enough to divert it onto the post!","Superb save pushed onto the crossbar! {t}'s {n} denied!","The keeper stretches and pushes it onto the frame!","Off the bar from the keeper's save! {t}'s {n} so close!"],
+  woodwork_hdr:["Header crashes off the crossbar! {t}'s {n} so close from the corner!","{t}'s {n}'s header thunders against the bar!","Off the bar! {t}'s {n} unlucky with that header!","Header off the post! {t}'s {n} smacks the frame!","Powered against the bar by {t}'s {n}! The woodwork saves {o}!"],
+  foul:["Foul by {t}'s {n}. Free kick {o}.","Late challenge from {t}'s {n}. Free kick {o}.","{t}'s {n} clips the ankle. Referee blows.","{t}'s {n} goes through the back. Free kick.","{t}'s {n} pulls the shirt. Easy call.","{t}'s {n} bundles into the challenge. Foul.","Clumsy from {t}'s {n}. Free kick {o}.","Body check from {t}'s {n}. Stopped the attack.","{t}'s {n} catches the man. Free kick.","Wrestled to the ground by {t}'s {n}. Foul.","{t}'s {n} slides in recklessly. Free kick {o}.","Trip from {t}'s {n}. No hesitation from the referee.","Cynical foul from {t}'s {n}. Killed the counter.","{t}'s {n} uses an arm across the chest. Free kick.","Stands on the ankle. {t}'s {n} gives away a foul.","Shoulder barge from {t}'s {n}. Too aggressive.","{t}'s {n} goes in studs showing. Free kick {o}.","Blocked off by {t}'s {n}. Impedes the run. Foul.","Tugged back by {t}'s {n}. Clear foul.","Shove from {t}'s {n}. Easy decision."],
+  foul_pen:["Brought down in the box by {o}'s {n}! PENALTY!","{o}'s {n} clips the attacker in the area! Penalty given!","Fouled in the box! {o}'s {n} couldn't pull out! PENALTY!","{o}'s {n} drags down the attacker! Referee points to the spot!","Handball by {o}'s {n}! PENALTY!","Crunching challenge from {o}'s {n} in the area! PENALTY!","{o}'s {n} catches the attacker's legs in the box! Penalty!","Tripped in the box by {o}'s {n}! PENALTY!"],
+  yellow:["Yellow card for {t}'s {n}. Into the book.","Booking for {t}'s {n}. Can't argue with that.","Card shown to {t}'s {n}. Cynical challenge.","{t}'s {n} picks up a caution. Reckless.","In the book. {t}'s {n} needs to be careful now.","{t}'s {n} booked for persistent fouling.","Yellow. {t}'s {n} knew what he was doing.","{t}'s {n} carded. Walking a tightrope.","Cautioned. {t}'s {n} catches the referee's eye.","{t}'s {n} goes in the book.","Booking for {t}'s {n}. That was needless.","{t}'s {n} picks up a yellow. One more and he walks."],
+  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} sees the early bath! {c} men.","That's his second booking! {t}'s {n} has to go! Down to {c}!","Off for two yellows! {t}'s {n} leaves {t} with {c}!","{t}'s {n} can't believe it! Second yellow! {c} remain.","He'd been warned! {t}'s {n} picks up a second yellow! Down to {c}!","Dismissed! {t}'s {n} gets a second booking! {t} down to {c}!","Second booking for {t}'s {n}! Off he goes! {c} men left!"],
+  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! {t} down to {c}!","Off! {t}'s {n} shown a straight red! {c} men.","Violent conduct! {t}'s {n} walks! Down to {c}.","Serious foul play! {t}'s {n} gone! {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red! {c} remain.","Red card all day long! {t}'s {n} is off! Down to {c}!","Dangerous tackle from {t}'s {n}! Straight red! Reduced to {c}!"],
+  pen_saved:["SAVED! The keeper guesses right and denies {t}'s {n}!","Penalty saved! The keeper springs low to keep {t}'s {n} out!","Read it perfectly! The keeper saves from {t}'s {n}!","Kept out! {t}'s {n} goes left and so does the keeper!","The keeper is the hero! Saves {t}'s {n}'s penalty!","SAVED! Low to his right! The keeper denies {t}'s {n}!","Guessed correctly! The keeper palms away the spot-kick!","What a save from the penalty! {t}'s {n} denied!"],
+  pen_missed:["Over the bar! {t}'s {n} blazes the penalty high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}!","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Way off target.","Hits the bar! {t}'s {n}'s penalty crashes off the crossbar!","{t}'s {n} puts the penalty wide! Terrible miss!"],
+  offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","{t}'s {n} went too early. Offside.","Linesman's flag. {t}'s {n} beyond the last man.","{t}'s {n} is offside. Good call.","Well-timed trap from {o}. {t}'s {n} caught out.","Offside. {t}'s {n} strayed ahead of the line.","Marginal but correct. {t}'s {n} flagged offside.","{t}'s {n} drifts offside. Move is dead.","The flag goes up. {t}'s {n} a fraction offside.","Run timed too early by {t}'s {n}. Offside.","{t}'s {n} springs forward but the flag is up."],
+  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out but only as far as {t}.","Partially cleared. {t} keep the pressure on.","Punched away by the keeper but {t} gather.","Cleared to the edge. {t} reload.","Knocked away but it falls to {t}.","Weak clearance from {o}. {t} maintain possession."],
+  corner_clear:["{o} clear their lines decisively.","Headed away by {o}. Danger over.","{o} deal with the corner comfortably.","Strong defending from {o}. Corner neutralized.","Commanding from {o}'s keeper. Claimed easily.","{o} punch it clear. Dealt with.","Decisive header from {o}. Threat over.","{o} get bodies in the way. Corner cleared.","Cleared with authority by {o}.","{o}'s defense stands firm. Headed away."],
+  corner_won:["Corner {t}.","Pushed behind! Corner to {t}.","Behind for a corner! {t} send men forward.","Deflected behind. Corner {t}.","Another set piece opportunity. Corner {t}.","Behind off the last defender. Corner {t}.","Cleared for a corner! {t} sending bodies up.","Last touch {o}. Corner {t}."],
+  corner_again:["Another corner {t}.","Taken short... and another corner {t}!","Still {t}'s corner. The pressure builds.","Worked back in... and it's another corner!","The corner leads to another! {t} keep the pressure on."],
+  corner_rebound:["Off the woodwork and behind for a corner!","Parried behind! Corner {t}.","Tipped over! Corner to {t}.","Rebounds for a corner!","The save deflects behind for a corner!","Pushed behind by the keeper! Corner {t}."],
+  free_kick:["Free kick for {t}. {n} over it. Into the wall.","{t}'s {n} whips in the free kick. Headed clear.","{t}'s {n} curls the free kick. Just over the bar.","Direct free kick from {t}'s {n}. Dipping but wide.","{t}'s {n} strikes the free kick. Blocked by the wall.","Worked short by {t}. The move breaks down.","{t}'s {n} floats it in. Keeper claims.","{t}'s {n} tries to bend it over the wall. Wide.","{t}'s {n} fires it low. Deflected behind.","Free kick drilled into the wall by {t}'s {n}. Clear.","{t}'s {n} goes for placement. Curls just wide.","{t}'s {n} strikes it hard. Keeper dives and holds."],
+  buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {n} has options.","{t} probing through the middle. {n} on the ball.","{t}'s {n} carries it forward. Space opening up.","Ball switched by {t}. {n} receives in space.","{t} patient in possession. {n} picks the pass.","Good move from {t}. {n} advancing.","{n} plays a one-two and surges forward for {t}.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} turns and looks forward.","Neat combination from {t}. {n} carrying it forward.","{t}'s {n} clips one over the top. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the press and drives on.","{t} overloading the flank. {n} involved.","{t}'s {n} drops deep, collects, turns and plays forward.","Sharp pass from {t}'s {n}. Through the first line.","Crossfield ball from {t}'s {n}. Play shifted wide.","{t}'s {n} threads it through the midfield. On the move.","Lovely first touch from {t}'s {n}. Turns and plays it forward."],
+  z_neutral:["{t} controlling the tempo.","Midfield contest. {o} pressing.","Cagey. Neither side committing.","Throw-in {t}. Worked short.","Loose ball in midfield. Scramble.","Ball bobbling around. {t}'s {n} tidies up.","{t} knocking it around. No urgency.","Both sides keeping the ball for now.","{t}'s {n} sprays it wide. Tempo drops.","{o} win it back. Sideways.","Nothing happening in this spell.","Stalemate in midfield.","{t} trying to find a rhythm. {o} denying space.","{t}'s {n} holds it up. Waiting for runners.","Neither side in control.","Physical battle in the center. No quarter given.","{t}'s {n} plays it backwards. Lacking options.","{t} probing without threatening.","{o} sitting back. {t} circulating.","{t}'s {n} clips one sideways. Patience."],
+  enter_box:["{t}'s {n} feeds it into the area! Dangerous!","Chance! {t}'s {n} in space inside the box!","{t} work it through! {n} in behind!","{n} picks it up in a dangerous position for {t}!","{t}'s {n} cuts inside and gets a sight of goal!","Lovely pass! {t}'s {n} is through on goal!","{t}'s {n} drives into the penalty area!","Threaded through! {t}'s {n} latches onto it!","One on one! {t}'s {n} bearing down on the keeper!","{t}'s {n} peels off the defender! Ball played in!","In behind! {t}'s {n} is clean through!","{t}'s {n} bursts into the box! This is a chance!","Slipped in! {t}'s {n} is free inside the area!","{t}'s {n} picks it up on the edge of the six-yard box!","Dangerous position! {t}'s {n} has the goal in his sights!"],
+  pressure:["Still {t}. Relentless pressure.","{o} under the cosh. {t} keep coming.","{t} camped in {o}'s half. Wave after wave.","{o} pinned deep. {t} won't relent.","{t} keep recycling. {o} can't escape.","{t} suffocating {o}. All hands defending.","{o} haven't touched the ball in minutes. {t} dominant.","{t} laying siege to {o}'s goal.","Bombardment from {t}. {o}'s defense under strain.","{t} camping in the final third. Feels inevitable.","All {t}. {o} clinging on.","{t} sustaining the pressure. {o} scrambling."],
+  counter:["COUNTER! {t} catch {o} up the pitch! {n} leads the charge!","{t} break at pace! {n} driving forward!","Long ball over the top! {t}'s {n} racing clear!","Turnover! {t}'s {n} sprints into space!","{t} hit {o} on the break! {n} carrying it!","Quick transition! {t}'s {n} has support!","Intercepted! {t}'s {n} launches the counter!","{o} caught out! {t}'s {n} breaks with pace!","{t} spring forward! {n} galloping into {o}'s half!","Three on two! {t}'s {n} leading the break!","{o} overcommitted! {t}'s {n} exploits the gap!","Released! {t}'s {n} in behind with acres!","Stolen! {t}'s {n} picks it off and drives forward!","{t} on the counter! {n} has options either side!","Rapid break from {t}! {n} surging through the middle!"],
+  sustain:["{t} working it around the edge of the box.","{t} keep probing. {o} holding firm.","{t}'s {n} looking for an opening. Recycled.","Patient from {t}. Waiting for the gap.","{t}'s {n} tries to thread it through. Blocked.","{t} shifting it side to side. {o} staying compact.","{t}'s {n} feints one way, goes the other. Still blocked.","{o} standing firm. {t} can't break through.","{t} patient in the final third. Looking for the killer ball.","{t}'s {n} drops a shoulder. The defender reads it.","Good defending from {o}. {t} recycling.","{t} recycling possession outside the box. {o} resolute.","{t}'s {n} looks for the channel. Cut out.","{t} knocking on the door. {o} barricading it.","{t}'s {n} whips it across the box. Cleared!"],
+  neutral:["{t} passing it around at the back. No rush.","Cagey spell. Neither side committing.","{t} probe down the flank. Cross blocked.","Midfield tussle. Every second ball contested.","{o} press high. {t} play through it.","{t} in {o}'s half. Searching for openings.","Half chance breaks down. {t}'s {n} loses possession.","Long ball from {o}. Headed away.","{t} building from the back. Methodical.","{t} trying to find a route through. {o} compact.","Sideways from {t}. Looking for the gap.","Ball out for a throw. {t} regroup.","Scrappy phase of play. Nobody in control.","{o} soaking up pressure. Well-organized.","{t}'s {n} tries a through ball. Intercepted.","Lots of {o} bodies behind the ball.","Quiet passage. {t} keeping the ball without penetrating.","Midfield pinball. Neither team in command.","{t} switching play from side to side.","Tactical foul from {o}. Breaks {t}'s momentum.","{o} sitting deep. Inviting {t} onto them.","Nothing doing for {t}. {o} have numbers back.","Getting heated in midfield. Referee has a word.","End-to-end briefly. Ball bouncing between halves.","Drinks break. Managers issuing instructions."],
+  time_waste:["{t} taking their time over the restart.","{t} in absolutely no hurry.","Ball boy taking his time. {t} happy to wait.","{t} slowing the game down. {o} frustrated.","{t} running down the clock. Crowd getting restless."],
+  press_won:["{t} press and win it back!","Turnover! {t}'s pressing pays off!","{t} win the ball high up the pitch!","Good press from {t}! Won the ball!","{t} force the error! Ball turned over!","High press from {t} forces the turnover!"],
+  chance_magic:["{t}'s {n} nutmegs the defender and bursts through!","{t}'s {n} drops a shoulder, cuts inside and drives into the box!","{t}'s {n} flicks it over the defender's head and collects! Through on goal!","{t}'s {n} beats two men with a drag-back and accelerates clear!","{t}'s {n} dances past three challenges on a mazy dribble!","{t}'s {n} spins away from the marker with a Cruyff turn! Space ahead!","{t}'s {n} rolls the ball through the defender's legs and races on!","{t}'s {n} chops inside off the right and leaves the fullback for dead!","{t}'s {n} knocks it past the defender and wins the footrace!","{t}'s {n} takes on two with quick feet and emerges in space!","{t}'s {n} feints left, shifts right, and surges past the last man!","{t}'s {n} picks up the ball on the halfway line and drives at the defense!"],
+  trap_beaten:["⚡ {t}'s {n} times the run perfectly! Clean through behind the high line!","⚡ {t}'s {n} stays onside and latches onto the through ball! One on one!","⚡ {t}'s {n} beats the offside trap! Sprints clear into the channel!","⚡ Ball over the top and {t}'s {n} is in behind! The trap has failed!","⚡ {t}'s {n} peels off the last defender and collects! Racing through on goal!","⚡ {t}'s {n} holds the run and goes! Past the high line and clear!"],
+  clearance_edge:["{o} clear, but only to the edge.","Headed out by {o}. Ball at the edge of the box.","{o} can't clear their lines properly. Ball falls loose.","Last-ditch clearance from {o}. Not convincing.","{o} scramble it away. Still in their half.","Cleared under pressure by {o}. Just about.","Booted away by {o}. Not out of danger yet.","{o} hack it clear. Temporary relief."],
+  clearance_mid:["Cleared by {o}. Midfield.","{o} win the ball and clear it long.","Headed out by {o}. Back in the middle third.","{o} deal with it comfortably. Ball in midfield.","Cleared to halfway by {o}.","Strong defending from {o}. Cleared."],
+  transition:["{o} win it and break forward.","Turnover. {o} have the ball.","{t} lose it in midfield. {o} advance.","Loose ball falls to {o}. {t} retreating.","{t} lose it cheaply. {o} looking to exploit.","{o} win it back in the middle."],
+  long_ball:["{t} go direct. Second ball contested.","{t} play it long. {o} head it away.","{t} bypass the midfield. Ball launched forward.","{t} send it long. Aerial battle."],
 };
-
-// ═══ ZONE COMMENTARY ═════════════════════════════════════════════════════════
-const CZ = {
-  buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {t}'s {n} looks up.","{t} probing through the middle. {n} involved.","{t}'s {n} carries it forward. Space ahead.","Ball switched by {t}. {n} picks it up wide.","{t} patient. {t}'s {n} picks the pass.","Good move from {t}. {n} advances.","{n} plays a one-two and breaks into {o}'s half.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} receives and turns.","Neat combination play from {t}. {n} carrying it forward.","{t}'s {n} clips it over the top. {t} advancing.","{t}'s {n} plays a diagonal into space. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the first man and drives on.","{t} overloading the right side. {n} involved.","{t}'s {n} drops deep to collect, spins, and plays it forward.","Sharp pass from {t}'s {n}. {t} through the first line of pressure.","Lovely touch from {t}'s {n}. {t} advancing with purpose now.","Crossfield ball from {t}'s {n}. Play shifted to the other flank."],
-  neutral:["{t} controlling the tempo.","Midfield contest. {o} pressing.","Cagey. Neither side committing.","Throw-in {t}. Worked short.","Loose ball in midfield. Scrappy.","Ball bobbling in midfield. {t}'s {n} recycles.","{t} knocking it around. No urgency.","Both sides happy to keep possession.","{t}'s {n} sprays it wide. Pace slows.","{o} win it back. Sideways. {t} press to recover.","Brief spell of {t} possession. Nothing doing.","Stop-start in the middle third.","Stalemate in the middle of the park.","{t} trying to find the tempo. {o} denying them space.","{t}'s {n} holds it up. Looking for support.","Neither side able to establish a foothold.","{o} content to sit and wait. {t} circulating.","{t}'s {n} plays it backwards. Lacking ideas.","{t} with the ball but no penetration.","Physical battle in the middle. No quarter given."],
-  enter_box:["{t}'s {n} feeds it into the area!","Dangerous position. {t}'s {n} inside the box!","{t} work it through! {n} in behind!","{n} picks it up in a dangerous area for {t}!","{t}'s {n} cuts inside and gets a shot away!","Lovely pass and {t}'s {n} is through on goal!","{t}'s {n} drives into the penalty area!","Chance! {t}'s {n} is in space in the box!","Threaded through! {t}'s {n} latches onto it!","One on one! {t}'s {n} bearing down on goal!","{t}'s {n} peels off the back. Ball played in!","In behind! {t}'s {n} is clean through!"],
-  pressure:["Still {t}. Relentless pressure.","{o} under the cosh. {t} keep coming.","{t} camped in {o}'s box. Sustained pressure.","{o} pinned back. {t} won't let up.","{t} keep recycling. {o} can't get out.","Wave after wave from {t}. {o} hanging on.","{t} suffocating {o}. Backs to the wall.","{o} haven't touched the ball in minutes. {t} dominant.","{t} laying siege. It feels like a matter of time.","Bombardment from {t}. {o}'s defense under enormous pressure."],
-  counter:["COUNTER! {t} catch {o} high up the pitch! {n} leads the break!","{t} break at pace! {n} drives forward!","Long ball over the top! {t}'s {n} is through!","Turnover! {t}'s {n} sprints into space!","{t} hit {o} on the break! {n} racing clear!","Quick transition from {t}! {n} has numbers forward!","Intercepted! {t}'s {n} launches the counter!","{o} caught out! {t}'s {n} breaks with pace!","{t} spring the trap! {n} galloping upfield!","Three on two! {t}'s {n} carrying it on the counter!","{o} overcommitted! {t}'s {n} exploits the space!","Released in behind! {t}'s {n} with acres of space!"],
-  sustain:["{t} working it around the edge of the box.","{t} keep probing. {o} holding firm.","{t}'s {n} looks for an opening. Recycled.","Patient from {t}. Waiting for the gap.","{t}'s {n} tries to thread it through. Blocked.","{t} moving it side to side. {o} staying compact.","{t}'s {n} shifts it onto the other foot. Blocked.","{o} standing firm. {t} can't find a way through.","{t} patient in possession. Looking for the killer ball.","{t}'s {n} drops a shoulder. Defender stays with him.","Good defending from {o}. {t} recycling possession.","{t} trying to create something from nothing. {o} resolute."],
-};
+const GOAL_TPS=new Set(["goal","corner_goal","own_goal","deflection","gk_error","pen_scored","goal_ctr","goal_lr"]);
+function comm(rng,tp,v,s){const pool=CM[tp];if(!pool||!pool.length)return fill(tp,v||{});let txt=fill(pick(rng,pool),v||{});if(GOAL_TPS.has(tp)&&s&&v&&v.tk){const i=v.tk==="home"?0:1,tot=s.score[0]+s.score[1],diff=s.score[i]-s.score[1-i];if(tot===1)txt+=pick(rng,CM.gx_opener);else if(diff===0)txt+=fill(pick(rng,CM.gx_equal),v);else if(diff===1)txt+=fill(pick(rng,CM.gx_lead),v);else if(diff>1)txt+=fill(pick(rng,CM.gx_extend),v);else if(diff===-1)txt+=fill(pick(rng,CM.gx_pull),v);else txt+=fill(pick(rng,CM.gx_consol),v);if(s.minute>=85||(s.phase&&s.phase.includes("stoppage")))txt+=pick(rng,CM.gx_late);}return txt;}
 
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
 function lmDisplayMin(phase, min, se) { const b = { first_half_stoppage:45, second_half_stoppage:90, et_first_stoppage:105, et_second_stoppage:120 }[phase]; return b !== undefined ? `${b}+${se}` : `${min}`; }
@@ -199,13 +226,6 @@ function applyStrategy(mod, strat) {
     corn: mod.corn * (st.setPieces === 1 ? 1.2 : 1.0), maxT: mod.maxT, minT: mod.minT,
   };
 }
-function lmGoalContext(s, rng, atk, nm) {
-  const atkI = atk === "home" ? 0 : 1, tot = s.score[0] + s.score[1], diff = s.score[atkI] - s.score[1 - atkI];
-  let ctx = "";
-  if (tot === 1) ctx = pick(rng, C.goal_opener); else if (diff === 0) ctx = fill(pick(rng, C.goal_equalizer), {t: nm[atk]}); else if (diff === 1) ctx = fill(pick(rng, C.goal_lead), {t: nm[atk]}); else if (diff > 1) ctx = fill(pick(rng, C.goal_extend), {t: nm[atk]}); else if (diff === -1) ctx = fill(pick(rng, C.goal_pullback), {t: nm[atk]}); else ctx = fill(pick(rng, C.goal_consolation), {t: nm[atk]});
-  if (s.minute >= 85 || s.phase.includes("stoppage")) ctx += pick(rng, C.goal_late);
-  return ctx;
-}
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
@@ -216,15 +236,15 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
-    scorer.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],scorer.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
-    s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + fill(pick(rng,C.corner_goal),{t:nm[atk],o:nm[def],n:scorer.name}) + lmGoalContext(s,rng,atk,nm)});
+    scorer.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],scorer.name,0);if(a)a.rating=Math.max(3,Math.min(10,+(a.rating+0.6*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
+    s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + comm(rng,"corner_goal",{t:nm[atk],o:nm[def],n:scorer.name,tk:atk},s)});
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
-    s.events.push({min:dm, type:"save", team:atk, text:"\uD83E\uDDE4 " + fill(pick(rng,C.corner_save),{t:nm[atk],o:nm[def],n:scorer.name})});
+    s.events.push({min:dm, type:"save", team:atk, text:"\uD83E\uDDE4 " + comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.name},s)});
     if (rng.u() < 0.25) {
       s.stats[atk].corners++;
-      s.events.push({min:dm, type:"corner", team:atk, text:"\uD83C\uDFF4 Another corner " + nm[atk] + "."});
+      s.events.push({min:dm, type:"corner", team:atk, text:"\uD83C\uDFF4 "+comm(rng,"corner_again",{t:nm[atk]},s)});
       lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm);
     } else { s.possession = def; s.ball = 2; s.pressure = 0; }
   } else if (r < 0.18) {
@@ -232,13 +252,13 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     s.stats[atk].shots++;
     if (rng.u() < 0.12) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      s.events.push({min:dm, type:"woodwork", team:atk, text:"\uD83E\uDEA8 Header off the bar! "+nm[atk]+"'s "+scorer.name+" can't believe it."});
+      s.events.push({min:dm, type:"woodwork", team:atk, text:"\uD83E\uDEA8 "+comm(rng,"woodwork_hdr",{t:nm[atk],o:nm[def],n:scorer.name},s)});
     } else {
-      s.events.push({min:dm, type:"miss", team:atk, text:"\uD83D\uDCA8 " + fill(pick(rng,C.corner_miss),{t:nm[atk],o:nm[def],n:scorer.name})});
+      s.events.push({min:dm, type:"miss", team:atk, text:"\uD83D\uDCA8 " + comm(rng,"corner_miss",{t:nm[atk],o:nm[def],n:scorer.name},s)});
     }
     s.possession = def; s.ball = 2; s.pressure = 0;
   } else if (r < 0.43) {
-    s.events.push({min:dm, type:"neutral", text:fill(pick(rng,C.corner_retain),{t:nm[atk],o:nm[def]})});
+    s.events.push({min:dm, type:"neutral", text:comm(rng,"corner_retain",{t:nm[atk],o:nm[def]},s)});
     s.ball = atk === "home" ? 3 : 1; s.pressure = Math.min(s.pressure + 1, 4);
   } else {
     // Clear — 2% chance of own goal
@@ -248,15 +268,15 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
       if (ogPlayer) {
         s.score[atk === "home" ? 0 : 1]++;
         if(s.goalscorers)s.goalscorers[atk].push({name:ogPlayer.name,min:dm,method:"og",ogTeam:nm[def]});
-        ogPlayer.rating=Math.max(1,+(ogPlayer.rating-0.6).toFixed(1));
-        s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + fill(pick(rng,C.own_goal),{t:nm[atk],o:nm[def],n:ogPlayer.name}) + lmGoalContext(s,rng,atk,nm)});
+        ogPlayer.rating=Math.max(3,+(ogPlayer.rating-1.0).toFixed(1));
+        s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + comm(rng,"own_goal",{t:nm[atk],o:nm[def],n:ogPlayer.name,tk:atk},s)});
         s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 3;
       } else {
-        s.events.push({min:dm, type:"clearance", text:fill(pick(rng,C.corner_clear),{t:nm[atk],o:nm[def]})});
+        s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
         s.possession = def; s.ball = 2; s.pressure = 0;
       }
     } else {
-      s.events.push({min:dm, type:"clearance", text:fill(pick(rng,C.corner_clear),{t:nm[atk],o:nm[def]})});
+      s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
       s.possession = def; s.ball = 2; s.pressure = 0;
     }
   }
@@ -274,12 +294,9 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     const isDeflection = rng.u() < 0.08;
     const finalMethod = isDeflection ? "deflection" : (method||null);
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
-    shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(ast)ast.rating=Math.max(1,Math.min(10,+(ast.rating+0.5*assistAtkMult(ast.atkW)*aCtx).toFixed(2)));}
-    s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(1,+(p.rating-0.12).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.04).toFixed(2));});
-    let txt;
-    if (isDeflection) { txt = fill(pick(rng,C.deflection),{t:nm[atk],o:nm[def],n:shooter.name}); }
-    else { txt = fill(pick(rng,C.goal),{t:nm[atk],o:nm[def],n:shooter.name}); }
-    txt += lmGoalContext(s, rng, atk, nm);
+    shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(ast)ast.rating=Math.max(3,Math.min(10,+(ast.rating+0.6*assistAtkMult(ast.atkW)*aCtx).toFixed(2)));}
+    s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.15).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(2));});
+    const txt = isDeflection ? comm(rng,"deflection",{t:nm[atk],o:nm[def],n:shooter.name,tk:atk},s) : comm(rng,"goal",{t:nm[atk],o:nm[def],n:shooter.name,tk:atk},s);
     s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+txt});
     s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
   } else if (roll < goalP+saveP) {
@@ -288,25 +305,23 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     if (gkErrRoll < 0.012) {
       // GK error → goal
       s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:"gk-error"});
-      shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],shooter.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
-      const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.max(1,+(gk.rating-0.8).toFixed(1));
-      s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.08).toFixed(1));});
-      let txt = fill(pick(rng,C.gk_error),{t:nm[atk],o:nm[def],n:shooter.name});
-      txt += lmGoalContext(s, rng, atk, nm);
-      s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+txt});
+      shooter.goals++;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[atk],shooter.name,0);if(a)a.rating=Math.max(3,Math.min(10,+(a.rating+0.6*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}
+      const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.max(3,+(gk.rating-0.8).toFixed(1));
+      s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(1));});
+      s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+comm(rng,"gk_error",{t:nm[atk],o:nm[def],n:shooter.name,tk:atk},s)});
       s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
       s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
       ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});
-      s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+fill(pick(rng,C.woodwork_save),{t:nm[atk],o:nm[def],n:shooter.name})});
-      if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Off the woodwork for a corner."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
+      s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+comm(rng,"woodwork_save",{t:nm[atk],o:nm[def],n:shooter.name},s)});
+      if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
       // Normal save
       s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});}
-      s.events.push({min:dm,type:"save",team:atk,text:"\uD83E\uDDE4 "+fill(pick(rng,C.save),{t:nm[atk],o:nm[def],n:shooter.name})});
-      if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Corner "+nm[atk]+"."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
+      s.events.push({min:dm,type:"save",team:atk,text:"\uD83E\uDDE4 "+comm(rng,"save",{t:nm[atk],o:nm[def],n:shooter.name},s)});
+      if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
         s.pressure=0;
@@ -320,12 +335,12 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     if (rng.u() < 0.18) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
       ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});
-      s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+fill(pick(rng,C.woodwork),{t:nm[atk],o:nm[def],n:shooter.name})});
-      if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Rebounds off the woodwork for a corner."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
+      s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+comm(rng,"woodwork",{t:nm[atk],o:nm[def],n:shooter.name},s)});
+      if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
-      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+fill(pick(rng,C.miss),{t:nm[atk],o:nm[def],n:shooter.name})});
-      if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 Behind for a corner! "+nm[atk]+"."});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
+      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.name},s)});
+      if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
         s.pressure=0;
@@ -341,15 +356,15 @@ function lmHandleCard(s, rng, dm, team, fouler, nm, cardChance) {
   if (rng.u() >= cardChance) return;
   if (rng.u() < 0.015 && s.players[team].length > 7) {
     s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
-    s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+fill(pick(rng,C.straight_red),{t:nm[team],n:fn,c:s.players[team].length})});
+    s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+comm(rng,"straight_red",{t:nm[team],n:fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
   } else if (s.booked[team].includes(fn)) {
     s.stats[team].yellows++; s.stats[team].reds++; s.stats[team].secondYellows=(s.stats[team].secondYellows||0)+1; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
-    s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+fill(pick(rng,C.second_yellow),{t:nm[team],n:fn,c:s.players[team].length})});
+    s.events.push({min:dm,type:"red",team,text:"\uD83D\uDFE5 "+comm(rng,"second_yellow",{t:nm[team],n:fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
   } else {
     s.stats[team].yellows++; s.booked[team].push(fn); ratePlayer(s.players[team],fn,-0.3); {const yp=s.players[team].find(p=>p.name===fn);if(yp)yp.yc++;}
-    s.events.push({min:dm,type:"yellow",team,text:"\uD83D\uDFE8 Yellow. "+nm[team]+"'s "+fn+"."});
+    s.events.push({min:dm,type:"yellow",team,text:"\uD83D\uDFE8 "+comm(rng,"yellow",{t:nm[team],n:fn},s)});
     s.stoppageBank+=30;
   }
 }
@@ -389,7 +404,7 @@ function lmSimMinute(s, rng, home, away) {
       const twProb = poSt.timeWasting === 2 ? 0.45 : 0.25;
       if (rng.u() < twProb) {
         s.stoppageBank += poSt.timeWasting === 2 ? 25 : 15;
-        s.events.push({min:dm, type:"neutral", text:pick(rng, [nm[po]+" taking their time over the restart.", nm[po]+" in no hurry.", "Ball boy taking his time. "+nm[po]+" happy to wait."])});
+        s.events.push({min:dm, type:"neutral", text:comm(rng,"time_waste",{t:nm[po],o:nm[po==="home"?"away":"home"]},s)});
         if (poSt.timeWasting === 2 && rng.u() < 0.025) { const waster = pickPlayer(rng, s.players[po], "foul"); lmHandleCard(s, rng, dm, po, waster, nm, 1.0); }
         return;
       }
@@ -399,7 +414,7 @@ function lmSimMinute(s, rng, home, away) {
   // Creative freedom — brilliant chance (expressive: 4% chance to skip to shooting zone)
   if (poSt.creativity === 1 && rng.u() < 0.04) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    s.events.push({min:dm, type:"chance", team:po, text:"\u2728 Moment of magic from "+nm[po]+"'s "+pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal").name+"! Through on goal!"});
+    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");s.events.push({min:dm, type:"chance", team:po, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.name},s)});}
     lmResolveShot(s, rng, dm, po, op, poE, opE, nm);
     return;
   }
@@ -411,7 +426,7 @@ function lmSimMinute(s, rng, home, away) {
   const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
   if(pressChance>0&&rng.u()<pressChance){
     s.possession=op;s.possCount[op]++;
-    s.events.push({min:dm,type:"press",text:nm[op]+" press and win it back."});
+    s.events.push({min:dm,type:"press",text:comm(rng,"press_won",{t:nm[op]},s)});
     return;
   }
   s.possCount[po]++;
@@ -430,7 +445,7 @@ function lmSimMinute(s, rng, home, away) {
     s.stats[op].fouls++;
     if(dg===0&&rng.u()<0.35){
       // Penalty — zone-based
-      s.events.push({min:dm,type:"penalty",team:po,text:"\uD83C\uDFAF PENALTY! Foul by "+nm[op]+"'s "+fouler.name+"!"});s.stoppageBank+=90;s.stats[po].penalties++;
+      s.events.push({min:dm,type:"penalty",team:po,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.name},s)});s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
       const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty");
       const skillF2=Math.min(1,poE/85+TIER_PEN[taker.tier||0]);
@@ -445,26 +460,26 @@ function lmSimMinute(s, rng, home, away) {
       s.penVisual={zone:zone2,dive:dive2,result:result2,name:taker.name,team:po,tName:nm[po],min:dm};
       if(isMiss2){
         s.stats[po].shots++;
-        ratePlayer(s.players[po],taker.name,-0.5);s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+fill(pick(rng,C.pen_missed),{t:nm[po],n:taker.name})});
+        ratePlayer(s.players[po],taker.name,-0.5);s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.name},s)});
         s.possession=op;s.pressure=0;
       }else if(isSave2){
         s.stats[po].shots++;s.stats[po].onTarget++;
-        ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.6).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+fill(pick(rng,C.pen_saved),{t:nm[po],n:taker.name})});
-        if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Rebound cleared for a corner!"});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
+        ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.name},s)});
+        if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[po]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
         else{s.possession=op;s.pressure=0;}
       }else{
         s.score[po==="home"?0:1]++;s.stats[po].shots++;s.stats[po].onTarget++;
         if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
-        s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(1,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(1,+(p.rating-0.05).toFixed(1));});
-        s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+fill(pick(rng,C.pen_scored),{t:nm[po],n:taker.name})+lmGoalContext(s,rng,po,nm)});
+        s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.05).toFixed(1));});
+        s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+comm(rng,"pen_scored",{t:nm[po],n:taker.name,tk:po},s)});
         s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;
       }
       return;
     }
-    s.events.push({min:dm,type:"foul",team:op,text:"\u26A0\uFE0F Foul by "+fouler.name+". Free kick "+nm[po]+"."});s.stoppageBank+=15;
-    ratePlayer(s.players[op],fouler.name,-0.05);lmHandleCard(s,rng,dm,op,fouler,nm,0.28*tackleCardMod);
+    s.events.push({min:dm,type:"foul",team:op,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.name,o:nm[po]},s)});s.stoppageBank+=15;
+    ratePlayer(s.players[op],fouler.name,-0.1);lmHandleCard(s,rng,dm,op,fouler,nm,0.28*tackleCardMod);
     // Free kick shot in dangerous positions
-    if(dg<=1&&rng.u()<0.18){s.stats[po].shots++;const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");s.events.push({min:dm,type:"neutral",text:fill(pick(rng,C.free_kick),{t:nm[po],n:fkShooter.name})});}
+    if(dg<=1&&rng.u()<0.18){s.stats[po].shots++;const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");s.events.push({min:dm,type:"neutral",text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.name},s)});}
     else if(dg>1)s.ball+=dir; // free kick advances position
     return;
   }
@@ -472,7 +487,7 @@ function lmSimMinute(s, rng, home, away) {
   // === SHOOTING ZONE (dg===0) ===
   if(dg===0){
     s.pressure++;
-    if(s.pressure>1)s.events.push({min:dm,type:"press",text:fill(pick(rng,CZ.pressure),{t:nm[po],o:nm[op]})});
+    if(s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
     const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? TIER_DEF_SHOT[p.tier || 0] : 0), 0);
     let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
@@ -480,17 +495,17 @@ function lmSimMinute(s, rng, home, away) {
     if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm);return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
-    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return fill(pick(rng,CZ.sustain),{t:nm[po],o:nm[op],n:sp.name});})()});return;}
+    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});return;}
     // Cleared
     s.possession=op;s.pressure=0;
     const defR=opE/(poE+opE),cl=rng.u();
-    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Cleared for a corner! "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;s.events.push({min:dm,type:"clearance",text:nm[op]+" clear, but only to the edge."});}}
-    else if(cl<0.70-0.20*defR){s.ball=2;s.events.push({min:dm,type:"clearance",text:"Cleared by "+nm[op]+". Midfield."});}
+    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op]},s)});}}
+    else if(cl<0.70-0.20*defR){s.ball=2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op]},s)});}
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+fill(pick(rng,CZ.counter),{t:nm[op],o:nm[po],n:(()=>{const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);return cp2.name;})()})});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
-      else s.events.push({min:dm,type:"clearance",text:nm[op]+" clear it long. Transition."});
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      else s.events.push({min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
     }
     return;
   }
@@ -502,15 +517,15 @@ function lmSimMinute(s, rng, home, away) {
     const lrScorer=pickPlayer(rng,s.players[po],"longGoal");const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[po],lrScorer.name,0);if(a)a.rating=Math.max(1,Math.min(10,+(a.rating+0.5*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+nm[po]+"'s "+lrScorer.name+" fires from distance! GOAL!"+lmGoalContext(s,rng,po,nm)});s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
-    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 Long-range effort from "+nm[po]+"'s "+lrScorer.name+". "+nm[op]+" keeper saves."});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Corner "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
-    else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+nm[po]+"'s "+lrScorer.name+" lets fly from range. Wide."});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Behind for a corner! "+nm[po]+"."});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));const a=assistPlayer(rng,s.players[po],lrScorer.name,0);if(a)a.rating=Math.max(3,Math.min(10,+(a.rating+0.6*assistAtkMult(a.atkW)*aCtx).toFixed(2)));}s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+comm(rng,"goal_lr",{t:nm[po],n:lrScorer.name,tk:po},s)});s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
+    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 "+comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.name},s)});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
+    else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+comm(rng,"miss_lr",{t:nm[po],n:lrScorer.name},s)});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
   }
   // Standalone corner from cross (4% in attacking territory)
   if(dg<=2&&rng.u()<0.04*poM.corn){
     s.stats[po].corners++;
-    s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 Cross blocked! Corner "+nm[po]+"."});
+    s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});
     lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);
     return;
   }
@@ -538,35 +553,35 @@ function lmSimMinute(s, rng, home, away) {
     if(nd<=1&&rng.u()<offsideRate){
       if (dlBeh === 2 && rng.u() < 0.15) {
         s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-        s.events.push({min:dm, type:"chance", team:po, text:"\u26A1 Offside trap beaten! "+nm[po]+"'s "+pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name+" is through!"});
+        {const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");s.events.push({min:dm, type:"chance", team:po, text:"\u26A1 "+comm(rng,"trap_beaten",{t:nm[po],n:tb.name},s)});}
         lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter");
         return;
       }
-      s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+fill(pick(rng,C.offside),{t:nm[po],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name})});return;
+      s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return fill(pick(rng,CZ.enter_box),{t:nm[po],o:nm[op],n:cp.name});})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
-    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");if(rng.u()<0.4)ratePlayer(s.players[po],bp.name,0.08);return fill(pick(rng,CZ.buildup),{t:nm[po],o:nm[op],n:bp.name});})()});
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");if(rng.u()<0.4)ratePlayer(s.players[po],bp.name,0.08);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
-    s.events.push({min:dm,type:"neutral",text:fill(pick(rng,CZ.neutral),{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name})});
+    s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return fill(pick(rng,CZ.enter_box),{t:nm[po],o:nm[op],n:cp.name});})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
-    else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:nm[po]+" play it long. Win the second ball."});}
-    else{s.possession=op;s.events.push({min:dm,type:"clearance",text:nm[po]+" play it long. Headed away by "+nm[op]+"."});}
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
+    else{s.possession=op;s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,text:"\u26A0\uFE0F Foul by "+fouler.name+". Free kick "+nm[po]+"."});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
+    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.name,o:nm[po]},s)});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
     s.possession=op;
     const ctrP=(dg<=2?0.14:0.06)*opM.ctr;
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+fill(pick(rng,CZ.counter),{t:nm[op],o:nm[po],n:(()=>{const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);return cp2.name;})()})});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
-      else s.events.push({min:dm,type:"counter",text:nm[op]+" win it and break forward."});
-    }else s.events.push({min:dm,type:"neutral",text:nm[po]+" lose it. "+nm[op]+" have the ball."});
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      else s.events.push({min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
+    }else s.events.push({min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
   }
   // Stamina drain
   for (const side of ["home","away"]) {
@@ -620,12 +635,15 @@ function lmSimMinute(s, rng, home, away) {
         s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
-        s.events.push({min:dm,type:"injury",team:side,text:"\uD83C\uDFE5 "+sn+"'s "+injured.name+" goes down injured."+(wasBooked ? " Was on a yellow." : "")+" Forced substitution."});
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+sn+"'s "+injured.name+" goes down injured."+(wasBooked ? " Was on a yellow." : "")});
+        const subOn = (()=>{ const b=s.bench[side]; if(b.length===0)return null; const outIdx=b.findIndex(p=>p.pos!=="GK"); if(outIdx===-1)return null; return b.splice(outIdx,1)[0]; })();
+        if (subOn) { subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn); }
+        s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+(subOn?subOn.name:"sub")+". Forced substitution."});
       } else {
         {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
         if (s.booked[side].includes(injured.name)) s.booked[side] = s.booked[side].filter(p => p !== injured.name);
         s.stats[side].injuriesNoSub++;
-        s.events.push({min:dm,type:"red",team:side,text:"\uD83D\uDE91 "+sn+"'s "+injured.name+" goes down injured. No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+sn+"'s "+injured.name+" goes down injured. No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
       }
     }
   }
@@ -641,29 +659,28 @@ function lmSimMinute(s, rng, home, away) {
       const pct = side === "home" ? ph/pt : pa/pt;
       const sd = side === "home" ? s.score[0]-s.score[1] : s.score[1]-s.score[0];
       const op = side === "home" ? "away" : "home";
-      // Minimal team drift (down from 0.04/0.02 per 5min to near-zero)
-      if (sd > 0) s.players[side].forEach(p => { p.rating = Math.min(10, +(p.rating + 0.008).toFixed(2)); });
-      if (sd < 0) s.players[side].forEach(p => { p.rating = Math.max(1, +(p.rating - 0.004).toFixed(2)); });
+      if (sd > 0) s.players[side].forEach(p => { p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2)); });
+      if (sd < 0) s.players[side].forEach(p => { p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2)); });
       // Position-specific individual adjustments
       s.players[side].forEach(p => {
         // GK: reward for clean intervals, penalize for being beaten often
         if (p.pos === "GK") {
           const gaConceded = side === "home" ? s.score[1] : s.score[0];
           if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.07).toFixed(2));
-          if (pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
+          if (pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         if (p.pos === "DEF") {
           const gaConceded = side === "home" ? s.score[1] : s.score[0];
           if (gaConceded === 0 && s.minute >= 20) p.rating = Math.min(10, +(p.rating + 0.06).toFixed(2));
-          if (s.stats[op].onTarget > s.minute/10) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
+          if (s.stats[op].onTarget > s.minute/10) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         if (p.pos === "MID") {
           if (pct > 0.55) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
-          if (pct < 0.42) p.rating = Math.max(1, +(p.rating - 0.02).toFixed(2));
+          if (pct < 0.42) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         // FWD: penalize quiet games (no goals, no assists, low involvement)
         if (p.pos === "FWD" && s.minute >= 50) {
-          if (p.goals === 0 && p.assists === 0 && p.rating <= 6.2) p.rating = Math.max(1, +(p.rating - 0.03).toFixed(2));
+          if (p.goals === 0 && p.assists === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.03).toFixed(2));
         }
       });
       // Individual involvement bonus: random player from possession team gets credit
@@ -744,8 +761,8 @@ function lmAdvance(prev, rng, home, away, mutate) {
       p[tk].push({scored,name:taker.name,zone,dive,result});
       const hScore=p.home.filter(k=>k.scored).length, aScore=p.away.filter(k=>k.scored).length;
       const penScore="("+hScore+"\u2013"+aScore+")";
-      if(scored){s.events.push({min:"PEN",type:"goal",team:tk,text:"\u26BD "+fill(pick(rng,C.pen_scored),{t:tName,n:taker.name})+" "+penScore});}
-      else{const penTpl=isMiss?C.pen_missed:C.pen_saved;s.events.push({min:"PEN",type:"pen_miss",team:tk,text:"\u274C "+fill(pick(rng,penTpl),{t:tName,n:taker.name})+" "+penScore});}
+      if(scored){s.events.push({min:"PEN",type:"goal",team:tk,text:"\u26BD "+comm(rng,"pen_scored",{t:tName,n:taker.name},s)+" "+penScore});}
+      else{s.events.push({min:"PEN",type:"pen_miss",team:tk,text:"\u274C "+comm(rng,isMiss?"pen_missed":"pen_saved",{t:tName,n:taker.name},s)+" "+penScore});}
       p.nextTeam=ok;const winner=lmCheckPenDecided(p.home,p.away);if(winner){p.decided=true;p.winner=winner;s.phase="finished";const wName=winner==="home"?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC6 "+wName+" win on penalties! "+s.score[0]+"\u2013"+s.score[1]+" ("+p.home.filter(k=>k.scored).length+"\u2013"+p.away.filter(k=>k.scored).length+" PENS)"});}break;}
     default:break;
   }
@@ -763,7 +780,7 @@ function lmBtnLabel(s) {
 
 
 // ═══ INSTANT SIM ═════════════════════════════════════════════════════════════
-function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat) {
+function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad) {
   const home={name:"H",skill:homeSkill},away={name:"A",skill:awaySkill};
   let s=createMatchState();s.forceResult=!!forceResult;
   s.styles={home:homeStyle||"balanced",away:awayStyle||"balanced"};
@@ -771,27 +788,34 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   s.homeAdv=homeAdv||null;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
-  const mkSq = (form) => { const all = buildSquad(form || "4-3-3", null).map(p => ({...p, rating:6, goals:0, assists:0, yc:0, rc:false})); return { starters: all.filter(p => !p.bench), bench: all.filter(p => p.bench) }; };
-  const hSq = mkSq(homeForm), aSq = mkSq(awayForm);
-  s.players={home:hSq.starters,away:aSq.starters};
-  s.bench={home:hSq.bench,away:aSq.bench};
+  const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  if (homeSquad && awaySquad) {
+    s.players={home:homeSquad.filter(p=>!p.bench).map(mapP),away:awaySquad.filter(p=>!p.bench).map(mapP)};
+    s.bench={home:homeSquad.filter(p=>p.bench).map(mapB),away:awaySquad.filter(p=>p.bench).map(mapB)};
+  } else {
+    const hAll = buildSquad(homeForm || "4-3-3", null), aAll = buildSquad(awayForm || "4-3-3", null);
+    s.players={home:hAll.filter(p=>!p.bench).map(mapP),away:aAll.filter(p=>!p.bench).map(mapP)};
+    s.bench={home:hAll.filter(p=>p.bench).map(mapB),away:aAll.filter(p=>p.bench).map(mapB)};
+  }
   s.events={length:0,push(){this.length++;}};
   lmAdvance(s,rng,home,away,true);let ftS=null;
   for(let i=0;i<300&&s.phase!=="finished";i++){if(s.phase==="full_time"&&!ftS)ftS=[...s.score];lmAdvance(s,rng,home,away,true);}
   if(!ftS)ftS=[...s.score];
   const penH=s.penalties?.home?.filter(k=>k?.scored).length||0,penA=s.penalties?.away?.filter(k=>k?.scored).length||0;
-  return{ftHome:ftS[0],ftAway:ftS[1],et:(s.score[0]!==ftS[0]||s.score[1]!==ftS[1])?{home:s.score[0]-ftS[0],away:s.score[1]-ftS[1]}:null,pen:s.penalties?.decided?{home:penH,away:penA}:null,cards:{home:{yellows:s.stats.home.yellows,reds:s.stats.home.reds,secondYellows:s.stats.home.secondYellows||0,injuries:s.stats.home.injuries},away:{yellows:s.stats.away.yellows,reds:s.stats.away.reds,secondYellows:s.stats.away.secondYellows||0,injuries:s.stats.away.injuries}}};
+  const allP = (side) => [...s.players[side], ...s.subbedOff[side]];
+  return{ftHome:ftS[0],ftAway:ftS[1],et:(s.score[0]!==ftS[0]||s.score[1]!==ftS[1])?{home:s.score[0]-ftS[0],away:s.score[1]-ftS[1]}:null,pen:s.penalties?.decided?{home:penH,away:penA}:null,cards:{home:{yellows:s.stats.home.yellows,reds:s.stats.home.reds,secondYellows:s.stats.home.secondYellows||0,injuries:s.stats.home.injuries},away:{yellows:s.stats.away.yellows,reds:s.stats.away.reds,secondYellows:s.stats.away.secondYellows||0,injuries:s.stats.away.injuries}},playerData:{home:allP("home"),away:allP("away")}};
 }
 
 
-function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals) {
-  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat);
+function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad) {
+  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad);
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simInstantMatch(rng, awaySkill, homeSkill, true, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat);
+  const l2 = simInstantMatch(rng, awaySkill, homeSkill, true, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad);
   // Aggregate from bracket perspective: bracket-home total = leg1 home goals + leg2 away goals
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway; // away goals for tiebreaker
-  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards} };
+  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   // Tied on aggregate AND away goals — use ET/pens from leg 2 (swap perspective)
@@ -800,21 +824,31 @@ function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeFor
   return result;
 }
 
-function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat) {
-  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat);
-  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards} };
+function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad) {
+  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad);
+  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, playerData:{leg1:l1.playerData} };
 }
-function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals) {
+function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simInstantMatch(rng, awaySkill, homeSkill, true, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat);
+  const l2 = simInstantMatch(rng, awaySkill, homeSkill, true, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad);
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
-  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards} };
+  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   if (l2.et) { result.et = {home:l2.et.away, away:l2.et.home}; result.agg.home += l2.et.away; result.agg.away += l2.et.home; }
   if (l2.pen) { result.pen = {home:l2.pen.away, away:l2.pen.home}; }
   return result;
+}
+function filterSquad(squad, teamName, unavailSet) {
+  if (!squad) return null;
+  const kf = n => teamName + "|" + n;
+  const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
+  const av = unavailSet ? st.filter(p => !unavailSet.has(kf(p.name))) : st;
+  const bav = unavailSet ? bn.filter(p => !unavailSet.has(kf(p.name))) : bn;
+  const need = st.length - av.length;
+  const promoted = bav.slice(0, need).map(p => { const q = {...p}; delete q.bench; return q; });
+  return [...av, ...promoted, ...bav.slice(need)];
 }
 
 // ═══ HOME ADVANTAGE ══════════════════════════════════════════════════════════
@@ -1361,9 +1395,10 @@ function pickPlayer(rng, players, type) {
 
 function ratePlayer(players, name, delta) {
   const p = players.find(x => x.name === name);
-  if (p) p.rating = Math.max(1, Math.min(10, +(p.rating + delta).toFixed(1)));
+  if (p) p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
-const goalAtkMult = (atkW) => 0.9 + 0.6 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
+const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
+const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
 const goalCtxMult = (score, ti) => { const us=score[ti],them=score[1-ti],d=us-them; if(us===0&&them===0)return 1.15; if(d===-1)return 1.2; if(d===0)return 1.15; if(d>0)return Math.max(0.8,1.1-d*0.1); return 0.9; };
 function assistPlayer(rng, players, scorer, delta) {
@@ -1371,7 +1406,7 @@ function assistPlayer(rng, players, scorer, delta) {
   if (others.length === 0) return null;
   const a = pickPlayer(rng, others, "any");
   a.assists++;
-  a.rating = Math.max(1, Math.min(10, +(a.rating + (delta != null ? delta : 0.5)).toFixed(2)));
+  a.rating = Math.max(3, Math.min(10, +(a.rating + (delta != null ? delta : 0.6)).toFixed(2)));
   return a;
 }
 function parseTier(raw) { if (!raw) return {name:raw,tier:0}; const s=raw.trimEnd(); if (s.endsWith("[*]")) return {name:s.slice(0,-3).trim(),tier:2}; if (s.endsWith("[+]")) return {name:s.slice(0,-3).trim(),tier:1}; return {name:s,tier:0}; }
@@ -1404,144 +1439,32 @@ function buildSquad(formation, names) {
     for (let i = 0; i < dg[d]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "MID", atkW: atkGrad[idx] || 20 }); idx++; }
   for (let i = 0; i < dg[dg.length - 1]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "FWD", atkW: atkGrad[idx] || 48 }); idx++; }
   const benchPos = ["GK", "DEF", "MID", "MID", "FWD"];
-  const benchAtk = [0, 8, 25, 35, 60];
+  const benchAtk = [0, 8, 20, 25, 42];
   for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], bench: true, atkW: benchAtk[i] });
   sq.forEach(p => { const {name,tier} = parseTier(p.name); p.name = name; p.tier = tier; });
   return sq;
 }
 
 
-const PRESET_AVIUM_TSV = `REI	Reino	87	Tiki-Taka	4-3-3	Play Out of Defence	Much Shorter	Work Ball Into Box	Be More Disciplined	Be More Expressive	No Instruction	Never	Counter-Press	Hold Shape	Short	Much Higher	Much Higher	Offside Trap	Stay On Feet	X. Cienfuegos [*]	V. Peixoto [+]	I. Urrutia [+]	O. Montagut	R. Alvarenga	G. Valbuena	Y. Bengoetxea [*]	T. Candeias [+]	P. Puigcorbé [+]	M. Salcedo	B. Figueira	U. Izagirre	D. Quintana	J. Xirau	L. Escudero	N. Gouveia
-NCH	Nichirin	86	Wing Play	4-4-2	No Instruction	Shorter	Work Ball Into Box	Run At Defence	Be More Expressive	No Instruction	Sometimes	Regroup	Counter	Short	Higher	Standard	Drop Off	Stay On Feet	K. Ouyang	S. Segawa [+]	D. Takanashi [+]	G. Fija	A. Nagumo	T. Bashira	T. Mikado [+]	M. Kishima	L. Higashiyama [*]	G. Erdene [+]	S. Itoshi [*]	E. Sato	G. Nishigawa	K. Torigoe	W. Kon	H. Morimoto
-ALE	Alemannia	86	Tiki-Taka	4-2-3-1	Pass Into Space	More Direct	Shoot On Sight	Run At Defence	Be More Disciplined	No Instruction	Never	Counter-Press	Counter	Long	Much Higher	Higher	Step Up	Get Stuck In	K. Bernhard [+]	F. Gruber	V. Novotný	J. Van Antwerp [*]	J. Dvořák	T. Svoboda [+]	G. Dreesens	O. Černý	S. Boelens [+]	P. Procházka	F. Van Can [*]	M. Noack	R. Pietach	S. Reier	E. Lehner	D. Kunze
-VIC	Vicily	85	Counter	5-3-2	Play Out of Defence	Shorter	Work Ball Into Box	Be More Disciplined	Be More Disciplined	No Instruction	Constantly	Regroup	Hold Shape	Short	Standard	Standard	No Instruction	Stay On Feet	M. Rossi [+]	L. Squillaci [+]	A. Ferrari [+]	F. Castiglione [*]	G. Russo	D. Vivaldi	E. Bianchi	V. Zaccagni	S. Romano	R. Lucchese [*]	C. Colombo	P. Borromeo	T. Ricci	N. Donizetti	I. Esposito	U. Bellarmino
-ESU	E.S.U.	85	Gegenpress	3-4-3	Play Out of Defence	Standard	No Instruction	Run At Defence	No Instruction	No Instruction	Never	Counter-Press	Counter	Short	Higher	Higher	Step Up	No Instruction	S. Jackson	N. Vitale	M. Smith	E. Farnsworth [+]	C. Bauer	V. Moretti [+]	R. De Luca [*]	A. Anderson	T. Hawthorne [+]	D. Rossi	L. Vogel [*]	P. Turner	P. Klein	F. Hoffman	W. Bradford	S. Caruso
-ELV	Elvester	85	Wing Play	4-2-3-1	No Instruction	Shorter	Work Ball Into Box	Run At Defence	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Hold Shape	Short	Lower	Standard	Drop Off	Stay On Feet	J. Stanford [+]	O. Ashworth	H. Brown	W. Wetherby	C. Davies	T. Hargreaves [+]	G. Smith	A. Whitmore	M. Wright	L. Bardsley [*]	H. Caine [*]	R. Townsend	N. Hughes	S. Chadwick	D. Evans	F. Lancaster
-ARV	Arverne	84	Balanced	4-2-3-1	Pass Into Space	More Direct	No Instruction	Run At Defence	Be More Expressive	No Instruction	Sometimes	Regroup	Counter	No Instruction	Lower	Standard	Drop Off	No Instruction	F. Beaulieu	E. Delacroix	L. Bernard	M. Vasseur [+]	H. Dubois	G. Chardon	O. Desjardins [*]	C. Lemaitre	T. Durand	A. Blanc [+]	R. Gauthier [+]	M. Martin	N. Richard	V. Tardieu	B. Roux	P. Petit
-KAR	Karjania	81	Wing Play	4-3-3	Play Out of Defence	More Direct	Work Ball Into Box	Run At Defence	Be More Expressive	Play for Set Pieces	Never	Regroup	Counter	Long	Higher	Lower	Drop Off	Get Stuck In	A. Väisänen [+]	S. Helkanen	K. Yrjölä	E. Uusitalo [+]	P. Seppälä	K. Kaljurand [*]	J. Soosaar	O. Rástoš	M. Heikinnen	R. Duoŋgi	V. Petrovic [+]	J. Hämäläinen	O. Niskanen	T. Saarela	H. Karlsson	T. Puusepp
-HOL	Hollosend	81	Counter	4-2-3-1	Pass Into Space	More Direct	No Instruction	Run At Defence	Be More Expressive	No Instruction	Never	No Instruction	Counter	Long	Higher	Standard	No Instruction	No Instruction	C. Calhoun	L. Urdaneta	T. Uzcátegui [*]	W. Boone	E. Escalona	D. Landry	M. Betancourt	H. Hollis [+]	V. Vivas	B. Covington [+]	S. Arismendi	R. Vance	G. Quintero	A. Pickett	J. Beauregard	F. Machado
-ANA	Anahuac	81	Tiki-Taka	4-3-3	No Instruction	Shorter	Work Ball Into Box	Be More Disciplined	Be More Expressive	Play for Set Pieces	Sometimes	Counter-Press	Hold Shape	Short	Higher	Higher	Step Up	Stay On Feet	R. Rosario	J. Salamanca	C. Montoya	E. Arenas [+]	J. Vera	E. Luna	O. Pérez [+]	Á. Fernandez	R. Zapatero [*]	A. Villa	S. Guzmán	C. Acosta	J. Valencia	L. Rivas	O. Vico	A. Garza
-SKJ	Skjarnland	77	Balanced	4-4-2	Pass Into Space	Standard	Work Ball Into Box	Run At Defence	No Instruction	Play for Set Pieces	Never	No Instruction	Counter	Long	Higher	Standard	No Instruction	No Instruction	M. Andersson	K. Haugland	E. Hansen	O. Sjöberg [+]	L. Johansson	V. Tvedt	J. Olsen	A. Lundqvist [+]	S. Karlsson	H. Solberg [+]	P. Larsen	N. Nyquist	B. Eriksson	T. Kvamme	R. Pedersen	F. Wallin
-GEN	Genosa	77	Counter	4-1-2-1-2	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	Be More Expressive	No Instruction	Never	Regroup	Counter	Short	Standard	Standard	No Instruction	Stay On Feet	M. Nagy [+]	Z. Váradi	L. Kovács	B. Zsolnay	G. Tóth	A. Hegedűs	P. Szabó [*]	I. Kárpáti	D. Varga	F. Csikós	V. Szilágyi [+]	K. Bátori	J. Németh	T. Almási	R. Farkas	S. Kiss
-RUD	Rudania	76	Counter	5-3-2	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	I. Ivanov	V. Krestovsky	S. Smirnov	T. Oorzhak [+]	A. Razumovsky	M. Popov	K. Zvezdinsky [+]	N. Ayusheev	D. Kuznetsov [*]	E. Pobedonostsev	P. Sokolov	R. Safin	F. Chistyakov	I. Novikov	L. Vronsky	O. Yudin
-NKI	Kinshū	76	Gegenpress	4-1-4-1	Pass Into Space	More Direct	No Instruction	Run At Defence	Be More Expressive	Play for Set Pieces	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	Drop Off	No Instruction	D. Dhamarrandji [+]	K. Ikeda	G. Munyarryun	A. Gurruwiwi	N. Jungarrayi	O. Matsumoto [+]	L. Mununggurr	H. Tjapaltjarri	B. Wunungmurra	J. Kurosawa	M. Jakamarra [+]	F. Dhurrkay	P. Tjungurrayi	E. Matsumoto	R. Kngwarreye	I. Goto
-VER	The Verdanie	75	Gegenpress	4-3-3	No Instruction	Standard	No Instruction	Run At Defence	Be More Expressive	Play for Set Pieces	Never	Counter-Press	Counter	Short	Much Higher	Higher	Step Up	No Instruction	J. Duplessie	M. St. Laurent	C. Beaubari [+]	J. Montecard [+]	M. Pelletier	C. Roy	E. Floranco	M. Dubois [+]	E. Caracciolo	L. Kuzumaki	G. Belkacem	T. Breville	S. Morand	P. Rousseau	L. Vacherot	G. Alexandre
-SEL	Selmira	74	Counter	4-1-4-1	No Instruction	More Direct	Shoot On Sight	Run At Defence	Be More Expressive	Play for Set Pieces	Sometimes	Counter-Press	Counter	No Instruction	Higher	Standard	No Instruction	Get Stuck In	A. Aydın [+]	T. Kenaanoğlu	E. Polat	S. Sayda	M. Doğan	V. Surlu	Y. Koç	C. Kartaca	O. Çetin [+]	B. Balyoz	H. Şen	D. Asur	K. Bulut	I. Fenik	F. Kaplan	Z. Tarık
-CAL	Calveria	74	Balanced	4-4-2	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Get Stuck In	J. Miller	T. Yazzie	E. Harrison	M. Tsosie	C. Caldwell	A. Begay	W. Gallagher [+]	D. Benally	K. Nakai	L. Nez	H. Peshlakai [+]	P. Chee	N. Jennings	S. Davis	V. Brooks	R. Preston
-PON	Ponurvia	73	Gegenpress	4-3-3	Pass Into Space	Standard	Shoot On Sight	Be More Disciplined	Be More Expressive	Play for Set Pieces	Never	Counter-Press	Hold Shape	No Instruction	Much Higher	Standard	Offside Trap	Stay On Feet	M. Mollenhauer	J. Wanamaker	L. Bopp	T. Zartmann	E. Snyder	D. Fassbender	C. Neitzel	A. Rittenhouse [+]	S. Stracke	W. Giesel [+]	R. Schlösser	K. Eckert	N. Custer	P. Hoffmeister	H. Kinkeldey	V. Scherer
-LEC	Lechia	70	Balanced	4-3-3	No Instruction	Standard	No Instruction	No Instruction	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Get Stuck In	P. Nowak	K. Niezgoda	M. Kowalski	B. Jastrzębski	J. Wiśniewski	T. Dziedzic [+]	S. Wójcik	R. Gołębiowski	A. Kaczmarek [+]	Z. Krzyżanowski	G. Brzęczyszczykiewicz	W. Wilczyński	K. Szymański	M. Czarnecki	J. Kamiński	T. Żelechowski
-SID	Sidanya	69	Balanced	4-2-3-1	Pass Into Space	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	No Instruction	Counter	No Instruction	Standard	Standard	No Instruction	No Instruction	O. Shevchenko	V. Nalyvaiko	I. Kovalenko	Y. Kryvonis	N. Melnyk	M. Holoborodko	T. Bondarenko	D. Perebyinis [+]	A. Tkachenko	K. Vernydub	S. Boyko	B. Skoropadsky	O. Kravchenko	P. Dovzhenko	I. Moroz	L. Chornovil
-GUA	Guandong	69	Tiki-Taka	3-4-1-2	Play Out of Defence	Shorter	No Instruction	Be More Disciplined	Be More Disciplined	No Instruction	Sometimes	Counter-Press	Hold Shape	Short	Higher	Higher	Step Up	Stay On Feet	Z. Wang	X. Qiao	Y. Li	H. Kong	Q. Zhang	B. Yan	W. Zhao	F. Ji [+]	L. Hao	C. Pei	G. Sun	T. Meng	S. Guo	J. Chai	Y. Ma	D. Jia
-VKT	Kemet	68	Balanced	4-2-3-1	No Instruction	Standard	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	No Instruction	Standard	Standard	Drop Off	Stay On Feet	B. Shenouda	G. Salvago	R. Makram	L. Moscatelli	P. Tawadros	N. Rossano	Y. Ghattas	F. Noseda	M. Mina	V. Piromalli [+]	S. Doss	M. Loria	T. Bishoy	E. Zanon	W. Fakhry	C. Baliano
-VAR	Varahmehr	67	Wing Play	4-3-3	Pass Into Space	More Direct	No Instruction	Run At Defence	No Instruction	No Instruction	Never	Regroup	Counter	Long	Standard	Standard	Drop Off	Get Stuck In	V. Lorestani	E. Dehghan	A. Danesh	P. Tahmasb	T. Hayaii	R. Khalili	M. Sahat	S. Mehrian	A. Mahdavi	S. Shakibaii	P. Nazeri [+]	C. Nassirian	E. Rastkar	M. Shahi	S. Bozorgi	K. Rezghi
-SGD	Seignid	67	Balanced	4-4-2	No Instruction	Standard	No Instruction	Run At Defence	No Instruction	No Instruction	Sometimes	Regroup	Counter	No Instruction	Standard	Standard	No Instruction	Stay On Feet	R. Agbayani	T. Batumbakal	N. Catacutan	L. Dimayuga	S. Gatmaitan	H. Halili	K. Ilagan	P. Kalaw	M. Liwanag [+]	J. Macaraeg	C. Nacpil	F. Panganiban	V. Salonga	A. Tapang	E. Umali	D. Yabut
-GIA	Giathka	67	Counter	4-2-3-1	Pass Into Space	More Direct	Work Ball Into Box	Be More Disciplined	No Instruction	Play for Set Pieces	Sometimes	Regroup	Counter	Long	Standard	Standard	Drop Off	Get Stuck In	S. Volkov	R. Stepanov	D. Belov	M. Fedorov	A. Orlov	U. Yusupov	N. Lebedev	B. Vinogradov	I. Morozov	T. Rahimov	V. Polyakov [+]	O. Makarov	K. Kozlov	Y. Bogdanov	P. Egorov	G. Voronov
-FUR	Furan	67	Counter	4-1-4-1	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Stay On Feet	Y. Chen	L. Wu	J. Shen	X. Qian [+]	M. Xiong	H. Peng	F. Lu	Q. Zhu	T. Gu	S. Huang	W. Mao	R. Deng	B. Ye	Z. Fang	K. Tan	N. Jiang
-POL	Polabiny	66	Counter	4-4-2	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	J. Svoboda	M. Skočdopole	L. Kučera	P. Kratochvíl	D. Tóth	V. Zlatohlavý	S. Veselý	R. Vohánka	T. Horváth	A. Nejezchleb	K. Černý [+]	E. Valach	F. Novotný	Z. Bezruč	O. Varga	H. Pospíšil
-LIV	Livonia	66	Counter	4-1-4-1	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	A. Berg	H. von Buxhoeveden	M. Müller	E. Tiesenhausen	J. Hermann	R. von Ungern [+]	L. Becker	W. Wrangell	F. Meyer	O. Manteuffel	P. Schmidt	K. Stackelberg	D. Hoffmann	G. Vietinghoff	S. Schultz	V. Krusenstern
-CAH	Cahaya	66	Wing Play	3-4-3	Pass Into Space	Standard	No Instruction	Run At Defence	Be More Expressive	No Instruction	Sometimes	Counter-Press	Counter	No Instruction	Higher	Standard	No Instruction	Stay On Feet	R. Wijaya	L. Kitingan	T. Setiawan [+]	P. Jugah	A. Ginting	S. Madius	W. Wibowo	E. Bansa	M. Djelantik	K. Kurup	D. Siregar	G. Parengkuan	H. Mutang	V. Sastrowardoyo	N. Panggabean	C. Kulleh
-SHI	Shivon	65	Counter	4-2-3-1	Pass Into Space	Standard	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	No Instruction	Standard	Lower	Drop Off	Stay On Feet	Y. Cohen	A. Bar-Lev	T. Mizrahi	N. Tzur	O. Levi	S. Even-Khen	E. Peretz [+]	M. Shaked	R. Biton	D. Alon	G. Dahan	I. Avni	L. Agam	Z. Peled	H. Friedman	B. Ben-Ami
-AST	East Astriya	65	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	N. Papadopoulos	K. Paleologos	A. Georgiou	S. Lykoudis	V. Nikolaou	E. Mavromatis	P. Karagiannis [+]	T. Zervas	D. Vlahos	M. Galanis	I. Christodoulou	Y. Athanasiadis	G. Grivas	O. Katsaros	X. Samaras	C. Angelopoulos
-ATK	Tonkin	63	Counter	4-1-4-1	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Stay On Feet	J. Nguyen [+]	M. Ton That	P. Le	C. Khuat	D. Tran	F. Doan	L. Vu	A. Thach	S. Pham	E. Trieu	V. Ngo	R. Mach	G. Bui	H. Luong	T. Dang	B. Quach
-THO	The Thorne	62	Balanced	4-3-3	No Instruction	Standard	No Instruction	No Instruction	Be More Expressive	No Instruction	Sometimes	No Instruction	Counter	No Instruction	Standard	Standard	No Instruction	Stay On Feet	O. Popescu	T. Zburătoru	M. Ionescu	C. Codreanu	I. Radu	V. Lăutaru	D. Dumitrescu	L. Bucur	S. Stan	E. Botezatu	G. Stoica	R. Fieraru	N. Munteanu	F. Porumbescu	P. Gheorghiu	O. Văduva
-PER	Perovska	62	Counter	4-4-2	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	E. Karpov	S. Andreev	G. Nikitin	O. Mamut	L. Gusev	K. Zaytsev	R. Titov	D. Kenzhebayev	M. Kulikov	A. Turghun	F. Frolov	V. Markov	I. Baranov	N. Shirokov	T. Tarasov	P. Denisov
-ASP	South Pelagonia	62	Tiki-Taka	4-3-3	Play Out of Defence	Shorter	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Counter-Press	Hold Shape	Short	Higher	Higher	No Instruction	Stay On Feet	J. Dlamini	C. Buthelézi	M. Ndlovu	J. Mocoéna	E. Khumalo	V. Zoulou	P. Modisé	L. Du Phiri	S. Chabalala	R. Khouza	R. Mbeki	D. Sisoulou	F. Hadebé	G. Nhlapo-Marais	H. Bhéngu	O. Makhanya
-ANH	Neuhollmar	62	Balanced	4-4-2	No Instruction	More Direct	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Get Stuck In	T. Schmidt	J. Rangitāne	K. Mueller	F. Te Rangi	R. Hoffmann	H. Wihongi	M. Becker	A. von Haast	W. Meyer	E. Waititi	P. Rata	G. Tipene	N. Wagner	L. Ihimaera	A. Dieffenbach	O. Kereopa
-ABB	Barbary	61	Gegenpress	3-4-3	Pass Into Space	Standard	Shoot On Sight	Run At Defence	No Instruction	No Instruction	Never	Counter-Press	Counter	No Instruction	Much Higher	Higher	Step Up	Get Stuck In	H. Benali	T. Djaballah	S. Mansouri	A. Aggoun	M. Bensalem	F. Kateb	O. Rahmani	C. Guerroudj	K. Idir	L. Meziane	B. Hamraoui	L. Renard	K. Benfodil	G. Fabre	O. Mebarki	A. Picard
-RCO	Costaserá	60	Counter	4-1-4-1	Pass Into Space	Standard	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	No Instruction	Standard	Lower	Drop Off	Stay On Feet	Y. Benali	M. El Andaloussi	A. Berrada	H. Medina	B. Chraibi	T. Amrani	S. Torres	N. Mansouri	O. El Fassi	K. Alami	I. Morón	Y. Zeroual	B. Oufkir	I. Messaoudi	T. Benjumeda	S. Lahlou
-MOR	Morozia	60	Counter	5-3-2	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	Play for Set Pieces	Constantly	Regroup	Counter	Long	Lower	Lower	Drop Off	Get Stuck In	A. Ahmaogak	M. Makaroff	P. Ipalook	I. Gromoff	E. Nageak	S. Krukoff	K. Kadashan	V. Tarakanoff	N. Oyagak	D. Lestenkof	L. Kignak	T. Bereskin	R. Naneng	Y. Galaktionoff	F. Ayagalria	M. Katchatag
-AWB	West Bangala	60	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Stay On Feet	K. Rahman	L. Chowdhury	E. Islam	J. Hossain	C. Ahmed	M. Hasan	F. Miah	D. Sikder	V. Talukder	P. Bhuiyan	R. Khandaker	S. Majumder	N. Haque	G. Das	T. Barua	I. Kazi
-ARU	Arunya	58	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Stay On Feet	T. Annamalai	K. Gunawardena	S. Thiruvengadam	V. Arulampalam	M. Shivaswamy	A. Dissanayake	R. Unnithan	O. Venkataraman	B. Garlett	D. Thuraisingam	N. Madhavan	G. Hegde	H. Amarasinghe	J. Krishnamurthy	E. Arunachalam	W. Bropho
-AEK	East Kaukasos	58	Counter	4-4-2	Pass Into Space	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	N. Nadaraia	A. Aghababyan	T. Bakhshiyev	O. Tvalchrelidze	V. Manukyan	M. Karimli	D. Sulaberidze	S. Ohanian	R. Verdiyev	B. Garnier	C. Chalikyan	D. Khutsishvili	E. Piriyev	V. Bedrossian	Y. Mercier	Z. Tvildiani
-ADV	Divia	58	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	Play for Set Pieces	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	K. Janabi	A. Doski	T. Mutairi	O. Bayati	M. Nerweyi	S. Azzawi	R. Enezi	B. Khafaji	V. Kohlmann	R. Barzani	P. Rekabi	H. Rashidi	J. Barwari	G. Musawi	W. Pfeiffer	X. Hawrami
-RAN	Anticostia	57	Balanced	4-4-2	No Instruction	More Direct	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Get Stuck In	A. Debassige	F. Varela	G. Wemigwans	D. Obomsawin	M. Herrera	K. Nottaway	E. Wagamese	J. Fonseca	C. Papatie	N. Nadjiwon	B. Manitowabi	P. Pedrosa	H. Tenasco	O. Panadis	L. Kakepetum	I. Wawanolet
-NHO	Hōrai	56	Balanced	4-4-2	Pass Into Space	More Direct	No Instruction	Run At Defence	Be More Expressive	Play for Set Pieces	Sometimes	Counter-Press	Counter	Long	Higher	Standard	Drop Off	No Instruction	I. Tarafdar	B. Larma	P. Chakma	R. Mridha	A. Tripura	M. Sangma	S. Murmu	W. Naqvi	N. Fujikawa	K. Nagase	T. Howlader	E. Patwary	O. Bepari	D. Pramanik	Z. Soren	G. Marak
-AXE	Axerfreditenshin	56	Balanced	4-4-2	Pass Into Space	More Direct	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Standard	No Instruction	Get Stuck In	B. Bat-Erdene	Y. Ma	D. Dorzhiev	N. Chimeddorj	H. Ha	G. Badmaev	T. Gantulga	I. Mu	R. Tsydypov	E. Tsendbaatar	K. Ding	S. Munkoev	A. Lkhagvadorj	M. Bai	O. Gombojav	J. Na
-AKG	Kogelland	55	Tiki-Taka	4-4-2	Play Out of Defence	Shorter	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Counter-Press	Hold Shape	Short	Higher	Standard	No Instruction	Stay On Feet	A. Calfuqueo	D. Brunner	N. Ñanculef	G. Verhoeven	C. Cayupán	L. Painemal	W. Sayhueque	P. Hoekstra	M. Tripailaf	O. Inacayal	I. Loncón	H. Zimmermann	K. Quidel	T. Quilaqueo	F. Huenchullán	E. Panguilef
-AED	Dämmerung Islands	55	Balanced	4-3-3	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	K. Kanakaole	G. Van Leeuwen	N. Kealoha	A. Steiner	I. Makoa	U. Piipiilani	P. Nainoa	D. Mulder	H. Kahananui	E. Pokipala	L. Kekoa	W. Kooijman	M. Kinimaka	F. Mahoe	O. Naone	J. Kupihea
-ACS	Côte de Saumon	54	Gegenpress	4-3-3	Pass Into Space	Standard	No Instruction	Run At Defence	No Instruction	No Instruction	Never	Counter-Press	Counter	No Instruction	Much Higher	Higher	Step Up	Get Stuck In	I. Galadima	A. Dikko	B. Dalori	M. Lefèvre	S. Turaki	N. Maina	O. Jalo	E. Fontaine	Y. Dattijo	K. Mainasara	G. Magaji	T. Tafida	H. Barry	R. Ingawa	U. Yakasai	L. Zanna
-GUP	Uj-Pannonia	52	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Stay On Feet	P. Hazarika	K. Basumatary	G. Molnár	R. Gogoi	S. Narzary	L. Balogh	M. Payeng	H. Saikia	T. Lakatos	A. Bhuyan	D. Teron	F. Papp	N. Konwar	J. Brahma	U. Mahanta	B. Rajkhowa
-ENR	Noradia	52	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	Stay On Feet	B. Mohapatra	S. Markam	F. Tirkey	R. Cavendish	K. Rath	G. Hansda	A. Bamford	L. Hembrom	D. Soren	N. Senapati	M. Patnaik	P. Toppo	J. Lakra	T. Khuntia	H. Netam	C. Forsyth
-SSA	Southeast Aphirica	48	Balanced	4-4-2	No Instruction	More Direct	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	Long	Standard	Standard	No Instruction	No Instruction	D. Akol	T. Tikima	B. Chuol	M. Shapira	A. Madut	G. Hoth	W. Lual	U. Katz	N. Thon	F. Gbaduma	P. Gatluak	Y. Toledano	R. Majok	J. Gony	O. Azoulay	L. Nhial
-ANB	Napolyon Bonparterre Islands	48	Wing Play	3-4-3	Pass Into Space	Standard	No Instruction	Run At Defence	Be More Expressive	No Instruction	Sometimes	No Instruction	Counter	No Instruction	Standard	Standard	No Instruction	Stay On Feet	J. Gonelevu	M. Singh	S. Seruvakula	A. Moreau	N. Tikoisuva	I. Titifanue	E. Leweniqila	T. Thibault	V. Latianara	R. Narayan	K. Rigamoto	Y. Lacroix	P. Naivalu	W. Ravuiwasa	D. Koroi	U. Veitayaki
-AKN	Kienam	44	Counter	4-1-4-1	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Sometimes	Regroup	Counter	Long	Lower	Lower	Drop Off	Get Stuck In	N. Tikana	A. Kaviu	V. To Ngala	F. Steiner	T. Turuk	G. Vunairoto	S. Vatom	J. Navrátil	M. Tamate	O. Berger	R. Simet	L. Růžička	D. Vunamami	P. Pondros	B. To Warai	W. Nonga
-ENC	New Celyddon	43	Wing Play	3-4-3	Pass Into Space	Standard	No Instruction	Run At Defence	Be More Expressive	No Instruction	Sometimes	No Instruction	Counter	No Instruction	Standard	Standard	No Instruction	Stay On Feet	W. Bwemara	S. Lagivaka	K. Hnamano	D. MacKenzie	N. Naisseline	F. Vailala	P. Kabar	R. Sutherland	M. Löpwi	T. Peato	J. Paoume	A. Campbell	H. Tanéouya	G. Waia	E. Tein	Y. Yaka
-KKM	Kullanmaan	42	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	O. Hætta	E. Sateräkki	S. Krusinen	B. Tuuliparänen	J. Urujärven	T. Kuutemben	P. Amarainen	L. Vesijärven	F. Kulanen	T. Poule	V. Turkunen	T. Bonkonen	S. Grigoroff	E. Guovžžanen	O. Sieidala	L. Hitalainen
-AGN	Gonenite Islands	42	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	Regroup	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	J. Nanau	T. Meka	H. Kabutaulaka	E. Kessler	M. Tanangada	B. Taupongi	K. Hartmann	N. Suifua	A. Taloikwao	W. Steinberg	P. Iroga	G. Wanefiori	S. Kiloe	F. Boseto	R. Teika	O. Sisiolo
-VAN	Aphirica del Nord	41	Counter	5-3-2	No Instruction	More Direct	No Instruction	Be More Disciplined	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	C. Gbanou	M. Ngaradoumbé	E. Amato	R. Yakété	K. Kobanda	G. Mancini	P. Guébré	O. Borkono	N. Nakombo	A. Maïna	B. Wongo	S. Sorrentino	T. Mandaba	I. Gali	F. Mobele	L. Yangongo
-AAD	Andam Islands	39	Counter	4-3-2-1	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Constantly	Regroup	Counter	Long	Lower	Lower	Drop Off	Get Stuck In	N. Patchila	S. Htoo	E. Totanange	M. Beneš	P. Atong	G. Sedláček	B. Ponge	I. Nanlong	D. Paw	J. Fischer	K. Chari	C. Melong	T. Moo	R. Zelenka	F. Telong	A. Enam
-ASG	Sankt Gerold Island	38	Counter	4-3-2-1	No Instruction	More Direct	No Instruction	No Instruction	Be More Disciplined	No Instruction	Constantly	Regroup	Counter	Long	Lower	Lower	Drop Off	Get Stuck In	H. Kogoya	S. Rumbekwan	W. Pakage	J. Brouwer	I. Wetipo	A. Klafle	N. Wanimbo	P. Van Dam	E. Desap	Y. Tekege	D. Imbiri	F. Hendriks	O. Biwar	G. Mandosir	B. Wandik	M. Mote
-KFK	Frederikka Islands	28	Wing Play	4-1-2-1-2	Pass Into Space	More Direct	Work Ball Into Box	Run At Defence	Be More Expressive	Play for Set Pieces	Never	Regroup	Counter	Long	Standard	Lower	Drop Off	Stay On Feet	A. Raivo	P. Shomponen	T. Pacaka	N. Apngan	E. Samāyan	N. Laranyal	V. Chōna	R. Ātlaköneinen	P. Suursaaren	D. Lâchūaton	O. Marvinen	J. Hosea	A. Rani	I. Hatamaaen	T. Ranghonen	E. Fāpen`;
-const PRESET_AVIUM = parseBulk(PRESET_AVIUM_TSV);
-const PRESET_NCH_L1_TSV = `SPK	Spartak Kanagawa	86	Tiki-Taka	4-3-3	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	Be More Expressive	No Instruction	Never	Counter-Press	No Instruction	Short	Much Higher	Higher	Offside Trap	Stay On Feet	J. Stanford [*]	K. Fujise	D. Takanashi [*]	F. Castiglione [*]	K. Hiranuma	G. Valbuena [*]	T. Mikado [*]	R. Mbengue	Y. Shirase	S. Itoshi [*]	D. Kuznetsov [+]	H. Ōnishi	K. Tsukiyama	R. Ogata	D. Kessler	A. Tōdō
-DYM	Dynamo Mizuhara	86	Gegenpress	4-2-3-1	Pass Into Space	Standard	No Instruction	Run At Defence	Be More Expressive	No Instruction	Never	Counter-Press	Counter	No Instruction	Much Higher	Higher	Step Up	Get Stuck In	T. Aragaki	Y. Kagami	M. Iwakura	T. Oorzhak [+]	A. Nagumo [*]	K. Hamaguchi	G. Dreesens [*]	O. Desjardins [*]	R. Ōe	N. Kanzaki	T. Asakura	J. Nishinari	K. Suganuma	H. Oshiro	R. Togashi	T. Morozumi
-ORU	Orughan FC	83	Counter	4-3-2-1	Pass Into Space	More Direct	No Instruction	Run At Defence	No Instruction	No Instruction	Sometimes	Regroup	Counter	Long	Lower	Standard	Drop Off	Get Stuck In	B. Khürelbaatar	T. Ariunbold	E. Baatar	Y. Davaasüren	K. Oyunbat	A. Chinzorig	K. Naran	E. Tsakhia	T. Batjargal	S. Otgon	G. Erdene [*]	R. Tögöldör	B. Chuluun	S. Enkhtur	M. Erkhem	Y. Bayan
-ISS	ISS Takarazuka	83	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	Play for Set Pieces	Sometimes	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	S. Minamitani	Y. Hamano	G. Matsunaga	W. Croft	K. Saeki	T. Bashira [*]	J. Kitahara	Y. Bengoetxea [*]	S. Yamagishi	T. Kondō	T. Hawthorne [*]	F. Nagashima	T. Yanase	I. Moriyama	Y. Shimokawa	K. Uchiyama
-SSK	Shinkeisei SK Tsukumo	82	Gegenpress	4-1-2-1-2	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	Be More Disciplined	No Instruction	Never	Counter-Press	No Instruction	Short	Higher	Standard	Step Up	Stay On Feet	D. Dhamarrandji [+]	S. Segawa [*]	Y. Kaneshiro	L. Heitmann	R. Tokuda	E. Kallio	S. Arimura	M. Kishima [*]	P. Soriano	K. Nishimura	M. Jakamarra [+]	A. Hosokawa	M. Polášek	D. Mizutani	H. Ōshima	Y. Akiyoshi
-TOY	Toyama Thunderbolts	81	Counter	4-2-4	Pass Into Space	More Direct	Shoot On Sight	Run At Defence	No Instruction	No Instruction	Sometimes	No Instruction	Counter	Long	Standard	Lower	Drop Off	Get Stuck In	T. Hagiwara	A. Mäkelä	J. Korhonen	S. Igarashi	E. Lahtinen	T. Komiyama	P. Järvinen	O. Tuominen	H. Morimoto [*]	Y. Ōtani	V. Lehtonen	M. Virtanen	G. Sakamoto	K. Washio	T. Rantanen	A. Yanagida
-GEN	Bankoku Genkai	79	Gegenpress	4-3-3	No Instruction	Standard	No Instruction	Run At Defence	No Instruction	No Instruction	Never	Counter-Press	Counter	No Instruction	Higher	Standard	No Instruction	Get Stuck In	M. Andersson [+]	A. Goudiaby	K. Sow	S. Smirnov [+]	T. Hara	F. Ōkubo	S. Watanabe	Y. Ghattas [+]	L. Higashiyama [*]	R. Nakamura	R. Gauthier [*]	K. Takada	V. Sorokin	R. Nakagawa	S. Asante	K. Yamashiro
-MAK	AFC Makinohara	79	Tiki-Taka	3-4-3	Play Out of Defence	Much Shorter	Work Ball Into Box	Be More Disciplined	Be More Expressive	No Instruction	Never	Counter-Press	No Instruction	Short	Higher	Higher	Step Up	Stay On Feet	Y. Naruse	S. Kamata	A. Ferrari [*]	N. Kurata	H. Teshima	K. Torigoe [*]	P. Sokolov [+]	S. Mochizuki	K. Umeda	R. Miura	D. Hoshino	S. Kurihara	T. Eguchi	J. Adachi	K. Fukunaga	Y. Maruyama
-SHK	Viridia Shikisen	78	Wing Play	4-2-3-1	No Instruction	Standard	No Instruction	No Instruction	Be More Expressive	No Instruction	Sometimes	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	M. Tominaga	O. Diomandé	G. Nishigawa [*]	L. Kovács [+]	T. Hida	T. Noguchi	K. Haugland [+]	H. Shindō	T. Rhodes	N. Tsumura	S. Delgado	S. Kawashima	Y. Azuma	S. Endō	K. Iwata	R. Tanabe
-SEN	Alpinist Sen'ninhara	78	Balanced	3-5-2	No Instruction	Standard	No Instruction	Be More Disciplined	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Hold Shape	No Instruction	Standard	Standard	No Instruction	Get Stuck In	T. Yashiro	G. Tsukamoto	M. Hoffmann	A. Iwase	Y. Kuroda	T. Sawada	W. Kon [*]	M. Kowalski [+]	H. Morel	I. Kovalenko [+]	H. Naitō	F. Sakurai	J. Okazaki	T. Chiba	K. Okabe	K. Satake
-NAG	Naginomiya Hantōmin	78	Wing Play	3-4-3	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Never	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	E. Sato [*]	H. Chambers	K. Morita	Y. Koga	T. Ōmori	O. Çetin [+]	A. Kaczmarek [+]	F. Sugiura	R. Kaneda	G. Ferraro	K. Mitsui	K. Minami	Y. Tokiwa	G. Tanigawa	M. Kyaw	R. Iwamoto
-AYA	Ayanami Kanone	77	Wing Play	4-3-3	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	Be More Expressive	No Instruction	Never	Counter-Press	No Instruction	Short	Standard	Standard	No Instruction	Stay On Feet	T. Shimabukuro	R. Wijaya [+]	S. Arakaki	G. Fija [*]	K. Tokashiki	M. Liwanag [+]	F. Panganiban [+]	A. Ginting [+]	K. Ōshiro	M. Miyagi	F. Romero	T. Higa	S. Nakandakari	K. Gushiken	Y. Chinen	R. Kinjo
-FCH	Fūchumachi Steelers	77	Balanced	4-4-2	No Instruction	Standard	No Instruction	No Instruction	No Instruction	Play for Set Pieces	Sometimes	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	Get Stuck In	A. Kubo	S. Tamura	E. Hansen [+]	S. Hountondji	Y. Matsumoto	T. Nishi	N. Sakaguchi	L. Westermann	D. Akol [+]	L. Giménez	K. Nakanishi	I. Fujimoto	Y. Ishii	H. Kikuchi	K. Ōtsuka	S. Kobayashi
-SHM	Shimonosaki Marina	76	Balanced	4-2-3-1	No Instruction	Standard	No Instruction	No Instruction	No Instruction	No Instruction	Sometimes	No Instruction	No Instruction	No Instruction	Standard	Standard	No Instruction	No Instruction	R. Shimizu	T. Ōba	Y. Kamei	P. Nowak [+]	S. Noda	R. Parker	K. Uesugi	M. Kitamura	M. Benedetti	Y. Koç [+]	T. Bondarenko [+]	S. Hayase	I. Ōtomo	Y. Hase	T. Yoshida	K. Fujita
-KOS	Koshu Sentinels	75	Counter	4-1-4-1	No Instruction	Standard	No Instruction	Be More Disciplined	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Hold Shape	Long	Lower	Standard	Drop Off	Stay On Feet	S. Motegi	K. Fujikawa	V. Nalyvaiko [+]	T. Nakano	M. Hosoda	B. Zsolnay [+]	M. Doğan [+]	G. Okumura	K. Akutsu	D. Hargrove	T. Horváth [+]	R. Yamazaki	S. Uemura	T. Katō	J. Takamura	H. Mihara
-MOR	Moriguchi Muraglia	75	Counter	5-3-2	No Instruction	More Direct	No Instruction	Be More Disciplined	Be More Disciplined	Play for Set Pieces	Sometimes	Regroup	Counter	No Instruction	Lower	Standard	Drop Off	Get Stuck In	T. Sakuma	R. Kadota	O. Sjöberg [+]	A. Grimaldi	D. Haraguchi	K. Ōkawa	C. Villaverde	N. Melnyk [+]	A. Kumagai	S. Matsubara	G. Takeuchi	M. Fukuda	I. Shimada	S. Uehara	T. Sugimoto	K. Gunawardena [+]
-KAM	Kamabuchi Carnifex	75	Counter	4-4-2	Pass Into Space	More Direct	Shoot On Sight	Run At Defence	No Instruction	No Instruction	Sometimes	Regroup	Counter	Long	Standard	Standard	Drop Off	Get Stuck In	N. Hirose	J. Matsuda	E. Marchetti	Y. Arai	T. Ueda	F. Sané	A. Hegedűs [+]	S. Baba	N. Kashima	C. Nwachukwu	N. Thon [+]	H. Ōmura	K. Harada	Y. Shibuya	T. Ōtsuki	R. Ishida
-TKG	SGSS Tōhara Kaiguan	75	Tiki-Taka	4-2-3-1	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	No Instruction	No Instruction	Sometimes	No Instruction	No Instruction	Short	Standard	Standard	No Instruction	Stay On Feet	K. Ouyang [*]	Y. Ōnuma	H. Takagi	S. Ueno	L. Wu [+]	Z. Wang [+]	K. Taniguchi	T. Ōgami	H. Kong [+]	F. Ji [+]	R. Mitchell	M. Hattori	R. Tsuji	S. Oda	X. Qian [+]	K. Nagai
-RSR	Red Star Ryōgaku	74	Gegenpress	4-4-2	No Instruction	More Direct	No Instruction	No Instruction	No Instruction	No Instruction	Never	Counter-Press	Counter	Long	Higher	Standard	No Instruction	Get Stuck In	T. Mikami	R. Shimura	M. Popov [+]	K. Kawamoto	Y. Okamura	D. Perebyinis [+]	K. Nishida	B. Jastrzębski [+]	A. Tkachenko [+]	K. Shimoda	A. Orlov [+]	S. Koyama	Y. Aoki	T. Kinoshita	H. Suzumura	T. Wada
-VAL	Kurabu Valtheria	74	Wing Play	3-4-1-2	Play Out of Defence	Shorter	Work Ball Into Box	No Instruction	Be More Expressive	No Instruction	Never	Counter-Press	No Instruction	Short	Standard	Standard	No Instruction	Stay On Feet	M. Nishikawa	S. Mizuno	J. Wiśniewski [+]	O. Popescu [+]	T. Murakami	J. Carpentier	Y. Inoue	K. Toyoda	A. Montero	S. Enomoto	T. Mizrahi [+]	K. Amano	T. Sasaki	M. Hayashi	R. Narita	D. Kawagoe`;
-const PRESET_NCH_L1 = parseBulk(PRESET_NCH_L1_TSV);
-const PRESET_EUR = [
-{ code: "BAY", name: "Bayern Munich", skill: 87, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: -1, chanceCreation: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 2, dlBehavior: 2 }, squad: buildSquad("4-2-3-1", ['M. Neuer', 'A. Davies', 'D. Upamecano', 'J. Tah', 'J. Kimmich', 'A. Pavlovic', 'K. Laimer', 'Luis Díaz', 'J. Musiala', 'M. Olise', 'H. Kane', 'J. Urbig', 'Min-jae Kim', 'L. Goretzka', 'T. Bischof', 'N. Jackson']) },
-{ code: "PSG", name: "Paris Saint-Germain", skill: 87, style: "balanced", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-3-3", ['L. Chevalier', 'N. Mendes', 'W. Pacho', 'I. Zabarnyi', 'A. Hakimi', 'Vitinha', 'J. Neves', 'W. Zaïre-Emery', 'K. Kvaratskhelia', 'G. Ramos', 'O. Dembélé', 'M. Safonov', 'Marquinhos', 'F. Ruiz', 'B. Barcola', 'R. Kolo Muani']) },
-{ code: "BAR", name: "FC Barcelona", skill: 86, style: "tikitaka", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -2, chanceCreation: -1, creativity: -1, timeWasting: 1, possLost: 1, possWon: -1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: -1 }, squad: buildSquad("4-3-3", ['J. García', 'A. Balde', 'P. Cubarsí', 'R. Araujo', 'J. Koundé', 'Gavi', 'M. Casadó', 'Pedri', 'Raphinha', 'R. Lewandowski', 'L. Yamal', 'W. Szczęsny', 'E. García', 'F. de Jong', 'D. Olmo', 'M. Rashford']) },
-{ code: "MCI", name: "Manchester City", skill: 86, style: "tikitaka", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -2, chanceCreation: -1, dribbling: -1, creativity: -1, timeWasting: 1, possLost: 1, possWon: -1, gkDist: -1, pressingLOE: 2, defLine: 2, dlBehavior: 1, tackling: -1 }, squad: buildSquad("4-3-3", ['G. Donnarumma', 'J. Gvardiol', 'M. Guéhi', 'R. Dias', 'R. Lewis', 'M. Kovačić', 'Rodri', 'T. Reijnders', 'P. Foden', 'E. Haaland', 'J. Doku', 'J. Trafford', 'J. Stones', 'R. Cherki', 'N. González', 'A. Semenyo']) },
-{ code: "LIV", name: "Liverpool", skill: 86, style: "gegenpress", formation: "4-3-3", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-3-3", ['Alisson', 'M. Kerkez', 'V. Van Dijk', 'I. Konaté', 'J. Frimpong', 'A. Mac Allister', 'R. Gravenberch', 'D. Szoboszlai', 'C. Gakpo', 'A. Isak', 'M. Salah', 'G. Mamardashvili', 'J. Gomez', 'C. Jones', 'F. Wirtz', 'H. Ekitike']) },
-{ code: "RMA", name: "Real Madrid", skill: 85, style: "counterattack", formation: "4-3-3", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, possWon: 1, gkDist: 1, pressingLOE: 1, defLine: 1 }, squad: buildSquad("4-3-3", ['T. Courtois', 'Á. Carreras', 'A. Rüdiger', 'É. Militão', 'T. Alexander-Arnold', 'E. Camavinga', 'A. Tchouaméni', 'F. Valverde', 'Vinícius Jr.', 'K. Mbappé', 'Rodrygo', 'A. Lunin', 'D. Huijsen', 'Jude Bellingham', 'A. Güler', 'Endrick']) },
-{ code: "ARS", name: "Arsenal", skill: 85, style: "counterattack", formation: "4-3-2-1", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, dribbling: -1, creativity: -1, setPieces: 1, timeWasting: 2, possLost: -1, gkDist: -1, pressingLOE: -2, defLine: -2, dlBehavior: -1, tackling: -1 }, squad: buildSquad("4-3-2-1", ['D. Raya', 'R. Calafiori', 'Gabriel', 'W. Saliba', 'B. White', 'M. Merino', 'M. Zubimendi', 'D. Rice', 'M. Ødegaard', 'B. Saka', 'V. Gyökeres', 'K. Arrizabalaga', 'J. Timber', 'K. Havertz', 'G. Martinelli', 'E. Eze']) },
-{ code: "CHE", name: "Chelsea", skill: 84, style: "balanced", formation: "4-2-3-1", strategy: { approachPlay: -1, passingDir: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-3-1", ['F. Jörgensen', 'M. Cucurella', 'L. Colwill', 'J. Hato', 'R. James', 'M. Caicedo', 'E. Fernández', 'P. Neto', 'C. Palmer', 'Estêvão', 'J. Pedro', 'R. Sánchez', 'M. Gusto', 'R. Lavia', 'D. Essugo', 'J. Gittens']) },
-{ code: "INT", name: "Inter Milan", skill: 84, style: "balanced", formation: "3-5-2", strategy: { approachPlay: -1, creativity: 1, timeWasting: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("3-5-2", ['J. Martínez', 'C. Augusto', 'A. Bastoni', 'Y. Bisseck', 'M. Akanji', 'D. Dumfries', 'P. Zieliński', 'N. Barella', 'P. Sučić', 'Lautaro Martínez', 'M. Thuram', 'A. Calligaris', 'T. Palacios', 'D. Frattesi', 'L. Henrique', 'P. Esposito']) },
-{ code: "MUN", name: "Manchester United", skill: 83, style: "counterattack", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 2, chanceCreation: 1, dribbling: 1, creativity: 1, possWon: 1, gkDist: 1, pressingLOE: 1 }, squad: buildSquad("4-2-3-1", ['Andre Onana', 'P. Dorgu', 'Lisandro Martínez', 'M. De Ligt', 'D. Dalot', 'K. Mainoo', 'M. Ugarte', 'B. Mbeumo', 'B. Fernandes', 'M. Cunha', 'B. Šeško', 'A. Bayındır', 'L. Yoro', 'Éderson', 'M. Mount', 'A. Diallo']) },
-{ code: "NAP", name: "Napoli", skill: 83, style: "balanced", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-3-3", ['V. Milinković-Savić', 'M. Gutiérrez', 'A. Buongiorno', 'S. Beukema', 'G. Di Lorenzo', 'S. McTominay', 'B. Gilmour', 'K. De Bruyne', 'A. Santos', 'R. Højlund', 'D. Neres', 'A. Meret', 'A. Rrahmani', 'F. Anguissa', 'M. Politano', 'R. Lukaku']) },
-{ code: "BVB", name: "Borussia Dortmund", skill: 82, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['G. Kobel', 'D. Svensson', 'N. Schlotterbeck', 'W. Anton', 'Y. Couto', 'F. Nmecha', 'E. Can', 'K. Adeyemi', 'J. Brandt', 'M. Beier', 'S. Guirassy', 'A. Meyer', 'N. Süle', 'M. Sabitzer', 'Jobe Bellingham', 'F. Silva']) },
-{ code: "ATM", name: "Atlético Madrid", skill: 82, style: "counterattack", formation: "5-3-2", strategy: { approachPlay: 1, passingDir: 1, creativity: -1, timeWasting: 2, possLost: -1, possWon: 1, gkDist: 1, defLine: -1, dlBehavior: -1, tackling: 1 }, squad: buildSquad("5-3-2", ['J. Oblak', 'M. Ruggeri', 'D. Hancko', 'J. Giménez', 'R. Le Normand', 'M. Llorente', 'P. Barrios', 'J. Cardoso', 'Á. Baena', 'J. Álvarez', 'A. Lookman', 'J. Musso', 'M. Pubill', 'Koke', 'T. Almada', 'A. Sørloth']) },
-{ code: "TOT", name: "Tottenham Hotspur", skill: 82, style: "gegenpress", formation: "4-3-3", strategy: { approachPlay: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 2, dlBehavior: 2 }, squad: buildSquad("4-3-3", ['G. Vicario', 'A. Robertson', 'M. Van de Ven', 'C. Romero', 'P. Porro', 'Y. Bissouma', 'J. Palhinha', 'J. Maddison', 'M. Kudus', 'D. Solanke', 'X. Simons', 'A. Kinský', 'M. Senesi', 'C. Gallagher', 'P. Sarr', 'M. Tel']) },
-{ code: "NEW", name: "Newcastle United", skill: 82, style: "counterattack", formation: "4-3-3", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, setPieces: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 1, defLine: 1, tackling: 1 }, squad: buildSquad("4-3-3", ['N. Pope', 'L. Hall', 'M. Thiaw', 'D. Burn', 'T. Livramento', 'Joelinton', 'B. Guimarães', 'S. Tonali', 'H. Barnes', 'N. Woltemade', 'A. Elanga', 'M. Gillespie', 'S. Botman', 'L. Miley', 'A. Ramsey', 'Y. Wissa']) },
-{ code: "B04", name: "Bayer Leverkusen", skill: 81, style: "balanced", formation: "3-4-3", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1 }, squad: buildSquad("3-4-3", ['M. Flekken', 'E. Tapsoba', 'L. Badé', 'J. Quansah', 'A. Grimaldo', 'Equi Fernández', 'E. Palacios', 'L. Vázquez', 'E. Ben Seghir', 'P. Schick', 'M. Tillman', 'J. Omlin', 'T. Oermann', 'R. Andrich', 'I. Maza', 'V. Boniface']) },
-{ code: "AVL", name: "Aston Villa", skill: 81, style: "balanced", formation: "4-2-3-1", strategy: { approachPlay: 1, chanceCreation: -1, creativity: 1, timeWasting: 1, possLost: -1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 2 }, squad: buildSquad("4-2-3-1", ['E. Martínez', 'I. Maatsen', 'P. Torres', 'E. Konsa', 'M. Cash', 'Amadou Onana', 'B. Kamara', 'J. Sancho', 'J. McGinn', 'L. Bailey', 'O. Watkins', 'M. Bizot', 'V. Lindelöf', 'Y. Tielemans', 'D. Luiz', 'T. Abraham']) },
-{ code: "MIL", name: "AC Milan", skill: 81, style: "balanced", formation: "4-2-3-1", strategy: { approachPlay: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-3-1", ['M. Maignan', 'P. Estupiñán', 'S. Pavlović', 'K. De Winter', 'Z. Athekame', 'Y. Fofana', 'S. Ricci', 'R. Leão', 'C. Nkunku', 'C. Pulisic', 'S. Gimenez', 'P. Terracciano', 'M. Gabbia', 'A. Jashari', 'A. Rabiot', 'N. Füllkrug']) },
-{ code: "JUV", name: "Juventus", skill: 81, style: "balanced", formation: "4-3-2-1", strategy: { approachPlay: -1, creativity: -1, timeWasting: 1, possLost: -1, possWon: 1, gkDist: -1 }, squad: buildSquad("4-3-2-1", ['M. Di Gregorio', 'A. Cambiaso', 'P. Kalulu', 'Bremer', 'E. Holm', 'K. Thuram', 'M. Locatelli', 'W. McKennie', 'K. Yıldız', 'T. Koopmeiners', 'L. Openda', 'M. Perin', 'F. Gatti', 'F. Miretti', 'F. Conceição', 'J. David']) },
-{ code: "GS", name: "Galatasaray", skill: 81, style: "wingplay", formation: "4-2-3-1", strategy: { approachPlay: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-3-1", ['U. Çakır', 'I. Jakobs', 'W. Singo', 'D. Sánchez', 'R. Sallai', 'L. Torreira', 'G. Sara', 'B. Yılmaz', 'L. Sané', 'Y. Akgün', 'V. Osimhen', 'G. Güvenç', 'A. Bardakcı', 'İ. Gündoğan', 'Y. Asprilla', 'M. Icardi']) },
-{ code: "RBL", name: "RB Leipzig", skill: 80, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 1, chanceCreation: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['M. Vandevoordt', 'D. Raum', 'C. Lukeba', 'W. Orbán', 'R. Baku', 'Y. Diomande', 'A. Ouédraogo', 'N. Seiwald', 'C. Baumgartner', 'J. Bakayoko', 'Rômulo', 'P. Gulácsi', 'E. Bitshiabu', 'X. Schlager', 'B. Gruda', 'C. Harder']) },
-{ code: "FB", name: "Fenerbahçe", skill: 80, style: "wingplay", formation: "4-4-2", strategy: { dribbling: 1, possWon: 1 }, squad: buildSquad("4-4-2", ['Ederson', 'A. Brown', 'M. Škriniar', 'R. Becão', 'N. Semedo', 'K. Aktürkoğlu', 'M. Guendouzi', 'E. Álvarez', 'M. Asensio', 'J. Durán', 'Talisca', 'D. Livaković', 'Ç. Söyüncü', 'İ. Yüksek', 'S. Amrabat', 'C. Tosun']) },
-{ code: "ASM", name: "AS Monaco", skill: 79, style: "counterattack", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 1, chanceCreation: 1, dribbling: 1, creativity: 1, possWon: 1, gkDist: 1, pressingLOE: 1 }, squad: buildSquad("4-2-3-1", ['P. Köhn', 'C. Henrique', 'C. Mawissa', 'T. Kehrer', 'Vanderson', 'D. Zakaria', 'L. Camara', 'S. Adingra', 'A. Golovin', 'M. Akliouche', 'F. Balogun', 'L. Hradecky', 'M. Salisu', 'A. Bamba', 'T. Minamino', 'M. Biereth']) },
-{ code: "OM", name: "Olympique de Marseille", skill: 79, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: -1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['G. Rulli', 'E. Palmieri', 'F. Medina', 'L. Balerdi', 'B. Pavard', 'P. Højbjerg', 'A. Vermeeren', 'I. Paixão', 'Q. Timber', 'M. Greenwood', 'P. Aubameyang', 'J. de Lange', 'N. Aguerd', 'G. Kondogbia', 'E. Nwaneri', 'A. Gouiri']) },
-{ code: "CRY", name: "Crystal Palace", skill: 79, style: "counterattack", formation: "3-4-3", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, possLost: -1, possWon: 1, gkDist: 1, tackling: 1 }, squad: buildSquad("3-4-3", ['D. Henderson', 'M. Lacroix', 'C. Richards', 'D. Muñoz', 'T. Mitchell', 'A. Wharton', 'C. Doucouré', 'I. Sarr', 'D. Kamada', 'Y. Pino', 'J. Mateta', 'W. Benítez', 'C. Riad', 'W. Hughes', 'J. Canvot', 'J. Strand Larsen']) },
-{ code: "BHA", name: "Brighton & Hove Albion", skill: 79, style: "tikitaka", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, creativity: 1, possLost: 1, possWon: -1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1, tackling: -1 }, squad: buildSquad("4-3-3", ['B. Verbruggen', 'F. Kadıoğlu', 'O. Boscagli', 'L. Dunk', 'M. Wieffer', 'C. Baleba', 'P. Groß', 'Y. Ayari', 'K. Mitoma', 'G. Rutter', 'Y. Minteh', 'J. Steele', 'M. De Cuyper', 'J. Hinshelwood', 'J. Milner', 'C. Kostoulas']) },
-{ code: "RSO", name: "Real Sociedad", skill: 78, style: "balanced", formation: "4-1-2-1-2", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, possLost: 1, possWon: -1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-1-2-1-2", ['A. Remiro', 'S. Gómez', 'J. Martín', 'I. Zubeldia', 'J. Aramburu', 'J. Gorrotxategi', 'Y. Herrera', 'L. Sučić', 'B. Méndez', 'T. Kubo', 'M. Oyarzabal', 'U. Marrero', 'D. Ćaleta-Car', 'C. Soler', 'A. Barrenetxea', 'O. Óskarsson']) },
-{ code: "SCP", name: "Sporting CP", skill: 78, style: "balanced", formation: "3-4-3", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("3-4-3", ['R. Silva', 'M. Araújo', 'G. Inácio', 'O. Diomande', 'Z. Debast', 'G. Quenda', 'M. Hjulmand', 'D. Bragança', 'P. Gonçalves', 'L. Suárez', 'F. Trincão', 'J. Virgínia', 'E. Quaresma', 'H. Morita', 'G. Catamo', 'F. Ioannidis']) },
-{ code: "BRE", name: "Brentford", skill: 78, style: "counterattack", formation: "3-5-2", strategy: { approachPlay: 1, passingDir: 1, creativity: -1, setPieces: 1, possLost: -1, possWon: 1, gkDist: 1, pressingLOE: 1, tackling: 1 }, squad: buildSquad("3-5-2", ['C. Kelleher', 'K. Ajer', 'N. Collins', 'S. Van Den Berg', 'R. Henry', 'J. Henderson', 'V. Janelt', 'M. Jensen', 'M. Damsgaard', 'I. Thiago', 'K. Schade', 'H. Valdimarsson', 'A. Hickey', 'Y. Yarmolyuk', 'B. Kayode', 'D. Ouattara']) },
-{ code: "BOU", name: "Bournemouth", skill: 78, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['Đ. Petrović', 'A. Truffert', 'B. Diakité', 'A. Jiménez', 'T. Adams', 'L. Cook', 'A. Scott', 'J. Kluivert', 'M. Tavernier', 'Evanilson', 'E. Kroupi', 'F. Forster', 'V. Milosavljevic', 'R. Christie', 'Rayan Vitor', 'J. Hill']) },
-{ code: "NFO", name: "Nottingham Forest", skill: 78, style: "counterattack", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, setPieces: 1, timeWasting: 1, possLost: -1, possWon: 1, gkDist: 1, defLine: -1, dlBehavior: -1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['M. Sels', 'Neco Williams', 'Murillo', 'N. Milenković', 'O. Aina', 'I. Sangaré', 'N. Domínguez', 'C. Hudson-Odoi', 'M. Gibbs-White', 'D. Ndoye', 'C. Wood', 'S. Ortega', 'Morato', 'E. Anderson', 'O. Hutchinson', 'I. Jesus']) },
-{ code: "SLB", name: "SL Benfica", skill: 77, style: "balanced", formation: "4-2-3-1", strategy: { approachPlay: -1, passingDir: -1, chanceCreation: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-3-1", ['A. Trubin', 'R. Obrador', 'T. Araújo', 'A. Silva', 'A. Bah', 'F. Luís', 'E. Barrenechea', 'H. Sudakov', 'O. Kökçü', 'D. Lukébakio', 'V. Pavlidis', 'S. Soares', 'M. Silva', 'F. Aursnes', 'G. Prestianni', 'F. Ivanović']) },
-{ code: "RCL", name: "RC Lens", skill: 77, style: "gegenpress", formation: "3-4-3", strategy: { approachPlay: -1, chanceCreation: -1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("3-4-3", ['R. Risser', 'M. Udol', 'M. Sarr', 'S. Baidoo', 'S. Abdulhamid', 'M. Sangaré', 'A. Haidara', 'R. Aguilar', 'A. Saint-Maximin', 'O. Édouard', 'F. Thauvin', 'M. Fortin', 'I. Ganiou', 'A. Thomasson', 'A. Sima', 'W. Saïd']) },
-{ code: "FUL", name: "Fulham", skill: 77, style: "balanced", formation: "4-2-3-1", strategy: { approachPlay: -1, chanceCreation: -1, possLost: -1, possWon: 1, gkDist: -1, tackling: -1 }, squad: buildSquad("4-2-3-1", ['B. Leno', 'A. Robinson', 'J. Andersen', 'C. Bassey', 'T. Castagne', 'S. Berge', 'S. Lukić', 'A. Iwobi', 'E. Smith Rowe', 'H. Wilson', 'R. Jiménez', 'B. Lecomte', 'R. Sessegnon', 'J. King', 'S. Chukwueze', 'R. Muniz']) },
-{ code: "SUN", name: "Sunderland", skill: 77, style: "gegenpress", formation: "4-3-3", strategy: { approachPlay: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 1, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-3-3", ['D. Roefs', 'Reinildo', 'O. Alderete', 'D. Ballard', 'N. Mukiele', 'E. Le Fée', 'G. Xhaka', 'N. Sadiki', 'H. Diarra', 'B. Brobbey', 'W. Isidor', 'K. Ellborg', 'T. Hume', 'L. Geertruida', 'C. Rigg', 'M. Talbi']) },
-{ code: "EVE", name: "Everton", skill: 77, style: "balanced", formation: "4-4-2", strategy: { approachPlay: -1, creativity: -1, setPieces: 1, timeWasting: 1, possLost: -1, possWon: 1, gkDist: 1, tackling: 1 }, squad: buildSquad("4-4-2", ['J. Pickford', 'V. Mykolenko', 'J. Tarkowski', 'M. Keane', 'J. O\'Brien', 'J. Grealish', 'J. Garner', 'K. Dewsbury-Hall', 'I. Ndiaye', 'Beto', 'T. Barry', 'M. Travers', 'J. Branthwaite', 'T. Iroegbunam', 'I. Gueye', 'D. McNeil']) },
-{ code: "PSV", name: "PSV Eindhoven", skill: 76, style: "gegenpress", formation: "4-2-3-1", strategy: { approachPlay: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-3-1", ['M. Kovar', 'Mauro Júnior', 'Y. Gasiorowski', 'R. Flamingo', 'S. Dest', 'J. Schouten', 'J. Veerman', 'R. van Bommel', 'I. Saibari', 'D. Man', 'R. Pepi', 'N. Olij', 'K. Sildillia', 'P. Wanner', 'G. Til', 'A. Pléa']) },
-{ code: "AJA", name: "Ajax Amsterdam", skill: 76, style: "tikitaka", formation: "4-3-3", strategy: { approachPlay: -1, passingDir: -2, chanceCreation: -1, creativity: 1, possLost: 1, possWon: -1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: -1 }, squad: buildSquad("4-3-3", ['M. Paes', 'Y. Baas', 'J. Šutalo', 'K. Itakura', 'L. Rosa', 'Y. Regeer', 'J. Mokio', 'O. Gloukh', 'M. Godts', 'K. Dolberg', 'M. Carrizo', 'J. Heerkens', 'A. Kaplan', 'S. Steur', 'R. Bounida', 'O. Edvardsen']) },
-{ code: "LEE", name: "Leeds United", skill: 76, style: "gegenpress", formation: "4-1-4-1", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("4-1-4-1", ['K. Darlow', 'G. Guðmundsson', 'P. Struijk', 'J. Rodon', 'J. Bogle', 'E. Ampadu', 'A. Stach', 'I. Gruev', 'B. Aaronson', 'W. Gnonto', 'D. Calvert-Lewin', 'L. Perri', 'J. Bijol', 'A. Tanaka', 'L. Nmecha', 'N. Okafor']) },
-{ code: "CEL", name: "Celtic", skill: 76, style: "gegenpress", formation: "4-2-4", strategy: { approachPlay: -1, dribbling: 1, creativity: 1, possLost: 1, possWon: 1, gkDist: -1, pressingLOE: 2, defLine: 1, dlBehavior: 1 }, squad: buildSquad("4-2-4", ['V. Sinisalo', 'K. Tierney', 'A. Trusty', 'C. Carter-Vickers', 'A. Johnston', 'A. Engels', 'R. Hatate', 'D. Maeda', 'J. Adamu', 'K. Iheanacho', 'B. Nygren', 'R. Doohan', 'L. Scales', 'C. McGregor', 'Jota', 'T. Čvančara']) },
-{ code: "IPS", name: "Ipswich Town", skill: 75, style: "counterattack", formation: "4-2-3-1", strategy: { approachPlay: 1, passingDir: 1, setPieces: 1, possLost: -1, possWon: 1, gkDist: 1, tackling: 1 }, squad: buildSquad("4-2-3-1", ['C. Walton', 'L. Davis', 'D. O\'Shea', 'C. Kipré', 'D. Furlong', 'A. Matusiwa', 'J. Taylor', 'J. Clarke', 'M. Núñez', 'J. Philogene', 'G. Hirst', 'A. Palmer', 'J. Greaves', 'K. McAteer', 'A. Mehmeti', 'S. Walle Egeli']) },
-{ code: "SLA", name: "Slavia Praha", skill: 74, style: "gegenpress", formation: "3-4-3", strategy: { approachPlay: 1, passingDir: 1, dribbling: 1, possLost: 1, possWon: 1, gkDist: 1, pressingLOE: 2, defLine: 1, dlBehavior: 1, tackling: 1 }, squad: buildSquad("3-4-3", ['J. Stanek', 'S. Chaloupek', 'D. Zima', 'Igoh Ogbu', 'D. Jurásek', 'D. Moses', 'M. Sadílek', 'D. Doudera', 'L. Provod', 'M. Chytil', 'V. Kusej', 'J. Markovic', 'T. Holes', 'Oscar', 'M. Cham', 'T. Chory']) },
-{ code: "USG", name: "Union Saint-Gilloise", skill: 74, style: "counterattack", formation: "3-4-1-2", strategy: { approachPlay: 1, passingDir: 1, setPieces: 1, possLost: -1, possWon: 1, gkDist: 1, pressingLOE: 1, tackling: 1 }, squad: buildSquad("3-4-1-2", ['K. Scherpen', 'F. Leysen', 'R. Sykes', 'K. Mac Allister', 'O. Niang', 'K. Van De Perre', 'A. Zorgane', 'A. Khalaili', 'A. Ait El Hadj', 'K. Rodríguez', 'P. David', 'V. Chambaere', 'C. Burgess', 'B. Zeneli', 'R. Schoofs', 'R. Florucz']) },
-{ code: "COV", name: "Coventry City", skill: 74, style: "balanced", formation: "4-3-3", strategy: { approachPlay: -1, chanceCreation: -1, possLost: -1, possWon: 1, gkDist: -1 }, squad: buildSquad("4-3-3", ['C. Rushworth', 'L. Kitching', 'B. Thomas', 'J. Latibeaudiere', 'M. van Ewijk', 'M. Grimes', 'V. Torp', 'J. Eccles', 'B. Rudoni', 'E. Simms', 'H. Wright', 'B. Wilson', 'J. Dasilva', 'M.H. Yang', 'E. Mason-Clark', 'T. Sakamoto']) },
-{ code: "HUL", name: "Hull City", skill: 74, style: "balanced", formation: "4-4-2", strategy: { approachPlay: 1, setPieces: 1, possLost: -1, possWon: 1, gkDist: 1, defLine: -1, dlBehavior: -1, tackling: 1 }, squad: buildSquad("4-4-2", ['I. Pandur', 'R. Giles', 'C. Hughes', 'J. Egan', 'L. Coyle', 'L. Millar', 'R. Slater', 'M. Crooks', 'A. Belloumi', 'O. McBurnie', 'K. Joseph', 'D. Phillips', 'C. Drameh', 'A. Hadžiahmetović', 'J. Lundstram', 'D. Akintola']) },
-{ code: "OLY", name: "Olympiacos", skill: 74, style: "wingplay", formation: "4-4-2", strategy: { passingDir: 1, chanceCreation: 1, dribbling: 1, setPieces: 1, timeWasting: 1, possLost: -1, possWon: 1, gkDist: 1, pressingLOE: -1, defLine: -1, dlBehavior: -1, tackling: 1 }, squad: buildSquad("4-4-2", ['K. Tzolakis', 'F. Ortega', 'L. Pirola', 'P. Retsos', 'Costinha', 'D. Podence', 'C. Mouzakitis', 'S. Hezze', 'G. Strefezza', 'A. El Kaabi', 'M. Taremi', 'A. Paschalakis', 'G. Biancone', 'Chiquinho', 'Y. Yazıcı', 'R. Yaremchuk']) }
-];
+function parsePresetTSV(raw, filterLeagues) {
+  return parseBulk(raw.split("\n").slice(1).map(line => {
+    const cols = line.split("\t");
+    const league = cols[cols.length - 1]?.trim();
+    if (filterLeagues && !filterLeagues.includes(league)) return null;
+    return cols.slice(1, -1).map(c => c.trim()).join("\t");
+  }).filter(Boolean).join("\n"));
+}
+const PRESET_AVIUM = parsePresetTSV(aviumTSV);
+const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, ["Nichirin League One"]);
+const PRESET_NL2 = parsePresetTSV(nl2TSV, ["Nichirin League Two"]);
+const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
+const PRESET_PL = parsePresetTSV(plTSV, ["Premier League"]);
+const PRESET_BUN = parsePresetTSV(bunTSV, ["Bundesliga"]);
+const PRESET_LL = parsePresetTSV(llTSV, ["La Liga"]);
+const PRESET_L1 = parsePresetTSV(l1TSV, ["Ligue 1"]);
+const PRESET_LP = parsePresetTSV(lpTSV, ["Liga Portugal"]);
+const PRESET_SL = parsePresetTSV(slTSV, ["Süper Lig"]);
+const PRESET_ED = parsePresetTSV(edTSV, ["Eredivisie"]);
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
@@ -1602,6 +1525,8 @@ select{cursor:pointer;}
 input::placeholder{color:#3b4a3b;}
 table{border-spacing:0;}
 @keyframes goalFlash{0%{text-shadow:0 0 24px #d3ebd3,0 0 48px #a3be8c66;}50%{text-shadow:0 0 36px #d3ebd3,0 0 72px #a3be8c66;}100%{text-shadow:none;}}
+@keyframes cardPop{0%{opacity:0;transform:translateY(8px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.ev-card{animation:cardPop 0.35s ease-out;}
 .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#627661;animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
 @media(max-width:600px){
   .grid-2col{grid-template-columns:1fr !important;gap:10px 0 !important;}
@@ -1653,6 +1578,9 @@ export default function App() {
   const [goalFlash, setGoalFlash] = useState(null);
   const [lmTab, setLmTab] = useState("stats");
   const [showReport, setShowReport] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoSpeed, setAutoSpeed] = useState(1500);
+  const autoRef = useRef(null);
   const summaryRef = useRef("");
   const [koBracketView, setKoBracketView] = useState(true);
   const exportBracket = () => {
@@ -1809,6 +1737,17 @@ export default function App() {
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
 
   useEffect(() => { if (lmFeedRef.current) lmFeedRef.current.scrollTop = lmFeedRef.current.scrollHeight; }, [lmMatch?.events.length]);
+  useEffect(() => {
+    if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
+      autoRef.current = setInterval(() => {
+        setLmMatch(prev => {
+          if (!prev || prev.phase === "finished") { setAutoPlay(false); return prev; }
+          return lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill });
+        });
+      }, autoSpeed);
+      return () => clearInterval(autoRef.current);
+    } else { if (autoRef.current) clearInterval(autoRef.current); }
+  }, [autoPlay, autoSpeed, lmMatch?.phase, teams, lmH, lmA]);
 
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
@@ -1834,8 +1773,8 @@ export default function App() {
         homeCode: teams[lmH]?.code, awayCode: teams[lmA]?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
         goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
-        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
-        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
+        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
+        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
         penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
       });
     }
@@ -1987,7 +1926,7 @@ export default function App() {
 
     const hSquad = buildLiveSquad(teams[liveHi].name, liveHi);
     const aSquad = buildLiveSquad(teams[liveAi].name, liveAi);
-    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
     const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
@@ -2064,22 +2003,23 @@ export default function App() {
 
   const exportState = () => { setShowExport(!showExport); };
 
-  const loadPreset = (preset) => { setTeams(preset); setShowBulk(false); setBulkText(""); setLmMatch(null); setLmH(0); setLmA(Math.min(1, preset.length - 1)); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
+  const loadLeague = (preset) => { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = preset.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})); return [...prev, ...fresh]; }); setLmH(0); setLmA(prev => Math.max(prev, 1)); setShowBulk(false); setBulkText(""); setLmMatch(null); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
+  const clearTeams = () => { setTeams([]); setLmMatch(null); setLmH(0); setLmA(0); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
 
   // ─── LIVE MATCH ───
   const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
-    init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     init.bench = {home: hSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill })); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq2 = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq2 = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
-    init.players = {home: hSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     init.bench = {home: hSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq2.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setLmMatch(s); setLoading(false); }, 40); };
+    let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setAutoPlay(false); setLmMatch(s); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
     setLmMatch(prev => {
       const s = cloneState(prev);
@@ -2101,7 +2041,7 @@ export default function App() {
     });
     setManualSub({side:null,off:null});
   };
-  const lmReset = () => setLmMatch(null);
+  const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
   const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
   const lmIsSetup = !lmMatch;
 
@@ -2195,8 +2135,34 @@ export default function App() {
   const tSwissAllDone = tConfig.matchFormat === "swiss" && tSwissRoundsPlayed >= tConfig.swissRounds && tSwissCurrentDone;
 
 
-  const accumulateMatchStats = (teamObj, goalsFor, goalsAgainst, isWin, isDraw, simCards, unavailSet) => {
+  const accumulateMatchStats = (teamObj, goalsFor, goalsAgainst, isWin, isDraw, simCards, unavailSet, simPlayers) => {
     if (!teamObj?.squad) return null;
+    if (simPlayers) {
+      const keyOf = (pName) => teamObj.name + "|" + pName;
+      const rng2 = new RNG(Date.now() + Math.random() * 99999);
+      const redP = simPlayers.find(p => p.rc);
+      const injP = simPlayers.find(p => p.inj);
+      const injDur = injP ? ((() => { const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+      setTPlayerStats(prev => {
+        const next = {};
+        for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
+        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
+        simPlayers.forEach(p => {
+          const k = keyOf(p.name);
+          if (!next[k]) next[k] = initP(p);
+          if (p.sub === 'on') next[k].subApp = (next[k].subApp||0) + 1;
+          else next[k].matches++;
+          next[k].goals += p.goals || 0;
+          next[k].assists += p.assists || 0;
+          next[k].totalRating += p.rating || 6.5;
+          next[k].yellows = (next[k].yellows||0) + (p.yc || 0);
+          if (p.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
+          if (p.inj) { next[k].injOut = (next[k].injOut||0) + injDur; }
+        });
+        return next;
+      });
+      return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur };
+    }
     const rng2 = new RNG(Date.now() + Math.random() * 99999);
     const starters = teamObj.squad.filter(p => !p.bench);
     const bench = teamObj.squad.filter(p => p.bench);
@@ -2404,9 +2370,10 @@ export default function App() {
       ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => {
         if (m.result) return;
         if (targetMi !== -1 && targetMi !== mi) return;
-        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy);
-        applyBan(accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet));
-        applyBan(accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet));
+        const hSq = filterSquad(m.home.squad, m.home.name, unavailSet), aSq = filterSquad(m.away.squad, m.away.name, unavailSet);
+        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq);
+        applyBan(accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home));
+        applyBan(accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away));
       }); });
     }
     ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
@@ -2508,18 +2475,18 @@ export default function App() {
     const ko = buildKOShell(first, hasTP); propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTKOManual(null);
   };
-  const tSimKOMatch = (rng, m, legTarget, haKey) => {
+  const tSimKOMatch = (rng, m, legTarget, haKey, unavailSet) => {
     const haDefault = resolveKOHomeAdv(m, tConfig);
     const ov = tHomeAdvOverrides[haKey] || null;
-    if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy);
-    // 2-legged: each team hosts one leg by default; per-match override can change this
+    const hSq = filterSquad(m.home.squad, m.home.name, unavailSet), aSq = filterSquad(m.away.squad, m.away.name, unavailSet);
+    if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
-    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy);
-    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag);
-    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag);
+    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq);
+    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
+    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
     return m.result;
   };
   const tScorinateKO = (targetRi, targetMi, legTarget) => {
@@ -2544,19 +2511,19 @@ export default function App() {
         if (!m.result && legTarget === 2) return;
         if (targetRi !== -1 && targetRi !== ri) return;
         if (targetMi !== -1 && targetMi !== mi) return;
-        m.result = tSimKOMatch(rng, m, legTarget, `ko_${ri}_${mi}`);
+        m.result = tSimKOMatch(rng, m, legTarget, `ko_${ri}_${mi}`, unavailSet);
           if(m.result && !m.result.partial) {
             if (m.result.twoLeg) {
               const l1h=m.result.leg1?.home||0,l1a=m.result.leg1?.away||0;
-              applyBan(accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet));
-              applyBan(accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet));
+              applyBan(accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet,m.result.playerData?.leg1?.home));
+              applyBan(accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet,m.result.playerData?.leg1?.away));
               const l2h=m.result.leg2?.home||0,l2a=m.result.leg2?.away||0;
-              applyBan(accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet));
-              applyBan(accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet));
+              applyBan(accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet,m.result.playerData?.leg2?.away));
+              applyBan(accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet,m.result.playerData?.leg2?.home));
             } else {
               const kw=koWinner(m); const hg=m.result.ftHome+(m.result.et?.home||0); const ag=m.result.ftAway+(m.result.et?.away||0);
-              applyBan(accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet));
-              applyBan(accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet));
+              applyBan(accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet,m.result.playerData?.home));
+              applyBan(accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet,m.result.playerData?.away));
             }
           }
       });
@@ -2565,18 +2532,18 @@ export default function App() {
     const tp = ko.thirdPlace;
     if (tp?.home && tp?.away && (targetRi === -1 || targetRi === -2)) {
       const tpDone = tp.result && !tp.result.partial;
-      if (!tpDone) { const tpTeams = new Set([tp.home.name,tp.away.name]); decrementBans(tpTeams); decLocal(tpTeams); const tpUnavail = buildUnavail(); tp.result = tSimKOMatch(rng, tp, legTarget, "tp"); if(tp.result&&!tp.result.partial){
+      if (!tpDone) { const tpTeams = new Set([tp.home.name,tp.away.name]); decrementBans(tpTeams); decLocal(tpTeams); const tpUnavail = buildUnavail(); tp.result = tSimKOMatch(rng, tp, legTarget, "tp", tpUnavail); if(tp.result&&!tp.result.partial){
             if (tp.result.twoLeg) {
               const tl1h=tp.result.leg1?.home||0,tl1a=tp.result.leg1?.away||0;
-              applyBan(accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail));
-              applyBan(accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail));
+              applyBan(accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail,tp.result.playerData?.leg1?.home));
+              applyBan(accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail,tp.result.playerData?.leg1?.away));
               const tl2h=tp.result.leg2?.home||0,tl2a=tp.result.leg2?.away||0;
-              applyBan(accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail));
-              applyBan(accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail));
+              applyBan(accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail,tp.result.playerData?.leg2?.away));
+              applyBan(accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail,tp.result.playerData?.leg2?.home));
             } else {
               const tw=koWinner(tp); const hg2=tp.result.ftHome+(tp.result.et?.home||0); const ag2=tp.result.ftAway+(tp.result.et?.away||0);
-              applyBan(accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail));
-              applyBan(accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail));
+              applyBan(accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail,tp.result.playerData?.home));
+              applyBan(accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail,tp.result.playerData?.away));
             }
           }}
     }
@@ -2610,7 +2577,8 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: teamsOpen ? 8 : 16, minHeight: 32 }}>
           <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#3b4a3b", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#3b4a3b", fontWeight: 400 }}>({teams.length})</span></label>
           <div style={{ display: "flex", gap: 6 }}>
-            {teamsOpen && <select onChange={e => { if (e.target.value === "avium") loadPreset(PRESET_AVIUM); else if (e.target.value === "nch_l1") loadPreset(PRESET_NCH_L1); else if (e.target.value === "eur") loadPreset(PRESET_EUR); e.target.value = ""; }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#3d5343", background: "transparent", cursor: "pointer" }}><option value="" hidden>☰ Preset</option><option value="avium">Avium (61)</option><option value="nch_l1">Nichirin League One (20)</option><option value="eur">European (46)</option></select>}
+            {teamsOpen && <select onChange={e => { const v = e.target.value; e.target.value = ""; const L = {avium:PRESET_AVIUM,nch_l1:PRESET_NCH_L1,nl2:PRESET_NL2,liga:PRESET_LIGA,pl:PRESET_PL,bun:PRESET_BUN,ll:PRESET_LL,l1:PRESET_L1,lp:PRESET_LP,sl:PRESET_SL,ed:PRESET_ED}; if (L[v]) loadLeague(L[v]); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#3d5343", background: "transparent", cursor: "pointer" }}><option value="" hidden>☰ League</option><option value="avium">Avium International</option><option value="nch_l1">Nichirin League One</option><option value="nl2">Nichirin League Two</option><option value="liga">Liga-ye Mellī</option><option disabled>──────────</option><option value="pl">Premier League</option><option value="bun">Bundesliga</option><option value="ll">La Liga</option><option value="l1">Ligue 1</option><option value="lp">Liga Portugal</option><option value="sl">Süper Lig</option><option value="ed">Eredivisie</option></select>}
+            {teamsOpen && teams.length > 0 && <button onClick={clearTeams} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }} title="Clear all teams">✕</button>}
             {teamsOpen && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#3d5343" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
             {teamsOpen && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#3d5343" }}>{showBulk ? "✕ Close" : "📂"}</button>}
             {teamsOpen && <button onClick={addTeam} style={addBtn}>+ Add</button>}
@@ -2775,15 +2743,29 @@ export default function App() {
         {tab === "live" && (<div>
           {/* Unified match controls — always at top */}
           <div style={{ marginBottom: 12 }}>
-            {lmIsSetup && <>
-              <button onClick={lmSimAll} disabled={teamErrors} className="tick-btn" style={{ ...scBtn, fontSize: 12, background: "linear-gradient(135deg, #4c5a4c 0%, #3b4a3b 100%)", opacity: teamErrors ? 0.4 : 1, cursor: teamErrors ? "default" : "pointer", marginBottom: 6 }}>⏩ Sim Entire Match</button>
-              <button onClick={lmKickOff} disabled={teamErrors} className="tick-btn" style={{ ...scBtn, fontSize: 12, opacity: teamErrors ? 0.4 : 1, cursor: teamErrors ? "default" : "pointer" }}>⚽ Start Match</button>
-            </>}
-            {lmMatch && lmBl && <div style={{ display: "flex", gap: 8 }}><button onClick={lmTick} className="tick-btn" style={{ ...scBtn, flex: 1 }}>{lmBl}</button><button onClick={lmSimAll} className="tick-btn" style={{ ...scBtn, flex: "0 0 auto", width: "auto", padding: "12px 20px", background: "linear-gradient(135deg, #4c5a4c 0%, #3b4a3b 100%)", fontSize: 11 }}>⏩ Sim to End</button></div>}
-            {lmMatch?.phase === "finished" && <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={lmReset} className="tick-btn" style={{ ...scBtn, flex: 1, background: "linear-gradient(135deg, #4c5a4c 0%, #3b4a3b 100%)" }}>New Match</button>
-              <button onClick={() => setShowReport(!showReport)} className="tick-btn" style={{ ...scBtn, flex: "0 0 auto", width: "auto", padding: "12px 16px", background: showReport ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "linear-gradient(135deg, #81a1c1 0%, #5e81ac 100%)", fontSize: 10 }}>{showReport ? "✕ Close" : "📋 Report"}</button>
-            </div>}
+            {(() => {
+              const finished = lmMatch?.phase === "finished";
+              const primaryLabel = lmIsSetup ? "⚽ Start Match" : finished ? "New Match" : lmBl;
+              const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (autoPlay) setAutoPlay(false); else lmTick(); };
+              const lmNotReady = teamErrors || teams.length < 2;
+              const primaryDisabled = lmIsSetup ? lmNotReady : autoPlay;
+              const autoClick = () => { if (autoPlay) { setAutoPlay(false); return; } if (lmIsSetup) lmKickOff(); setAutoPlay(true); };
+              return primaryLabel ? (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
+                {!finished && <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "linear-gradient(135deg, #4c5a4c 0%, #3b4a3b 100%)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
+                  <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: "linear-gradient(135deg, #4c5a4c 0%, #3b4a3b 100%)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
+                </div>}
+                {finished && <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => setShowReport(!showReport)} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: showReport ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "linear-gradient(135deg, #81a1c1 0%, #5e81ac 100%)" }}>{showReport ? "✕ Close Report" : "📋 Match Report"}</button>
+                </div>}
+                {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                  {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
+                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} style={{ background: autoSpeed === s.v ? "#3d5343" : "#141a14", border: "1px solid " + (autoSpeed === s.v ? "#627661" : "#1a221a"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#d3ebd3" : "#4c5a4c", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+                  ))}
+                </div>}
+              </div>) : null;
+            })()}
           </div>
           {/* Match Report — screenshottable */}
           {showReport && lmMatch?.phase === "finished" && (() => {
@@ -2866,7 +2848,7 @@ export default function App() {
                         <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                         <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                         <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                        <span style={{ textAlign: "center", color: p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
+                        <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
                         <span style={{ fontSize: 7, color: isOff?"#bf616a":"#3b4a3b", textAlign: "center" }}>{isOff?"\u25BC":""}</span>
                       </>); })}
                       <span style={{ gridColumn: "1/-1", borderTop: "1px solid #1a221a", marginTop: 2, marginBottom: 2 }}></span>
@@ -2875,7 +2857,7 @@ export default function App() {
                         <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                         <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                         <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                        <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
+                        <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
                         <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#3b4a3b", textAlign: "center" }}>{isOn?"\u25B2":""}</span>
                       </>); })}
                     </div>
@@ -2937,6 +2919,7 @@ export default function App() {
                 {!lm2ndLeg && <div style={{ fontSize: 9, color: "#3b4a3b", textAlign: "center", marginTop: 4 }}>Single match</div>}
               </div>
             </div>
+            {teams.length < 2 && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
             {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
           </div>)}
           {lmMatch && (<>
@@ -3393,7 +3376,57 @@ export default function App() {
             <div style={{ background: "#0a0f0c", border: "1px solid #1a221a", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid #141a14", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#627661" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", height: 220, overflowY: "auto" }}>
-              {(()=>{ const T2=new Set(["goal","penalty","chance","red","second_yellow","pen_miss"]); const T1=new Set(["save","miss","yellow","sub","injury"]); return lmMatch.events.map((e, i) => { const t2=T2.has(e.type),t1=T1.has(e.type); return (<div key={i} className="ev-enter" style={{ display: e.type === "phase" ? "block" : "flex", gap: 0, padding: e.type === "phase" ? "10px 18px" : "5px 0 5px 0", alignItems: "baseline", borderLeft: t2 ? "2px solid " + (evColor[e.type]||"#555") : "2px solid transparent", borderBottom: "1px solid #0f1310", background: e.type === "goal" ? "#d3ebd308" : "transparent", fontSize: e.type === "phase" ? 13 : t2 ? 14 : t1 ? 12 : 12, color: evColor[e.type] || "#777", fontWeight: e.type === "phase" || t2 || t1 ? 600 : 400, textAlign: e.type === "phase" ? "center" : "left", letterSpacing: "0.02em", lineHeight: 1.5 }}>{e.type !== "phase" && <span style={{ color: "#3b4a3b", width: 44, minWidth: 44, textAlign: "right", fontSize: 10, fontWeight: 600, paddingRight: 10, flexShrink: 0, borderRight: "1px solid #141a14", marginRight: 10, ...mono }}>{e.min}'</span>}<span style={{ flex: 1 }}>{e.text}</span></div>); }); })()}
+              {(()=>{ const hN=teams[lmH]?.name, aN=teams[lmA]?.name, hC=teams[lmH]?.code, aC=teams[lmA]?.code;
+                const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ padding: "2px 6px", borderRadius: 4, background: isH ? "#4a7ab522" : "#b55a5a22", fontSize: 8, fontWeight: 700, color: isH ? "#8ab4e0" : "#e08a8a", border: "1px solid " + (isH ? "#4a7ab533" : "#b55a5a33"), letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
+                </div>);
+                const mC = (min) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#4c5a4c", ...mono }}>{min}'</span>
+                </div>);
+                const iC = (content, sz) => (<div style={{ width: 30, minWidth: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: sz || 14 }}>{content || " "}</div>);
+                const parseSub = (txt) => { const s = txt.replace(/^[🔄⇄]\s*/, '').split(/\s*→\s*/); if (s.length < 2) return null; const tm = s[0].match(/^(.+?)'s\s+(.+)$/); const rm = s[1].match(/^(.+?)\.\s+(Tactical substitution|Booked player off|Manual substitution|Forced substitution)\.?$/); return { team: tm?.[1]||"", off: tm?.[2]||s[0], on: rm?.[1]||s[1].replace(/\.\s*$/,""), reason: rm?.[2]||"" }; };
+                return lmMatch.events.map((e, i) => {
+                if (e.type === "phase") return (<div key={i} className="ev-enter" style={{ padding: "8px 18px", textAlign: "center", fontSize: 10, fontWeight: 600, color: "#627661", letterSpacing: "0.12em", borderBottom: "1px solid #141a14" }}>{e.text}</div>);
+                const isH = e.team === "home" || (e.type === "sub" && e.text.includes(hN+"'s"));
+                const isForcedSub = e.type === "injury" && e.text.includes("Forced substitution");
+                const T1 = new Set(["goal","penalty","red","second_yellow","sub","pen_miss"]);
+                if (T1.has(e.type) || isForcedSub) {
+                  let icon, header, headerColor, body, bg;
+                  if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#d3ebd3"; body = <div style={{ fontSize: 11, color: "#8a9b8a", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#d3ebd308"; }
+                  else if (e.type === "penalty") { icon = <span>🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "#8a9b8a", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#ebcb8b08"; }
+                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; header = e.type === "second_yellow" ? "Second yellow" : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#8a9b8a" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#bf616a08"; }
+                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#8a9b8a" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
+                  else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
+                  else if (e.type === "sub") { const p = parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div style={{ fontSize: 11, color: "#5e9c6b" }}>▲ {p.on}</div><div style={{ fontSize: 11, color: "#bf616a" }}>▼ {p.off}</div>{p.reason && <div style={{ fontSize: 9, color: "#4c5a4c", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "#8a9b8a" }}>{e.text}</div>; bg = "transparent"; }
+                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid #141a14", background: bg, alignItems: "center" }}>
+                    {mC(e.min)}
+                    {iC(icon, 16)}
+                    <div style={{ flex: 1, padding: "0 8px" }}>
+                      {header && <div style={{ fontSize: 13, fontWeight: 700, color: headerColor, marginBottom: 2 }}>{header}</div>}
+                      {body}
+                    </div>
+                    {tBadge(isH)}
+                  </div>);
+                }
+                const T2 = new Set(["yellow","chance","injury"]);
+                if (T2.has(e.type)) {
+                  let icon, txt, clr;
+                  if (e.type === "yellow") { icon = <div style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 1.5 }} />; txt = e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''); clr = "#8a9b8a"; }
+                  else if (e.type === "chance") { icon = <span>✨</span>; txt = e.text.replace(/^✨\s*/, ''); clr = evColor.chance || "#d3ebd3"; }
+                  else { icon = <span>🏥</span>; txt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); clr = "#c07070"; }
+                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid #0f1310", alignItems: "center" }}>
+                    {mC(e.min)}
+                    {iC(icon, 12)}
+                    <div style={{ flex: 1, padding: "0 8px", fontSize: 11, color: clr }}>{txt}</div>
+                  </div>);
+                }
+                const t3Icons = { save: "🧤", miss: "💨", corner: "🏴", foul: "⚠️", woodwork: "🪨", offside: "🚩", counter: "⚡", press: "🔥" };
+                return (<div key={i} className="ev-enter" style={{ display: "flex", gap: 0, padding: "3px 0", borderBottom: "1px solid #0a0f0c", alignItems: "center" }}>
+                  {mC(e.min)}
+                  {iC(t3Icons[e.type] ? <span>{t3Icons[e.type]}</span> : null, 10)}
+                  <div style={{ flex: 1, padding: "0 8px", fontSize: 10, color: evColor[e.type] || "#444", lineHeight: 1.4 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
+                </div>);
+              }); })()}
               {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "#4c5a4c", fontSize: 11 }}>Awaiting kick off...</div>}
               </div>
             </div>
@@ -3420,9 +3453,9 @@ export default function App() {
               </div>); })()}
               {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Penalties", lmMatch.stats.home.penalties, lmMatch.stats.away.penalties], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds], ["Injuries", lmMatch.stats.home.injuries, lmMatch.stats.away.injuries], ["Subs Left", 3 - lmMatch.subs.home, 3 - lmMatch.subs.away]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
                 <span style={{ width: 24, textAlign: "right", color: h > a ? "#8ab4e0" : "#4c5a4c", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? "#2d7a45" : "#1a221a", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? "#4a7ab588" : "#1a221a", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#3b4a3b", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? "#2d7a45" : "#1a221a", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? "#b55a5a88" : "#1a221a", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 24, textAlign: "left", color: a > h ? "#e08a8a" : "#4c5a4c", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
               {/* Momentum graph */}
@@ -3478,7 +3511,7 @@ export default function App() {
                       <span style={{ color: isOff?"#627661":"#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                      <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOff?"#bf616a":"#3b4a3b", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #1a221a", marginTop: 2, marginBottom: 2 }}></span>
@@ -3487,7 +3520,7 @@ export default function App() {
                       <span style={{ color: isOn?"#c5c8c6":"#4c5a4c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{TB(sq2.tier)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#d3ebd3":"#2a3a2a", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#d3ebd3":"#2a3a2a", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":p.rating>=7.5?"#a3be8c":p.rating>=6.0?"#c5c8c6":"#bf616a", fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                      <span style={{ textAlign: "center", color: !isOn?"#2a3a2a":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#3b4a3b", textAlign: "center" }}>{isOn?"▲":""}</span>
                     </>); })}
                   </div>
@@ -3682,7 +3715,7 @@ export default function App() {
                       <span style={{ flex: 1, color: "#c5c8c6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
                       <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                       <span style={{ color: "#627661", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                      <span style={{ color: avg>=7.5?"#a3be8c":avg>=6.5?"#c5c8c6":"#bf616a", fontWeight: 700, width: 24, textAlign: "right", ...mono }}>{avg.toFixed(1)}</span>
+                      <span style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", ...mono }}>{avg.toFixed(1)}</span>
                     </div>);
                   })}
                 </div>
@@ -3747,7 +3780,7 @@ export default function App() {
                           <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#627661", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                           <span style={{ color: "#627661", fontSize: 8, width: 28, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                           <span style={{ color: "#8a9b8a", fontSize: 8, width: 16, textAlign: "center", flexShrink: 0, ...mono }}>{ap}</span>
-                          <span style={{ color: tLeaderboard === "rating" ? (avg>=7.5?"#a3be8c":avg>=6.5?"#c5c8c6":"#bf616a") : "#d3ebd3", fontWeight: 700, width: 26, textAlign: "right", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</span>
+                          <span style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "#d3ebd3", fontWeight: 700, width: 26, textAlign: "right", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</span>
                         </div>
                       );
                     })}
