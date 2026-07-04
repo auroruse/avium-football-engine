@@ -2748,7 +2748,7 @@ export default function App() {
               const primaryLabel = lmIsSetup ? "⚽ Start Match" : finished ? "New Match" : lmBl;
               const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (autoPlay) setAutoPlay(false); else lmTick(); };
               const lmNotReady = teamErrors || teams.length < 2;
-              const primaryDisabled = lmIsSetup ? lmNotReady : autoPlay;
+              const primaryDisabled = lmIsSetup ? lmNotReady : (!finished && autoPlay);
               const autoClick = () => { if (autoPlay) { setAutoPlay(false); return; } if (lmIsSetup) lmKickOff(); setAutoPlay(true); };
               return primaryLabel ? (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
