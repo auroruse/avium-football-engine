@@ -3872,43 +3872,49 @@ export default function App() {
                 {/* Top Scorers */}
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "#7aaa88", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "#2a6a40" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                      <span style={{ color: "#2a6a40", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
-                      <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                      <span style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                      <span style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", ...mono }}>{p.goals}</span>
-                    </div>
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#2a6a40", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}{TB(p.tier)}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
+                    </tr>
                   ))}
+                  </tbody></table>
                 </div>
                 {/* Top Assisters */}
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "#7aaa88", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "#2a6a40" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                      <span style={{ color: "#2a6a40", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
-                      <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                      <span style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                      <span style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", ...mono }}>{p.assists}</span>
-                    </div>
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#2a6a40", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}{TB(p.tier)}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
+                    </tr>
                   ))}
+                  </tbody></table>
                 </div>
                 {/* Top Rated */}
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "#7aaa88", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "#2a6a40" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>(p.matches+(p.subApp||0))>=1).sort((a,b)=>(b.totalRating/(b.matches+(b.subApp||0)))-(a.totalRating/(a.matches+(a.subApp||0)))).slice(0,10).map((p,i) => {
                     const avg = (p.totalRating/(p.matches+(p.subApp||0)));
                     return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                      <span style={{ color: "#2a6a40", width: 14, textAlign: "right", ...mono }}>{i+1}</span>
-                      <span style={{ flex: 1, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
-                      <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                      <span style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                      <span style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", ...mono }}>{avg.toFixed(1)}</span>
-                    </div>);
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#2a6a40", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}{TB(p.tier)}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#4a8a60", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
+                    </tr>);
                   })}
+                  </tbody></table>
                 </div>
               </div>
               {(() => {
@@ -3960,21 +3966,23 @@ export default function App() {
                     <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "#4a8a60", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                     {sorted.map((p, i) => {
                       const ap = p.matches + (p.subApp||0);
                       const avg = ap ? (p.totalRating/ap) : 0;
                       const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : avg;
                       return (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid #0a0d0a" : "none" }}>
-                          <span style={{ color: "#2a6a40", width: 20, textAlign: "right", fontSize: 9, ...mono }}>{i+1}</span>
-                          <span style={{ flex: 1, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}{TB(p.tier)}</span>
-                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                          <span style={{ color: "#4a8a60", fontSize: 8, width: 28, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                          <span style={{ color: "#7aaa88", fontSize: 8, width: 16, textAlign: "center", flexShrink: 0, ...mono }}>{ap}</span>
-                          <span style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "#ffffff", fontWeight: 700, width: 26, textAlign: "right", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</span>
-                        </div>
+                        <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid #0a0d0a" : "none" }}>
+                          <td style={{ color: "#2a6a40", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
+                          <td style={{ color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{p.name}{TB(p.tier)}</td>
+                          <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#4a8a60", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
+                          <td style={{ color: "#4a8a60", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                          <td style={{ color: "#7aaa88", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
+                          <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "#ffffff", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
+                        </tr>
                       );
                     })}
+                    </tbody></table>
                     {sorted.length === 0 && <div style={{ color: "#2a6a40", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
                   </div>
                 </div>
