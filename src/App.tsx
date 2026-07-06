@@ -2979,8 +2979,8 @@ export default function App() {
                   const rRenderA = (items) => <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 28px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>{items.flatMap((it, i) => [<span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{rBallP(it.type)}</span>, <span key={i+"n"} style={{ color: it.type === "red" ? "#bf616a" : "#7889a0", textAlign: "left", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>, <span key={i+"m"} style={{ color: "#7889a0", textAlign: "left", ...mono }}>{rMTxt(it.min)}</span>])}</div>;
                   return <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
                     {motm && <div style={{ textAlign: "center", marginBottom: 6 }}>
-                      <div style={{ display: "inline-flex", alignItems: "baseline", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px" }}>
-                        <span style={{ fontSize: 11, alignSelf: "center" }}>⭐</span>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px" }}>
+                        <span style={{ fontSize: 11 }}>⭐</span>
                         <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{motm.name}</span>
                         <span style={{ fontSize: 8, color: "#7889a0" }}>{motmTName}</span>
                         <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 700, ...mono }}>{motm.rating?.toFixed(1)}</span>
@@ -3127,8 +3127,8 @@ export default function App() {
                 if (!potm || potm.rating < 6.5) return null;
                 const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
                 const tName = isHome ? teams[lmH]?.name : teams[lmA]?.name;
-                return (<div style={{ display: "inline-flex", alignItems: "baseline", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, alignSelf: "center" }}>⭐</span>
+                return (<div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11 }}>⭐</span>
                   <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{potm.name}</span>
                   <span style={{ fontSize: 8, color: "#7889a0" }}>{tName}</span>
                   <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span>
