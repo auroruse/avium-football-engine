@@ -1734,15 +1734,20 @@ export default function App() {
         const ah=m.result.agg?.home||0, aa=m.result.agg?.away||0;
         const hCls=w===m.home?' class="w"':'', aCls=w===m.away?' class="w"':'';
         s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+'>'+hnT+'</text>';
-        let hTail = l1h+' '+l2h+' '+ah; if(m.result.pen) hTail+=' ('+m.result.pen.home+')';
-        s += '<text x="'+(x+cW-6)+'" y="'+(y+19)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+hCls+'>'+hTail+'</text>';
         s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
-        let aTail = l1a+' '+l2a+' '+aa; if(m.result.pen) aTail+=' ('+m.result.pen.away+')';
-        s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+aCls+'>'+aTail+'</text>';
+        const legColW = 18, aggColW = 24;
+        const aggEnd = x+cW-6, l2End = aggEnd-aggColW, l1End = l2End-legColW;
+        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
+        const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
+        legText(l1h, l1End, y+19);
+        legText(l2h, l2End, y+19);
+        aggText(ah+(m.result.pen?' ('+m.result.pen.home+')':''), aggEnd, y+19, hCls);
+        legText(l1a, l1End, y+37);
+        legText(l2a, l2End, y+37);
+        aggText(aa+(m.result.pen?' ('+m.result.pen.away+')':''), aggEnd, y+37, aCls);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
         const lblClr = m.result.pen ? "#d08770" : "#7889a0";
-        const scoreW = String(l1a+' '+l2a+' '+aa+(m.result.pen?' ('+m.result.pen.away+')':'')).length * 6 + 16;
-        addLabel(lbl, lblClr, x+cW-6-scoreW, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, lblClr, l1End-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
         const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
@@ -1812,6 +1817,7 @@ export default function App() {
       const cs = col(rr.matches, rx, rr.name);
       prevR = cs; prevRN = rr.matches.length;
     }
+    if (prevR) lines(prevR, cx, prevRN, "right");
     s+='</svg>';
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
@@ -2012,7 +2018,7 @@ export default function App() {
       if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k);
     }
 
-    const forceResult = target.type === "ko";
+    const forceResult = target.type === "ko" && !(tConfig.koLegs === 2 && target.leg === 1);
     let startScore = [0, 0];
     if (isL2 && matchObj.result?.leg1) {
       startScore = [matchObj.result.leg1.away, matchObj.result.leg1.home];
@@ -2295,25 +2301,37 @@ export default function App() {
       const redP = simPlayers.find(p => p.rc);
       const injP = simPlayers.find(p => p.inj);
       const injDur = injP ? ((() => { const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+      const diffs = {};
+      simPlayers.forEach(p => {
+        const k = keyOf(p.name);
+        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
+        if (p.sub === 'on') d.subApp++; else d.matches++;
+        d.goals += p.goals || 0;
+        d.assists += p.assists || 0;
+        d.totalRating += p.rating || 6.5;
+        d.yellows += p.yc || 0;
+        if (p.rc) { d.reds++; d.suspended++; }
+        if (p.inj) d.injOut += injDur;
+      });
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
         const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
-        simPlayers.forEach(p => {
-          const k = keyOf(p.name);
-          if (!next[k]) next[k] = initP(p);
-          if (p.sub === 'on') next[k].subApp = (next[k].subApp||0) + 1;
-          else next[k].matches++;
-          next[k].goals += p.goals || 0;
-          next[k].assists += p.assists || 0;
-          next[k].totalRating += p.rating || 6.5;
-          next[k].yellows = (next[k].yellows||0) + (p.yc || 0);
-          if (p.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
-          if (p.inj) { next[k].injOut = (next[k].injOut||0) + injDur; }
-        });
+        simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
+        for (const [k, d] of Object.entries(diffs)) {
+          next[k].matches = (next[k].matches||0) + d.matches;
+          next[k].subApp = (next[k].subApp||0) + d.subApp;
+          next[k].goals = (next[k].goals||0) + d.goals;
+          next[k].assists = (next[k].assists||0) + d.assists;
+          next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
+          next[k].yellows = (next[k].yellows||0) + d.yellows;
+          next[k].reds = (next[k].reds||0) + d.reds;
+          next[k].suspended = (next[k].suspended||0) + d.suspended;
+          next[k].injOut = (next[k].injOut||0) + d.injOut;
+        }
         return next;
       });
-      return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur };
+      return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur, diffs };
     }
     const rng2 = new RNG(Date.now() + Math.random() * 99999);
     const starters = teamObj.squad.filter(p => !p.bench);
@@ -2380,43 +2398,84 @@ export default function App() {
       else if (p.pos === "MID") { pr.rtg += (rng2.u() - 0.3) * 0.3; if (goalsFor >= 2) pr.rtg += 0.08; }
       pr.rtg = Math.max(3, Math.min(10, pr.rtg));
     });
+    const diffs = {};
+    const diffOf = (k) => diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
+    sq.forEach(p => {
+      const k = key(p.name);
+      const d = diffOf(k);
+      d.matches++;
+      const pr = playerRtgs[p.name];
+      d.goals += pr.gCount;
+      d.assists += pr.aCount;
+      d.totalRating += pr.rtg;
+      d.yellows += cardedYellows.filter(n => n === p.name).length;
+      if (redName === p.name) { d.reds++; d.suspended++; }
+      if (p.name === injName) d.injOut += injDur;
+    });
+    matchSubs.forEach(p => {
+      const k = key(p.name);
+      const d = diffOf(k);
+      d.subApp++;
+      const pr = playerRtgs[p.name];
+      d.goals += pr.gCount;
+      d.assists += pr.aCount;
+      d.totalRating += pr.rtg;
+      d.yellows += cardedYellows.filter(n => n === p.name).length;
+      if (redName === p.name) { d.reds++; d.suspended++; }
+      if (p.name === injName) d.injOut += injDur;
+    });
     setTPlayerStats(prev => {
       const next = {};
       for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
       const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
-      sq.forEach(p => {
-        const k = key(p.name);
-        if (!next[k]) next[k] = initP(p);
-        next[k].matches++;
-        const pr = playerRtgs[p.name];
-        next[k].goals += pr.gCount;
-        next[k].assists += pr.aCount;
-        next[k].totalRating += pr.rtg;
-        next[k].yellows = (next[k].yellows||0) + cardedYellows.filter(n => n === p.name).length;
-        if (redName === p.name) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
-        if (p.name === injName) { next[k].injOut = (next[k].injOut||0) + injDur; }
-      });
-      matchSubs.forEach(p => {
-        const k = key(p.name);
-        if (!next[k]) next[k] = initP(p);
-        next[k].subApp = (next[k].subApp||0) + 1;
-        const pr = playerRtgs[p.name];
-        next[k].goals += pr.gCount;
-        next[k].assists += pr.aCount;
-        next[k].totalRating += pr.rtg;
-        next[k].yellows = (next[k].yellows||0) + cardedYellows.filter(n => n === p.name).length;
-        if (redName === p.name) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
-        if (p.name === injName) { next[k].injOut = (next[k].injOut||0) + injDur; }
-      });
+      [...sq, ...matchSubs].forEach(p => { const k = key(p.name); if (!next[k]) next[k] = initP(p); });
+      for (const [k, d] of Object.entries(diffs)) {
+        next[k].matches = (next[k].matches||0) + d.matches;
+        next[k].subApp = (next[k].subApp||0) + d.subApp;
+        next[k].goals = (next[k].goals||0) + d.goals;
+        next[k].assists = (next[k].assists||0) + d.assists;
+        next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
+        next[k].yellows = (next[k].yellows||0) + d.yellows;
+        next[k].reds = (next[k].reds||0) + d.reds;
+        next[k].suspended = (next[k].suspended||0) + d.suspended;
+        next[k].injOut = (next[k].injOut||0) + d.injOut;
+      }
       return next;
     });
-    return { redKey: redName ? keyOf(redName) : null, injKey: injName ? keyOf(injName) : null, injDur };
+    return { redKey: redName ? keyOf(redName) : null, injKey: injName ? keyOf(injName) : null, injDur, diffs };
   };
   const decrementBans = (teamNames) => {
     setTPlayerStats(prev => {
       const next = {};
       for (const k of Object.keys(prev)) next[k] = {...prev[k]};
       for (const k of Object.keys(next)) { if (teamNames.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
+      return next;
+    });
+  };
+  const reverseMatchStats = (diffsSets) => {
+    const merged = {};
+    diffsSets.filter(Boolean).forEach(diffs => {
+      for (const [k, d] of Object.entries(diffs)) {
+        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
+        for (const f of Object.keys(m)) m[f] += d[f] || 0;
+      }
+    });
+    if (Object.keys(merged).length === 0) return;
+    setTPlayerStats(prev => {
+      const next = {};
+      for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
+      for (const [k, d] of Object.entries(merged)) {
+        if (!next[k]) continue;
+        next[k].matches = Math.max(0, (next[k].matches||0) - d.matches);
+        next[k].subApp = Math.max(0, (next[k].subApp||0) - d.subApp);
+        next[k].goals = Math.max(0, (next[k].goals||0) - d.goals);
+        next[k].assists = Math.max(0, (next[k].assists||0) - d.assists);
+        next[k].totalRating = (next[k].totalRating||0) - d.totalRating;
+        next[k].yellows = Math.max(0, (next[k].yellows||0) - d.yellows);
+        next[k].reds = Math.max(0, (next[k].reds||0) - d.reds);
+        next[k].suspended = Math.max(0, (next[k].suspended||0) - d.suspended);
+        next[k].injOut = Math.max(0, (next[k].injOut||0) - d.injOut);
+      }
       return next;
     });
   };
@@ -2459,7 +2518,7 @@ export default function App() {
         propagateKO(ko);
       }
       setTKO(ko); setTKoEdit(null); setTScoreError("");
-      if (result && !result.partial) { const km = tp ? ko.thirdPlace : ko.rounds[ri].matches[mi]; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } if(km?.home)accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail); if(km?.away)accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail); }
+      if (result && !result.partial) { const km = tp ? ko.thirdPlace : ko.rounds[ri].matches[mi]; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
       const fm = ko.rounds[ko.rounds.length - 1].matches[0];
       if (fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial))) setTPhase("complete"); else setTPhase("knockout");
     };
@@ -2669,15 +2728,17 @@ export default function App() {
           if(m.result && !m.result.partial) {
             if (m.result.twoLeg) {
               const l1h=m.result.leg1?.home||0,l1a=m.result.leg1?.away||0;
-              applyBan(accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet,m.result.playerData?.leg1?.home));
-              applyBan(accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet,m.result.playerData?.leg1?.away));
+              const rH1=accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet,m.result.playerData?.leg1?.home); applyBan(rH1);
+              const rA1=accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet,m.result.playerData?.leg1?.away); applyBan(rA1);
               const l2h=m.result.leg2?.home||0,l2a=m.result.leg2?.away||0;
-              applyBan(accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet,m.result.playerData?.leg2?.away));
-              applyBan(accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet,m.result.playerData?.leg2?.home));
+              const rH2=accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet,m.result.playerData?.leg2?.away); applyBan(rH2);
+              const rA2=accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet,m.result.playerData?.leg2?.home); applyBan(rA2);
+              m.result.statDiffs = { leg1:{home:rH1?.diffs,away:rA1?.diffs}, leg2:{home:rH2?.diffs,away:rA2?.diffs} };
             } else {
               const kw=koWinner(m); const hg=m.result.ftHome+(m.result.et?.home||0); const ag=m.result.ftAway+(m.result.et?.away||0);
-              applyBan(accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet,m.result.playerData?.home));
-              applyBan(accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet,m.result.playerData?.away));
+              const rH=accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet,m.result.playerData?.home); applyBan(rH);
+              const rA=accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet,m.result.playerData?.away); applyBan(rA);
+              m.result.statDiffs = { home:rH?.diffs, away:rA?.diffs };
             }
           }
       });
@@ -2689,15 +2750,17 @@ export default function App() {
       if (!tpDone) { const tpTeams = new Set([tp.home.name,tp.away.name]); decrementBans(tpTeams); decLocal(tpTeams); const tpUnavail = buildUnavail(); tp.result = tSimKOMatch(rng, tp, legTarget, "tp", tpUnavail); if(tp.result&&!tp.result.partial){
             if (tp.result.twoLeg) {
               const tl1h=tp.result.leg1?.home||0,tl1a=tp.result.leg1?.away||0;
-              applyBan(accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail,tp.result.playerData?.leg1?.home));
-              applyBan(accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail,tp.result.playerData?.leg1?.away));
+              const trH1=accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail,tp.result.playerData?.leg1?.home); applyBan(trH1);
+              const trA1=accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail,tp.result.playerData?.leg1?.away); applyBan(trA1);
               const tl2h=tp.result.leg2?.home||0,tl2a=tp.result.leg2?.away||0;
-              applyBan(accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail,tp.result.playerData?.leg2?.away));
-              applyBan(accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail,tp.result.playerData?.leg2?.home));
+              const trH2=accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail,tp.result.playerData?.leg2?.away); applyBan(trH2);
+              const trA2=accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail,tp.result.playerData?.leg2?.home); applyBan(trA2);
+              tp.result.statDiffs = { leg1:{home:trH1?.diffs,away:trA1?.diffs}, leg2:{home:trH2?.diffs,away:trA2?.diffs} };
             } else {
               const tw=koWinner(tp); const hg2=tp.result.ftHome+(tp.result.et?.home||0); const ag2=tp.result.ftAway+(tp.result.et?.away||0);
-              applyBan(accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail,tp.result.playerData?.home));
-              applyBan(accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail,tp.result.playerData?.away));
+              const trH=accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail,tp.result.playerData?.home); applyBan(trH);
+              const trA=accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail,tp.result.playerData?.away); applyBan(trA);
+              tp.result.statDiffs = { home:trH?.diffs, away:trA?.diffs };
             }
           }}
     }
@@ -2712,6 +2775,11 @@ export default function App() {
     const ko = JSON.parse(JSON.stringify(tKO));
     const target = tp ? ko.thirdPlace : ko.rounds[ri]?.matches[mi];
     if (!target) return;
+    const sd = target.result?.statDiffs;
+    if (sd) {
+      const sets = sd.leg1 ? [sd.leg1.home, sd.leg1.away, sd.leg2?.home, sd.leg2?.away] : [sd.home, sd.away];
+      reverseMatchStats(sets);
+    }
     target.result = null;
     if (!tp) {
       for (let r2 = ri + 1; r2 < ko.rounds.length; r2++) ko.rounds[r2].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; });
@@ -4443,12 +4511,12 @@ export default function App() {
                   <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid #e4002b66" : ri === -2 ? "1px solid #d0877044" : "1px solid #2a3a50", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 14, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 14, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 16, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>
                         : <span style={{ color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1H : sH}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 14, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 14, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 16, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>
                         : <span style={{ color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1A : sA}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>}
                     </div>
 
