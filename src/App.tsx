@@ -1558,7 +1558,7 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true) {
     return cols.slice(skipStart, hasSuffix ? -1 : cols.length).map(c => c.trim()).join("\t");
   }).filter(Boolean).join("\n"));
 }
-const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 2);
+const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, ["Nichirin League One"]);
 const PRESET_NL2 = parsePresetTSV(nl2TSV, ["Nichirin League Two"]);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
