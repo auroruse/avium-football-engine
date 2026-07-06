@@ -2991,7 +2991,14 @@ export default function App() {
                         <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{hN}</div>
                         <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#81a1c1" }}>{abbr(hN, teams[lmH]?.code)}</span> <span style={{ color: "#7889a0" }}>· {teams[lmH]?.skill}</span></div>
                       </div>
-                      <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>{hS}<span style={{ color: "#7889a0", margin: "0 6px" }}>:</span>{aS}</div>
+                      <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>
+                        {hS}
+                        {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginLeft: 2, ...mono }}>({hS+lmMatch.startScore[0]})</span>}
+                        <span style={{ color: "#7889a0", margin: "0 6px" }}>:</span>
+                        {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginRight: 2, ...mono }}>({aS+lmMatch.startScore[1]})</span>}
+                        {aS}
+                      </div>
+                      {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <div style={{ gridColumn: "1 / -1", textAlign: "center", fontSize: 9, color: "#7889a0", marginTop: 2 }}>1st leg {lmMatch.startScore[0]}–{lmMatch.startScore[1]} · agg. {hS+lmMatch.startScore[0]}–{aS+lmMatch.startScore[1]}</div>}
                       <div style={{ textAlign: "left" }}>
                         <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{aN}</div>
                         <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#7889a0" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#bf616a" }}>{abbr(aN, teams[lmA]?.code)}</span></div>
