@@ -3014,12 +3014,11 @@ export default function App() {
                         {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginRight: 2, ...mono }}>({aS+lmMatch.startScore[1]})</span>}
                         {aS}
                       </div>
-                      {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <div style={{ gridColumn: "1 / -1", textAlign: "center", fontSize: 9, color: "#7889a0", marginTop: 2 }}>1st leg {lmMatch.startScore[0]}–{lmMatch.startScore[1]} · agg. {hS+lmMatch.startScore[0]}–{aS+lmMatch.startScore[1]}</div>}
-                      {lmMatch.penalties?.decided && <div style={{ gridColumn: "1 / -1", textAlign: "center", fontSize: 11, color: "#ffffff", fontWeight: 600, marginTop: 2, ...mono }}>({lmMatch.penalties.home.filter(k=>k.scored).length}–{lmMatch.penalties.away.filter(k=>k.scored).length} PENS)</div>}
                       <div style={{ textAlign: "left" }}>
                         <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{aN}</div>
                         <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#7889a0" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#bf616a" }}>{abbr(aN, teams[lmA]?.code)}</span></div>
                       </div>
+                      {lmMatch.penalties?.decided && <div style={{ gridColumn: "1 / -1", textAlign: "center", fontSize: 11, color: "#ffffff", fontWeight: 600, marginTop: 2, ...mono }}>({lmMatch.penalties.home.filter(k=>k.scored).length}–{lmMatch.penalties.away.filter(k=>k.scored).length} PENS)</div>}
                       {rHasEv && <>
                         <div style={{ alignSelf: "start", marginRight: -52, marginTop: 6, overflow: "visible" }}>{rHI.length > 0 && rRenderH(rHI)}</div>
                         <div />
