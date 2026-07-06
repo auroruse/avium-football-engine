@@ -1735,16 +1735,19 @@ export default function App() {
         const hCls=w===m.home?' class="w"':'', aCls=w===m.away?' class="w"':'';
         s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+'>'+hnT+'</text>';
         s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
-        const legColW = 18, aggColW = 24;
-        const aggEnd = x+cW-6, l2End = aggEnd-aggColW, l1End = l2End-legColW;
+        const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
+        const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
         const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
+        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
         legText(l1h, l1End, y+19);
         legText(l2h, l2End, y+19);
-        aggText(ah+(m.result.pen?' ('+m.result.pen.home+')':''), aggEnd, y+19, hCls);
+        aggText(ah, aggEnd, y+19, hCls);
+        penText(m.result.pen?.home, y+19);
         legText(l1a, l1End, y+37);
         legText(l2a, l2End, y+37);
-        aggText(aa+(m.result.pen?' ('+m.result.pen.away+')':''), aggEnd, y+37, aCls);
+        aggText(aa, aggEnd, y+37, aCls);
+        penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
         const lblClr = m.result.pen ? "#d08770" : "#7889a0";
         addLabel(lbl, lblClr, l1End-4, winnerIsHome ? y+19 : y+37);
@@ -1962,8 +1965,9 @@ export default function App() {
         const aggH = l1.home + ag, aggA = l1.away + hg;
         const res = { twoLeg: true, leg1: l1, leg2: { home: hg, away: ag }, agg: { home: aggH, away: aggA } };
         if (aggH === aggA) {
-          if (l1.away !== ag) { res.awayGoalsRule = true; }
-          else if (penData) { res.pen = { home: penData.homeScore, away: penData.awayScore }; }
+          res.awayGoals = { home: ag, away: l1.away };
+          res.awayGoalsRule = !!tConfig.koAwayGoals;
+          if (!(tConfig.koAwayGoals && l1.away !== ag) && penData) { res.pen = { home: penData.homeScore, away: penData.awayScore }; }
         }
         m.result = res;
       }
@@ -4510,13 +4514,13 @@ export default function App() {
                 return (
                   <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid #e4002b66" : ri === -2 ? "1px solid #d0877044" : "1px solid #2a3a50", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>
+                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
                         : <span style={{ color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1H : sH}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>
+                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
                         : <span style={{ color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1A : sA}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>}
                     </div>
 
