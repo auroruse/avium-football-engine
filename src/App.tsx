@@ -616,7 +616,7 @@ function lmSimMinute(s, rng, home, away) {
   }
   // Substitutions \u2014 weighted by rating, tier, and booking status
   for (const side of ["home","away"]) {
-    if (s.subs[side] < 3) {
+    if (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK")) {
       const scoreDiff = side === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
       const trailing = scoreDiff < 0;
       const windows = trailing ? [[50,55],[60,65],[70,75]] : [[58,62],[68,72],[78,82]];
@@ -639,14 +639,14 @@ function lmSimMinute(s, rng, home, away) {
         let sr = rng.u() * swTotal;
         let subOff = subWeights[subWeights.length - 1].p;
         for (const x of subWeights) { sr -= x.w; if (sr <= 0) { subOff = x.p; break; } }
-        const subOn = (()=>{ const b=s.bench[side]; if(b.length===0)return null; const outIdx=b.findIndex(p=>p.pos!=="GK"); if(outIdx===-1)return null; return b.splice(outIdx,1)[0]; })();
-        if (subOn) { subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn); }
+        const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
+        subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
         const wasBooked = booked.includes(subOff.name);
         if (wasBooked) {
           s.booked[side] = s.booked[side].filter(p => p !== subOff.name);
-          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+(subOn?subOn.name:"sub")+". Booked player off.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn?.pos});
+          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". Booked player off.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
         } else {
-          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+(subOn?subOn.name:"sub")+". Tactical substitution.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn?.pos});
+          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". Tactical substitution.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
         }
       }
     }
@@ -658,14 +658,14 @@ function lmSimMinute(s, rng, home, away) {
       const injured = pick(rng, s.players[side]);
       const sn = side === "home" ? home.name : away.name;
       s.stoppageBank += 60; s.stats[side].injuries++;
-      if (s.subs[side] < 3) {
+      if (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK")) {
         s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
         s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+sn+"'s "+injured.name+" goes down injured."+(wasBooked ? " Was on a yellow." : "")});
-        const subOn = (()=>{ const b=s.bench[side]; if(b.length===0)return null; const outIdx=b.findIndex(p=>p.pos!=="GK"); if(outIdx===-1)return null; return b.splice(outIdx,1)[0]; })();
-        if (subOn) { subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn); }
-        s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+(subOn?subOn.name:"sub")+". Forced substitution.",offPos:injured.pos,offRating:injured.rating,onPos:subOn?.pos});
+        const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
+        subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
+        s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+subOn.name+". Forced substitution.",offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos});
       } else {
         {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
         if (s.booked[side].includes(injured.name)) s.booked[side] = s.booked[side].filter(p => p !== injured.name);
@@ -913,6 +913,29 @@ function filterSquad(squad, teamName, unavailSet) {
   const need = st.length - av.length;
   const promoted = bav.slice(0, need).map(p => { const q = {...p}; delete q.bench; return q; });
   return [...av, ...promoted, ...bav.slice(need)];
+}
+// Ban-aware starters/bench split for display: suspended/injured starters are shown
+// on the bench (tagged `out`), with their replacement promoted into the starting XI.
+function displaySquad(squad, teamName, playerStats) {
+  if (!squad) return { starters: [], bench: [] };
+  const kf = n => teamName + "|" + n;
+  const isOut = n => { const v = playerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
+  const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
+  const availSt = st.filter(p => !isOut(p.name)), outSt = st.filter(p => isOut(p.name));
+  const availBn = bn.filter(p => !isOut(p.name)), outBn = bn.filter(p => isOut(p.name));
+  const used = new Set();
+  const promoted = [];
+  for (const out of outSt) {
+    let rep = availBn.find(p => p.pos === out.pos && !used.has(p.name));
+    if (!rep) rep = availBn.find(p => p.pos !== "GK" && !used.has(p.name));
+    if (!rep) rep = availBn.find(p => !used.has(p.name));
+    if (rep) { promoted.push({ ...rep, bench: false }); used.add(rep.name); }
+  }
+  const remainBn = availBn.filter(p => !used.has(p.name));
+  return {
+    starters: [...availSt, ...promoted],
+    bench: [...remainBn, ...outSt.map(p => ({ ...p, bench: true, out: true })), ...outBn.map(p => ({ ...p, out: true }))],
+  };
 }
 
 // ═══ HOME ADVANTAGE ══════════════════════════════════════════════════════════
@@ -1559,7 +1582,7 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true) {
     return cols.slice(skipStart, hasSuffix ? -1 : cols.length).map(c => c.trim()).join("\t");
   }).filter(Boolean).join("\n"));
 }
-const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false);
+const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, ["Nichirin League One"]);
 const PRESET_NL2 = parsePresetTSV(nl2TSV, ["Nichirin League Two"]);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
@@ -1570,7 +1593,7 @@ const PRESET_L1 = parsePresetTSV(l1TSV, ["Ligue 1"]);
 const PRESET_LP = parsePresetTSV(lpTSV, ["Liga Portugal"]);
 const PRESET_SL = parsePresetTSV(slTSV, ["Süper Lig"]);
 const PRESET_ED = parsePresetTSV(edTSV, ["Eredivisie"]);
-const PRESET_WC = parsePresetTSV(wcTSV, null, 1, false);
+const PRESET_WC = parsePresetTSV(wcTSV, null, 0, false);
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
@@ -3115,13 +3138,11 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
                 {["home","away"].map((side,si) => {
                   const tm = side === "home" ? teams[lmH] : teams[lmA];
-                  const sq = tm?.squad || buildSquad(tm?.formation, null);
+                  const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
                   const onPitch = lmMatch.players[side] || [];
                   const off = lmMatch.subbedOff?.[side] || [];
                   const bench = lmMatch.bench?.[side] || [];
                   const lookup = (name) => onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-                  const starters = sq.filter(p=>!p.bench);
-                  const benchSq = sq.filter(p=>p.bench);
                   return (<>
                   {si === 1 && <div style={{ background: "#7889a0" }}></div>}
                   <div>
@@ -3144,7 +3165,7 @@ export default function App() {
                       <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
                       {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                         <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                        <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                        <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                         <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                         <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                         <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
@@ -3289,9 +3310,8 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
                     {[{side:"home",idx:lmH},{side:"away",idx:lmA}].map(({side,idx}) => {
                       const tm = teams[idx];
-                      const sq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
-                      const starters = sq.filter(p => !p.bench);
-                      const bench = sq.filter(p => p.bench);
+                      const rawSq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
+                      const { starters, bench } = displaySquad(rawSq, tm?.name, tPlayerStats);
                       return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
                           <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
@@ -3300,7 +3320,7 @@ export default function App() {
                             <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"#7889a0", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
                           </div>
                         </div>
-                        <PitchSVG squad={sq} formation={tm?.formation} />
+                        <PitchSVG squad={[...starters, ...bench]} formation={tm?.formation} />
                         <div style={{ marginTop: 6, padding: "0 2px" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
                             {starters.map((p, pi) => (
@@ -3312,7 +3332,7 @@ export default function App() {
                           </div>
                           {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #2a3a5033" }}>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "0 8px", fontSize: 8, color: "#7889a0" }}>
-                              {bench.map((p, pi) => <span key={pi}>{sn(p.name)}</span>)}
+                              {bench.map((p, pi) => <span key={pi} style={p.out ? {color:"#bf616a"} : undefined}>{sn(p.name)}{p.out && " (OUT)"}</span>)}
                             </div>
                           </div>}
                         </div>
@@ -3469,8 +3489,8 @@ export default function App() {
               })()}
             </div>
             {lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
-              <div style={{ marginLeft: "calc(-50vw + 50%)", marginRight: "calc(-50vw + 50%)", width: "100vw", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", padding: "0 8px", boxSizing: "border-box" }}>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", boxSizing: "border-box" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#81a1c1", width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span>
                   <div style={{ display: "flex", flex: 1, gap: 2 }}>
                     {["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
@@ -3641,13 +3661,11 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
                 const tm = side === "home" ? teams[lmH] : teams[lmA];
-                const sq = tm?.squad || buildSquad(tm?.formation, null);
+                const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
                 const onPitch = lmMatch.players[side] || [];
                 const off = lmMatch.subbedOff?.[side] || [];
                 const bench = lmMatch.bench?.[side] || [];
                 const lookup = (name) => onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-                const starters = sq.filter(p=>!p.bench);
-                const benchSq = sq.filter(p=>p.bench);
                 return (<>
                 {si === 1 && <div style={{ background: "#7889a0" }}></div>}
                 <div>
@@ -3670,7 +3688,7 @@ export default function App() {
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
                     {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                      <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
                       <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
