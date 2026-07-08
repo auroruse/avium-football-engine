@@ -2,15 +2,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import headerImg from "./header.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
-import nl2TSV from "./presets/nl2.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import plTSV from "./presets/premier-league.tsv?raw";
-import bunTSV from "./presets/bundesliga.tsv?raw";
-import llTSV from "./presets/la-liga.tsv?raw";
-import l1TSV from "./presets/ligue-1.tsv?raw";
-import lpTSV from "./presets/liga-portugal.tsv?raw";
-import slTSV from "./presets/super-lig.tsv?raw";
-import edTSV from "./presets/eredivisie.tsv?raw";
+import miscEuTSV from "./presets/misc-european.tsv?raw";
 import wcTSV from "./presets/1932-wc.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
@@ -36,44 +30,44 @@ const CM = {
   goal_lr:["{t}'s {n} tries from distance... IT'S IN! What a hit!","THUNDERBOLT from {t}'s {n}! From 25 yards! Incredible!","{t}'s {n} lets fly from range and it sails in! Screamer!","Long-range effort from {t}'s {n}! Dips under the bar! GOAL!","Arrowed into the net from 30 yards! {t}'s {n} with a worldie!","{t}'s {n} catches it perfectly from outside the box! It flies in!","From downtown! {t}'s {n} hammers it past the keeper from range!","{t}'s {n} fancies it from distance... and he's right to! GOAL!","Knuckling effort from {t}'s {n}! The keeper could only watch!","Outside the boot from {t}'s {n}! Bends and dips in from 25 yards!","What a strike from {t}'s {n}! Keeper beaten all ends up from distance!","{t}'s {n} lines one up from range... top corner! Sensational!"],
   corner_goal:["{t}'s {n} rises highest! Towering header from the corner!","Planted into the net! {t}'s {n} heads home from the set piece!","Bullet header from {t}'s {n}! Perfect delivery, perfect finish!","Flicked in at the near post by {t}'s {n}! Great movement!","Back-post header! {t}'s {n} was completely unmarked!","Volleyed home from the corner! {t}'s {n} with a sweet connection!","{t}'s {n} powers the header in! Nothing the keeper could do!","Glanced in off {t}'s {n}! Clever header redirecting the ball!","Up rises {t}'s {n}! Headed home with conviction!","{t}'s {n} beats the marker and nods it in!","Thumping header from {t}'s {n}! Inch-perfect delivery!","{t}'s {n} climbs above the defender and heads it home!"],
   own_goal:["{o}'s {n} turns it into his own net! Disaster!","{o}'s {n} can only watch as it deflects past his own keeper!","Calamitous from {o}'s {n}! Sliced into his own goal!","Own goal! {o}'s {n} gets the final touch! Wrong net!","Horrible moment for {o}'s {n}! Past his own goalkeeper!","{o}'s {n} tries to clear and puts it in his own net!","Unlucky deflection off {o}'s {n}! Into the corner of his own goal!","It comes off {o}'s {n} and loops over the keeper! Own goal!","{o}'s {n} misjudges it completely! Past his keeper and in!","Nightmare for {o}'s {n}! The ball ricochets off him and in!"],
-  deflection:["Deflection! Wicked bounce off a defender and past the keeper! {t}'s {n} gets the credit.","Cruel deflection wrong-foots the keeper! {t}'s {n} will take it!","It took a nick! Nothing the keeper could do. Goal {t}, {n}.","Deflected past the keeper! {t}'s {n} won't care how it went in!","Ricochets off a defender and nestles in the corner! {t}'s {n} claims it.","Big deflection sends it past the rooted keeper! Lucky break for {t}'s {n}!","Off one defender, off another, and in! {t}'s {n} gets the goal!","A huge deflection loops the ball into the net! {n} for {t}!"],
+  deflection:["Deflection! Wicked bounce off a defender and past the keeper! {t}'s {n} gets the credit.","Cruel deflection wrong-foots the keeper! {t}'s {n} will take it!","It took a nick! Nothing the keeper could do. Goal {t}, {n}.","Deflected past the keeper! {t}'s {n} won't care how it went in!","Ricochets off a defender and nestles in the corner! {t}'s {n} claims it.","Big deflection sends it past the rooted keeper! Lucky break for {t}'s {n}!","Off one defender, off another, and in! {t}'s {n} gets the goal!","A huge deflection loops the ball into the net! {n} for {t}!","Struck goalward and it clips a heel! In! {t}'s {n} takes it!","Fortune favours {t}! {n}'s shot wrong-foots everyone off a defender!","The keeper had it covered... until the deflection! {t}'s {n} scores!","Nicked on its way through! {t}'s {n} won't care one bit!","Via a defender's shin and in! {t}'s {n} claims the goal!","Looped up off the block and over the keeper! Goal for {t}'s {n}!","There's a touch! The shot from {t}'s {n} diverts past the helpless keeper!"],
   gk_error:["HOWLER from the keeper! {t}'s {n} can't believe his luck!","Fumbled! The keeper spills it and {t}'s {n} pounces!","Gift-wrapped! Keeper misjudges and {t}'s {n} rolls it into an empty net!","The keeper makes a hash of it! {t}'s {n} taps into an open goal!","Terrible backpass! {t}'s {n} nips in and the keeper is stranded!","Keeper caught off his line! {t}'s {n} lobs it home!","Horror show in goal! Through the keeper's legs and {t}'s {n} scores!","Spilled by the keeper! {t}'s {n} first to react! Pokes it home!","Keeper error! Tried to play out and {t}'s {n} intercepts and finishes!","The keeper palms it straight to {t}'s {n}! Gift of a goal!"],
   pen_scored:["Sends the keeper the wrong way! {t}'s {n} converts!","Rolls it home! {t}'s {n} makes no mistake from the spot!","Coolly dispatched by {t}'s {n}! Into the corner!","Smashed down the middle! The keeper dived and {t}'s {n} buried it!","Stuttered run, keeper commits, and {t}'s {n} rolls it in!","BURIED into the top corner! {t}'s {n} gives the keeper no chance!","Ice cold from {t}'s {n}! Side-footed into the bottom corner!","Power and placement from {t}'s {n}! Smashes it home!","{t}'s {n} waits for the keeper to move... rolls it the other way!","Driven low and hard by {t}'s {n}! Converted from twelve yards!"],
-  goal_desc:["right footed shot from the center of the box to the bottom left corner","left footed shot from the right side of the box to the bottom right corner","right footed shot from the left side of the box to the top right corner","left footed shot from very close range to the center of the goal","right footed shot from the center of the box to the top left corner","side footed finish from the center of the box to the bottom right corner","right footed shot from the right side of the box to the bottom left corner","left footed shot from the left side of the six yard box to the center of the goal","header from very close range to the bottom right corner","left footed shot from the center of the box to the top right corner","right footed shot from the center of the box to the bottom right corner","volley from the center of the box to the top right corner","tap-in from very close range after a low cross","first time right footed shot from the center of the box to the bottom left corner","placed finish from the right side of the box to the far corner"],
-  goal_lr_desc:["stunning right footed shot from outside the box to the top left corner","left footed shot from outside the box to the bottom right corner","right footed shot from outside the box to the top right corner","thunderbolt from 25 yards to the top left corner","curling effort from outside the box to the far corner","right footed shot from outside the box to the bottom left corner","left footed shot from long range to the top right corner","powerful strike from 30 yards to the bottom left corner","knuckling shot from outside the box that dips under the crossbar","right footed shot from outside the box to the center of the goal"],
-  corner_goal_desc:["header from the center of the box to the bottom right corner","towering header from the center of the box to the top left corner","header from the left side of the six yard box to the bottom left corner","glancing header from close range to the far corner","bullet header from the center of the box to the top right corner","header from very close range to the center of the goal","back post header from the right side of the six yard box","powerful header from the center of the box to the bottom left corner"],
-  deflection_desc:["right footed shot from the center of the box that deflects off a defender into the bottom left corner","left footed shot from outside the box deflected past the wrong-footed goalkeeper","shot from the right side of the box takes a wicked deflection and loops into the net","effort from the edge of the area deflected into the far corner","cross-shot from the left side deflected past the keeper at the near post"],
-  gk_error_desc:["capitalizes on a goalkeeper error, tapping into an empty net from close range","pounces after the goalkeeper spills a routine shot, finishing from very close range","intercepts a poor goal kick and slots into an empty net","finishes from close range after the goalkeeper fumbles the cross","rounds the stranded goalkeeper and slots into an empty net"],
-  pen_scored_desc:["converts the penalty with a right footed shot to the bottom left corner","converts the penalty with a left footed shot to the bottom right corner","sends the keeper the wrong way with a right footed shot to the top right corner","converts the penalty with a powerful right footed shot down the middle","side foots the penalty into the bottom left corner as the keeper dives the wrong way","converts the penalty with a left footed shot to the top left corner","drills the penalty into the bottom right corner, sending the keeper the wrong way"],
-  own_goal_desc:["header turned into his own net from a corner","attempted clearance deflected past his own goalkeeper","slices a clearance into his own net under pressure","unlucky deflection off his body loops over the keeper and in","misjudged header back to his keeper sails into the far corner"],
-  gx_opener:[" First blood!"," That opens the scoring!"," The deadlock is broken!"," First goal of the match!"," And that's the breakthrough!"," The wait is over!"," The opener!"," They've broken through!"],
-  gx_equal:[" Level!"," The equalizer!"," All square!"," Pegged back!"," Drawn level!"," {t} are back on terms!"," Back to parity!"," That changes everything!"],
-  gx_lead:[" {t} take the lead!"," {t} go in front!"," Advantage {t}!"," {t} are ahead!"," {t} with their noses in front!"," {t} move into the lead!"],
+  goal_desc:["right footed shot from the center of the box to the bottom left corner","left footed shot from the right side of the box to the bottom right corner","right footed shot from the left side of the box to the top right corner","left footed shot from very close range to the center of the goal","right footed shot from the center of the box to the top left corner","side footed finish from the center of the box to the bottom right corner","right footed shot from the right side of the box to the bottom left corner","left footed shot from the left side of the six yard box to the center of the goal","header from very close range to the bottom right corner","left footed shot from the center of the box to the top right corner","right footed shot from the center of the box to the bottom right corner","volley from the center of the box to the top right corner","tap-in from very close range after a low cross","first time right footed shot from the center of the box to the bottom left corner","placed finish from the right side of the box to the far corner","left footed shot from the left side of the box to the bottom left corner","right footed shot from the right side of the six yard box to the top left corner","close range finish from the center of the six yard box to the bottom right corner","left footed volley from the left side of the box to the far corner","right footed shot from the center of the box into the roof of the net","backheel from very close range to the bottom left corner","left footed shot on the turn from the center of the box to the bottom right corner","low right footed shot from the right side of the box to the near post","chipped finish from the center of the box over the goalkeeper","first time left footed shot from the left side of the box to the top right corner"],
+  goal_lr_desc:["stunning right footed shot from outside the box to the top left corner","left footed shot from outside the box to the bottom right corner","right footed shot from outside the box to the top right corner","thunderbolt from 25 yards to the top left corner","curling effort from outside the box to the far corner","right footed shot from outside the box to the bottom left corner","left footed shot from long range to the top right corner","powerful strike from 30 yards to the bottom left corner","knuckling shot from outside the box that dips under the crossbar","right footed shot from outside the box to the center of the goal","swerving right footed shot from 28 yards to the top right corner","left footed drive from outside the box to the bottom left corner","rising strike from 22 yards to the top left corner","half volley from outside the box to the bottom right corner","dipping left footed shot from 30 yards under the crossbar","right footed shot from long range into the top corner off the underside of the bar","skidding low drive from 25 yards to the bottom left corner","curling left footed effort from outside the box to the top right corner"],
+  corner_goal_desc:["header from the center of the box to the bottom right corner","towering header from the center of the box to the top left corner","header from the left side of the six yard box to the bottom left corner","glancing header from close range to the far corner","bullet header from the center of the box to the top right corner","header from very close range to the center of the goal","back post header from the right side of the six yard box","powerful header from the center of the box to the bottom left corner","flick-on header at the near post to the far corner","header from the penalty spot to the bottom right corner","looping header from the center of the box over the goalkeeper","stooping header from close range to the bottom left corner","downward header from the center of the box that bounces in","near post header glanced to the far corner","volley from the edge of the six yard box after a flick-on"],
+  deflection_desc:["right footed shot from the center of the box that deflects off a defender into the bottom left corner","left footed shot from outside the box deflected past the wrong-footed goalkeeper","shot from the right side of the box takes a wicked deflection and loops into the net","effort from the edge of the area deflected into the far corner","cross-shot from the left side deflected past the keeper at the near post","right footed shot from the edge of the box deflected in off a defender's heel","low drive from the center of the box that takes a heavy deflection and rolls in at the near post","left footed effort from the right side of the box deflected over the goalkeeper","shot from distance clipped by a sliding defender and turned into the bottom corner","driven cross-shot deflected in off a covering defender at the back post","toe-poked effort from close range that goes in off a defender's knee","left footed shot from outside the box that flicks off a shoulder and beats the goalkeeper"],
+  gk_error_desc:["capitalizes on a goalkeeper error, tapping into an empty net from close range","pounces after the goalkeeper spills a routine shot, finishing from very close range","intercepts a poor goal kick and slots into an empty net","finishes from close range after the goalkeeper fumbles the cross","rounds the stranded goalkeeper and slots into an empty net","collects a miscued clearance and slots into the unguarded net","lobs the goalkeeper after he strays off his line","taps in at the far post after the goalkeeper misjudges a routine cross","steals in as the goalkeeper dallies on the ball and finishes into the empty net","fires into the open goal after the goalkeeper's pass is cut out on the edge of the area","heads into the vacant net after the goalkeeper flaps at a corner","pokes home after the goalkeeper lets a soft shot squirm through his grasp"],
+  pen_scored_desc:["converts the penalty with a right footed shot to the bottom left corner","converts the penalty with a left footed shot to the bottom right corner","sends the keeper the wrong way with a right footed shot to the top right corner","converts the penalty with a powerful right footed shot down the middle","side foots the penalty into the bottom left corner as the keeper dives the wrong way","converts the penalty with a left footed shot to the top left corner","drills the penalty into the bottom right corner, sending the keeper the wrong way","converts the penalty with a low left footed shot to the bottom left corner","waits for the goalkeeper to commit and rolls the penalty down the middle","strikes the penalty high into the top left corner","sends the goalkeeper the wrong way with a calm left footed penalty to the bottom right corner","converts the penalty with a stuttered run-up, placing it in the bottom right corner"],
+  own_goal_desc:["header turned into his own net from a corner","attempted clearance deflected past his own goalkeeper","slices a clearance into his own net under pressure","unlucky deflection off his body loops over the keeper and in","misjudged header back to his keeper sails into the far corner","turns a low cross into his own net at the near post","diverts a driven cross past his own goalkeeper under pressure","stretches to cut out a cross and steers it into his own goal","inadvertently chests a cross past his own goalkeeper","blocks a shot but the rebound cannons off his back and in","slides to intercept and turns the ball into his own bottom corner","attempted interception loops up and drops over his own goalkeeper"],
+  gx_opener:[" First blood!"," That opens the scoring!"," The deadlock is broken!"," First goal of the match!"," And that's the breakthrough!"," The wait is over!"," The opener!"," They've broken through!"," Nil-nil no more!"," Breakthrough!"," Someone had to blink first!"," Now the scoreboard has something to say!"," Goalless no longer!"," Up and running!"," Lift-off!"],
+  gx_equal:[" Level!"," The equalizer!"," All square!"," Pegged back!"," Drawn level!"," {t} are back on terms!"," Back to parity!"," That changes everything!"," Honours even!"," The response arrives!"," Cancelled out!"," Slate wiped clean!"," {t} haul themselves level!"," Everything to play for again!"," Parity restored!"],
+  gx_lead:[" {t} take the lead!"," {t} go in front!"," Advantage {t}!"," {t} are ahead!"," {t} with their noses in front!"," {t} move into the lead!"," {t} hit the front!"," {t} edge ahead!"," Advantage swings to {t}!"," The lead belongs to {t}!"," In front, {t}!"," {t} seize the lead!"," {t} force their way in front!"," {t} lead!"," It's {t} with the lead!"],
   gx_extend:[" {t} pulling away!"," Breathing room for {t}!"," {t} extend the advantage!"," {t} are running away with it!"," Comfortable now for {t}!"," The lead grows!"," {t} turning the screw!"," This is becoming a rout for {t}!"],
-  gx_pull:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"," {t} give themselves hope!"," The deficit is cut!"],
-  gx_consol:[" Consolation for {t}."," Small comfort for {t}."," {t} get one back, but it's too late."," A matter of pride for {t}."," Too little too late for {t}."," {t} salvage some dignity."],
-  gx_late:[" In the dying minutes!"," Late drama!"," What a time to score!"," Scenes at the death!"," Against the clock!"," You couldn't write this!"," Stoppage time heroics!"," The stadium erupts!"],
+  gx_pull:[" {t} pull one back!"," Game on!"," {t} are back in this!"," Lifeline for {t}!"," {t} give themselves hope!"," The deficit is cut!"," Not done yet, {t}!"," {t} claw one back!"," Hope flickers for {t}!"," The gap narrows!"," No white flags from {t}!"," A way back for {t}!"," {t} halve the deficit!"," Comeback on!"," One more and it's level!"],
+  gx_consol:[" Consolation for {t}."," Small comfort for {t}."," {t} get one back, but it's too late."," A matter of pride for {t}."," Too little too late for {t}."," {t} salvage some dignity."," A footnote, nothing more."," Respectability, of a sort, for {t}."," The damage was done long ago."," {t} at least have something to show for it."," Cold comfort for {t}."," That won't change the story of this one."],
+  gx_late:[" In the dying minutes!"," Late drama!"," What a time to score!"," Scenes at the death!"," Against the clock!"," You couldn't write this!"," Stoppage time heroics!"," The stadium erupts!"," With seconds left on the clock!"," Right at the death!"," The late, late show!"," Bedlam, this late on!"," Talk about leaving it late!"," Never in doubt!"," Drama in the final act!"],
   save:["Straight at the keeper from {t}'s {n}. Comfortable save.","{o}'s keeper dives low and holds {t}'s {n}'s effort.","Great save! {o}'s keeper denies {t}'s {n}!","Fingertip save! {t}'s {n} thought that was in!","Strong hands from {o}'s keeper to keep out {t}'s {n}'s drive.","Parried away! {o}'s keeper pushes {t}'s {n}'s shot wide!","Point-blank save! {t}'s {n} denied from close range!","Reflex save! {o}'s keeper reacts brilliantly to {t}'s {n}!","Smothered by {o}'s keeper! {t}'s {n} couldn't find a way past!","Low save! {t}'s {n}'s effort kept out.","{t}'s {n} tests the keeper, who holds comfortably.","Diving save! {o}'s keeper gets a glove to {t}'s {n}'s effort!","Blocked by the keeper's legs! {t}'s {n} frustrated!","Pushed wide by {o}'s keeper at full stretch!","Acrobatic stop! {t}'s {n}'s effort tipped over!","Palmed over the bar! Big save to deny {t}'s {n}!","{o}'s keeper reads it early and smothers {t}'s {n}'s shot.","What a stop! {o}'s keeper springs across to deny {t}'s {n}!","One-handed save! {t}'s {n} can't believe it!","Tipped wide! Superb reflexes to deny {t}'s {n}!","{t}'s {n} forces a save. Tipped around the post.","Beaten the defense but not the keeper! {t}'s {n} denied!","Right at him. {t}'s {n} should have placed it better.","Decent save. {t}'s {n}'s shot lacked conviction.","Sharp stop to palm away {t}'s {n}'s drive!"],
-  corner_save:["Header from {t}'s {n} — keeper saves! Good reflexes!","Powerful header from {t}'s {n} but {o}'s keeper holds!","{t}'s {n} gets a head on it — saved! Tipped over!","Firm header from {t}'s {n}. Straight at the keeper.","Diving header from {t}'s {n}! {o}'s keeper pushes it wide!","{t}'s {n} meets the delivery but the keeper reacts well!","Glancing header from {t}'s {n} — {o}'s keeper plucks it out of the air!","Strong header from {t}'s {n} but the keeper was equal to it!","{o}'s keeper punches away {t}'s {n}'s header! Commanding!","{t}'s {n} rises well but can't beat the keeper! Good save!"],
-  save_lr:["Effort from distance by {t}'s {n}. {o}'s keeper holds.","Struck from range by {t}'s {n}! {o}'s keeper pushes it away!","Long-range drive from {t}'s {n}. Good save, pushed wide!","{t}'s {n} tries from outside the box. {o}'s keeper tips it over!","Ambitious from {t}'s {n} but the keeper reads it all the way.","Dipping shot from {t}'s {n}! {o}'s keeper backpedals and saves!","{t}'s {n} lets rip from 25 yards. Beaten away!","Long-range effort from {t}'s {n} stings the keeper's palms!"],
+  corner_save:["Header from {t}'s {n}... keeper saves! Good reflexes!","Powerful header from {t}'s {n} but {o}'s keeper holds!","{t}'s {n} gets a head on it... saved! Tipped over!","Firm header from {t}'s {n}. Straight at the keeper.","Diving header from {t}'s {n}! {o}'s keeper pushes it wide!","{t}'s {n} meets the delivery but the keeper reacts well!","Glancing header from {t}'s {n}! {o}'s keeper plucks it out of the air!","Strong header from {t}'s {n} but the keeper was equal to it!","{o}'s keeper punches away {t}'s {n}'s header! Commanding!","{t}'s {n} rises well but can't beat the keeper! Good save!"],
+  save_lr:["Effort from distance by {t}'s {n}. {o}'s keeper holds.","Struck from range by {t}'s {n}! {o}'s keeper pushes it away!","Long-range drive from {t}'s {n}. Good save, pushed wide!","{t}'s {n} tries from outside the box. {o}'s keeper tips it over!","Ambitious from {t}'s {n} but the keeper reads it all the way.","Dipping shot from {t}'s {n}! {o}'s keeper backpedals and saves!","{t}'s {n} lets rip from 25 yards. Beaten away!","Long-range effort from {t}'s {n} stings the keeper's palms!","Swerving effort from {t}'s {n}! Beaten out by {o}'s keeper!","From 30 yards! {o}'s keeper flings himself across to save from {t}'s {n}!","{t}'s {n} unloads from range. Held at the second attempt.","Fizzing drive from distance! The keeper takes no chances and parries!","Arrowing toward the corner until the keeper intervenes! {t}'s {n} denied from range!","Speculative from {t}'s {n}. Gathered low.","Rasping hit from {t}'s {n}! {o}'s keeper equal to it!"],
   miss:["{t}'s {n} fires wide! Off target.","Over the bar from {t}'s {n}! Leaned back too far.","{n} drags it wide. Poor effort for {t}.","Blazed over by {t}'s {n}! Not even close.","Pulled across the face of goal by {t}'s {n}. Wide.","{n} snatches at it! Over the bar for {t}.","Into the stands from {t}'s {n}! Way too much on it.","Wide of the mark from {t}'s {n}. Should have hit the target.","Miscued from {t}'s {n}! Gets it all wrong.","Scuffed by {t}'s {n}. Bobbles harmlessly wide.","{t}'s {n} had time but couldn't find the target. Wasteful.","Sliced horribly by {t}'s {n}! Miles off target.","{t}'s {n} curls it over from a promising position.","Wild effort from {t}'s {n}! Row Z.","Shanked by {t}'s {n}! Terrible connection.","{t}'s {n} swings a boot and misses the ball entirely!","Drags it wide. {t}'s {n} won't want to see that again.","Hurried his shot. {t}'s {n} needed another touch.","Ballooned over from {t}'s {n}! Had the goal at his mercy.","Off-balance from {t}'s {n}. Drifts harmlessly wide.","Scooped over by {t}'s {n}! Agonizing.","Side-netting from {t}'s {n}. Close but wrong side of the post.","{t}'s {n} leans back and lifts it over the crossbar.","Skewed wide by {t}'s {n}! The chance is gone.","{t}'s {n} catches it on the shin. Harmless."],
-  corner_miss:["Header from {t}'s {n} — over the bar! Couldn't keep it down.","{t}'s {n} gets a free header but can't direct it! Over.","Glanced wide by {t}'s {n}. Needed to hit the target.","Completely miscued by {t}'s {n}! Should have scored.","Free header for {t}'s {n} — off target! Big miss.","{t}'s {n} can't keep the header down! Over from six yards.","Headed wide from point-blank! {t}'s {n} kicking himself.","{t}'s {n} gets across the front post but the header drifts wide.","Up rises {t}'s {n} but the header sails over. So close.","{t}'s {n} heads it into the ground. Bounces wide."],
-  miss_lr:["{t}'s {n} tries from range. Sails over.","Ambitious from {t}'s {n}! The shot from distance curls wide.","{t}'s {n} lets fly from 30 yards. Not troubling anyone.","Speculative from {t}'s {n}. Drifts wide of the far post.","{t}'s {n} has a go from outside the box. Over the bar.","{t}'s {n} strikes from distance. Whistles past the post.","{t}'s {n} fancies one from range but fires over.","Long-range punt from {t}'s {n}. Easy for the keeper."],
+  corner_miss:["Header from {t}'s {n}... over the bar! Couldn't keep it down.","{t}'s {n} gets a free header but can't direct it! Over.","Glanced wide by {t}'s {n}. Needed to hit the target.","Completely miscued by {t}'s {n}! Should have scored.","Free header for {t}'s {n}... off target! Big miss.","{t}'s {n} can't keep the header down! Over from six yards.","Headed wide from point-blank! {t}'s {n} kicking himself.","{t}'s {n} gets across the front post but the header drifts wide.","Up rises {t}'s {n} but the header sails over. So close.","{t}'s {n} heads it into the ground. Bounces wide.","The delivery finds {t}'s {n}... header over. Chance wasted.","Six yards out and {t}'s {n} puts it wide! How?","Met with power by {t}'s {n} but no accuracy. Off target.","Corner swung in, {t}'s {n} rises... nothing on the header. Wide.","All alone at the back stick, {t}'s {n} heads over! Huge let-off!"],
+  miss_lr:["{t}'s {n} tries from range. Sails over.","Ambitious from {t}'s {n}! The shot from distance curls wide.","{t}'s {n} lets fly from 30 yards. Not troubling anyone.","Speculative from {t}'s {n}. Drifts wide of the far post.","{t}'s {n} has a go from outside the box. Over the bar.","{t}'s {n} strikes from distance. Whistles past the post.","{t}'s {n} fancies one from range but fires over.","Long-range punt from {t}'s {n}. Easy for the keeper.","Row Z. {t}'s {n} got that one all wrong.","Optimistic from {t}'s {n}. Never coming down.","{t}'s {n} takes aim from 25 yards... well wide.","Swerving, dipping... and missing. {t}'s {n} from distance.","Better options available. {t}'s {n} shoots from range and wastes it.","The dip never came. {t}'s {n}'s effort clears the bar.","Troubling the fans, not the keeper. {t}'s {n} from range."],
   woodwork:["{t}'s {n} hits the post! So close!","Off the bar! {t}'s {n} inches away!","Rattles the crossbar! {t}'s {n} nearly had it!","Against the post from {t}'s {n}! Agonizing!","Crashes against the frame of the goal! {t}'s {n} can't believe it!","Off the inside of the post and away! Denied by the woodwork!","Thunderbolt from {t}'s {n} smacks the crossbar!","Thumps the upright! {t}'s {n} had the keeper beaten!","The post comes to {o}'s rescue! {t}'s {n} was so close!","It comes back off the bar! {t}'s {n} holds his head!","Cannons off the crossbar! Millimeters away for {t}'s {n}!","The frame of the goal denies {t}'s {n}! It just wouldn't go in!"],
-  woodwork_save:["Tipped onto the post by {o}'s keeper! Incredible!","Fingertips push it onto the bar! Brilliant save!","Pushed onto the frame of the goal by {o}'s keeper!","Onto the woodwork via the keeper's glove! What a save!","The keeper gets just enough to divert it onto the post!","Superb save pushed onto the crossbar! {t}'s {n} denied!","The keeper stretches and pushes it onto the frame!","Off the bar from the keeper's save! {t}'s {n} so close!"],
-  woodwork_hdr:["Header crashes off the crossbar! {t}'s {n} so close from the corner!","{t}'s {n}'s header thunders against the bar!","Off the bar! {t}'s {n} unlucky with that header!","Header off the post! {t}'s {n} smacks the frame!","Powered against the bar by {t}'s {n}! The woodwork saves {o}!"],
+  woodwork_save:["Tipped onto the post by {o}'s keeper! Incredible!","Fingertips push it onto the bar! Brilliant save!","Pushed onto the frame of the goal by {o}'s keeper!","Onto the woodwork via the keeper's glove! What a save!","The keeper gets just enough to divert it onto the post!","Superb save pushed onto the crossbar! {t}'s {n} denied!","The keeper stretches and pushes it onto the frame!","Off the bar from the keeper's save! {t}'s {n} so close!","A glove and the post combine to deny {t}'s {n}!","Somehow it stays out! Fingertips, then the bar! {t}'s {n} robbed!","Turned onto the upright! Magnificent stop!","Clawed onto the crossbar! Unbelievable save to deny {t}'s {n}!"],
+  woodwork_hdr:["Header crashes off the crossbar! {t}'s {n} so close from the corner!","{t}'s {n}'s header thunders against the bar!","Off the bar! {t}'s {n} unlucky with that header!","Header off the post! {t}'s {n} smacks the frame!","Powered against the bar by {t}'s {n}! The woodwork saves {o}!","The crossbar rattles! {t}'s {n}'s header stays out!","Inches! {t}'s {n} plants the header against the post!","Nodded onto the woodwork! {t}'s {n} can't believe it!","Bar! {t}'s {n}'s header bounces down and away! No goal!","So near! The header from {t}'s {n} clips the bar!","Denied by the frame! {t}'s {n} met it perfectly!","Upright! {t}'s {n}'s header thuds back out! {o} survive!"],
   foul:["Foul by {t}'s {n}. Free kick {o}.","Late challenge from {t}'s {n}. Free kick {o}.","{t}'s {n} clips the ankle. Referee blows.","{t}'s {n} goes through the back. Free kick.","{t}'s {n} pulls the shirt. Easy call.","{t}'s {n} bundles into the challenge. Foul.","Clumsy from {t}'s {n}. Free kick {o}.","Body check from {t}'s {n}. Stopped the attack.","{t}'s {n} catches the man. Free kick.","Wrestled to the ground by {t}'s {n}. Foul.","{t}'s {n} slides in recklessly. Free kick {o}.","Trip from {t}'s {n}. No hesitation from the referee.","Cynical foul from {t}'s {n}. Killed the counter.","{t}'s {n} uses an arm across the chest. Free kick.","Stands on the ankle. {t}'s {n} gives away a foul.","Shoulder barge from {t}'s {n}. Too aggressive.","{t}'s {n} goes in studs showing. Free kick {o}.","Blocked off by {t}'s {n}. Impedes the run. Foul.","Tugged back by {t}'s {n}. Clear foul.","Shove from {t}'s {n}. Easy decision."],
-  foul_pen:["Brought down in the box by {o}'s {n}! PENALTY!","{o}'s {n} clips the attacker in the area! Penalty given!","Fouled in the box! {o}'s {n} couldn't pull out! PENALTY!","{o}'s {n} drags down the attacker! Referee points to the spot!","Handball by {o}'s {n}! PENALTY!","Crunching challenge from {o}'s {n} in the area! PENALTY!","{o}'s {n} catches the attacker's legs in the box! Penalty!","Tripped in the box by {o}'s {n}! PENALTY!"],
+  foul_pen:["Brought down in the box by {o}'s {n}! PENALTY!","{o}'s {n} clips the attacker in the area! Penalty given!","Fouled in the box! {o}'s {n} couldn't pull out! PENALTY!","{o}'s {n} drags down the attacker! Referee points to the spot!","Handball by {o}'s {n}! PENALTY!","Crunching challenge from {o}'s {n} in the area! PENALTY!","{o}'s {n} catches the attacker's legs in the box! Penalty!","Tripped in the box by {o}'s {n}! PENALTY!","Penalty! {o}'s {n} with a needless shove in the area!","Pointing to the spot! {o}'s {n} the guilty man!","Clumsy from {o}'s {n} in the box! PENALTY!","Wiped out in the area by {o}'s {n}! Spot kick!","{o}'s {n} times it horribly! Penalty conceded!","Arm up from {o}'s {n}! The referee has no doubt! PENALTY!","Reckless in the box from {o}'s {n}! It's a penalty!"],
   yellow:["Yellow card for {t}'s {n}. Into the book.","Booking for {t}'s {n}. Can't argue with that.","Card shown to {t}'s {n}. Cynical challenge.","{t}'s {n} picks up a caution. Reckless.","In the book. {t}'s {n} needs to be careful now.","{t}'s {n} booked for persistent fouling.","Yellow. {t}'s {n} knew what he was doing.","{t}'s {n} carded. Walking a tightrope.","Cautioned. {t}'s {n} catches the referee's eye.","{t}'s {n} goes in the book.","Booking for {t}'s {n}. That was needless.","{t}'s {n} picks up a yellow. One more and he walks."],
-  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} sees the early bath! {c} men.","That's his second booking! {t}'s {n} has to go! Down to {c}!","Off for two yellows! {t}'s {n} leaves {t} with {c}!","{t}'s {n} can't believe it! Second yellow! {c} remain.","He'd been warned! {t}'s {n} picks up a second yellow! Down to {c}!","Dismissed! {t}'s {n} gets a second booking! {t} down to {c}!","Second booking for {t}'s {n}! Off he goes! {c} men left!"],
-  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! {t} down to {c}!","Off! {t}'s {n} shown a straight red! {c} men.","Violent conduct! {t}'s {n} walks! Down to {c}.","Serious foul play! {t}'s {n} gone! {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red! {c} remain.","Red card all day long! {t}'s {n} is off! Down to {c}!","Dangerous tackle from {t}'s {n}! Straight red! Reduced to {c}!"],
-  pen_saved:["SAVED! The keeper guesses right and denies {t}'s {n}!","Penalty saved! The keeper springs low to keep {t}'s {n} out!","Read it perfectly! The keeper saves from {t}'s {n}!","Kept out! {t}'s {n} goes left and so does the keeper!","The keeper is the hero! Saves {t}'s {n}'s penalty!","SAVED! Low to his right! The keeper denies {t}'s {n}!","Guessed correctly! The keeper palms away the spot-kick!","What a save from the penalty! {t}'s {n} denied!"],
-  pen_missed:["Over the bar! {t}'s {n} blazes the penalty high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}!","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Way off target.","Hits the bar! {t}'s {n}'s penalty crashes off the crossbar!","{t}'s {n} puts the penalty wide! Terrible miss!"],
+  second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} sees the early bath! {c} men.","That's his second booking! {t}'s {n} has to go! Down to {c}!","Off for two yellows! {t}'s {n} leaves {t} with {c}!","{t}'s {n} can't believe it! Second yellow! {c} remain.","He'd been warned! {t}'s {n} picks up a second yellow! Down to {c}!","Dismissed! {t}'s {n} gets a second booking! {t} down to {c}!","Second booking for {t}'s {n}! Off he goes! {c} men left!","Yellow... and red! {t}'s {n} walks! Down to {c}!","Foolish from {t}'s {n}! A second caution and off he goes! {c} left!","The tightrope snaps! {t}'s {n} sent off for a second yellow! {c} men!","No complaints. {t}'s {n} earned both bookings. Down to {c}.","Gone! A second yellow for {t}'s {n}! {c} remain!","Madness from {t}'s {n}! Already booked and he dives in! Off! Down to {c}!","Out comes yellow, then red! {t}'s {n} is off! {c} men!"],
+  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! {t} down to {c}!","Off! {t}'s {n} shown a straight red! {c} men.","Violent conduct! {t}'s {n} walks! Down to {c}.","Serious foul play! {t}'s {n} gone! {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red! {c} remain.","Red card all day long! {t}'s {n} is off! Down to {c}!","Dangerous tackle from {t}'s {n}! Straight red! Reduced to {c}!","Horror tackle! {t}'s {n} sees straight red! Down to {c}!","No debate about that one. {t}'s {n} is off. {c} men for {t}.","Shocking from {t}'s {n}! The red card is out! {c} left!","The early bath for {t}'s {n}! Straight red! {t} down to {c}!","Disgraceful challenge from {t}'s {n}! Off without argument! {c} remain!","That's a leg-breaker! {t}'s {n} is rightly sent off! Down to {c}!","Moment of madness from {t}'s {n}! Red! {t} reduced to {c}!"],
+  pen_saved:["SAVED! The keeper guesses right and denies {t}'s {n}!","Penalty saved! The keeper springs low to keep {t}'s {n} out!","Read it perfectly! The keeper saves from {t}'s {n}!","Kept out! {t}'s {n} goes left and so does the keeper!","The keeper is the hero! Saves {t}'s {n}'s penalty!","SAVED! Low to his right! The keeper denies {t}'s {n}!","Guessed correctly! The keeper palms away the spot-kick!","What a save from the penalty! {t}'s {n} denied!","Denied! The keeper stands tall and beats it away!","Stopped! {t}'s {n} sees his penalty smothered!","Big hand! The spot kick is turned aside!","Twelve yards, no reward! The keeper keeps out {t}'s {n}!","With his legs! The keeper denies {t}'s {n} from the spot!","Down goes the keeper... and it stays out! {t}'s {n} denied!","Brilliant from the keeper! The penalty is repelled!"],
+  pen_missed:["Over the bar! {t}'s {n} blazes the penalty high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}!","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Way off target.","Hits the bar! {t}'s {n}'s penalty crashes off the crossbar!","{t}'s {n} puts the penalty wide! Terrible miss!","High, wide and anything but handsome! {t}'s {n} misses!","Dragged past the post! {t}'s {n} buries his head in his hands!","The post saves the keeper! {t}'s {n} denied by the frame!","Nowhere near! {t}'s {n} snatches at the penalty!","Ballooned into the stands! Awful from {t}'s {n}!","Too casual! {t}'s {n} chips it wide of the post!","Horrible penalty. {t}'s {n} never looked confident."],
   offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","{t}'s {n} went too early. Offside.","Linesman's flag. {t}'s {n} beyond the last man.","{t}'s {n} is offside. Good call.","Well-timed trap from {o}. {t}'s {n} caught out.","Offside. {t}'s {n} strayed ahead of the line.","Marginal but correct. {t}'s {n} flagged offside.","{t}'s {n} drifts offside. Move is dead.","The flag goes up. {t}'s {n} a fraction offside.","Run timed too early by {t}'s {n}. Offside.","{t}'s {n} springs forward but the flag is up."],
-  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out but only as far as {t}.","Partially cleared. {t} keep the pressure on.","Punched away by the keeper but {t} gather.","Cleared to the edge. {t} reload.","Knocked away but it falls to {t}.","Weak clearance from {o}. {t} maintain possession."],
+  corner_retain:["Corner half-cleared. Still {t}'s ball.","Loose clearance, {t} recycle it.","Headed out but only as far as {t}.","Partially cleared. {t} keep the pressure on.","Punched away by the keeper but {t} gather.","Cleared to the edge. {t} reload.","Knocked away but it falls to {t}.","Weak clearance from {o}. {t} maintain possession.","Scrambled out, but {t} come again.","Only as far as the edge. {t} still have it.","Nodded clear... and straight back to {t}.","{o} can't get it away. {t} probing again.","Second phase. {t} work it back in.","Half-punched by the keeper. {t} recycle.","The clearance lands at a {t} boot. Pressure stays on."],
   corner_clear:["{o} clear their lines decisively.","Headed away by {o}. Danger over.","{o} deal with the corner comfortably.","Strong defending from {o}. Corner neutralized.","Commanding from {o}'s keeper. Claimed easily.","{o} punch it clear. Dealt with.","Decisive header from {o}. Threat over.","{o} get bodies in the way. Corner cleared.","Cleared with authority by {o}.","{o}'s defense stands firm. Headed away."],
   corner_won:["Corner {t}.","Pushed behind! Corner to {t}.","Behind for a corner! {t} send men forward.","Deflected behind. Corner {t}.","Another set piece opportunity. Corner {t}.","Behind off the last defender. Corner {t}.","Cleared for a corner! {t} sending bodies up.","Last touch {o}. Corner {t}."],
-  corner_again:["Another corner {t}.","Taken short... and another corner {t}!","Still {t}'s corner. The pressure builds.","Worked back in... and it's another corner!","The corner leads to another! {t} keep the pressure on."],
+  corner_again:["Another corner {t}.","Taken short... and another corner {t}!","Still {t}'s corner. The pressure builds.","Worked back in... and it's another corner!","The corner leads to another! {t} keep the pressure on.","Blocked behind. Corner number two in quick succession for {t}.","In it comes, out it goes... and behind again. Corner {t}.","{o} can only put it behind. {t} will go again.","Deflected over. {t} keep the set-piece pressure coming.","Same routine, same result. Another {t} corner."],
   corner_rebound:["Off the woodwork and behind for a corner!","Parried behind! Corner {t}.","Tipped over! Corner to {t}.","Rebounds for a corner!","The save deflects behind for a corner!","Pushed behind by the keeper! Corner {t}."],
   free_kick:["Free kick for {t}. {n} over it. Into the wall.","{t}'s {n} whips in the free kick. Headed clear.","{t}'s {n} curls the free kick. Just over the bar.","Direct free kick from {t}'s {n}. Dipping but wide.","{t}'s {n} strikes the free kick. Blocked by the wall.","Worked short by {t}. The move breaks down.","{t}'s {n} floats it in. Keeper claims.","{t}'s {n} tries to bend it over the wall. Wide.","{t}'s {n} fires it low. Deflected behind.","Free kick drilled into the wall by {t}'s {n}. Clear.","{t}'s {n} goes for placement. Curls just wide.","{t}'s {n} strikes it hard. Keeper dives and holds."],
   buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {n} has options.","{t} probing through the middle. {n} on the ball.","{t}'s {n} carries it forward. Space opening up.","Ball switched by {t}. {n} receives in space.","{t} patient in possession. {n} picks the pass.","Good move from {t}. {n} advancing.","{n} plays a one-two and surges forward for {t}.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} turns and looks forward.","Neat combination from {t}. {n} carrying it forward.","{t}'s {n} clips one over the top. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the press and drives on.","{t} overloading the flank. {n} involved.","{t}'s {n} drops deep, collects, turns and plays forward.","Sharp pass from {t}'s {n}. Through the first line.","Crossfield ball from {t}'s {n}. Play shifted wide.","{t}'s {n} threads it through the midfield. On the move.","Lovely first touch from {t}'s {n}. Turns and plays it forward."],
@@ -83,14 +77,21 @@ const CM = {
   counter:["COUNTER! {t} catch {o} up the pitch! {n} leads the charge!","{t} break at pace! {n} driving forward!","Long ball over the top! {t}'s {n} racing clear!","Turnover! {t}'s {n} sprints into space!","{t} hit {o} on the break! {n} carrying it!","Quick transition! {t}'s {n} has support!","Intercepted! {t}'s {n} launches the counter!","{o} caught out! {t}'s {n} breaks with pace!","{t} spring forward! {n} galloping into {o}'s half!","Three on two! {t}'s {n} leading the break!","{o} overcommitted! {t}'s {n} exploits the gap!","Released! {t}'s {n} in behind with acres!","Stolen! {t}'s {n} picks it off and drives forward!","{t} on the counter! {n} has options either side!","Rapid break from {t}! {n} surging through the middle!"],
   sustain:["{t} working it around the edge of the box.","{t} keep probing. {o} holding firm.","{t}'s {n} looking for an opening. Recycled.","Patient from {t}. Waiting for the gap.","{t}'s {n} tries to thread it through. Blocked.","{t} shifting it side to side. {o} staying compact.","{t}'s {n} feints one way, goes the other. Still blocked.","{o} standing firm. {t} can't break through.","{t} patient in the final third. Looking for the killer ball.","{t}'s {n} drops a shoulder. The defender reads it.","Good defending from {o}. {t} recycling.","{t} recycling possession outside the box. {o} resolute.","{t}'s {n} looks for the channel. Cut out.","{t} knocking on the door. {o} barricading it.","{t}'s {n} whips it across the box. Cleared!"],
   neutral:["{t} passing it around at the back. No rush.","Cagey spell. Neither side committing.","{t} probe down the flank. Cross blocked.","Midfield tussle. Every second ball contested.","{o} press high. {t} play through it.","{t} in {o}'s half. Searching for openings.","Half chance breaks down. {t}'s {n} loses possession.","Long ball from {o}. Headed away.","{t} building from the back. Methodical.","{t} trying to find a route through. {o} compact.","Sideways from {t}. Looking for the gap.","Ball out for a throw. {t} regroup.","Scrappy phase of play. Nobody in control.","{o} soaking up pressure. Well-organized.","{t}'s {n} tries a through ball. Intercepted.","Lots of {o} bodies behind the ball.","Quiet passage. {t} keeping the ball without penetrating.","Midfield pinball. Neither team in command.","{t} switching play from side to side.","Tactical foul from {o}. Breaks {t}'s momentum.","{o} sitting deep. Inviting {t} onto them.","Nothing doing for {t}. {o} have numbers back.","Getting heated in midfield. Referee has a word.","End-to-end briefly. Ball bouncing between halves.","Drinks break. Managers issuing instructions."],
-  time_waste:["{t} taking their time over the restart.","{t} in absolutely no hurry.","Ball boy taking his time. {t} happy to wait.","{t} slowing the game down. {o} frustrated.","{t} running down the clock. Crowd getting restless."],
-  press_won:["{t} press and win it back!","Turnover! {t}'s pressing pays off!","{t} win the ball high up the pitch!","Good press from {t}! Won the ball!","{t} force the error! Ball turned over!","High press from {t} forces the turnover!"],
+  time_waste:["{t} taking their time over the restart.","{t} in absolutely no hurry.","Ball boy taking his time. {t} happy to wait.","{t} slowing the game down. {o} frustrated.","{t} running down the clock. Crowd getting restless.","Every restart takes an age. {t} know exactly what they're doing.","The keeper examines the ball at length. {t} in no rush.","A leisurely stroll to the corner flag from {t}.","Cramp, apparently. The physio jogs on. {t} happy with the delay.","{t} argue over who takes the throw. The clock ticks on.","Substitution board up... eventually. {t} milking every second.","Watch-tapping from the referee. {t} unmoved."],
+  press_won:["{t} press and win it back!","Turnover! {t}'s pressing pays off!","{t} win the ball high up the pitch!","Good press from {t}! Won the ball!","{t} force the error! Ball turned over!","High press from {t} forces the turnover!","Hunted down! {t} strip the ball loose in {o}'s half!","{o} play their way into trouble! {t} pounce!","Swarmed! Three {t} shirts and the ball is won!","The press bites! {t} regain it high!","Nowhere to go for {o}! {t} steal it back!","Trapped by the touchline! {t} win it off the press!"],
   chance_magic:["{t}'s {n} nutmegs the defender and bursts through!","{t}'s {n} drops a shoulder, cuts inside and drives into the box!","{t}'s {n} flicks it over the defender's head and collects! Through on goal!","{t}'s {n} beats two men with a drag-back and accelerates clear!","{t}'s {n} dances past three challenges on a mazy dribble!","{t}'s {n} spins away from the marker with a Cruyff turn! Space ahead!","{t}'s {n} rolls the ball through the defender's legs and races on!","{t}'s {n} chops inside off the right and leaves the fullback for dead!","{t}'s {n} knocks it past the defender and wins the footrace!","{t}'s {n} takes on two with quick feet and emerges in space!","{t}'s {n} feints left, shifts right, and surges past the last man!","{t}'s {n} picks up the ball on the halfway line and drives at the defense!"],
-  trap_beaten:["⚡ {t}'s {n} times the run perfectly! Clean through behind the high line!","⚡ {t}'s {n} stays onside and latches onto the through ball! One on one!","⚡ {t}'s {n} beats the offside trap! Sprints clear into the channel!","⚡ Ball over the top and {t}'s {n} is in behind! The trap has failed!","⚡ {t}'s {n} peels off the last defender and collects! Racing through on goal!","⚡ {t}'s {n} holds the run and goes! Past the high line and clear!"],
-  clearance_edge:["{o} clear, but only to the edge.","Headed out by {o}. Ball at the edge of the box.","{o} can't clear their lines properly. Ball falls loose.","Last-ditch clearance from {o}. Not convincing.","{o} scramble it away. Still in their half.","Cleared under pressure by {o}. Just about.","Booted away by {o}. Not out of danger yet.","{o} hack it clear. Temporary relief."],
+  trap_beaten:["⚡ {t}'s {n} times the run perfectly! Clean through behind the high line!","⚡ {t}'s {n} stays onside and latches onto the through ball! One on one!","⚡ {t}'s {n} beats the offside trap! Sprints clear into the channel!","⚡ Ball over the top and {t}'s {n} is in behind! The trap has failed!","⚡ {t}'s {n} peels off the last defender and collects! Racing through on goal!","⚡ {t}'s {n} holds the run and goes! Past the high line and clear!","⚡ The flag stays down! {t}'s {n} is away! Clean through!","⚡ Caught square! {o}'s line is breached and {t}'s {n} is gone!","⚡ One ball undoes the whole back line! {t}'s {n} through on goal!","⚡ {o} step up... too late! {t}'s {n} is in behind!","⚡ Timed to the centimetre! {t}'s {n} bursts through the gap!","⚡ Gambled and lost! {o}'s high line is torn open by {t}'s {n}!"],
+  clearance_edge:["{o} clear, but only to the edge.","Headed out by {o}. Ball at the edge of the box.","{o} can't clear their lines properly. Ball falls loose.","Last-ditch clearance from {o}. Not convincing.","{o} scramble it away. Still in their half.","Cleared under pressure by {o}. Just about.","Booted away by {o}. Not out of danger yet.","{o} hack it clear. Temporary relief.","Anywhere will do! {o} smash it clear, but not far.","Half a clearance from {o}. The danger lingers.","{o} throw bodies at it. The ball squirts to the edge.","Desperate stuff from {o}. It drops just outside the box."],
   clearance_mid:["Cleared by {o}. Midfield.","{o} win the ball and clear it long.","Headed out by {o}. Back in the middle third.","{o} deal with it comfortably. Ball in midfield.","Cleared to halfway by {o}.","Strong defending from {o}. Cleared."],
-  transition:["{o} win it and break forward.","Turnover. {o} have the ball.","{t} lose it in midfield. {o} advance.","Loose ball falls to {o}. {t} retreating.","{t} lose it cheaply. {o} looking to exploit.","{o} win it back in the middle."],
-  long_ball:["{t} go direct. Second ball contested.","{t} play it long. {o} head it away.","{t} bypass the midfield. Ball launched forward.","{t} send it long. Aerial battle."],
+  transition:["{o} win it and break forward.","Turnover. {o} have the ball.","{t} lose it in midfield. {o} advance.","Loose ball falls to {o}. {t} retreating.","{t} lose it cheaply. {o} looking to exploit.","{o} win it back in the middle.","Possession flips. {o} on the move.","Sloppy from {t}. {o} take full advantage of the loose pass.","{o} pick the pocket and push forward.","Given away by {t}. {o} spring upfield.","The pass is cut out. {o} in possession now.","{t} overplay it. {o} pounce and advance."],
+  long_ball:["{t} go direct. Second ball contested.","{t} play it long. {o} head it away.","{t} bypass the midfield. Ball launched forward.","{t} send it long. Aerial battle.","Route one from {t}. {o} deal with it.","Channel ball from {t}. Shepherded out.","Up it goes from {t}. Knocked down and scrapped for.","No messing from {t}. Launched toward the front line.","Straight over the top from {t}. Long and hopeful.","Direct from {t}. The flick-on comes to nothing.","A raking ball forward from {t}. Dealt with in the end.","Long from {t}. The striker can't bring it down."],
+  sub_in:["Fresh legs. {t}'s {n} replaces {x}.","{t} make a change. {x} off, {n} on.","Change for {t}. {n} enters, {x} makes way.","Here comes {n} for {t}. {x}'s work is done.","The board goes up. {t} swap {x} for {n}.","{x} trudges off. {n} sprints on for {t}.","Tactical switch from {t}. {n} on for {x}.","Straight to the bench for {t}. {n} replaces {x}.","Applause for {x} as he makes way. {n} joins the fray for {t}.","That's it for {x}. {n} takes over for {t}.","{n} strips off the bib and enters for {t}. {x} comes off.","A roll of the dice from {t}. {n} on, {x} off.","Off comes {x}, shaking his head. On goes {n} for {t}.","Like-for-like change from {t}. {n} in for {x}."],
+  injury_event:["{t}'s {n} is down and staying down.","Concern for {t}. {n} clutching his ankle.","The physio is on for {t}'s {n}.","Just a knock for {t}'s {n}. He'll run it off.","Down goes {t}'s {n}. Nothing malicious, just awkward.","Hamstring, by the look of it. {t}'s {n} pulls up sharply.","Treatment needed for {t}'s {n}. The bench looks worried.","A hobble to the touchline for {t}'s {n}.","Nasty collision. {t}'s {n} comes off worse.","Straight away {t}'s {n} signals to the bench. Not a good sign.","Lengthy stoppage here. {t}'s {n} in real discomfort.","Up and moving again. {t}'s {n} shakes it off.","Ice and a bandage for {t}'s {n}. He'll soldier on."],
+  ht_whistle:["That's the break.","Referee blows for half-time.","Half-time. Time to regroup.","The whistle goes. Forty-five in the books.","And that's the half.","Time for a breather. Half-time.","There's the whistle. Down the tunnel they go.","Break time. Oranges and instructions.","Forty-five minutes gone.","One half done, one to go.","Whistle. Interval.","Players head for the tunnel. Half-time."],
+  ft_whistle:["It's all over!","That's it. Final whistle.","The referee ends it.","Full-time. Done and dusted.","There goes the whistle! It's finished!","All over. Handshakes all round.","Peep peep peep! That's full-time!","No more time. The final whistle sounds.","Nothing more to play. The whistle ends it.","Finished. The referee brings it to an end.","And there it is. Full-time.","One last whistle. It's over.","Over. Done. Full-time."],
+  et_start:["Thirty more minutes to settle this.","Extra time. Here we go again.","Deadlocked after ninety. Extra time beckons.","Nothing separates them. Extra time it is.","On to extra time. Tired legs everywhere.","An additional half hour to find a winner.","Here comes extra time. Who has anything left?","The players gather themselves. Extra time under way.","No decision yet. Thirty minutes more.","Half an hour more. Someone has to blink.","Cramp, courage and fine margins. Extra time.","Still level. We play on."],
+  kickoff:["We're underway!","And they're off.","{t} get us started.","The referee's whistle. Game on.","Kick-off. Here we go.","First touch to {t}.","Under way at last.","Whistle blown, ball rolling. We're off.","Away we go.","Tapped off by {t}. Up and running.","Game on. {t} in possession from the start.","Off we go then."],
+  drink_break:["Quick drinks break.","Water break. Managers have a word.","A pause for fluids.","Drinks on the touchline. Brief huddle from both benches.","Cooling break. The tempo can wait.","Bottles out. A minute to reset.","The referee signals a drinks break.","Hydration stop. Coaches make the most of it.","Time for water. Tactical whiteboards appear.","Play pauses. Everyone takes on water.","Brief stop for drinks. Some walk, some listen, some just breathe.","Out come the bottles and the clipboards."],
 };
 const GOAL_TPS=new Set(["goal","corner_goal","own_goal","deflection","gk_error","pen_scored","goal_ctr","goal_lr"]);
 function comm(rng,tp,v,s){const pool=CM[tp];if(!pool||!pool.length)return fill(tp,v||{});let txt=fill(pick(rng,pool),v||{});if(GOAL_TPS.has(tp)&&s&&v&&v.tk){const i=v.tk==="home"?0:1,tot=s.score[0]+s.score[1],diff=s.score[i]-s.score[1-i];if(tot===1)txt+=pick(rng,CM.gx_opener);else if(diff===0)txt+=fill(pick(rng,CM.gx_equal),v);else if(diff===1)txt+=fill(pick(rng,CM.gx_lead),v);else if(diff>1)txt+=fill(pick(rng,CM.gx_extend),v);else if(diff===-1)txt+=fill(pick(rng,CM.gx_pull),v);else txt+=fill(pick(rng,CM.gx_consol),v);if(s.minute>=85||(s.phase&&s.phase.includes("stoppage")))txt+=pick(rng,CM.gx_late);}return txt;}
@@ -106,6 +107,60 @@ function ownGoalText(rng, s, nm, ogPlayer) {
   const desc = pick(rng, CM.own_goal_desc);
   const line = nm.home + " " + s.score[0] + ", " + nm.away + " " + s.score[1];
   return line + ". " + ogPlayer.name + " (" + ogPlayer.pos + ") " + desc + ".";
+}
+// Spatial data for goal visualizations. Pitch coords: 100x65 landscape, attacking goal at x=100.
+// zone/dive are passed in for penalties (to match the shootout data) and generated otherwise.
+function genGoalViz(rng, method, scorerName, assistName, zone, dive) {
+  const R = (lo, hi) => lo + rng.u() * (hi - lo);
+  const m = method || "reg";
+  let shotFrom = null, assistFrom = null;
+  if (m === "pen") { shotFrom = { x: 88, y: 32.5 }; }
+  else if (m !== "og") {
+    if (m === "header") { shotFrom = { x: R(88,96), y: R(20,45) }; assistFrom = { x: R(95,100), y: rng.u() < 0.5 ? R(2,12) : R(53,63) }; }
+    else if (m === "long-range") { shotFrom = { x: R(68,82), y: R(15,50) }; assistFrom = { x: R(48,68), y: R(12,53) }; }
+    else if (m === "deflection") { shotFrom = { x: R(75,90), y: R(16,49) }; assistFrom = { x: R(55,78), y: R(12,53) }; }
+    else if (m === "counter") { shotFrom = { x: R(80,94), y: R(18,47) }; assistFrom = { x: R(20,45), y: R(15,50) }; }
+    else if (m === "gk-error") { shotFrom = { x: R(82,95), y: R(20,45) }; assistFrom = { x: R(55,78), y: R(15,50) }; }
+    else { shotFrom = { x: R(78,92), y: R(18,47) }; assistFrom = { x: R(55,80), y: R(10,55) }; }
+    if (!assistName) assistFrom = null;
+  }
+  let gz = zone, dv = dive;
+  if (gz == null) {
+    const w = m === "header" ? [20,20,20,13,14,13] : m === "long-range" ? [14,10,14,18,12,18] : [14,10,14,20,12,20];
+    const tot = w.reduce((a,b)=>a+b,0); let r = rng.u()*tot; gz = 5;
+    for (let i = 0; i < 6; i++) { r -= w[i]; if (r <= 0) { gz = i; break; } }
+  }
+  // Open-play keeper always dives toward the shot's actual side — beaten by pace,
+  // placement, or a deflection, never by picking the wrong side outright. Only
+  // penalties (dive passed in above) are an independent guess.
+  if (dv == null) dv = gz % 3;
+  return { method: method || null, scorer: scorerName, assist: assistName || null, shotFrom, assistFrom, goalZone: gz, dive: dv, result: "goal" };
+}
+function gvParseZone(text, shotY) {
+  const d = text.toLowerCase();
+  if (d.includes("top left")) return 0;
+  if (d.includes("top right")) return 2;
+  if (d.includes("bottom left")) return 3;
+  if (d.includes("bottom right")) return 5;
+  if (d.includes("top corner")) return 0;
+  if (d.includes("bottom corner")) return 3;
+  if (d.includes("roof of the net") || d.includes("under the crossbar") || d.includes("underside of the bar")) return 1;
+  if (d.includes("over the goalkeeper")) return 1;
+  if (d.includes("down the middle") || d.includes("through the keeper")) return 4;
+  if (d.includes("center of the goal")) return 4;
+  if (d.includes("far corner") || d.includes("far post")) return (shotY != null && shotY < 32.5) ? 5 : 3;
+  if (d.includes("near post") || d.includes("near corner")) return (shotY != null && shotY < 32.5) ? 3 : 5;
+  return null;
+}
+function gvSync(txt, gv) {
+  const pz = gvParseZone(txt, gv?.shotFrom?.y);
+  if (pz == null || !gv) return;
+  gv.goalZone = pz;
+  // A scored penalty is only a goal because the keeper's dive column missed the
+  // shot's column (see resolvePendingPenalty/shootout). Re-syncing the zone to the
+  // commentary text must preserve that mismatch, or the keeper reads as having
+  // guessed correctly on a shot the text describes as beating him.
+  if (gv.method === "pen" && gv.dive === pz % 3) gv.dive = (pz % 3 + 1) % 3;
 }
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
 function lmDisplayMin(phase, min, se) { const b = { first_half_stoppage:45, second_half_stoppage:90, et_first_stoppage:105, et_second_stoppage:120 }[phase]; return b !== undefined ? `${b}+${se}` : `${min}`; }
@@ -275,7 +330,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
     scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
-    s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn)});
+    {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"header",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD "+_t, goalViz:_g});}
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
@@ -307,7 +362,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
         s.score[atk === "home" ? 0 : 1]++;
         if(s.goalscorers)s.goalscorers[atk].push({name:ogPlayer.name,min:dm,method:"og",ogTeam:nm[def]});
         ogPlayer.rating=Math.max(3,+(ogPlayer.rating-1.0).toFixed(1));
-        s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD " + ownGoalText(rng,s,nm,ogPlayer)});
+        {const _t=ownGoalText(rng,s,nm,ogPlayer),_g=genGoalViz(rng,"og",ogPlayer.name,null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD "+_t, goalViz:_g});}
         s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 3;
       } else {
         s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
@@ -334,7 +389,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
     shooter.goals++;let _ast;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));_ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(_ast)_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));}
     s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.15).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(2));});
-    s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast)});
+    {const _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast),_g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
   } else if (roll < goalP+saveP) {
     // Save — check for GK error (3%) or tipped onto woodwork (8%)
@@ -345,7 +400,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
       shooter.goals++;let _astGk;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));_astGk=assistPlayer(rng,s.players[atk],shooter.name,0);if(_astGk)_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));}
       const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.max(3,+(gk.rating-0.8).toFixed(1));
       s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(1));});
-      s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+goalText(rng,"gk_error_desc",s,nm,shooter,_astGk)});
+      {const _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk),_g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+_t,goalViz:_g});}
       s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
@@ -530,7 +585,7 @@ function lmSimMinute(s, rng, home, away) {
     const lrScorer=pickPlayer(rng,s.players[po],"longGoal");const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr)});s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 "+comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.name},s)});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+comm(rng,"miss_lr",{t:nm[po],n:lrScorer.name},s)});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -644,9 +699,9 @@ function lmSimMinute(s, rng, home, away) {
         const wasBooked = booked.includes(subOff.name);
         if (wasBooked) {
           s.booked[side] = s.booked[side].filter(p => p !== subOff.name);
-          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". Booked player off.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
+          { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.name,x:subOff.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". "+reason,offName:subOff.name,onName:subOn.name,reason,offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos}); }
         } else {
-          s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". Tactical substitution.",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
+          { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.name,x:subOff.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+subOff.name+" \u2192 "+subOn.name+". "+reason,offName:subOff.name,onName:subOn.name,reason,offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos}); }
         }
       }
     }
@@ -662,15 +717,15 @@ function lmSimMinute(s, rng, home, away) {
         s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
-        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+sn+"'s "+injured.name+" goes down injured."+(wasBooked ? " Was on a yellow." : "")});
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+(wasBooked ? " Was on a yellow." : "")});
         const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
         subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
-        s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+subOn.name+". Forced substitution.",offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos});
+        { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.name,x:injured.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+subOn.name+". "+reason,offName:injured.name,onName:subOn.name,reason,offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos}); }
       } else {
         {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
         if (s.booked[side].includes(injured.name)) s.booked[side] = s.booked[side].filter(p => p !== injured.name);
         s.stats[side].injuriesNoSub++;
-        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+sn+"'s "+injured.name+" goes down injured. No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+" No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
       }
     }
   }
@@ -732,7 +787,7 @@ function lmSimMinute(s, rng, home, away) {
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], penVisual:null, pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0} };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0} };
 }
 
 function cloneState(p) {
@@ -764,21 +819,20 @@ function resolvePendingPenalty(s, rng, home, away) {
   const isMiss2=rng.u()<missP2;
   const isSave2=!isMiss2&&dive2===zCol2;
   const result2=isMiss2?"miss":isSave2?"save":"goal";
-  s.penVisual={zone:zone2,dive:dive2,result:result2,name:taker.name,team:po,tName:nm[po],min:dm};
   if(isMiss2){
     s.stats[po].shots++;
-    ratePlayer(s.players[po],taker.name,-0.5);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.name},s)});
+    ratePlayer(s.players[po],taker.name,-0.5);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"miss"}});
     s.possession=op;s.pressure=0;
   }else if(isSave2){
     s.stats[po].shots++;s.stats[po].onTarget++;
-    ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.name},s)});
+    ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});
     if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[po]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
     else{s.possession=op;s.pressure=0;}
   }else{
     s.score[po==="home"?0:1]++;s.stats[po].shots++;s.stats[po].onTarget++;
     if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
     s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.05).toFixed(1));});
-    s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+goalText(rng,"pen_scored_desc",s,nm,taker,null)});
+    {const _t=goalText(rng,"pen_scored_desc",s,nm,taker,null),_g=genGoalViz(rng,"pen",taker.name,null,zone2,dive2);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;
   }
 }
@@ -786,23 +840,22 @@ function lmAdvance(prev, rng, home, away, mutate) {
   const s = mutate ? prev : cloneState(prev);
   if (s.pendingPenalty) { resolvePendingPenalty(s, rng, home, away); return s; }
   const playMin = () => lmSimMinute(s,rng,home,away);
-  s.penVisual = null;
   const toStop = (phase) => { s.stoppageTotal=lmCalcStoppage(s.stoppageBank,phase,rng);s.stoppageElapsed=0;s.stoppageBank=0;s.phase=phase+"_stoppage";s.events.push({min:"",type:"phase",text:"\u23F1 "+s.stoppageTotal+" minutes added time"}); };
   switch(s.phase){
-    case "pre_match": s.phase="first_half";s.minute=1;s.events.push({min:"",type:"phase",text:"\u26BD Kick off!"});playMin();break;
+    case "pre_match": s.phase="first_half";s.minute=1;s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:home.name})});playMin();break;
     case "first_half": s.minute++;playMin();if(s.minute>=45)toStop("first_half");break;
-    case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 Half time. "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+15);s.stamina.away=Math.min(100,s.stamina.away+15);s.events.push({min:"",type:"phase",text:"\u26BD Second half underway!"});break;
+    case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
+    case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+15);s.stamina.away=Math.min(100,s.stamina.away+15);s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "second_half": s.minute++;playMin();if(s.minute>=90)toStop("second_half");break;
-    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 Full time. "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 Full time! "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
-    case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.events.push({min:"",type:"phase",text:"\u26BD Extra time begins!"});break;
+    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ft_whistle)+" "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
+    case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.events.push({min:"",type:"phase",text:"\u26BD "+pick(rng,CM.et_start)});break;
     case "et_first": s.minute++;playMin();if(s.minute>=105)toStop("et_first");break;
-    case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 ET half time. "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+5);s.stamina.away=Math.min(100,s.stamina.away+5);s.events.push({min:"",type:"phase",text:"\u26BD ET second half!"});break;
+    case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
+    case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+5);s.stamina.away=Math.min(100,s.stamina.away+5);s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "et_second": s.minute++;playMin();if(s.minute>=120)toStop("et_second");break;
     case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
         const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
-        s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
+        s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
     case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(tk==="home"?home.skill:away.skill,s.stats[tk].reds,s.minute);const gE=lmEffSkill(ok==="home"?home.skill:away.skill,s.stats[ok].reds,s.minute);
       // Pick taker from order
       const ordKey=tk+"Order",idxKey=tk+"Idx";
@@ -823,8 +876,8 @@ function lmAdvance(prev, rng, home, away, mutate) {
       p[tk].push({scored,name:taker.name,zone,dive,result});
       const hScore=p.home.filter(k=>k.scored).length, aScore=p.away.filter(k=>k.scored).length;
       const penScore="("+hScore+"\u2013"+aScore+")";
-      if(scored){s.events.push({min:"PEN",type:"goal",team:tk,text:"\u26BD "+comm(rng,"pen_scored",{t:tName,n:taker.name},s)+" "+penScore});}
-      else{s.events.push({min:"PEN",type:"pen_miss",team:tk,player:taker.name,text:"\u274C "+comm(rng,isMiss?"pen_missed":"pen_saved",{t:tName,n:taker.name},s)+" "+penScore});}
+      if(scored){s.events.push({min:"PEN",type:"goal",team:tk,text:"\u26BD "+comm(rng,"pen_scored",{t:tName,n:taker.name},s)+" "+penScore,goalViz:genGoalViz(rng,"pen",taker.name,null,zone,dive)});}
+      else{s.events.push({min:"PEN",type:"pen_miss",team:tk,player:taker.name,text:"\u274C "+comm(rng,isMiss?"pen_missed":"pen_saved",{t:tName,n:taker.name},s)+" "+penScore,goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone,dive:dive,result:result}});}
       p.nextTeam=ok;const winner=lmCheckPenDecided(p.home,p.away);if(winner){p.decided=true;p.winner=winner;s.phase="finished";const wName=winner==="home"?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC6 "+wName+" win on penalties! "+s.score[0]+"\u2013"+s.score[1]+" ("+p.home.filter(k=>k.scored).length+"\u2013"+p.away.filter(k=>k.scored).length+" PENS)"});}break;}
     default:break;
   }
@@ -1486,14 +1539,57 @@ function parseBulk(text) {
     for (let i = 0; i < stratKeys.length && i + 4 < p.length; i++) {
       strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4]);
     }
-    // Extract player names after 14 tactic columns (indices 4+14=18 onwards)
-    const playerNames = [];
-    for (let i = 18; i < p.length; i++) { const pn = p[i]?.trim(); if (pn) playerNames.push(pn); }
+    // Extract player names after the 14 tactic columns (indices 4+14=18 onwards),
+    // then peel off up to two optional #RRGGBB colors trailing after the players.
+    // Detected by the leading '#', so absence is fully backward-compatible —
+    // player names never start with '#'.
+    const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
+    const trailing = [];
+    for (let i = 18; i < p.length; i++) { const v = p[i]?.trim(); if (v) trailing.push(v); }
+    let primaryColor = null, secondaryColor = null;
+    if (trailing.length > 0 && isHexColor(trailing[trailing.length - 1])) {
+      if (trailing.length > 1 && isHexColor(trailing[trailing.length - 2])) {
+        secondaryColor = trailing.pop();
+        primaryColor = trailing.pop();
+      } else {
+        primaryColor = trailing.pop();
+      }
+    }
+    const playerNames = trailing;
     const squad = buildSquad(formation, playerNames.length > 0 ? playerNames : null);
-    return { ...base, style, formation, strategy, squad };
+    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}) };
   }).filter(Boolean);
 }
 const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
+const hexToRgb = (hex) => { const h = (hex || "").replace("#", ""); if (h.length !== 6) return null; return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+// "redmean" — a cheap perceptually-weighted RGB distance, much better than plain
+// Euclidean distance at telling "different colors" apart from "near-duplicate shades".
+const colorsClash = (hex1, hex2) => {
+  const c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
+  if (!c1 || !c2) return false;
+  const rmean = (c1.r + c2.r) / 2, dR = c1.r - c2.r, dG = c1.g - c2.g, dB = c1.b - c2.b;
+  const dist = Math.sqrt((2 + rmean/256) * dR*dR + 4 * dG*dG + (2 + (255-rmean)/256) * dB*dB);
+  return dist < 60;
+};
+// Picks a color visually distinct from bgHex: the color itself, else its alt (e.g. away
+// kit), else the color progressively lightened toward white as a last resort. Reuses the
+// same redmean distance as colorsClash — this catches colors that blend into the panel
+// background, not merely "dark" colors (plenty of real team colors, like black or navy
+// kits, are dark but still clearly visible against the app's dark UI).
+const readableClr = (hex, altHex, bgHex) => {
+  if (!hex) return altHex || "#ffffff";
+  if (!colorsClash(hex, bgHex)) return hex;
+  if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
+  const c = hexToRgb(hex); if (!c) return "#ffffff";
+  let r = c.r, g = c.g, b = c.b, cur = hex;
+  for (let i = 0; i < 10 && colorsClash(cur, bgHex); i++) {
+    r = Math.min(255, Math.round(r + (255 - r) * 0.3));
+    g = Math.min(255, Math.round(g + (255 - g) * 0.3));
+    b = Math.min(255, Math.round(b + (255 - b) * 0.3));
+    cur = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+  }
+  return cur;
+};
 
 const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:45,MID:25,FWD:29},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
 function pickPlayer(rng, players, type) {
@@ -1572,8 +1668,8 @@ function buildSquad(formation, names) {
 }
 
 
-function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true) {
-  return parseBulk(raw.split("\n").slice(1).map(line => {
+function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, hasHeader = true) {
+  return parseBulk((hasHeader ? raw.split("\n").slice(1) : raw.split("\n")).map(line => {
     const cols = line.split("\t");
     if (hasSuffix) {
       const league = cols[cols.length - 1]?.trim();
@@ -1584,15 +1680,9 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true) {
 }
 const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, ["Nichirin League One"]);
-const PRESET_NL2 = parsePresetTSV(nl2TSV, ["Nichirin League Two"]);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
-const PRESET_PL = parsePresetTSV(plTSV, ["Premier League"]);
-const PRESET_BUN = parsePresetTSV(bunTSV, ["Bundesliga"]);
-const PRESET_LL = parsePresetTSV(llTSV, ["La Liga"]);
-const PRESET_L1 = parsePresetTSV(l1TSV, ["Ligue 1"]);
-const PRESET_LP = parsePresetTSV(lpTSV, ["Liga Portugal"]);
-const PRESET_SL = parsePresetTSV(slTSV, ["Süper Lig"]);
-const PRESET_ED = parsePresetTSV(edTSV, ["Eredivisie"]);
+const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
+const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
 const PRESET_WC = parsePresetTSV(wcTSV, null, 0, false);
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
@@ -1610,6 +1700,77 @@ const chk = { fontSize: 11, color: "#7889a0", display: "flex", alignItems: "cent
 const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"};
 function styledPos(txt) { const parts = []; let last = 0; const rx = /\((GK|DEF|MID|FWD)\)/g; let m; while ((m = rx.exec(txt)) !== null) { if (m.index > last) parts.push(txt.slice(last, m.index)); parts.push(<span key={m.index} style={{ ...mono, color: POS_CLR[m[1]] || "#7889a0" }}>({m[1]})</span>); last = rx.lastIndex; } if (last < txt.length) parts.push(txt.slice(last)); return parts; }
 const evColor = { goal: "#ffffff", penalty: "#d08770", chance: "#ebcb8b", red: "#bf616a", second_yellow: "#bf616a", pen_miss: "#bf616a", yellow: "#ebcb8b", save: "#ffffff", miss: "#ffffff", sub: "#7a8b9b", injury: "#c07070", press: "#ffffff", counter: "#ffffff", phase: "#ffffff", foul: "#ffffff", corner: "#ffffff", neutral: "#ffffff", offside: "#ffffff", buildup: "#ffffff", clearance: "#ffffff" };
+// ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
+const gvSn = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (p.length === 2 && pfx.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!pfx.has(p[i].toLowerCase())) { let s = i; while (s > 1 && pfx.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
+// Front-on goal mouth: ball animates from the grass to its zone, keeper dives. Used for all goals and penalty misses.
+function gvGoalMouth(gv, delay) {
+  const W=220, gL=25, gR=195, gT=10, gB=82;
+  const zone = gv.goalZone ?? 4, dive = gv.dive ?? 1, result = gv.result || "goal";
+  const zPos = [[gL+26,gT+20],[gL+85,gT+16],[gR-26,gT+20],[gL+26,gB-18],[gL+85,gB-14],[gR-26,gB-18]];
+  const mPos = [[gL-6,gT-8],[gL+85,gT-12],[gR+6,gT-8],[gL-10,gB+6],[gL+85,gB+10],[gR+10,gB+6]];
+  const dX = [(gL+gR)/2-44,(gL+gR)/2,(gL+gR)/2+44], dY = (gT+gB)/2+4;
+  const pos = result === "miss" ? mPos[zone] : zPos[zone];
+  const col = result === "goal" ? "#a3be8c" : result === "save" ? "#bf616a" : "#7889a0";
+  const bx = (gL+gR)/2, by = gB+13;
+  const saved = result === "save";
+  const d = Math.max(0, delay || 0);
+  return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
+    <rect x="3" y={gB+2} width={W-6} height="18" fill="#0e1a12" rx="2" />
+    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0d120d" stroke="#7889a0" strokeWidth="2.5" rx="1" />
+    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="#7889a0" strokeWidth="0.5" opacity="0.6" />
+    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="#7889a0" strokeWidth="0.5" opacity="0.6" />
+    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.5" opacity="0.6" />
+    <g className="gv-anim" style={{ "--gv-kdx": (dX[1]-dX[dive])+"px", animation: "gvKeep 0.3s ease-out "+(d+0.12).toFixed(2)+"s both" }}>
+      <rect x={dX[dive]-18} y={dY-20} width="36" height="40" rx="4" fill={saved?"#bf616a33":"#ffffff0a"} stroke={saved?"#bf616a66":"#ffffff18"} strokeWidth="1.5" />
+      <text x={dX[dive]} y={dY+2} textAnchor="middle" dominantBaseline="middle" fill={saved?"#bf616a":"#ffffff30"} fontSize="16">🧤</text>
+    </g>
+    <g className="gv-anim" style={{ "--gv-bdx": (pos[0]-bx)+"px", "--gv-bdy": (pos[1]-by)+"px", animation: "gvBallTo 0.45s cubic-bezier(0.25,0.8,0.4,1) "+d.toFixed(2)+"s both" }}>
+      <circle cx={bx} cy={by} r="7" fill={col} stroke="#141c2b" strokeWidth="1" />
+      <text x={bx} y={by+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="8" fontWeight="800">{result==="goal"?"✓":result==="save"?"✕":"×"}</text>
+    </g>
+  </svg>);
+}
+// Overhead build-up pitch: assist pass line, then shot line, ball traveling along both. Attacking goal on the right.
+function gvPitch(gv, clr) {
+  const S = [gv.shotFrom.x*2, gv.shotFrom.y*2];
+  const A = gv.assistFrom ? [gv.assistFrom.x*2, gv.assistFrom.y*2] : null;
+  const G = [199, 65];
+  const len1 = A ? Math.hypot(S[0]-A[0], S[1]-A[1]) : 0;
+  const len2 = Math.hypot(G[0]-S[0], G[1]-S[1]);
+  const t2 = A ? 0.9 : 0.1;
+  const lx = (x, lim) => Math.max(26, Math.min(lim, x));
+  const ly = (y) => y < 16 ? y+13 : y-8;
+  const dotClr = clr || "#ffffff";
+  return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
+    <rect x="1" y="1" width="198" height="128" fill="#060b14" stroke="#7889a044" strokeWidth="0.8" rx="2" />
+    <line x1="100" y1="1" x2="100" y2="129" stroke="#7889a044" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="17" fill="none" stroke="#7889a044" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="1" fill="#7889a044" />
+    <rect x="166" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
+    <rect x="188" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
+    <circle cx="176" cy="65" r="0.8" fill="#7889a044" />
+    <rect x="1" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
+    <rect x="1" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
+    <circle cx="24" cy="65" r="0.8" fill="#7889a044" />
+    <rect x="199" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
+    <rect x="-2.5" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
+    {A && <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} className="gv-anim" stroke="#ffffff66" strokeWidth="1.1" strokeDasharray={len1} style={{ "--gv-len": len1+"px", animation: "gvLine 0.8s ease-in-out both" }} />}
+    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
+    {A && <g>
+      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
+      <text x={lx(A[0],170)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
+    </g>}
+    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
+    <text x={lx(S[0],177)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
+    {A && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
+      <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="#060b14" strokeWidth="0.8" />
+    </g>}
+    <g className="gv-anim" style={{ "--gv-dx": (G[0]-S[0])+"px", "--gv-dy": (G[1]-S[1])+"px", animation: "gvBallB 0.5s ease-in "+t2.toFixed(2)+"s both" }}>
+      <circle cx={S[0]} cy={S[1]} r="2.8" fill="#ffffff" stroke="#060b14" strokeWidth="0.8" />
+    </g>
+    <circle cx={G[0]} cy={G[1]} r="4" fill="none" stroke="#a3be8c" strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(t2+0.5).toFixed(2)+"s both" }} />
+  </svg>);
+}
 const APP_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
@@ -1624,6 +1785,10 @@ body{font-family:'Neue Montreal','Inter','Helvetica Neue',sans-serif;}
 input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;}
 input[type=number]{-moz-appearance:textfield;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[type=color]{-webkit-appearance:none;appearance:none;padding:0;}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0;border-radius:2px;}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:2px;}
+input[type=color]::-moz-color-swatch{border:none;border-radius:2px;}
 input:focus,select:focus,textarea:focus{border-color:#e4002b !important;outline:none;box-shadow:0 0 0 3px #e4002b20;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
@@ -1658,6 +1823,12 @@ table{border-spacing:0;}
 @keyframes goalFlash{0%{text-shadow:0 0 24px #ffffff,0 0 48px #e4002b44;}50%{text-shadow:0 0 36px #ffffff,0 0 72px #e4002b44;}100%{text-shadow:none;}}
 @keyframes cardPop{0%{opacity:0;transform:translateY(8px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
 .ev-card{animation:cardPop 0.35s ease-out;}
+@keyframes gvLine{from{stroke-dashoffset:var(--gv-len);}to{stroke-dashoffset:0;}}
+@keyframes gvBallA{0%{transform:translate(0,0);opacity:0;}8%{opacity:1;}92%{opacity:1;}100%{transform:translate(var(--gv-dx),var(--gv-dy));opacity:0;}}
+@keyframes gvBallB{0%{transform:translate(0,0);opacity:0;}10%{opacity:1;}100%{transform:translate(var(--gv-dx),var(--gv-dy));opacity:1;}}
+@keyframes gvBallTo{from{transform:translate(0,0);}to{transform:translate(var(--gv-bdx),var(--gv-bdy));}}
+@keyframes gvKeep{from{transform:translateX(var(--gv-kdx));}to{transform:translateX(0);}}
+@keyframes gvBurst{0%{opacity:0;transform:scale(0.4);}12%{opacity:0.9;}100%{opacity:0;transform:scale(2.4);}}
 .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e4002b;animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
 @media(max-width:600px){
   .grid-2col{grid-template-columns:1fr !important;gap:10px 0 !important;}
@@ -1669,6 +1840,7 @@ table{border-spacing:0;}
 details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
   .ev-enter,.goal-flash,.tick-btn,.live-dot{animation:none !important;}
+  .gv-anim{animation-duration:0.01ms !important;animation-delay:0ms !important;}
   *{transition-duration:0.01ms !important;}
 }
 `;
@@ -1706,9 +1878,9 @@ export default function App() {
   const lmRng = useRef(null);
   const lmFeedRef = useRef(null);
   const [manualSub, setManualSub] = useState({side:null,off:null});
+  const [gvReplayKeys, setGvReplayKeys] = useState({});
   const [goalFlash, setGoalFlash] = useState(null);
   const [lmTab, setLmTab] = useState("stats");
-  const [showReport, setShowReport] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [autoSpeed, setAutoSpeed] = useState(1500);
   const [lmAutoSubs, setLmAutoSubs] = useState(true);
@@ -2154,7 +2326,8 @@ export default function App() {
       const strat = {...STRAT_DEF, ...(t.strategy || {})};
       const tactics = stratKeys.map(k => valToLabel[k]?.[strat[k]] || "No Instruction");
       const players = (t.squad || []).map(p => p.name + tierSuffix(p.tier)).join("\t");
-      return [code, t.name, t.skill, style, form, ...tactics, players].join("\t");
+      const colors = t.primaryColor ? (t.secondaryColor ? [t.primaryColor, t.secondaryColor] : [t.primaryColor]) : [];
+      return [code, t.name, t.skill, style, form, ...tactics, players, ...colors].join("\t");
     }).join("\n");
   };
 
@@ -2193,7 +2366,7 @@ export default function App() {
       s.players[side].push(onP);
       s.subs[side]++;
       s.stamina[side] = Math.min(100, s.stamina[side] + 4);
-      s.events.push({min:dm,type:"sub",team:side,text:"\uD83D\uDD04 "+sn+"'s "+offName+" \u2192 "+onName+". Manual substitution.",offPos:offP.pos,offRating:offP.rating,onPos:onP.pos});
+      { const reason=fill(CM.sub_in[Math.floor(Math.random()*CM.sub_in.length)],{t:sn,n:onName,x:offName}); s.events.push({min:dm,type:"sub",team:side,text:"\uD83D\uDD04 "+sn+"'s "+offName+" \u2192 "+onName+". "+reason,offName,onName,reason,offPos:offP.pos,offRating:offP.rating,onPos:onP.pos}); }
       return s;
     });
     setManualSub({side:null,off:null});
@@ -2820,6 +2993,360 @@ export default function App() {
     setTPhase("knockout");
   };
 
+  // Live-match team colors: primaryColor is a team's home kit, secondaryColor its away
+  // kit. Whichever side actually holds home advantage wears its home color; the other
+  // side wears its away color (falling back to its home color if none is set) to avoid
+  // clashing with the true host. lmHomeAdv names the fixture SLOT that hosts ("home" or
+  // "away"), not which team — a team in the away slot can still be the host. A neutral
+  // fixture (no host) defaults both sides to home colors unless they clash, in which
+  // case the away-slot side switches as a tie-break.
+  const hHomeClr = teams[lmH]?.primaryColor || "#81a1c1";
+  const hAwayClr = teams[lmH]?.secondaryColor || hHomeClr;
+  const aHomeClr = teams[lmA]?.primaryColor || "#bf616a";
+  const aAwayClr = teams[lmA]?.secondaryColor || aHomeClr;
+  const clash = colorsClash(hHomeClr, aHomeClr);
+  const hClrPre = lmHomeAdv === "away" ? hAwayClr : hHomeClr;
+  const aClrPre = lmHomeAdv === "home" ? aAwayClr : (lmHomeAdv == null && clash) ? aAwayClr : aHomeClr;
+  // Team-picked colors can be too dark to read against the app's near-black panels.
+  // Fall back to the team's other kit color first, then lighten as a last resort.
+  const hClr = readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, "#141c2b");
+  let aClr = readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, "#141c2b");
+  // The away-kit switch above is a no-op when a team has no away color set (it just
+  // falls back to its home color), so a clash can survive it. Guarantee the two final
+  // colors are distinguishable no matter what caused the collision: try the away side's
+  // other kit color once more, then nudge it toward white until it's clearly distinct.
+  if (colorsClash(hClr, aClr)) {
+    const aOtherReadable = readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, "#141c2b");
+    if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
+    else {
+      const c = hexToRgb(aClr) || { r: 191, g: 97, b: 106 };
+      let r = c.r, g = c.g, b = c.b, cur = aClr;
+      for (let i = 0; i < 10 && colorsClash(hClr, cur); i++) {
+        r = Math.min(255, Math.round(r + (255 - r) * 0.35));
+        g = Math.min(255, Math.round(g + (255 - g) * 0.35));
+        b = Math.min(255, Math.round(b + (255 - b) * 0.35));
+        cur = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+      }
+      aClr = cur;
+    }
+  }
+  const hClr2 = hClr, aClr2 = aClr;
+
+  // Shared penalty-shootout diagram (goal SVGs + kick-by-kick list), used by both
+  // the live/persistent scoreboard and the match report.
+  const renderPenaltyShootout = (pen, hCode, aCode) => {
+    const hS = pen.home.filter(k=>k.scored).length, aS = pen.away.filter(k=>k.scored).length;
+    const GoalSVG = ({kicks, label}) => {
+      const W=180,H=80,gL=20,gR=160,gT=8,gB=72;
+      const zPos=[[gL+22,gT+18],[gL+70,gT+14],[gR-22,gT+18],[gL+22,gB-16],[gL+70,gB-12],[gR-22,gB-16]];
+      const dX=[(gL+gR)/2-36,(gL+gR)/2,(gL+gR)/2+36];
+      const dY=(gT+gB)/2+4;
+      const mPos=[[gL-4,gT-6],[gL+70,gT-10],[gR+4,gT-6],[gL-8,gB+4],[gL+70,gB+8],[gR+8,gB+4]];
+      return (<svg viewBox={`0 0 ${W} ${H+10}`} style={{width:"100%",maxWidth:180,height:"auto",display:"block"}}>
+        <rect x="0" y="0" width={W} height={H+10} fill="transparent" />
+        <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#141c2b" stroke="#7889a0" strokeWidth="2.5" rx="1" />
+        <line x1={gL+47} y1={gT} x2={gL+47} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
+        <line x1={gL+93} y1={gT} x2={gL+93} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
+        <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.5" />
+        <circle cx={(gL+gR)/2} cy={gB+7} r="1.5" fill="#7889a0" />
+        {kicks.map((k,i) => {
+          const isLast = i === kicks.length-1;
+          const pos = k.result==="miss" ? mPos[k.zone] : zPos[k.zone];
+          const r = isLast ? 5.5 : 3.5;
+          const col = k.result==="goal"?"#a3be8c":k.result==="save"?"#bf616a":"#7889a0";
+          return (<>
+            {isLast && <rect x={dX[k.dive]-14} y={dY-16} width={28} height={32} rx="3" fill={k.result==="save"?"#bf616a22":"#ffffff08"} stroke={k.result==="save"?"#bf616a44":"#ffffff15"} strokeWidth="1" />}
+            <circle cx={pos[0]} cy={pos[1]} r={r} fill={col} opacity={isLast?1:0.6} />
+            {k.result==="miss" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={isLast?"9":"7"} fontWeight="700">×</text>}
+            {isLast && k.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="7" fontWeight="700">✓</text>}
+          </>);
+        })}
+        <text x={W/2} y={H+9} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace">{label}</text>
+      </svg>);
+    };
+    return (<div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "center" }}>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{hS}</span>
+        <span style={{ fontSize: 9, color: "#ffffff", letterSpacing: "0.15em" }}>PENALTIES</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{aS}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0 6px", alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <GoalSVG kicks={pen.home} label={hCode} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0, paddingTop: 4 }}>
+          {Array.from({length: Math.max(pen.home.length, pen.away.length)}, (_,i) => {
+            const h = pen.home[i], a = pen.away[i];
+            return (<div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 9 }}>
+              <span style={{ width: 90, textAlign: "right", color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{h?.name||""}</span>
+              <span style={{ color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#ffffff", fontSize: 12, width: 14, textAlign: "center" }}>{h ? (h.scored ? "●" : "○") : ""}</span>
+              <span style={{ color: "#ffffff", fontSize: 8, width: 12, textAlign: "center", ...mono }}>{i+1}</span>
+              <span style={{ color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#ffffff", fontSize: 12, width: 14, textAlign: "center" }}>{a ? (a.scored ? "●" : "○") : ""}</span>
+              <span style={{ width: 90, textAlign: "left", color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{a?.name||""}</span>
+            </div>);
+          })}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <GoalSVG kicks={pen.away} label={aCode} />
+        </div>
+      </div>
+    </div>);
+  };
+
+  const renderScoreboard = () => (
+    <div style={{ background: `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`, border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
+      {/* Phase badge */}
+      {lmMatch.phase === "finished" && (()=>{
+        const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
+        if (allP.length === 0) return null;
+        const potm = allP.reduce((a,b) => (b.rating||0)>(a.rating||0)?b:a, allP[0]);
+        if (!potm || potm.rating < 6.5) return null;
+        const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
+        const tCode = isHome ? abbr(teams[lmH]?.name, teams[lmH]?.code) : abbr(teams[lmA]?.name, teams[lmA]?.code);
+        const tClr = isHome ? hClr : aClr;
+        return (<div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
+          <span style={{ fontSize: 11 }}>⭐</span>
+          <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...mono }}>{potm.name}</span>
+          <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span>
+          <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span>
+        </div>);
+      })()}
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>
+        {lmMatch.phase === "pre_match" ? "PRE-MATCH"
+          : lmMatch.phase === "half_time" ? "HALF TIME"
+          : lmMatch.phase === "full_time" ? "FULL TIME"
+          : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
+          : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
+          : lmMatch.phase === "penalties" ? "PENALTIES"
+          : lmMatch.phase === "finished" ? "FULL TIME"
+          : lmClockDisplay(lmMatch)}
+      </div>
+      {/* Pre-match tactical preview */}
+      {lmMatch.phase === "pre_match" && (()=>{
+        const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
+        const sn = (n) => { const p = n.trim().split(/\s+/); if (p.length <= 1) return n; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (p.length === 2 && pfx.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!pfx.has(p[i].toLowerCase())) { let s = i; while (s > 1 && pfx.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length - 1]; };
+        const PitchSVG = ({squad, formation}) => {
+          const starters = (squad||[]).filter(p => !p.bench);
+          const FPOS = {
+            "4-4-2":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
+            "4-3-3":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
+            "4-2-3-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
+            "4-1-4-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
+            "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
+            "4-3-2-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
+            "4-2-4":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
+            "3-4-3":   [[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
+            "3-5-2":   [[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
+            "3-4-1-2": [[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
+            "5-3-2":   [[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
+          };
+          const pitchPos2 = FPOS[formation] || (() => {
+            const layers = (formation||"4-3-3").split("-").map(Number);
+            const nR = layers.length+1, yT=12, yB=90, rG=(yB-yT)/(nR-1);
+            const pts = [{x:50,y:yB}];
+            // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
+            layers.forEach((c,li)=>{const y=yB-(li+1)*rG;const hs=c<=1?0:Math.max(35,11*(c-1));const lo=50-hs;const gap=c<=1?0:(2*hs)/(c-1);for(let j=0;j<c;j++){pts.push({x:c===1?50:lo+j*gap,y});}});
+            return pts;
+          })();
+          const pp = pitchPos2.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
+          return (<svg viewBox="-10 0 120 100" style={{ width: "100%", height: "auto" }}>
+            <rect x="1" y="1" width="98" height="98" fill="#060b14" stroke="#7889a044" strokeWidth="0.6" rx="1.5" />
+            <rect x="26" y="1" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
+            <rect x="37" y="1" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
+            <rect x="26" y="86" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
+            <rect x="37" y="94" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
+            <circle cx="50" cy="50" r="9" fill="none" stroke="#7889a044" strokeWidth="0.5" />
+            <circle cx="50" cy="50" r="0.6" fill="#7889a044" />
+            <line x1="1" y1="50" x2="99" y2="50" stroke="#7889a044" strokeWidth="0.5" />
+            {starters.map((p, pi) => {
+              const pos = pp[pi]; if (!pos) return null;
+              return (<g key={pi}>
+                <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="#060b14" strokeWidth="0.5" />
+                <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="#ffffff" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
+              </g>);
+            })}
+          </svg>);
+        };
+        return (<div style={{ marginTop: 10, marginBottom: 6 }}>
+          {/* Formation pitches with team info */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
+            {[{side:"home",idx:lmH},{side:"away",idx:lmA}].map(({side,idx}) => {
+              const tm = teams[idx];
+              const rawSq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
+              const { starters, bench } = displaySquad(rawSq, tm?.name, tPlayerStats);
+              return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 8, color: SC[tm?.style]||"#888", fontWeight: 600 }}>{STYLE_LBL[tm?.style]||"Balanced"}</span>
+                    <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"#7889a0", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
+                  </div>
+                </div>
+                <PitchSVG squad={[...starters, ...bench]} formation={tm?.formation} />
+                <div style={{ marginTop: 6, padding: "0 2px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
+                    {starters.map((p, pi) => (
+                      <div key={pi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
+                        <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, width: 20, flexShrink: 0, textAlign: "left", ...mono }}>{p.pos}</span>
+                        <span style={{ color: "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #2a3a5033" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0 8px", fontSize: 8, color: "#7889a0" }}>
+                      {bench.map((p, pi) => <span key={pi} style={p.out ? {color:"#bf616a"} : undefined}>{sn(p.name)}{p.out && " (OUT)"}</span>)}
+                    </div>
+                  </div>}
+                </div>
+              </div>);
+            })}
+          </div>
+        </div>);
+      })()}
+      {/* Score */}
+      {lmMatch.phase !== "pre_match" && <>
+      {(() => {
+        const buildItems = (side) => {
+          const items = [];
+          for (const g of lmMatch.goalscorers?.[side] || [])
+            items.push({ type: g.method === "pen" ? "pen_goal" : g.method === "og" ? "og" : "goal", name: g.name, min: g.min });
+          for (const e of lmMatch.events || [])
+            if (e.team === side && e.player && (e.type === "red" || (e.type === "pen_miss" && e.min !== "PEN")))
+              items.push({ type: e.type, name: e.player, min: e.min });
+          items.sort((a, b) => {
+            const am = typeof a.min === "number" ? a.min : parseInt(a.min) || 999;
+            const bm = typeof b.min === "number" ? b.min : parseInt(b.min) || 999;
+            return am - bm;
+          });
+          return items;
+        };
+        const hI = buildItems("home"), aI = buildItems("away");
+        const hasEvents = hI.length > 0 || aI.length > 0;
+        const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
+        const ball = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span>
+          : t === "pen_miss" ? <span style={{ fontSize: 9, filter: "grayscale(1) brightness(0.6) sepia(1) hue-rotate(-30deg) saturate(5)" }}>⚽︎</span>
+          : (t === "goal" || t === "og") ? <span style={{ fontSize: 9 }}>⚽︎</span>
+          : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
+          : null;
+        const ballWithP = (t) => {
+          const isPen = t === "pen_goal" || t === "pen_miss";
+          const isOG = t === "og";
+          const label = isPen ? "P" : isOG ? "OG" : null;
+          return <span style={{ display: "inline-flex", alignItems: "flex-start", position: "relative" }}>
+            {ball(t)}
+            {label && <span style={{ fontSize: 6, color: "#ffffff", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
+          </span>;
+        };
+        const renderHome = (items) => <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 48px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
+          {items.flatMap((it, i) => [
+            <span key={i+"m"} style={{ color: "#ffffffcc", textAlign: "right", ...mono }}>{mTxt(it.min)}</span>,
+            <span key={i+"n"} style={{ color: "#ffffff", textAlign: "right", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
+            <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>
+          ])}
+        </div>;
+        const renderAway = (items) => <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 28px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
+          {items.flatMap((it, i) => [
+            <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>,
+            <span key={i+"n"} style={{ color: "#ffffff", textAlign: "left", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
+            <span key={i+"m"} style={{ color: "#ffffffcc", textAlign: "left", ...mono }}>{mTxt(it.min)}</span>
+          ])}
+        </div>;
+        return <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", marginBottom: 6 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmH]?.name}</div>
+            <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span> <span style={{ color: "#ffffff" }}>· {teams[lmH]?.skill}</span></div>
+          </div>
+          <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>
+            <span className={goalFlash==="home"?"goal-flash":""}>{lmMatch.score[0]}</span>
+            {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginLeft: 2, ...mono }}>({lmMatch.score[0]+lmMatch.startScore[0]})</span>}
+            <span style={{ color: "#ffffff", margin: "0 6px" }}>:</span>
+            {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginRight: 2, ...mono }}>({lmMatch.score[1]+lmMatch.startScore[1]})</span>}
+            <span className={goalFlash==="away"?"goal-flash":""}>{lmMatch.score[1]}</span>
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmA]?.name}</div>
+            <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#ffffff" }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span></div>
+          </div>
+          {hasEvents && <>
+            <div style={{ alignSelf: "start", marginRight: -52, marginTop: 6, overflow: "visible" }}>{hI.length > 0 && renderHome(hI)}</div>
+            <div />
+            <div style={{ alignSelf: "start", marginLeft: -52, marginTop: 6, overflow: "visible" }}>{aI.length > 0 && renderAway(aI)}</div>
+          </>}
+        </div>;
+      })()}
+      </>}
+    </div>
+  );
+
+  const renderStatsReport = () => {
+    const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph+pa||1;
+    const hp = Math.round(ph/pt*100), ap = 100-hp;
+    const st = lmMatch.stats;
+    const hXG = (lmMatch.xG?.home||0).toFixed(2), aXG = (lmMatch.xG?.away||0).toFixed(2);
+    const statRows = [["Possession",hp+"%",ap+"%"],["Shots",st.home.shots,st.away.shots],["On Target",st.home.onTarget,st.away.onTarget],["xG",hXG,aXG],["Corners",st.home.corners,st.away.corners],["Fouls",st.home.fouls,st.away.fouls],["Yellows",st.home.yellows,st.away.yellows],["Reds",st.home.reds,st.away.reds]];
+    return (
+      <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12 }}>
+        {lmMatch.penalties?.decided && <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
+          <div style={{ textAlign: "center", fontSize: 11, color: "#ffffff", fontWeight: 600, marginBottom: 2, ...mono }}>({lmMatch.penalties.home.filter(k=>k.scored).length}–{lmMatch.penalties.away.filter(k=>k.scored).length} PENS)</div>
+          {renderPenaltyShootout(lmMatch.penalties, abbr(teams[lmH]?.name, teams[lmH]?.code), abbr(teams[lmA]?.name, teams[lmA]?.code))}
+        </div>}
+        {/* Match Stats */}
+        <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
+          {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
+            <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
+              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hClr : "#7889a0", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
+              <span style={{ width: 60, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>{label}</span>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
+              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aClr : "#7889a0", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
+            </div>
+          ); })}
+        </div>
+        {/* Player Ratings */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
+        {["home","away"].map((side,si) => {
+          const tm = side === "home" ? teams[lmH] : teams[lmA];
+          const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
+          const onPitch = lmMatch.players[side] || [];
+          const off = lmMatch.subbedOff?.[side] || [];
+          const bench = lmMatch.bench?.[side] || [];
+          const lookup = (name) => onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
+          return (<>
+          {si === 1 && <div style={{ background: "#7889a0" }}></div>}
+          <div>
+            <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+              <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
+              <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
+              <span></span>
+              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+                <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
+              </>); })}
+              <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
+              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+                <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
+                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
+              </>); })}
+            </div>
+          </div>
+          </>);
+        })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
@@ -2841,7 +3368,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: teamsOpen ? 8 : 16, minHeight: 32 }}>
           <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>({teams.length})</span></label>
           <div style={{ display: "flex", gap: 6 }}>
-            {teamsOpen && <select onChange={e => { const v = e.target.value; e.target.value = ""; const L = {avium:PRESET_AVIUM,nch_l1:PRESET_NCH_L1,nl2:PRESET_NL2,liga:PRESET_LIGA,wc:PRESET_WC,pl:PRESET_PL,bun:PRESET_BUN,ll:PRESET_LL,l1:PRESET_L1,lp:PRESET_LP,sl:PRESET_SL,ed:PRESET_ED}; if (L[v]) loadLeague(L[v]); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#7889a0", background: "transparent", cursor: "pointer" }}><option value="" hidden>☰ League</option><option value="avium">Avium International</option><option value="nch_l1">Nichirin League One</option><option value="nl2">Nichirin League Two</option><option value="liga">Liga-ye Mellī</option><option disabled>──────────</option><option value="pl">Premier League</option><option value="bun">Bundesliga</option><option value="ll">La Liga</option><option value="l1">Ligue 1</option><option value="lp">Liga Portugal</option><option value="sl">Süper Lig</option><option value="ed">Eredivisie</option><option disabled>──────────</option><option value="wc">1932 World Cup</option></select>}
+            {teamsOpen && <select onChange={e => { const v = e.target.value; e.target.value = ""; const L = {avium:PRESET_AVIUM,nch_l1:PRESET_NCH_L1,liga:PRESET_LIGA,wc:PRESET_WC,pl:PRESET_PL,misc_eu:PRESET_MISC_EU}; if (L[v]) loadLeague(L[v]); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#7889a0", background: "transparent", cursor: "pointer" }}><option value="" hidden>☰ League</option><option value="avium">Avium International</option><option value="nch_l1">Nichirin League One</option><option value="liga">Liga-ye Mellī</option><option disabled>──────────</option><option value="pl">Premier League</option><option value="misc_eu">Misc. European</option><option disabled>──────────</option><option value="wc">1932 World Cup</option></select>}
             {teamsOpen && teams.length > 0 && <button onClick={clearTeams} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }} title="Clear all teams">✕</button>}
             {teamsOpen && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
             {teamsOpen && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
@@ -2850,7 +3377,7 @@ export default function App() {
         </div>
         {teamsOpen && (<>
         {showExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: Code ⇥ Name ⇥ Skill ⇥ Playstyle ⇥ Formation ⇥ 14 tactics ⇥ 16 players (optional)</p><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Code is optional (auto-generated from name). Only Name is required; all other columns are optional. Player tiers: append [+] (above-avg) or [*] (star) to names.</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Replaces current list</span></div></div>)}
+        {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: Code ⇥ Name ⇥ Skill ⇥ Playstyle ⇥ Formation ⇥ 14 tactics ⇥ 16 players (optional) ⇥ Home Color ⇥ Away Color</p><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Code is optional (auto-generated from name). Only Name is required; all other columns are optional. Colors go last, after the players, as #RRGGBB hex (e.g. #e4002b) — detected by their leading '#', so they can be omitted entirely. The away team wears its away color (falling back to home) whenever home advantage is set or the two teams' home colors clash. Player tiers: append [+] (above-avg) or [*] (star) to names.</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Replaces current list</span></div></div>)}
         <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid #2a3a50" }}>
             <div style={{ display: "flex", gap: 4, flex: 1 }}>
@@ -2876,7 +3403,7 @@ export default function App() {
             </div>}
           </div>
           <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid #2a3a50", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
-            <span style={{ width: 22, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: 40, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: 52, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span>{teams.length > 2 && <span style={{ width: 28, flexShrink: 0 }} />}
+            <span style={{ width: 22, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: 38, flexShrink: 0 }} /><span style={{ width: 40, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: 40, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span>{teams.length > 2 && <span style={{ width: 28, flexShrink: 0 }} />}
           </div>
           <div style={{ maxHeight: teams.length > 12 ? 520 : "none", overflowY: teams.length > 12 ? "auto" : "visible" }}>
             {teams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === i; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
@@ -2884,8 +3411,12 @@ export default function App() {
               <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "#141c2b" : i % 2 === 0 ? "transparent" : "#141c2b08", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : i); if (!exp) setViewSquad(null); }}>
                 <span style={{ color: "#7889a0", fontSize: 10, width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
                 <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(i, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                <span style={{ width: 38, display: "flex", gap: 4, justifyContent: "center", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  <input type="color" title="Home color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(i, "primaryColor", e.target.value)} style={{ width: 17, height: 17, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
+                  <input type="color" title="Away color" value={t.secondaryColor || t.primaryColor || "#141c2b"} onChange={e => updateTeam(i, "secondaryColor", e.target.value)} style={{ width: 17, height: 17, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
+                </span>
                 <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); updateTeam(i, "code", v); }} style={{ ...inp, width: 40, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "#7889a0" }} placeholder={abbr(t.name, t.code)} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(i, "skill", e.target.value)} style={{ ...inp, width: 52, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(i, "skill", e.target.value)} style={{ ...inp, width: 40, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
                 <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === i ? null : i); setExpandedTeam(null); }} style={{ width: 32, textAlign: "center", fontSize: 9, color: viewSquad === i ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === i ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === i ? "#7889a022" : "transparent" }}>{viewSquad === i ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
                 <span style={{ width: 32, textAlign: "center", fontSize: 9, color: exp ? "#e4002b" : nonDefault > 0 ? "#7889a0" : "#7889a066", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "#e4002b" : nonDefault > 0 ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "#7889a022" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
                 {teams.length > 2 && <button onClick={e => { e.stopPropagation(); removeTeam(i); }} style={{ ...delBtn, width: 28, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
@@ -2896,23 +3427,24 @@ export default function App() {
                 const bench = sq.filter(p => p.bench);
                 // Formation pitch positions: parse formation, distribute layers vertically
                 const FPOS2 = {
-                  "4-4-2":[[50,93],[15,74],[38,76],[62,76],[85,74],[12,52],[38,54],[62,54],[88,52],[38,28],[62,28]],
-                  "4-3-3":[[50,93],[15,74],[38,76],[62,76],[85,74],[33,52],[50,50],[67,52],[15,24],[50,20],[85,24]],
-                  "4-2-3-1":[[50,93],[15,74],[38,76],[62,76],[85,74],[40,56],[60,56],[18,36],[50,32],[82,36],[50,14]],
-                  "4-1-4-1":[[50,93],[15,74],[38,76],[62,76],[85,74],[50,56],[14,38],[40,40],[60,40],[86,38],[50,18]],
-                  "4-1-2-1-2":[[50,93],[15,74],[38,76],[62,76],[85,74],[50,58],[40,44],[60,44],[50,30],[40,16],[60,16]],
-                  "4-3-2-1":[[50,93],[15,74],[38,76],[62,76],[85,74],[33,54],[50,52],[67,54],[38,32],[62,32],[50,14]],
-                  "4-2-4":[[50,93],[15,74],[38,76],[62,76],[85,74],[42,54],[58,54],[14,26],[40,22],[60,22],[86,26]],
-                  "3-4-3":[[50,93],[30,76],[50,78],[70,76],[12,52],[40,54],[60,54],[88,52],[18,24],[50,20],[82,24]],
-                  "3-5-2":[[50,93],[30,76],[50,78],[70,76],[10,50],[35,52],[50,48],[65,52],[90,50],[40,22],[60,22]],
-                  "3-4-1-2":[[50,93],[30,76],[50,78],[70,76],[12,54],[40,56],[60,56],[88,54],[50,34],[40,16],[60,16]],
-                  "5-3-2":[[50,93],[10,68],[30,76],[50,78],[70,76],[90,68],[33,48],[50,46],[67,48],[40,22],[60,22]],
+                  "4-4-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
+                  "4-3-3":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
+                  "4-2-3-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
+                  "4-1-4-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
+                  "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
+                  "4-3-2-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
+                  "4-2-4":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
+                  "3-4-3":[[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
+                  "3-5-2":[[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
+                  "3-4-1-2":[[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
+                  "5-3-2":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
                 };
                 const pitchPosRaw = FPOS2[t.formation] || (() => {
                   const layers = (t.formation||"4-3-3").split("-").map(Number);
                   const nR=layers.length+1,yT=12,yB=92,rG=(yB-yT)/(nR-1);
                   const pts=[[50,yB]];
-                  layers.forEach((c,li)=>{const y=yB-(li+1)*rG;for(let j=0;j<c;j++){pts.push([c===1?50:12+(j*(76/(c-1))),y]);}});
+                  // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
+                  layers.forEach((c,li)=>{const y=yB-(li+1)*rG;const hs=c<=1?0:Math.max(38,11*(c-1));const lo=50-hs;const gap=c<=1?0:(2*hs)/(c-1);for(let j=0;j<c;j++){pts.push([c===1?50:lo+j*gap,y]);}});
                   return pts;
                 })();
                 const pitchPos = pitchPosRaw.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
@@ -3042,9 +3574,6 @@ export default function App() {
                   <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "#e4002b", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
                   <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
                 </div>}
-                {finished && <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setShowReport(!showReport)} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: showReport ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "#e4002b" }}>{showReport ? "✕ Close Report" : "Match Report"}</button>
-                </div>}
                 {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
                     <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "#e4002b" : "#141c2b", border: "1px solid " + (autoSpeed === s.v ? "#e4002b" : "#7889a033"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
@@ -3053,132 +3582,6 @@ export default function App() {
               </div>) : null;
             })()}
           </div>
-          {/* Match Report — screenshottable */}
-          {showReport && lmMatch?.phase === "finished" && (() => {
-            const hN = teams[lmH]?.name, aN = teams[lmA]?.name;
-            const hS = lmMatch.score[0], aS = lmMatch.score[1];
-            const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph+pa||1;
-            const hp = Math.round(ph/pt*100), ap = 100-hp;
-            const st = lmMatch.stats;
-            const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
-            const motm = allP.length > 0 ? allP.reduce((best,p) => !best || p.rating > best.rating ? p : best, null) : null;
-            const motmIsHome = motm ? [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===motm.name) : false;
-            const motmTName = motm ? (motmIsHome ? teams[lmH]?.name : teams[lmA]?.name) : null;
-
-            const hXG = (lmMatch.xG?.home||0).toFixed(2), aXG = (lmMatch.xG?.away||0).toFixed(2);
-            const statRows = [["Possession",hp+"%",ap+"%"],["Shots",st.home.shots,st.away.shots],["On Target",st.home.onTarget,st.away.onTarget],["xG",hXG,aXG],["Corners",st.home.corners,st.away.corners],["Fouls",st.home.fouls,st.away.fouls],["Yellows",st.home.yellows,st.away.yellows],["Reds",st.home.reds,st.away.reds]];
-            return (
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-                {/* Scoreboard */}
-                {(() => {
-                  const rBuildItems = (side) => {
-                    const items = [];
-                    for (const g of lmMatch.goalscorers?.[side] || [])
-                      items.push({ type: g.method === "pen" ? "pen_goal" : g.method === "og" ? "og" : "goal", name: g.name, min: g.min });
-                    for (const e of lmMatch.events || [])
-                      if (e.team === side && e.player && (e.type === "red" || (e.type === "pen_miss" && e.min !== "PEN")))
-                        items.push({ type: e.type, name: e.player, min: e.min });
-                    items.sort((a, b) => { const am = typeof a.min === "number" ? a.min : parseInt(a.min) || 999; const bm = typeof b.min === "number" ? b.min : parseInt(b.min) || 999; return am - bm; });
-                    return items;
-                  };
-                  const rHI = rBuildItems("home"), rAI = rBuildItems("away");
-                  const rHasEv = rHI.length > 0 || rAI.length > 0;
-                  const rMTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-                  const rBall = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span> : t === "pen_miss" ? <span style={{ fontSize: 9, filter: "grayscale(1) brightness(0.6) sepia(1) hue-rotate(-30deg) saturate(5)" }}>⚽︎</span> : (t === "goal" || t === "og") ? <span style={{ fontSize: 9 }}>⚽︎</span> : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg> : null;
-                  const rBallP = (t) => { const isPen = t === "pen_goal" || t === "pen_miss"; const isOG = t === "og"; const label = isPen ? "P" : isOG ? "OG" : null; return <span style={{ display: "inline-flex", alignItems: "flex-start", position: "relative" }}>{rBall(t)}{label && <span style={{ fontSize: 6, color: "#7889a0", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}</span>; };
-                  const rRenderH = (items) => <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 48px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>{items.flatMap((it, i) => [<span key={i+"m"} style={{ color: "#7889a0", textAlign: "right", ...mono }}>{rMTxt(it.min)}</span>, <span key={i+"n"} style={{ color: it.type === "red" ? "#bf616a" : "#7889a0", textAlign: "right", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>, <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{rBallP(it.type)}</span>])}</div>;
-                  const rRenderA = (items) => <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 28px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>{items.flatMap((it, i) => [<span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{rBallP(it.type)}</span>, <span key={i+"n"} style={{ color: it.type === "red" ? "#bf616a" : "#7889a0", textAlign: "left", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>, <span key={i+"m"} style={{ color: "#7889a0", textAlign: "left", ...mono }}>{rMTxt(it.min)}</span>])}</div>;
-                  return <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
-                    {motm && <div style={{ textAlign: "center", marginBottom: 6 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px" }}>
-                        <span style={{ fontSize: 11 }}>⭐</span>
-                        <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{motm.name}</span>
-                        <span style={{ fontSize: 8, color: "#7889a0" }}>{motmTName}</span>
-                        <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 700, ...mono }}>{motm.rating?.toFixed(1)}</span>
-                      </div>
-                    </div>}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center" }}>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{hN}</div>
-                        <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#81a1c1" }}>{abbr(hN, teams[lmH]?.code)}</span> <span style={{ color: "#7889a0" }}>· {teams[lmH]?.skill}</span></div>
-                      </div>
-                      <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>
-                        {hS}
-                        {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginLeft: 2, ...mono }}>({hS+lmMatch.startScore[0]})</span>}
-                        <span style={{ color: "#7889a0", margin: "0 6px" }}>:</span>
-                        {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginRight: 2, ...mono }}>({aS+lmMatch.startScore[1]})</span>}
-                        {aS}
-                      </div>
-                      <div style={{ textAlign: "left" }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{aN}</div>
-                        <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#7889a0" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#bf616a" }}>{abbr(aN, teams[lmA]?.code)}</span></div>
-                      </div>
-                      {lmMatch.penalties?.decided && <div style={{ gridColumn: "1 / -1", textAlign: "center", fontSize: 11, color: "#ffffff", fontWeight: 600, marginTop: 2, ...mono }}>({lmMatch.penalties.home.filter(k=>k.scored).length}–{lmMatch.penalties.away.filter(k=>k.scored).length} PENS)</div>}
-                      {rHasEv && <>
-                        <div style={{ alignSelf: "start", marginRight: -52, marginTop: 6, overflow: "visible" }}>{rHI.length > 0 && rRenderH(rHI)}</div>
-                        <div />
-                        <div style={{ alignSelf: "start", marginLeft: -52, marginTop: 6, overflow: "visible" }}>{rAI.length > 0 && rRenderA(rAI)}</div>
-                      </>}
-                    </div>
-                  </div>;
-                })()}
-                {/* Match Stats */}
-                <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
-                  {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                      <span style={{ width: 32, textAlign: "right", color: hv >= av ? "#8ab4e0" : "#7889a0", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
-                      <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? "#4a7ab588" : "#7889a0", borderRadius: 2 }} /></div>
-                      <span style={{ width: 60, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                      <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? "#b55a5a88" : "#7889a0", borderRadius: 2 }} /></div>
-                      <span style={{ width: 32, textAlign: "left", color: av >= hv ? "#e08a8a" : "#7889a0", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
-                    </div>
-                  ); })}
-                </div>
-                {/* Player Ratings */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
-                {["home","away"].map((side,si) => {
-                  const tm = side === "home" ? teams[lmH] : teams[lmA];
-                  const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
-                  const onPitch = lmMatch.players[side] || [];
-                  const off = lmMatch.subbedOff?.[side] || [];
-                  const bench = lmMatch.bench?.[side] || [];
-                  const lookup = (name) => onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-                  return (<>
-                  {si === 1 && <div style={{ background: "#7889a0" }}></div>}
-                  <div>
-                    <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
-                      <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
-                      <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
-                      <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
-                      <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
-                      <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
-                      <span></span>
-                      {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
-                        <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                        <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
-                        <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                        <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                        <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
-                        <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"\u25BC":""}</span>
-                      </>); })}
-                      <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-                      {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
-                        <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                        <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
-                        <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                        <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                        <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"\u2013"}</span>
-                        <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"\u25B2":""}</span>
-                      </>); })}
-                    </div>
-                  </div>
-                  </>);
-                })}
-                </div>
-              </div>
-            );
-          })()}
           {lmIsSetup && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
@@ -3234,310 +3637,24 @@ export default function App() {
             {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
           </div>)}
           {lmMatch && (<>
-            <div style={{ background: "linear-gradient(145deg, #141c2b 0%, #141c2b 50%, #141c2b 100%)", border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040" }}>
-              {/* Phase badge */}
-              {lmMatch.phase === "finished" && (()=>{
-                const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
-                if (allP.length === 0) return null;
-                const potm = allP.reduce((a,b) => (b.rating||0)>(a.rating||0)?b:a, allP[0]);
-                if (!potm || potm.rating < 6.5) return null;
-                const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
-                const tName = isHome ? teams[lmH]?.name : teams[lmA]?.name;
-                return (<div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#e4002b14", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
-                  <span style={{ fontSize: 11 }}>⭐</span>
-                  <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{potm.name}</span>
-                  <span style={{ fontSize: 8, color: "#7889a0" }}>{tName}</span>
-                  <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span>
-                </div>);
-              })()}
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: lmMatch.phase === "finished" ? "#ffffff" : "#7889a0", marginBottom: 10 }}>
-                {lmMatch.phase === "pre_match" ? "PRE-MATCH"
-                  : lmMatch.phase === "half_time" ? "HALF TIME"
-                  : lmMatch.phase === "full_time" ? "FULL TIME"
-                  : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
-                  : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
-                  : lmMatch.phase === "penalties" ? "PENALTIES"
-                  : lmMatch.phase === "finished" ? "FULL TIME"
-                  : lmClockDisplay(lmMatch)}
-              </div>
-              {/* Pre-match tactical preview */}
-              {lmMatch.phase === "pre_match" && (()=>{
-                const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
-                const sn = (n) => { const p = n.trim().split(/\s+/); if (p.length <= 1) return n; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (p.length === 2 && pfx.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!pfx.has(p[i].toLowerCase())) { let s = i; while (s > 1 && pfx.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length - 1]; };
-                const PitchSVG = ({squad, formation}) => {
-                  const starters = (squad||[]).filter(p => !p.bench);
-                  const FPOS = {
-                    "4-4-2":   [[50,93],[15,74],[38,76],[62,76],[85,74],[12,52],[38,54],[62,54],[88,52],[38,28],[62,28]],
-                    "4-3-3":   [[50,93],[15,74],[38,76],[62,76],[85,74],[33,52],[50,50],[67,52],[15,24],[50,20],[85,24]],
-                    "4-2-3-1": [[50,93],[15,74],[38,76],[62,76],[85,74],[40,56],[60,56],[18,36],[50,32],[82,36],[50,14]],
-                    "4-1-4-1": [[50,93],[15,74],[38,76],[62,76],[85,74],[50,56],[14,38],[40,40],[60,40],[86,38],[50,18]],
-                    "4-1-2-1-2":[[50,93],[15,74],[38,76],[62,76],[85,74],[50,58],[40,44],[60,44],[50,30],[40,16],[60,16]],
-                    "4-3-2-1": [[50,93],[15,74],[38,76],[62,76],[85,74],[33,54],[50,52],[67,54],[38,32],[62,32],[50,14]],
-                    "4-2-4":   [[50,93],[15,74],[38,76],[62,76],[85,74],[42,54],[58,54],[14,26],[40,22],[60,22],[86,26]],
-                    "3-4-3":   [[50,93],[30,76],[50,78],[70,76],[12,52],[40,54],[60,54],[88,52],[18,24],[50,20],[82,24]],
-                    "3-5-2":   [[50,93],[30,76],[50,78],[70,76],[10,50],[35,52],[50,48],[65,52],[90,50],[40,22],[60,22]],
-                    "3-4-1-2": [[50,93],[30,76],[50,78],[70,76],[12,54],[40,56],[60,56],[88,54],[50,34],[40,16],[60,16]],
-                    "5-3-2":   [[50,93],[10,68],[30,76],[50,78],[70,76],[90,68],[33,48],[50,46],[67,48],[40,22],[60,22]],
-                  };
-                  const pitchPos2 = FPOS[formation] || (() => {
-                    const layers = (formation||"4-3-3").split("-").map(Number);
-                    const nR = layers.length+1, yT=12, yB=90, rG=(yB-yT)/(nR-1);
-                    const pts = [{x:50,y:yB}];
-                    layers.forEach((c,li)=>{const y=yB-(li+1)*rG;for(let j=0;j<c;j++){pts.push({x:c===1?50:15+(j*(70/(c-1))),y});}});
-                    return pts;
-                  })();
-                  const pp = pitchPos2.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
-                  return (<svg viewBox="0 0 100 100" style={{ width: "100%", height: "auto" }}>
-                    <rect x="1" y="1" width="98" height="98" fill="#060b14" stroke="#7889a044" strokeWidth="0.6" rx="1.5" />
-                    <rect x="26" y="1" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-                    <rect x="37" y="1" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
-                    <rect x="26" y="86" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-                    <rect x="37" y="94" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
-                    <circle cx="50" cy="50" r="9" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-                    <circle cx="50" cy="50" r="0.6" fill="#7889a044" />
-                    <line x1="1" y1="50" x2="99" y2="50" stroke="#7889a044" strokeWidth="0.5" />
-                    {starters.map((p, pi) => {
-                      const pos = pp[pi]; if (!pos) return null;
-                      return (<g key={pi}>
-                        <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="#060b14" strokeWidth="0.5" />
-                        <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="#ffffff" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
-                      </g>);
-                    })}
-                  </svg>);
-                };
-                return (<div style={{ marginTop: 10, marginBottom: 6 }}>
-                  {/* Formation pitches with team info */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
-                    {[{side:"home",idx:lmH},{side:"away",idx:lmA}].map(({side,idx}) => {
-                      const tm = teams[idx];
-                      const rawSq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
-                      const { starters, bench } = displaySquad(rawSq, tm?.name, tPlayerStats);
-                      return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 8, color: SC[tm?.style]||"#888", fontWeight: 600 }}>{STYLE_LBL[tm?.style]||"Balanced"}</span>
-                            <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"#7889a0", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
-                          </div>
-                        </div>
-                        <PitchSVG squad={[...starters, ...bench]} formation={tm?.formation} />
-                        <div style={{ marginTop: 6, padding: "0 2px" }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
-                            {starters.map((p, pi) => (
-                              <div key={pi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
-                                <span style={{ color: "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
-                                <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, flexShrink: 0, textAlign: "right", ...mono }}>{p.pos}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #2a3a5033" }}>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0 8px", fontSize: 8, color: "#7889a0" }}>
-                              {bench.map((p, pi) => <span key={pi} style={p.out ? {color:"#bf616a"} : undefined}>{sn(p.name)}{p.out && " (OUT)"}</span>)}
-                            </div>
-                          </div>}
-                        </div>
-                      </div>);
-                    })}
-                  </div>
-                </div>);
-              })()}
-              {/* Score */}
-              {lmMatch.phase !== "pre_match" && <>
-              {(() => {
-                const buildItems = (side) => {
-                  const items = [];
-                  for (const g of lmMatch.goalscorers?.[side] || [])
-                    items.push({ type: g.method === "pen" ? "pen_goal" : g.method === "og" ? "og" : "goal", name: g.name, min: g.min });
-                  for (const e of lmMatch.events || [])
-                    if (e.team === side && e.player && (e.type === "red" || (e.type === "pen_miss" && e.min !== "PEN")))
-                      items.push({ type: e.type, name: e.player, min: e.min });
-                  items.sort((a, b) => {
-                    const am = typeof a.min === "number" ? a.min : parseInt(a.min) || 999;
-                    const bm = typeof b.min === "number" ? b.min : parseInt(b.min) || 999;
-                    return am - bm;
-                  });
-                  return items;
-                };
-                const hI = buildItems("home"), aI = buildItems("away");
-                const hasEvents = hI.length > 0 || aI.length > 0;
-                const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-                const ball = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span>
-                  : t === "pen_miss" ? <span style={{ fontSize: 9, filter: "grayscale(1) brightness(0.6) sepia(1) hue-rotate(-30deg) saturate(5)" }}>⚽︎</span>
-                  : (t === "goal" || t === "og") ? <span style={{ fontSize: 9 }}>⚽︎</span>
-                  : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
-                  : null;
-                const ballWithP = (t) => {
-                  const isPen = t === "pen_goal" || t === "pen_miss";
-                  const isOG = t === "og";
-                  const label = isPen ? "P" : isOG ? "OG" : null;
-                  return <span style={{ display: "inline-flex", alignItems: "flex-start", position: "relative" }}>
-                    {ball(t)}
-                    {label && <span style={{ fontSize: 6, color: "#7889a0", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
-                  </span>;
-                };
-                const renderHome = (items) => <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 48px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
-                  {items.flatMap((it, i) => [
-                    <span key={i+"m"} style={{ color: "#7889a0", textAlign: "right", ...mono }}>{mTxt(it.min)}</span>,
-                    <span key={i+"n"} style={{ color: it.type === "red" ? "#bf616a" : "#7889a0", textAlign: "right", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
-                    <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>
-                  ])}
-                </div>;
-                const renderAway = (items) => <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 28px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
-                  {items.flatMap((it, i) => [
-                    <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>,
-                    <span key={i+"n"} style={{ color: it.type === "red" ? "#bf616a" : "#7889a0", textAlign: "left", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
-                    <span key={i+"m"} style={{ color: "#7889a0", textAlign: "left", ...mono }}>{mTxt(it.min)}</span>
-                  ])}
-                </div>;
-                return <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmH]?.name}</div>
-                    <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#81a1c1" }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span> <span style={{ color: "#7889a0" }}>· {teams[lmH]?.skill}</span></div>
-                  </div>
-                  <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>
-                    <span className={goalFlash==="home"?"goal-flash":""}>{lmMatch.score[0]}</span>
-                    {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginLeft: 2, ...mono }}>({lmMatch.score[0]+lmMatch.startScore[0]})</span>}
-                    <span style={{ color: "#7889a0", margin: "0 6px" }}>:</span>
-                    {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#7889a0", verticalAlign: "top", marginRight: 2, ...mono }}>({lmMatch.score[1]+lmMatch.startScore[1]})</span>}
-                    <span className={goalFlash==="away"?"goal-flash":""}>{lmMatch.score[1]}</span>
-                  </div>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmA]?.name}</div>
-                    <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#7889a0" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#bf616a" }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span></div>
-                  </div>
-                  {hasEvents && <>
-                    <div style={{ alignSelf: "start", marginRight: -52, marginTop: 6, overflow: "visible" }}>{hI.length > 0 && renderHome(hI)}</div>
-                    <div />
-                    <div style={{ alignSelf: "start", marginLeft: -52, marginTop: 6, overflow: "visible" }}>{aI.length > 0 && renderAway(aI)}</div>
-                  </>}
-                </div>;
-              })()}
-              </>}
-              {/* Penalties */}
-              {lmMatch.penalties && (()=>{
-                const pen = lmMatch.penalties;
-                const hS=pen.home.filter(k=>k.scored).length, aS=pen.away.filter(k=>k.scored).length;
-                // Goal SVG component: shows ball positions and keeper dives
-                const GoalSVG = ({kicks, label, flip}) => {
-                  const W=180,H=80,gL=20,gR=160,gT=8,gB=72;
-                  // Zone positions: [TL,TC,TR,BL,BC,BR] → x,y within goal
-                  const zPos=[[gL+22,gT+18],[gL+70,gT+14],[gR-22,gT+18],[gL+22,gB-16],[gL+70,gB-12],[gR-22,gB-16]];
-                  // Dive positions (keeper): L=left third, C=center, R=right third
-                  const dX=[(gL+gR)/2-36,(gL+gR)/2,(gL+gR)/2+36];
-                  const dY=(gT+gB)/2+4;
-                  // Miss positions (outside goal)
-                  const mPos=[[gL-4,gT-6],[gL+70,gT-10],[gR+4,gT-6],[gL-8,gB+4],[gL+70,gB+8],[gR+8,gB+4]];
-                  return (<svg viewBox={`0 0 ${W} ${H+10}`} style={{width:"100%",maxWidth:180,height:"auto",display:"block"}}>
-                    <rect x="0" y="0" width={W} height={H+10} fill="transparent" />
-                    {/* Goal frame */}
-                    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#141c2b" stroke="#7889a0" strokeWidth="2.5" rx="1" />
-                    {/* Net lines */}
-                    <line x1={gL+47} y1={gT} x2={gL+47} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-                    <line x1={gL+93} y1={gT} x2={gL+93} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-                    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.5" />
-                    {/* Penalty spot */}
-                    <circle cx={(gL+gR)/2} cy={gB+7} r="1.5" fill="#7889a0" />
-                    {/* Kicks */}
-                    {kicks.map((k,i) => {
-                      const isLast = i === kicks.length-1;
-                      const pos = k.result==="miss" ? mPos[k.zone] : zPos[k.zone];
-                      const r = isLast ? 5.5 : 3.5;
-                      const col = k.result==="goal"?"#a3be8c":k.result==="save"?"#bf616a":"#7889a0";
-                      return (<>
-                        {/* Keeper dive indicator for last kick */}
-                        {isLast && <rect x={dX[k.dive]-14} y={dY-16} width={28} height={32} rx="3" fill={k.result==="save"?"#bf616a22":"#ffffff08"} stroke={k.result==="save"?"#bf616a44":"#ffffff15"} strokeWidth="1" />}
-                        {/* Ball */}
-                        <circle cx={pos[0]} cy={pos[1]} r={r} fill={col} opacity={isLast?1:0.6} />
-                        {k.result==="miss" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#7889a0" fontSize={isLast?"9":"7"} fontWeight="700">×</text>}
-                        {isLast && k.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="7" fontWeight="700">✓</text>}
-                      </>);
-                    })}
-                    {/* Label */}
-                    <text x={W/2} y={H+9} textAnchor="middle" fill="#7889a0" fontSize="7" fontFamily="monospace">{label}</text>
-                  </svg>);
-                };
-                return (<div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "center" }}>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{hS}</span>
-                    <span style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.15em" }}>PENALTIES</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{aS}</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0 6px", alignItems: "start" }}>
-                    {/* Home goal */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <GoalSVG kicks={pen.home} label={abbr(teams[lmH]?.name,teams[lmH]?.code)} />
-                    </div>
-                    {/* Center: kick list */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 0, paddingTop: 4 }}>
-                      {Array.from({length: Math.max(pen.home.length, pen.away.length)}, (_,i) => {
-                        const h = pen.home[i], a = pen.away[i];
-                        return (<div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 9 }}>
-                          <span style={{ width: 90, textAlign: "right", color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#7889a0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{h?.name||""}</span>
-                          <span style={{ color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#7889a0", fontSize: 12, width: 14, textAlign: "center" }}>{h ? (h.scored ? "●" : "○") : ""}</span>
-                          <span style={{ color: "#7889a0", fontSize: 8, width: 12, textAlign: "center", ...mono }}>{i+1}</span>
-                          <span style={{ color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#7889a0", fontSize: 12, width: 14, textAlign: "center" }}>{a ? (a.scored ? "●" : "○") : ""}</span>
-                          <span style={{ width: 90, textAlign: "left", color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#7889a0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{a?.name||""}</span>
-                        </div>);
-                      })}
-                    </div>
-                    {/* Away goal */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <GoalSVG kicks={pen.away} label={abbr(teams[lmA]?.name,teams[lmA]?.code)} />
-                    </div>
-                  </div>
-                </div>);
-              })()}
-            </div>
+            {renderScoreboard()}
             {lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", boxSizing: "border-box" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#81a1c1", width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: hClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span>
                   <div style={{ display: "flex", flex: 1, gap: 2 }}>
                     {["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
                       const active = lmMatch.ball === z;
-                      const clr = lmMatch.possession === "home" ? "#81a1c1" : "#bf616a";
+                      const clr = lmMatch.possession === "home" ? hClr : aClr;
                       return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "#141c2b", border: `1px solid ${active ? clr : "#2a3a50"}`, borderRadius: 4, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.08em", color: active ? clr : "#7889a066", ...mono }}>{label}</span>
                       </div>;
                     })}
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#bf616a", width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: aClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span>
                 </div>
               </div>
             )}
-            {/* Penalty popup */}
-            {lmMatch.penVisual && (()=>{
-              const pv = lmMatch.penVisual;
-              const W=220,H=100,gL=25,gR=195,gT=10,gB=82;
-              const zPos=[[gL+26,gT+20],[gL+85,gT+16],[gR-26,gT+20],[gL+26,gB-18],[gL+85,gB-14],[gR-26,gB-18]];
-              const mPos=[[gL-6,gT-8],[gL+85,gT-12],[gR+6,gT-8],[gL-10,gB+6],[gL+85,gB+10],[gR+10,gB+6]];
-              const dX=[(gL+gR)/2-44,(gL+gR)/2,(gL+gR)/2+44];
-              const dY=(gT+gB)/2+4;
-              const pos = pv.result==="miss" ? mPos[pv.zone] : zPos[pv.zone];
-              const col = pv.result==="goal"?"#a3be8c":pv.result==="save"?"#bf616a":"#7889a0";
-              const label = pv.result==="goal"?"GOAL!":pv.result==="save"?"SAVED!":"MISSED!";
-              return (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-                <div style={{ textAlign: "center", fontSize: 9, color: "#7889a0", letterSpacing: "0.1em", marginBottom: 6 }}>{pv.tName}'s {pv.name} — {pv.min}'</div>
-                <svg viewBox={`0 0 ${W} ${H+6}`} style={{ width: "100%", maxWidth: 220, height: "auto", display: "block", margin: "0 auto" }}>
-                  <rect x="0" y="0" width={W} height={H+6} fill="transparent" />
-                  <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0d120d" stroke="#7889a0" strokeWidth="2.5" rx="1" />
-                  <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-                  <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-                  <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.5" />
-                  <circle cx={(gL+gR)/2} cy={gB+4} r="2" fill="#7889a0" />
-                  {/* Keeper dive */}
-                  <rect x={dX[pv.dive]-18} y={dY-20} width={36} height={40} rx="4" fill={pv.result==="save"?"#bf616a33":"#ffffff0a"} stroke={pv.result==="save"?"#bf616a66":"#ffffff18"} strokeWidth="1.5" />
-                  <text x={dX[pv.dive]} y={dY+2} textAnchor="middle" dominantBaseline="middle" fill={pv.result==="save"?"#bf616a":"#ffffff30"} fontSize="16">🧤</text>
-                  {/* Ball */}
-                  <circle cx={pos[0]} cy={pos[1]} r="7" fill={col} />
-                  {pv.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="8" fontWeight="800">✓</text>}
-                  {pv.result==="miss" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#7889a0" fontSize="10" fontWeight="700">×</text>}
-                  {pv.result==="save" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="8" fontWeight="800">✕</text>}
-                </svg>
-                <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: col, marginTop: 4, letterSpacing: "0.1em" }}>{label}</div>
-              </div>);
-            })()}
-
             {lmMatch.phase === "finished" && tLiveTarget && lastLiveResult && <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
               <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
                 <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>
@@ -3546,18 +3663,26 @@ export default function App() {
                 <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
               </div>
             </div>}
+            {lmMatch.phase === "finished" && renderStatsReport()}
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid #141c2b", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", textAlign: "center" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", height: 220, overflowY: "auto" }}>
               {(()=>{ const hN=teams[lmH]?.name, aN=teams[lmA]?.name, hC=teams[lmH]?.code, aC=teams[lmA]?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <div style={{ padding: "2px 6px", borderRadius: 4, background: isH ? "#4a7ab522" : "#b55a5a22", fontSize: 8, fontWeight: 700, color: isH ? "#8ab4e0" : "#e08a8a", border: "1px solid " + (isH ? "#4a7ab533" : "#b55a5a33"), letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
+                  <div style={{ padding: "2px 6px", borderRadius: 4, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
                 </div>);
                 const mC = (min) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "#7889a0", ...mono }}>{min}'</span>
                 </div>);
                 const iC = (content, sz) => (<div style={{ width: 30, minWidth: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: sz || 14 }}>{content || " "}</div>);
-                const parseSub = (txt) => { const s = txt.replace(/^[🔄⇄]\s*/, '').split(/\s*→\s*/); if (s.length < 2) return null; const tm = s[0].match(/^(.+?)'s\s+(.+)$/); const rm = s[1].match(/^(.+?)\.\s+(Tactical substitution|Booked player off|Manual substitution|Forced substitution)\.?$/); return { team: tm?.[1]||"", off: tm?.[2]||s[0], on: rm?.[1]||s[1].replace(/\.\s*$/,""), reason: rm?.[2]||"" }; };
+                const parseSub = (txt) => { const s = txt.replace(/^(?:🔄|⇄)\s*/, '').split(/\s*→\s*/); if (s.length < 2) return null; const tm = s[0].match(/^(.+?)'s\s+(.+)$/); const rm = s[1].match(/^(.+?)\.\s+(.+?)\.?$/); return { team: tm?.[1]||"", off: tm?.[2]||s[0], on: rm?.[1]||s[1].replace(/\.\s*$/,""), reason: rm?.[2]||"" }; };
+                // gvGoalMouth viewBox is 220x136 at up to 190px wide; the goal frame itself
+                // spans gT=10 to gB=82 (72 units), excluding the grass strip beneath it.
+                const GV_FRAME_H = Math.round(72 * 190 / 220);
+                // gvPitch viewBox is 206x142 at up to 280px wide. Sizing the button so its
+                // bottom edge lands on the pitch view's bottom edge (mouth height + gap + button).
+                const GV_STACKED_BTN_H = Math.round(280 * 142 / 206) - Math.round(190 * 136 / 220) - 16;
+                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid #2a3a50", borderRadius: 6, color: "#7889a0", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
                 return lmMatch.events.map((e, i) => {
                 if (e.type === "phase") return (<div key={i} className="ev-enter" style={{ padding: "8px 18px", textAlign: "center", fontSize: 10, fontWeight: 600, color: "#7889a0", letterSpacing: "0.12em", borderBottom: "1px solid #141c2b" }}>{e.text}</div>);
                 const isH = e.team === "home" || (e.type === "sub" && e.text.includes(hN+"'s"));
@@ -3565,13 +3690,13 @@ export default function App() {
                 const T1 = new Set(["goal","penalty","red","second_yellow","sub","pen_miss"]);
                 if (T1.has(e.type) || isForcedSub) {
                   let icon, header, headerColor, body, bg;
-                  if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? "#81a1c1" : "#bf616a"; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (scorerMatch) { parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); } const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; bg = "#ffffff08"; }
+                  if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (scorerMatch) { parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); } const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = hasPitch ? (gv.assistFrom ? 1.55 : 0.75) : 0.15; const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
                   else if (e.type === "penalty") { icon = <span>🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledPos(e.text.replace(/^[^\p{L}\p{N}]+/u, ''))}</div>; bg = "#ebcb8b08"; }
-                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; header = e.type === "second_yellow" ? "Second yellow" : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#bf616a08"; }
-                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
+                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; header = e.type === "second_yellow" ? "Second yellow" : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#bf616a08"; }
+                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
                   else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
-                  else if (e.type === "sub") { const p = parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ {p.on}{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "#7889a0" }}>{e.onPos}</span>}</div><div style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ {p.off}{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "#7889a0" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text}</div>; bg = "transparent"; }
-                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid #141c2b", background: bg, alignItems: "center" }}>
+                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ {p.on}{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "#7889a0" }}>{e.onPos}</span>}</div><div style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ {p.off}{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "#7889a0" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text}</div>; bg = "transparent"; }
+                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid #141c2b", background: bg, alignItems: e.goalViz ? "flex-start" : "center" }}>
                     {mC(e.min)}
                     {iC(icon, 16)}
                     <div style={{ flex: 1, padding: "0 8px" }}>
@@ -3603,6 +3728,7 @@ export default function App() {
               {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "#7889a0", fontSize: 11 }}>Awaiting kick off...</div>}
               </div>
             </div>
+            {lmMatch.phase !== "finished" && (<>
             <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "#141c2b", borderRadius: 6, padding: 2, border: "1px solid #2a3a50" }}>
               {[["stats","Stats"],["players","Players"],["tactics","Tactics"]].map(([id,label]) => (
                 <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "#e4002b" : "transparent", border: "none", borderRadius: 4, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "#7889a0", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
@@ -3613,23 +3739,23 @@ export default function App() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? "#8ab4e0" : "#7889a0", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
+                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hClr : "#7889a0", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
                   <span style={{ width: 70, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>Possession</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? "#e08a8a" : "#7889a0", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
+                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aClr : "#7889a0", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
                 </div>
                 <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", background: "#7889a0" }}>
-                  <div style={{ width: `${hp}%`, background: "#4a7ab5", borderRadius: 2, transition: "width 0.3s" }} />
-                  <div style={{ width: `${ap}%`, background: "#b55a5a", borderRadius: 2, transition: "width 0.3s" }} />
+                  <div style={{ width: `${hp}%`, background: hClr, borderRadius: 2, transition: "width 0.3s" }} />
+                  <div style={{ width: `${ap}%`, background: aClr, borderRadius: 2, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
               {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Penalties", lmMatch.stats.home.penalties, lmMatch.stats.away.penalties], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds], ["Injuries", lmMatch.stats.home.injuries, lmMatch.stats.away.injuries], ["Subs Left", 3 - lmMatch.subs.home, 3 - lmMatch.subs.away]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                <span style={{ width: 24, textAlign: "right", color: h > a ? "#8ab4e0" : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? "#4a7ab588" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
+                <span style={{ width: 24, textAlign: "right", color: h > a ? hClr : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? "#b55a5a88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 24, textAlign: "left", color: a > h ? "#e08a8a" : "#7889a0", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
+                <span style={{ width: 24, textAlign: "left", color: a > h ? aClr : "#7889a0", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
               {/* Momentum graph */}
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
@@ -3837,6 +3963,7 @@ export default function App() {
               })()}
             </div>
 </>}
+            </>)}
 
           </>)}
         </div>)}
