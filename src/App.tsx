@@ -967,6 +967,26 @@ function filterSquad(squad, teamName, unavailSet) {
   const promoted = bav.slice(0, need).map(p => { const q = {...p}; delete q.bench; return q; });
   return [...av, ...promoted, ...bav.slice(need)];
 }
+// Ban-aware starters/bench split for live matches: unavailable starters are replaced
+// by available bench players, and unavailable bench players are dropped entirely so
+// they can never be selected as a live substitute.
+function splitAvailSquad(squad, teamName, unavail) {
+  const starters = squad.filter(p => !p.bench);
+  const bench = squad.filter(p => p.bench);
+  const keyOf = (name) => teamName + "|" + name;
+  const unavailStarters = starters.filter(p => unavail.has(keyOf(p.name)));
+  const availStarters = starters.filter(p => !unavail.has(keyOf(p.name)));
+  const availBench = bench.filter(p => !unavail.has(keyOf(p.name)));
+  const used = new Set();
+  const replacements = [];
+  for (const out of unavailStarters) {
+    let rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
+    if (!rep) rep = availBench.find(p => p.pos !== "GK" && !used.has(p.name));
+    if (!rep) rep = availBench.find(p => !used.has(p.name));
+    if (rep) { replacements.push(rep); used.add(rep.name); }
+  }
+  return { starters: [...availStarters, ...replacements], bench: availBench.filter(p => !used.has(p.name)) };
+}
 // Ban-aware starters/bench split for display: suspended/injured starters are shown
 // on the bench (tagged `out`), with their replacement promoted into the starting XI.
 function displaySquad(squad, teamName, playerStats) {
@@ -2236,21 +2256,7 @@ export default function App() {
 
     const buildLiveSquad = (teamName, teamIdx) => {
       const sq = teams[teamIdx]?.squad || buildSquad(teams[teamIdx]?.formation, null);
-      const starters = sq.filter(p => !p.bench);
-      const bench = sq.filter(p => p.bench);
-      const keyOf = (name) => teamName + "|" + name;
-      const unavailStarters = starters.filter(p => unavail.has(keyOf(p.name)));
-      const availStarters = starters.filter(p => !unavail.has(keyOf(p.name)));
-      const availBench = bench.filter(p => !unavail.has(keyOf(p.name)));
-      const used = new Set();
-      const replacements = [];
-      for (const out of unavailStarters) {
-        let rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
-        if (!rep) rep = availBench.find(p => p.pos !== "GK" && !used.has(p.name));
-        if (!rep) rep = availBench.find(p => !used.has(p.name));
-        if (rep) { replacements.push(rep); used.add(rep.name); }
-      }
-      return { starters: [...availStarters, ...replacements], bench: availBench.filter(p => !used.has(p.name)) };
+      return splitAvailSquad(sq, teamName, unavail);
     };
 
     const hSquad = buildLiveSquad(teams[liveHi].name, liveHi);
@@ -2340,8 +2346,12 @@ export default function App() {
   const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
     const hSq = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
     const aSq = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
-    init.players = {home: hSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>!p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    init.bench = {home: hSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aSq.filter(p=>p.bench).map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    const unavail = new Set();
+    for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k); }
+    const hLive = splitAvailSquad(hSq, teams[lmH].name, unavail);
+    const aLive = splitAvailSquad(aSq, teams[lmA].name, unavail);
+    init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.bench = {home: hLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill })); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
