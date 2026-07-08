@@ -3684,6 +3684,7 @@ export default function App() {
                 </div>
               </div>
             )}
+            {lmMatch.phase === "finished" && renderStatsReport()}
             {lmMatch.phase === "finished" && tLiveTarget && lastLiveResult && <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
               <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
                 <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>
@@ -3692,7 +3693,6 @@ export default function App() {
                 <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
               </div>
             </div>}
-            {lmMatch.phase === "finished" && renderStatsReport()}
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid #141c2b", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", textAlign: "center" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", height: 220, overflowY: "auto" }}>
