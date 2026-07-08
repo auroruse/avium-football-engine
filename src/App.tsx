@@ -1932,11 +1932,9 @@ export default function App() {
     const card = (m, x, y, fin) => {
       const w = W(m), brd = fin ? "#e4002b" : "#7889a0", bw = fin ? 2 : 1;
       s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="#141c2b" stroke="'+brd+'" stroke-width="'+bw+'"/>';
-      const hn = esc(m.home?.name||(m.bye?"BYE":"TBD")), an = esc(m.away?.name||(m.bye?"BYE":"TBD"));
+      const hnT = esc(m.home ? abbr(m.home.name, m.home.code) : (m.bye?"BYE":"TBD")), anT = esc(m.away ? abbr(m.away.name, m.away.code) : (m.bye?"BYE":"TBD"));
       const is2L = m.result?.twoLeg, isPart = m.result?.partial;
-      const maxNameLen = is2L && !isPart ? 18 : 22;
-      const hnT = hn.length > maxNameLen ? hn.slice(0, maxNameLen-1) + "…" : hn;
-      const anT = an.length > maxNameLen ? an.slice(0, maxNameLen-1) + "…" : an;
+      const nameFont = 'font-family:JetBrains Mono,monospace';
       const winnerIsHome = w && w === m.home;
       const addLabel = (lbl, clr, lx, ly) => {
         if (!lbl) return;
@@ -1948,8 +1946,8 @@ export default function App() {
         const l1h=m.result.leg1.home, l1a=m.result.leg1.away, l2h=m.result.leg2?.away||0, l2a=m.result.leg2?.home||0;
         const ah=m.result.agg?.home||0, aa=m.result.agg?.away||0;
         const hCls=w===m.home?' class="w"':'', aCls=w===m.away?' class="w"':'';
-        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+'>'+hnT+'</text>';
-        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+' style="'+nameFont+'">'+hnT+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+' style="'+nameFont+'">'+anT+'</text>';
         const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
         const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
         const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
@@ -1965,14 +1963,14 @@ export default function App() {
         penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
         const lblClr = m.result.pen ? "#d08770" : "#7889a0";
-        addLabel(lbl, lblClr, l1End-4, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, lblClr, l1End-legColW-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
         const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
-        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+(w===m.home?' class="w"':'')+'>'+ hnT+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+(w===m.home?' class="w"':'')+' style="'+nameFont+'">'+ hnT+'</text>';
         let hsc = String(hs); if(m.result?.pen) hsc += ' ('+m.result.pen.home+')';
         s += '<text x="'+(x+cW-6)+'" y="'+(y+19)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.home?' class="w"':'')+'>'+hsc+'</text>';
-        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+(w===m.away?' class="w"':'')+'>'+ anT+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+(w===m.away?' class="w"':'')+' style="'+nameFont+'">'+ anT+'</text>';
         let asc = String(as2); if(m.result?.pen) asc += ' ('+m.result.pen.away+')';
         s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
@@ -4683,12 +4681,12 @@ export default function App() {
                 return (
                   <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid #e4002b66" : ri === -2 ? "1px solid #d0877044" : "1px solid #2a3a50", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative", ...mono }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home ? abbr(m.home.name, m.home.code) : (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
                         : <span style={{ color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1H : sH}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative", ...mono }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away ? abbr(m.away.name, m.away.code) : (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
                         : <span style={{ color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1A : sA}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>}
                     </div>
