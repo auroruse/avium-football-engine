@@ -1933,16 +1933,23 @@ export default function App() {
     const card = (m, x, y, fin) => {
       const w = W(m), brd = fin ? "#e4002b" : "#7889a0", bw = fin ? 2 : 1;
       s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="#141c2b" stroke="'+brd+'" stroke-width="'+bw+'"/>';
-      const hn = esc(m.home?.name||(m.bye?"BYE":"TBD")), an = esc(m.away?.name||(m.bye?"BYE":"TBD"));
       const is2L = m.result?.twoLeg, isPart = m.result?.partial;
       const maxNameLen = is2L && !isPart ? 18 : 22;
-      const hnT = hn.length > maxNameLen ? hn.slice(0, maxNameLen-1) + "…" : hn;
-      const anT = an.length > maxNameLen ? an.slice(0, maxNameLen-1) + "…" : an;
       const winnerIsHome = w && w === m.home;
-      // The decision label (PENS/AET/AG) is drawn over the winner's row, in the
-      // gap just left of the score columns. A long name can reach into that gap,
-      // so the label's backing rect fades the name out (matching the on-screen
-      // bracket view's gradient) instead of hard-clipping it.
+      // Conservative ~6.5px/char estimate for the 10px sans-serif used for
+      // names — used to truncate a name so it never reaches the PENS/AET/AG
+      // label's own space, rather than relying on the mask underneath the
+      // label to hide the overlap after the fact.
+      const CHAR_W = 6.5;
+      const nameFor = (team, availPx) => {
+        if (!team) return esc(m.bye?"BYE":"TBD");
+        const full = esc(team.name);
+        const capChars = Math.max(3, Math.min(maxNameLen, Math.floor(availPx / CHAR_W)));
+        return full.length > capChars ? full.slice(0, capChars-1) + "…" : full;
+      };
+      // Backing rect fades the name out behind the label (matching the
+      // on-screen bracket view's CSS gradient) as a secondary safety net —
+      // the name is already truncated to clear the label above.
       const addLabel = (lbl, clr, lx, ly) => {
         if (!lbl) return;
         const lblW = lbl.length * 5 + 6;
@@ -1952,11 +1959,17 @@ export default function App() {
       if (is2L && !isPart) {
         const l1h=m.result.leg1.home, l1a=m.result.leg1.away, l2h=m.result.leg2?.away||0, l2a=m.result.leg2?.home||0;
         const ah=m.result.agg?.home||0, aa=m.result.agg?.away||0;
+        const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
+        const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
+        const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
+        const lblClr = m.result.pen ? "#d08770" : "#7889a0";
+        const lblX = l1End-legColW-4;
+        const fullAvail = l1End - legColW - (x+6) - 6;
+        const hnT = nameFor(m.home, (lbl && winnerIsHome) ? (lblX - (x+6) - 8) : fullAvail);
+        const anT = nameFor(m.away, (lbl && w===m.away) ? (lblX - (x+6) - 8) : fullAvail);
         const hCls=w===m.home?' class="w"':'', aCls=w===m.away?' class="w"':'';
         s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+'>'+hnT+'</text>';
         s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
-        const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
-        const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
         const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
         const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
@@ -1968,22 +1981,24 @@ export default function App() {
         legText(l2a, l2End, y+37);
         aggText(aa, aggEnd, y+37, aCls);
         penText(m.result.pen?.away, y+37);
-        const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
-        const lblClr = m.result.pen ? "#d08770" : "#7889a0";
-        addLabel(lbl, lblClr, l1End-legColW-4, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, lblClr, lblX, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
         const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
-        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+(w===m.home?' class="w"':'')+'>'+ hnT+'</text>';
         let hsc = String(hs); if(m.result?.pen) hsc += ' ('+m.result.pen.home+')';
-        s += '<text x="'+(x+cW-6)+'" y="'+(y+19)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.home?' class="w"':'')+'>'+hsc+'</text>';
-        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+(w===m.away?' class="w"':'')+'>'+ anT+'</text>';
         let asc = String(as2); if(m.result?.pen) asc += ' ('+m.result.pen.away+')';
-        s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
         const lblClr = m.result?.pen ? "#d08770" : "#7889a0";
         const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
-        addLabel(lbl, lblClr, x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
+        const lblX = x+cW-6-scoreW2;
+        const fullAvail = cW - 12;
+        const hnT = nameFor(m.home, (lbl && winnerIsHome) ? (lblX - (x+6) - 8) : fullAvail);
+        const anT = nameFor(m.away, (lbl && w===m.away) ? (lblX - (x+6) - 8) : fullAvail);
+        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+(w===m.home?' class="w"':'')+'>'+ hnT+'</text>';
+        s += '<text x="'+(x+cW-6)+'" y="'+(y+19)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.home?' class="w"':'')+'>'+hsc+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+(w===m.away?' class="w"':'')+'>'+ anT+'</text>';
+        s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
+        addLabel(lbl, lblClr, lblX, winnerIsHome ? y+19 : y+37);
       }
     };
     const col = (matches, x, label) => {
