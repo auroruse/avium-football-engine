@@ -957,9 +957,10 @@ function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, 
   if (l2.pen) { result.pen = {home:l2.pen.away, away:l2.pen.home}; }
   return result;
 }
+const playerKey = (team, name) => team + "|" + name;
 function filterSquad(squad, teamName, unavailSet) {
   if (!squad) return null;
-  const kf = n => teamName + "|" + n;
+  const kf = n => playerKey(teamName, n);
   const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
   const av = unavailSet ? st.filter(p => !unavailSet.has(kf(p.name))) : st;
   const bav = unavailSet ? bn.filter(p => !unavailSet.has(kf(p.name))) : bn;
@@ -973,7 +974,7 @@ function filterSquad(squad, teamName, unavailSet) {
 function splitAvailSquad(squad, teamName, unavail) {
   const starters = squad.filter(p => !p.bench);
   const bench = squad.filter(p => p.bench);
-  const keyOf = (name) => teamName + "|" + name;
+  const keyOf = (name) => playerKey(teamName, name);
   const unavailStarters = starters.filter(p => unavail.has(keyOf(p.name)));
   const availStarters = starters.filter(p => !unavail.has(keyOf(p.name)));
   const availBench = bench.filter(p => !unavail.has(keyOf(p.name)));
@@ -991,7 +992,7 @@ function splitAvailSquad(squad, teamName, unavail) {
 // on the bench (tagged `out`), with their replacement promoted into the starting XI.
 function displaySquad(squad, teamName, playerStats) {
   if (!squad) return { starters: [], bench: [] };
-  const kf = n => teamName + "|" + n;
+  const kf = n => playerKey(teamName, n);
   const isOut = n => { const v = playerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
   const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
   const availSt = st.filter(p => !isOut(p.name)), outSt = st.filter(p => isOut(p.name));
@@ -1596,19 +1597,22 @@ const colorsClash = (hex1, hex2) => {
 // same redmean distance as colorsClash — this catches colors that blend into the panel
 // background, not merely "dark" colors (plenty of real team colors, like black or navy
 // kits, are dark but still clearly visible against the app's dark UI).
+const lightenUntil = (hex, refHex, factor) => {
+  const c = hexToRgb(hex); if (!c) return "#ffffff";
+  let r = c.r, g = c.g, b = c.b, cur = hex;
+  for (let i = 0; i < 10 && colorsClash(cur, refHex); i++) {
+    r = Math.min(255, Math.round(r + (255 - r) * factor));
+    g = Math.min(255, Math.round(g + (255 - g) * factor));
+    b = Math.min(255, Math.round(b + (255 - b) * factor));
+    cur = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+  }
+  return cur;
+};
 const readableClr = (hex, altHex, bgHex) => {
   if (!hex) return altHex || "#ffffff";
   if (!colorsClash(hex, bgHex)) return hex;
   if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
-  const c = hexToRgb(hex); if (!c) return "#ffffff";
-  let r = c.r, g = c.g, b = c.b, cur = hex;
-  for (let i = 0; i < 10 && colorsClash(cur, bgHex); i++) {
-    r = Math.min(255, Math.round(r + (255 - r) * 0.3));
-    g = Math.min(255, Math.round(g + (255 - g) * 0.3));
-    b = Math.min(255, Math.round(b + (255 - b) * 0.3));
-    cur = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
-  }
-  return cur;
+  return lightenUntil(hex, bgHex, 0.3);
 };
 
 const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:45,MID:25,FWD:29},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
@@ -1721,7 +1725,9 @@ const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"};
 function styledPos(txt) { const parts = []; let last = 0; const rx = /\((GK|DEF|MID|FWD)\)/g; let m; while ((m = rx.exec(txt)) !== null) { if (m.index > last) parts.push(txt.slice(last, m.index)); parts.push(<span key={m.index} style={{ ...mono, color: POS_CLR[m[1]] || "#7889a0" }}>({m[1]})</span>); last = rx.lastIndex; } if (last < txt.length) parts.push(txt.slice(last)); return parts; }
 const evColor = { goal: "#ffffff", penalty: "#d08770", chance: "#ebcb8b", red: "#bf616a", second_yellow: "#bf616a", pen_miss: "#bf616a", yellow: "#ebcb8b", save: "#ffffff", miss: "#ffffff", sub: "#7a8b9b", injury: "#c07070", press: "#ffffff", counter: "#ffffff", phase: "#ffffff", foul: "#ffffff", corner: "#ffffff", neutral: "#ffffff", offside: "#ffffff", buildup: "#ffffff", clearance: "#ffffff" };
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
-const gvSn = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (p.length === 2 && pfx.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!pfx.has(p[i].toLowerCase())) { let s = i; while (s > 1 && pfx.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
+const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
+const shortName = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; if (p.length === 2 && NAME_PFX.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!NAME_PFX.has(p[i].toLowerCase())) { let s = i; while (s > 1 && NAME_PFX.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
+const gvSn = shortName;
 // Front-on goal mouth: ball animates from the grass to its zone, keeper dives. Used for all goals and penalty misses.
 function gvGoalMouth(gv, delay) {
   const W=220, gL=25, gR=195, gT=10, gB=82;
@@ -2518,7 +2524,7 @@ export default function App() {
   const accumulateMatchStats = (teamObj, goalsFor, goalsAgainst, isWin, isDraw, simCards, unavailSet, simPlayers) => {
     if (!teamObj?.squad) return null;
     if (simPlayers) {
-      const keyOf = (pName) => teamObj.name + "|" + pName;
+      const keyOf = (pName) => playerKey(teamObj.name, pName);
       const rng2 = new RNG(Date.now() + Math.random() * 99999);
       const redP = simPlayers.find(p => p.rc);
       const injP = simPlayers.find(p => p.inj);
@@ -2558,7 +2564,7 @@ export default function App() {
     const rng2 = new RNG(Date.now() + Math.random() * 99999);
     const starters = teamObj.squad.filter(p => !p.bench);
     const bench = teamObj.squad.filter(p => p.bench);
-    const keyOf = (pName) => teamObj.name + "|" + pName;
+    const keyOf = (pName) => playerKey(teamObj.name, pName);
     const available = unavailSet ? starters.filter(p => !unavailSet.has(keyOf(p.name))) : starters;
     const replacements = bench.slice(0, starters.length - available.length);
     const sq = [...available, ...replacements];
@@ -3050,17 +3056,7 @@ export default function App() {
   if (colorsClash(hClr, aClr)) {
     const aOtherReadable = readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, "#141c2b");
     if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
-    else {
-      const c = hexToRgb(aClr) || { r: 191, g: 97, b: 106 };
-      let r = c.r, g = c.g, b = c.b, cur = aClr;
-      for (let i = 0; i < 10 && colorsClash(hClr, cur); i++) {
-        r = Math.min(255, Math.round(r + (255 - r) * 0.35));
-        g = Math.min(255, Math.round(g + (255 - g) * 0.35));
-        b = Math.min(255, Math.round(b + (255 - b) * 0.35));
-        cur = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
-      }
-      aClr = cur;
-    }
+    else { aClr = lightenUntil(aClr, hClr, 0.35); }
   }
   const hClr2 = hClr, aClr2 = aClr;
 
@@ -3156,7 +3152,7 @@ export default function App() {
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
-        const sn = (n) => { const p = n.trim().split(/\s+/); if (p.length <= 1) return n; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (p.length === 2 && pfx.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!pfx.has(p[i].toLowerCase())) { let s = i; while (s > 1 && pfx.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length - 1]; };
+        const sn = shortName;
         const PitchSVG = ({squad, formation}) => {
           const starters = (squad||[]).filter(p => !p.bench);
           const FPOS = {
@@ -3507,7 +3503,7 @@ export default function App() {
                         if (!pos) return null;
                         return (<g key={pi2}>
                           <circle cx={pos.x} cy={pos.y} r="2.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="#060b14" strokeWidth="0.4" />
-                          <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="#ffffff" fontSize="2.1" fontFamily="monospace" fontWeight="500">{(()=>{ const parts = p.name.trim().split(/\s+/); if (parts.length <= 1) return p.name; const pfx = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]); if (parts.length === 2 && pfx.has(parts[0].toLowerCase())) return p.name; for (let k = 1; k < parts.length; k++) { if (!pfx.has(parts[k].toLowerCase())) { let s = k; while (s > 1 && pfx.has(parts[s-1].toLowerCase())) s--; return parts.slice(s).join(" "); } } return parts[parts.length - 1]; })()}</text>
+                          <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="#ffffff" fontSize="2.1" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
                         </g>);
                       })}
                     </svg>
