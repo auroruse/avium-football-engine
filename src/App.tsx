@@ -2784,21 +2784,20 @@ export default function App() {
           }
         }
         setTeams([...PRESET_CATALOG, ...customTeams]);
-        // Load tournament session independently.
-        if (rosterRaw) {
-          const sessionRaw = localStorage.getItem("avium-tournament-session");
-          if (sessionRaw) {
-            const ss = JSON.parse(sessionRaw);
-            if (ss.tournamentTeamIds) setTournamentTeamIds(ss.tournamentTeamIds);
-            if (ss.tConfig) setTConfig(c => ({ ...c, ...ss.tConfig, qualZones: ss.tConfig.qualZones || c.qualZones, tiebreakers: ss.tConfig.tiebreakers || c.tiebreakers }));
-            if (ss.tGroups) setTGroups(ss.tGroups);
-            if (ss.tKO) setTKO(ss.tKO);
-            if (ss.tPlayerStats) setTPlayerStats(ss.tPlayerStats);
-            if (ss.tPhase) setTPhase(ss.tPhase);
-            if (ss.lmH !== undefined) setLmH(ss.lmH);
-            if (ss.lmA !== undefined) setLmA(ss.lmA);
-            if (ss.tReplayCounts) setTReplayCounts(ss.tReplayCounts);
-          }
+        // Load tournament session independently — it exists whether or not
+        // avium-roster-db does (roster-db only gets written when custom teams exist).
+        const sessionRaw = localStorage.getItem("avium-tournament-session");
+        if (sessionRaw) {
+          const ss = JSON.parse(sessionRaw);
+          if (ss.tournamentTeamIds) setTournamentTeamIds(ss.tournamentTeamIds);
+          if (ss.tConfig) setTConfig(c => ({ ...c, ...ss.tConfig, qualZones: ss.tConfig.qualZones || c.qualZones, tiebreakers: ss.tConfig.tiebreakers || c.tiebreakers }));
+          if (ss.tGroups) setTGroups(ss.tGroups);
+          if (ss.tKO) setTKO(ss.tKO);
+          if (ss.tPlayerStats) setTPlayerStats(ss.tPlayerStats);
+          if (ss.tPhase) setTPhase(ss.tPhase);
+          if (ss.lmH !== undefined) setLmH(ss.lmH);
+          if (ss.lmA !== undefined) setLmA(ss.lmA);
+          if (ss.tReplayCounts) setTReplayCounts(ss.tReplayCounts);
         }
       } catch (e) { /* no saved data or storage unavailable */ }
     })();
