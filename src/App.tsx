@@ -375,6 +375,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
+    if (cGk) cGk.saves = (cGk.saves || 0) + 1;
     s.events.push({min:dm, type:"save", team:atk, text:"\uD83E\uDDE4 " + comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.name},s)});
     if (rng.u() < 0.25) {
       s.stats[atk].corners++;
@@ -410,6 +411,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
         s.possession = def; s.ball = 2; s.pressure = 0;
       }
     } else {
+      {const _dfs=s.players[def].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
       s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
       s.possession = def; s.ball = 2; s.pressure = 0;
     }
@@ -447,13 +449,13 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
       s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});
+      ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});{const _dfs=s.players[def].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
       s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+comm(rng,"woodwork_save",{t:nm[atk],o:nm[def],n:shooter.name},s)});
       if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
       // Normal save
-      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});}
+      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));gk.saves=(gk.saves||0)+1;}ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.03).toFixed(2));});const _dfs=s.players[def].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
       s.events.push({min:dm,type:"save",team:atk,text:"\uD83E\uDDE4 "+comm(rng,"save",{t:nm[atk],o:nm[def],n:shooter.name},s)});
       if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
@@ -468,12 +470,12 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     // Miss — check for woodwork (15%)
     if (rng.u() < 0.18) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});
+      ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});{const _dfs=s.players[def].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
       s.events.push({min:dm,type:"woodwork",team:atk,text:"\uD83E\uDEA8 "+comm(rng,"woodwork",{t:nm[atk],o:nm[def],n:shooter.name},s)});
       if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
-      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.name},s)});
+      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.02).toFixed(2));});{const _dfs=s.players[def].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}s.events.push({min:dm,type:"miss",team:atk,text:"\uD83D\uDCA8 "+comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.name},s)});
       if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
@@ -517,7 +519,7 @@ function ensureGoalkeeper(s, side, dm, nm, rng) {
   if (benchIdx !== -1 && s.subs[side] < 3 && s.players[side].length > 0) {
     s.subs[side]++;
     const subOn = s.bench[side].splice(benchIdx, 1)[0];
-    subOn.sub = 'on'; subOn.rating = 6.5;
+    subOn.sub = 'on'; subOn.rating = 6.5; subOn.chances = 0; subOn.defActs = 0; subOn.saves = 0;
     const subOff = pick(rng, s.players[side]);
     s.players[side] = s.players[side].filter(p => p.name !== subOff.name);
     s.subbedOff[side].push({...subOff, sub: 'off'});
@@ -633,16 +635,16 @@ function lmSimMinute(s, rng, home, away) {
     if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm);return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
-    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});return;}
+    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");sp.chances=(sp.chances||0)+1;if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});return;}
     // Cleared
-    s.possession=op;s.pressure=0;
+    s.possession=op;s.pressure=0;{const _dfs=s.players[op].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
     const defR=opE/(poE+opE),cl=rng.u();
     if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op]},s)});}}
     else if(cl<0.70-0.20*defR){s.ball=2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op]},s)});}
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
       else s.events.push({min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
     }
     return;
@@ -652,11 +654,11 @@ function lmSimMinute(s, rng, home, away) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po],"longGoal");const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal");lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
     if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
-    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 "+comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.name},s)});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
+    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));gk.saves=(gk.saves||0)+1;}}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 "+comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.name},s)});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+comm(rng,"miss_lr",{t:nm[po],n:lrScorer.name},s)});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
   }
@@ -697,15 +699,15 @@ function lmSimMinute(s, rng, home, away) {
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
-    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");if(rng.u()<0.4)ratePlayer(s.players[po],bp.name,0.08);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");bp.chances=(bp.chances||0)+1;if(rng.u()<0.4)ratePlayer(s.players[po],bp.name,0.08);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
     s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
@@ -717,7 +719,7 @@ function lmSimMinute(s, rng, home, away) {
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
       else s.events.push({min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
     }else s.events.push({min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
   }
@@ -765,7 +767,7 @@ function lmSimMinute(s, rng, home, away) {
         let subOff = subWeights[subWeights.length - 1].p;
         for (const x of subWeights) { sr -= x.w; if (sr <= 0) { subOff = x.p; break; } }
         const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
-        subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
+        subOn.sub='on'; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
         const wasBooked = booked.includes(subOff.name);
         if (wasBooked) {
           s.booked[side] = s.booked[side].filter(p => p !== subOff.name);
@@ -795,7 +797,7 @@ function lmSimMinute(s, rng, home, away) {
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
         s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+injTag+(wasBooked ? " Was on a yellow." : "")});
         const subOn = (()=>{ const b=s.bench[side]; const outIdx = isGK ? b.findIndex(p=>p.pos==="GK") : b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
-        subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
+        subOn.sub='on'; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
         { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.name,x:injured.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+subOn.name+". "+reason,offName:injured.name,onName:subOn.name,reason,offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos}); }
       } else {
         {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;ip.injSev=injSev.id;ip.injPart=injPart;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
@@ -811,60 +813,50 @@ function lmSimMinute(s, rng, home, away) {
   const prev = s.momHist.length > 0 ? s.momHist[s.momHist.length - 1].v : 0;
   const smoothed = prev * 0.6 + rawMom * 0.4;
   s.momHist.push({ m: s.minute, v: Math.max(-1, Math.min(1, smoothed)) });
-  // Periodic rating: every 5 min, individual performance based on position and match involvement
+  // Periodic rating: every 5 min, driven by each player's own accumulated stats (saves/defActs/chances)
   if (s.minute > 0 && s.minute % 5 === 0) {
     const ph = s.possCount.home, pa = s.possCount.away, pt = ph + pa || 1;
     for (const side of ["home","away"]) {
       const pct = side === "home" ? ph/pt : pa/pt;
-      const sd = side === "home" ? s.score[0]-s.score[1] : s.score[1]-s.score[0];
       const op = side === "home" ? "away" : "home";
-      if (sd > 0) s.players[side].forEach(p => { p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2)); });
-      if (sd < 0) s.players[side].forEach(p => { p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2)); });
-      // Position-specific individual adjustments
+      const gaConceded = side === "home" ? s.score[1] : s.score[0];
+      const gfScored = side === "home" ? s.score[0] : s.score[1];
       s.players[side].forEach(p => {
-        // GK: reward for clean intervals, penalize for being beaten often
         if (p.pos === "GK") {
-          const gaConceded = side === "home" ? s.score[1] : s.score[0];
-          if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.07).toFixed(2));
-          if (pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
+          const sv = p.saves || 0;
+          if (sv > 0) p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2));
+          if (sv >= 3) p.rating = Math.min(10, +(p.rating + 0.01).toFixed(2));
+          if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.015).toFixed(2));
+          if (sv === 0 && pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
         }
         if (p.pos === "DEF") {
-          const gaConceded = side === "home" ? s.score[1] : s.score[0];
-          if (gaConceded === 0 && s.minute >= 20) p.rating = Math.min(10, +(p.rating + 0.06).toFixed(2));
-          if (s.stats[op].onTarget > s.minute/10) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
+          const da = p.defActs || 0;
+          if (da > 0) p.rating = Math.min(10, +(p.rating + 0.03 * Math.min(da, 5)).toFixed(2));
+          if (da >= 3 && gaConceded <= 1) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
+          if (s.stats[op].onTarget > s.minute / 10) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         if (p.pos === "MID") {
-          if (pct > 0.55) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
-          if (pct < 0.42) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
+          const ch = p.chances || 0;
+          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.01 * Math.min(ch, 4)).toFixed(2));
+          if (ch >= 3 && gfScored > 0) p.rating = Math.min(10, +(p.rating + 0.03).toFixed(2));
+          if (ch === 0 && s.minute >= 40) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
         }
-        // FWD: penalize quiet games (no goals, no assists, low involvement)
-        if (p.pos === "FWD" && s.minute >= 50) {
-          if (p.goals === 0 && p.assists === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.03).toFixed(2));
+        if (p.pos === "FWD") {
+          const ch = p.chances || 0;
+          if (p.goals > 0 || p.assists > 0) p.rating = Math.min(10, +(p.rating + 0.01).toFixed(2));
+          if (ch >= 2) p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2));
+          if (s.minute >= 50 && p.goals === 0 && p.assists === 0 && ch === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.04).toFixed(2));
         }
       });
       // Individual involvement bonus: random player from possession team gets credit
-      if (pct > 0.52) { const mp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], mp.name, 0.06); }
-      if (pct < 0.42 && rng.u() < 0.3) { const dp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], dp.name, -0.03); }
-    }
-  }
-  // End of match: clean sheet bonus for GK and DEF
-  if (s.phase === "finished") {
-    for (const side of ["home","away"]) {
-      const ga = side === "home" ? s.score[1] : s.score[0];
-      if (ga === 0 && !s._cleanSheetApplied?.[side]) {
-        s.players[side].forEach(p => {
-          if (p.pos === "GK") p.rating = Math.min(10, +(p.rating + 0.5).toFixed(2));
-          if (p.pos === "DEF") p.rating = Math.min(10, +(p.rating + 0.3).toFixed(2));
-        });
-        if (!s._cleanSheetApplied) s._cleanSheetApplied = {};
-        s._cleanSheetApplied[side] = true;
-      }
+      if (pct > 0.52) { const mp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], mp.name, 0.04); }
+      if (pct < 0.42 && rng.u() < 0.3) { const dp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], dp.name, -0.02); }
     }
   }
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, promoDebuff:null, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, promoDebuff:null, injuriesEnabled:true };
 }
 
 function cloneState(p) {
@@ -902,7 +894,7 @@ function resolvePendingPenalty(s, rng, home, away) {
     s.possession=op;s.pressure=0;
   }else if(isSave2){
     s.stats[po].shots++;s.stats[po].onTarget++;
-    ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk)gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});
+    ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));gk.saves=(gk.saves||0)+1;}}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});
     if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[po]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
     else{s.possession=op;s.pressure=0;}
   }else{
@@ -958,6 +950,20 @@ function lmAdvance(prev, rng, home, away, mutate) {
       p.nextTeam=ok;const winner=lmCheckPenDecided(p.home,p.away);if(winner){p.decided=true;p.winner=winner;s.phase="finished";const wName=winner==="home"?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC6 "+wName+" win on penalties! "+s.score[0]+"\u2013"+s.score[1]+" ("+p.home.filter(k=>k.scored).length+"\u2013"+p.away.filter(k=>k.scored).length+" PENS)"});}break;}
     default:break;
   }
+  // End of match: individual performance bonuses (saves/defActs/chances); clean sheet is a smaller topper
+  if (s.phase === "finished") {
+    for (const side of ["home","away"]) {
+      const cs = (side === "home" ? s.score[1] : s.score[0]) === 0;
+      s.players[side].forEach(p => {
+        let b = 0;
+        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.3 : 0));
+        else if (p.pos === "DEF") b = Math.min(1.0, 0.12 * Math.min(p.defActs || 0, 6) + (cs ? 0.2 : 0));
+        else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
+        else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
+        if (b > 0) p.rating = Math.min(10, +(p.rating + b).toFixed(2));
+      });
+    }
+  }
   return s;
 }
 
@@ -982,7 +988,7 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
-  const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
   const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
   if (homeSquad && awaySquad) {
     s.players={home:homeSquad.filter(p=>!p.bench).map(mapP),away:awaySquad.filter(p=>!p.bench).map(mapP)};
@@ -1452,6 +1458,7 @@ function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.ho
 function koRoundName(total, ri) { const r = total / Math.pow(2, ri); return r === 2 ? "Final" : r === 4 ? "Semi-finals" : r === 8 ? "Quarter-finals" : `Round of ${r}`; }
 function koResultText(m) { if (!m.result) return null; if (m.result.twoLeg) { const r=m.result; if (r.partial) return `${r.leg1.home}–${r.leg1.away} (L1)`; let t=`${r.leg1.home}–${r.leg1.away} / ${r.leg2.away}–${r.leg2.home} (${r.agg.home}–${r.agg.away} agg.)`; if (r.et) t+=` AET`; if (r.pen) t+=` (${r.pen.home}–${r.pen.away} PENS)`; if (!r.et&&!r.pen&&r.agg.home===r.agg.away&&r.awayGoalsRule) t+=` (away goals)`; return t; } let t = `${m.result.ftHome}–${m.result.ftAway}`; if (m.result.et) t = `${m.result.ftHome + m.result.et.home}–${m.result.ftAway + m.result.et.away} AET`; if (m.result.pen) t += ` (${m.result.pen.home}–${m.result.pen.away} PENS)`; return t; }
 function propagateKO(ko) {
+  // WB propagation (shared by single & double elim)
   for (let r = 0; r < ko.rounds.length - 1; r++) {
     ko.rounds[r].matches.forEach((m, mi) => {
       const nmi = Math.floor(mi / 2);
@@ -1463,8 +1470,52 @@ function propagateKO(ko) {
       if (ko.thirdPlace && r === ko.rounds.length - 2) { if (mi === 0) ko.thirdPlace.home = l; if (mi === 1) ko.thirdPlace.away = l; }
     });
   }
-  const fm = ko.rounds[ko.rounds.length - 1].matches[0];
-  if (fm?.result) ko.champion = koWinner(fm);
+  if (!ko.losers) { const fm = ko.rounds[ko.rounds.length - 1].matches[0]; if (fm?.result) ko.champion = koWinner(fm); return; }
+  // Reset all LB/GF/reset slots before repopulating (preserves results)
+  ko.losers.forEach(lr => lr.matches.forEach(m => { m.home = null; m.away = null; delete m.bye; }));
+  ko.grandFinal.home = null; ko.grandFinal.away = null;
+  if (ko.reset) { ko.reset.home = null; ko.reset.away = null; }
+  ko.champion = null;
+  // Double elim: LB R0 from WB R0 losers (fold cross-pair)
+  const wbR0 = ko.rounds[0].matches, nW0 = wbR0.length, nL0 = ko.losers[0].matches.length;
+  for (let i = 0; i < nL0; i++) {
+    const top = wbR0[i], bot = wbR0[nW0 - 1 - i];
+    if (!top.bye && top.result && top.home && top.away) ko.losers[0].matches[i].home = koLoser(top);
+    if (!bot.bye && bot.result && bot.home && bot.away) ko.losers[0].matches[i].away = koLoser(bot);
+    const lm = ko.losers[0].matches[i];
+    // Bye only when WB source was a structural bye (not just unplayed)
+    if (lm.home && !lm.away && bot.bye) { lm.bye = true; }
+    else if (!lm.home && lm.away && top.bye) { lm.bye = true; lm.home = lm.away; lm.away = null; }
+  }
+  // Propagate through LB rounds
+  for (let lr = 0; lr < ko.losers.length; lr++) {
+    const lbRd = ko.losers[lr];
+    if (lbRd.type === "dropin") {
+      const wbDR = (lr + 1) / 2;
+      const wbRd = ko.rounds[wbDR];
+      if (wbRd) { const n = lbRd.matches.length; for (let i = 0; i < n; i++) { const wbM = wbRd.matches[n - 1 - i]; if (wbM && !wbM.bye && wbM.result && wbM.home && wbM.away) lbRd.matches[i].away = koLoser(wbM); if (lbRd.matches[i].home && !lbRd.matches[i].away && wbM && wbM.bye) lbRd.matches[i].bye = true; } }
+    }
+    if (lr < ko.losers.length - 1) {
+      const nxt = ko.losers[lr + 1];
+      lbRd.matches.forEach((m, mi) => {
+        const w = m.bye ? (m.home || m.away) : (m.result && m.home && m.away ? koWinner(m) : null);
+        if (!w) return;
+        if (nxt.type === "internal") { const nmi = Math.floor(mi / 2); if (mi % 2 === 0) nxt.matches[nmi].home = w; else nxt.matches[nmi].away = w; }
+        else nxt.matches[mi].home = w;
+      });
+    }
+  }
+  // Grand Final: WB winner vs LB winner
+  const wbFM = ko.rounds[ko.rounds.length - 1].matches[0];
+  const lbFM = ko.losers[ko.losers.length - 1].matches[0];
+  if (wbFM?.result) { const w = koWinner(wbFM); if (w) ko.grandFinal.home = w; }
+  const lbW = lbFM?.bye ? (lbFM.home || lbFM.away) : (lbFM?.result ? koWinner(lbFM) : null);
+  if (lbW) ko.grandFinal.away = lbW;
+  if (ko.grandFinal.result) {
+    const gfW = koWinner(ko.grandFinal);
+    if (gfW === ko.grandFinal.home || !ko.reset) { ko.champion = gfW; }
+    else { ko.reset.home = ko.grandFinal.home; ko.reset.away = ko.grandFinal.away; if (ko.reset.result) ko.champion = koWinner(ko.reset); }
+  }
 }
 
 function buildKnockoutSeeded(teams, hasTP) {
@@ -1486,6 +1537,22 @@ function buildKOShell(firstRoundMatches, hasTP) {
   let mc = first.length;
   for (let r = 1; r < nr; r++) { mc = Math.ceil(mc / 2); rounds.push({ name: koRoundName(total, r), matches: Array.from({ length: mc }, () => ({ home: null, away: null, result: null })) }); }
   return { rounds, thirdPlace: hasTP && total >= 4 ? { home: null, away: null, result: null } : null, champion: null };
+}
+function convertToDoubleElim(ko, hasReset) {
+  const nr = ko.rounds.length, n0 = ko.rounds[0].matches.length;
+  const numLB = 2 * (nr - 1); const losers = []; let lbMC = Math.ceil(n0 / 2);
+  for (let lr = 0; lr < numLB; lr++) {
+    const isInt = lr % 2 === 0;
+    losers.push({ name: lr === numLB - 1 ? "LB Final" : `LB Round ${lr + 1}`, type: isInt ? "internal" : "dropin", matches: Array.from({ length: lbMC }, () => ({ home: null, away: null, result: null })) });
+    if (!isInt) lbMC = Math.ceil(lbMC / 2);
+  }
+  ko.losers = losers; ko.grandFinal = { home: null, away: null, result: null };
+  ko.reset = hasReset ? { home: null, away: null, result: null } : null; ko.thirdPlace = null;
+}
+function isKOComplete(ko) {
+  if (ko.losers) return !!ko.champion;
+  const fm = ko.rounds[ko.rounds.length - 1].matches[0];
+  return fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial));
 }
 function areTied(a, b, tiebreakers, schedule) {
   if (!a || !b || a.pts !== b.pts || a.p === 0) return false;
@@ -1580,12 +1647,15 @@ function buildKnockoutRandom(teams, hasTP, rng) {
   let n2 = 1; while (n2 < sorted.length) n2 *= 2;
   const numByes = n2 - sorted.length;
   const byeTeams = sorted.slice(0, numByes);
-  const rest = sorted.slice(numByes).sort(() => rng.u() - 0.5);
+  const rest = sorted.slice(numByes);
   const slots = new Array(n2).fill(null);
   const seeds = bracketSeeds(n2);
-  const byeMatches = new Set();
-  for (let i = 0; i < numByes; i++) { const pos = seeds.indexOf(i + 1); slots[pos] = byeTeams[i]; byeMatches.add(Math.floor(pos / 2)); }
-  let ri = 0; for (let i = 0; i < n2; i += 2) { if (byeMatches.has(i / 2)) continue; slots[i] = rest[ri++] || null; slots[i + 1] = rest[ri++] || null; }
+  const locked = new Set();
+  for (let i = 0; i < numByes; i++) { const pos = seeds.indexOf(i + 1); slots[pos] = byeTeams[i]; locked.add(pos); locked.add(pos % 2 === 0 ? pos + 1 : pos - 1); }
+  const empty = [];
+  for (let i = 0; i < n2; i++) if (!locked.has(i)) empty.push(i);
+  for (let i = empty.length - 1; i > 0; i--) { const j = Math.floor(rng.u() * (i + 1)); [empty[i], empty[j]] = [empty[j], empty[i]]; }
+  for (let i = 0; i < rest.length; i++) slots[empty[i]] = rest[i];
   const first = [];
   for (let i = 0; i < n2; i += 2) { const h = slots[i], a = slots[i+1]; first.push({ home: h || a, away: h && a ? a : null, result: null, ...((!h || !a) ? {bye:true} : {}) }); }
   return buildKOShell(first, hasTP);
@@ -1787,12 +1857,12 @@ const ensureMinLum = (hex) => {
   return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
 };
 
-const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:45,MID:25,FWD:29},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
+const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:55,MID:20,FWD:24},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
 function pickPlayer(rng, players, type) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
   const hasAtk = players[0]?.atkW != null;
-  const pureAtk = (type === "goal" || type === "longGoal" || type === "penalty") && hasAtk;
+  const pureAtk = (type === "goal" || type === "penalty") && hasAtk;
   const w = POS_W[type] || POS_W.any;
   // For pure atkW types (goal/longGoal/penalty): use atkW directly
   // For other types when atkW available: blend position weight + atkW for formation-specific distribution
@@ -1801,7 +1871,7 @@ function pickPlayer(rng, players, type) {
     const tw = useTier ? TIER_ATK_W[p.tier || 0] : 1;
     if (pureAtk) return {p, w: (p.atkW || 0) * tw};
     const posW = w[p.pos] || 10;
-    if (hasAtk && (type === "any" || type === "corner")) return {p, w: (posW + (p.atkW || 0) * 0.8) * tw};
+    if (hasAtk && (type === "any" || type === "corner" || type === "longGoal")) return {p, w: (posW + (p.atkW || 0) * 0.8) * tw};
     return {p, w: posW};
   });
   const total = weighted.reduce((s,x) => s + x.w, 0);
@@ -1823,7 +1893,7 @@ function assistPlayer(rng, players, scorer, delta) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
   const a = pickPlayer(rng, others, "any");
-  a.assists++;
+  a.assists++; a.chances = (a.chances || 0) + 1;
   a.rating = Math.max(3, Math.min(10, +(a.rating + (delta != null ? delta : 0.6)).toFixed(2)));
   return a;
 }
@@ -1837,16 +1907,16 @@ function buildSquad(formation, names) {
   // Per-formation attacking weight gradients: L-to-R within each layer
   const FG = {
     "4-2-4":     [0, 4,3,3,4, 16,16, 34,40,42,34],          // LB CB CB RB | CM CM | LW ST ST RW
-    "4-4-2":     [0, 4,3,3,4, 22,14,14,22, 42,44],           // LB CB CB RB | LM CM CM RM | ST ST
+    "4-4-2":     [0, 4,3,3,4, 18,14,14,18, 44,46],           // LB CB CB RB | LM CM CM RM | ST ST
     "4-3-3":     [0, 5,3,3,5, 15,18,15, 36,40,36],           // LB CB CB RB | CM CM(b2b) CM | LW ST RW
-    "4-2-3-1":   [0, 4,3,3,4, 8,8, 30,38,30, 36],            // LB CB CB RB | DM DM | LAM CAM RAM | ST
-    "4-1-4-1":   [0, 4,3,3,4, 6, 28,14,14,28, 36],           // LB CB CB RB | DM | LW CM CM RW | ST
-    "4-1-2-1-2": [0, 4,3,3,4, 6, 14,14, 36, 42,44],          // LB CB CB RB | DM | CM CM | AM | ST ST
-    "4-3-2-1":   [0, 4,3,3,4, 12,16,12, 34,34, 36],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
-    "3-4-3":     [0, 3,4,3, 16,10,10,16, 36,40,36],          // CB CB CB | LWB CM CM RWB | LW ST RW
-    "3-5-2":     [0, 3,4,3, 18,12,16,12,18, 42,44],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
-    "3-4-1-2":   [0, 3,4,3, 14,10,10,14, 36, 42,44],         // CB CB CB | LWB CM CM RWB | AM | ST ST
-    "5-3-2":     [0, 12,3,4,3,12, 18,16,18, 42,44],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
+    "4-2-3-1":   [0, 4,3,3,4, 8,8, 22,28,22, 48],            // LB CB CB RB | DM DM | LAM CAM RAM | ST
+    "4-1-4-1":   [0, 4,3,3,4, 6, 20,14,14,20, 46],           // LB CB CB RB | DM | LW CM CM RW | ST
+    "4-1-2-1-2": [0, 4,3,3,4, 6, 14,14, 30, 44,46],          // LB CB CB RB | DM | CM CM | AM | ST ST
+    "4-3-2-1":   [0, 4,3,3,4, 12,16,12, 24,24, 50],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
+    "3-4-3":     [0, 3,4,3, 12,10,10,12, 38,42,38],          // CB CB CB | LWB CM CM RWB | LW ST RW
+    "3-5-2":     [0, 3,4,3, 14,12,16,12,14, 44,46],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
+    "3-4-1-2":   [0, 3,4,3, 14,10,10,14, 28, 44,46],         // CB CB CB | LWB CM CM RWB | AM | ST ST
+    "5-3-2":     [0, 10,3,4,3,10, 16,14,16, 44,46],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
   };
   const fm = formation || "4-3-3";
   const atkGrad = FG[fm] || (()=>{ const d2=fm.split("-").map(Number); const g=[0]; let ii=1; for(let i=0;i<d2[0];i++){g.push(4);ii++;} for(let di=1;di<d2.length-1;di++){const isDeep=di===1&&d2.length>3;for(let i=0;i<d2[di];i++){g.push(isDeep?10:Math.round(12+26*((ii-d2[0]-1)/Math.max(1,10-d2[0]-d2[d2.length-1]-1))));ii++;}} for(let i=0;i<d2[d2.length-1];i++){const nf=d2[d2.length-1];g.push(nf===1?36:nf===2?(i===0?42:44):(i===nf-1?40:36));ii++;} return g; })();
@@ -1882,6 +1952,7 @@ const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_KULLANMAAN = parsePresetTSV(kullanmaanTSV, null, 0, false, false);
 const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
 const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
+const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 const LEAGUE_ORDER = [
   "Avium International",
   null,
@@ -2085,6 +2156,7 @@ export default function App() {
   const [showBulk, setShowBulk] = useState(false);
   const [teamSort, setTeamSort] = useState(null);
   const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
+  const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [viewSquad, setViewSquad] = useState(null);
@@ -2262,6 +2334,139 @@ export default function App() {
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   };
+  const exportDEBracket = () => {
+    const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
+    const nR = ko.rounds.length;
+    let wbFirst = 0;
+    for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
+    const wbRounds = ko.rounds.slice(wbFirst);
+    const wbN0 = wbRounds[0].matches.length;
+    const lbRounds = ko.losers;
+    const lbN0 = lbRounds[0].matches.length;
+    const cW = 180, cH = 48, gp = 8, cn = 24, pd = 24, hd = 18;
+    const wbH = Math.max(wbN0, 2) * (cH + gp);
+    const lbH = Math.max(lbN0, 2) * (cH + gp);
+    const wbCols = wbRounds.length, lbCols = lbRounds.length;
+    const gfCols = 1 + (ko.reset && (ko.reset.home || ko.reset.away) ? 1 : 0);
+    const wbTotalCols = wbCols + gfCols;
+    const maxCols = Math.max(wbTotalCols, lbCols);
+    const svgW = maxCols * cW + Math.max(0, maxCols - 1) * cn + pd * 2;
+    const svgH = pd + hd + wbH + 20 + hd + lbH + pd + 20;
+    const esc = (str) => String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const W = (m) => koWinner(m);
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:#141c2b">';
+    s += '<style>text{font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;fill:#7889a0;font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:#7889a0;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}.sec{fill:#7889a0;font-size:9px;font-weight:700;letter-spacing:2px}.gfsec{fill:#e4002b;font-size:9px;font-weight:700;letter-spacing:2px}</style>';
+    s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#141c2b" stop-opacity="0"/><stop offset="55%" stop-color="#141c2b" stop-opacity="1"/><stop offset="100%" stop-color="#141c2b" stop-opacity="1"/></linearGradient></defs>';
+    const card = (m, x, y, brd, bw) => {
+      const w = W(m);
+      s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="#141c2b" stroke="'+brd+'" stroke-width="'+bw+'"/>';
+      const hn = esc(m.home?.name||(m.bye?"BYE":"TBD")), an = esc(m.away?.name||(m.bye?"BYE":"TBD"));
+      const is2L = m.result?.twoLeg, isPart = m.result?.partial;
+      const maxNL = is2L && !isPart ? 18 : 22;
+      const hnT = hn.length > maxNL ? hn.slice(0, maxNL-1) + "…" : hn;
+      const anT = an.length > maxNL ? an.slice(0, maxNL-1) + "…" : an;
+      const winnerIsHome = w && w === m.home;
+      const addLabel = (lbl, clr, lx, ly) => {
+        if (!lbl) return;
+        const lblW = lbl.length * 5 + 6, fadeW = 44, maskW = lblW + fadeW;
+        s += '<rect x="'+(lx-maskW)+'" y="'+(ly-10)+'" width="'+maskW+'" height="13" fill="url(#nameFade)"/>';
+        s += '<text x="'+lx+'" y="'+ly+'" text-anchor="end" style="font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;font-size:10px;fill:'+clr+';font-weight:700;font-style:italic">'+lbl+'</text>';
+      };
+      if (is2L && !isPart) {
+        const l1h=m.result.leg1.home, l1a=m.result.leg1.away, l2h=m.result.leg2?.away||0, l2a=m.result.leg2?.home||0;
+        const ah=m.result.agg?.home||0, aa=m.result.agg?.away||0;
+        const hCls=w===m.home?' class="w"':'', aCls=w===m.away?' class="w"':'';
+        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+hCls+'>'+hnT+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
+        const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
+        const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
+        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
+        const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
+        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
+        legText(l1h, l1End, y+19); legText(l2h, l2End, y+19); aggText(ah, aggEnd, y+19, hCls); penText(m.result.pen?.home, y+19);
+        legText(l1a, l1End, y+37); legText(l2a, l2End, y+37); aggText(aa, aggEnd, y+37, aCls); penText(m.result.pen?.away, y+37);
+        const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
+        addLabel(lbl, m.result.pen ? "#d08770" : "#7889a0", l1End-legColW-4, winnerIsHome ? y+19 : y+37);
+      } else {
+        const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
+        const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
+        s += '<text x="'+(x+6)+'" y="'+(y+19)+'"'+(w===m.home?' class="w"':'')+'>'+ hnT+'</text>';
+        let hsc = String(hs); if(m.result?.pen) hsc += ' ('+m.result.pen.home+')';
+        s += '<text x="'+(x+cW-6)+'" y="'+(y+19)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.home?' class="w"':'')+'>'+hsc+'</text>';
+        s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+(w===m.away?' class="w"':'')+'>'+ anT+'</text>';
+        let asc = String(as2); if(m.result?.pen) asc += ' ('+m.result.pen.away+')';
+        s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
+        const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
+        const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
+        addLabel(lbl, m.result?.pen ? "#d08770" : "#7889a0", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
+      }
+    };
+    const pairLines = (srcMatches, x, baseY, height) => {
+      const srcN = srcMatches.length, sl = height / srcN;
+      for (let i = 0; i < (srcN>>1); i++) {
+        const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
+        if (m1.bye && m2.bye) continue;
+        const y1 = baseY + (2*i+0.5)*sl, y2 = baseY + (2*i+1.5)*sl, mid = (y1+y2)/2;
+        if (!m1.bye) s += '<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="#7889a0"/>';
+        if (!m2.bye) s += '<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="#7889a0"/>';
+        s += '<line x1="'+(x+cn/2)+'" y1="'+(m1.bye?mid:y1)+'" x2="'+(x+cn/2)+'" y2="'+(m2.bye?mid:y2)+'" stroke="#7889a0"/>';
+        s += '<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="#7889a0"/>';
+      }
+      if (srcN % 2 === 1 && !srcMatches[srcN-1].bye) { const y = baseY + (srcN-0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="#7889a0"/>'; }
+    };
+    const straightLines = (srcMatches, x, baseY, height) => {
+      const srcN = srcMatches.length, sl = height / srcN;
+      for (let i = 0; i < srcN; i++) { if (srcMatches[i].bye) continue; const y = baseY + (i+0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="#7889a0"/>'; }
+    };
+    const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes) => {
+      let cx = pd;
+      rounds.forEach((rd, ri) => {
+        if (ri > 0) {
+          const prevM = rounds[ri-1].matches;
+          if (connTypes && connTypes[ri] === "straight") straightLines(prevM, cx, baseY + hd, height);
+          else pairLines(prevM, cx, baseY + hd, height);
+          cx += cn;
+        }
+        const n = rd.matches.length, sl = height / n;
+        s += '<text x="'+(cx+cW/2)+'" y="'+(baseY+12)+'" class="h" style="fill:'+sectionClr+'">'+esc((rd.name||"").toUpperCase())+'</text>';
+        rd.matches.forEach((m, mi) => { if (m.bye) return; const y = baseY + hd + (mi+0.5)*sl - cH/2; card(m, cx, y, brd, bw); });
+        cx += cW;
+      });
+      return cx;
+    };
+    // WB section + GF + Reset inline
+    const wbBaseY = pd;
+    s += '<text x="'+pd+'" y="'+(wbBaseY - 4)+'" class="sec">WINNERS BRACKET</text>';
+    const lbConnTypes = {};
+    lbRounds.forEach((rd, i) => { if (i > 0) lbConnTypes[i] = rd.type === "internal" ? "pair" : "straight"; });
+    let wbEndX = renderSection(wbRounds, wbBaseY + 8, wbH, "#2a3a50", 1, "#7889a0", null);
+    // GF inline after WB final
+    const gfMidY = wbBaseY + 8 + hd + wbH / 2;
+    s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="#7889a0"/>';
+    wbEndX += cn;
+    s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:#e4002b">Grand Final</text>';
+    card(ko.grandFinal, wbEndX, gfMidY - cH/2, "#e4002b", 2);
+    wbEndX += cW;
+    if (ko.reset && (ko.reset.home || ko.reset.away)) {
+      s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="#7889a0"/>';
+      wbEndX += cn;
+      s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:#ebcb8b">RESET</text>';
+      card(ko.reset, wbEndX, gfMidY - cH/2, "#ebcb8b", 1);
+      wbEndX += cW;
+    }
+    // LB section
+    const lbTopY = wbBaseY + 8 + hd + wbH + 16;
+    s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="#2a3a50" stroke-opacity="0.3"/>';
+    s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOSERS BRACKET</text>';
+    renderSection(lbRounds, lbTopY + 16, lbH, "#2a3a50", 1, "#7889a0", lbConnTypes);
+    s += '</svg>';
+    const blob = new Blob([s], {type: "image/svg+xml"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "de-bracket.svg";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  };
   const [lastLiveResult, setLastLiveResult] = useState(null);
 
   // ─── TOURNAMENT ───
@@ -2270,7 +2475,7 @@ export default function App() {
   const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koGFReset: false, injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   const [tDrawLog, setTDrawLog] = useState([]);
@@ -2384,8 +2589,8 @@ export default function App() {
       setTGroups(ng);
     } else if (target.type === "ko") {
       const nk = JSON.parse(JSON.stringify(tKO));
-      if (!nk.rounds?.[target.ri]) return;
-      const m = target.tp ? nk.thirdPlace : nk.rounds[target.ri].matches[target.mi];
+      const bk = target.bracket || (target.tp ? "tp" : "wb");
+      const m = bk === "lb" ? nk.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? nk.grandFinal : bk === "reset" ? nk.reset : bk === "tp" ? nk.thirdPlace : nk.rounds[target.ri]?.matches[target.mi];
       if (!m) return;
       homeTeamObj = m.home;
       awayTeamObj = m.away;
@@ -2441,7 +2646,8 @@ export default function App() {
       matchObj = tGroups[target.gi].schedule[target.ri][target.mi];
       homeTeam = matchObj.home; awayTeam = matchObj.away;
     } else {
-      matchObj = target.tp ? tKO.thirdPlace : tKO.rounds[target.ri].matches[target.mi];
+      const bk = target.bracket || (target.tp ? "tp" : "wb");
+      matchObj = bk === "lb" ? tKO.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? tKO.grandFinal : bk === "reset" ? tKO.reset : bk === "tp" ? tKO.thirdPlace : tKO.rounds[target.ri]?.matches[target.mi];
       homeTeam = matchObj.home; awayTeam = matchObj.away;
     }
     if (!homeTeam || !awayTeam) return;
@@ -2488,7 +2694,7 @@ export default function App() {
 
     const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId);
     const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId);
-    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
     const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
@@ -2502,6 +2708,7 @@ export default function App() {
     init.strategy = { home: { ...STRAT_DEF, ...(teamById(liveHId).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(liveAId).strategy || {}) } };
     init.score = [0, 0];
     init.startScore = startScore;
+    init.isSecondLeg = isL2;
     init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
     init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
 
@@ -2620,7 +2827,7 @@ export default function App() {
 
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail = new Set();
@@ -2632,11 +2839,11 @@ export default function App() {
     const hDebuff = calcPromoDebuff(hLive.starters, hBenchNames);
     const aDebuff = calcPromoDebuff(aLive.starters, aBenchNames);
     if (hDebuff || aDebuff) init.promoDebuff = { home: hDebuff, away: aDebuff };
-    init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill })); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail2 = new Set();
@@ -2648,7 +2855,7 @@ export default function App() {
     const hDebuff2 = calcPromoDebuff(hLive2.starters, hBenchNames2);
     const aDebuff2 = calcPromoDebuff(aLive2.starters, aBenchNames2);
     if (hDebuff2 || aDebuff2) init.promoDebuff = { home: hDebuff2, away: aDebuff2 };
-    init.players = {home: hLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setAutoPlay(false); setLmMatch(s); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
@@ -2705,7 +2912,8 @@ export default function App() {
     const genTeams = tournamentTeams.map(t => ({...t, squad: t.squad ? t.squad.map(p => ({...p})) : null, strategy: {...t.strategy}}));
     // Single knockout — skip groups entirely
     if (tConfig.mode === "single" && tConfig.singleType === "knockout") {
-      const hasTP = tConfig.thirdPlace && genTeams.length >= 4;
+      const isDE = tConfig.koFormat === "double_elim";
+      const hasTP = !isDE && tConfig.thirdPlace && genTeams.length >= 4;
       let n2=1; while(n2<genTeams.length)n2*=2; const nb=n2-genTeams.length;
       if (nb > 0 && tConfig.koByeMode === "manual") {
         const sorted = [...genTeams].sort((a,b) => b.skill - a.skill);
@@ -2713,9 +2921,10 @@ export default function App() {
         setTPhase("ko_byes"); setLoading(false); return;
       }
       const km = tConfig.koAllocMode;
-      if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(genTeams, hasTP, rng); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
+      const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, tConfig.koGFReset); };
+      if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(genTeams, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
       else if (km === "manual") { let n2=1; while(n2<genTeams.length)n2*=2; setTKOManual({ pool: [...genTeams], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-genTeams.length }); setTPhase("ko_manual"); }
       setTGroups([]); setTDrawLog([]); setLoading(false); return;
     }
@@ -2809,19 +3018,22 @@ export default function App() {
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
-        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
+        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,chances:0,defActs:0,saves:0});
         if (p.sub === 'on') d.subApp++; else d.matches++;
         d.goals += p.goals || 0;
         d.assists += p.assists || 0;
         d.totalRating += p.rating || 6.5;
         d.yellows += p.yc || 0;
+        d.chances += p.chances || 0;
+        d.defActs += p.defActs || 0;
+        d.saves += p.saves || 0;
         if (p.rc) { d.reds++; d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
         if (p.inj) d.injOut += injDur;
       });
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
+        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
@@ -2833,6 +3045,9 @@ export default function App() {
           next[k].reds = (next[k].reds||0) + d.reds;
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
+          next[k].chances = (next[k].chances||0) + d.chances;
+          next[k].defActs = (next[k].defActs||0) + d.defActs;
+          next[k].saves = (next[k].saves||0) + d.saves;
         }
         if (injP) { const ik = keyOf(injP.name); next[ik].injSev = injP.injSev; next[ik].injPart = injP.injPart; }
         return next;
@@ -2887,8 +3102,8 @@ export default function App() {
       const gCount = scorers.filter(n => n === p.name).length;
       const aCount = assisters.filter(n => n === p.name).length;
       rtg += gCount * goalAtkMult(p.atkW) + aCount * 0.4 * assistAtkMult(p.atkW);
-      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.1;
-      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.06;
+      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
+      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
       playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
     });
     matchSubs.forEach(p => {
@@ -2897,16 +3112,16 @@ export default function App() {
       const gCount = scorers.filter(n => n === p.name).length;
       const aCount = assisters.filter(n => n === p.name).length;
       rtg += gCount * 1.2 * goalAtkMult(p.atkW) + aCount * 0.5 * assistAtkMult(p.atkW);
-      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.1;
-      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.06;
+      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
+      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
       playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
     });
     const csBonus = goalsAgainst === 0;
     allOnPitch.forEach(p => {
       if (!playerRtgs[p.name]) return;
       const pr = playerRtgs[p.name];
-      if (p.pos === "GK") { if (csBonus) pr.rtg += 0.6; else pr.rtg += Math.min(0.3, rng2.u() * 0.1 + goalsAgainst * 0.03); }
-      else if (p.pos === "DEF") { if (csBonus) pr.rtg += 0.35; else if (goalsAgainst === 1) pr.rtg += 0.2; else if (goalsAgainst === 2) pr.rtg += 0.1; }
+      if (p.pos === "GK") { if (csBonus) pr.rtg += 1.25; else pr.rtg += Math.min(0.48, rng2.u() * 0.22 + goalsAgainst * 0.06); }
+      else if (p.pos === "DEF") { if (csBonus) pr.rtg += 0.68; else if (goalsAgainst === 1) pr.rtg += 0.36; else if (goalsAgainst === 2) pr.rtg += 0.22; }
       else if (p.pos === "MID") { pr.rtg += (rng2.u() - 0.3) * 0.3; if (goalsFor >= 2) pr.rtg += 0.08; }
       pr.rtg = Math.max(3, Math.min(10, pr.rtg));
     });
@@ -2969,7 +3184,7 @@ export default function App() {
     const merged = {};
     diffsSets.filter(Boolean).forEach(diffs => {
       for (const [k, d] of Object.entries(diffs)) {
-        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
+        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,chances:0,defActs:0,saves:0});
         for (const f of Object.keys(m)) m[f] += d[f] || 0;
       }
     });
@@ -2988,6 +3203,9 @@ export default function App() {
         next[k].reds = Math.max(0, (next[k].reds||0) - d.reds);
         next[k].suspended = Math.max(0, (next[k].suspended||0) - d.suspended);
         next[k].injOut = Math.max(0, (next[k].injOut||0) - d.injOut);
+        next[k].chances = Math.max(0, (next[k].chances||0) - d.chances);
+        next[k].defActs = Math.max(0, (next[k].defActs||0) - d.defActs);
+        next[k].saves = Math.max(0, (next[k].saves||0) - d.saves);
       }
       return next;
     });
@@ -3003,8 +3221,9 @@ export default function App() {
     gm.result = { ftHome: hg, ftAway: ag };
     decrementBans(new Set([gm.home.name, gm.away.name]));
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
-    accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, null, mUnavail);
-    accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, null, mUnavail);
+    const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, null, mUnavail);
+    const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, null, mUnavail);
+    gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
     ng[gi].standings = recalcStandings(ng[gi], tConfig.tiebreakers);
     setTGroups(ng); setTEdit(null); setTScoreError("");
   };
@@ -3012,6 +3231,8 @@ export default function App() {
     const ng = JSON.parse(JSON.stringify(tGroups));
     const gm = ng[gi]?.schedule[ri]?.[mi];
     if (!gm) return;
+    const sd = gm.result?.statDiffs;
+    if (sd) reverseMatchStats([sd.home, sd.away]);
     gm.result = null;
     ng[gi].standings = recalcStandings(ng[gi], tConfig.tiebreakers);
     setTGroups(ng);
@@ -3020,10 +3241,23 @@ export default function App() {
   };
   const tSetKoManualScore = () => {
     if (!tKoEdit) return;
-    const { ri, mi, h, a, tp, step, ftH, ftA, etH, etA, twoLeg: isTL, l1h, l1a } = tKoEdit;
+    const { ri, mi, h, a, step, ftH, ftA, etH, etA, twoLeg: isTL, l1h, l1a } = tKoEdit;
+    const bracket = tKoEdit.bracket || (tKoEdit.tp ? "tp" : "wb");
     const hg = parseInt(h, 10), ag = parseInt(a, 10);
+    const getTarget = (ko) => { if (bracket === "lb") return ko.losers[ri].matches[mi]; if (bracket === "gf") return ko.grandFinal; if (bracket === "reset") return ko.reset; if (bracket === "tp") return ko.thirdPlace; return ko.rounds[ri].matches[mi]; };
+    const cascade = (ko) => {
+      const isDE = !!ko.losers;
+      const clrLB = (from) => { for (let lr = from; lr < ko.losers.length; lr++) ko.losers[lr].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; delete m2.bye; }); };
+      const clrGFR = () => { ko.grandFinal.result = null; ko.grandFinal.home = null; ko.grandFinal.away = null; if (ko.reset) { ko.reset.result = null; ko.reset.home = null; ko.reset.away = null; } };
+      if (bracket === "tp") return;
+      if (bracket === "lb") { clrLB(ri + 1); clrGFR(); }
+      else if (bracket === "gf") { if (ko.reset) { ko.reset.result = null; ko.reset.home = null; ko.reset.away = null; } }
+      else if (bracket === "reset") { /* no further cascade */ }
+      else { for (let r = ri + 1; r < ko.rounds.length; r++) ko.rounds[r].matches.forEach(m => { m.result = null; m.home = null; m.away = null; }); if (isDE) { clrLB(0); clrGFR(); } else { if (ko.thirdPlace && ri <= ko.rounds.length - 2) { ko.thirdPlace.result = null; ko.thirdPlace.home = null; ko.thirdPlace.away = null; } } }
+      ko.champion = null; propagateKO(ko);
+    };
     if (isTL && step === "l2" && String(h).trim() === "" && String(a).trim() === "") {
-      const submitSkip = (result) => { const ko = JSON.parse(JSON.stringify(tKO)); if (tp) { ko.thirdPlace.result = result; } else { ko.rounds[ri].matches[mi].result = result; for (let r2 = ri + 1; r2 < ko.rounds.length; r2++) ko.rounds[r2].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; }); if (ko.thirdPlace && ri <= ko.rounds.length - 2) { ko.thirdPlace.result = null; ko.thirdPlace.home = null; ko.thirdPlace.away = null; } ko.champion = null; propagateKO(ko); } setTKO(ko); setTKoEdit(null); setTScoreError(""); const fm = ko.rounds[ko.rounds.length - 1].matches[0]; if (fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial))) setTPhase("complete"); else setTPhase("knockout"); };
+      const submitSkip = (result) => { const ko = JSON.parse(JSON.stringify(tKO)); const target = getTarget(ko); target.result = result; cascade(ko); setTKO(ko); setTKoEdit(null); setTScoreError(""); if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout"); };
       if (l1h === l1a) { setTKoEdit({ ...tKoEdit, twoLeg: false, step: "et", ftH: l1h, ftA: l1a, h: "", a: "" }); setTScoreError(""); }
       else submitSkip({ ftHome: l1h, ftAway: l1a });
       return;
@@ -3032,18 +3266,11 @@ export default function App() {
     if (hg < 0 || ag < 0) { setTScoreError("Scores can't be negative"); return; }
     const submit = (result) => {
       const ko = JSON.parse(JSON.stringify(tKO));
-      if (tp) { ko.thirdPlace.result = result; }
-      else {
-        ko.rounds[ri].matches[mi].result = result;
-        for (let r = ri + 1; r < ko.rounds.length; r++) ko.rounds[r].matches.forEach(m => { m.result = null; m.home = null; m.away = null; });
-        if (ko.thirdPlace && ri <= ko.rounds.length - 2) { ko.thirdPlace.result = null; ko.thirdPlace.home = null; ko.thirdPlace.away = null; }
-        ko.champion = null;
-        propagateKO(ko);
-      }
+      const target = getTarget(ko);
+      target.result = result; cascade(ko);
       setTKO(ko); setTKoEdit(null); setTScoreError("");
-      if (result && !result.partial) { const km = tp ? ko.thirdPlace : ko.rounds[ri].matches[mi]; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
-      const fm = ko.rounds[ko.rounds.length - 1].matches[0];
-      if (fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial))) setTPhase("complete"); else setTPhase("knockout");
+      if (result && !result.partial) { const km = target; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
+      if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
     };
     if (isTL) {
       if (step === "l1") { setTKoEdit({ ...tKoEdit, step: "l2", l1h: hg, l1a: ag, h: tKoEdit.l2h || "", a: tKoEdit.l2a || "" }); setTScoreError(""); return; }
@@ -3108,8 +3335,10 @@ export default function App() {
         if (targetMi !== -1 && targetMi !== mi) return;
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet), aSq = filterSquad(m.away.squad, m.away.name, unavailSet);
         m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, urgCache[`${gi}_${mi}`]);
-        applyBan(accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home));
-        applyBan(accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away));
+        const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
+        const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
+        applyBan(rH); applyBan(rA);
+        m.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
       }); });
     }
     ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
@@ -3134,14 +3363,16 @@ export default function App() {
       setTByeManual({ pool: sorted, numByes: nbp, selected: [], hasTP, onConfirm: "double" });
       setTPhase("ko_byes"); return;
     }
-    const hasTP = tConfig.thirdPlace && qualified.length >= 4;
+    const isDE = tConfig.koFormat === "double_elim";
+    const hasTP = !isDE && tConfig.thirdPlace && qualified.length >= 4;
     const km = tConfig.koAllocMode;
+    const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, tConfig.koGFReset); };
     if (km === "seed") {
       const ko = buildKnockoutSeeded(qualified, hasTP);
-      propagateKO(ko); setTKO(ko); setTPhase("knockout");
+      applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout");
     } else {
-      if (km === "random") { const ko=buildKnockoutRandom(qualified, hasTP, new RNG(Date.now())); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(qualified, hasTP, rng); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
+      if (km === "random") { const ko=buildKnockoutRandom(qualified, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(qualified, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
       else if (km === "manual") { let n2=1; while(n2<qualified.length)n2*=2; setTKOManual({ pool: [...qualified], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-qualified.length }); setTPhase("ko_manual"); }
     }
   };
@@ -3170,7 +3401,9 @@ export default function App() {
     let oi = 0; for (let i = 0; i < n2; i += 2) { if (byeMatches.has(i / 2)) continue; slots[i] = ordered[oi++] || null; slots[i + 1] = ordered[oi++] || null; }
     const first = [];
     for (let i = 0; i < n2; i += 2) { const h = slots[i], a = slots[i+1]; first.push({ home: h||a, away: h&&a?a:null, result:null, ...((!h||!a)?{bye:true}:{}) }); }
-    const ko = buildKOShell(first, hasTP); propagateKO(ko); setTKO(ko);
+    const ko = buildKOShell(first, hasTP);
+    if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, tConfig.koGFReset);
+    propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTByeManual(null); setTPlayerStats({});
   };
   const tKOManualAssign = (teamIdx, matchIdx, slot) => {
@@ -3201,14 +3434,19 @@ export default function App() {
       for (let i = 0; i < tKOManual.n2; i += 2) { if (byeSet.has(i / 2)) continue; if (mi < manualMatches.length) { slots[i] = manualMatches[mi].home; slots[i + 1] = manualMatches[mi].away; mi++; } }
       const first = [];
       for (let i = 0; i < tKOManual.n2; i += 2) { const h = slots[i], a = slots[i+1]; first.push({ home: h||a, away: h&&a?a:null, result:null, ...((!h||!a)?{bye:true}:{}) }); }
-      const hasTP = tKOManual.hasTP;
-      const ko = buildKOShell(first, hasTP); propagateKO(ko); setTKO(ko);
+      const hasTP = tConfig.koFormat !== "double_elim" && tKOManual.hasTP;
+      const ko = buildKOShell(first, hasTP);
+      if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, tConfig.koGFReset);
+      propagateKO(ko); setTKO(ko);
       setTPhase("knockout"); setTKOManual(null); return;
     }
     const first = tKOManual.matches.filter(m => m.home || m.away).map(m => ({ home: m.home, away: m.away, result: null, ...(!m.home || !m.away ? {bye:true} : {}) }));
     if (tKOManual.pool.length === 1) first.push({ home: tKOManual.pool[0], away: null, result: null, bye: true });
-    const hasTP = tConfig.thirdPlace && first.length * 2 >= 4;
-    const ko = buildKOShell(first, hasTP); propagateKO(ko); setTKO(ko);
+    const isDE2 = tConfig.koFormat === "double_elim";
+    const hasTP = !isDE2 && tConfig.thirdPlace && first.length * 2 >= 4;
+    const ko = buildKOShell(first, hasTP);
+    if (isDE2) convertToDoubleElim(ko, tConfig.koGFReset);
+    propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTKOManual(null);
   };
   const tSimKOMatch = (rng, m, legTarget, haKey, unavailSet) => {
@@ -3225,7 +3463,7 @@ export default function App() {
     if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
     return m.result;
   };
-  const tScorinateKO = (targetRi, targetMi, legTarget) => {
+  const tScorinateKO = (targetRi, targetMi, legTarget, bracket) => {
     const bulk = targetRi === -1 || targetMi === -1;
     const run = () => {
     const rng = new RNG(Date.now());
@@ -3235,78 +3473,67 @@ export default function App() {
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
     const applyBan = (info) => { if (info?.redKey) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
     const decLocal = (tms) => { for (const k of Object.keys(localBans)) { const tn = k.substring(0, k.indexOf("|")); if (tms.has(tn)) { if (localBans[k].suspended > 0) localBans[k].suspended--; if (localBans[k].injOut > 0) localBans[k].injOut--; } } };
-    for (let ri = 0; ri < ko.rounds.length; ri++) {
-      const koTeams = new Set();
-      ko.rounds[ri].matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (targetRi!==-1&&targetRi!==ri) return; if (targetMi!==-1&&targetMi!==mi) return; koTeams.add(m.home.name); koTeams.add(m.away.name); });
-      if (koTeams.size > 0) { decrementBans(koTeams); decLocal(koTeams); }
+    const accumStats = (m, unavailSet) => {
+      if (!m.result || m.result.partial) return;
+      if (m.result.twoLeg) {
+        const l1h=m.result.leg1?.home||0,l1a=m.result.leg1?.away||0;
+        const rH1=accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet,m.result.playerData?.leg1?.home); applyBan(rH1);
+        const rA1=accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet,m.result.playerData?.leg1?.away); applyBan(rA1);
+        const l2h=m.result.leg2?.home||0,l2a=m.result.leg2?.away||0;
+        const rH2=accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet,m.result.playerData?.leg2?.away); applyBan(rH2);
+        const rA2=accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet,m.result.playerData?.leg2?.home); applyBan(rA2);
+        m.result.statDiffs = { leg1:{home:rH1?.diffs,away:rA1?.diffs}, leg2:{home:rH2?.diffs,away:rA2?.diffs} };
+      } else {
+        const kw=koWinner(m); const hg=m.result.ftHome+(m.result.et?.home||0); const ag2=m.result.ftAway+(m.result.et?.away||0);
+        const rH=accumulateMatchStats(m.home,hg,ag2,kw===m.home,hg===ag2&&!m.result.pen,m.result.cards?.home,unavailSet,m.result.playerData?.home); applyBan(rH);
+        const rA=accumulateMatchStats(m.away,ag2,hg,kw===m.away,hg===ag2&&!m.result.pen,m.result.cards?.away,unavailSet,m.result.playerData?.away); applyBan(rA);
+        m.result.statDiffs = { home:rH?.diffs, away:rA?.diffs };
+      }
+    };
+    const simRound = (matches, haPrefix, ri, tRi, tMi) => {
+      const tms = new Set();
+      matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (tRi!==-1&&tRi!==ri) return; if (tMi!==-1&&tMi!==mi) return; tms.add(m.home.name); tms.add(m.away.name); });
+      if (tms.size > 0) { decrementBans(tms); decLocal(tms); }
       const unavailSet = buildUnavail();
-      ko.rounds[ri].matches.forEach((m, mi) => {
-        if (!m.home || !m.away) return;
-        if (m.result && !m.result.partial) return;
-        if (m.result && m.result.partial && legTarget === 1) return;
-        if (!m.result && legTarget === 2) return;
-        if (targetRi !== -1 && targetRi !== ri) return;
-        if (targetMi !== -1 && targetMi !== mi) return;
-        m.result = tSimKOMatch(rng, m, legTarget, `ko_${ri}_${mi}`, unavailSet);
-          if(m.result && !m.result.partial) {
-            if (m.result.twoLeg) {
-              const l1h=m.result.leg1?.home||0,l1a=m.result.leg1?.away||0;
-              const rH1=accumulateMatchStats(m.home,l1h,l1a,l1h>l1a,l1h===l1a,m.result.cards?.leg1?.home,unavailSet,m.result.playerData?.leg1?.home); applyBan(rH1);
-              const rA1=accumulateMatchStats(m.away,l1a,l1h,l1a>l1h,l1h===l1a,m.result.cards?.leg1?.away,unavailSet,m.result.playerData?.leg1?.away); applyBan(rA1);
-              const l2h=m.result.leg2?.home||0,l2a=m.result.leg2?.away||0;
-              const rH2=accumulateMatchStats(m.home,l2a,l2h,l2a>l2h,l2h===l2a,m.result.cards?.leg2?.away,unavailSet,m.result.playerData?.leg2?.away); applyBan(rH2);
-              const rA2=accumulateMatchStats(m.away,l2h,l2a,l2h>l2a,l2h===l2a,m.result.cards?.leg2?.home,unavailSet,m.result.playerData?.leg2?.home); applyBan(rA2);
-              m.result.statDiffs = { leg1:{home:rH1?.diffs,away:rA1?.diffs}, leg2:{home:rH2?.diffs,away:rA2?.diffs} };
-            } else {
-              const kw=koWinner(m); const hg=m.result.ftHome+(m.result.et?.home||0); const ag=m.result.ftAway+(m.result.et?.away||0);
-              const rH=accumulateMatchStats(m.home,hg,ag,kw===m.home,hg===ag&&!m.result.pen,m.result.cards?.home,unavailSet,m.result.playerData?.home); applyBan(rH);
-              const rA=accumulateMatchStats(m.away,ag,hg,kw===m.away,hg===ag&&!m.result.pen,m.result.cards?.away,unavailSet,m.result.playerData?.away); applyBan(rA);
-              m.result.statDiffs = { home:rH?.diffs, away:rA?.diffs };
-            }
-          }
-      });
-      propagateKO(ko);
-    }
-    const tp = ko.thirdPlace;
-    if (tp?.home && tp?.away && (targetRi === -1 || targetRi === -2)) {
-      const tpDone = tp.result && !tp.result.partial;
-      if (!tpDone) { const tpTeams = new Set([tp.home.name,tp.away.name]); decrementBans(tpTeams); decLocal(tpTeams); const tpUnavail = buildUnavail(); tp.result = tSimKOMatch(rng, tp, legTarget, "tp", tpUnavail); if(tp.result&&!tp.result.partial){
-            if (tp.result.twoLeg) {
-              const tl1h=tp.result.leg1?.home||0,tl1a=tp.result.leg1?.away||0;
-              const trH1=accumulateMatchStats(tp.home,tl1h,tl1a,tl1h>tl1a,tl1h===tl1a,tp.result.cards?.leg1?.home,tpUnavail,tp.result.playerData?.leg1?.home); applyBan(trH1);
-              const trA1=accumulateMatchStats(tp.away,tl1a,tl1h,tl1a>tl1h,tl1h===tl1a,tp.result.cards?.leg1?.away,tpUnavail,tp.result.playerData?.leg1?.away); applyBan(trA1);
-              const tl2h=tp.result.leg2?.home||0,tl2a=tp.result.leg2?.away||0;
-              const trH2=accumulateMatchStats(tp.home,tl2a,tl2h,tl2a>tl2h,tl2h===tl2a,tp.result.cards?.leg2?.away,tpUnavail,tp.result.playerData?.leg2?.away); applyBan(trH2);
-              const trA2=accumulateMatchStats(tp.away,tl2h,tl2a,tl2h>tl2a,tl2h===tl2a,tp.result.cards?.leg2?.home,tpUnavail,tp.result.playerData?.leg2?.home); applyBan(trA2);
-              tp.result.statDiffs = { leg1:{home:trH1?.diffs,away:trA1?.diffs}, leg2:{home:trH2?.diffs,away:trA2?.diffs} };
-            } else {
-              const tw=koWinner(tp); const hg2=tp.result.ftHome+(tp.result.et?.home||0); const ag2=tp.result.ftAway+(tp.result.et?.away||0);
-              const trH=accumulateMatchStats(tp.home,hg2,ag2,tw===tp.home,hg2===ag2&&!tp.result.pen,tp.result.cards?.home,tpUnavail,tp.result.playerData?.home); applyBan(trH);
-              const trA=accumulateMatchStats(tp.away,ag2,hg2,tw===tp.away,hg2===ag2&&!tp.result.pen,tp.result.cards?.away,tpUnavail,tp.result.playerData?.away); applyBan(trA);
-              tp.result.statDiffs = { home:trH?.diffs, away:trA?.diffs };
-            }
-          }}
-    }
+      matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (tRi!==-1&&tRi!==ri) return; if (tMi!==-1&&tMi!==mi) return; m.result = tSimKOMatch(rng, m, legTarget, `${haPrefix}_${ri}_${mi}`, unavailSet); accumStats(m, unavailSet); });
+    };
+    const simOne = (m, haKey) => { if (!m?.home||!m?.away) return; if (m.result&&!m.result.partial) return; const tms=new Set([m.home.name,m.away.name]); decrementBans(tms); decLocal(tms); const u=buildUnavail(); m.result=tSimKOMatch(rng,m,legTarget,haKey,u); accumStats(m,u); };
+    const isDE = !!ko.losers;
+    const simAll = targetRi === -1;
+    if (!bracket || bracket === "wb" || simAll) { for (let ri = 0; ri < ko.rounds.length; ri++) { simRound(ko.rounds[ri].matches, "ko", ri, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
+    if (isDE && (bracket === "lb" || simAll)) { for (let lr = 0; lr < ko.losers.length; lr++) { simRound(ko.losers[lr].matches, "lb", lr, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
+    if (isDE && (bracket === "gf" || simAll)) { simOne(ko.grandFinal, "gf"); propagateKO(ko); }
+    if (isDE && (bracket === "reset" || simAll)) { simOne(ko.reset, "reset"); propagateKO(ko); }
+    if (!isDE && (simAll || targetRi === -2)) { simOne(ko.thirdPlace, "tp"); }
     setTKO(ko);
-    const fm = ko.rounds[ko.rounds.length - 1].matches[0];
-    if (fm?.result && !fm.result.partial && (!ko.thirdPlace || (ko.thirdPlace.result && !ko.thirdPlace.result.partial))) setTPhase("complete");
+    if (isKOComplete(ko)) setTPhase("complete");
     if (bulk) setLoading(false);
     };
     if (bulk) { setLoading(true); setTimeout(run, 40); } else run();
   };
-  const tDeleteKoResult = (ri, mi, tp) => {
+  const tDeleteKoResult = (ri, mi, bracket) => {
+    if (bracket === true) bracket = "tp";
+    if (bracket === false) bracket = "wb";
     const ko = JSON.parse(JSON.stringify(tKO));
-    const target = tp ? ko.thirdPlace : ko.rounds[ri]?.matches[mi];
+    const isDE = !!ko.losers;
+    let target;
+    if (bracket === "lb") target = ko.losers?.[ri]?.matches[mi];
+    else if (bracket === "gf") target = ko.grandFinal;
+    else if (bracket === "reset") target = ko.reset;
+    else if (bracket === "tp") target = ko.thirdPlace;
+    else target = ko.rounds[ri]?.matches[mi];
     if (!target) return;
     const sd = target.result?.statDiffs;
-    if (sd) {
-      const sets = sd.leg1 ? [sd.leg1.home, sd.leg1.away, sd.leg2?.home, sd.leg2?.away] : [sd.home, sd.away];
-      reverseMatchStats(sets);
-    }
+    if (sd) { const sets = sd.leg1 ? [sd.leg1.home, sd.leg1.away, sd.leg2?.home, sd.leg2?.away] : [sd.home, sd.away]; reverseMatchStats(sets); }
     target.result = null;
-    if (!tp) {
-      for (let r2 = ri + 1; r2 < ko.rounds.length; r2++) ko.rounds[r2].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; });
-      if (ko.thirdPlace && ri <= ko.rounds.length - 2) { ko.thirdPlace.result = null; ko.thirdPlace.home = null; ko.thirdPlace.away = null; }
+    if (isDE) {
+      const clearLB = (from) => { for (let lr = from; lr < ko.losers.length; lr++) ko.losers[lr].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; delete m2.bye; }); };
+      const clearGFR = () => { ko.grandFinal.result = null; ko.grandFinal.home = null; ko.grandFinal.away = null; if (ko.reset) { ko.reset.result = null; ko.reset.home = null; ko.reset.away = null; } };
+      if (!bracket || bracket === "wb") { for (let r2 = ri + 1; r2 < ko.rounds.length; r2++) ko.rounds[r2].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; }); clearLB(0); clearGFR(); }
+      else if (bracket === "lb") { clearLB(ri + 1); clearGFR(); }
+      else if (bracket === "gf") { if (ko.reset) { ko.reset.result = null; ko.reset.home = null; ko.reset.away = null; } }
+    } else {
+      if (bracket !== "tp") { for (let r2 = ri + 1; r2 < ko.rounds.length; r2++) ko.rounds[r2].matches.forEach(m2 => { m2.result = null; m2.home = null; m2.away = null; }); if (ko.thirdPlace && ri <= ko.rounds.length - 2) { ko.thirdPlace.result = null; ko.thirdPlace.home = null; ko.thirdPlace.away = null; } }
     }
     ko.champion = null;
     propagateKO(ko);
@@ -3515,13 +3742,13 @@ export default function App() {
               const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
               const tCode = isHome ? abbr(teamById(lmH)?.name, teamById(lmH)?.code) : abbr(teamById(lmA)?.name, teamById(lmA)?.code);
               const tClr = isHome ? hClr : aClr;
-              potmEl = <><span style={{ margin: "0 8px", color: "#ffffff33" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...mono }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></>;
+              potmEl = <><span style={{ margin: "0 8px", color: "#ffffff33" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...ui }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></span></>;
             }
           }
         }
         return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#141c2b", border: "1px solid #2a3a5066", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
           <span style={{ fontSize: 10 }}>📍</span>
-          <span style={{ fontSize: 10, color: "#ffffffcc", fontWeight: 500, ...mono }}>{venueText}</span>
+          <span style={{ fontSize: 10, color: "#ffffffcc", fontWeight: 500, ...ui }}>{venueText}</span>
           {potmEl}
         </div>;
       })()}
@@ -3543,7 +3770,7 @@ export default function App() {
         const hI = buildItems("home"), aI = buildItems("away");
         const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
         const ball = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span>
-          : t === "pen_miss" ? <span style={{ fontSize: 9, filter: "grayscale(1) brightness(0.6) sepia(1) hue-rotate(-30deg) saturate(5)" }}>⚽︎</span>
+          : t === "pen_miss" ? <svg width="9" height="9" viewBox="0 0 9 9" style={{ verticalAlign: "middle", flexShrink: 0 }}><circle cx="4.5" cy="4.5" r="4.5" fill="#e4002b"/></svg>
           : (t === "goal" || t === "og") ? <span style={{ fontSize: 9 }}>⚽︎</span>
           : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
           : null;
@@ -3557,13 +3784,16 @@ export default function App() {
           </span>;
         };
         const evRows = Array.from({ length: Math.max(hI.length, aI.length) }, (_, i) => ({ h: hI[i], a: aI[i] }));
-        const phaseLabelText = lmMatch.phase === "half_time" ? "HALF TIME"
+        const phaseLabelBase = lmMatch.phase === "half_time" ? "HALF TIME"
           : lmMatch.phase === "full_time" ? "FULL TIME"
           : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
           : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
           : lmMatch.phase === "penalties" ? "PENALTIES"
           : lmMatch.phase === "finished" ? "FULL TIME"
           : lmClockDisplay(lmMatch);
+        const phaseLabelText = lmMatch.isSecondLeg
+          ? `${phaseLabelBase} (${lmMatch.score[0]+lmMatch.startScore[0]}-${lmMatch.score[1]+lmMatch.startScore[1]} AGG.)`
+          : phaseLabelBase;
         return <div style={{ marginBottom: 6 }}>
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "start", columnGap: 16 }}>
             {/* Left: home crest, big, own column, top-aligned with the phase/clock label.
@@ -3589,9 +3819,7 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
                   <span className={goalFlash==="home"?"goal-flash":""}>{lmMatch.score[0]}</span>
-                  {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginLeft: 2, ...mono }}>({lmMatch.score[0]+lmMatch.startScore[0]})</span>}
-                  <span style={{ color: "#ffffff", margin: "0 6px" }}>:</span>
-                  {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginRight: 2, ...mono }}>({lmMatch.score[1]+lmMatch.startScore[1]})</span>}
+                  <span style={{ color: "#ffffff", margin: "0 6px" }}>-</span>
                   <span className={goalFlash==="away"?"goal-flash":""}>{lmMatch.score[1]}</span>
                 </div>
                 <div style={{ textAlign: "left", minWidth: 0 }}>
@@ -3668,27 +3896,36 @@ export default function App() {
           {si === 1 && <div style={{ background: "#7889a0" }}></div>}
           <div>
             <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
               <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
               <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
               <span></span>
-              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
                 <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                 <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                 <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
                 <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
               </>); })}
               <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                 <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                 <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                 <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
                 <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
               </>); })}
@@ -3707,6 +3944,15 @@ export default function App() {
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
   const TEAM_COLW = { num: 22, crest: 26, code: 40, skill: 40, sq: 32, tac: 32, inf: 32, del: 28 };
+  const teamSearchQ = teamSearchQuery.trim().toLowerCase();
+  // Prefix match only — code or any word in the name must START with the query, so "NCH"
+  // finds Nichirin (code) without also matching the "nch" buried inside "Manchester".
+  const teamMatchesSearch = (t) => {
+    if (!teamSearchQ) return true;
+    if (abbr(t.name, t.code).toLowerCase().startsWith(teamSearchQ)) return true;
+    return t.name.toLowerCase().split(/\s+/).some(w => w.startsWith(teamSearchQ));
+  };
+  const teamsFiltered = teams.filter(t => (!teamLeagueFilter || (t.league||"Custom") === teamLeagueFilter) && teamMatchesSearch(t));
 
   return (
     <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
@@ -3726,9 +3972,10 @@ export default function App() {
 
         {/* SHARED TEAMS */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: teamsOpen ? 8 : 16, minHeight: 32 }}>
-          <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{teamLeagueFilter ? `(${teams.filter(t => (t.league||"Custom") === teamLeagueFilter).length} / ${teams.length})` : `(${teams.length})`}</span></label>
+          <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
           <div style={{ display: "flex", gap: 6 }}>
             {teamsOpen && <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>}
+            {teamsOpen && <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "#e4002b" : "#7889a0", cursor: "text" }} />}
             {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
             {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
             {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
@@ -3756,9 +4003,9 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid #2a3a50", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
-            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.sq, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: TEAM_COLW.tac, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span><span style={{ width: TEAM_COLW.inf, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>INF</span>{(teamLeagueFilter ? teams.filter(t => (t.league||"Custom") === teamLeagueFilter) : teams).some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
+            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.sq, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: TEAM_COLW.tac, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span><span style={{ width: TEAM_COLW.inf, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>INF</span>{teamsFiltered.some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
           </div>
-          {(() => { const visibleTeams = teamLeagueFilter ? teams.filter(t => (t.league||"Custom") === teamLeagueFilter) : teams; return (
+          {(() => { const visibleTeams = teamsFiltered; return (
           <div style={{ maxHeight: visibleTeams.length > 12 ? 520 : "none", overflowY: visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
             {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
               <div key={t.id}>
@@ -4178,27 +4425,36 @@ export default function App() {
                 {si === 1 && <div style={{ background: "#7889a0" }}></div>}
                 <div>
                   <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
                     <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
                     <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
+                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
+                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
+                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
                     <span></span>
-                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sq2.name}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
                     </>); })}
@@ -4357,12 +4613,12 @@ export default function App() {
           {Object.keys(tPlayerStats).length > 0 && (
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, textAlign: "center", paddingBottom: 8, borderBottom: "1px solid #141c2b" }}>Tournament Leaders</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 18px" }} className="grid-4col">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
                 {/* Top Scorers */}
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
+                  {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -4377,7 +4633,7 @@ export default function App() {
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,10).map((p,i) => (
+                  {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -4392,7 +4648,7 @@ export default function App() {
                 <div style={{ minWidth: 0 }}>
                   <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>(p.matches+(p.subApp||0))>=1).sort((a,b)=>(b.totalRating/(b.matches+(b.subApp||0)))-(a.totalRating/(a.matches+(a.subApp||0)))).slice(0,10).map((p,i) => {
+                  {(() => { const _all = Object.values(tPlayerStats); const _ap = p => p.matches+(p.subApp||0); const _min = Math.ceil(Math.max(1,..._all.map(_ap))/6); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=_ap(a)>=_min?1:0,bq=_ap(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
                     const avg = (p.totalRating/(p.matches+(p.subApp||0)));
                     return (
                     <tr key={i} style={{ fontSize: 10 }}>
@@ -4403,6 +4659,51 @@ export default function App() {
                       <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
                     </tr>);
                   })}
+                  </tbody></table>
+                </div>
+                {/* Chances Created */}
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                  {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
+                    </tr>
+                  ))}
+                  </tbody></table>
+                </div>
+                {/* Defensive Actions */}
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEF ACTIONS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                  {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
+                    </tr>
+                  ))}
+                  </tbody></table>
+                </div>
+                {/* Saves */}
+                <div style={{ minWidth: 0 }}>
+                  <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                  {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    <tr key={i} style={{ fontSize: 10 }}>
+                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
+                    </tr>
+                  ))}
                   </tbody></table>
                 </div>
               </div>
@@ -4441,14 +4742,20 @@ export default function App() {
             </div>
           )}
           {tLeaderboard && (() => {
-            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : "BEST RATING";
+            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEF ACTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
             const all = Object.values(tPlayerStats);
             const tApp = p => p.matches + (p.subApp||0);
             const sorted = tLeaderboard === "goals"
               ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
               : tLeaderboard === "assists"
               ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
-              : all.filter(p=>tApp(p)>=1).sort((a,b)=>(b.totalRating/tApp(b))-(a.totalRating/tApp(a)));
+              : tLeaderboard === "chances"
+              ? all.filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||(tApp(a)-tApp(b)))
+              : tLeaderboard === "defActs"
+              ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
+              : tLeaderboard === "saves"
+              ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tApp(a)-tApp(b)))
+              : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
             return (
               <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div onClick={e => e.stopPropagation()} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
@@ -4461,7 +4768,7 @@ export default function App() {
                     {sorted.map((p, i) => {
                       const ap = p.matches + (p.subApp||0);
                       const avg = ap ? (p.totalRating/ap) : 0;
-                      const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : avg;
+                      const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "chances" ? p.chances : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
                       return (
                         <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid #141c2b" : "none" }}>
                           <td style={{ color: "#7889a0", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
@@ -4503,10 +4810,18 @@ export default function App() {
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ffffff" }}>{league}</span>
                     <span style={{ fontSize: 10, color: "#7889a0", ...mono }}>{selCount}/{ts.length}</span>
                   </div>
-                  {expanded && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", padding: "8px 10px" }}>
+                  {expanded && <div style={{ padding: "8px 10px" }}>
+                    {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #2a3a5033" }}>
+                      <span style={{ fontSize: 9, color: "#81a1c1", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.06em" }}>TRIM:</span>
+                      {TRIM_SIZES.filter(n => ts.length > n).map(n => (
+                        <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid #81a1c144", background: "#81a1c11a", color: "#81a1c1", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
+                      ))}
+                    </div>}
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
                       <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
+                    </div>
                   </div>}
                 </div>);
               })}
@@ -4656,7 +4971,18 @@ export default function App() {
               {tHasKO && (
                 <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Knockout Stage</div>
-                  {(tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
+                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Format</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                    {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "#e4002b" : "#141c2b", color: tConfig.koFormat === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                    ))}
+                  </div>
+                  {tConfig.koFormat === "double_elim" && (() => { const checked = tConfig.koGFReset; return (
+                    <div onClick={() => setTConfig(c => ({ ...c, koGFReset: !c.koGFReset }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Grand Final Reset</div><div style={{ fontSize: 9, color: "#7889a0" }}>If LB winner wins GF, play a deciding match</div></div>
+                    </div>); })()}
+                  {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
                     <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
                       <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>3rd Place Match</div></div>
@@ -5040,10 +5366,10 @@ export default function App() {
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
               <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "#e4002b" : "#141c2b", color: koBracketView ? "#ffffff" : "#7889a0", border: "1px solid " + (koBracketView ? "#e4002b" : "#7889a033") }}>Bracket</button>
               <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "#e4002b" : "#141c2b", color: !koBracketView ? "#ffffff" : "#7889a0", border: "1px solid " + (!koBracketView ? "#e4002b" : "#7889a033") }}>Stacked</button>
-              {koBracketView && <button onClick={exportBracket} style={{ ...chip, fontSize: 9, background: "#141c2b", color: "#81a1c1", border: "1px solid #81a1c133", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
+              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "#141c2b", color: "#81a1c1", border: "1px solid #81a1c133", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
             </div>
 
-            {koBracketView && (() => {
+            {koBracketView && !tKO.losers && (() => {
               const nR = tKO.rounds.length;
               const firstRd = tKO.rounds[0];
               const half = firstRd.matches.length / 2;
@@ -5075,7 +5401,7 @@ export default function App() {
                 const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
                 const decClr = hasPen || has2LPen ? "#d08770" : "#7889a0";
                 const winner = w;
-                const scoreW = is2L && !isPartial ? { display: "flex", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
+                const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
                 const nameClr = (team) => w === team ? "#ffffff" : isBye && !team ? "#7889a0" : "#888";
                 const nameWt = (team) => w === team ? 600 : 400;
                 const sClr = (team) => w === team ? "#ffffff" : "#7889a0";
@@ -5084,12 +5410,12 @@ export default function App() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
-                        : <span style={{ color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1H : sH}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.home})</span>}</span>}
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
-                        : <span style={{ color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}>{is2L && isPartial ? l1A : sA}{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}> ({m.result.pen.away})</span>}</span>}
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
                     </div>
 
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
@@ -5221,10 +5547,173 @@ export default function App() {
                 </div>
               );
             })()}
-            {!koBracketView && tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1) return null; const rdDone = round.matches.every(m => m.result && !m.result.partial); const rdReady = round.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
-              <div key={ri} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
+            {/* ═══ DE BRACKET VIEW ═══ */}
+            {koBracketView && tKO.losers && (() => {
+              const nR = tKO.rounds.length;
+              const cardH = 52, gap = 6, colW = 170, connW = 20, hdrH = 15;
+              let wbFirst = 0;
+              for (let ri = 0; ri < nR; ri++) { if (tKO.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
+              const wbRounds = tKO.rounds.slice(wbFirst);
+              const wbN0 = wbRounds[0].matches.length;
+              const wbH = Math.max(wbN0, 2) * (cardH + gap);
+              const lbN0 = tKO.losers[0].matches.length;
+              const lbH = Math.max(lbN0, 2) * (cardH + gap);
+
+              const deMiniCard = (m, bk, ri, mi) => {
+                const haKey = bk === "wb" ? `ko_${ri}_${mi}` : bk === "lb" ? `lb_${ri}_${mi}` : bk;
+                const haVal = tHomeAdvOverrides[haKey] || null;
+                const w = koWinner(m);
+                const isPartial = m.result?.partial;
+                const is2L = m.result?.twoLeg;
+                const isBye = m.bye;
+                const sH = m.result && !is2L ? m.result.ftHome + (m.result.et?.home||0) : "";
+                const sA = m.result && !is2L ? m.result.ftAway + (m.result.et?.away||0) : "";
+                const hasET = m.result && !is2L && m.result.et && (m.result.et.home || m.result.et.away);
+                const hasPen = m.result?.pen;
+                const l1H = is2L && m.result.leg1 ? m.result.leg1.home : "";
+                const l1A = is2L && m.result.leg1 ? m.result.leg1.away : "";
+                const l2H = is2L && !isPartial && m.result.leg2 ? m.result.leg2.away : "";
+                const l2A = is2L && !isPartial && m.result.leg2 ? m.result.leg2.home : "";
+                const aggH = is2L && !isPartial && m.result.agg ? m.result.agg.home : "";
+                const aggA = is2L && !isPartial && m.result.agg ? m.result.agg.away : "";
+                const has2LET = is2L && !isPartial && m.result.et;
+                const has2LPen = is2L && !isPartial && m.result.pen;
+                const has2LAG = is2L && !isPartial && !m.result.et && !m.result.pen && m.result.awayGoalsRule && m.result.agg?.home === m.result.agg?.away;
+                const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
+                const decClr = hasPen || has2LPen ? "#d08770" : "#7889a0";
+                const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
+                const nameClr = (t) => w === t ? "#ffffff" : isBye && !t ? "#7889a0" : "#888";
+                const nameWt = (t) => w === t ? 600 : 400;
+                const sClr = (t) => w === t ? "#ffffff" : "#7889a0";
+                const borderStyle = bk === "gf" ? "2px solid #e4002b66" : bk === "reset" ? "1px solid #ebcb8b44" : "1px solid #2a3a50";
+                const onSim = () => { if (bk === "wb") tScorinateKO(ri, mi, isPartial ? 2 : 0); else if (bk === "lb") tScorinateKO(ri, mi, isPartial ? 2 : 0, "lb"); else tScorinateKO(0, 0, 0, bk); };
+                const onLive = () => { if (bk === "wb") tPlayLive({type:"ko",ri,mi,leg:isPartial?2:1}); else if (bk === "lb") tPlayLive({type:"ko",ri,mi,bracket:"lb",leg:isPartial?2:1}); else tPlayLive({type:"ko",ri:0,mi:0,bracket:bk,leg:isPartial?2:1}); };
+                return (
+                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
+                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
+                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
+                    </div>
+                    {m.home && m.away && (!m.result || isPartial) && !isBye && (
+                      <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
+                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                          : <button onClick={onSim} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#7889a0", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        <button onClick={onLive} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
+                        <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? "#e4002b" : "#7889a066", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              const renderCol = (matches, height, bk, ri) => {
+                const n = matches.length;
+                const slotH = height / n;
+                return (
+                  <div style={{ position: "relative", height, width: colW, flexShrink: 0 }}>
+                    {matches.map((m, mi) => {
+                      if (m.bye) return null;
+                      const top = (mi + 0.5) * slotH - (cardH - gap) / 2;
+                      return <div key={mi} style={{ position: "absolute", top, left: 0 }}>{deMiniCard(m, bk, ri, mi)}</div>;
+                    })}
+                  </div>
+                );
+              };
+
+              const pairConn = (srcMatches, height) => {
+                const n = srcMatches.length;
+                const slotH = height / n;
+                const pairs = Math.floor(n / 2);
+                return (
+                  <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
+                    {Array.from({ length: pairs }, (_, i) => {
+                      const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
+                      if (m1.bye && m2.bye) return null;
+                      const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
+                      return (
+                        <g key={i}>
+                          {!m1.bye && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="#7889a0" strokeWidth={1} />}
+                          {!m2.bye && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="#7889a0" strokeWidth={1} />}
+                          <line x1={connW/2} y1={!m1.bye ? y1 : midY} x2={connW/2} y2={!m2.bye ? y2 : midY} stroke="#7889a0" strokeWidth={1} />
+                          <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                        </g>
+                      );
+                    })}
+                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="#7889a0" strokeWidth={1} />}
+                  </svg>
+                );
+              };
+
+              const straightConn = (srcMatches, height) => {
+                const n = srcMatches.length;
+                const slotH = height / n;
+                return (
+                  <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
+                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="#7889a0" strokeWidth={1} />)}
+                  </svg>
+                );
+              };
+
+              const gfCardH = (cardH - gap) * 2 + 16;
+
+              const gfConn = (height) => {
+                const midY = height / 2;
+                return (
+                  <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
+                    <line x1={0} y1={midY} x2={connW} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                  </svg>
+                );
+              };
+
+              return (
+                <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
+                  {/* WB + GF + Reset in one row */}
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10 }}>WINNERS BRACKET</div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content", marginBottom: 8 }}>
+                    {wbRounds.map((rd, i) => (<Fragment key={"wb"+i}>
+                      {i > 0 && pairConn(wbRounds[i-1].matches, wbH)}
+                      <div style={{ flexShrink: 0 }}>
+                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}</div>
+                        {renderCol(rd.matches, wbH, "wb", wbFirst + i)}
+                      </div>
+                    </Fragment>))}
+                    {gfConn(wbH)}
+                    <div style={{ flexShrink: 0 }}>
+                      <div style={{ fontSize: 8, color: "#e4002b", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>Grand Final</div>
+                      {renderCol([tKO.grandFinal], wbH, "gf", 0)}
+                    </div>
+                    {tKO.reset && (tKO.reset.home || tKO.reset.away) && (<Fragment>
+                      {gfConn(wbH)}
+                      <div style={{ flexShrink: 0 }}>
+                        <div style={{ fontSize: 8, color: "#ebcb8b", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>RESET</div>
+                        {renderCol([tKO.reset], wbH, "reset", 0)}
+                      </div>
+                    </Fragment>)}
+                  </div>
+                  {/* LB */}
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10, marginTop: 8, borderTop: "1px solid #2a3a5033", paddingTop: 12 }}>LOSERS BRACKET</div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
+                    {tKO.losers.map((rd, lr) => (<Fragment key={"lb"+lr}>
+                      {lr > 0 && (rd.type === "internal" ? pairConn(tKO.losers[lr-1].matches, lbH) : straightConn(tKO.losers[lr-1].matches, lbH))}
+                      <div style={{ flexShrink: 0 }}>
+                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
+                        {renderCol(rd.matches, lbH, "lb", lr)}
+                      </div>
+                    </Fragment>))}
+                  </div>
+                </div>
+              );
+            })()}
+            {!koBracketView && tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = round.matches.every(m => m.result && !m.result.partial); const rdReady = round.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
+              <div key={ri} style={{ background: "#141c2b", border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "#e4002b33" : "#2a3a50"), borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0" }}>{round.name.toUpperCase()}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0" }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</div>
                   {rdReady && !rdDone && (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4 }}>
                     {round.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(ri, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
                     {round.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(ri, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
@@ -5239,7 +5728,7 @@ export default function App() {
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400 }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</div>{m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}</div>
                           <div style={{ textAlign: "center", padding: "4px 0" }}>
-                            {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
+                            {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp && !tKoEdit.bracket ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
                               : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
                               : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(ri, mi, false)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
                               : m.home && m.away ? <span style={{ display: "flex", gap: 4, justifyContent: "center" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
@@ -5251,7 +5740,7 @@ export default function App() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</span>
                           {m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}
-                          {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
+                          {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp && !tKoEdit.bracket ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
                             : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
                             : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(ri, mi, false)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
                             : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
@@ -5264,7 +5753,7 @@ export default function App() {
                 </div>
               </div>
             ); })}
-            {!koBracketView && tKO.thirdPlace && (()=>{ const tpHAVal = tHomeAdvOverrides["tp"] || null; return (
+            {!koBracketView && !tKO.losers && tKO.thirdPlace && (()=>{ const tpHAVal = tHomeAdvOverrides["tp"] || null; return (
               <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
                 <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px" }}>
@@ -5281,8 +5770,8 @@ export default function App() {
                 </div>
               </div>
             ); })()}
-            {/* FINAL — rendered after 3rd place */}
-            {!koBracketView && (()=>{ const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
+            {/* FINAL — rendered after 3rd place (single elim only) */}
+            {!koBracketView && !tKO.losers && (()=>{ const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
               <div style={{ background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>{round.name?.toUpperCase()}</div>
@@ -5299,6 +5788,71 @@ export default function App() {
                     </div>
                   </div>
                 ); })}
+              </div>
+            ); })()}
+            {/* ═══ LOSERS BRACKET (double elim) ═══ */}
+            {!koBracketView && tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRound.matches.every(m => (m.result && !m.result.partial) || (!m.home && !m.away)); const lbReady = lbRound.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
+              <div key={"lb"+lr} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0" }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></div>
+                  {lbReady && !lbDone && (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4 }}>
+                    {lbRound.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(lr, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
+                    {lbRound.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(lr, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
+                    <button onClick={() => tScorinateKO(lr, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(lr, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Sim Round</button>)}
+                  {lbDone && <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>✓</span>}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8 }}>
+                  {lbRound.matches.map((m, mi) => { const lbHAKey = `lb_${lr}_${mi}`; const lbHAVal = tHomeAdvOverrides[lbHAKey] || null; return (
+                    <div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lbHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</span>
+                        {m.home && m.away && <button onClick={() => tToggleHA(lbHAKey)} style={{ background: "none", border: "none", color: lbHAVal ? (lbHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: lbHAVal ? 1 : 0.4 }}>H</button>}
+                        {tKoEdit && tKoEdit.bracket === "lb" && tKoEdit.ri===lr && tKoEdit.mi===mi ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
+                          : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(lr, mi, 2, "lb")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri:lr,mi,bracket:"lb",leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
+                          : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri: lr, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), bracket: "lb", ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(lr, mi, "lb")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                          : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(lr, mi, 0, "lb")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: lr, mi, h: "", a: "", bracket: "lb", ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:lr,mi,bracket:"lb",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
+                            : m.bye ? <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>BYE</span> : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
+                        <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{lbHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                      </div>
+                    </div>
+                  ); })}
+                </div>
+              </div>
+            ); })}
+            {/* ═══ GRAND FINAL (double elim) ═══ */}
+            {!koBracketView && tKO.losers && tKO.grandFinal && (() => { const gf = tKO.grandFinal; const gfHAKey = "gf"; const gfHAVal = tHomeAdvOverrides[gfHAKey] || null; return (
+              <div style={{ background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#e4002b", marginBottom: 10 }}>GRAND FINAL</div>
+                <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.home ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.home ? 600 : 400, flex: 1 }}>{gfHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{gf.home?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>WB</span></span>
+                    {gf.home && gf.away && <button onClick={() => tToggleHA(gfHAKey)} style={{ background: "none", border: "none", color: gfHAVal ? (gfHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: gfHAVal ? 1 : 0.4 }}>H</button>}
+                    {tKoEdit && tKoEdit.bracket === "gf" ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
+                      : gf.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(gf)}</span><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: String(gf.result.ftHome), a: String(gf.result.ftAway), bracket: "gf" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(0, 0, "gf")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                      : gf.home && gf.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(0, 0, 0, "gf")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: "", a: "", bracket: "gf" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,bracket:"gf",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
+                      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
+                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.away ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.away ? 600 : 400, flex: 1, textAlign: "right" }}>{gf.away?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>LB</span>{gfHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                  </div>
+                </div>
+              </div>
+            ); })()}
+            {/* ═══ RESET (double elim) ═══ */}
+            {!koBracketView && tKO.losers && tKO.reset && (() => { const rs = tKO.reset; const rsHAKey = "reset"; const rsHAVal = tHomeAdvOverrides[rsHAKey] || null; if (!rs.home && !rs.away) return null; return (
+              <div style={{ background: "#141c2b", border: "1px solid #ebcb8b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
+                <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
+                <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: rs.result && koWinner(rs) === rs.home ? "#ffffff" : "#7889a0", fontWeight: rs.result && koWinner(rs) === rs.home ? 600 : 400, flex: 1 }}>{rsHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{rs.home?.name || "TBD"}</span>
+                    {rs.home && rs.away && <button onClick={() => tToggleHA(rsHAKey)} style={{ background: "none", border: "none", color: rsHAVal ? (rsHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: rsHAVal ? 1 : 0.4 }}>H</button>}
+                    {tKoEdit && tKoEdit.bracket === "reset" ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
+                      : rs.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(rs)}</span><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: String(rs.result.ftHome), a: String(rs.result.ftAway), bracket: "reset" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(0, 0, "reset")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                      : rs.home && rs.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(0, 0, 0, "reset")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: "", a: "", bracket: "reset" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,bracket:"reset",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
+                      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
+                    <span style={{ fontSize: 11, color: rs.result && koWinner(rs) === rs.away ? "#ffffff" : "#7889a0", fontWeight: rs.result && koWinner(rs) === rs.away ? 600 : 400, flex: 1, textAlign: "right" }}>{rs.away?.name || "TBD"}{rsHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                  </div>
+                </div>
               </div>
             ); })()}
           </div>)}
