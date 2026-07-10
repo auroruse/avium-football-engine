@@ -6,6 +6,8 @@ import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import plTSV from "./presets/premier-league.tsv?raw";
 import miscEuTSV from "./presets/misc-european.tsv?raw";
 import nl2TSV from "./presets/nl2.tsv?raw";
+import kplTSV from "./presets/kpl.tsv?raw";
+import kullanmaanTSV from "./presets/kullanmaan-cup.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -1875,13 +1877,15 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, has
 const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
-const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
+const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
+const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
+const PRESET_KULLANMAAN = parsePresetTSV(kullanmaanTSV, null, 0, false, false);
 const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
 const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Nichirin League Two", "Varahmehri Liga-ye Mellī",
+  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup",
   null,
   "Premier League", "Miscellaneous European",
   null,
@@ -1891,7 +1895,9 @@ const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({...t, league: "Avium International"})),
   ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
   ...PRESET_NCH_L2.map(t => ({...t, league: "Nichirin League Two"})),
+  ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
+  ...PRESET_KULLANMAAN.map(t => ({...t, league: "Kullanmaan Cup"})),
   ...PRESET_PL.map(t => ({...t, league: "Premier League"})),
   ...PRESET_MISC_EU.map(t => ({...t, league: "Miscellaneous European"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
