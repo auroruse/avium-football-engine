@@ -1766,7 +1766,7 @@ const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").repl
 function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 // Stable per-fixture identity, shared by home-advantage overrides, the host-venue pool,
 // and the replay counter — a group match, or a KO bracket slot (both legs share one tie).
-function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_${t.gi}_${t.ri}_${t.mi}`; return t.tp ? "tp" : `ko_${t.ri}_${t.mi}`; }
+function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_${t.gi}_${t.ri}_${t.mi}`; if (t.tp) return "tp"; if (t.bracket === "gf") return "gf"; if (t.bracket === "reset") return "reset"; if (t.bracket === "lb") return `lb_${t.ri}_${t.mi}`; return `ko_${t.ri}_${t.mi}`; }
 // City\tStadium, one per line — parses the host-nation venue pool pasted in tournament setup.
 function parseVenuePool(text) {
   return (text || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
