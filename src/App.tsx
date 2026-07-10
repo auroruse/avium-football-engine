@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import plTSV from "./presets/premier-league.tsv?raw";
 import miscEuTSV from "./presets/misc-european.tsv?raw";
-import wcTSV from "./presets/1932-wc.tsv?raw";
+import nl2TSV from "./presets/nl2.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -14,10 +14,41 @@ class RNG {
   u() { return this.next(); }
 }
 const pick = (rng, a) => a[Math.floor(rng.u() * a.length)];
+const pickWeighted = (rng, items, weights) => { const t = weights.reduce((a,b)=>a+b,0); let r = rng.u() * t; for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r <= 0) return items[i]; } return items[items.length-1]; };
 const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? k);
+const INJ_SEV = [{id:"bruise",label:"Bruise",dur:[1,1]},{id:"sprain",label:"Sprain",dur:[1,2]},{id:"fracture",label:"Fracture",dur:[3,5]},{id:"tear",label:"Tear",dur:[4,7]}];
+const INJ_SEV_W = [40,30,15,15];
+const INJ_PART = ["upper leg","knee","lower leg","groin","foot","head","shoulder","ribs"];
+const INJ_PART_W = [22,20,20,12,8,8,5,5];
+// Sprains and tears need a joint/long muscle to injure — the head and ribs don't have
+// either in footballing terms, so those two severities are excluded for those parts.
+const INJ_PART_SEV_EXCLUDE = { head: ["sprain", "tear"], ribs: ["sprain", "tear"] };
+function pickInjury(rng) {
+  const part = pickWeighted(rng, INJ_PART, INJ_PART_W);
+  const exclude = INJ_PART_SEV_EXCLUDE[part] || [];
+  const sevItems = INJ_SEV.filter(s => !exclude.includes(s.id));
+  const sevWeights = INJ_SEV_W.filter((_, i) => !exclude.includes(INJ_SEV[i].id));
+  const sev = pickWeighted(rng, sevItems, sevWeights);
+  return { sev, part };
+}
+// DOGSO (denying an obvious goalscoring opportunity) is almost always the last line of
+// defence — defenders and keepers commit it far more than midfielders, and forwards
+// almost never end up as the last man back.
+const DOGSO_PROB = { GK: 0.55, DEF: 0.55, MID: 0.15, FWD: 0.03 };
+function pickRedCardVariant(rng, pos) {
+  const dogsoP = DOGSO_PROB[pos] ?? 0.15;
+  const vr = rng.u();
+  if (vr < dogsoP) return "dogso";
+  const rem = (vr - dogsoP) / (1 - dogsoP);
+  return rem < 0.5 ? "violent" : rem < 0.7 ? "abusive" : "sfp";
+}
 const TIER_CONV = [1.0, 1.08, 1.18];
 const TIER_ATK_W = [1.0, 1.25, 1.6];
 const TIER_GK_SAVE = [0, 0.035, 0.07];
+// Applied when a team has no recognized keeper left and an outfield player has taken the
+// gloves — moved straight from save-probability into goal-probability, so shots that would
+// have been stopped by a real keeper go in instead, rather than just becoming off-target misses.
+const EMERGENCY_GK_SAVE_PENALTY = 0.22;
 const TIER_DEF_SHOT = [0, 0.02, 0.04];
 const TIER_PEN = [0, 0.05, 0.12];
 const TIER_MID_CTRL = [0, 0.015, 0.03];
@@ -60,7 +91,10 @@ const CM = {
   foul_pen:["Brought down in the box by {o}'s {n}! PENALTY!","{o}'s {n} clips the attacker in the area! Penalty given!","Fouled in the box! {o}'s {n} couldn't pull out! PENALTY!","{o}'s {n} drags down the attacker! Referee points to the spot!","Handball by {o}'s {n}! PENALTY!","Crunching challenge from {o}'s {n} in the area! PENALTY!","{o}'s {n} catches the attacker's legs in the box! Penalty!","Tripped in the box by {o}'s {n}! PENALTY!","Penalty! {o}'s {n} with a needless shove in the area!","Pointing to the spot! {o}'s {n} the guilty man!","Clumsy from {o}'s {n} in the box! PENALTY!","Wiped out in the area by {o}'s {n}! Spot kick!","{o}'s {n} times it horribly! Penalty conceded!","Arm up from {o}'s {n}! The referee has no doubt! PENALTY!","Reckless in the box from {o}'s {n}! It's a penalty!"],
   yellow:["Yellow card for {t}'s {n}. Into the book.","Booking for {t}'s {n}. Can't argue with that.","Card shown to {t}'s {n}. Cynical challenge.","{t}'s {n} picks up a caution. Reckless.","In the book. {t}'s {n} needs to be careful now.","{t}'s {n} booked for persistent fouling.","Yellow. {t}'s {n} knew what he was doing.","{t}'s {n} carded. Walking a tightrope.","Cautioned. {t}'s {n} catches the referee's eye.","{t}'s {n} goes in the book.","Booking for {t}'s {n}. That was needless.","{t}'s {n} picks up a yellow. One more and he walks."],
   second_yellow:["Second yellow! {t}'s {n} is OFF! Down to {c}!","Two yellows make a red! {t}'s {n} sees the early bath! {c} men.","That's his second booking! {t}'s {n} has to go! Down to {c}!","Off for two yellows! {t}'s {n} leaves {t} with {c}!","{t}'s {n} can't believe it! Second yellow! {c} remain.","He'd been warned! {t}'s {n} picks up a second yellow! Down to {c}!","Dismissed! {t}'s {n} gets a second booking! {t} down to {c}!","Second booking for {t}'s {n}! Off he goes! {c} men left!","Yellow... and red! {t}'s {n} walks! Down to {c}!","Foolish from {t}'s {n}! A second caution and off he goes! {c} left!","The tightrope snaps! {t}'s {n} sent off for a second yellow! {c} men!","No complaints. {t}'s {n} earned both bookings. Down to {c}.","Gone! A second yellow for {t}'s {n}! {c} remain!","Madness from {t}'s {n}! Already booked and he dives in! Off! Down to {c}!","Out comes yellow, then red! {t}'s {n} is off! {c} men!"],
-  straight_red:["Straight red! {t}'s {n} sent off! Down to {c}.","RED CARD! {t}'s {n} dismissed! {t} down to {c}!","Off! {t}'s {n} shown a straight red! {c} men.","Violent conduct! {t}'s {n} walks! Down to {c}.","Serious foul play! {t}'s {n} gone! {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red! {c} remain.","Red card all day long! {t}'s {n} is off! Down to {c}!","Dangerous tackle from {t}'s {n}! Straight red! Reduced to {c}!","Horror tackle! {t}'s {n} sees straight red! Down to {c}!","No debate about that one. {t}'s {n} is off. {c} men for {t}.","Shocking from {t}'s {n}! The red card is out! {c} left!","The early bath for {t}'s {n}! Straight red! {t} down to {c}!","Disgraceful challenge from {t}'s {n}! Off without argument! {c} remain!","That's a leg-breaker! {t}'s {n} is rightly sent off! Down to {c}!","Moment of madness from {t}'s {n}! Red! {t} reduced to {c}!"],
+  red_sfp:["Serious foul play! {t}'s {n} gone! {c} men for {t}.","Awful challenge! {t}'s {n} gets a straight red! {c} remain.","Red card all day long! {t}'s {n} is off! Down to {c}!","Dangerous tackle from {t}'s {n}! Straight red! Reduced to {c}!","Horror tackle! {t}'s {n} sees straight red! Down to {c}!","No debate about that one. {t}'s {n} is off. {c} men for {t}.","Shocking from {t}'s {n}! The red card is out! {c} left!","The early bath for {t}'s {n}! Straight red! {t} down to {c}!","Disgraceful challenge from {t}'s {n}! Off without argument! {c} remain!","That's a leg-breaker! {t}'s {n} is rightly sent off! Down to {c}!","Moment of madness from {t}'s {n}! Red! {t} reduced to {c}!","Studs up, knee high! {t}'s {n} walks! Down to {c}!"],
+  red_dogso:["Last man! {t}'s {n} brings down the attacker! Red! Down to {c}!","DOGSO! {t}'s {n} denied a clear goalscoring opportunity! Off! {c} men.","Professional foul from {t}'s {n}! Last defender! Red! {c} remain!","Denied a goalscoring opportunity! {t}'s {n} takes one for the team! Down to {c}!","{t}'s {n} hauls down the attacker! Last man! Off! Down to {c}!","He had to! {t}'s {n} brings down the forward with no one else back! Off! {c} men!","Clear goalscoring opportunity denied! {t}'s {n} walks! {c} for {t}!","Tactical foul, last man, red card. {t}'s {n} had no choice. Down to {c}.","Through on goal and brought down by {t}'s {n}! Off he goes! {c} men!","Cynical from {t}'s {n}! Pulls back the attacker clean through! Red! {c} remain!","The keeper was beaten, the defender wasn't having it! {t}'s {n} off! Down to {c}!","One-on-one denied! {t}'s {n} clips the heels! Straight red! {c} left!"],
+  red_violent:["Violent conduct! {t}'s {n} throws an elbow! Straight red! Down to {c}!","Disgusting! {t}'s {n} lashes out off the ball! Red card! {c} men!","That's violent conduct! {t}'s {n} headbutts the opponent! Off! {c} remain!","Hands to the face from {t}'s {n}! Straight red! {t} down to {c}!","Inexcusable from {t}'s {n}! Red card! Down to {c}!","{t}'s {n} stamps on the opponent! Violent conduct! Off! {c} left!","Lost his head! {t}'s {n} shoves the opponent to the ground! Red! {c} men!","Off the ball incident! {t}'s {n} elbows the defender! Dismissed! Down to {c}!","Completely lost it! {t}'s {n} kicks out! Red card! {t} reduced to {c}!","Retaliatory kick from {t}'s {n}! Caught on camera! Violent conduct! Off! {c} men!","Ugly scenes! {t}'s {n} goes after the opponent! Red! Down to {c}!","Grabbed him by the shirt and threw him! {t}'s {n} off for violent conduct! {c} remain!"],
+  red_abusive:["Sent off for abusive language! {t}'s {n} said too much! Down to {c}!","Red card for dissent! {t}'s {n} crossed the line! {c} men for {t}!","Offensive language toward the officials! {t}'s {n} is off! Down to {c}!","{t}'s {n} loses it at the referee! Red for abusive language! {c} remain!","Whatever {t}'s {n} said, the referee didn't like it! Straight red! Down to {c}!","Dismissed for foul and abusive language! {t}'s {n} only has himself to blame! {c} left!","Mouthed off one too many times! {t}'s {n} walks! Down to {c}!","The referee has had enough! {t}'s {n} sent off for verbal abuse! {c} remain!","Screaming at the linesman! {t}'s {n} shown a straight red! {t} down to {c}!","Gone for dissent! {t}'s {n} went too far! {c} men for {t}!","Words you can't repeat! {t}'s {n} dismissed for offensive language! Down to {c}!","That's a mouthful at the fourth official! {t}'s {n} gets a straight red! {c} men!"],
   pen_saved:["SAVED! The keeper guesses right and denies {t}'s {n}!","Penalty saved! The keeper springs low to keep {t}'s {n} out!","Read it perfectly! The keeper saves from {t}'s {n}!","Kept out! {t}'s {n} goes left and so does the keeper!","The keeper is the hero! Saves {t}'s {n}'s penalty!","SAVED! Low to his right! The keeper denies {t}'s {n}!","Guessed correctly! The keeper palms away the spot-kick!","What a save from the penalty! {t}'s {n} denied!","Denied! The keeper stands tall and beats it away!","Stopped! {t}'s {n} sees his penalty smothered!","Big hand! The spot kick is turned aside!","Twelve yards, no reward! The keeper keeps out {t}'s {n}!","With his legs! The keeper denies {t}'s {n} from the spot!","Down goes the keeper... and it stays out! {t}'s {n} denied!","Brilliant from the keeper! The penalty is repelled!"],
   pen_missed:["Over the bar! {t}'s {n} blazes the penalty high!","Wide! {t}'s {n} drags the penalty off target!","Off the post! {t}'s {n} can't believe it!","Skied! The pressure got to {t}'s {n}!","Slipped on the run-up! {t}'s {n} balloons it over!","Weak penalty from {t}'s {n}. Way off target.","Hits the bar! {t}'s {n}'s penalty crashes off the crossbar!","{t}'s {n} puts the penalty wide! Terrible miss!","High, wide and anything but handsome! {t}'s {n} misses!","Dragged past the post! {t}'s {n} buries his head in his hands!","The post saves the keeper! {t}'s {n} denied by the frame!","Nowhere near! {t}'s {n} snatches at the penalty!","Ballooned into the stands! Awful from {t}'s {n}!","Too casual! {t}'s {n} chips it wide of the post!","Horrible penalty. {t}'s {n} never looked confident."],
   offside:["Offside against {t}. {n} mistimed the run.","Flag up. {t}'s {n} caught offside.","{t}'s {n} went too early. Offside.","Linesman's flag. {t}'s {n} beyond the last man.","{t}'s {n} is offside. Good call.","Well-timed trap from {o}. {t}'s {n} caught out.","Offside. {t}'s {n} strayed ahead of the line.","Marginal but correct. {t}'s {n} flagged offside.","{t}'s {n} drifts offside. Move is dead.","The flag goes up. {t}'s {n} a fraction offside.","Run timed too early by {t}'s {n}. Offside.","{t}'s {n} springs forward but the flag is up."],
@@ -117,6 +151,7 @@ function genGoalViz(rng, method, scorerName, assistName, zone, dive) {
   if (m === "pen") { shotFrom = { x: 88, y: 32.5 }; }
   else if (m !== "og") {
     if (m === "header") { shotFrom = { x: R(88,96), y: R(20,45) }; assistFrom = { x: R(95,100), y: rng.u() < 0.5 ? R(2,12) : R(53,63) }; }
+    else if (m === "corner") { shotFrom = { x: R(90,97), y: R(18,47) }; assistFrom = { x: 100, y: rng.u() < 0.5 ? R(0,5) : R(60,65) }; }
     else if (m === "long-range") { shotFrom = { x: R(68,82), y: R(15,50) }; assistFrom = { x: R(48,68), y: R(12,53) }; }
     else if (m === "deflection") { shotFrom = { x: R(75,90), y: R(16,49) }; assistFrom = { x: R(55,78), y: R(12,53) }; }
     else if (m === "counter") { shotFrom = { x: R(80,94), y: R(18,47) }; assistFrom = { x: R(20,45), y: R(15,50) }; }
@@ -126,7 +161,7 @@ function genGoalViz(rng, method, scorerName, assistName, zone, dive) {
   }
   let gz = zone, dv = dive;
   if (gz == null) {
-    const w = m === "header" ? [20,20,20,13,14,13] : m === "long-range" ? [14,10,14,18,12,18] : [14,10,14,20,12,20];
+    const w = (m === "header" || m === "corner") ? [20,20,20,13,14,13] : m === "long-range" ? [14,10,14,18,12,18] : [14,10,14,20,12,20];
     const tot = w.reduce((a,b)=>a+b,0); let r = rng.u()*tot; gz = 5;
     for (let i = 0; i < 6; i++) { r -= w[i]; if (r <= 0) { gz = i; break; } }
   }
@@ -163,6 +198,9 @@ function gvSync(txt, gv) {
   if (gv.method === "pen" && gv.dive === pz % 3) gv.dive = (pz % 3 + 1) % 3;
 }
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
+const PROMO_DEBUFF = { GK: 0.04, DEF: 0.025, MID: 0.02, FWD: 0.015 };
+const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3) : variant === "abusive" ? 2 + Math.floor(r * 3) : 1;
+const calcPromoDebuff = (starters, origBenchNames) => { let d = 0; for (const p of starters) { if (origBenchNames.has(p.name)) d += PROMO_DEBUFF[p.pos] || 0.02; } return d; };
 function lmDisplayMin(phase, min, se) { const b = { first_half_stoppage:45, second_half_stoppage:90, et_first_stoppage:105, et_second_stoppage:120 }[phase]; return b !== undefined ? `${b}+${se}` : `${min}`; }
 function lmClockDisplay(s) {
   const map = { pre_match:"--", half_time:"HT", full_time:"FT", et_half_time:"ET HT", et_full_time:"ET FT", penalties:"PEN", finished:"FT" };
@@ -323,14 +361,15 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
   const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner");
-  const cGoalP = 0.04 * sm * TIER_CONV[scorer.tier || 0];
   const cGk = s.players[def].find(p => p.pos === "GK");
-  const cGkBonus = TIER_GK_SAVE[cGk?.tier || 0];
+  const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
+  const cGoalP = 0.04 * sm * TIER_CONV[scorer.tier || 0] + cEmergency;
+  const cGkBonus = TIER_GK_SAVE[cGk?.tier || 0] - cEmergency;
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
     scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
-    {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"header",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD "+_t, goalViz:_g});}
+    {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD "+_t, goalViz:_g});}
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
@@ -377,9 +416,10 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
 function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
   const shooter = pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal");
   s.stats[atk].shots++;
-  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * TIER_CONV[shooter.tier || 0];
   const sGk = s.players[def].find(p => p.pos === "GK");
-  const saveP = 0.16+0.16*defE/(atkE+defE) + TIER_GK_SAVE[sGk?.tier || 0];
+  const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
+  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * TIER_CONV[shooter.tier || 0] + sEmergency;
+  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + TIER_GK_SAVE[sGk?.tier || 0] - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -447,17 +487,44 @@ function lmHandleCard(s, rng, dm, team, fouler, nm, cardChance) {
   const fn = fouler?.name || String(fouler);
   if (rng.u() >= cardChance) return;
   if (rng.u() < 0.015 && s.players[team].length > 7) {
-    s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
-    s.events.push({min:dm,type:"red",team,player:fn,text:"\uD83D\uDFE5 "+comm(rng,"straight_red",{t:nm[team],n:fn,c:s.players[team].length},s)});
+    const rcVariant = pickRedCardVariant(rng, fouler?.pos);
+    const cmKey = "red_" + rcVariant;
+    s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;rp.rcVariant=rcVariant;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
+    s.events.push({min:dm,type:"red",team,player:fn,rcVariant,text:"\uD83D\uDFE5 "+comm(rng,cmKey,{t:nm[team],n:fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
+    ensureGoalkeeper(s, team, dm, nm, rng);
   } else if (s.booked[team].includes(fn)) {
     s.stats[team].yellows++; s.stats[team].reds++; s.stats[team].secondYellows=(s.stats[team].secondYellows||0)+1; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
     s.events.push({min:dm,type:"red",team,player:fn,text:"\uD83D\uDFE5 "+comm(rng,"second_yellow",{t:nm[team],n:fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
+    ensureGoalkeeper(s, team, dm, nm, rng);
   } else {
     s.stats[team].yellows++; s.booked[team].push(fn); ratePlayer(s.players[team],fn,-0.3); {const yp=s.players[team].find(p=>p.name===fn);if(yp)yp.yc++;}
     s.events.push({min:dm,type:"yellow",team,text:"\uD83D\uDFE8 "+comm(rng,"yellow",{t:nm[team],n:fn},s)});
     s.stoppageBank+=30;
+  }
+}
+// If a team has no recognized keeper left on the pitch, bring on the backup keeper for an
+// outfield player (using a substitution, if one's still available); failing that, a random
+// outfield player takes the gloves as an emergency stand-in (no substitution used — they're
+// just repositioned, same as happens on a real pitch when the bench keeper is unavailable).
+function ensureGoalkeeper(s, side, dm, nm, rng) {
+  if (s.players[side].some(p => p.pos === "GK")) return;
+  const sn = nm[side];
+  const benchIdx = s.bench[side].findIndex(p => p.pos === "GK");
+  if (benchIdx !== -1 && s.subs[side] < 3 && s.players[side].length > 0) {
+    s.subs[side]++;
+    const subOn = s.bench[side].splice(benchIdx, 1)[0];
+    subOn.sub = 'on'; subOn.rating = 6.5;
+    const subOff = pick(rng, s.players[side]);
+    s.players[side] = s.players[side].filter(p => p.name !== subOff.name);
+    s.subbedOff[side].push({...subOff, sub: 'off'});
+    s.players[side].push(subOn);
+    s.events.push({min:dm,type:"sub",text:"🔄 "+sn+"'s backup keeper "+subOn.name+" comes on for "+subOff.name+" to take over between the posts.",offName:subOff.name,onName:subOn.name,reason:"Goalkeeper cover",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
+  } else {
+    const promoted = pick(rng, s.players[side]);
+    promoted.pos = "GK"; promoted.emergencyGK = true;
+    s.events.push({min:dm,type:"neutral",text:"🧤 With no keeper left, "+sn+"'s "+promoted.name+" pulls on the gloves as an emergency stand-in."});
   }
 }
 
@@ -466,6 +533,7 @@ function staminaMod(stam) { return 1 - Math.pow((100 - Math.max(0, stam)) / 100,
 function lmSimMinute(s, rng, home, away) {
   const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
   let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(s.stamina.home), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(s.stamina.away);
+  if (s.promoDebuff) { hE *= (1 - (s.promoDebuff.home || 0)); aE *= (1 - (s.promoDebuff.away || 0)); }
   if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
   if(s.momentum.home > 0) s.momentum.home--;
   if(s.momentum.away > 0) s.momentum.away--;
@@ -707,26 +775,33 @@ function lmSimMinute(s, rng, home, away) {
     }
   }
   // Injuries (~0.14 per game, rarer when fresh, more common when tired)
-  for (const side of ["home","away"]) {
+  if (s.injuriesEnabled !== false) for (const side of ["home","away"]) {
     const injRate = 0.0008 * (1 + (100 - s.stamina[side]) * 0.008);
     if (rng.u() < injRate && s.players[side].length > 7) {
       const injured = pick(rng, s.players[side]);
       const sn = side === "home" ? home.name : away.name;
+      const { sev: injSev, part: injPart } = pickInjury(rng);
+      const injTag = " " + injSev.label + " (" + injPart + ").";
       s.stoppageBank += 60; s.stats[side].injuries++;
-      if (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK")) {
-        s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true;
+      const isGK = injured.pos === "GK";
+      const canSub = isGK
+        ? (s.subs[side] < 3 && s.bench[side].some(p => p.pos === "GK"))
+        : (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK"));
+      if (canSub) {
+        s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true; injured.injSev = injSev.id; injured.injPart = injPart;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
-        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+(wasBooked ? " Was on a yellow." : "")});
-        const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+injTag+(wasBooked ? " Was on a yellow." : "")});
+        const subOn = (()=>{ const b=s.bench[side]; const outIdx = isGK ? b.findIndex(p=>p.pos==="GK") : b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
         subOn.sub='on'; subOn.rating=6.5; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
         { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.name,x:injured.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+injured.name+" \u2192 "+subOn.name+". "+reason,offName:injured.name,onName:subOn.name,reason,offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos}); }
       } else {
-        {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
+        {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;ip.injSev=injSev.id;ip.injPart=injPart;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
         if (s.booked[side].includes(injured.name)) s.booked[side] = s.booked[side].filter(p => p !== injured.name);
         s.stats[side].injuriesNoSub++;
-        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+" No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
+        s.events.push({min:dm,type:"injury",team:side,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.name})+injTag+" No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
       }
+      ensureGoalkeeper(s, side, dm, nm, rng);
     }
   }
   // Record momentum: ball position + possession bias, smoothed
@@ -787,7 +862,7 @@ function lmSimMinute(s, rng, home, away) {
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0} };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], pendingPenalty:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, promoDebuff:null, injuriesEnabled:true };
 }
 
 function cloneState(p) {
@@ -958,6 +1033,28 @@ function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, 
   return result;
 }
 const playerKey = (team, name) => team + "|" + name;
+// Groups an array of teams by their `league` field, ordered by LEAGUE_ORDER.
+// Returns [league, teams][] entries, with `null` entries as section dividers.
+function groupByLeague(list) {
+  const groups = {};
+  for (const t of list) { const l = t.league || "Custom"; if (!groups[l]) groups[l] = []; groups[l].push(t); }
+  const raw = [];
+  const seen = new Set();
+  for (const l of LEAGUE_ORDER) {
+    if (l === null) { raw.push(null); continue; }
+    if (groups[l]) { raw.push([l, groups[l]]); seen.add(l); }
+  }
+  for (const l of Object.keys(groups)) { if (!seen.has(l)) raw.push([l, groups[l]]); }
+  // Collapse dividers left orphaned when a league on either side has no teams
+  // (drop leading/trailing nulls, collapse consecutive nulls to one).
+  const result = [];
+  for (const entry of raw) {
+    if (entry === null) { if (result.length > 0 && result[result.length - 1] !== null) result.push(null); continue; }
+    result.push(entry);
+  }
+  if (result.length > 0 && result[result.length - 1] === null) result.pop();
+  return result;
+}
 function filterSquad(squad, teamName, unavailSet) {
   if (!squad) return null;
   const kf = n => playerKey(teamName, n);
@@ -979,14 +1076,19 @@ function splitAvailSquad(squad, teamName, unavail) {
   const availStarters = starters.filter(p => !unavail.has(keyOf(p.name)));
   const availBench = bench.filter(p => !unavail.has(keyOf(p.name)));
   const used = new Set();
-  const replacements = [];
+  const repMap = new Map();
   for (const out of unavailStarters) {
     let rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
     if (!rep) rep = availBench.find(p => p.pos !== "GK" && !used.has(p.name));
     if (!rep) rep = availBench.find(p => !used.has(p.name));
-    if (rep) { replacements.push(rep); used.add(rep.name); }
+    if (rep) { repMap.set(out.name, rep); used.add(rep.name); }
   }
-  return { starters: [...availStarters, ...replacements], bench: availBench.filter(p => !used.has(p.name)) };
+  const startResult = [];
+  for (const p of starters) {
+    if (unavail.has(keyOf(p.name))) { const rep = repMap.get(p.name); if (rep) startResult.push(rep); }
+    else startResult.push(p);
+  }
+  return { starters: startResult, bench: availBench.filter(p => !used.has(p.name)) };
 }
 // Ban-aware starters/bench split for display: suspended/injured starters are shown
 // on the bench (tagged `out`), with their replacement promoted into the starting XI.
@@ -998,16 +1100,21 @@ function displaySquad(squad, teamName, playerStats) {
   const availSt = st.filter(p => !isOut(p.name)), outSt = st.filter(p => isOut(p.name));
   const availBn = bn.filter(p => !isOut(p.name)), outBn = bn.filter(p => isOut(p.name));
   const used = new Set();
-  const promoted = [];
+  const promoMap = new Map();
   for (const out of outSt) {
     let rep = availBn.find(p => p.pos === out.pos && !used.has(p.name));
     if (!rep) rep = availBn.find(p => p.pos !== "GK" && !used.has(p.name));
     if (!rep) rep = availBn.find(p => !used.has(p.name));
-    if (rep) { promoted.push({ ...rep, bench: false }); used.add(rep.name); }
+    if (rep) { promoMap.set(out.name, { ...rep, bench: false }); used.add(rep.name); }
   }
   const remainBn = availBn.filter(p => !used.has(p.name));
+  const startResult = [];
+  for (const p of st) {
+    if (isOut(p.name)) { const rep = promoMap.get(p.name); if (rep) startResult.push(rep); }
+    else startResult.push(p);
+  }
   return {
-    starters: [...availSt, ...promoted],
+    starters: startResult,
     bench: [...remainBn, ...outSt.map(p => ({ ...p, bench: true, out: true })), ...outBn.map(p => ({ ...p, out: true }))],
   };
 }
@@ -1560,28 +1667,80 @@ function parseBulk(text) {
     for (let i = 0; i < stratKeys.length && i + 4 < p.length; i++) {
       strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4]);
     }
-    // Extract player names after the 14 tactic columns (indices 4+14=18 onwards),
-    // then peel off up to two optional #RRGGBB colors trailing after the players.
-    // Detected by the leading '#', so absence is fully backward-compatible —
-    // player names never start with '#'.
+    // Player names occupy a fixed 16-slot block right after the 14 tactic columns
+    // (indices 18..33). Anything past that is optional trailing metadata, in a fixed
+    // order: up to 2 #RRGGBB colors, then city, then stadium. Venue fields may carry a
+    // trailing "(number)" population/capacity for user reference only — stripped here.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
-    const trailing = [];
-    for (let i = 18; i < p.length; i++) { const v = p[i]?.trim(); if (v) trailing.push(v); }
+    const stripVenue = (s) => (s||"").replace(/\s*\([\d,]+\)\s*$/, "").trim();
+    const PLAYER_START = 18, PLAYER_SLOTS = 16;
+    const playerNames = [];
+    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) playerNames.push(v); }
+    const meta = [];
+    for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) { const v = p[i]?.trim(); if (v) meta.push(v); }
     let primaryColor = null, secondaryColor = null;
-    if (trailing.length > 0 && isHexColor(trailing[trailing.length - 1])) {
-      if (trailing.length > 1 && isHexColor(trailing[trailing.length - 2])) {
-        secondaryColor = trailing.pop();
-        primaryColor = trailing.pop();
-      } else {
-        primaryColor = trailing.pop();
-      }
-    }
-    const playerNames = trailing;
+    if (meta.length > 0 && isHexColor(meta[0])) primaryColor = meta.shift();
+    if (meta.length > 0 && isHexColor(meta[0])) secondaryColor = meta.shift();
+    let city = null, stadium = null;
+    if (meta.length > 0) city = stripVenue(meta.shift());
+    if (meta.length > 0) stadium = stripVenue(meta.shift());
     const squad = buildSquad(formation, playerNames.length > 0 ? playerNames : null);
-    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}) };
+    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}) };
   }).filter(Boolean);
 }
 const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
+// Deterministic string hash — used to pick a stable (non-random) venue per fixture, so
+// re-opening the same match always shows the same stadium instead of reshuffling.
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+// Stable per-fixture identity, shared by home-advantage overrides, the host-venue pool,
+// and the replay counter — a group match, or a KO bracket slot (both legs share one tie).
+function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_${t.gi}_${t.ri}_${t.mi}`; return t.tp ? "tp" : `ko_${t.ri}_${t.mi}`; }
+// City\tStadium, one per line — parses the host-nation venue pool pasted in tournament setup.
+function parseVenuePool(text) {
+  return (text || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+    const [city, stadium] = line.split("\t");
+    return { city: (city || "").trim(), stadium: (stadium || "").trim() };
+  }).filter(v => v.city || v.stadium);
+}
+// Long team names: instead of wrapping to a second line, clip to one line with a fade
+// at the edges and auto-scroll periodically so the full name is still readable over time.
+// Falls back to plain static text (respecting `align`) when the name already fits.
+function MarqueeName({ text, align = "left", style }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [dist, setDist] = useState(0);
+  useEffect(() => {
+    const outer = outerRef.current, inner = innerRef.current;
+    if (!outer || !inner) return;
+    const measure = () => setDist(Math.max(0, inner.scrollWidth - outer.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(outer);
+    return () => ro.disconnect();
+  }, [text]);
+  return (
+    <span ref={outerRef} style={{ display: "block", overflow: "hidden", whiteSpace: "nowrap", ...style }}>
+      <span ref={innerRef} className={dist > 0 ? "marquee-name" : ""} style={dist > 0 ? { display: "inline-block", "--marquee-dist": `-${dist}px` } : { display: "block", textAlign: align }}>{text}</span>
+    </span>
+  );
+}
+// Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
+// shield in the team's home color, outlined in its away color, if none exists.
+function TeamCrest({ team, size = 22, style }) {
+  const code = abbr(team?.name, team?.code);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [code]);
+  if (code && !imgFailed) {
+    return <img src={`/badges/${code}.png`} alt="" width={size} height={size * 1.1} style={{ objectFit: "contain", flexShrink: 0, ...style }} onError={() => setImgFailed(true)} />;
+  }
+  const home = team?.primaryColor || "#7889a0";
+  const away = team?.secondaryColor || team?.primaryColor || "#2a3a50";
+  return (
+    <svg width={size} height={size * 1.1} viewBox="-12 -12 64 68" style={{ flexShrink: 0, ...style }}>
+      <path d="M20 2 L35 8 L35 20 C35 30 28.5 37.5 20 41.5 C11.5 37.5 5 30 5 20 L5 8 Z" fill={home} stroke={away} strokeWidth="2.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
 const hexToRgb = (hex) => { const h = (hex || "").replace("#", ""); if (h.length !== 6) return null; return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
 // "redmean" — a cheap perceptually-weighted RGB distance, much better than plain
 // Euclidean distance at telling "different colors" apart from "near-duplicate shades".
@@ -1613,6 +1772,17 @@ const readableClr = (hex, altHex, bgHex) => {
   if (!colorsClash(hex, bgHex)) return hex;
   if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
   return lightenUntil(hex, bgHex, 0.3);
+};
+const ensureMinLum = (hex) => {
+  const c = hexToRgb(hex); if (!c) return "#ffffff";
+  let r = c.r, g = c.g, b = c.b;
+  for (let i = 0; i < 10; i++) {
+    if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.3) break;
+    r = Math.min(255, Math.round(r + (255 - r) * 0.3));
+    g = Math.min(255, Math.round(g + (255 - g) * 0.3));
+    b = Math.min(255, Math.round(b + (255 - b) * 0.3));
+  }
+  return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
 };
 
 const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:45,MID:25,FWD:29},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
@@ -1702,12 +1872,29 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, has
     return cols.slice(skipStart, hasSuffix ? -1 : cols.length).map(c => c.trim()).join("\t");
   }).filter(Boolean).join("\n"));
 }
-const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false);
+const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
+const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, ["Liga-ye Mellī"]);
 const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
 const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
-const PRESET_WC = parsePresetTSV(wcTSV, null, 0, false);
+const LEAGUE_ORDER = [
+  "Avium International",
+  null,
+  "Nichirin League One", "Nichirin League Two", "Varahmehri Liga-ye Mellī",
+  null,
+  "Premier League", "Miscellaneous European",
+  null,
+  "Custom",
+];
+const PRESET_CATALOG = [
+  ...PRESET_AVIUM.map(t => ({...t, league: "Avium International"})),
+  ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
+  ...PRESET_NCH_L2.map(t => ({...t, league: "Nichirin League Two"})),
+  ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
+  ...PRESET_PL.map(t => ({...t, league: "Premier League"})),
+  ...PRESET_MISC_EU.map(t => ({...t, league: "Miscellaneous European"})),
+].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
@@ -1784,10 +1971,10 @@ function gvPitch(gv, clr) {
     <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     {A && <g>
       <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
-      <text x={lx(A[0],170)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
+      <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
     </g>}
     <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
-    <text x={lx(S[0],177)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
+    <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
     {A && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
       <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="#060b14" strokeWidth="0.8" />
     </g>}
@@ -1822,6 +2009,8 @@ input:focus,select:focus,textarea:focus{border-color:#e4002b !important;outline:
 @keyframes goalGlow{0%{text-shadow:0 0 24px #ffffff,0 0 48px #e4002b44;}50%{text-shadow:0 0 36px #ffffff,0 0 72px #e4002b44;}100%{text-shadow:none;}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes marqueeScroll{0%,20%{transform:translateX(0)}50%,70%{transform:translateX(var(--marquee-dist))}100%{transform:translateX(0)}}
+.marquee-name{animation:marqueeScroll 7s ease-in-out infinite;}
 .ev-enter{animation:slideIn 0.3s ease;}
 .goal-flash{animation:goalPunch 0.6s ease-out, goalGlow 1.2s ease-out;}
 .tick-btn{transition:all 0.12s ease;}
@@ -1872,32 +2061,39 @@ details{border:none;border-bottom:none;}
 `;
 
 const T_PRESETS = {
-  league: { label: "League", config: { mode: "single", singleType: "groups", numGroups: 1, matchFormat: "roundRobin", rrLegs: 2, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 1, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [{ anchor: "top", from: 1, to: 1, label: "Champion", color: "#e4002b", type: "cosmetic" }, { anchor: "bottom", from: 1, to: 3, label: "Relegation", color: "#bf616a", type: "cosmetic" }] } },
-  oldWC: { label: "Old World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] } },
-  newWC: { label: "New World Cup", config: { mode: "double", singleType: "groups", numGroups: 12, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 3, to: 3, label: "Best 3rd", color: "#4a7ab5", type: "best", bestCount: 8 }] } },
-  oldUCL: { label: "Old UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] } },
-  newUCL: { label: "New UCL", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "swiss", rrLegs: 1, allocMode: "seed", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: false, homeAdvTeams: [], advPerGroup: 8, numPots: 4, swissRounds: 8, koAllocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'buchholz', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Advance", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
-  cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "auto", tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
+  league: { label: "League", config: { mode: "single", singleType: "groups", numGroups: 1, matchFormat: "roundRobin", rrLegs: 2, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 1, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [{ anchor: "top", from: 1, to: 1, label: "Champion", color: "#ebcb8b", type: "cosmetic" }, { anchor: "bottom", from: 1, to: 3, label: "Relegation", color: "#bf616a", type: "cosmetic" }] } },
+  oldWC: { label: "Old World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] } },
+  newWC: { label: "New World Cup", config: { mode: "double", singleType: "groups", numGroups: 12, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 3, to: 3, label: "Best 3rd", color: "#4a7ab5", type: "best", bestCount: 8 }] } },
+  oldUCL: { label: "Old UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] } },
+  newUCL: { label: "New UCL", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "swiss", rrLegs: 1, allocMode: "seed", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: false, homeAdvTeams: [], advPerGroup: 8, numPots: 4, swissRounds: 8, koAllocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'buchholz', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Advance", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
+  cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "auto", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
 const TB = (t) => t===2?<span style={{color:"#e4002b",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("live");
   const [teamsOpen, setTeamsOpen] = useState(true);
-  const [teams, setTeams] = useState(() => PRESET_AVIUM.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
+  const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
+  const [teams, setTeams] = useState(() => PRESET_CATALOG.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
+  const teamById = useMemo(() => { const m = new Map(); teams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [teams]);
   const [showBulk, setShowBulk] = useState(false);
   const [teamSort, setTeamSort] = useState(null);
+  const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [viewSquad, setViewSquad] = useState(null);
+  const [viewInfo, setViewInfo] = useState(null);
+  const [dupCodeId, setDupCodeId] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // ─── LIVE MATCH ───
-  const [lmH, setLmH] = useState(0);
-  const [lmA, setLmA] = useState(Math.min(1, PRESET_AVIUM.length - 1));
+  const [lmH, setLmH] = useState(PRESET_CATALOG[0]?.id);
+  const [lmA, setLmA] = useState(PRESET_CATALOG[1]?.id);
   const [lmForce, setLmForce] = useState(true);
   const [lmAllowTac, setLmAllowTac] = useState(true);
   const [lmHomeAdv, setLmHomeAdv] = useState(null);
+  const [lmNeutralVenueName, setLmNeutralVenueName] = useState("");
+  const [lmNeutralVenueLoc, setLmNeutralVenueLoc] = useState("");
   const [lm2ndLeg, setLm2ndLeg] = useState(false);
   const [lmMatch, setLmMatch] = useState(null);
   const [lmStartScore, setLmStartScore] = useState([0, 0]);
@@ -2064,9 +2260,11 @@ export default function App() {
 
   // ─── TOURNAMENT ───
   const [tPhase, setTPhase] = useState("setup");
+  const [tournamentTeamIds, setTournamentTeamIds] = useState([]);
+  const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   const [tDrawLog, setTDrawLog] = useState([]);
@@ -2081,6 +2279,9 @@ export default function App() {
   const [tKoEdit, setTKoEdit] = useState(null); // {ri, mi, h:"", a:""} for knockout manual score
   const [tScoreError, setTScoreError] = useState("");
   const [tHomeAdvOverrides, setTHomeAdvOverrides] = useState({});
+  const [tHostVenueText, setTHostVenueText] = useState("");
+  const [tReplayCounts, setTReplayCounts] = useState({});
+  const tHostVenuePool = parseVenuePool(tHostVenueText);
   const [tLiveTarget, setTLiveTarget] = useState(null);
   const tToggleHA = (key) => setTHomeAdvOverrides(p => { const c = p[key] || null; const n = c === null ? "home" : c === "home" ? "away" : c === "away" ? "off" : null; const nm = { ...p }; if (n === null) delete nm[key]; else nm[key] = n; return nm; });
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
@@ -2093,7 +2294,7 @@ export default function App() {
         setLmMatch(prev => {
           if (!prev || prev.phase === "finished") { setAutoPlay(false); return prev; }
           const prevLen = prev.events.length;
-          const next = lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill });
+          const next = lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill });
           if (lmStopOnEvents) {
             const stopPhases = new Set(["half_time", "full_time", "et_half_time", "et_full_time", "finished"]);
             if (stopPhases.has(next.phase) && !stopPhases.has(prev.phase)) { setAutoPlay(false); }
@@ -2112,11 +2313,11 @@ export default function App() {
   }, [autoPlay, autoSpeed, lmMatch?.phase, teams, lmH, lmA, lmStopOnEvents]);
 
   // ─── TEAM MGMT ───
-  const addTeam = () => setTeams(t => [...t, { name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
-  const removeTeam = (i) => setTeams(t => t.filter((_, j) => j !== i));
-  const updateTeam = (i, f, v) => setTeams(t => t.map((tm, j) => { if (j !== i) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; const tiers = tm.squad ? tm.squad.map(p => p.tier || 0) : null; nt.squad = buildSquad(v, names); if (tiers) nt.squad.forEach((p, i) => { if (i < tiers.length) p.tier = tiers[i]; }); } return nt; }));
+  const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
+  const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
+  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; const tiers = tm.squad ? tm.squad.map(p => p.tier || 0) : null; nt.squad = buildSquad(v, names); if (tiers) nt.squad.forEach((p, i) => { if (i < tiers.length) p.tier = tiers[i]; }); } return nt; }));
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
-  const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(p); setShowBulk(false); setBulkText(""); setLmMatch(null); setLmH(0); setLmA(Math.min(1, p.length - 1)); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); } };
+  const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
   const lmPhase = lmMatch?.phase;
   const prevScoreRef = useRef([0,0]);
@@ -2131,8 +2332,8 @@ export default function App() {
     if (lmPhase === "finished" && lmMatch) {
       const allPlayers = (side) => [...(lmMatch.players?.[side]||[]), ...(lmMatch.subbedOff?.[side]||[])];
       setLastLiveResult({
-        homeName: teams[lmH]?.name, awayName: teams[lmA]?.name,
-        homeCode: teams[lmH]?.code, awayCode: teams[lmA]?.code,
+        homeName: teamById(lmH)?.name, awayName: teamById(lmA)?.name,
+        homeCode: teamById(lmH)?.code, awayCode: teamById(lmA)?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
         goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
         homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
@@ -2219,8 +2420,8 @@ export default function App() {
           next[k].matches += v.matches;
           next[k].totalRating += v.totalRating;
           next[k].yellows += v.yc;
-          if (v.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + 1; }
-          if (v.inj) { const r = Math.random(); next[k].injOut = (next[k].injOut||0) + (r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5); }
+          if (v.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + rcSuspGames(v.rcVariant, Math.random()); }
+          if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; const dur = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); next[k].injOut = (next[k].injOut||0) + dur; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
         }
         return next;
       });
@@ -2243,8 +2444,8 @@ export default function App() {
     if (hi === -1 || ai === -1) return;
 
     const isL2 = target.type === "ko" && target.leg === 2 && tConfig.koLegs === 2;
-    const liveHi = isL2 ? ai : hi;
-    const liveAi = isL2 ? hi : ai;
+    const liveHId = isL2 ? teams[ai].id : teams[hi].id;
+    const liveAId = isL2 ? teams[hi].id : teams[ai].id;
 
     const unavail = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) {
@@ -2257,75 +2458,133 @@ export default function App() {
       startScore = [matchObj.result.leg1.away, matchObj.result.leg1.home];
     }
 
-    let homeAdv = null;
+    const venueKey = fixtureKey(target);
+    let homeAdv = null, hostModeActive = false;
     if (target.type === "group") {
-      const haKey = `g_${target.gi}_${target.ri}_${target.mi}`;
-      homeAdv = tGetHA(haKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
+      homeAdv = tGetHA(venueKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
+      hostModeActive = tConfig.homeAdvGroup === "host";
     } else {
-      const koHAKey = target.tp ? "tp" : `ko_${target.ri}_${target.mi}`;
-      const haVal = tGetHA(koHAKey, resolveKOHomeAdv(matchObj, tConfig));
+      const haVal = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig));
       if (isL2) { homeAdv = haVal === "home" ? "away" : haVal === "away" ? "home" : null; }
       else { homeAdv = haVal; }
+      hostModeActive = tConfig.homeAdvKO === "host";
     }
+    setTReplayCounts(c => ({ ...c, [venueKey]: (c[venueKey] || 0) + 1 }));
+    // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
+    // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
+    // World Cup plays every game across the host country's stadiums.
+    const venue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[hashStr(venueKey) % tHostVenuePool.length] : null;
 
-    const buildLiveSquad = (teamName, teamIdx) => {
-      const sq = teams[teamIdx]?.squad || buildSquad(teams[teamIdx]?.formation, null);
+    const buildLiveSquad = (teamName, teamId) => {
+      const sq = teamById(teamId)?.squad || buildSquad(teamById(teamId)?.formation, null);
       return splitAvailSquad(sq, teamName, unavail);
     };
 
-    const hSquad = buildLiveSquad(teams[liveHi].name, liveHi);
-    const aSquad = buildLiveSquad(teams[liveAi].name, liveAi);
+    const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId);
+    const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId);
     const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
     const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
     const init = createMatchState();
     init.forceResult = forceResult;
-    init.styles = { home: teams[liveHi].style || "balanced", away: teams[liveAi].style || "balanced" };
-    init.formations = { home: teams[liveHi].formation || "4-3-3", away: teams[liveAi].formation || "4-3-3" };
+    init.styles = { home: teamById(liveHId).style || "balanced", away: teamById(liveAId).style || "balanced" };
+    init.formations = { home: teamById(liveHId).formation || "4-3-3", away: teamById(liveAId).formation || "4-3-3" };
     init.allowTacChange = {home:true, away:true};
     init.homeAdv = homeAdv;
-    init.strategy = { home: { ...STRAT_DEF, ...(teams[liveHi].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[liveAi].strategy || {}) } };
+    init.venue = venue;
+    init.strategy = { home: { ...STRAT_DEF, ...(teamById(liveHId).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(liveAId).strategy || {}) } };
     init.score = [0, 0];
     init.startScore = startScore;
     init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
     init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
 
-    setLmH(liveHi); setLmA(liveAi);
+    setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv);
     setTLiveTarget({...target, flipped: isL2});
     setLmMatch(init); setManualSub({side:null,off:null}); setTab("live");
   };
 
   // Auto-save tournament state to persistent storage
-  const saveTimeoutRef = useRef(null);
+  // Permanent roster — its own save, independent lifetime from tournament progress.
+  const rosterSaveTimeoutRef = useRef(null);
   useEffect(() => {
-    if (!tPhase && teams.length <= 1) return; // nothing to save
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const state = { v: 2, teams, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, ts: Date.now() };
-        localStorage.setItem("avium-engine-autosave", JSON.stringify(state));
-      } catch (e) { /* storage unavailable */ }
-    }, 1500); // debounce 1.5s
-  }, [teams, tConfig, tGroups, tKO, tPlayerStats, tPhase]);
+    if (rosterSaveTimeoutRef.current) clearTimeout(rosterSaveTimeoutRef.current);
+    const customTeams = teams.filter(t => t.league === "Custom");
+    if (customTeams.length === 0) { try { localStorage.removeItem("avium-roster-db"); } catch(e) {} return; }
+    rosterSaveTimeoutRef.current = setTimeout(() => {
+      try { localStorage.setItem("avium-roster-db", JSON.stringify({ v: 1, teams: customTeams, ts: Date.now() })); }
+      catch (e) { /* storage unavailable */ }
+    }, 1500);
+  }, [teams]);
 
-  // Auto-load on mount
+  // Tournament/live-match session — resets independently of the roster.
+  const sessionSaveTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (!tPhase && tournamentTeamIds.length === 0) return; // nothing to save
+    if (sessionSaveTimeoutRef.current) clearTimeout(sessionSaveTimeoutRef.current);
+    sessionSaveTimeoutRef.current = setTimeout(() => {
+      try {
+        const state = { v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tReplayCounts, ts: Date.now() };
+        localStorage.setItem("avium-tournament-session", JSON.stringify(state));
+      } catch (e) { /* storage unavailable */ }
+    }, 1500);
+  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tReplayCounts]);
+
+  // Auto-load on mount: roster first (migrating the legacy combined-save key exactly
+  // once if no roster-db exists yet), then the tournament session independently.
   useEffect(() => {
     (async () => {
       try {
-        const result = { value: localStorage.getItem("avium-engine-autosave") };
-        if (result?.value) {
-          const state = JSON.parse(result.value);
-          if (state.v && state.teams?.length > 0) {
-            setTeams(state.teams.map(t => ({ ...t, squad: t.squad || buildSquad(t.formation || "4-3-3", null), strategy: { ...STRAT_DEF, ...(t.strategy || {}) } })));
-            if (state.tConfig) setTConfig(c => ({ ...c, ...state.tConfig, qualZones: state.tConfig.qualZones || c.qualZones, tiebreakers: state.tConfig.tiebreakers || c.tiebreakers }));
-            if (state.tGroups) setTGroups(state.tGroups);
-            if (state.tKO) setTKO(state.tKO);
-            if (state.tPlayerStats) setTPlayerStats(state.tPlayerStats);
-            if (state.tPhase) setTPhase(state.tPhase);
-            if (state.lmH !== undefined) setLmH(state.lmH);
-            if (state.lmA !== undefined) setLmA(state.lmA);
+        // Preset teams always come fresh from PRESET_CATALOG (source of truth = TSV files).
+        // Only custom teams are persisted in avium-roster-db.
+        const rosterRaw = localStorage.getItem("avium-roster-db");
+        let customTeams = [];
+        if (rosterRaw) {
+          const rs = JSON.parse(rosterRaw);
+          if (rs.v && rs.teams?.length > 0) {
+            customTeams = rs.teams.filter(t => t.league === "Custom").map(t => ({ ...t, squad: t.squad || buildSquad(t.formation || "4-3-3", null), strategy: { ...STRAT_DEF, ...(t.strategy || {}) } }));
+          }
+        } else {
+          // One-time migration from the legacy combined autosave — extract custom teams only.
+          const legacyRaw = localStorage.getItem("avium-engine-autosave");
+          if (legacyRaw) {
+            const legacy = JSON.parse(legacyRaw);
+            if (legacy.v && legacy.teams?.length > 0) {
+              const catalogKeys = new Set(PRESET_CATALOG.map(c => c.code || c.name));
+              customTeams = legacy.teams
+                .filter(t => !catalogKeys.has(t.code || t.name))
+                .map(t => ({ ...t, league: "Custom", id: "Custom::" + (t.code || t.name), squad: t.squad || buildSquad(t.formation || "4-3-3", null), strategy: { ...STRAT_DEF, ...(t.strategy || {}) } }));
+              // Migrate tournament state from legacy
+              const resolveLegacyIdx = (idx) => { if (typeof idx !== "number") return idx; const orig = legacy.teams[idx]; if (!orig) return undefined; const match = PRESET_CATALOG.find(c => (c.code || c.name) === (orig.code || orig.name)); return match ? match.id : "Custom::" + (orig.code || orig.name); };
+              const resolvedLmH = resolveLegacyIdx(legacy.lmH);
+              const resolvedLmA = resolveLegacyIdx(legacy.lmA);
+              if (resolvedLmH !== undefined) setLmH(resolvedLmH);
+              if (resolvedLmA !== undefined) setLmA(resolvedLmA);
+              if (legacy.tConfig) setTConfig(c => ({ ...c, ...legacy.tConfig, qualZones: legacy.tConfig.qualZones || c.qualZones, tiebreakers: legacy.tConfig.tiebreakers || c.tiebreakers }));
+              if (legacy.tGroups) setTGroups(legacy.tGroups);
+              if (legacy.tKO) setTKO(legacy.tKO);
+              if (legacy.tPlayerStats) setTPlayerStats(legacy.tPlayerStats);
+              if (legacy.tPhase) setTPhase(legacy.tPhase);
+              setTournamentTeamIds(legacy.teams.map(t => { const match = PRESET_CATALOG.find(c => (c.code || c.name) === (t.code || t.name)); return match ? match.id : "Custom::" + (t.code || t.name); }));
+            }
+          }
+        }
+        setTeams([...PRESET_CATALOG, ...customTeams]);
+        // Load tournament session independently.
+        if (rosterRaw) {
+          const sessionRaw = localStorage.getItem("avium-tournament-session");
+          if (sessionRaw) {
+            const ss = JSON.parse(sessionRaw);
+            if (ss.tournamentTeamIds) setTournamentTeamIds(ss.tournamentTeamIds);
+            if (ss.tConfig) setTConfig(c => ({ ...c, ...ss.tConfig, qualZones: ss.tConfig.qualZones || c.qualZones, tiebreakers: ss.tConfig.tiebreakers || c.tiebreakers }));
+            if (ss.tGroups) setTGroups(ss.tGroups);
+            if (ss.tKO) setTKO(ss.tKO);
+            if (ss.tPlayerStats) setTPlayerStats(ss.tPlayerStats);
+            if (ss.tPhase) setTPhase(ss.tPhase);
+            if (ss.lmH !== undefined) setLmH(ss.lmH);
+            if (ss.lmA !== undefined) setLmA(ss.lmA);
+            if (ss.tReplayCounts) setTReplayCounts(ss.tReplayCounts);
           }
         }
       } catch (e) { /* no saved data or storage unavailable */ }
@@ -2353,28 +2612,36 @@ export default function App() {
 
   const exportState = () => { setShowExport(!showExport); };
 
-  const loadLeague = (preset) => { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = preset.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})); return [...prev, ...fresh]; }); setLmH(0); setLmA(prev => Math.max(prev, 1)); setShowBulk(false); setBulkText(""); setLmMatch(null); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
-  const clearTeams = () => { setTeams([]); setLmMatch(null); setLmH(0); setLmA(0); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setExpandedTeam(null); };
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (teams.length < 2) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
-    const hSq = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
-    const aSq = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
+  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.injuriesEnabled = tConfig.injuries !== false;
+    const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
+    const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k); }
-    const hLive = splitAvailSquad(hSq, teams[lmH].name, unavail);
-    const aLive = splitAvailSquad(aSq, teams[lmA].name, unavail);
+    const hLive = splitAvailSquad(hSq, teamById(lmH).name, unavail);
+    const aLive = splitAvailSquad(aSq, teamById(lmA).name, unavail);
+    const hBenchNames = new Set(hSq.filter(p => p.bench).map(p => p.name));
+    const aBenchNames = new Set(aSq.filter(p => p.bench).map(p => p.name));
+    const hDebuff = calcPromoDebuff(hLive.starters, hBenchNames);
+    const aDebuff = calcPromoDebuff(aLive.starters, aBenchNames);
+    if (hDebuff || aDebuff) init.promoDebuff = { home: hDebuff, away: aDebuff };
     init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     init.bench = {home: hLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
-  const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teams[lmH].name, skill: teams[lmH].skill }, { name: teams[lmA].name, skill: teams[lmA].skill })); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teams[lmH].name, skill: teams[lmH].skill }, a = { name: teams[lmA].name, skill: teams[lmA].skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teams[lmH].style || "balanced", away: teams[lmA].style || "balanced" }; init.formations = { home: teams[lmH].formation || "4-3-3", away: teams[lmA].formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.strategy = { home: { ...STRAT_DEF, ...(teams[lmH].strategy || {}) }, away: { ...STRAT_DEF, ...(teams[lmA].strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0];
-    const hSq2 = teams[lmH]?.squad || buildSquad(teams[lmH]?.formation, null);
-    const aSq2 = teams[lmA]?.squad || buildSquad(teams[lmA]?.formation, null);
+  const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill })); }, [lmMatch, teams, lmH, lmA]);
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.injuriesEnabled = tConfig.injuries !== false;
+    const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
+    const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail2 = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail2.add(k); }
-    const hLive2 = splitAvailSquad(hSq2, teams[lmH].name, unavail2);
-    const aLive2 = splitAvailSquad(aSq2, teams[lmA].name, unavail2);
+    const hLive2 = splitAvailSquad(hSq2, teamById(lmH).name, unavail2);
+    const aLive2 = splitAvailSquad(aSq2, teamById(lmA).name, unavail2);
+    const hBenchNames2 = new Set(hSq2.filter(p => p.bench).map(p => p.name));
+    const aBenchNames2 = new Set(aSq2.filter(p => p.bench).map(p => p.name));
+    const hDebuff2 = calcPromoDebuff(hLive2.starters, hBenchNames2);
+    const aDebuff2 = calcPromoDebuff(aLive2.starters, aBenchNames2);
+    if (hDebuff2 || aDebuff2) init.promoDebuff = { home: hDebuff2, away: aDebuff2 };
     init.players = {home: hLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     init.bench = {home: hLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setAutoPlay(false); setLmMatch(s); setLoading(false); }, 40); };
@@ -2382,7 +2649,7 @@ export default function App() {
     setLmMatch(prev => {
       const s = cloneState(prev);
       const dm = s.minute;
-      const sn = side === "home" ? teams[lmH]?.name : teams[lmA]?.name;
+      const sn = side === "home" ? teamById(lmH)?.name : teamById(lmA)?.name;
       const offP = s.players[side].find(p => p.name === offName);
       const onIdx = s.bench[side].findIndex(p => p.name === onName);
       if (!offP || onIdx === -1 || s.subs[side] >= 3) return prev;
@@ -2404,51 +2671,55 @@ export default function App() {
   const lmIsSetup = !lmMatch;
 
   // ─── TOURNAMENT ───
-  const tPerGroup = teams.length > 0 && tConfig.numGroups > 0 ? Math.floor(teams.length / tConfig.numGroups) : 0;
-  const tPerGroupMax = teams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(teams.length / tConfig.numGroups) : 0;
-  const tDivisible = teams.length > 0 && tConfig.numGroups > 0 && teams.length % tConfig.numGroups === 0;
+  const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;
+  const tPerGroupMax = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(tournamentTeams.length / tConfig.numGroups) : 0;
+  const tDivisible = tournamentTeams.length > 0 && tConfig.numGroups > 0 && tournamentTeams.length % tConfig.numGroups === 0;
   const tUneven = !tDivisible && tPerGroup >= 2;
   const tHasGroups = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "groups");
   const tHasKO = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "knockout");
   const qz = tConfig.qualZones || [];
   const tUseZones = tHasKO && zonesHaveAdvance(qz);
-  const tKoTeams = tConfig.mode === "single" && tConfig.singleType === "knockout" ? teams.length : tUseZones ? countKOTeamsFromZones(tConfig.qualZones, tConfig.numGroups) : tConfig.numGroups * tConfig.advPerGroup;
+  const tKoTeams = tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length : tUseZones ? countKOTeamsFromZones(tConfig.qualZones, tConfig.numGroups) : tConfig.numGroups * tConfig.advPerGroup;
   const tAdvOk = tConfig.mode === "single" || tKoTeams >= 2;
   const tKoValid = tKoTeams >= 2;
   const tGroupsOk = tConfig.numGroups >= 1 && tConfig.numGroups <= 26;
   const tPotsOk = tConfig.allocMode !== "draw" || (tConfig.numPots >= 2 && tConfig.numPots <= tConfig.numGroups);
   const tSwissOk = tConfig.matchFormat !== "swiss" || (tConfig.swissRounds >= 1 && tConfig.swissRounds <= Math.max(1, tPerGroup - 1));
-  const tNumByes = (()=>{ let n2=1; const nt = tHasKO ? (tConfig.mode === "double" ? tKoTeams : teams.length) : 0; while(n2<nt)n2*=2; return n2-nt; })();
-  const tValid = !teamErrors && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? teams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tPotsOk && tSwissOk && tAdvOk && (!tHasKO || tKoValid)));
+  const tNumByes = (()=>{ let n2=1; const nt = tHasKO ? (tConfig.mode === "double" ? tKoTeams : tournamentTeams.length) : 0; while(n2<nt)n2*=2; return n2-nt; })();
+  const tParticipantErrors = tournamentTeams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
+  const tValid = !tParticipantErrors && tournamentTeamIds.length >= 2 && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tPotsOk && tSwissOk && tAdvOk && (!tHasKO || tKoValid)));
   const tTotalMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.length, 0), 0);
   const tPlayedMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.filter(m => m.result).length, 0), 0);
 
   const createTournament = (mode) => {
     if (!tValid) return;
     setLoading(true); setTimeout(() => {
+    // Snapshot the selected participants' current squads/config at generation time —
+    // roster edits afterward must not retroactively affect this tournament.
+    const genTeams = tournamentTeams.map(t => ({...t, squad: t.squad ? t.squad.map(p => ({...p})) : null, strategy: {...t.strategy}}));
     // Single knockout — skip groups entirely
     if (tConfig.mode === "single" && tConfig.singleType === "knockout") {
-      const hasTP = tConfig.thirdPlace && teams.length >= 4;
-      let n2=1; while(n2<teams.length)n2*=2; const nb=n2-teams.length;
+      const hasTP = tConfig.thirdPlace && genTeams.length >= 4;
+      let n2=1; while(n2<genTeams.length)n2*=2; const nb=n2-genTeams.length;
       if (nb > 0 && tConfig.koByeMode === "manual") {
-        const sorted = [...teams].sort((a,b) => b.skill - a.skill);
+        const sorted = [...genTeams].sort((a,b) => b.skill - a.skill);
         setTByeManual({ pool: sorted, numByes: nb, selected: [], hasTP, onConfirm: "single" });
         setTPhase("ko_byes"); setLoading(false); return;
       }
       const km = tConfig.koAllocMode;
-      if (km === "seed") { const ko=buildKnockoutSeeded(teams, hasTP); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "random") { const ko=buildKnockoutRandom(teams, hasTP, new RNG(Date.now())); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(teams, hasTP, rng); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
-      else if (km === "manual") { let n2=1; while(n2<teams.length)n2*=2; setTKOManual({ pool: [...teams], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-teams.length }); setTPhase("ko_manual"); }
+      if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(genTeams, hasTP, rng); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
+      else if (km === "manual") { let n2=1; while(n2<genTeams.length)n2*=2; setTKOManual({ pool: [...genTeams], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-genTeams.length }); setTPhase("ko_manual"); }
       setTGroups([]); setTDrawLog([]); setLoading(false); return;
     }
     const ng = tConfig.numGroups;
     const fmt = tConfig.matchFormat;
     const m = ng === 1 ? "seed" : (mode || tConfig.allocMode);
-    if (m === "seed") { setTGroups(allocSeed(teams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
-    else if (m === "random") { setTGroups(allocRandom(teams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
-    else if (m === "draw") { const rng = new RNG(Date.now()); const { grps, log } = allocDraw(teams, ng, tConfig.numPots, rng, fmt, tConfig.rrLegs); setTDrawAnim({ log, grps, index: 0, pending: false, auto: false }); setTDrawLog(log); setTPhase("drawing"); }
-    else if (m === "manual") { const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] })); setTManual({ pool: [...teams], grps }); setTPhase("manual"); }
+    if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
+    else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
+    else if (m === "draw") { const rng = new RNG(Date.now()); const { grps, log } = allocDraw(genTeams, ng, tConfig.numPots, rng, fmt, tConfig.rrLegs); setTDrawAnim({ log, grps, index: 0, pending: false, auto: false }); setTDrawLog(log); setTPhase("drawing"); }
+    else if (m === "manual") { const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] })); setTManual({ pool: [...genTeams], grps }); setTPhase("manual"); }
     setLoading(false);
     }, 40);
   };
@@ -2528,7 +2799,7 @@ export default function App() {
       const rng2 = new RNG(Date.now() + Math.random() * 99999);
       const redP = simPlayers.find(p => p.rc);
       const injP = simPlayers.find(p => p.inj);
-      const injDur = injP ? ((() => { const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+      const injDur = injP ? ((() => { const sev = INJ_SEV.find(s => s.id === injP.injSev); if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1)); const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
@@ -2538,7 +2809,7 @@ export default function App() {
         d.assists += p.assists || 0;
         d.totalRating += p.rating || 6.5;
         d.yellows += p.yc || 0;
-        if (p.rc) { d.reds++; d.suspended++; }
+        if (p.rc) { d.reds++; d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
         if (p.inj) d.injOut += injDur;
       });
       setTPlayerStats(prev => {
@@ -2557,6 +2828,7 @@ export default function App() {
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
         }
+        if (injP) { const ik = keyOf(injP.name); next[ik].injSev = injP.injSev; next[ik].injPart = injP.injPart; }
         return next;
       });
       return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur, diffs };
@@ -2574,15 +2846,21 @@ export default function App() {
     const matchSubs = []; const subUsed = new Set();
     for (let si = 0; si < nSubs; si++) { const rem = subCandidates.filter(p => !subUsed.has(p.name)); if (!rem.length) break; const pk = rem[Math.floor(rng2.u() * rem.length)]; matchSubs.push(pk); subUsed.add(pk.name); }
     const allOnPitch = [...sq, ...matchSubs];
-    const nYellows = simCards ? (simCards.yellows||0) : (rng2.u() < 0.25 ? 0 : rng2.u() < 0.55 ? 1 : rng2.u() < 0.8 ? 2 : 3);
+    const nYellows = simCards ? (simCards.yellows||0) : ((() => { const r = rng2.u(); return r<0.08?0:r<0.307?1:r<0.5665?2:r<0.7655?3:r<0.891?4:r<0.96?5:r<0.9855?6:r<0.9965?7:8; })());
     const cardedYellows = [];
     for (let cy = 0; cy < nYellows; cy++) {
       const cp = pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul");
       cardedYellows.push(cp.name);
     }
-    const redName = (simCards ? (simCards.reds||0) > 0 : rng2.u() < 0.04) ? pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul").name : null;
-    const injName = (simCards ? (simCards.injuries||0) > 0 : rng2.u() < 0.07) ? allOnPitch[Math.floor(rng2.u() * allOnPitch.length)]?.name : null;
-    const injDur = injName ? ((() => { const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+    const redPlayer = (simCards ? (simCards.reds||0) > 0 : rng2.u() < 0.06) ? pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul") : null;
+    const redName = redPlayer?.name || null;
+    const rcVar = redName ? pickRedCardVariant(rng2, redPlayer.pos) : null;
+    const rcSusp = redName ? rcSuspGames(rcVar, rng2.u()) : 0;
+    const injName = (tConfig.injuries !== false) && (simCards ? (simCards.injuries||0) > 0 : rng2.u() < 0.053) ? allOnPitch[Math.floor(rng2.u() * allOnPitch.length)]?.name : null;
+    const injPicked = injName ? pickInjury(rng2) : null;
+    const injSevObj = injPicked?.sev || null;
+    const injDur = injSevObj ? injSevObj.dur[0] + Math.floor(rng2.u() * (injSevObj.dur[1] - injSevObj.dur[0] + 1)) : 0;
+    const injPartName = injPicked?.part || null;
     const scorers = [];
     const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
     const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
@@ -2637,7 +2915,7 @@ export default function App() {
       d.assists += pr.aCount;
       d.totalRating += pr.rtg;
       d.yellows += cardedYellows.filter(n => n === p.name).length;
-      if (redName === p.name) { d.reds++; d.suspended++; }
+      if (redName === p.name) { d.reds++; d.suspended += rcSusp; }
       if (p.name === injName) d.injOut += injDur;
     });
     matchSubs.forEach(p => {
@@ -2649,7 +2927,7 @@ export default function App() {
       d.assists += pr.aCount;
       d.totalRating += pr.rtg;
       d.yellows += cardedYellows.filter(n => n === p.name).length;
-      if (redName === p.name) { d.reds++; d.suspended++; }
+      if (redName === p.name) { d.reds++; d.suspended += rcSusp; }
       if (p.name === injName) d.injOut += injDur;
     });
     setTPlayerStats(prev => {
@@ -2668,6 +2946,7 @@ export default function App() {
         next[k].suspended = (next[k].suspended||0) + d.suspended;
         next[k].injOut = (next[k].injOut||0) + d.injOut;
       }
+      if (injName) { const ik = key(injName); next[ik].injSev = injSevObj?.id; next[ik].injPart = injPartName; }
       return next;
     });
     return { redKey: redName ? keyOf(redName) : null, injKey: injName ? keyOf(injName) : null, injDur, diffs };
@@ -3038,10 +3317,10 @@ export default function App() {
   // "away"), not which team — a team in the away slot can still be the host. A neutral
   // fixture (no host) defaults both sides to home colors unless they clash, in which
   // case the away-slot side switches as a tie-break.
-  const hHomeClr = teams[lmH]?.primaryColor || "#81a1c1";
-  const hAwayClr = teams[lmH]?.secondaryColor || hHomeClr;
-  const aHomeClr = teams[lmA]?.primaryColor || "#bf616a";
-  const aAwayClr = teams[lmA]?.secondaryColor || aHomeClr;
+  const hHomeClr = teamById(lmH)?.primaryColor || "#81a1c1";
+  const hAwayClr = teamById(lmH)?.secondaryColor || hHomeClr;
+  const aHomeClr = teamById(lmA)?.primaryColor || "#bf616a";
+  const aAwayClr = teamById(lmA)?.secondaryColor || aHomeClr;
   const clash = colorsClash(hHomeClr, aHomeClr);
   const hClrPre = lmHomeAdv === "away" ? hAwayClr : hHomeClr;
   const aClrPre = lmHomeAdv === "home" ? aAwayClr : (lmHomeAdv == null && clash) ? aAwayClr : aHomeClr;
@@ -3058,6 +3337,7 @@ export default function App() {
     if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
     else { aClr = lightenUntil(aClr, hClr, 0.35); }
   }
+  const hStatClr = ensureMinLum(hClr), aStatClr = ensureMinLum(aClr);
   const hClr2 = hClr, aClr2 = aClr;
 
   // Shared penalty-shootout diagram (goal SVGs + kick-by-kick list), used by both
@@ -3092,7 +3372,7 @@ export default function App() {
         <text x={W/2} y={H+9} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace">{label}</text>
       </svg>);
     };
-    return (<div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
+    return (<div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "center" }}>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{hS}</span>
         <span style={{ fontSize: 9, color: "#ffffff", letterSpacing: "0.15em" }}>PENALTIES</span>
@@ -3123,32 +3403,8 @@ export default function App() {
 
   const renderScoreboard = () => (
     <div style={{ background: `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`, border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
-      {/* Phase badge */}
-      {lmMatch.phase === "finished" && (()=>{
-        const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
-        if (allP.length === 0) return null;
-        const potm = allP.reduce((a,b) => (b.rating||0)>(a.rating||0)?b:a, allP[0]);
-        if (!potm || potm.rating < 6.5) return null;
-        const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
-        const tCode = isHome ? abbr(teams[lmH]?.name, teams[lmH]?.code) : abbr(teams[lmA]?.name, teams[lmA]?.code);
-        const tClr = isHome ? hClr : aClr;
-        return (<div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
-          <span style={{ fontSize: 11 }}>⭐</span>
-          <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...mono }}>{potm.name}</span>
-          <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span>
-          <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span>
-        </div>);
-      })()}
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>
-        {lmMatch.phase === "pre_match" ? "PRE-MATCH"
-          : lmMatch.phase === "half_time" ? "HALF TIME"
-          : lmMatch.phase === "full_time" ? "FULL TIME"
-          : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
-          : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
-          : lmMatch.phase === "penalties" ? "PENALTIES"
-          : lmMatch.phase === "finished" ? "FULL TIME"
-          : lmClockDisplay(lmMatch)}
-      </div>
+      {/* Venue + POTM sticker */}
+      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
@@ -3198,8 +3454,8 @@ export default function App() {
         return (<div style={{ marginTop: 10, marginBottom: 6 }}>
           {/* Formation pitches with team info */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
-            {[{side:"home",idx:lmH},{side:"away",idx:lmA}].map(({side,idx}) => {
-              const tm = teams[idx];
+            {[{side:"home",id:lmH},{side:"away",id:lmA}].map(({side,id}) => {
+              const tm = teamById(id);
               const rawSq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
               const { starters, bench } = displaySquad(rawSq, tm?.name, tPlayerStats);
               return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
@@ -3234,6 +3490,36 @@ export default function App() {
       {/* Score */}
       {lmMatch.phase !== "pre_match" && <>
       {(() => {
+        // Venue only reflects a real team's stadium when that team was actually assigned
+        // home advantage — a fixture with no HA (or a set-piece neutral venue name/pool
+        // entry) shows that instead, rather than defaulting to whichever team sits in
+        // the "home" slot.
+        let venueText;
+        if (lmMatch.venue?.city || lmMatch.venue?.stadium) venueText = [lmMatch.venue.stadium, lmMatch.venue.city].filter(Boolean).join(", ");
+        else {
+          const hostTeam = lmMatch.homeAdv === "away" ? teamById(lmA) : lmMatch.homeAdv === "home" ? teamById(lmH) : null;
+          venueText = hostTeam?.stadium || hostTeam?.city ? [hostTeam.stadium, hostTeam.city].filter(Boolean).join(", ") : "Neutral Venue";
+        }
+        let potmEl = null;
+        if (lmMatch.phase === "finished") {
+          const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
+          if (allP.length > 0) {
+            const potm = allP.reduce((a,b) => (b.rating||0)>(a.rating||0)?b:a, allP[0]);
+            if (potm && potm.rating >= 6.5) {
+              const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
+              const tCode = isHome ? abbr(teamById(lmH)?.name, teamById(lmH)?.code) : abbr(teamById(lmA)?.name, teamById(lmA)?.code);
+              const tClr = isHome ? hClr : aClr;
+              potmEl = <><span style={{ margin: "0 8px", color: "#ffffff33" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...mono }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></>;
+            }
+          }
+        }
+        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#141c2b", border: "1px solid #2a3a5066", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
+          <span style={{ fontSize: 10 }}>📍</span>
+          <span style={{ fontSize: 10, color: "#ffffffcc", fontWeight: 500, ...mono }}>{venueText}</span>
+          {potmEl}
+        </div>;
+      })()}
+      {(() => {
         const buildItems = (side) => {
           const items = [];
           for (const g of lmMatch.goalscorers?.[side] || [])
@@ -3249,7 +3535,6 @@ export default function App() {
           return items;
         };
         const hI = buildItems("home"), aI = buildItems("away");
-        const hasEvents = hI.length > 0 || aI.length > 0;
         const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
         const ball = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span>
           : t === "pen_miss" ? <span style={{ fontSize: 9, filter: "grayscale(1) brightness(0.6) sepia(1) hue-rotate(-30deg) saturate(5)" }}>⚽︎</span>
@@ -3265,43 +3550,81 @@ export default function App() {
             {label && <span style={{ fontSize: 6, color: "#ffffff", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
           </span>;
         };
-        const renderHome = (items) => <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 48px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
-          {items.flatMap((it, i) => [
-            <span key={i+"m"} style={{ color: "#ffffffcc", textAlign: "right", ...mono }}>{mTxt(it.min)}</span>,
-            <span key={i+"n"} style={{ color: "#ffffff", textAlign: "right", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
-            <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>
-          ])}
-        </div>;
-        const renderAway = (items) => <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 28px", gap: "1px 4px", alignItems: "center", fontSize: 9, lineHeight: 1.8 }}>
-          {items.flatMap((it, i) => [
-            <span key={i+"b"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>{ballWithP(it.type)}</span>,
-            <span key={i+"n"} style={{ color: "#ffffff", textAlign: "left", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{it.name}</span>,
-            <span key={i+"m"} style={{ color: "#ffffffcc", textAlign: "left", ...mono }}>{mTxt(it.min)}</span>
-          ])}
-        </div>;
-        return <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", marginBottom: 6 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmH]?.name}</div>
-            <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span> <span style={{ color: "#ffffff" }}>· {teams[lmH]?.skill}</span></div>
+        const evRows = Array.from({ length: Math.max(hI.length, aI.length) }, (_, i) => ({ h: hI[i], a: aI[i] }));
+        const phaseLabelText = lmMatch.phase === "half_time" ? "HALF TIME"
+          : lmMatch.phase === "full_time" ? "FULL TIME"
+          : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
+          : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
+          : lmMatch.phase === "penalties" ? "PENALTIES"
+          : lmMatch.phase === "finished" ? "FULL TIME"
+          : lmClockDisplay(lmMatch);
+        return <div style={{ marginBottom: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "start", columnGap: 16 }}>
+            {/* Left: home crest, big, own column, top-aligned with the phase/clock label.
+                Event minutes stack below it, in order, rather than crowding the name row. */}
+            <div style={{ minWidth: 100 }}>
+              <div style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
+                <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
+                  <TeamCrest team={teamById(lmH)} size={100} />
+                </div>
+              </div>
+              {evRows.map((row, i) => (
+                <div key={i} style={{ fontSize: 9, color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.h ? mTxt(row.h.min) :" "}</div>
+              ))}
+            </div>
+            {/* Middle: phase/clock bar, then name+skill (stacked, as a unit) | score | name+skill —
+                score centers against the whole 2-line name+skill block, matching the classic layout. */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{phaseLabelText}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
+                <div style={{ textAlign: "right", minWidth: 0 }}>
+                  <MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "#ffffff" }}>· {teamById(lmH)?.skill}</span></div>
+                </div>
+                <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
+                  <span className={goalFlash==="home"?"goal-flash":""}>{lmMatch.score[0]}</span>
+                  {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginLeft: 2, ...mono }}>({lmMatch.score[0]+lmMatch.startScore[0]})</span>}
+                  <span style={{ color: "#ffffff", margin: "0 6px" }}>:</span>
+                  {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginRight: 2, ...mono }}>({lmMatch.score[1]+lmMatch.startScore[1]})</span>}
+                  <span className={goalFlash==="away"?"goal-flash":""}>{lmMatch.score[1]}</span>
+                </div>
+                <div style={{ textAlign: "left", minWidth: 0 }}>
+                  <MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{teamById(lmA)?.skill} ·</span> <span style={{ color: "#ffffff" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
+                </div>
+                {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
+                    name/score above — ball icons share the score column, names share the name columns.
+                    Minutes live under the crests instead (separate columns, see either side). */}
+                {evRows.map((row, i) => (
+                  <Fragment key={i}>
+                    <div style={{ textAlign: "right", fontSize: 9, color: "#ffffff" }}>{row.h?.name}</div>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(-6.5px)" }}>{row.h && ballWithP(row.h.type)}</div>
+                      <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(6.5px)" }}>{row.a && ballWithP(row.a.type)}</div>
+                    </div>
+                    <div style={{ textAlign: "left", fontSize: 9, color: "#ffffff" }}>{row.a?.name}</div>
+                  </Fragment>
+                ))}
+              </div>
+            </div>
+            {/* Right: away crest, big, own column. Event minutes stack below it. */}
+            <div style={{ minWidth: 100 }}>
+              <div style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
+                <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
+                  <TeamCrest team={teamById(lmA)} size={100} />
+                </div>
+              </div>
+              {evRows.map((row, i) => (
+                <div key={i} style={{ fontSize: 9, color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.a ? mTxt(row.a.min) :" "}</div>
+              ))}
+            </div>
           </div>
-          <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1 }}>
-            <span className={goalFlash==="home"?"goal-flash":""}>{lmMatch.score[0]}</span>
-            {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginLeft: 2, ...mono }}>({lmMatch.score[0]+lmMatch.startScore[0]})</span>}
-            <span style={{ color: "#ffffff", margin: "0 6px" }}>:</span>
-            {(lmMatch.startScore[0]>0||lmMatch.startScore[1]>0) && <span style={{ fontSize: 14, fontWeight: 400, color: "#ffffff", verticalAlign: "top", marginRight: 2, ...mono }}>({lmMatch.score[1]+lmMatch.startScore[1]})</span>}
-            <span className={goalFlash==="away"?"goal-flash":""}>{lmMatch.score[1]}</span>
-          </div>
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>{teams[lmA]?.name}</div>
-            <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{teams[lmA]?.skill} ·</span> <span style={{ color: "#ffffff" }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span></div>
-          </div>
-          {hasEvents && <>
-            <div style={{ alignSelf: "start", marginRight: -52, marginTop: 6, overflow: "visible" }}>{hI.length > 0 && renderHome(hI)}</div>
-            <div />
-            <div style={{ alignSelf: "start", marginLeft: -52, marginTop: 6, overflow: "visible" }}>{aI.length > 0 && renderAway(aI)}</div>
-          </>}
         </div>;
       })()}
+      {lmMatch.penalties && (lmMatch.phase === "penalties" || lmMatch.phase === "finished") && <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #ffffff33" }}>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#ffffff", marginBottom: 8, textAlign: "center" }}>Penalty Shootout</div>
+        {renderPenaltyShootout(lmMatch.penalties, abbr(teamById(lmH)?.name, teamById(lmH)?.code), abbr(teamById(lmA)?.name, teamById(lmA)?.code))}
+      </div>}
       </>}
     </div>
   );
@@ -3314,26 +3637,22 @@ export default function App() {
     const statRows = [["Possession",hp+"%",ap+"%"],["Shots",st.home.shots,st.away.shots],["On Target",st.home.onTarget,st.away.onTarget],["xG",hXG,aXG],["Corners",st.home.corners,st.away.corners],["Fouls",st.home.fouls,st.away.fouls],["Yellows",st.home.yellows,st.away.yellows],["Reds",st.home.reds,st.away.reds]];
     return (
       <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-        {lmMatch.penalties?.decided && <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
-          <div style={{ textAlign: "center", fontSize: 11, color: "#ffffff", fontWeight: 600, marginBottom: 2, ...mono }}>({lmMatch.penalties.home.filter(k=>k.scored).length}–{lmMatch.penalties.away.filter(k=>k.scored).length} PENS)</div>
-          {renderPenaltyShootout(lmMatch.penalties, abbr(teams[lmH]?.name, teams[lmH]?.code), abbr(teams[lmA]?.name, teams[lmA]?.code))}
-        </div>}
         {/* Match Stats */}
         <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
           {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
             <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hClr : "#7889a0", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
+              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hStatClr : "#7889a0", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
               <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
               <span style={{ width: 60, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>{label}</span>
               <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
-              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aClr : "#7889a0", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
+              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aStatClr : "#7889a0", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
             </div>
           ); })}
         </div>
         {/* Player Ratings */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
         {["home","away"].map((side,si) => {
-          const tm = side === "home" ? teams[lmH] : teams[lmA];
+          const tm = side === "home" ? teamById(lmH) : teamById(lmA);
           const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
           const onPitch = lmMatch.players[side] || [];
           const off = lmMatch.subbedOff?.[side] || [];
@@ -3372,9 +3691,16 @@ export default function App() {
           </>);
         })}
         </div>
+        {tLiveTarget && <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50", textAlign: "center" }}>
+          <span style={{ fontSize: 9, color: "#7889a0" }} title="Tracked per fixture, persists across abandons and page reloads">Replays: {Math.max(0, (tReplayCounts[fixtureKey(tLiveTarget)] || 1) - 1)}</span>
+        </div>}
       </div>
     );
   };
+
+  // Single source of truth for team-list column widths — header spacers and row cells
+  // both read from this, so they can't drift out of alignment with each other.
+  const TEAM_COLW = { num: 22, crest: 26, code: 40, skill: 40, sq: 32, tac: 32, inf: 32, del: 28 };
 
   return (
     <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
@@ -3394,18 +3720,17 @@ export default function App() {
 
         {/* SHARED TEAMS */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: teamsOpen ? 8 : 16, minHeight: 32 }}>
-          <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>({teams.length})</span></label>
+          <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{teamLeagueFilter ? `(${teams.filter(t => (t.league||"Custom") === teamLeagueFilter).length} / ${teams.length})` : `(${teams.length})`}</span></label>
           <div style={{ display: "flex", gap: 6 }}>
-            {teamsOpen && <select onChange={e => { const v = e.target.value; e.target.value = ""; const L = {avium:PRESET_AVIUM,nch_l1:PRESET_NCH_L1,liga:PRESET_LIGA,wc:PRESET_WC,pl:PRESET_PL,misc_eu:PRESET_MISC_EU}; if (L[v]) loadLeague(L[v]); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#7889a0", background: "transparent", cursor: "pointer" }}><option value="" hidden>☰ League</option><option value="avium">Avium International</option><option value="nch_l1">Nichirin League One</option><option value="liga">Liga-ye Mellī</option><option disabled>──────────</option><option value="pl">Premier League</option><option value="misc_eu">Misc. European</option><option disabled>──────────</option><option value="wc">1932 World Cup</option></select>}
-            {teamsOpen && teams.length > 0 && <button onClick={clearTeams} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }} title="Clear all teams">✕</button>}
-            {teamsOpen && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
-            {teamsOpen && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
-            {teamsOpen && <button onClick={addTeam} style={addBtn}>+ Add</button>}
+            {teamsOpen && <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>}
+            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
+            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
+            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
           </div>
         </div>
         {teamsOpen && (<>
         {showExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: Code ⇥ Name ⇥ Skill ⇥ Playstyle ⇥ Formation ⇥ 14 tactics ⇥ 16 players (optional) ⇥ Home Color ⇥ Away Color</p><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Code is optional (auto-generated from name). Only Name is required; all other columns are optional. Colors go last, after the players, as #RRGGBB hex (e.g. #e4002b) — detected by their leading '#', so they can be omitted entirely. The away team wears its away color (falling back to home) whenever home advantage is set or the two teams' home colors clash. Player tiers: append [+] (above-avg) or [*] (star) to names.</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Replaces current list</span></div></div>)}
+        {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Merges into the roster as Custom teams</span></div></div>)}
         <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid #2a3a50" }}>
             <div style={{ display: "flex", gap: 4, flex: 1 }}>
@@ -3423,33 +3748,47 @@ export default function App() {
                 }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid " + (active ? "#e4002b" : "#7889a033"), background: active ? "#e4002b22" : "transparent", color: active ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
               ); })}
             </div>
-            {teams.length > 4 && <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 9, color: "#7889a0" }}>Trim to</span>
-              {[16, 20, 24, 32, 36, 48].filter(n => n < teams.length).map(n => (
-                <button key={n} onClick={() => setTeams(ts => ts.slice(0, n))} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 3, border: "1px solid #2a3a50", background: "transparent", color: "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
-              ))}
-            </div>}
           </div>
           <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid #2a3a50", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
-            <span style={{ width: 22, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: 38, flexShrink: 0 }} /><span style={{ width: 40, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: 40, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: 32, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span>{teams.length > 2 && <span style={{ width: 28, flexShrink: 0 }} />}
+            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.sq, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: TEAM_COLW.tac, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span><span style={{ width: TEAM_COLW.inf, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>INF</span>{(teamLeagueFilter ? teams.filter(t => (t.league||"Custom") === teamLeagueFilter) : teams).some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
           </div>
-          <div style={{ maxHeight: teams.length > 12 ? 520 : "none", overflowY: teams.length > 12 ? "auto" : "visible" }}>
-            {teams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === i; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
-              <div key={i}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "#141c2b" : i % 2 === 0 ? "transparent" : "#141c2b08", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : i); if (!exp) setViewSquad(null); }}>
-                <span style={{ color: "#7889a0", fontSize: 10, width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
-                <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(i, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                <span style={{ width: 38, display: "flex", gap: 4, justifyContent: "center", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                  <input type="color" title="Home color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(i, "primaryColor", e.target.value)} style={{ width: 17, height: 17, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
-                  <input type="color" title="Away color" value={t.secondaryColor || t.primaryColor || "#141c2b"} onChange={e => updateTeam(i, "secondaryColor", e.target.value)} style={{ width: 17, height: 17, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
-                </span>
-                <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); updateTeam(i, "code", v); }} style={{ ...inp, width: 40, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "#7889a0" }} placeholder={abbr(t.name, t.code)} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(i, "skill", e.target.value)} style={{ ...inp, width: 40, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === i ? null : i); setExpandedTeam(null); }} style={{ width: 32, textAlign: "center", fontSize: 9, color: viewSquad === i ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === i ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === i ? "#7889a022" : "transparent" }}>{viewSquad === i ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
-                <span style={{ width: 32, textAlign: "center", fontSize: 9, color: exp ? "#e4002b" : nonDefault > 0 ? "#7889a0" : "#7889a066", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "#e4002b" : nonDefault > 0 ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "#7889a022" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
-                {teams.length > 2 && <button onClick={e => { e.stopPropagation(); removeTeam(i); }} style={{ ...delBtn, width: 28, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
+          {(() => { const visibleTeams = teamLeagueFilter ? teams.filter(t => (t.league||"Custom") === teamLeagueFilter) : teams; return (
+          <div style={{ maxHeight: visibleTeams.length > 12 ? 520 : "none", overflowY: visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
+            {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
+              <div key={t.id}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "#141c2b" : i % 2 === 0 ? "transparent" : "#141c2b08", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); if (!exp) setViewSquad(null); }}>
+                <span style={{ color: "#7889a0", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
+                <TeamCrest team={t} size={18} style={{ marginLeft: 8 }} />
+                <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => {
+                  const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
+                  if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) {
+                    setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return;
+                  }
+                  updateTeam(t.id, "code", v);
+                }} style={{ ...inp, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "#7889a0", borderColor: dupCodeId === t.id ? "#bf616a" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === t.id ? null : t.id); setExpandedTeam(null); }} style={{ width: TEAM_COLW.sq, textAlign: "center", fontSize: 9, color: viewSquad === t.id ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === t.id ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === t.id ? "#7889a022" : "transparent" }}>{viewSquad === t.id ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
+                <span style={{ width: TEAM_COLW.tac, textAlign: "center", fontSize: 9, color: exp ? "#e4002b" : nonDefault > 0 ? "#7889a0" : "#7889a066", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "#e4002b" : nonDefault > 0 ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "#7889a022" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
+                {(() => { const hasInf = [t.city, t.stadium].filter(Boolean).length; const infOpen = viewInfo === t.id; return <span onClick={e => { e.stopPropagation(); setViewInfo(infOpen ? null : t.id); setViewSquad(null); setExpandedTeam(null); }} style={{ width: TEAM_COLW.inf, textAlign: "center", fontSize: 9, color: infOpen ? "#e4002b" : hasInf ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (infOpen ? "#e4002b" : hasInf ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: infOpen ? "#7889a022" : "transparent" }}>{infOpen ? "\u25BE" : hasInf ? hasInf : "\u2013"}</span>; })()}
+                {t.league === "Custom" && <button onClick={e => { e.stopPropagation(); removeTeam(t.id); }} style={{ ...delBtn, width: TEAM_COLW.del, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
               </div>
-              {viewSquad === i && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (() => {
+              {viewInfo === t.id && <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 4 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: "6px 8px", alignItems: "center", fontSize: 10 }}>
+                  <span style={{ color: "#7889a0", fontWeight: 600 }}>Colors</span>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
+                    <span style={{ color: "#7889a066", fontSize: 9 }}>H</span>
+                    <input type="color" value={t.secondaryColor || t.primaryColor || "#141c2b"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
+                    <span style={{ color: "#7889a066", fontSize: 9 }}>A</span>
+                  </div>
+                  <span style={{ color: "#7889a0", fontWeight: 600 }}>Stadium</span>
+                  <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid #2a3a50", background: "#0d1117", fontSize: 10, width: "100%" }} />
+                  <span style={{ color: "#7889a0", fontWeight: 600 }}>City</span>
+                  <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid #2a3a50", background: "#0d1117", fontSize: 10, width: "100%" }} />
+                </div>
+              </div>}
+              {viewSquad === t.id && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (() => {
                 const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
                 const starters = sq.filter(p => !p.bench);
                 const bench = sq.filter(p => p.bench);
@@ -3514,11 +3853,11 @@ export default function App() {
                         <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
                         <input value={p.name} onClick={e => e.stopPropagation()} onChange={e => {
                           const ns = [...sq]; ns[pi] = {...ns[pi], name: e.target.value};
-                          updateTeam(i, "squad", ns);
+                          updateTeam(t.id, "squad", ns);
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
                         onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[pi] = {...ns[pi], tier: ((p.tier||0)+1)%3}; updateTeam(i, "squad", ns); }}
+                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[pi] = {...ns[pi], tier: ((p.tier||0)+1)%3}; updateTeam(t.id, "squad", ns); }}
                           style={{ cursor: "pointer", width: 12, textAlign: "center", fontSize: 10, flexShrink: 0, color: p.tier===2?"#e4002b":p.tier===1?"#5b8fa8":"#7889a0", fontWeight: 700, userSelect: "none" }}
                           title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
                       </div>
@@ -3531,11 +3870,11 @@ export default function App() {
                         <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
                         <input value={p.name} onClick={e => e.stopPropagation()} onChange={e => {
                           const ns = [...sq]; ns[11 + pi] = {...ns[11+pi], name: e.target.value};
-                          updateTeam(i, "squad", ns);
+                          updateTeam(t.id, "squad", ns);
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "#7889a0" }}
                         onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[11+pi] = {...ns[11+pi], tier: ((p.tier||0)+1)%3}; updateTeam(i, "squad", ns); }}
+                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[11+pi] = {...ns[11+pi], tier: ((p.tier||0)+1)%3}; updateTeam(t.id, "squad", ns); }}
                           style={{ cursor: "pointer", width: 12, textAlign: "center", fontSize: 10, flexShrink: 0, color: p.tier===2?"#e4002b":p.tier===1?"#5b8fa8":"#7889a0", fontWeight: 700, userSelect: "none" }}
                           title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
                       </div>
@@ -3559,11 +3898,11 @@ export default function App() {
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
-                    <select value={t.style || "balanced"} onChange={e => updateTeam(i, "style", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:STYLE_CLR[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select>
+                    <select value={t.style || "balanced"} onChange={e => updateTeam(t.id, "style", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:STYLE_CLR[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>FORMATION</div>
-                    <select value={t.formation || "4-3-3"} onChange={e => updateTeam(i, "formation", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: FORM_CLR[t.formation || "4-3-3"] || "#888" }}>{FORM_GRP.map(([label, forms]) => <optgroup key={label} label={label}>{forms.map(f => <option key={f} value={f} style={{color:FORM_CLR[f]}}>{f}</option>)}</optgroup>)}</select>
+                    <select value={t.formation || "4-3-3"} onChange={e => updateTeam(t.id, "formation", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: FORM_CLR[t.formation || "4-3-3"] || "#888" }}>{FORM_GRP.map(([label, forms]) => <optgroup key={label} label={label}>{forms.map(f => <option key={f} value={f} style={{color:FORM_CLR[f]}}>{f}</option>)}</optgroup>)}</select>
                   </div>
                 </div>
                 {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
@@ -3571,7 +3910,7 @@ export default function App() {
                   return (<div key={key}>{hdr && <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 10, marginBottom: 4 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <span style={{ fontSize: 10, color: "#7889a0", width: 60, flexShrink: 0 }}>{name}</span>
-                    <select value={strat[key] ?? 0} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(i, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "#7889a0" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
+                    <select value={strat[key] ?? 0} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "#7889a0" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
                       {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div></div>);
@@ -3581,6 +3920,7 @@ export default function App() {
                 </div>)}
               </div>); })}
           </div>
+          ); })()}
           {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", padding: "6px 12px", borderTop: "1px solid #2a3a50" }}>Skill values must be between 25 and 100.</div>}
         </div>
         </>)}
@@ -3591,9 +3931,21 @@ export default function App() {
           <div style={{ marginBottom: 12 }}>
             {(() => {
               const finished = lmMatch?.phase === "finished";
+              // Tournament fixtures have no "New Match" escape hatch — Import/Replay/Abandon
+              // are the only way out, so tReplayCounts can't be bypassed by resetting around them.
+              if (finished && tLiveTarget) return (
+                <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", textAlign: "center" }}>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                    {lastLiveResult && <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
+                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "#e4002b", border: "none", borderRadius: 4, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
+                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 4, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
+                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
+                  </div>
+                </div>
+              );
               const primaryLabel = lmIsSetup ? "⚽ Start Match" : finished ? "New Match" : lmBl;
               const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (autoPlay) setAutoPlay(false); else lmTick(); };
-              const lmNotReady = teamErrors || teams.length < 2;
+              const lmNotReady = teamErrors || teams.length < 2 || !teamById(lmH) || !teamById(lmA);
               const primaryDisabled = lmIsSetup ? lmNotReady : (!finished && autoPlay);
               const autoClick = () => { if (autoPlay) { setAutoPlay(false); return; } if (lmIsSetup) { lmKickOff(); setAutoPlay(true); } else setAutoPlay(true); };
               return primaryLabel ? (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3613,9 +3965,9 @@ export default function App() {
           {lmIsSetup && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
-                <select value={lmH} onChange={e => { setLmH(+e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{teams.map((t, i) => <option key={i} value={i}>{t.name} ({t.skill})</option>)}</select>
+                <select value={lmH} onChange={e => { setLmH(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
                 <span style={{ fontSize: 12, color: "#7889a0", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>VS</span>
-                <select value={lmA} onChange={e => { setLmA(+e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{teams.map((t, i) => <option key={i} value={i}>{t.name} ({t.skill})</option>)}</select>
+                <select value={lmA} onChange={e => { setLmA(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
               </div>
             </div>
             <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
@@ -3635,11 +3987,15 @@ export default function App() {
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2a3a50" }}>
                 <div style={{ fontSize: 10, color: "#7889a0", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #2a3a50" }}>
-                  {[["home", teams[lmH]?.name || "Home"], [null, "Neutral"], ["away", teams[lmA]?.name || "Away"]].map(([val, label]) => (
+                  {[["home", teamById(lmH)?.name || "Home"], [null, "Neutral"], ["away", teamById(lmA)?.name || "Away"]].map(([val, label]) => (
                     <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "#e4002b" : "transparent", color: lmHomeAdv === val ? "#ffffff" : "#7889a0", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid #7889a033" : "none" }}>{label}</button>
                   ))}
                 </div>
                 <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
+                {lmHomeAdv === null && <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <input value={lmNeutralVenueName} onChange={e => setLmNeutralVenueName(e.target.value)} placeholder="Neutral Venue Name (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
+                  <input value={lmNeutralVenueLoc} onChange={e => setLmNeutralVenueLoc(e.target.value)} placeholder="Neutral Location (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
+                </div>}
               </div>
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2a3a50" }}>
                 <div style={{ fontSize: 10, color: "#7889a0", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>AGGREGATE SCORING</div>
@@ -3651,11 +4007,11 @@ export default function App() {
                 {lm2ndLeg && <div style={{ marginTop: 10 }}>
                   <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginBottom: 6 }}>1st leg result</div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 6, padding: "8px 12px" }}>
-                    <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teams[lmH]?.name}</span>
+                    <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teamById(lmH)?.name}</span>
                     <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
                     <span style={{ color: "#7889a0", fontSize: 14 }}>–</span>
                     <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                    <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teams[lmA]?.name}</span>
+                    <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teamById(lmA)?.name}</span>
                   </div>
                 </div>}
                 {!lm2ndLeg && <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginTop: 4 }}>Single match</div>}
@@ -3669,7 +4025,7 @@ export default function App() {
             {lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", boxSizing: "border-box" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: hClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: hClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
                   <div style={{ display: "flex", flex: 1, gap: 2 }}>
                     {["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
                       const active = lmMatch.ball === z;
@@ -3679,23 +4035,15 @@ export default function App() {
                       </div>;
                     })}
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: aClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: aClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
                 </div>
               </div>
             )}
             {lmMatch.phase === "finished" && renderStatsReport()}
-            {lmMatch.phase === "finished" && tLiveTarget && lastLiveResult && <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", marginBottom: 10, textAlign: "center" }}>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>
-                <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "#e4002b", border: "none", borderRadius: 4, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
-                <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 4, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
-                <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
-              </div>
-            </div>}
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid #141c2b", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", textAlign: "center" }}>Match Events</div>
-              <div ref={lmFeedRef} style={{ padding: "10px 0", height: 220, overflowY: "auto" }}>
-              {(()=>{ const hN=teams[lmH]?.name, aN=teams[lmA]?.name, hC=teams[lmH]?.code, aC=teams[lmA]?.code;
+              <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz && e.type === "goal") ? 290 : 220, overflowY: "auto" }}>
+              {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 4, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
                 </div>);
@@ -3720,7 +4068,7 @@ export default function App() {
                   let icon, header, headerColor, body, bg;
                   if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (scorerMatch) { parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); } const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = hasPitch ? (gv.assistFrom ? 1.55 : 0.75) : 0.15; const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
                   else if (e.type === "penalty") { icon = <span>🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledPos(e.text.replace(/^[^\p{L}\p{N}]+/u, ''))}</div>; bg = "#ebcb8b08"; }
-                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; header = e.type === "second_yellow" ? "Second yellow" : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#bf616a08"; }
+                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "#bf616a08"; }
                   else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
                   else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
                   else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ {p.on}{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "#7889a0" }}>{e.onPos}</span>}</div><div style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ {p.off}{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "#7889a0" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text}</div>; bg = "transparent"; }
@@ -3767,30 +4115,30 @@ export default function App() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hClr : "#7889a0", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
+                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hStatClr : "#7889a0", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
                   <span style={{ width: 70, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>Possession</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aClr : "#7889a0", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
+                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aStatClr : "#7889a0", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
                 </div>
                 <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", background: "#7889a0" }}>
                   <div style={{ width: `${hp}%`, background: hClr, borderRadius: 2, transition: "width 0.3s" }} />
                   <div style={{ width: `${ap}%`, background: aClr, borderRadius: 2, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
-              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Penalties", lmMatch.stats.home.penalties, lmMatch.stats.away.penalties], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds], ["Injuries", lmMatch.stats.home.injuries, lmMatch.stats.away.injuries], ["Subs Left", 3 - lmMatch.subs.home, 3 - lmMatch.subs.away]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                <span style={{ width: 24, textAlign: "right", color: h > a ? hClr : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
+              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds], ["Injuries", lmMatch.stats.home.injuries, lmMatch.stats.away.injuries], ["Subs Left", 3 - lmMatch.subs.home, 3 - lmMatch.subs.away]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
+                <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 24, textAlign: "left", color: a > h ? aClr : "#7889a0", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
+                <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "#7889a0", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
               {/* Momentum graph */}
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)} ▲</span>
+                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)} ▲</span>
                   <span style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.15em", fontWeight: 600 }}>Momentum</span>
-                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)} ▼</span>
+                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)} ▼</span>
                 </div>
                 {(() => {
                   const W = 400, H = 44, mid = H / 2;
@@ -3814,7 +4162,7 @@ export default function App() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b", ...ui }}>Player Stats</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
-                const tm = side === "home" ? teams[lmH] : teams[lmA];
+                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
                 const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
                 const onPitch = lmMatch.players[side] || [];
                 const off = lmMatch.subbedOff?.[side] || [];
@@ -3860,7 +4208,7 @@ export default function App() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Substitutions</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
-                const tm = side === "home" ? teams[lmH] : teams[lmA];
+                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
                 const subsLeft = 3 - (lmMatch.subs[side]||0);
                 const onPitch = lmMatch.players[side]||[];
                 const bench = lmMatch.bench[side]||[];
@@ -3915,7 +4263,7 @@ export default function App() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Tactics</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
-                const tm = side === "home" ? teams[lmH] : teams[lmA];
+                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
                 const isBreak = ["pre_match","half_time","full_time","extra_half_time"].includes(lmMatch.phase);
                 const SC2 = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
                 const strat = lmMatch.strategy?.[side] || {};
@@ -3976,8 +4324,8 @@ export default function App() {
                   <div style={{ ...mono }}>
                     <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
                       <span style={{ width: 66, flexShrink: 0 }} />
-                      <span style={{ flex: 1, textAlign: "right", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teams[lmH]?.name, teams[lmH]?.code)}</span>
-                      <span style={{ flex: 1, textAlign: "left", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teams[lmA]?.name, teams[lmA]?.code)}</span>
+                      <span style={{ flex: 1, textAlign: "right", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
+                      <span style={{ flex: 1, textAlign: "left", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
                     </div>
                     {ps.map(({k,l,m}) => (
                       <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
@@ -4065,9 +4413,11 @@ export default function App() {
                   <details style={{ marginTop: 12, borderTop: "1px solid #141c2b", paddingTop: 10 }}>
                     <summary style={{ fontSize: 9, color: "#bf616a", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
                     <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
-                      {unavail.map((p,i) => (
+                      {unavail.map((p,i) => {
+                        const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
+                        return (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                          <span style={{ flex: 1, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.name}</span>
+                          <span style={{ flex: 1, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "#7889a0" }}> ({injReason})</span>}</span>
                           <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                           <span style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                           <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
@@ -4077,7 +4427,7 @@ export default function App() {
                             <span style={{ color: p.reason === "red" ? "#bf616a" : "#c07070", fontSize: 8, ...mono }}>{p.out}</span>
                           </span>
                         </div>
-                      ))}
+                      );})}
                     </div>
                   </details>
                 );
@@ -4126,6 +4476,35 @@ export default function App() {
           })()}
           {/* SETUP */}
           {tPhase === "setup" && (<div>
+            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0" }}>Participants <span style={{ color: "#7889a0", fontWeight: 400 }}>({tournamentTeamIds.length} selected)</span></div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#7889a0" }}>Select All</button>
+                  <button onClick={() => setTournamentTeamIds([])} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }}>Clear</button>
+                </div>
+              </div>
+              {groupByLeague(teams).map((entry, gi) => {
+                if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid #2a3a5033", margin: "8px 0" }} />;
+                const [league, ts] = entry;
+                const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
+                const allSel = selCount === ts.length, noneSel = selCount === 0;
+                const expanded = expandedParticipantLeagues.has(league);
+                return (<div key={league} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#0a0e17", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
+                    <span style={{ color: "#7889a0", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
+                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "#e4002b" : noneSel ? "#7889a066" : "#e4002b88"), background: allSel ? "#e4002b" : noneSel ? "transparent" : "#e4002b33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#ffffff", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ffffff" }}>{league}</span>
+                    <span style={{ fontSize: 10, color: "#7889a0", ...mono }}>{selCount}/{ts.length}</span>
+                  </div>
+                  {expanded && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", padding: "8px 10px" }}>
+                    {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
+                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                    ); })}
+                  </div>}
+                </div>);
+              })}
+            </div>
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
               {/* Presets */}
               <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
@@ -4226,7 +4605,7 @@ export default function App() {
                 </div>); })()}
               {/* Qualification Zones */}
               {tHasGroups && (() => {
-                const ZC = [["#5e9c6b","Green"],["#7889a0","Slate"],["#e4002b","Red Accent"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
+                const ZC = [["#5e9c6b","Green"],["#7889a0","Slate"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
                 const setZones = fn => setTConfig(c => ({ ...c, qualZones: fn(c.qualZones || []) }));
                 return (
                 <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
@@ -4271,7 +4650,7 @@ export default function App() {
               {tHasKO && (
                 <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Knockout Stage</div>
-                  {(tConfig.mode === "single" ? teams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
+                  {(tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
                     <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
                       <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>3rd Place Match</div></div>
@@ -4285,6 +4664,11 @@ export default function App() {
                     <div onClick={() => setTConfig(c => ({ ...c, koAwayGoals: !c.koAwayGoals }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8, paddingLeft: 16 }}>
                       <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Away Goals Rule</div></div>
+                    </div>); })()}
+                  {(() => { const checked = tConfig.injuries !== false; return (
+                    <div onClick={() => setTConfig(c => ({ ...c, injuries: !c.injuries }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Injuries</div></div>
                     </div>); })()}
                   {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
@@ -4322,13 +4706,18 @@ export default function App() {
                   </div>
                 </div>)}
                 {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
-                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Select Host Team(s) <span style={{ color: "#7889a0" }}>(always home advantage)</span></div>
+                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Host Team</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {teams.map((t, i) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
-                      <button key={i} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                    {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
+                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
                   </div>
                   {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
+                  {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Host Venues (Optional)</div>
+                    <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
+                    {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
+                  </div>}
                 </div>)}
               </div>
               {/* Summary */}
@@ -4336,23 +4725,23 @@ export default function App() {
                 {tConfig.mode === "single" && tConfig.singleType === "knockout" ? (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "#ffffff" }}>{teams.length}</span>
+                    <span style={{ color: "#ffffff" }}>{tournamentTeams.length}</span>
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
                     <span style={{ color: "#ffffff" }}>Single-Elimination Bracket</span>
-                    {!isPow2(teams.length) && teams.length >= 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "#ebcb8b" }}>{(() => { let n = 1; while (n < teams.length) n *= 2; return n - teams.length; })()} byes → {(() => { let n = 1; while (n < teams.length) n *= 2; return n; })()} bracket</span></>}
+                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "#ebcb8b" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
                     {tConfig.koLegs === 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tConfig.thirdPlace && teams.length >= 4 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
+                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>KO DRAW</span>
                     <span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span>
                     {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
                   </div>
-                  {teams.length < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Need at least 2 teams</div>}
-                  {teamErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
+                  {tournamentTeamIds.length < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Select at least 2 teams</div>}
+                  {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
                   {tValid && <div style={{ color: "#7889a0", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>) : (()=>{ const swissOk = tSwissOk; const rrRounds = (tPerGroup - 1) * tConfig.rrLegs; const rrMatchesPerGroup = tPerGroup * (tPerGroup - 1) / 2 * tConfig.rrLegs; const totalMatches = tConfig.matchFormat === "swiss" ? Math.floor(tPerGroup / 2) * tConfig.swissRounds * tConfig.numGroups : tConfig.numGroups * rrMatchesPerGroup; return (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "#ffffff" }}>{teams.length}{tGroupsOk && tUneven ? <span style={{ color: "#ebcb8b", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
+                    <span style={{ color: "#ffffff" }}>{tournamentTeams.length}{tGroupsOk && tUneven ? <span style={{ color: "#ebcb8b", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>GROUPS</span>
                     <span style={{ color: "#ffffff" }}>{tGroupsOk ? tConfig.numGroups : "?"} × {tGroupsOk && tPerGroup >= 2 ? (tDivisible ? tPerGroup : tPerGroup+"–"+tPerGroupMax) : "?"} teams</span>
                     <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
@@ -4371,7 +4760,7 @@ export default function App() {
                   {tGroupsOk && tPerGroup < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Need ≥2 teams per group</div>}
                   {!swissOk && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Swiss rounds must be 1–{tPerGroup - 1}</div>}
                   {tHasKO && !tAdvOk && tDivisible && tPerGroup >= 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Advance must be 1–{tPerGroup}</div>}
-                  {teamErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
+                  {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
                   {tValid && swissOk && <div style={{ color: "#7889a0", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>); })()}
               </div>
@@ -4463,7 +4852,7 @@ export default function App() {
               {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
                 {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid #141c2b", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{t.skill}</span></div>))}
-                {g.teams.length < (gi < (teams.length % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
+                {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
               </div>))}
             </div>
             {tManual.pool.length === 0 && <button onClick={tManualConfirm} style={scBtn}>▶ Start Tournament</button>}
