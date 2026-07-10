@@ -3769,9 +3769,8 @@ export default function App() {
         };
         const hI = buildItems("home"), aI = buildItems("away");
         const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-        const ball = (t) => t === "pen_goal" ? <span style={{ fontSize: 9, filter: "hue-rotate(90deg) saturate(2) brightness(1.2)" }}>⚽︎</span>
-          : t === "pen_miss" ? <svg width="9" height="9" viewBox="0 0 9 9" style={{ verticalAlign: "middle", flexShrink: 0 }}><circle cx="4.5" cy="4.5" r="4.5" fill="#e4002b"/></svg>
-          : (t === "goal" || t === "og") ? <span style={{ fontSize: 9 }}>⚽︎</span>
+        const ball = (t) => t === "pen_miss" ? <svg width="9" height="9" viewBox="0 0 9 9" style={{ verticalAlign: "middle", flexShrink: 0 }}><circle cx="4.5" cy="4.5" r="4.5" fill="#e4002b"/></svg>
+          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9 }}>⚽︎</span>
           : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
           : null;
         const ballWithP = (t) => {
