@@ -1731,7 +1731,7 @@ function TeamCrest({ team, size = 22, style }) {
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setImgFailed(false); }, [code]);
   if (code && !imgFailed) {
-    return <img src={`/badges/${code}.png`} alt="" width={size} height={size * 1.1} style={{ objectFit: "contain", flexShrink: 0, ...style }} onError={() => setImgFailed(true)} />;
+    return <img src={`${import.meta.env.BASE_URL}badges/${code}.png`} alt="" width={size} height={size * 1.1} style={{ objectFit: "contain", flexShrink: 0, ...style }} onError={() => setImgFailed(true)} />;
   }
   const home = team?.primaryColor || "#7889a0";
   const away = team?.secondaryColor || team?.primaryColor || "#2a3a50";
