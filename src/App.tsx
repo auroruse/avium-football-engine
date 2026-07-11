@@ -2587,7 +2587,7 @@ export default function App() {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, pos:p.pos, tier:p.tier||0, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: 1, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0 };
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, chances: p.chances||0, defActs: p.defActs||0, saves: p.saves||0 };
       });
       return entries;
     };
@@ -2641,12 +2641,15 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, tier:v.tier||0, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, tier:v.tier||0, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
           next[k].goals += v.goals;
           next[k].assists += v.assists;
           next[k].matches += v.matches;
           next[k].totalRating += v.totalRating;
           next[k].yellows += v.yc;
+          next[k].chances = (next[k].chances||0) + v.chances;
+          next[k].defActs = (next[k].defActs||0) + v.defActs;
+          next[k].saves = (next[k].saves||0) + v.saves;
           if (v.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + rcSuspGames(v.rcVariant, Math.random()); }
           if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; const dur = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); next[k].injOut = (next[k].injOut||0) + dur; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
         }
@@ -4692,7 +4695,7 @@ export default function App() {
                 </div>
                 {/* Defensive Actions */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEF ACTIONS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
@@ -4756,7 +4759,7 @@ export default function App() {
             </div>
           )}
           {tLeaderboard && (() => {
-            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEF ACTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
+            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
             const all = Object.values(tPlayerStats);
             const tApp = p => p.matches + (p.subApp||0);
             const sorted = tLeaderboard === "goals"
