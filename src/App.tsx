@@ -636,7 +636,7 @@ function lmSimMinute(s, rng, home, away) {
     if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm);return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
-    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");sp.chances=(sp.chances||0)+1;if(rng.u()<0.5)ratePlayer(s.players[po],sp.name,0.10);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});return;}
+    if(rng.u()<keepP){s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");sp.chances=(sp.chances||0)+1;return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});return;}
     // Cleared
     s.possession=op;s.pressure=0;{const _dfs=s.players[op].filter(p=>p.pos==="DEF");if(_dfs.length){const _dp=pickPlayer(rng,_dfs,"any");_dp.defActs=(_dp.defActs||0)+1;}}
     const defR=opE/(poE+opE),cl=rng.u();
@@ -700,8 +700,8 @@ function lmSimMinute(s, rng, home, away) {
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
-    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");bp.chances=(bp.chances||0)+1;if(rng.u()<0.4)ratePlayer(s.players[po],bp.name,0.08);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");bp.chances=(bp.chances||0)+1;return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
     s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
@@ -1882,7 +1882,9 @@ function pickPlayer(rng, players, type) {
 
 function ratePlayer(players, name, delta) {
   const p = players.find(x => x.name === name);
-  if (p) p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
+  if (!p) return;
+  const d = delta > 0 ? delta * goalPosMult(p.pos) : delta;
+  p.rating = Math.max(3, Math.min(10, +(p.rating + d).toFixed(1)));
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
