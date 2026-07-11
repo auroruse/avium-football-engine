@@ -1139,7 +1139,7 @@ function resolveHomeAdv(homeName, awayName, config, isGroup, homeSkill, awaySkil
   if (isGroup) {
     if (config.homeAdvGroup === "off" || config.homeAdvGroup === "host") return null;
     if (config.homeAdvGroup === "first") return "home";
-    if (config.homeAdvGroup === "weak_skill") return (homeSkill ?? 50) <= (awaySkill ?? 50) ? "home" : "away";
+    if (config.homeAdvGroup === "weak_skill") { const hs = homeSkill ?? 50, as = awaySkill ?? 50; return hs === as ? null : hs < as ? "home" : "away"; }
     return null;
   }
   const km = config.homeAdvKO;
@@ -1160,7 +1160,7 @@ function resolveKOHomeAdv(m, config) {
   const km = config.homeAdvKO;
   if (km === "off") return null;
   if (km === "first") return "home";
-  if (km === "weak_skill") return m.home.skill <= m.away.skill ? "home" : "away";
+  if (km === "weak_skill") return m.home.skill === m.away.skill ? null : m.home.skill < m.away.skill ? "home" : "away";
   if (km === "weak_group") { const hp = m.home.pts ?? m.home.skill, ap = m.away.pts ?? m.away.skill; return hp <= ap ? "home" : "away"; }
   return null;
 }
@@ -2436,7 +2436,7 @@ export default function App() {
     };
     // WB section + GF + Reset inline
     const wbBaseY = pd;
-    s += '<text x="'+pd+'" y="'+(wbBaseY - 4)+'" class="sec">WINNERS BRACKET</text>';
+    s += '<text x="'+pd+'" y="'+(wbBaseY - 4)+'" class="sec">UPPER BRACKET</text>';
     const lbConnTypes = {};
     lbRounds.forEach((rd, i) => { if (i > 0) lbConnTypes[i] = rd.type === "internal" ? "pair" : "straight"; });
     let wbEndX = renderSection(wbRounds, wbBaseY + 8, wbH, "#2a3a50", 1, "#7889a0", null);
@@ -2457,7 +2457,7 @@ export default function App() {
     // LB section
     const lbTopY = wbBaseY + 8 + hd + wbH + 16;
     s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="#2a3a50" stroke-opacity="0.3"/>';
-    s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOSERS BRACKET</text>';
+    s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
     renderSection(lbRounds, lbTopY + 16, lbH, "#2a3a50", 1, "#7889a0", lbConnTypes);
     s += '</svg>';
     const blob = new Blob([s], {type: "image/svg+xml"});
@@ -5672,7 +5672,7 @@ export default function App() {
               return (
                 <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
                   {/* WB + GF + Reset in one row */}
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10 }}>WINNERS BRACKET</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10 }}>UPPER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content", marginBottom: 8 }}>
                     {wbRounds.map((rd, i) => (<Fragment key={"wb"+i}>
                       {i > 0 && pairConn(wbRounds[i-1].matches, wbH)}
@@ -5695,7 +5695,7 @@ export default function App() {
                     </Fragment>)}
                   </div>
                   {/* LB */}
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10, marginTop: 8, borderTop: "1px solid #2a3a5033", paddingTop: 12 }}>LOSERS BRACKET</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10, marginTop: 8, borderTop: "1px solid #2a3a5033", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {tKO.losers.map((rd, lr) => (<Fragment key={"lb"+lr}>
                       {lr > 0 && (rd.type === "internal" ? pairConn(tKO.losers[lr-1].matches, lbH) : straightConn(tKO.losers[lr-1].matches, lbH))}
@@ -5788,7 +5788,7 @@ export default function App() {
                 ); })}
               </div>
             ); })()}
-            {/* ═══ LOSERS BRACKET (double elim) ═══ */}
+            {/* ═══ LOWER BRACKET (double elim) ═══ */}
             {!koBracketView && tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRound.matches.every(m => (m.result && !m.result.partial) || (!m.home && !m.away)); const lbReady = lbRound.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
               <div key={"lb"+lr} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -5824,7 +5824,7 @@ export default function App() {
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#e4002b", marginBottom: 10 }}>GRAND FINAL</div>
                 <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.home ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.home ? 600 : 400, flex: 1 }}>{gfHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{gf.home?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>WB</span></span>
+                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.home ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.home ? 600 : 400, flex: 1 }}>{gfHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{gf.home?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>UB</span></span>
                     {gf.home && gf.away && <button onClick={() => tToggleHA(gfHAKey)} style={{ background: "none", border: "none", color: gfHAVal ? (gfHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: gfHAVal ? 1 : 0.4 }}>H</button>}
                     {tKoEdit && tKoEdit.bracket === "gf" ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
                       : gf.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(gf)}</span><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: String(gf.result.ftHome), a: String(gf.result.ftAway), bracket: "gf" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(0, 0, "gf")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
