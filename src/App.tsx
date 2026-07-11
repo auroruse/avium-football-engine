@@ -3,8 +3,7 @@ import headerImg from "./header.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
-import plTSV from "./presets/premier-league.tsv?raw";
-import miscEuTSV from "./presets/misc-european.tsv?raw";
+import miscAvTSV from "./presets/misc-avium.tsv?raw";
 import nl2TSV from "./presets/nl2.tsv?raw";
 import kplTSV from "./presets/kpl.tsv?raw";
 import kullanmaanTSV from "./presets/kullanmaan-cup.tsv?raw";
@@ -1964,15 +1963,12 @@ const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
 const PRESET_2EME_SERIE = parsePresetTSV(deuxiemeSerieTSV, null, 0, false, false);
 const PRESET_KULLANMAAN = parsePresetTSV(kullanmaanTSV, null, 0, false, false);
-const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
-const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
+const PRESET_MISC_AV = parsePresetTSV(miscAvTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup",
-  null,
-  "Premier League", "Miscellaneous European",
+  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup", "Miscellaneous Aviumite",
   null,
   "Custom",
 ];
@@ -1985,8 +1981,7 @@ const PRESET_CATALOG = [
   ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
   ...PRESET_KULLANMAAN.map(t => ({...t, league: "Kullanmaan Cup"})),
-  ...PRESET_PL.map(t => ({...t, league: "Premier League"})),
-  ...PRESET_MISC_EU.map(t => ({...t, league: "Miscellaneous European"})),
+  ...PRESET_MISC_AV.map(t => ({...t, league: "Miscellaneous Aviumite"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
