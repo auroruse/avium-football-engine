@@ -372,7 +372,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
-    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
+    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
     {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, text:"\u26BD "+_t, goalViz:_g});}
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
   } else if (r < (0.10 + cGkBonus) * sm) {
@@ -433,7 +433,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     const isDeflection = rng.u() < 0.08;
     const finalMethod = isDeflection ? "deflection" : (method||null);
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
-    shooter.goals++;let _ast;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));_ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(_ast)_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));}
+    shooter.goals++;let _ast;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));_ast=assistPlayer(rng,s.players[atk],shooter.name,0);if(_ast)_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));}
     s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.15).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(2));});
     {const _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast),_g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
@@ -443,7 +443,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
     if (gkErrRoll < 0.012) {
       // GK error → goal
       s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:"gk-error"});
-      shooter.goals++;let _astGk;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx).toFixed(2));_astGk=assistPlayer(rng,s.players[atk],shooter.name,0);if(_astGk)_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));}
+      shooter.goals++;let _astGk;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));_astGk=assistPlayer(rng,s.players[atk],shooter.name,0);if(_astGk)_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));}
       const gk=s.players[def].find(p=>p.pos==="GK");if(gk)gk.rating=Math.max(3,+(gk.rating-0.8).toFixed(1));
       s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.08).toFixed(1));});
       {const _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk),_g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:atk,text:"\u26BD "+_t,goalViz:_g});}
@@ -659,7 +659,7 @@ function lmSimMinute(s, rng, home, away) {
     const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal");lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));gk.saves=(gk.saves||0)+1;}}s.events.push({min:dm,type:"save",team:po,text:"\uD83E\uDDE4 "+comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.name},s)});if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{s.events.push({min:dm,type:"miss",team:po,text:"\uD83D\uDCA8 "+comm(rng,"miss_lr",{t:nm[po],n:lrScorer.name},s)});if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -825,29 +825,27 @@ function lmSimMinute(s, rng, home, away) {
       const gfScored = side === "home" ? s.score[0] : s.score[1];
       s.players[side].forEach(p => {
         if (p.pos === "GK") {
-          const sv = p.saves || 0;
-          if (sv > 0) p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2));
-          if (sv >= 3) p.rating = Math.min(10, +(p.rating + 0.01).toFixed(2));
+          const sv = (p.saves||0) - (p._rSv||0); p._rSv = p.saves||0;
+          if (sv > 0) p.rating = Math.min(10, +(p.rating + 0.02 * sv).toFixed(2));
           if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.015).toFixed(2));
-          if (sv === 0 && pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
+          if ((p.saves||0) === 0 && pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
         }
         if (p.pos === "DEF") {
-          const da = p.defActs || 0;
-          if (da > 0) p.rating = Math.min(10, +(p.rating + 0.03 * Math.min(da, 5)).toFixed(2));
-          if (da >= 3 && gaConceded <= 1) p.rating = Math.min(10, +(p.rating + 0.04).toFixed(2));
+          const da = (p.defActs||0) - (p._rDa||0); p._rDa = p.defActs||0;
+          if (da > 0) p.rating = Math.min(10, +(p.rating + 0.02 * da).toFixed(2));
+          if (!p._rDaT && (p.defActs||0) >= 3 && gaConceded <= 1) { p._rDaT = true; p.rating = Math.min(10, +(p.rating + 0.1).toFixed(2)); }
           if (s.stats[op].onTarget > s.minute / 10) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         if (p.pos === "MID") {
-          const ch = p.chances || 0;
-          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.01 * Math.min(ch, 4)).toFixed(2));
-          if (ch >= 3 && gfScored > 0) p.rating = Math.min(10, +(p.rating + 0.03).toFixed(2));
-          if (ch === 0 && s.minute >= 40) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
+          const ch = (p.chances||0) - (p._rCh||0); p._rCh = p.chances||0;
+          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.015 * ch).toFixed(2));
+          if (!p._rChT && (p.chances||0) >= 3 && gfScored > 0) { p._rChT = true; p.rating = Math.min(10, +(p.rating + 0.08).toFixed(2)); }
+          if ((p.chances||0) === 0 && s.minute >= 40) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
         }
         if (p.pos === "FWD") {
-          const ch = p.chances || 0;
-          if (p.goals > 0 || p.assists > 0) p.rating = Math.min(10, +(p.rating + 0.01).toFixed(2));
-          if (ch >= 2) p.rating = Math.min(10, +(p.rating + 0.02).toFixed(2));
-          if (s.minute >= 50 && p.goals === 0 && p.assists === 0 && ch === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.04).toFixed(2));
+          const ch = (p.chances||0) - (p._rCh||0); p._rCh = p.chances||0;
+          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.015 * ch).toFixed(2));
+          if (s.minute >= 50 && p.goals === 0 && p.assists === 0 && (p.chances||0) === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.04).toFixed(2));
         }
       });
       // Individual involvement bonus: random player from possession team gets credit
@@ -901,7 +899,7 @@ function resolvePendingPenalty(s, rng, home, away) {
     else{s.possession=op;s.pressure=0;}
   }else{
     s.score[po==="home"?0:1]++;s.stats[po].shots++;s.stats[po].onTarget++;
-    if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
+    if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
     s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.05).toFixed(1));});
     {const _t=goalText(rng,"pen_scored_desc",s,nm,taker,null),_g=genGoalViz(rng,"pen",taker.name,null,zone2,dive2);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;
@@ -958,10 +956,10 @@ function lmAdvance(prev, rng, home, away, mutate) {
       const cs = (side === "home" ? s.score[1] : s.score[0]) === 0;
       s.players[side].forEach(p => {
         let b = 0;
-        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.3 : 0));
-        else if (p.pos === "DEF") b = Math.min(1.0, 0.12 * Math.min(p.defActs || 0, 6) + (cs ? 0.2 : 0));
-        else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
-        else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
+        if (p.pos === "GK") b = Math.min(0.6, 0.04 * (p.saves || 0) + (cs ? 0.2 : 0));
+        else if (p.pos === "DEF") b = Math.min(0.5, 0.06 * Math.min(p.defActs || 0, 6) + (cs ? 0.15 : 0));
+        else if (p.pos === "MID") b = Math.min(0.4, 0.05 * Math.min(p.chances || 0, 5));
+        else if (p.pos === "FWD") b = Math.min(0.25, 0.04 * Math.min(p.chances || 0, 4));
         if (b > 0) p.rating = Math.min(10, +(p.rating + b).toFixed(2));
       });
     }
@@ -1889,8 +1887,10 @@ function ratePlayer(players, name, delta) {
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
+const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
-const goalCtxMult = (score, ti) => { const us=score[ti],them=score[1-ti],d=us-them; if(us===0&&them===0)return 1.15; if(d===-1)return 1.2; if(d===0)return 1.15; if(d>0)return Math.max(0.8,1.1-d*0.1); return 0.9; };
+// d = pre-goal difference (us-them). Positive = leading, negative = trailing.
+const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=us-them; let b; if(us===0&&them===0)b=1.0; else if(d===-1)b=1.4; else if(d===0)b=1.2; else if(d===1)b=0.7; else if(d>1)b=Math.max(0.35,0.6-(d-1)*0.15); else if(d===-2)b=0.85; else b=Math.max(0.35,0.55+(d+1)*0.1); return b*(min>=85?1.3:min>=75?1.15:min>=60?1.05:1.0); };
 function assistPlayer(rng, players, scorer, delta) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
@@ -3119,7 +3119,7 @@ export default function App() {
       rtg += (rng2.u() - 0.4) * 1.0;
       const gCount = scorers.filter(n => n === p.name).length;
       const aCount = assisters.filter(n => n === p.name).length;
-      rtg += gCount * goalAtkMult(p.atkW) + aCount * 0.4 * assistAtkMult(p.atkW);
+      rtg += gCount * goalAtkMult(p.atkW) * goalPosMult(p.pos) + aCount * 0.4 * assistAtkMult(p.atkW);
       if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
       if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
       playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
@@ -3129,7 +3129,7 @@ export default function App() {
       rtg += (rng2.u() - 0.4) * 0.8;
       const gCount = scorers.filter(n => n === p.name).length;
       const aCount = assisters.filter(n => n === p.name).length;
-      rtg += gCount * 1.2 * goalAtkMult(p.atkW) + aCount * 0.5 * assistAtkMult(p.atkW);
+      rtg += gCount * 1.2 * goalAtkMult(p.atkW) * goalPosMult(p.pos) + aCount * 0.5 * assistAtkMult(p.atkW);
       if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
       if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
       playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
