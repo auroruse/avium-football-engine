@@ -1747,7 +1747,7 @@ function parseBulk(text) {
     const stripVenue = (s) => (s||"").replace(/\s*\([\d,]+\)\s*$/, "").trim();
     const PLAYER_START = 18, PLAYER_SLOTS = 16;
     const playerNames = [];
-    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) playerNames.push(v); }
+    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) playerNames.push(abbrevName(v)); }
     const meta = [];
     for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) { const v = p[i]?.trim(); if (v) meta.push(v); }
     let primaryColor = null, secondaryColor = null;
@@ -1899,6 +1899,16 @@ function assistPlayer(rng, players, scorer, delta) {
 }
 function parseTier(raw) { if (!raw) return {name:raw,tier:0}; const s=raw.trimEnd(); if (s.endsWith("[*]")) return {name:s.slice(0,-3).trim(),tier:2}; if (s.endsWith("[+]")) return {name:s.slice(0,-3).trim(),tier:1}; return {name:s,tier:0}; }
 const tierSuffix = (t) => t===2?" [*]":t===1?" [+]":"";
+// Preset/bulk-import player names may be given as a full first name ("Gabriel
+// Alexandre") or already abbreviated ("S. Itoshi") or a single mononym
+// ("Voltinu") — normalize the first form to "F. Lastname", leave the rest untouched.
+function abbrevName(raw) {
+  const { name, tier } = parseTier(raw);
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return raw;
+  if (/^\p{L}\.$/u.test(words[0])) return raw;
+  return words[0][0].toUpperCase() + ". " + words.slice(1).join(" ") + tierSuffix(tier);
+}
 function buildSquad(formation, names) {
   const n = names || [];
   const dg = (formation || "4-3-3").split("-").map(Number);
