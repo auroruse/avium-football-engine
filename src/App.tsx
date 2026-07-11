@@ -8,6 +8,8 @@ import miscEuTSV from "./presets/misc-european.tsv?raw";
 import nl2TSV from "./presets/nl2.tsv?raw";
 import kplTSV from "./presets/kpl.tsv?raw";
 import kullanmaanTSV from "./presets/kullanmaan-cup.tsv?raw";
+import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
+import deuxiemeSerieTSV from "./presets/2eme-serie.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -1959,6 +1961,8 @@ const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
+const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
+const PRESET_2EME_SERIE = parsePresetTSV(deuxiemeSerieTSV, null, 0, false, false);
 const PRESET_KULLANMAAN = parsePresetTSV(kullanmaanTSV, null, 0, false, false);
 const PRESET_PL = parsePresetTSV(plTSV, null, 0, false, false);
 const PRESET_MISC_EU = parsePresetTSV(miscEuTSV, null, 0, false, false);
@@ -1966,7 +1970,7 @@ const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup",
+  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup",
   null,
   "Premier League", "Miscellaneous European",
   null,
@@ -1977,6 +1981,8 @@ const PRESET_CATALOG = [
   ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
   ...PRESET_NCH_L2.map(t => ({...t, league: "Nichirin League Two"})),
   ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
+  ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
+  ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
   ...PRESET_KULLANMAAN.map(t => ({...t, league: "Kullanmaan Cup"})),
   ...PRESET_PL.map(t => ({...t, league: "Premier League"})),
