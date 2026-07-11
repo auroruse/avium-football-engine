@@ -3589,7 +3589,16 @@ export default function App() {
     else { aClr = lightenUntil(aClr, hClr, 0.35); }
   }
   const hStatClr = ensureMinLum(hClr), aStatClr = ensureMinLum(aClr);
-  const hClr2 = hClr, aClr2 = aClr;
+  // The card background gradient below IS the panel, not text drawn on top of it, so
+  // it doesn't need the panel-contrast swap readableClr applies — a dark home kit should
+  // stay dark there. Start from the pre-swap colors and only resolve a clash between the
+  // two halves themselves (same pattern as hClr/aClr above, just against each other).
+  let hClr2 = hClrPre, aClr2 = aClrPre;
+  if (colorsClash(hClr2, aClr2)) {
+    const aOther2 = aClr2 === aHomeClr ? aAwayClr : aHomeClr;
+    if (!colorsClash(hClr2, aOther2)) aClr2 = aOther2;
+    else aClr2 = lightenUntil(aClr2, hClr2, 0.35);
+  }
 
   // Shared penalty-shootout diagram (goal SVGs + kick-by-kick list), used by both
   // the live/persistent scoreboard and the match report.
