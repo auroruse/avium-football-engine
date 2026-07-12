@@ -42,7 +42,7 @@ function pickRedCardVariant(rng, pos) {
   const rem = (vr - dogsoP) / (1 - dogsoP);
   return rem < 0.5 ? "violent" : rem < 0.7 ? "abusive" : "sfp";
 }
-const ovrN = (ovr, teamSkill) => Math.max(-1, Math.min(1, ((ovr || teamSkill || 65) - (teamSkill || 65)) / 25));
+const ovrN = (ovr, teamSkill) => { const g = ((ovr || teamSkill || 65) - (teamSkill || 65)); return g >= 0 ? Math.min(1, g / 12) : Math.max(-1, g / 30); };
 const EMERGENCY_GK_SAVE_PENALTY = 0.22;
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
@@ -2590,8 +2590,8 @@ export default function App() {
         homeCode: teamById(lmH)?.code, awayCode: teamById(lmA)?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
         goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
-        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
-        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,inj:p.inj?1:0})),
+        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0})),
+        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0})),
         penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
       });
     }
