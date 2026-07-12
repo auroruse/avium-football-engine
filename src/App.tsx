@@ -2727,7 +2727,7 @@ export default function App() {
       else { homeAdv = haVal; }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
-    setTReplayCounts(c => ({ ...c, [venueKey]: (c[venueKey] || 0) + 1 }));
+    if (!isL2) setTReplayCounts(c => ({ ...c, [venueKey]: (c[venueKey] || 0) + 1 }));
     // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
     // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
     // World Cup plays every game across the host country's stadiums.
