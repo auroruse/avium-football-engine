@@ -4,11 +4,8 @@ import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import miscAvTSV from "./presets/misc-avium.tsv?raw";
-import nl2TSV from "./presets/nl2.tsv?raw";
 import kplTSV from "./presets/kpl.tsv?raw";
-import kullanmaanTSV from "./presets/kullanmaan-cup.tsv?raw";
 import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
-import deuxiemeSerieTSV from "./presets/2eme-serie.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -45,16 +42,8 @@ function pickRedCardVariant(rng, pos) {
   const rem = (vr - dogsoP) / (1 - dogsoP);
   return rem < 0.5 ? "violent" : rem < 0.7 ? "abusive" : "sfp";
 }
-const TIER_CONV = [1.0, 1.08, 1.18];
-const TIER_ATK_W = [1.0, 1.25, 1.6];
-const TIER_GK_SAVE = [0, 0.035, 0.07];
-// Applied when a team has no recognized keeper left and an outfield player has taken the
-// gloves — moved straight from save-probability into goal-probability, so shots that would
-// have been stopped by a real keeper go in instead, rather than just becoming off-target misses.
+const ovrN = (ovr, teamSkill) => Math.max(-1, Math.min(1, ((ovr || teamSkill || 65) - (teamSkill || 65)) / 25));
 const EMERGENCY_GK_SAVE_PENALTY = 0.22;
-const TIER_DEF_SHOT = [0, 0.02, 0.04];
-const TIER_PEN = [0, 0.05, 0.12];
-const TIER_MID_CTRL = [0, 0.015, 0.03];
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 // ═══ MATCH COMMENTARY ════════════════════════════════════════════════════════
@@ -363,11 +352,11 @@ function applyStrategy(mod, strat) {
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
-  const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner");
+  const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk]);
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  const cGoalP = 0.04 * sm * TIER_CONV[scorer.tier || 0] + cEmergency;
-  const cGkBonus = TIER_GK_SAVE[cGk?.tier || 0] - cEmergency;
+  const cGoalP = 0.04 * sm * (1 + ovrN(scorer.ovr, s.teamSkill?.[atk]) * 0.18) + cEmergency;
+  const cGkBonus = ovrN(cGk?.ovr, s.teamSkill?.[def]) * 0.07 - cEmergency;
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
@@ -419,12 +408,12 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   }
 }
 function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method) {
-  const shooter = pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal");
+  const shooter = pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.teamSkill?.[atk]);
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * TIER_CONV[shooter.tier || 0] + sEmergency;
-  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + TIER_GK_SAVE[sGk?.tier || 0] - sEmergency);
+  const goalP = (0.13+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(shooter.ovr, s.teamSkill?.[atk]) * 0.18) + sEmergency;
+  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + ovrN(sGk?.ovr, s.teamSkill?.[def]) * 0.07 - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -580,7 +569,7 @@ function lmSimMinute(s, rng, home, away) {
   // Creative freedom — brilliant chance (expressive: 4% chance to skip to shooting zone)
   if (poSt.creativity === 1 && rng.u() < 0.04) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");s.events.push({min:dm, type:"chance", team:po, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.name},s)});}
+    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);s.events.push({min:dm, type:"chance", team:po, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.name},s)});}
     lmResolveShot(s, rng, dm, po, op, poE, opE, nm);
     return;
   }
@@ -588,7 +577,7 @@ function lmSimMinute(s, rng, home, away) {
   // Pressing
   const pressDiff=Math.max(0,(opE-poE)/(opE+poE));
   let pressMult=opM.press;
-  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? TIER_MID_CTRL[p.tier || 0] : 0), 0);
+  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrN(p.ovr, s.teamSkill?.[po]) * 0.03 : 0), 0);
   const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
   if(pressChance>0&&rng.u()<pressChance){
     s.possession=op;s.possCount[op]++;
@@ -613,7 +602,7 @@ function lmSimMinute(s, rng, home, away) {
       // Penalty — award now, defer the kick to the next tick so auto-play can pause before it is taken
       s.events.push({min:dm,type:"penalty",team:po,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.name},s)});s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
-      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty");
+      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po]);
       s.pendingPenalty={po,op,taker:taker.name,dm};
       return;
     }
@@ -630,7 +619,7 @@ function lmSimMinute(s, rng, home, away) {
     s.pressure++;
     if(s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
-    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? TIER_DEF_SHOT[p.tier || 0] : 0), 0);
+    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrN(p.ovr, s.teamSkill?.[op]) * 0.05 : 0), 0);
     let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm);return;}
@@ -655,7 +644,7 @@ function lmSimMinute(s, rng, home, away) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal");lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.05*Math.pow(poE/opE,0.5)*TIER_CONV[lrScorer.tier||0],lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.05*Math.pow(poE/opE,0.5)*(1+ovrN(lrScorer.ovr,s.teamSkill?.[po])*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
     if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
@@ -673,7 +662,7 @@ function lmSimMinute(s, rng, home, away) {
   const advBase=0.42;
   const advSkill=0.28*(poE-opE)/(poE+opE);
   const advZone=dg===1?-0.06:dg>=3?0.05:0;
-  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? TIER_MID_CTRL[p.tier || 0] : 0), 0);
+  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrN(p.ovr, s.teamSkill?.[op]) * 0.03 : 0), 0);
   let advP=advBase+advSkill+advZone+poM.adv+poMidTier-opMidTier;
   const pT=s.tactics[po],oT=s.tactics[op];
   if(pT==="ultra")advP+=0.09;else if(pT==="atk")advP+=0.05;
@@ -700,7 +689,7 @@ function lmSimMinute(s, rng, home, away) {
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);cp.chances=(cp.chances||0)+1;return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
     else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"any");bp.chances=(bp.chances||0)+1;return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
@@ -708,7 +697,7 @@ function lmSimMinute(s, rng, home, away) {
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");cp.chances=(cp.chances||0)+1;ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
+    if(nd===0){s.pressure=1;s.events.push({min:dm,type:"chance",team:po,text:(()=>{const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);cp.chances=(cp.chances||0)+1;ratePlayer(s.players[po],cp.name,0.15);return comm(rng,"enter_box",{t:nm[po],o:nm[op],n:cp.name},s);})()});if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm);}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
@@ -759,7 +748,7 @@ function lmSimMinute(s, rng, home, away) {
         const subWeights = cands.map(p => {
           let sw = POS_W.subOff[p.pos] || 10;
           sw *= Math.pow(2, (avgR - (p.rating || 6.5)) * 0.5);
-          if (p.tier === 2) sw *= 0.3; else if (p.tier === 1) sw *= 0.6;
+          sw *= 1 - ovrN(p.ovr, s.teamSkill?.[side]) * 0.75;
           if (booked.includes(p.name)) sw *= 2.5;
           return { p, w: sw };
         });
@@ -875,10 +864,10 @@ function resolvePendingPenalty(s, rng, home, away) {
   const pp = s.pendingPenalty; s.pendingPenalty = null;
   const po = pp.po, op = pp.op, dm = pp.dm;
   const nm = {home:home.name,away:away.name};
-  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty");
+  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po]);
   const poE = lmEffSkill(po==="home"?home.skill:away.skill, s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(s.stamina[po]);
   const opE = lmEffSkill(op==="home"?home.skill:away.skill, s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(s.stamina[op]);
-  const skillF2=Math.min(1,poE/85+TIER_PEN[taker.tier||0]);
+  const skillF2=Math.min(1,poE/85+ovrN(taker.ovr,s.teamSkill?.[po])*0.12);
   const zW2=[18+skillF2*8,8-skillF2*3,18+skillF2*8,20+skillF2*6,10-skillF2*4,20+skillF2*6];
   const zT2=zW2.reduce((a,b)=>a+b,0);let zR2=rng.u()*zT2,zone2=0;for(let i=0;i<6;i++){zR2-=zW2[i];if(zR2<=0){zone2=i;break;}}
   const missP2=[0.14,0.04,0.14,0.07,0.02,0.07][zone2];
@@ -928,10 +917,10 @@ function lmAdvance(prev, rng, home, away, mutate) {
       // Pick taker from order
       const ordKey=tk+"Order",idxKey=tk+"Idx";
       const ordArr=p[ordKey]||[];let taker;
-      if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty");p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty");}
+      if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);}
       const tName=tk==="home"?home.name:away.name;
       // Zone-based penalty: zones 0-5 = [TL,TC,TR,BL,BC,BR], dive 0-2 = [L,C,R]
-      const skillF=Math.min(1,kE/85+TIER_PEN[taker.tier||0]);
+      const skillF=Math.min(1,kE/85+ovrN(taker.ovr,s.teamSkill?.[tk])*0.12);
       const zW=[18+skillF*8, 8-skillF*3, 18+skillF*8, 20+skillF*6, 10-skillF*4, 20+skillF*6]; // corner-heavy for good takers
       const zT=zW.reduce((a,b)=>a+b,0); let zR=rng.u()*zT, zone=0; for(let i=0;i<6;i++){zR-=zW[i];if(zR<=0){zone=i;break;}}
       const missP=[0.14,0.04,0.14,0.07,0.02,0.07][zone]; // miss chance by zone
@@ -980,15 +969,15 @@ function lmBtnLabel(s) {
 // ═══ INSTANT SIM ═════════════════════════════════════════════════════════════
 function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad, matchUrg) {
   const home={name:"H",skill:homeSkill},away={name:"A",skill:awaySkill};
-  let s=createMatchState();s.forceResult=!!forceResult;
+  let s=createMatchState();s.forceResult=!!forceResult;s.teamSkill={home:homeSkill,away:awaySkill};
   s.styles={home:homeStyle||"balanced",away:awayStyle||"balanced"};
   s.formations={home:homeForm||"4-3-3",away:awayForm||"4-3-3"};
   s.homeAdv=homeAdv||null;
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
-  const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-  const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const mapP = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+  const mapB = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
   if (homeSquad && awaySquad) {
     s.players={home:homeSquad.filter(p=>!p.bench).map(mapP),away:awaySquad.filter(p=>!p.bench).map(mapP)};
     s.bench={home:homeSquad.filter(p=>p.bench).map(mapB),away:awaySquad.filter(p=>p.bench).map(mapB)};
@@ -1732,21 +1721,26 @@ function parseBulk(text) {
       if (asForm) return { ...base, style: "balanced", formation: asForm, strategy: {...STRAT_DEF}, squad: buildSquad(asForm, null) };
       return { ...base, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF}, squad: buildSquad("4-3-3", null) };
     }
-    const style = resolveStyle(p[2]) ?? "balanced";
-    const formation = resolveForm(p[3]) ?? "4-3-3";
+    // An optional, purely informational "Skill (P)" column may sit right after
+    // Skill (T) — detect it by checking whether the next column is numeric
+    // (style/formation labels never are) and shift later columns accordingly.
+    const o = isFinite(parseFloat(p[2])) ? 1 : 0;
+    const style = resolveStyle(p[2 + o]) ?? "balanced";
+    const formation = resolveForm(p[3 + o]) ?? "4-3-3";
     const strategy = {...STRAT_DEF};
-    for (let i = 0; i < stratKeys.length && i + 4 < p.length; i++) {
-      strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4]);
+    for (let i = 0; i < stratKeys.length && i + 4 + o < p.length; i++) {
+      strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4 + o]);
     }
     // Player names occupy a fixed 16-slot block right after the 14 tactic columns
-    // (indices 18..33). Anything past that is optional trailing metadata, in a fixed
-    // order: up to 2 #RRGGBB colors, then city, then stadium. Venue fields may carry a
-    // trailing "(number)" population/capacity for user reference only — stripped here.
+    // (indices 18..33, shifted by o). Anything past that is optional trailing
+    // metadata, in a fixed order: up to 2 #RRGGBB colors, then city, then stadium.
+    // Venue fields may carry a trailing "(number)" population/capacity for user
+    // reference only — stripped here.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
     const stripVenue = (s) => (s||"").replace(/\s*\([\d,]+\)\s*$/, "").trim();
-    const PLAYER_START = 18, PLAYER_SLOTS = 16;
-    const playerNames = [];
-    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) playerNames.push(abbrevName(v)); }
+    const PLAYER_START = 18 + o, PLAYER_SLOTS = 16;
+    const playerNames = [], playerFullNames = [], playerNats = [];
+    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) { playerNames.push(abbrevName(v)); playerFullNames.push(fullDisplayName(v)); playerNats.push(parseOvr(v).nat); } }
     const meta = [];
     for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) { const v = p[i]?.trim(); if (v) meta.push(v); }
     let primaryColor = null, secondaryColor = null;
@@ -1756,6 +1750,7 @@ function parseBulk(text) {
     if (meta.length > 0) city = stripVenue(meta.shift());
     if (meta.length > 0) stadium = stripVenue(meta.shift());
     const squad = buildSquad(formation, playerNames.length > 0 ? playerNames : null);
+    squad.forEach((p, i) => { if (i < playerFullNames.length) p.fullName = playerFullNames[i]; if (i < playerNats.length && playerNats[i]) p.nat = playerNats[i]; });
     return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}) };
   }).filter(Boolean);
 }
@@ -1857,17 +1852,15 @@ const ensureMinLum = (hex) => {
 };
 
 const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:55,MID:20,FWD:24},foul:{GK:1,DEF:35,MID:45,FWD:19},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
-function pickPlayer(rng, players, type) {
+function pickPlayer(rng, players, type, teamSkill) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
   const hasAtk = players[0]?.atkW != null;
   const pureAtk = (type === "goal" || type === "penalty") && hasAtk;
   const w = POS_W[type] || POS_W.any;
-  // For pure atkW types (goal/longGoal/penalty): use atkW directly
-  // For other types when atkW available: blend position weight + atkW for formation-specific distribution
-  const useTier = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner";
+  const useOvr = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner";
   const weighted = players.map(p => {
-    const tw = useTier ? TIER_ATK_W[p.tier || 0] : 1;
+    const tw = useOvr ? Math.max(0.2, 1 + ovrN(p.ovr, teamSkill) * 0.6) : 1;
     if (pureAtk) return {p, w: (p.atkW || 0) * tw};
     const posW = w[p.pos] || 10;
     if (hasAtk && (type === "any" || type === "corner" || type === "longGoal")) return {p, w: (posW + (p.atkW || 0) * 0.8) * tw};
@@ -1900,17 +1893,39 @@ function assistPlayer(rng, players, scorer, delta) {
   a.rating = Math.max(3, Math.min(10, +(a.rating + (delta != null ? delta : 0.6)).toFixed(2)));
   return a;
 }
-function parseTier(raw) { if (!raw) return {name:raw,tier:0}; const s=raw.trimEnd(); if (s.endsWith("[*]")) return {name:s.slice(0,-3).trim(),tier:2}; if (s.endsWith("[+]")) return {name:s.slice(0,-3).trim(),tier:1}; return {name:s,tier:0}; }
-const tierSuffix = (t) => t===2?" [*]":t===1?" [+]":"";
+function parseOvr(raw) { if (!raw) return {name:raw,ovr:null,nat:null}; let s=raw.trimEnd().replace(/\s*\[[*+]\]$/, ""); let nat=null; const nm=s.match(/\s*\[([A-Za-z]{2,4})\]$/); if(nm){nat=nm[1].toUpperCase();s=s.slice(0,nm.index).trim();} const pre=s.match(/^\((\d{1,2})\)\s*/); if(pre) return {name:s.slice(pre[0].length).trim(),ovr:Math.max(1,Math.min(99,+pre[1])),nat}; const suf=s.match(/\((\d{1,2})\)$/); if(suf) return {name:s.slice(0,suf.index).trim(),ovr:Math.max(1,Math.min(99,+suf[1])),nat}; return {name:s,ovr:null,nat}; }
+const ovrSuffix = (ovr, teamSkill) => ovr != null && ovr !== teamSkill ? "(" + ovr + ") " : "";
+const natSuffix = (nat) => nat ? " [" + nat + "]" : "";
 // Preset/bulk-import player names may be given as a full first name ("Gabriel
-// Alexandre") or already abbreviated ("S. Itoshi") or a single mononym
-// ("Voltinu") — normalize the first form to "F. Lastname", leave the rest untouched.
+// Alexandre"), ALL-CAPS-surname style ("Shō ITOSHI", "Lebogang DU PHIRI",
+// "Odd Isak HÆTTA", or a bare mononym "GESORGINÉ"), or already abbreviated
+// ("S. Itoshi") — normalize to "F. Lastname" (or "Lastname" for mononyms),
+// leave already-abbreviated names untouched. ALL-CAPS words are treated as
+// surname regardless of position; the rest form the given name (only its
+// first word's initial is kept).
 function abbrevName(raw) {
-  const { name, tier } = parseTier(raw);
+  const { name, ovr } = parseOvr(raw);
   const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= 1) return raw;
+  if (words.length === 0) return raw;
   if (/^\p{L}\.$/u.test(words[0])) return raw;
-  return words[0][0].toUpperCase() + ". " + words.slice(1).join(" ") + tierSuffix(tier);
+  const prefix = ovr != null ? "(" + ovr + ") " : "";
+  const isAllCaps = w => /\p{L}/u.test(w) && w === w.toUpperCase() && w !== w.toLowerCase();
+  const capsWords = words.filter(isAllCaps);
+  if (capsWords.length === 0) {
+    if (words.length <= 1) return raw;
+    return prefix + words[0][0].toUpperCase() + ". " + words.slice(1).join(" ");
+  }
+  const titleCaseWord = w => w.split("-").map(seg => seg ? seg[0].toUpperCase() + seg.slice(1).toLowerCase() : seg).join("-");
+  const normalWords = words.filter(w => !isAllCaps(w));
+  const initial = normalWords.length ? normalWords[0][0].toUpperCase() + ". " : "";
+  return prefix + initial + capsWords.map(titleCaseWord).join(" ");
+}
+function fullDisplayName(raw) {
+  const { name } = parseOvr(raw);
+  return name.trim().split(/\s+/).filter(Boolean).map(w => {
+    const isC = /\p{L}/u.test(w) && w === w.toUpperCase() && w !== w.toLowerCase();
+    return isC ? w.split("-").map(s => s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s).join("-") : w;
+  }).join(" ") || name;
 }
 function buildSquad(formation, names) {
   const n = names || [];
@@ -1920,29 +1935,44 @@ function buildSquad(formation, names) {
   // Per-formation attacking weight gradients: L-to-R within each layer
   const FG = {
     "4-2-4":     [0, 4,3,3,4, 16,16, 34,40,42,34],          // LB CB CB RB | CM CM | LW ST ST RW
-    "4-4-2":     [0, 4,3,3,4, 18,14,14,18, 44,46],           // LB CB CB RB | LM CM CM RM | ST ST
-    "4-3-3":     [0, 5,3,3,5, 15,18,15, 36,40,36],           // LB CB CB RB | CM CM(b2b) CM | LW ST RW
-    "4-2-3-1":   [0, 4,3,3,4, 8,8, 22,28,22, 48],            // LB CB CB RB | DM DM | LAM CAM RAM | ST
-    "4-1-4-1":   [0, 4,3,3,4, 6, 20,14,14,20, 46],           // LB CB CB RB | DM | LW CM CM RW | ST
-    "4-1-2-1-2": [0, 4,3,3,4, 6, 14,14, 30, 44,46],          // LB CB CB RB | DM | CM CM | AM | ST ST
-    "4-3-2-1":   [0, 4,3,3,4, 12,16,12, 24,24, 50],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
-    "3-4-3":     [0, 3,4,3, 12,10,10,12, 38,42,38],          // CB CB CB | LWB CM CM RWB | LW ST RW
-    "3-5-2":     [0, 3,4,3, 14,12,16,12,14, 44,46],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
-    "3-4-1-2":   [0, 3,4,3, 14,10,10,14, 28, 44,46],         // CB CB CB | LWB CM CM RWB | AM | ST ST
-    "5-3-2":     [0, 10,3,4,3,10, 16,14,16, 44,46],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
+    "4-4-2":     [0, 4,3,3,4, 20,16,16,20, 40,42],           // LB CB CB RB | LM CM CM RM | ST ST
+    "4-3-3":     [0, 5,3,3,5, 14,18,14, 34,42,34],           // LB CB CB RB | CM CM(b2b) CM | LW ST RW
+    "4-2-3-1":   [0, 4,3,3,4, 10,10, 24,30,24, 42],          // LB CB CB RB | DM DM | LAM CAM RAM | ST
+    "4-1-4-1":   [0, 4,3,3,4, 8, 26,16,16,26, 38],           // LB CB CB RB | DM | LW CM CM RW | ST
+    "4-1-2-1-2": [0, 4,3,3,4, 8, 16,16, 30, 40,42],          // LB CB CB RB | DM | CM CM | AM | ST ST
+    "4-3-2-1":   [0, 4,3,3,4, 12,18,12, 28,28, 42],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
+    "3-4-3":     [0, 3,4,3, 14,12,12,14, 34,40,34],          // CB CB CB | LWB CM CM RWB | LW ST RW
+    "3-5-2":     [0, 3,4,3, 16,14,18,14,16, 38,40],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
+    "3-4-1-2":   [0, 3,4,3, 16,12,12,16, 28, 38,40],         // CB CB CB | LWB CM CM RWB | AM | ST ST
+    "5-3-2":     [0, 10,3,4,3,10, 18,16,18, 38,40],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
+  };
+  const SPOS = {
+    "4-2-4":     ["GK","LB","CB","CB","RB","CM","CM","LW","ST","ST","RW"],
+    "4-4-2":     ["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"],
+    "4-3-3":     ["GK","LB","CB","CB","RB","CM","CM","CM","LW","ST","RW"],
+    "4-2-3-1":   ["GK","LB","CB","CB","RB","DM","DM","AM","AM","AM","ST"],
+    "4-1-4-1":   ["GK","LB","CB","CB","RB","DM","LW","CM","CM","RW","ST"],
+    "4-1-2-1-2": ["GK","LB","CB","CB","RB","DM","CM","CM","AM","ST","ST"],
+    "4-3-2-1":   ["GK","LB","CB","CB","RB","CM","CM","CM","AM","AM","ST"],
+    "3-4-3":     ["GK","CB","CB","CB","WB","CM","CM","WB","LW","ST","RW"],
+    "3-5-2":     ["GK","CB","CB","CB","WB","CM","CM","CM","WB","ST","ST"],
+    "3-4-1-2":   ["GK","CB","CB","CB","WB","CM","CM","WB","AM","ST","ST"],
+    "5-3-2":     ["GK","WB","CB","CB","CB","WB","CM","CM","CM","ST","ST"],
   };
   const fm = formation || "4-3-3";
-  const atkGrad = FG[fm] || (()=>{ const d2=fm.split("-").map(Number); const g=[0]; let ii=1; for(let i=0;i<d2[0];i++){g.push(4);ii++;} for(let di=1;di<d2.length-1;di++){const isDeep=di===1&&d2.length>3;for(let i=0;i<d2[di];i++){g.push(isDeep?10:Math.round(12+26*((ii-d2[0]-1)/Math.max(1,10-d2[0]-d2[d2.length-1]-1))));ii++;}} for(let i=0;i<d2[d2.length-1];i++){const nf=d2[d2.length-1];g.push(nf===1?36:nf===2?(i===0?42:44):(i===nf-1?40:36));ii++;} return g; })();
-  sq.push({ name: n[0] || "#1", pos: "GK", atkW: 0 });
+  const sposArr = SPOS[fm] || (()=>{ const d2=fm.split("-").map(Number); const s=["GK"]; const nd=d2[0]; if(nd<=3)for(let i=0;i<nd;i++)s.push("CB"); else{for(let i=0;i<nd;i++)s.push(i===0?"LB":i===nd-1?"RB":"CB");} for(let d=1;d<d2.length-1;d++){const isDeep=d===1&&d2.length>3;for(let i=0;i<d2[d];i++)s.push(isDeep?"DM":"CM");} const nf=d2[d2.length-1];if(nf===1)s.push("ST");else if(nf===2){s.push("ST","ST");}else{for(let i=0;i<nf;i++)s.push(i===0?"LW":i===nf-1?"RW":"ST");} return s; })();
+  const atkGrad = FG[fm] || (()=>{ const d2=fm.split("-").map(Number); const g=[0]; let ii=1; for(let i=0;i<d2[0];i++){g.push(4);ii++;} for(let di=1;di<d2.length-1;di++){const isDeep=di===1&&d2.length>3;for(let i=0;i<d2[di];i++){g.push(isDeep?10:Math.round(12+26*((ii-d2[0]-1)/Math.max(1,10-d2[0]-d2[d2.length-1]-1))));ii++;}} for(let i=0;i<d2[d2.length-1];i++){const nf=d2[d2.length-1];g.push(nf===1?36:nf===2?(i===0?40:42):(i===nf-1?38:36));ii++;} return g; })();
+  sq.push({ name: n[0] || "#1", pos: "GK", spos: "GK", atkW: 0 });
   let idx = 1;
-  for (let i = 0; i < dg[0]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "DEF", atkW: atkGrad[idx] || 4 }); idx++; }
+  for (let i = 0; i < dg[0]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "DEF", spos: sposArr[idx] || "CB", atkW: atkGrad[idx] || 4 }); idx++; }
   for (let d = 1; d < dg.length - 1; d++)
-    for (let i = 0; i < dg[d]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "MID", atkW: atkGrad[idx] || 20 }); idx++; }
-  for (let i = 0; i < dg[dg.length - 1]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "FWD", atkW: atkGrad[idx] || 48 }); idx++; }
+    for (let i = 0; i < dg[d]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "MID", spos: sposArr[idx] || "CM", atkW: atkGrad[idx] || 20 }); idx++; }
+  for (let i = 0; i < dg[dg.length - 1]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "FWD", spos: sposArr[idx] || "ST", atkW: atkGrad[idx] || 48 }); idx++; }
   const benchPos = ["GK", "DEF", "MID", "MID", "FWD"];
+  const benchSpos = ["GK", "CB", "CM", "CM", "ST"];
   const benchAtk = [0, 8, 20, 25, 42];
-  for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], bench: true, atkW: benchAtk[i] });
-  sq.forEach(p => { const {name,tier} = parseTier(p.name); p.name = name; p.tier = tier; });
+  for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i] });
+  sq.forEach(p => { const {name,ovr} = parseOvr(p.name); p.name = name; p.ovr = ovr; });
   return sq;
 }
 
@@ -1959,30 +1989,25 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, has
 }
 const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
-const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
-const PRESET_2EME_SERIE = parsePresetTSV(deuxiemeSerieTSV, null, 0, false, false);
-const PRESET_KULLANMAAN = parsePresetTSV(kullanmaanTSV, null, 0, false, false);
 const PRESET_MISC_AV = parsePresetTSV(miscAvTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Karjanian Premier League":"KAR","Verdanois Grande Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Nichirin League Two", "Karjanian Premier League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī", "Kullanmaan Cup", "Miscellaneous Aviumite",
+  "Nichirin League One", "Karjanian Premier League", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Miscellaneous Aviumite",
   null,
   "Custom",
 ];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({...t, league: "Avium International"})),
   ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
-  ...PRESET_NCH_L2.map(t => ({...t, league: "Nichirin League Two"})),
   ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
   ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
-  ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
-  ...PRESET_KULLANMAAN.map(t => ({...t, league: "Kullanmaan Cup"})),
   ...PRESET_MISC_AV.map(t => ({...t, league: "Miscellaneous Aviumite"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
@@ -1998,7 +2023,7 @@ const addBtn = { background: "transparent", border: "1px solid #2a3a50", borderR
 const delBtn = { background: "transparent", border: "none", color: "#bf616a", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
 const scBtn = { width: "100%", background: "#e4002b", border: "none", borderRadius: 8, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Neue Montreal','Inter','Helvetica Neue',sans-serif", boxShadow: "0 2px 8px #e4002b33" };
 const chk = { fontSize: 11, color: "#7889a0", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
-const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"};
+const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770",CB:"#81a1c1",LB:"#81a1c1",RB:"#81a1c1",WB:"#81a1c1",DM:"#a3be8c",CM:"#a3be8c",AM:"#a3be8c",LM:"#a3be8c",RM:"#a3be8c",LW:"#d08770",RW:"#d08770",ST:"#d08770"};
 function styledPos(txt) { const parts = []; let last = 0; const rx = /\((GK|DEF|MID|FWD)\)/g; let m; while ((m = rx.exec(txt)) !== null) { if (m.index > last) parts.push(txt.slice(last, m.index)); parts.push(<span key={m.index} style={{ ...mono, color: POS_CLR[m[1]] || "#7889a0" }}>({m[1]})</span>); last = rx.lastIndex; } if (last < txt.length) parts.push(txt.slice(last)); return parts; }
 const evColor = { goal: "#ffffff", penalty: "#d08770", chance: "#ebcb8b", red: "#bf616a", second_yellow: "#bf616a", pen_miss: "#bf616a", yellow: "#ebcb8b", save: "#ffffff", miss: "#ffffff", sub: "#7a8b9b", injury: "#c07070", press: "#ffffff", counter: "#ffffff", phase: "#ffffff", foul: "#ffffff", corner: "#ffffff", neutral: "#ffffff", offside: "#ffffff", buildup: "#ffffff", clearance: "#ffffff" };
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
@@ -2163,8 +2188,8 @@ const T_PRESETS = {
 // ═══════════════════════════════════════════════════════════════════════════════
 const TB = (t) => t===2?<span style={{color:"#e4002b",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
-  const [tab, setTab] = useState("live");
-  const [teamsOpen, setTeamsOpen] = useState(true);
+  const [tab, setTab] = useState("teams");
+
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [teams, setTeams] = useState(() => PRESET_CATALOG.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
   const teamById = useMemo(() => { const m = new Map(); teams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [teams]);
@@ -2176,6 +2201,9 @@ export default function App() {
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [viewSquad, setViewSquad] = useState(null);
   const [viewInfo, setViewInfo] = useState(null);
+  const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
+  const [playerNatFilter, setPlayerNatFilter] = useState("");
+  const [playerSearch, setPlayerSearch] = useState("");
   const [dupCodeId, setDupCodeId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -2541,7 +2569,7 @@ export default function App() {
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
   const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
-  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; const tiers = tm.squad ? tm.squad.map(p => p.tier || 0) : null; nt.squad = buildSquad(v, names); if (tiers) nt.squad.forEach((p, i) => { if (i < tiers.length) p.tier = tiers[i]; }); } return nt; }));
+  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const names = tm.squad ? tm.squad.map(p => p.name) : null; const ovrs = tm.squad ? tm.squad.map(p => p.ovr) : null; nt.squad = buildSquad(v, names); if (ovrs) nt.squad.forEach((p, i) => { if (i < ovrs.length) p.ovr = ovrs[i]; }); } return nt; }));
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
@@ -2584,7 +2612,7 @@ export default function App() {
       const entries = {};
       players.forEach(p => {
         const k = teamObj.name + "|" + p.name;
-        entries[k] = { name:p.name, pos:p.pos, tier:p.tier||0, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
+        entries[k] = { name:p.name, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: 1, totalRating: p.rating||6,
           yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, chances: p.chances||0, defActs: p.defActs||0, saves: p.saves||0 };
       });
@@ -2640,7 +2668,7 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, tier:v.tier||0, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
           next[k].goals += v.goals;
           next[k].assists += v.assists;
           next[k].matches += v.matches;
@@ -2712,12 +2740,13 @@ export default function App() {
 
     const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId);
     const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId);
-    const mapP = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-    const mapB = (p) => ({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const mapP = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+    const mapB = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
     const init = createMatchState();
     init.forceResult = forceResult;
+    init.teamSkill = { home: teamById(liveHId).skill, away: teamById(liveAId).skill };
     init.styles = { home: teamById(liveHId).style || "balanced", away: teamById(liveAId).style || "balanced" };
     init.formations = { home: teamById(liveHId).formation || "4-3-3", away: teamById(liveAId).formation || "4-3-3" };
     init.allowTacChange = {home:true, away:true};
@@ -2834,7 +2863,7 @@ export default function App() {
       const form = t.formation || "4-3-3";
       const strat = {...STRAT_DEF, ...(t.strategy || {})};
       const tactics = stratKeys.map(k => valToLabel[k]?.[strat[k]] || "No Instruction");
-      const players = (t.squad || []).map(p => p.name + tierSuffix(p.tier)).join("\t");
+      const players = (t.squad || []).map(p => ovrSuffix(p.ovr, t.skill) + p.name).join("\t");
       const colors = t.primaryColor ? (t.secondaryColor ? [t.primaryColor, t.secondaryColor] : [t.primaryColor]) : [];
       return [code, t.name, t.skill, style, form, ...tactics, players, ...colors].join("\t");
     }).join("\n");
@@ -2844,7 +2873,7 @@ export default function App() {
 
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail = new Set();
@@ -2856,11 +2885,11 @@ export default function App() {
     const hDebuff = calcPromoDebuff(hLive.starters, hBenchNames);
     const aDebuff = calcPromoDebuff(aLive.starters, aBenchNames);
     if (hDebuff || aDebuff) init.promoDebuff = { home: hDebuff, away: aDebuff };
-    init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hLive.starters.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
+    init.bench = {home: hLive.bench.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill })); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail2 = new Set();
@@ -2872,8 +2901,8 @@ export default function App() {
     const hDebuff2 = calcPromoDebuff(hLive2.starters, hBenchNames2);
     const aDebuff2 = calcPromoDebuff(aLive2.starters, aBenchNames2);
     if (hDebuff2 || aDebuff2) init.promoDebuff = { home: hDebuff2, away: aDebuff2 };
-    init.players = {home: hLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,pos:p.pos,tier:p.tier||0,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.players = {home: hLive2.starters.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
+    init.bench = {home: hLive2.bench.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setAutoPlay(false); setLmMatch(s); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
     setLmMatch(prev => {
@@ -3050,7 +3079,7 @@ export default function App() {
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
+        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
@@ -3100,14 +3129,14 @@ export default function App() {
     const injDur = injSevObj ? injSevObj.dur[0] + Math.floor(rng2.u() * (injSevObj.dur[1] - injSevObj.dur[0] + 1)) : 0;
     const injPartName = injPicked?.part || null;
     const scorers = [];
-    const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
-    const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
+    const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
+    const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
     for (let g = 0; g < goalsFor; g++) {
-      if (subGoalPool.length > 0 && rng2.u() < 0.2) { scorers.push(pickPlayer(rng2, subGoalPool, "goal").name); }
-      else { scorers.push(pickPlayer(rng2, starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,tier:0}], "goal").name); }
+      if (subGoalPool.length > 0 && rng2.u() < 0.2) { scorers.push(pickPlayer(rng2, subGoalPool, "goal", teamObj.skill).name); }
+      else { scorers.push(pickPlayer(rng2, starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,ovr:null}], "goal", teamObj.skill).name); }
     }
     const assisters = [];
-    const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,tier:p.tier||0}));
+    const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
     for (let g = 0; g < goalsFor; g++) {
       const others = allOutfield.filter(p => p.name !== scorers[g]);
       if (others.length > 0) { assisters.push(pickPlayer(rng2, others, "any").name); }
@@ -3171,7 +3200,7 @@ export default function App() {
     setTPlayerStats(prev => {
       const next = {};
       for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-      const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,tier:p.tier||0,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
+      const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
       [...sq, ...matchSubs].forEach(p => { const k = key(p.name); if (!next[k]) next[k] = initP(p); });
       for (const [k, d] of Object.entries(diffs)) {
         next[k].matches = (next[k].matches||0) + d.matches;
@@ -3979,6 +4008,32 @@ export default function App() {
   };
   const teamsFiltered = teams.filter(t => (!teamLeagueFilter || (t.league||"Custom") === teamLeagueFilter) && teamMatchesSearch(t));
 
+  const playerIndex = useMemo(() => {
+    const natNames = new Map();
+    teams.forEach(t => { if (t.league === "Avium International" && t.code) natNames.set(t.code, t.name); });
+    const resNat = (code) => code ? (natNames.get(code) || code) : null;
+    const byName = new Map();
+    teams.forEach(t => {
+      if (!t.squad) return;
+      const isIntl = t.league === "Avium International";
+      t.squad.forEach(p => {
+        if (!p.name || p.name.startsWith("#")) return;
+        const key = p.fullName || p.name;
+        const eff = p.ovr ?? t.skill;
+        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, clubs: [] });
+        const e = byName.get(key);
+        const sp = p.spos || p.pos;
+        if (sp) e.positions.add(sp);
+        if (isIntl) { e.nationality = t.name; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; }
+        else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code) }); if (!e.nationality) e.nationality = resNat(p.nat || LEAGUE_NAT[t.league]); }
+      });
+    });
+    const posOrd = ["GK","CB","LB","RB","WB","DM","CM","AM","LM","RM","LW","RW","ST"];
+    const arr = [...byName.values()];
+    arr.forEach(p => { p.pos = [...p.positions].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).join("/"); delete p.positions; });
+    return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+  }, [teams]);
+
   return (
     <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
       <style>{APP_CSS}</style>
@@ -3989,24 +4044,24 @@ export default function App() {
             <img src={headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {[["live", "Live Match"], ["tournament", "Tournament"], ["docs", "Docs"]].map(([id, l]) => (
+            {[["teams", "Teams"], ["live", "Live Match"], ["tournament", "Tournament"], ["docs", "Docs"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "#e4002b" : "transparent", color: tab === id ? "#ffffff" : "#7889a0", border: tab === id ? "1px solid #e4002b" : "1px solid #141c2b", boxShadow: tab === id ? "0 0 12px #e4002b44" : "none" }}>{l}</button>
             ))}
           </div>
         </div>
 
-        {/* SHARED TEAMS */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: teamsOpen ? 8 : 16, minHeight: 32 }}>
-          <label onClick={() => setTeamsOpen(!teamsOpen)} style={{ ...lbl, margin: 0, cursor: "pointer", userSelect: "none" }}><span style={{ color: "#7889a0", marginRight: 6, fontSize: 8, display: "inline-block", transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
+        {tab === "teams" && (<>
+        {/* TEAMS */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
+          <label style={{ ...lbl, margin: 0 }}>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
           <div style={{ display: "flex", gap: 6 }}>
-            {teamsOpen && <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>}
-            {teamsOpen && <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "#e4002b" : "#7889a0", cursor: "text" }} />}
-            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
-            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
-            {teamsOpen && teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
+            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
+            <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "#e4002b" : "#7889a0", cursor: "text" }} />
+            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
+            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
+            {teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
           </div>
         </div>
-        {teamsOpen && (<>
         {showExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
         {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Merges into the roster as Custom teams</span></div></div>)}
         <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
@@ -4135,9 +4190,13 @@ export default function App() {
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
                         onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[pi] = {...ns[pi], tier: ((p.tier||0)+1)%3}; updateTeam(t.id, "squad", ns); }}
-                          style={{ cursor: "pointer", width: 12, textAlign: "center", fontSize: 10, flexShrink: 0, color: p.tier===2?"#e4002b":p.tier===1?"#5b8fa8":"#7889a0", fontWeight: 700, userSelect: "none" }}
-                          title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
+                        <input type="number" min="1" max="99"
+                          value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                          onChange={e => { const ns = [...sq]; ns[pi] = {...ns[pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                          onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                          onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                       </div>
                     ))}
                     </div>
@@ -4152,9 +4211,13 @@ export default function App() {
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "#7889a0" }}
                         onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <span onClick={e => { e.stopPropagation(); const ns = [...sq]; ns[11+pi] = {...ns[11+pi], tier: ((p.tier||0)+1)%3}; updateTeam(t.id, "squad", ns); }}
-                          style={{ cursor: "pointer", width: 12, textAlign: "center", fontSize: 10, flexShrink: 0, color: p.tier===2?"#e4002b":p.tier===1?"#5b8fa8":"#7889a0", fontWeight: 700, userSelect: "none" }}
-                          title={p.tier===2?"Star → Average":p.tier===1?"Above Average → Star":"Average → Above Average"}>{p.tier===2?"★":p.tier===1?"+":"·"}</span>
+                        <input type="number" min="1" max="99"
+                          value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                          onChange={e => { const ns = [...sq]; ns[11+pi] = {...ns[11+pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                          onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                          onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                       </div>
                     ))}
                     </div>
@@ -4200,6 +4263,52 @@ export default function App() {
           </div>
           ); })()}
           {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", padding: "6px 12px", borderTop: "1px solid #2a3a50" }}>Skill values must be between 25 and 100.</div>}
+        </div>
+
+
+        <div style={{ marginTop: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
+            <label style={{ ...lbl, margin: 0 }}>Players <span style={{ color: "#7889a0", fontWeight: 400 }}>({playerIndex.length})</span>{(() => { const dr = playerIndex.filter(p => p.clubs.length > 0).length; const dup = playerIndex.filter(p => p.clubs.length > 1).length; return (<>{dr > 0 && <span style={{ color: "#5bbcd6", fontWeight: 400, fontSize: 10, marginLeft: 8 }}>{dr} dual-registered</span>}{dup > 0 && <span style={{ color: "#bf616a", fontWeight: 600, fontSize: 10, marginLeft: 8 }}>{dup} duplicated</span>}</>); })()}</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="ALL">☰ All Positions</option>{(()=>{ const posOrd=["GK","CB","LB","RB","WB","DM","CM","AM","LM","RM","LW","RW","ST"]; const avail=new Set(); playerIndex.forEach(p=>p.pos.split("/").forEach(s=>avail.add(s))); return posOrd.filter(p=>avail.has(p)).map(p=><option key={p} value={p}>{p}</option>); })()}</select>
+              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Nationalities</option>{[...new Set(playerIndex.map(p => p.nationality).filter(Boolean))].sort().map(n => <option key={n} value={n}>{n}</option>)}</select>
+              <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: playerSearch ? "#e4002b" : "#7889a0", cursor: "text" }} />
+            </div>
+          </div>
+          {(() => {
+            const q = playerSearch.toLowerCase();
+            const filtered = playerIndex.filter(p => {
+              if (playerPosFilter !== "ALL" && !p.pos.split("/").includes(playerPosFilter)) return false;
+              if (playerNatFilter && p.nationality !== playerNatFilter) return false;
+              if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
+              return true;
+            });
+            return (
+              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden" }}>
+                <div style={{ display: "flex", padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
+                  <span style={{ width: 28, flexShrink: 0 }}>#</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>Player</span>
+                  <span style={{ width: 36, textAlign: "center", flexShrink: 0, marginLeft: -4 }}>OVR</span>
+                  <span style={{ width: 52, textAlign: "center", flexShrink: 0 }}>POS</span>
+                  <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Nationality</span>
+                  <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Club</span>
+                </div>
+                <div style={{ maxHeight: 420, overflowY: "auto" }}>
+                  {filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: "#7889a066", textAlign: "center" }}>No players found.</div>}
+                  {filtered.map((p, i) => (
+                    <div key={p.fullName} style={{ display: "flex", padding: "5px 12px", alignItems: "center", fontSize: 11, background: i % 2 ? "transparent" : "#0a0e1708" }}>
+                      <span style={{ width: 28, flexShrink: 0, color: "#7889a0", fontSize: 10, ...mono }}>{i + 1}</span>
+                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fullName !== p.name ? p.fullName : p.name}</span>
+                      <span style={{ width: 36, textAlign: "center", flexShrink: 0, ...mono, fontWeight: 600, color: (p.ovr||0) >= 85 ? "#4a90d9" : (p.ovr||0) >= 75 ? "#5bbcd6" : (p.ovr||0) >= 65 ? "#4caf50" : "#7889a0" }}>{p.ovr || "–"}</span>
+                      <span style={{ width: 52, textAlign: "center", flexShrink: 0, color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</span>
+                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: "#81a1c1", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nationality}</span>
+                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
         </>)}
 
@@ -6261,7 +6370,7 @@ export default function App() {
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
             <P>Tab-separated, one team per line. Columns in order:</P>
             <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "#141c2b", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
-            <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with [+] (above-average) or [*] (star) to set their tier — this affects selection weight, conversion rate, GK saves, and defensive impact.</P>
+            <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
 
             </details>
 
