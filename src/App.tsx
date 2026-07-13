@@ -2753,9 +2753,8 @@ export default function App() {
       homeAdv = tGetHA(venueKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
       hostModeActive = tConfig.homeAdvGroup === "host";
     } else {
-      const haVal = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig));
-      if (isL2 && tConfig.homeAdvKO !== "host") { homeAdv = haVal === "home" ? "away" : haVal === "away" ? "home" : null; }
-      else { homeAdv = haVal; }
+      if (tConfig.koLegs === 2) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
+      else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
     if (!isL2) setTReplayCounts(c => ({ ...c, [venueKey]: (c[venueKey] || 0) + 1 }));
@@ -3534,8 +3533,7 @@ export default function App() {
     if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
-    else if (tConfig.homeAdvKO === "host") { const h = haDefault; leg1HA = h; leg2HA = h; }
-    else { leg1HA = tGetHA(haKey, haDefault); leg2HA = leg1HA === "home" ? "away" : leg1HA === "away" ? "home" : null; }
+    else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
     if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq);
     if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
