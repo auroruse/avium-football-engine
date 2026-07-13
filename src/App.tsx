@@ -2662,6 +2662,18 @@ export default function App() {
     if (homeTeamObj && awayTeamObj) {
       const homeEntries = buildStatsUpdate(homeTeamObj, hPlayers);
       const awayEntries = buildStatsUpdate(awayTeamObj, aPlayers);
+      const buildDiffs = (entries) => {
+        const diffs = {};
+        for (const [k, v] of Object.entries(entries)) {
+          const d = {matches:v.matches||0,subApp:0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,chances:v.chances||0,defActs:v.defActs||0,saves:v.saves||0};
+          if (v.rc) { d.reds = 1; d.suspended = rcSuspGames(v.rcVariant, Math.random()); }
+          if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
+          diffs[k] = d;
+        }
+        return diffs;
+      };
+      const homeDiffs = buildDiffs(homeEntries);
+      const awayDiffs = buildDiffs(awayEntries);
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
@@ -2669,19 +2681,38 @@ export default function App() {
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
           if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
-          next[k].goals += v.goals;
-          next[k].assists += v.assists;
-          next[k].matches += v.matches;
-          next[k].totalRating += v.totalRating;
-          next[k].yellows += v.yc;
-          next[k].chances = (next[k].chances||0) + v.chances;
-          next[k].defActs = (next[k].defActs||0) + v.defActs;
-          next[k].saves = (next[k].saves||0) + v.saves;
-          if (v.rc) { next[k].reds = (next[k].reds||0) + 1; next[k].suspended = (next[k].suspended||0) + rcSuspGames(v.rcVariant, Math.random()); }
-          if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; const dur = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); next[k].injOut = (next[k].injOut||0) + dur; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
+          const d = homeDiffs[k] || awayDiffs[k];
+          next[k].goals += d.goals;
+          next[k].assists += d.assists;
+          next[k].matches += d.matches;
+          next[k].totalRating += d.totalRating;
+          next[k].yellows += d.yellows;
+          next[k].chances = (next[k].chances||0) + d.chances;
+          next[k].defActs = (next[k].defActs||0) + d.defActs;
+          next[k].saves = (next[k].saves||0) + d.saves;
+          if (d.reds) { next[k].reds = (next[k].reds||0) + d.reds; next[k].suspended = (next[k].suspended||0) + d.suspended; }
+          if (d.injOut) { next[k].injOut = (next[k].injOut||0) + d.injOut; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
         }
         return next;
       });
+      // Store diffs so reverseMatchStats can undo them on delete
+      const storeDiffs = (resultObj) => {
+        if (!resultObj) return;
+        if (resultObj.twoLeg && target.leg === 2) { resultObj.statDiffs = { leg1: resultObj.statDiffs?.leg1 || {home:{},away:{}}, leg2: {home:homeDiffs, away:awayDiffs} }; }
+        else if (resultObj.twoLeg && target.leg === 1) { resultObj.statDiffs = { leg1: {home:homeDiffs, away:awayDiffs} }; }
+        else { resultObj.statDiffs = { home: homeDiffs, away: awayDiffs }; }
+      };
+      if (target.type === "group") {
+        setTGroups(prev => { const ng = JSON.parse(JSON.stringify(prev)); storeDiffs(ng[target.gi].schedule[target.ri][target.mi].result); return ng; });
+      } else {
+        setTKO(prev => {
+          const nk = JSON.parse(JSON.stringify(prev));
+          const bk = target.bracket || (target.tp ? "tp" : "wb");
+          const mt = bk === "lb" ? nk.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? nk.grandFinal : bk === "reset" ? nk.reset : bk === "tp" ? nk.thirdPlace : nk.rounds[target.ri]?.matches[target.mi];
+          if (mt?.result) storeDiffs(mt.result);
+          return nk;
+        });
+      }
     }
 
   };
@@ -2723,7 +2754,7 @@ export default function App() {
       hostModeActive = tConfig.homeAdvGroup === "host";
     } else {
       const haVal = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig));
-      if (isL2) { homeAdv = haVal === "home" ? "away" : haVal === "away" ? "home" : null; }
+      if (isL2 && tConfig.homeAdvKO !== "host") { homeAdv = haVal === "home" ? "away" : haVal === "away" ? "home" : null; }
       else { homeAdv = haVal; }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
@@ -2731,7 +2762,8 @@ export default function App() {
     // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
     // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
     // World Cup plays every game across the host country's stadiums.
-    const venue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[hashStr(venueKey) % tHostVenuePool.length] : null;
+    const venueHash = isL2 ? hashStr(venueKey + "_L2") : hashStr(venueKey);
+    const venue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[venueHash % tHostVenuePool.length] : null;
 
     const buildLiveSquad = (teamName, teamId) => {
       const sq = teamById(teamId)?.squad || buildSquad(teamById(teamId)?.formation, null);
@@ -3502,7 +3534,8 @@ export default function App() {
     if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
-    else { leg1HA = "home"; leg2HA = "away"; }
+    else if (tConfig.homeAdvKO === "host") { const h = haDefault; leg1HA = h; leg2HA = h; }
+    else { leg1HA = tGetHA(haKey, haDefault); leg2HA = leg1HA === "home" ? "away" : leg1HA === "away" ? "home" : null; }
     const ag = tConfig.koAwayGoals && ov !== "off";
     if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq);
     if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
