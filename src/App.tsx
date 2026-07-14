@@ -3278,7 +3278,9 @@ export default function App() {
   // Auto-save tournament state to persistent storage
   // Permanent roster — its own save, independent lifetime from tournament progress.
   const rosterSaveTimeoutRef = useRef(null);
+  const rosterLoadedRef = useRef(false);
   useEffect(() => {
+    if (!rosterLoadedRef.current) return;
     if (rosterSaveTimeoutRef.current) clearTimeout(rosterSaveTimeoutRef.current);
     const customTeams = teams.filter(t => t.league === "Custom");
     if (customTeams.length === 0) { try { localStorage.removeItem("avium-roster-db"); } catch(e) {} return; }
@@ -3337,10 +3339,12 @@ export default function App() {
               if (legacy.tPlayerStats) setTPlayerStats(legacy.tPlayerStats);
               if (legacy.tPhase) setTPhase(legacy.tPhase);
               setTournamentTeamIds(legacy.teams.map(t => { const match = PRESET_CATALOG.find(c => (c.code || c.name) === (t.code || t.name)); return match ? match.id : "Custom::" + (t.code || t.name); }));
+              try { localStorage.removeItem("avium-engine-autosave"); } catch(e) {}
             }
           }
         }
         setTeams([...PRESET_CATALOG, ...customTeams]);
+        rosterLoadedRef.current = true;
         // Load tournament session independently — it exists whether or not
         // avium-roster-db does (roster-db only gets written when custom teams exist).
         const sessionRaw = localStorage.getItem("avium-tournament-session");
