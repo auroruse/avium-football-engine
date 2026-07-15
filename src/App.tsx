@@ -4757,6 +4757,7 @@ export default function App() {
                           style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
                           onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                           onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
                     ))}
                     </div>
@@ -4778,6 +4779,7 @@ export default function App() {
                           style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
                           onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
                           onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
                     ))}
                     </div>
