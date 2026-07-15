@@ -4596,11 +4596,11 @@ export default function App() {
         if (!p.name || p.name.startsWith("#")) return;
         const key = p.fullName || p.name;
         const eff = p.ovr ?? t.skill;
-        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, natCode: null, clubs: [], clubSkill: 0, natSkill: 0 });
+        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
         const e = byName.get(key);
         const sp = p.spos || p.pos;
         if (sp) e.positions.add(sp);
-        if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
+        if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
         else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
       });
     });
@@ -4890,7 +4890,7 @@ export default function App() {
                       <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(p.fullName || p.name)}</span>
                       <span style={{ width: 36, textAlign: "center", flexShrink: 0, ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</span>
                       <span style={{ width: 52, textAlign: "center", flexShrink: 0, color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</span>
-                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: "#81a1c1", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nationality}</span>
+                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: "#7889a0", fontWeight: p.capped ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nationality}</span>
                       <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</span>
                     </div>
                   ))}
