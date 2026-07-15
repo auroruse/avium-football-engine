@@ -4580,18 +4580,19 @@ export default function App() {
         if (!p.name || p.name.startsWith("#")) return;
         const key = p.fullName || p.name;
         const eff = p.ovr ?? t.skill;
-        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, natCode: null, clubs: [] });
+        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, natCode: null, clubs: [], clubSkill: 0, natSkill: 0 });
         const e = byName.get(key);
         const sp = p.spos || p.pos;
         if (sp) e.positions.add(sp);
-        if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; }
-        else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } }
+        if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
+        else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
       });
     });
     const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
     const arr = [...byName.values()];
     arr.forEach(p => { p.pos = [...p.positions].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).join("/"); delete p.positions; });
-    return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+    // Tiebreak equal ratings by club skill, then national team skill.
+    return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
   }, [teams]);
 
   return (
