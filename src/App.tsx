@@ -3,9 +3,13 @@ import headerImg from "./header.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
-import miscAvTSV from "./presets/misc-avium.tsv?raw";
-import kplTSV from "./presets/kpl.tsv?raw";
+import kplTSV from "./presets/kar-prem.tsv?raw";
 import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
+import aleTSV from "./presets/ale-oberliga.tsv?raw";
+import arvTSV from "./presets/champ-arv.tsv?raw";
+import vicTSV from "./presets/div-prima-vic.tsv?raw";
+import elvTSV from "./presets/elv-prem.tsv?raw";
+import rudTSV from "./presets/rud-first.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -2314,23 +2318,31 @@ const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
-const PRESET_MISC_AV = parsePresetTSV(miscAvTSV, null, 0, false, false);
+const PRESET_ALE = parsePresetTSV(aleTSV, null, 0, false, false);
+const PRESET_ARV = parsePresetTSV(arvTSV, null, 0, false, false);
+const PRESET_VIC = parsePresetTSV(vicTSV, null, 0, false, false);
+const PRESET_ELV = parsePresetTSV(elvTSV, null, 0, false, false);
+const PRESET_RUD = parsePresetTSV(rudTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
-const LEAGUE_NAT = {"Nichirin League One":"NCH","Karjanian Premier League":"KAR","Verdanois Grande Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Karjanian Premier League", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Miscellaneous Aviumite",
+  "Nichirin League One", "Elvesterian Premier League", "Championnat Arvernois", "Alemannischer Oberliga", "Prima Divisione Viciliana", "Karjanian Premier League", "Rudanian First League", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī",
   null,
   "Custom",
 ];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({...t, league: "Avium International"})),
   ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
+  ...PRESET_ELV.map(t => ({...t, league: "Elvesterian Premier League"})),
+  ...PRESET_ARV.map(t => ({...t, league: "Championnat Arvernois"})),
+  ...PRESET_ALE.map(t => ({...t, league: "Alemannischer Oberliga"})),
+  ...PRESET_VIC.map(t => ({...t, league: "Prima Divisione Viciliana"})),
   ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
+  ...PRESET_RUD.map(t => ({...t, league: "Rudanian First League"})),
   ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
-  ...PRESET_MISC_AV.map(t => ({...t, league: "Miscellaneous Aviumite"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
@@ -2685,6 +2697,7 @@ export default function App() {
   const [viewInfo, setViewInfo] = useState(null);
   const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
   const [playerNatFilter, setPlayerNatFilter] = useState("");
+  const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   const [playerClubFilter, setPlayerClubFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   const [dupCodeId, setDupCodeId] = useState(null);
@@ -4835,6 +4848,7 @@ export default function App() {
             <div style={{ display: "flex", gap: 6 }}>
               <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="ALL">All Positions</option>{["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</select>
               <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">All Nationalities</option>{[...new Set(playerIndex.map(p => p.natCode).filter(Boolean))].sort().map(c => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">All Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
               <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerClubFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">All Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
               <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: playerSearch ? "#e4002b" : "#7889a0", cursor: "text" }} />
             </div>
@@ -4844,6 +4858,7 @@ export default function App() {
             const filtered = playerIndex.filter(p => {
               if (playerPosFilter !== "ALL" && !p.pos.split("/").includes(playerPosFilter)) return false;
               if (playerNatFilter && p.natCode !== playerNatFilter) return false;
+              if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
               if (playerClubFilter && !p.clubs.some(c => c.name === playerClubFilter)) return false;
               if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
               return true;
