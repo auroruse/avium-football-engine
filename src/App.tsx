@@ -2201,6 +2201,7 @@ function ratePlayer(players, name, delta) {
   p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
+const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "#7889a0";
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
 const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
@@ -2655,7 +2656,25 @@ export default function App() {
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [teams, setTeams] = useState(() => PRESET_CATALOG.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
-  const teamById = useMemo(() => { const m = new Map(); teams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [teams]);
+  // National team rating always wins over a club's own number for the same player — the
+  // national squad is the canonical source. Resolved here (not baked into raw `teams`) so
+  // the squad editor still shows/edits each club's own stored number untouched.
+  const natOvrMap = useMemo(() => {
+    const m = new Map();
+    teams.forEach(t => { if (t.league !== "Avium International" || !t.squad) return; t.squad.forEach(p => { if (!p.name) return; const eff = p.ovr ?? t.skill; if (eff != null) m.set(p.fullName || p.name, eff); }); });
+    return m;
+  }, [teams]);
+  const effTeams = useMemo(() => teams.map(t => {
+    if (t.league === "Avium International" || !t.squad) return t;
+    let changed = false;
+    const squad = t.squad.map(p => {
+      const nOvr = natOvrMap.get(p.fullName || p.name);
+      if (nOvr != null && nOvr !== (p.ovr ?? t.skill)) { changed = true; return { ...p, ovr: nOvr }; }
+      return p;
+    });
+    return changed ? { ...t, squad } : t;
+  }), [teams, natOvrMap]);
+  const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
   const [showBulk, setShowBulk] = useState(false);
   const [teamSort, setTeamSort] = useState(null);
   const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
@@ -4488,8 +4507,9 @@ export default function App() {
           {si === 1 && <div style={{ background: "#7889a0" }}></div>}
           <div>
             <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
               <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
+              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>OVR</span>
               <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
@@ -4498,26 +4518,28 @@ export default function App() {
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
               <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
               <span></span>
-              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                 <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                 <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                 <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
                 <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
               </>); })}
               <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                 <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                 <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                 <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
                 <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
               </>); })}
@@ -4839,7 +4861,7 @@ export default function App() {
                     <div key={p.fullName} style={{ display: "flex", padding: "5px 12px", alignItems: "center", fontSize: 11, background: i % 2 ? "transparent" : "#0a0e1708" }}>
                       <span style={{ width: 28, flexShrink: 0, color: "#7889a0", fontSize: 10, ...mono }}>{i + 1}</span>
                       <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(p.fullName || p.name)}</span>
-                      <span style={{ width: 36, textAlign: "center", flexShrink: 0, ...mono, fontWeight: 600, color: (p.ovr||0) >= 85 ? "#4a90d9" : (p.ovr||0) >= 75 ? "#5bbcd6" : (p.ovr||0) >= 65 ? "#4caf50" : "#7889a0" }}>{p.ovr || "–"}</span>
+                      <span style={{ width: 36, textAlign: "center", flexShrink: 0, ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</span>
                       <span style={{ width: 52, textAlign: "center", flexShrink: 0, color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</span>
                       <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: "#81a1c1", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nationality}</span>
                       <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</span>
@@ -5057,7 +5079,7 @@ export default function App() {
                       if (gv) {
                         body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{chain.length > 0 && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, nextE.goalViz, rk > 0)}</div>}<div style={{ flex: chain.length > 0 ? "7 1 190px" : "1 1 260px", maxWidth: chain.length > 0 ? 385 : 440, minWidth: 175 }}>{chain.length > 0 ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>);
                       } else if (chain.length > 0) {
-                        body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, null, rk > 0)}{gvReplayBtn(i, false)}</div></>);
+                        body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}><div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, null, rk > 0)}</div>{gvReplayBtn(i, false)}</div></>);
                       }
                       bg = om.bg;
                     } else {
@@ -5190,8 +5212,9 @@ export default function App() {
                 {si === 1 && <div style={{ background: "#7889a0" }}></div>}
                 <div>
                   <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
                     <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
+                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>OVR</span>
                     <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
@@ -5200,26 +5223,28 @@ export default function App() {
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
                     <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
                     <span></span>
-                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); return (<>
+                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                       <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); return (<>
+                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                       <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
                       <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
                       <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: p.chances>0?700:400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: p.defActs>0?700:400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: p.saves>0?700:400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
                       <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
                     </>); })}
@@ -5854,7 +5879,6 @@ export default function App() {
                   {!tValid && tournamentTeamIds.length < 2 && <span style={{ color: "#bf616a" }}>Select at least 2 teams</span>}
                   {!tValid && tournamentTeamIds.length >= 2 && tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix skill values (25–100)</span>}
                   {!tValid && tournamentTeamIds.length >= 2 && !tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix config errors above</span>}
-                  {tValid && <span style={{ color: "#5e9c6b", fontWeight: 600 }}>{tournamentTeams.length} teams ready</span>}
                 </div>
               </div>
             </div>
