@@ -4855,7 +4855,7 @@ export default function App() {
                   <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Nationality</span>
                   <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Club</span>
                 </div>
-                <div style={{ maxHeight: 420, overflowY: "auto" }}>
+                <div style={{ maxHeight: 1350, overflowY: "auto" }}>
                   {filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: "#7889a066", textAlign: "center" }}>No players found.</div>}
                   {filtered.map((p, i) => (
                     <div key={p.fullName} style={{ display: "flex", padding: "5px 12px", alignItems: "center", fontSize: 11, background: i % 2 ? "transparent" : "#0a0e1708" }}>
