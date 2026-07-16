@@ -46,8 +46,39 @@ function pickRedCardVariant(rng, pos) {
   const rem = (vr - dogsoP) / (1 - dogsoP);
   return rem < 0.5 ? "violent" : rem < 0.7 ? "abusive" : "sfp";
 }
-const ovrN = (ovr, teamSkill) => { const g = ((ovr || teamSkill || 65) - (teamSkill || 65)); return g >= 0 ? Math.min(1, g / 12) : Math.max(-1, g / 30); };
+// Positive side no longer hard-clamps at the old +12-gap ceiling (1.0) — it keeps
+// climbing up to a +30 gap (2.5), so a real outlier stuck on a weak team still reads
+// as one instead of flatlining at the same bonus as a merely-decent gap.
+const ovrN = (ovr, teamSkill) => { const g = ((ovr || teamSkill || 65) - (teamSkill || 65)); return g >= 0 ? Math.min(2.5, g / 12) : Math.max(-1, g / 30); };
 const EMERGENCY_GK_SAVE_PENALTY = 0.22;
+// Momentum is a real (non-cosmetic) effective-skill modifier — see its two reads in
+// lmSimMinute/resolvePendingPenalty (+2%/point) — not the momHist graph, which is a
+// separate, purely-visual smoothing of current ball position with no gameplay effect.
+// Additive with a cap (rather than goals just setting it to a flat value) so a team
+// already riding a spell of good luck and THEN scoring stacks — capped so it can't
+// snowball indefinitely, and decay (lmSimMinute, -1/minute) keeps every swing temporary.
+const MOMENTUM_CAP = 6;
+const momBump = (s, side, amt) => { s.momentum[side] = Math.max(0, Math.min(MOMENTUM_CAP, s.momentum[side] + amt)); };
+// A chance's starting chain (genChanceViz can seed 1-5 hops for a worked move) all
+// represent genuine attacking involvement — running, receiving, carrying — on top of the
+// blanket per-minute team drain every on-pitch player already pays. Dedup by name first: a
+// dribble hop reuses the same player as the previous hop, and shouldn't be charged twice
+// for one continuous run just because it appears as two entries in the chain array.
+const drainChain = (s, side, chain, amt) => {
+  const seen = new Set();
+  for (const hop of chain) {
+    if (seen.has(hop.name)) continue;
+    seen.add(hop.name);
+    const p = s.players[side].find(x => x.name === hop.name);
+    if (p) p.stamina = Math.max(0, (p.stamina ?? 100) - amt);
+  }
+};
+// A gassed player performs below their nominal OVR — mirrors staminaMod's own curve shape
+// (flat near full fitness, steepening as stamina bottoms out) but expressed in OVR points
+// rather than a multiplier, since ovr feeds ovrN's team-relative gap rather than a flat
+// scale. Capped at 8 points off at 0 stamina — noticeable without being able to flip a
+// team's best player into a net liability on its own.
+const fatigueOvr = (ovr, stamina) => { const st = Math.max(0, Math.min(100, stamina ?? 100)); return st >= 75 ? (ovr ?? 65) : (ovr ?? 65) - Math.pow((75 - st) / 75, 1.5) * 8; };
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 // ═══ MATCH COMMENTARY ════════════════════════════════════════════════════════
@@ -100,7 +131,7 @@ const CM = {
   miss_corner:["Takes a wicked deflection off {o}, behind for a corner.","Nicks off a defender's boot. Corner {t}.","Cannons off {o} and behind. Corner {t}.","Deflects off a despairing challenge. Corner {t}.","Inside out off a defensive leg. Corner {t}."],
   corner_again:["Another corner {t}.","Taken short... and another corner {t}!","Still {t}'s corner. The pressure builds.","Worked back in... and it's another corner!","The corner leads to another! {t} keep the pressure on.","Blocked behind. Corner number two in quick succession for {t}.","In it comes, out it goes... and behind again. Corner {t}.","{o} can only put it behind. {t} will go again.","Deflected over. {t} keep the set-piece pressure coming.","Same routine, same result. Another {t} corner."],
   corner_rebound:["Off the woodwork and behind for a corner!","Parried behind! Corner {t}.","Tipped over! Corner to {t}.","Rebounds for a corner!","The save deflects behind for a corner!","Pushed behind by the keeper! Corner {t}."],
-  free_kick:["Free kick for {t}. {n} over it. Into the wall.","{t}'s {n} whips in the free kick. Headed clear.","{t}'s {n} curls the free kick. Just over the bar.","Direct free kick from {t}'s {n}. Dipping but wide.","{t}'s {n} strikes the free kick. Blocked by the wall.","Worked short by {t}. The move breaks down.","{t}'s {n} floats it in. Keeper claims.","{t}'s {n} tries to bend it over the wall. Wide.","{t}'s {n} fires it low. Deflected behind.","Free kick drilled into the wall by {t}'s {n}. Clear.","{t}'s {n} goes for placement. Curls just wide.","{t}'s {n} strikes it hard. Keeper dives and holds."],
+  free_kick:["Free kick in a shooting position for {t}. {n} stands over it.","{t} with a direct free kick in range. {n} steps up.","Foul leaves {t} a real sight of goal. {n} eyes the wall.","{t}'s {n} places the ball down for the free kick.","Dangerous free kick for {t}. {n} takes the run-up.","Wall's set. {t}'s {n} ready to strike it.","{n} fancies this one for {t}. Free kick in a good area.","{t} have a direct shot at goal. {n} over the ball.","Promising free kick for {t}. {n} lines it up.","{t}'s {n} steps back, sizing up the free kick."],
   buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {n} has options.","{t} probing through the middle. {n} on the ball.","{t}'s {n} carries it forward. Space opening up.","Ball switched by {t}. {n} receives in space.","{t} patient in possession. {n} picks the pass.","Good move from {t}. {n} advancing.","{n} plays a one-two and surges forward for {t}.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} turns and looks forward.","Neat combination from {t}. {n} carrying it forward.","{t}'s {n} clips one over the top. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the press and drives on.","{t} overloading the flank. {n} involved.","{t}'s {n} drops deep, collects, turns and plays forward.","Sharp pass from {t}'s {n}. Through the first line.","Crossfield ball from {t}'s {n}. Play shifted wide.","{t}'s {n} threads it through the midfield. On the move.","Lovely first touch from {t}'s {n}. Turns and plays it forward."],
   z_neutral:["{t} controlling the tempo.","Midfield contest. {o} pressing.","Cagey. Neither side committing.","Throw-in {t}. Worked short.","Loose ball in midfield. Scramble.","Ball bobbling around. {t}'s {n} tidies up.","{t} knocking it around. No urgency.","Both sides keeping the ball for now.","{t}'s {n} sprays it wide. Tempo drops.","{o} win it back. Sideways.","Nothing happening in this spell.","Stalemate in midfield.","{t} trying to find a rhythm. {o} denying space.","{t}'s {n} holds it up. Waiting for runners.","Neither side in control.","Physical battle in the center. No quarter given.","{t}'s {n} plays it backwards. Lacking options.","{t} probing without threatening.","{o} sitting back. {t} circulating.","{t}'s {n} clips one sideways. Patience."],
   enter_box:["{t}'s {n} feeds it into the area! Dangerous!","Chance! {t}'s {n} in space inside the box!","{t} work it through! {n} in behind!","{n} picks it up in a dangerous position for {t}!","{t}'s {n} cuts inside and gets a sight of goal!","Lovely pass! {t}'s {n} is through on goal!","{t}'s {n} drives into the penalty area!","Threaded through! {t}'s {n} latches onto it!","One on one! {t}'s {n} bearing down on the keeper!","{t}'s {n} peels off the defender! Ball played in!","In behind! {t}'s {n} is clean through!","{t}'s {n} bursts into the box! This is a chance!","Slipped in! {t}'s {n} is free inside the area!","{t}'s {n} picks it up on the edge of the six-yard box!","Dangerous position! {t}'s {n} has the goal in his sights!"],
@@ -321,6 +352,15 @@ function genChanceExtension(rng, chain, teamPlayers, dm) {
 }
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
 const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3) : variant === "abusive" ? 2 + Math.floor(r * 3) : 1;
+// Every 5th accumulated yellow this tournament adds a 1-match ban — mirrors how real
+// competitions reset the "on a booking" clock after each ban rather than compounding
+// further per additional card. tPlayerStats.yellows is a monotonically increasing counter
+// that's never reset, so this checks how many new 5-multiple boundaries THIS match's
+// yellow(s) crossed (prevYellows -> newYellows), not the post-match total's remainder in
+// isolation — a player already on a non-multiple-of-5 total who picks up one more yellow
+// this match should trigger exactly one ban if it crosses a boundary, not be missed because
+// the raw total "doesn't look round" beforehand.
+const ycSuspGames = (prevYellows, newYellows) => Math.floor(newYellows / 5) - Math.floor(prevYellows / 5);
 function lmDisplayMin(phase, min, se) { const b = { first_half_stoppage:45, second_half_stoppage:90, et_first_stoppage:105, et_second_stoppage:120 }[phase]; return b !== undefined ? `${b}+${se}` : `${min}`; }
 function lmClockDisplay(s) {
   const map = { pre_match:"--", half_time:"HT", full_time:"FT", et_half_time:"ET HT", et_full_time:"ET FT", penalties:"PEN", finished:"FT" };
@@ -345,7 +385,7 @@ function autoTac(rng, diff, rem, urgency, style, current, skillAdv, matchUrg) {
   // ceil: max attacking intensity, floor: max defensive intensity
   // bias: baseline push toward atk(+) or def(-)
   const sp = {
-    gegenpress:   {ds:-12, as:10, ceil:2.0, floor:-1.0, bias:0.4},
+    gegenpress:   {ds:-12, as:10, ceil:2.0, floor:-1.5, bias:0.15},
     wingplay:     {ds:-5,  as:5,  ceil:2.0, floor:-1.2, bias:0.2},
     balanced:     {ds:0,   as:0,  ceil:2.0, floor:-2.0, bias:0},
     tikitaka:     {ds:3,   as:-5, ceil:1.6, floor:-1.5, bias:0.1},
@@ -421,12 +461,25 @@ const _rc = (() => {
 })();
 const STYLE_MOD = {
   balanced:     {press:1.0,adv:0,hold:0,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0,corn:1.0,maxT:null,minT:null},
-  gegenpress:   {press:1.5,adv:0.04,hold:-0.08,lb:0,boxShot:0.03,goalP:-0.01,ctr:0.6,ctrShot:0,def:-0.06,lr:0,corn:1.0,maxT:null,minT:null},
-  tikitaka:     {press:1.1,adv:-0.04,hold:0.10,lb:-0.04,boxShot:-0.03,goalP:0.02,ctr:0.7,ctrShot:0,def:0,lr:-0.04,corn:0.8,maxT:"ultra",minT:null},
-  counterattack:{press:0.3,adv:-0.06,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0.02,ctr:2.0,ctrShot:0.10,def:0.08,lr:0,corn:1.0,maxT:"ultra",minT:null},
-  wingplay:     {press:1.0,adv:0.02,hold:-0.03,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:-0.02,lr:0.04,corn:1.5,maxT:null,minT:null},
-  parkthebus:   {press:0.1,adv:-0.10,hold:-0.05,lb:0.02,boxShot:-0.06,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.04,corn:0.7,maxT:null,minT:"def"},
+  gegenpress:   {press:1.3,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:0.50,ctrShot:0.03,def:-0.01,lr:0,corn:1.0,maxT:null,minT:null},
+  tikitaka:     {press:1.1,adv:-0.01,hold:0.10,lb:-0.02,boxShot:-0.01,goalP:0.02,ctr:0.80,ctrShot:0,def:0.02,lr:-0.02,corn:0.95,maxT:"ultra",minT:null},
+  counterattack:{press:0.40,adv:-0.04,hold:-0.01,lb:0.02,boxShot:-0.02,goalP:0.02,ctr:2.0,ctrShot:0.10,def:0.08,lr:0,corn:1.0,maxT:"ultra",minT:null},
+  wingplay:     {press:1.0,adv:0.03,hold:-0.01,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0.04,corn:1.4,maxT:null,minT:null},
+  parkthebus:   {press:0.20,adv:-0.08,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.02,corn:0.80,maxT:null,minT:"def"},
 };
+const TEST_SKILL = 65;
+// A fraction of the gap to full fitness, not a flat number — a player who ends a match
+// completely gassed recovers more in absolute terms than one who barely broke a sweat, so a
+// drain gap that opens between two playstyles shrinks on its own over a season instead of
+// compounding indefinitely under a flat top-up applied equally to both sides.
+// The steady state this settles a squad into is 100 - drain*(1-r)/r (where drain is a
+// typical match's net stamina loss and r is this fraction) — at a ~35-45 typical net drain,
+// 0.5 settles around 50-65 (confirmed against real tournament data), nowhere near "most of
+// the squad stays fresh across a season." 0.75 puts that same typical player around 85-90,
+// with only the most heavily-involved players dipping meaningfully lower — the exception,
+// not the rule.
+const STAMINA_RECOVER_PCT = 0.75;
+const staminaRecoverFrom = (stamina) => Math.min(100, stamina + (100 - stamina) * STAMINA_RECOVER_PCT);
 const TAC_ORD=["park","def","bal","atk","ultra"];
 const TAC_DRAIN={park:-0.15,def:-0.08,bal:0,atk:0.10,ultra:0.18};
 function clampTac(tac,style){const m=STYLE_MOD[style]||STYLE_MOD.balanced;const i=TAC_ORD.indexOf(tac);if(m.maxT){const mx=TAC_ORD.indexOf(m.maxT);if(i>mx)return m.maxT;}if(m.minT){const mn=TAC_ORD.indexOf(m.minT);if(i<mn)return m.minT;}return tac;}
@@ -496,17 +549,18 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk]);
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  const cGoalP = 0.04 * sm * (1 + ovrN(scorer.ovr, s.teamSkill?.[atk]) * 0.18) + cEmergency;
-  const cGkBonus = ovrN(cGk?.ovr, s.teamSkill?.[def]) * 0.07 - cEmergency;
+  const cGoalP = 0.04 * sm * (1 + ovrN(fatigueOvr(scorer.ovr, scorer.stamina), s.teamSkill?.[atk]) * 0.18) + cEmergency;
+  const cGkBonus = ovrN(cGk ? fatigueOvr(cGk.ovr, cGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - cEmergency;
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
     scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
     {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g});}
-    s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 4;
+    s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 4);
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
     if (cGk) cGk.saves = (cGk.saves || 0) + 1;
+    momBump(s, def, 2);
     {const _t=comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name,g:cGk?.fullName||cGk?.name||"the keeper"},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm, type:"save", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDDE4 "+_t, goalViz:_g});}
     if (rng.u() < 0.25) {
       s.stats[atk].corners++;
@@ -518,8 +572,10 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     s.stats[atk].shots++;
     if (rng.u() < 0.12) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
+      momBump(s, atk, 1);
       {const _t=comm(rng,"woodwork_hdr",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="woodwork";gvSync(_t,_g);s.events.push({min:dm, type:"woodwork", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDEA8 "+_t, goalViz:_g});}
     } else {
+      momBump(s, def, 2);
       {const _t=comm(rng,"corner_miss",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm, type:"miss", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83D\uDCA8 "+_t, goalViz:_g});}
     }
     s.possession = def; s.ball = 2; s.pressure = 0;
@@ -536,7 +592,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
         if(s.goalscorers)s.goalscorers[atk].push({name:ogPlayer.name,min:dm,method:"og",ogTeam:nm[def]});
         ogPlayer.rating=Math.max(3,+(ogPlayer.rating-1.0).toFixed(1));
         {const _t=ownGoalText(rng,s,nm,ogPlayer),_g=genGoalViz(rng,"og",ogPlayer.name,null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:ogPlayer.fullName||ogPlayer.name, text:"\u26BD "+_t, goalViz:_g});}
-        s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; s.momentum[atk] = 3;
+        s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 3);
       } else {
         s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
         s.possession = def; s.ball = 2; s.pressure = 0;
@@ -551,10 +607,18 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
 function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) {
   // Link this resolution back to whatever chance is currently open (if any) so the click-through
   // card can find its own outcome later, regardless of how many ticks/events came in between —
-  // see the bottom of this function and lmPendingChance/lmPendingGoal for the other half.
+  // see the bottom of this function and lmPendingChance/lmHiddenGoals for the other half.
   const _linkedChance = s.activeChance, _evLenAtStart = s.events.length;
   s.activeChance = null;
+  // Gates the defending team's save/miss momentum relief to shots that were actually
+  // dangerous — a long-built chain (real buildup) or a direct free kick — so routine
+  // speculative efforts don't trigger a swing every time they're comfortably dealt with.
+  const isBigChance = (_linkedChance && (_linkedChance.chanceViz.chain?.length || 0) >= 3) || method === "long-range";
   const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.teamSkill?.[atk]);
+  // The shot itself — sprint into space plus a full-power strike — costs extra regardless
+  // of whether it capped off a long buildup or was spontaneous (counter/long-range/free
+  // kick), which is why this lives here rather than only in the chain-drain call sites.
+  shooter.stamina = Math.max(0, (shooter.stamina ?? 100) - 2.0);
   // When this shot is the payoff of a chance's build-up, the goal (if scored) reuses that
   // build-up's own passer as the assist and its final hop as the shot position, instead of
   // independently re-rolling both — see genChanceViz / the chance push sites for the source data.
@@ -575,9 +639,9 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.11+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(shooter.ovr, s.teamSkill?.[atk]) * 0.18) + sEmergency;
+  let goalP = (0.11+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(fatigueOvr(shooter.ovr, shooter.stamina), s.teamSkill?.[atk]) * 0.18) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
-  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + ovrN(sGk?.ovr, s.teamSkill?.[def]) * 0.07 - sEmergency);
+  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + ovrN(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -588,7 +652,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
     shooter.goals++;let _ast;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_ast=pickAssist(shooter.name,0);if(_ast){const oldA=_ast.rating;_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_ast.name,delta:+(_ast.rating-oldA).toFixed(2)};}}
     s.players[def].forEach(p=>{if(p.pos==="GK"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.15).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}else if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.08).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
     {const _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast),_g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
-    s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
+    s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
   } else if (roll < goalP+saveP) {
     // Save — check for GK error (3%) or tipped onto woodwork (8%)
     const gkErrRoll = rng.u();
@@ -599,17 +663,19 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       const gk=s.players[def].find(p=>p.pos==="GK");if(gk){const old=gk.rating;gk.rating=Math.max(3,+(gk.rating-0.8).toFixed(1));ratingDeltas.conceding.push({name:gk.name,delta:+(gk.rating-old).toFixed(2)});}
       s.players[def].forEach(p=>{if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.08).toFixed(1));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
       {const _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk),_g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
-      s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;s.momentum[atk]=4;
+      s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
       s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;if(sGk){sGk.saves=(sGk.saves||0)+1;sGk.rating=Math.min(10,+(sGk.rating+0.15).toFixed(2));}
       ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});
+      momBump(s,atk,1);
       {const _t=comm(rng,"woodwork_save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="woodwork";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"woodwork",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDEA8 "+_t,goalViz:_g});}
       if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
       // Normal save
       s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));gk.saves=(gk.saves||0)+1;}ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});}
+      if(isBigChance)momBump(s,def,2);
       {const _t=comm(rng,"save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="save";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"save",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}
       if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
@@ -625,11 +691,12 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
     if (rng.u() < 0.08) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
       ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});
+      momBump(s,atk,1);
       {const _t=comm(rng,"woodwork",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="woodwork";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"woodwork",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDEA8 "+_t,goalViz:_g});}
       if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
-      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});{const _t=comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="miss";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}
+      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});if(isBigChance)momBump(s,def,2);{const _t=comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="miss";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}
       if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
@@ -668,12 +735,14 @@ function lmHandleCard(s, rng, dm, team, fouler, nm, cardChance) {
     s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;rp.rcVariant=rcVariant;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
     s.events.push({min:dm,type:"red",team,player:fn,playerFull:fouler?.fullName||fn,rcVariant,text:"\uD83D\uDFE5 "+comm(rng,cmKey,{t:nm[team],n:fouler?.fullName||fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
+    momBump(s, team === "home" ? "away" : "home", 3);
     if (lmCheckMassEjection(s, dm, team, nm)) return;
     ensureGoalkeeper(s, team, dm, nm, rng);
   } else if (s.booked[team].includes(fn)) {
     s.stats[team].yellows++; s.stats[team].reds++; s.stats[team].secondYellows=(s.stats[team].secondYellows||0)+1; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
     s.events.push({min:dm,type:"red",team,player:fn,playerFull:fouler?.fullName||fn,text:"\uD83D\uDFE5 "+comm(rng,"second_yellow",{t:nm[team],n:fouler?.fullName||fn,c:s.players[team].length},s)});
     s.stoppageBank+=60;
+    momBump(s, team === "home" ? "away" : "home", 3);
     if (lmCheckMassEjection(s, dm, team, nm)) return;
     ensureGoalkeeper(s, team, dm, nm, rng);
   } else {
@@ -702,7 +771,7 @@ function ensureGoalkeeper(s, side, dm, nm, rng) {
   if (benchIdx !== -1 && s.subs[side] < 3 && s.players[side].length > 0) {
     s.subs[side]++;
     const subOn = s.bench[side].splice(benchIdx, 1)[0];
-    subOn.sub = 'on'; subOn.rating = 6.5; subOn.chances = 0; subOn.defActs = 0; subOn.saves = 0;
+    subOn.sub = 'on'; subOn.startedBench = true; subOn.rating = 6.5; subOn.chances = 0; subOn.defActs = 0; subOn.saves = 0;
     const subOff = pick(rng, s.players[side]);
     s.players[side] = s.players[side].filter(p => p.name !== subOff.name);
     s.subbedOff[side].push({...subOff, sub: 'off'});
@@ -717,24 +786,11 @@ function ensureGoalkeeper(s, side, dm, nm, rng) {
 
 // ═══ ZONE-BASED MINUTE SIMULATION ═══════════════════════════════════════════
 function staminaMod(stam) { return 1 - Math.pow((100 - Math.max(0, stam)) / 100, 1.5) * 0.25; }
-function lmSimMinute(s, rng, home, away) {
-  const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
-  let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(s.stamina.home), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(s.stamina.away);
-  if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
-  if(s.momentum.home > 0) s.momentum.home--;
-  if(s.momentum.away > 0) s.momentum.away--;
-  const nm = {home:home.name,away:away.name};
-
-  // Tactics (with style constraints + skill mismatch)
-  const diff=(s.score[0]+(s.startScore?.[0]||0))-(s.score[1]+(s.startScore?.[1]||0)), rem=s.minute<=90?90-s.minute:120-s.minute;
-  const sDef=(s.startScore?.[0]||0)-(s.startScore?.[1]||0);
-  const skAdv = (hE - aE) / Math.max(hE, aE, 1);
-  const pH=s.tactics.home, pA=s.tactics.away;
-  if(s.allowTacChange?.home!==false){s.tactics.home=clampTac(autoTac(rng,diff,rem,sDef<0?Math.abs(sDef)*20:0,s.styles.home,s.tactics.home,skAdv,s.matchUrg?.home),s.styles.home);}
-  if(s.allowTacChange?.away!==false){s.tactics.away=clampTac(autoTac(rng,-diff,rem,sDef>0?sDef*20:0,s.styles.away,s.tactics.away,-skAdv,s.matchUrg?.away),s.styles.away);}
-  if(s.tactics.home!==pH&&TAC_MSG[s.tactics.home])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+home.name+" "+TAC_MSG[s.tactics.home]+"."});
-  if(s.tactics.away!==pA&&TAC_MSG[s.tactics.away])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+away.name+" "+TAC_MSG[s.tactics.away]+"."});
-
+// Team-level fatigue is derived live from the roster instead of tracked as its own counter —
+// a separate accumulator can drift from what the players themselves report, which is exactly
+// what caused this system's earlier bugs. Averages everyone currently on the pitch.
+function teamStam(s, side) { const ps = s.players[side]; return ps.length ? ps.reduce((a,p) => a + (p.stamina ?? 100), 0) / ps.length : 100; }
+function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   // Possession setup + style modifiers
   let po=s.possession, op=po==="home"?"away":"home";
   let poE=po==="home"?hE:aE, opE=op==="home"?hE:aE;
@@ -743,7 +799,9 @@ function lmSimMinute(s, rng, home, away) {
   const poM=s.modifiers?s.modifiers[po]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[po]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[po]]), s.strategy?.[po]);
   const opM=s.modifiers?s.modifiers[op]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[op]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[op]]), s.strategy?.[op]);
 
-  // Time wasting (dead minute when leading)
+  // Time wasting (dead minute when leading) — costs stoppage time and a flavor event, but
+  // doesn't stop the ball: play still falls through to pressing/shooting/buildup below, so a
+  // leading team running the clock down can still concede or create a chance.
   const poSt = s.strategy?.[po] || STRAT_DEF;
   if (poSt.timeWasting > 0) {
     const scoreDiff = po === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
@@ -753,7 +811,6 @@ function lmSimMinute(s, rng, home, away) {
         s.stoppageBank += poSt.timeWasting === 2 ? 25 : 15;
         s.events.push({min:dm, type:"neutral", text:comm(rng,"time_waste",{t:nm[po],o:nm[po==="home"?"away":"home"]},s)});
         if (poSt.timeWasting === 2 && rng.u() < 0.025) { const waster = pickPlayer(rng, s.players[po], "foul", s.teamSkill?.[po]); lmHandleCard(s, rng, dm, po, waster, nm, 1.0); }
-        return;
       }
     }
   }
@@ -761,14 +818,14 @@ function lmSimMinute(s, rng, home, away) {
   // Creative freedom — brilliant chance (expressive: 4% chance to skip to shooting zone)
   if (poSt.creativity === 1 && rng.u() < 0.04) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
+    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
     return;
   }
 
   // Pressing
   const pressDiff=Math.max(0,(opE-poE)/(opE+poE));
   let pressMult=opM.press;
-  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrN(p.ovr, s.teamSkill?.[po]) * 0.03 : 0), 0);
+  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[po]) * 0.03 : 0), 0);
   const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
   if(pressChance>0&&rng.u()<pressChance){
     // Unlike every other possession change in this function, pressing flips s.possession
@@ -790,6 +847,9 @@ function lmSimMinute(s, rng, home, away) {
   const tackleFoulMod = opSt.tackling === 1 ? 1.3 : opSt.tackling === -1 ? 0.75 : 1.0;
   const tackleCardMod = opSt.tackling === 1 ? 1.4 : opSt.tackling === -1 ? 0.65 : 1.0;
   if(rng.u()<0.15*dribbleFoulMod*tackleFoulMod){
+    // A foul stops the phase of play — whatever chance was building closes out here;
+    // the free kick (or penalty) that follows is a new, separate situation.
+    if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
     let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);
     if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}
     s.stats[op].fouls++;
@@ -803,8 +863,12 @@ function lmSimMinute(s, rng, home, away) {
     }
     s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;
     ratePlayer(s.players[op],fouler.name,-0.1);lmHandleCard(s,rng,dm,op,fouler,nm,0.28*tackleCardMod);
-    // Free kick shot in dangerous positions
-    if(dg<=1&&rng.u()<0.18){s.stats[po].shots++;const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");s.events.push({min:dm,type:"neutral",text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.name},s)});}
+    // Free kick in a shooting position — resolves as a genuine shot (goal/save/miss/woodwork all possible).
+    if(dg<=1&&rng.u()<0.18){
+      const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");
+      s.events.push({min:dm,type:"neutral",text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.fullName||fkShooter.name},s)});
+      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,"long-range");
+    }
     else if(dg>1)s.ball+=dir; // free kick advances position
     return;
   }
@@ -814,14 +878,14 @@ function lmSimMinute(s, rng, home, away) {
     s.pressure++;
     if(!s.activeChance && s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
-    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrN(p.ovr, s.teamSkill?.[op]) * 0.05 : 0), 0);
+    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[op]) * 0.05 : 0), 0);
     let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     // Defensive contest: a named defender can end an active chance before a shot happens
     if(s.activeChance&&s.pressure>1){
       const defs=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID");
       const df=defs.length?pickPlayer(rng,defs,"defend",s.teamSkill?.[op]):s.players[op].find(p=>p.pos==="GK");
-      const dfOvr=df?ovrN(df.ovr,s.teamSkill?.[op])*0.12:0;
+      const dfOvr=df?ovrN(fatigueOvr(df.ovr,df.stamina),s.teamSkill?.[op])*0.12:0;
       const dcP=0.24+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.08:opSt.tackling===-1?-0.04:0);
       if(rng.u()<dcP&&df){
         const _lc=s.activeChance;
@@ -844,24 +908,35 @@ function lmSimMinute(s, rng, home, away) {
     if(rng.u()<keepP){
       if(s.activeChance){
         const chain=s.activeChance.chanceViz.chain;
-        if(chain.length<CHANCE_MAX_HOPS)chain.push(genChanceExtension(rng,chain,s.players[po],dm));
+        if(chain.length<CHANCE_MAX_HOPS){
+          // The player receiving this hop made the run/movement to get on the ball —
+          // extra cost on top of the blanket per-minute team drain everyone else pays.
+          const hop=genChanceExtension(rng,chain,s.players[po],dm);
+          chain.push(hop);
+          const hopP=s.players[po].find(p=>p.name===hop.name);
+          if(hopP)hopP.stamina=Math.max(0,(hopP.stamina??100)-1.0);
+        }
         else s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
       } else {
         s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"assist",s.teamSkill?.[po]);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});
       }
       return;
     }
-    // Cleared
+    // Cleared \u2014 if this was clearing away an active chance's build-up (fumbled possession,
+    // no shot), express the clearance AS that chance's outcome (like a tackle or a miss)
+    // instead of a disconnected standalone event, same pattern lmResolveShot and the
+    // defensive-contest branch above use for goal/save/miss/woodwork/tackle/interception/block.
+    const _clChance = s.activeChance;
     s.possession=op;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
     const _clDfs=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID");const _clDf=_clDfs.length?pickPlayer(rng,_clDfs,"defend",s.teamSkill?.[op]):s.players[op].find(p=>p.pos==="GK");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,0.15);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
-    const _clOvr=_clDf?ovrN(_clDf.ovr,s.teamSkill?.[op])*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
-    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)});}}
-    else if(cl<0.70-0.20*defR){s.ball=2;s.events.push({min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)});}
+    const _clOvr=_clDf?ovrN(fatigueOvr(_clDf.ovr,_clDf.stamina),s.teamSkill?.[op])*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
+    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
+    else if(cl<0.70-0.20*defR){s.ball=2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
       if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
-      else s.events.push({min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
+      else {const clEv={min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     }
     return;
   }
@@ -870,10 +945,10 @@ function lmSimMinute(s, rng, home, away) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(lrScorer.ovr,s.teamSkill?.[po])*0.18),lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -888,7 +963,7 @@ function lmSimMinute(s, rng, home, away) {
   const advBase=0.42;
   const advSkill=0.28*(poE-opE)/(poE+opE);
   const advZone=dg===1?-0.06:dg>=3?0.05:0;
-  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrN(p.ovr, s.teamSkill?.[op]) * 0.03 : 0), 0);
+  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[op]) * 0.03 : 0), 0);
   let advP=advBase+advSkill+advZone+poM.adv+poMidTier-opMidTier;
   const pT=s.tactics[po],oT=s.tactics[op];
   if(pT==="ultra")advP+=0.09;else if(pT==="atk")advP+=0.05;
@@ -909,12 +984,12 @@ function lmSimMinute(s, rng, home, away) {
     if(nd<=1&&rng.u()<offsideRate){
       if (dlBeh === 2 && rng.u() < 0.15) {
         s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-        {const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
+        {const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
         return;
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
     else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist",s.teamSkill?.[po]);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
@@ -922,13 +997,13 @@ function lmSimMinute(s, rng, home, away) {
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
+    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
     s.possession=op;
     const ctrP=(dg<=2?0.14:0.06)*opM.ctr;
     if(rng.u()<ctrP){
@@ -938,9 +1013,30 @@ function lmSimMinute(s, rng, home, away) {
       else s.events.push({min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
     }else s.events.push({min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
   }
+}
+
+function lmSimMinute(s, rng, home, away) {
+  const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
+  let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
+  if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
+  if(s.momentum.home > 0) s.momentum.home--;
+  if(s.momentum.away > 0) s.momentum.away--;
+  const nm = {home:home.name,away:away.name};
+
+  // Tactics (with style constraints + skill mismatch)
+  const diff=(s.score[0]+(s.startScore?.[0]||0))-(s.score[1]+(s.startScore?.[1]||0)), rem=s.minute<=90?90-s.minute:120-s.minute;
+  const sDef=(s.startScore?.[0]||0)-(s.startScore?.[1]||0);
+  const skAdv = (hE - aE) / Math.max(hE, aE, 1);
+  const pH=s.tactics.home, pA=s.tactics.away;
+  if(s.allowTacChange?.home!==false){s.tactics.home=clampTac(autoTac(rng,diff,rem,sDef<0?Math.abs(sDef)*20:0,s.styles.home,s.tactics.home,skAdv,s.matchUrg?.home),s.styles.home);}
+  if(s.allowTacChange?.away!==false){s.tactics.away=clampTac(autoTac(rng,-diff,rem,sDef>0?sDef*20:0,s.styles.away,s.tactics.away,-skAdv,s.matchUrg?.away),s.styles.away);}
+  if(s.tactics.home!==pH&&TAC_MSG[s.tactics.home])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+home.name+" "+TAC_MSG[s.tactics.home]+"."});
+  if(s.tactics.away!==pA&&TAC_MSG[s.tactics.away])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+away.name+" "+TAC_MSG[s.tactics.away]+"."});
+
+  lmResolvePossession(s, rng, home, away, dm, hE, aE, nm);
+
   // Stamina drain
   for (const side of ["home","away"]) {
-    const sm = s.modifiers ? s.modifiers[side] : mergeModifiers(STYLE_MOD[s.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[side]]);
     const st = s.strategy?.[side] || STRAT_DEF;
     const stratDrain = Math.abs(st.passingDir) * 0.04
       + (st.pressingLOE > 0 ? st.pressingLOE * 0.04 : st.pressingLOE * 0.03)
@@ -953,19 +1049,40 @@ function lmSimMinute(s, rng, home, away) {
       + (st.possLost === 1 ? 0.13 : st.possLost === -1 ? -0.06 : 0)
       + (st.dlBehavior === 1 ? 0.02 : st.dlBehavior === 2 ? 0.03 : st.dlBehavior === -1 ? -0.03 : 0)
       + (st.tackling === 1 ? 0.04 : 0);
-    const drain = 0.75 + (sm.press - 1) * 0.3 + (TAC_DRAIN[s.tactics[side]] || 0) + stratDrain;
-    s.stamina[side] = Math.max(0, s.stamina[side] - Math.max(0.1, drain));
+    // Ambient drain no longer scales with pressing intensity at all — every playstyle shares
+    // the same 0.75 baseline; only tactic choice and strategy sliders can move it, still
+    // clamped to 0.75-1.2 below. Three rounds of shrinking the press coefficient (1.5x, then
+    // 1.333x, then 1.1x-capped-at-1.6x) all still left Gegenpress far more drained than
+    // Balanced in real matches, because a high-press style is ALSO naturally more involved in
+    // play — winning the ball back more means more possessions and more chances, which already
+    // racks up far more of the much-larger chance-involvement drain (drainChain/shot costs
+    // below) than a Balanced team ever sees. Any ambient premium on top of that already-
+    // compounding natural gap kept overshooting no matter how small the coefficient got, so
+    // the ambient term stops trying to differentiate by press at all — involvement alone does
+    // that job now.
+    const extraDrain = (TAC_DRAIN[s.tactics[side]] || 0) + stratDrain;
+    const teamDrain = 0.75 + Math.max(0, Math.min(0.45, extraDrain));
+    // Individual ambient drain is most of the team-computed rate (0.75x for outfield, GK kept
+    // at the same ~1:4.7 ratio to outfield since keepers barely move) — a standard-pressing,
+    // uninvolved player should be down to roughly 75 stamina at half time, not a token trickle.
+    // On top of this, genuine involvement (drainChain's hop and shot costs) still separates a
+    // busy attacker from a center-back who barely touches the ball during the same 45 minutes.
+    // Must derive from the FLOORED teamDrain, not raw drain: low-press styles (Counter, Park
+    // the Bus) routinely push drain to zero/negative, and the old code let individual stamina
+    // hit its own much-weaker 0.01 floor independently of the team's 0.1 floor — a low-press
+    // team's players would barely lose any stamina at all while the team stat drained normally.
+    s.players[side].forEach(p => { const pd = p.pos === "GK" ? teamDrain * 0.16 : teamDrain * 0.75; p.stamina = Math.max(0, (p.stamina ?? 100) - Math.max(0.01, pd)); });
   }
   // Substitutions \u2014 weighted by rating, tier, and booking status
   for (const side of ["home","away"]) {
-    if (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK")) {
+    if (s.subs[side] < 3 && s.autoSubs?.[side] !== false && s.bench[side].some(p => p.pos !== "GK")) {
       const scoreDiff = side === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
       const trailing = scoreDiff < 0;
       const windows = trailing ? [[50,55],[60,65],[70,75]] : [[58,62],[68,72],[78,82]];
       const prob = trailing ? 0.55 : 0.40;
       const w = windows[s.subs[side]];
       if (s.minute >= w[0] && s.minute <= w[1] && rng.u() < prob) {
-        s.subs[side]++;s.stamina[side] = Math.min(100, s.stamina[side] + 4);
+        s.subs[side]++;
         const sn = side === "home" ? home.name : away.name;
         const cands = s.players[side].filter(p => p.pos !== "GK");
         const booked = s.booked[side] || [];
@@ -973,7 +1090,8 @@ function lmSimMinute(s, rng, home, away) {
         const subWeights = cands.map(p => {
           let sw = POS_W.subOff[p.pos] || 10;
           sw *= Math.pow(2, (avgR - (p.rating || 6.5)) * 0.5);
-          sw *= 1 - ovrN(p.ovr, s.teamSkill?.[side]) * 0.75;
+          sw *= Math.max(0.1, 1 - ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[side]) * 0.75);
+          if ((p.stamina ?? 100) < 70) sw *= 1 + (70 - p.stamina) * 0.04;
           if (booked.includes(p.name)) sw *= 2.5;
           return { p, w: sw };
         });
@@ -981,8 +1099,8 @@ function lmSimMinute(s, rng, home, away) {
         let sr = rng.u() * swTotal;
         let subOff = subWeights[subWeights.length - 1].p;
         for (const x of subWeights) { sr -= x.w; if (sr <= 0) { subOff = x.p; break; } }
-        const subOn = (()=>{ const b=s.bench[side]; const outIdx=b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
-        subOn.sub='on'; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
+        const subOn = (()=>{ const b=s.bench[side]; const sameGrp=b.filter(p=>p.pos===subOff.pos); const pool=sameGrp.length>0?sameGrp:b.filter(p=>p.pos!=="GK"); const best=pool.reduce((a,p)=>(p.ovr||0)>(a.ovr||0)?p:a,pool[0]); return b.splice(b.indexOf(best),1)[0]; })();
+        subOn.sub='on'; subOn.startedBench=true; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
         const wasBooked = booked.includes(subOff.name);
         if (wasBooked) {
           s.booked[side] = s.booked[side].filter(p => p !== subOff.name);
@@ -995,9 +1113,19 @@ function lmSimMinute(s, rng, home, away) {
   }
   // Injuries (~0.14 per game, rarer when fresh, more common when tired)
   if (s.injuriesEnabled !== false) for (const side of ["home","away"]) {
-    const injRate = 0.0008 * (1 + (100 - s.stamina[side]) * 0.008);
+    const injRate = 0.0008 * (1 + (100 - teamStam(s,side)) * 0.008);
     if (rng.u() < injRate && s.players[side].length > 7) {
-      const injured = pick(rng, s.players[side]);
+      // Whether an injury happens at all still rolls off team-average stamina (injRate
+      // above) — this only decides WHO, weighting toward whoever's more gassed rather than
+      // picking uniformly, since fatigue disproportionately produces muscle-strain injuries
+      // in practice. Every player keeps a base weight of 1 so a fresh player is never immune.
+      const injured = (() => {
+        const weights = s.players[side].map(p => ({ p, w: 1 + Math.max(0, 100 - (p.stamina ?? 100)) * 0.02 }));
+        const total = weights.reduce((a, x) => a + x.w, 0);
+        let r = rng.u() * total;
+        for (const x of weights) { r -= x.w; if (r <= 0) return x.p; }
+        return weights[weights.length - 1].p;
+      })();
       const sn = side === "home" ? home.name : away.name;
       const { sev: injSev, part: injPart } = pickInjury(rng);
       const injTag = " " + injSev.label + " (" + injPart + ").";
@@ -1007,12 +1135,12 @@ function lmSimMinute(s, rng, home, away) {
         ? (s.subs[side] < 3 && s.bench[side].some(p => p.pos === "GK"))
         : (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK"));
       if (canSub) {
-        s.subs[side]++; s.stamina[side] = Math.min(100, s.stamina[side] + 2); injured.inj = true; injured.injSev = injSev.id; injured.injPart = injPart;
+        s.subs[side]++; injured.inj = true; injured.injSev = injSev.id; injured.injPart = injPart;
         const wasBooked = s.booked[side].includes(injured);
         if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
         s.events.push({min:dm,type:"injury",team:side,playerFull:injured.fullName||injured.name,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.fullName||injured.name})+injTag+(wasBooked ? " Was on a yellow." : "")});
         const subOn = (()=>{ const b=s.bench[side]; const outIdx = isGK ? b.findIndex(p=>p.pos==="GK") : b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
-        subOn.sub='on'; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
+        subOn.sub='on'; subOn.startedBench=true; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
         { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.fullName||subOn.name,x:injured.fullName||injured.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+(injured.fullName||injured.name)+" \u2192 "+(subOn.fullName||subOn.name)+". "+reason,offName:injured.fullName||injured.name,onName:subOn.fullName||subOn.name,reason,offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos}); }
       } else {
         {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;ip.injSev=injSev.id;ip.injPart=injPart;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
@@ -1023,11 +1151,15 @@ function lmSimMinute(s, rng, home, away) {
       ensureGoalkeeper(s, side, dm, nm, rng);
     }
   }
-  // Record momentum: ball position + possession bias, smoothed
+  // Record momentum: ball position + possession bias (smoothed) blended with the real,
+  // event-driven momentum counter (unsmoothed, so a goal/red card/big chance shows up on
+  // the graph the instant it happens rather than fading in over a few minutes of EMA lag —
+  // it still decays naturally since s.momentum itself decays a tick above).
   const rawMom = (s.ball - 2) / 2 + (s.possession === "home" ? 0.15 : -0.15) + (s.pressure * 0.08 * (s.possession === "home" ? 1 : -1));
   const prev = s.momHist.length > 0 ? s.momHist[s.momHist.length - 1].v : 0;
   const smoothed = prev * 0.6 + rawMom * 0.4;
-  s.momHist.push({ m: s.minute, v: Math.max(-1, Math.min(1, smoothed)) });
+  const momBias = (s.momentum.home - s.momentum.away) / (MOMENTUM_CAP * 2);
+  s.momHist.push({ m: s.minute, v: Math.max(-1, Math.min(1, smoothed + momBias)) });
   // Periodic rating: every 5 min, driven by each player's own accumulated stats (saves/defActs/chances)
   if (s.minute > 0 && s.minute % 5 === 0) {
     const ph = s.possCount.home, pa = s.possCount.away, pt = ph + pa || 1;
@@ -1069,7 +1201,7 @@ function lmSimMinute(s, rng, home, away) {
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,stamina:{home:100,away:100},subs:{home:0,away:0}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, injuriesEnabled:true };
 }
 
 function cloneState(p) {
@@ -1081,7 +1213,7 @@ function cloneState(p) {
     goalscorers:{home:[...p.goalscorers.home],away:[...p.goalscorers.away]},
     subbedOff:{home:p.subbedOff?p.subbedOff.home.map(x=>({...x})):[],away:p.subbedOff?p.subbedOff.away.map(x=>({...x})):[]},
     tactics:{...p.tactics}, possCount:{...p.possCount}, momentum:{...p.momentum},
-    stamina:{...p.stamina}, subs:{...p.subs}, startScore:p.startScore||[0,0], xG:{home:p.xG?.home||0,away:p.xG?.away||0}, momHist:p.momHist?[...p.momHist]:[],
+    subs:{...p.subs}, startScore:p.startScore||[0,0], xG:{home:p.xG?.home||0,away:p.xG?.away||0}, momHist:p.momHist?[...p.momHist]:[],
     strategy:{home:{...p.strategy.home},away:{...p.strategy.away}},
     penalties:p.penalties?{...p.penalties,home:[...p.penalties.home],away:[...p.penalties.away],homeOrder:p.penalties.homeOrder?[...p.penalties.homeOrder]:[],awayOrder:p.penalties.awayOrder?[...p.penalties.awayOrder]:[]}:null };
 }
@@ -1090,9 +1222,9 @@ function resolvePendingPenalty(s, rng, home, away) {
   const po = pp.po, op = pp.op, dm = pp.dm;
   const nm = {home:home.name,away:away.name};
   const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po]);
-  const poE = lmEffSkill(po==="home"?home.skill:away.skill, s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(s.stamina[po]);
-  const opE = lmEffSkill(op==="home"?home.skill:away.skill, s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(s.stamina[op]);
-  const skillF2=Math.min(1,poE/85+ovrN(taker.ovr,s.teamSkill?.[po])*0.12);
+  const poE = lmEffSkill(po==="home"?home.skill:away.skill, s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(teamStam(s,po));
+  const opE = lmEffSkill(op==="home"?home.skill:away.skill, s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(teamStam(s,op));
+  const skillF2=Math.min(1,poE/85+ovrN(fatigueOvr(taker.ovr,taker.stamina),s.teamSkill?.[po])*0.12);
   const zW2=[18+skillF2*8,8-skillF2*3,18+skillF2*8,20+skillF2*6,10-skillF2*4,20+skillF2*6];
   const zT2=zW2.reduce((a,b)=>a+b,0);let zR2=rng.u()*zT2,zone2=0;for(let i=0;i<6;i++){zR2-=zW2[i];if(zR2<=0){zone2=i;break;}}
   const missP2=[0.14,0.04,0.14,0.07,0.02,0.07][zone2];
@@ -1103,11 +1235,11 @@ function resolvePendingPenalty(s, rng, home, away) {
   const result2=isMiss2?"miss":isSave2?"save":"goal";
   if(isMiss2){
     s.stats[po].shots++;
-    ratePlayer(s.players[po],taker.name,-0.5);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.fullName||taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"miss"}});
+    ratePlayer(s.players[po],taker.name,-0.5);momBump(s,op,3);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.fullName||taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"miss"}});
     s.possession=op;s.pressure=0;
   }else if(isSave2){
     s.stats[po].shots++;s.stats[po].onTarget++;
-    ratePlayer(s.players[po],taker.name,-0.4);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));gk.saves=(gk.saves||0)+1;}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.fullName||taker.name,g:gk?.fullName||gk?.name||"the keeper"},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});}
+    ratePlayer(s.players[po],taker.name,-0.4);momBump(s,op,3);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));gk.saves=(gk.saves||0)+1;}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.fullName||taker.name,g:gk?.fullName||gk?.name||"the keeper"},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});}
     if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[po]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
     else{s.possession=op;s.pressure=0;}
   }else{
@@ -1115,7 +1247,7 @@ function resolvePendingPenalty(s, rng, home, away) {
     if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
     s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.05).toFixed(1));});
     {const _t=goalText(rng,"pen_scored_desc",s,nm,taker,null),_g=genGoalViz(rng,"pen",taker.name,null,zone2,dive2);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:taker.fullName||taker.name,text:"\u26BD "+_t,goalViz:_g});}
-    s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;s.momentum[po]=4;
+    s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);
   }
 }
 function lmAdvance(prev, rng, home, away, mutate) {
@@ -1127,13 +1259,13 @@ function lmAdvance(prev, rng, home, away, mutate) {
     case "pre_match": s.phase="first_half";s.minute=1;s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:home.name})});playMin();break;
     case "first_half": s.minute++;playMin();if(s.minute>=45)toStop("first_half");break;
     case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+15);s.stamina.away=Math.min(100,s.stamina.away+15);s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
+    case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "second_half": s.minute++;playMin();if(s.minute>=90)toStop("second_half");break;
     case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ft_whistle)+" "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
-    case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.events.push({min:"",type:"phase",text:"\u26BD "+pick(rng,CM.et_start)});break;
+    case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+pick(rng,CM.et_start)});break;
     case "et_first": s.minute++;playMin();if(s.minute>=105)toStop("et_first");break;
     case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.stamina.home=Math.min(100,s.stamina.home+5);s.stamina.away=Math.min(100,s.stamina.away+5);s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
+    case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "et_second": s.minute++;playMin();if(s.minute>=120)toStop("et_second");break;
     case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
         const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
@@ -1145,7 +1277,7 @@ function lmAdvance(prev, rng, home, away, mutate) {
       if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);}
       const tName=tk==="home"?home.name:away.name;
       // Zone-based penalty: zones 0-5 = [TL,TC,TR,BL,BC,BR], dive 0-2 = [L,C,R]
-      const skillF=Math.min(1,kE/85+ovrN(taker.ovr,s.teamSkill?.[tk])*0.12);
+      const skillF=Math.min(1,kE/85+ovrN(fatigueOvr(taker.ovr,taker.stamina),s.teamSkill?.[tk])*0.12);
       const zW=[18+skillF*8, 8-skillF*3, 18+skillF*8, 20+skillF*6, 10-skillF*4, 20+skillF*6]; // corner-heavy for good takers
       const zT=zW.reduce((a,b)=>a+b,0); let zR=rng.u()*zT, zone=0; for(let i=0;i<6;i++){zR-=zW[i];if(zR<=0){zone=i;break;}}
       const missP=[0.14,0.04,0.14,0.07,0.02,0.07][zone]; // miss chance by zone
@@ -1214,23 +1346,44 @@ function lmPendingChance(match, chanceStepMap) {
   }
   return null;
 }
-// Holds a chance-linked goal out of anything score-derived until its card has been fully
-// clicked through — otherwise the scoreboard/flash would tick up the instant the chance
-// starts, spoiling the outcome before the build-up even plays. Also covers a standalone
-// goal gated behind its own two-step reveal (see isGatableShot) — pc.idx then points at the
-// goal event itself rather than at a wrapping chance.
-function lmPendingGoal(match, chanceStepMap) {
-  const pc = lmPendingChance(match, chanceStepMap);
-  if (!pc) return null;
-  const ev = match.events[pc.idx];
-  const nextE = ev?.type === "chance" ? ev?.chanceViz?.outcomeEvent : ev;
-  if (nextE?.type !== "goal") return null;
-  return { team: nextE.team, scorerName: nextE.goalViz?.scorer || null, assistName: nextE.goalViz?.assist || null, ratingDeltas: nextE.goalViz?.ratingDeltas || null };
+// Shared shape for masking a not-yet-revealed goal.
+function lmGoalInfo(ev) {
+  if (ev?.type !== "goal") return null;
+  return { team: ev.team, scorerName: ev.goalViz?.scorer || null, assistName: ev.goalViz?.assist || null, ratingDeltas: ev.goalViz?.ratingDeltas || null };
+}
+// Every goal still behind an unrevealed card — not just the single oldest one. Checking only
+// the frontmost pending card misses goals buried further back: a save-then-corner sequence
+// pushes its goal (the corner) several events after the still-pending card (the save), so
+// once that save event scrolls into view its own outcome isn't a goal and a frontmost-only
+// check would report nothing pending — showing the corner's goal (and its scorer's
+// stats/rating) early, then hiding them again once reveal-by-reveal finally reaches that
+// card. Scanning every event instead keeps every hidden goal masked the whole time.
+function lmHiddenGoals(match, chanceStepMap) {
+  // Once the match is actually over there's no more suspense left to protect, and — critically
+  // — no more "Continue" button left to click through whatever's still queued: a bulk sim
+  // (lmSimAll) jumps straight to the final state without ever walking chanceStep forward, so
+  // anything still pending at that point would otherwise stay hidden forever with no way for
+  // the user to ever reveal it. Finished means reveal everything, unconditionally.
+  if (!match || match.phase === "finished") return [];
+  const hidden = [];
+  const push = (ev) => { const gi = lmGoalInfo(ev); if (gi) hidden.push(gi); };
+  for (const [idx, ev] of match.events.entries()) {
+    if (ev?.type === "chance" && ev?.chanceViz) {
+      const hasOutcome = !!ev.chanceViz.outcomeEvent;
+      if (!hasOutcome) continue;
+      const totalSteps = (ev.chanceViz._baseLen || ev.chanceViz.chain?.length || 0) + 1;
+      if ((chanceStepMap[idx] || 0) < totalSteps - 1) push(ev.chanceViz.outcomeEvent);
+      continue;
+    }
+    if (isGatableShot(ev) && (chanceStepMap[idx] || 0) < 1) push(ev);
+  }
+  return hidden;
 }
 function lmDisplayScore(match, chanceStepMap) {
   if (!match) return [0, 0];
-  const pg = lmPendingGoal(match, chanceStepMap);
-  return [Math.max(0, match.score[0] - (pg?.team === "home" ? 1 : 0)), Math.max(0, match.score[1] - (pg?.team === "away" ? 1 : 0))];
+  let hHome = 0, hAway = 0;
+  for (const g of lmHiddenGoals(match, chanceStepMap)) { if (g.team === "home") hHome++; else if (g.team === "away") hAway++; }
+  return [Math.max(0, match.score[0] - hHome), Math.max(0, match.score[1] - hAway)];
 }
 // Undoes a pending goal's exact rating swing (scorer/assist boost, conceding side's dip) for
 // one player, using the actual applied deltas captured at the moment lmResolveShot mutated
@@ -1268,8 +1421,8 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
-  const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
   if (homeSquad && awaySquad) {
     s.players={home:homeSquad.filter(p=>!p.bench).map(mapP),away:awaySquad.filter(p=>!p.bench).map(mapP)};
     s.bench={home:homeSquad.filter(p=>p.bench).map(mapB),away:awaySquad.filter(p=>p.bench).map(mapB)};
@@ -1351,7 +1504,7 @@ function groupByLeague(list) {
   if (result.length > 0 && result[result.length - 1] === null) result.pop();
   return result;
 }
-function filterSquad(squad, teamName, unavailSet) {
+function filterSquad(squad, teamName, unavailSet, staminaData, rotationCtx) {
   if (!squad) return null;
   const kf = n => playerKey(teamName, n);
   const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
@@ -1361,7 +1514,7 @@ function filterSquad(squad, teamName, unavailSet) {
   const missingGK = !av.some(p => p.pos === "GK");
   const bavOrdered = missingGK ? [...bav].sort((a, b) => (b.pos === "GK") - (a.pos === "GK")) : bav;
   const promoted = bavOrdered.slice(0, need).map(p => { const q = {...p}; delete q.bench; return q; });
-  const starters = [...av, ...promoted];
+  let starters = [...av, ...promoted];
   let restBench = bavOrdered.slice(need);
   // Minimum seven on the pitch — draw on otherwise-unavailable players only as a last resort.
   if (starters.length < 7) {
@@ -1373,12 +1526,129 @@ function filterSquad(squad, teamName, unavailSet) {
     }
     restBench = restBench.filter(p => !already.has(p.name));
   }
-  return [...starters, ...restBench];
+  let matchIntensity = 0;
+  if (staminaData) { const sel = managerSelect(starters, restBench, kf, staminaData, rotationCtx); starters = sel.starters; restBench = sel.bench; matchIntensity = sel.matchIntensity; }
+  const capped = capAtEleven(starters, restBench);
+  const sq = [...capped.starters, ...capped.bench];
+  sq._matchIntensity = matchIntensity;
+  return sq;
+}
+const POS_PROTECTION = { GK: 0, ST: 1, CF: 1, CB: 2, CDM: 3, CM: 3, LB: 4, RB: 4, LW: 4, RW: 4, LM: 4, RM: 4, CAM: 4, LWB: 4, RWB: 4 };
+// A starting XI can never exceed 11 — if upstream squad-building ever hands this more (a
+// data or timing bug elsewhere), the excess gets demoted to bench rather than silently
+// fielding an illegal side. Nobody vanishes; they're just recategorized.
+function capAtEleven(starters, bench) {
+  if (starters.length <= 11) return { starters, bench };
+  const excess = starters.splice(11);
+  return { starters, bench: [...bench, ...excess] };
+}
+function managerSelect(starters, bench, kf, staminaData, context) {
+  const dataOf = p => staminaData[kf(p.name)];
+  starters = starters.map(p => ({ ...p, stamina: dataOf(p)?.stamina ?? 100 }));
+  bench = bench.map(p => ({ ...p, stamina: 100 }));
+  if (!context?.stakes) return { ...capAtEleven(starters, bench), matchIntensity: 0 };
+  const { stakes, ourSkill, oppSkill, nextOppSkill, isFinal, isKnockout, isThirdPlace, isLastGroupGame, remainingGames } = context;
+  const sk = (ourSkill ?? 65) - (oppSkill ?? 65);
+  // Node 1: classify
+  let matchClass;
+  if (stakes.eliminated || (stakes.safe && (remainingGames ?? 0) > 0))
+    matchClass = "dead";
+  else if (isFinal || (isKnockout && !isThirdPlace) || (stakes.urgency >= 0.6 && isLastGroupGame))
+    matchClass = "must_win";
+  else if (stakes.urgency >= 0.3 || isThirdPlace || (!stakes.safe && !stakes.eliminated))
+    matchClass = "important";
+  else
+    matchClass = "comfortable";
+  // Node 5: skill-gap modifier on rotation cap
+  let maxRot = matchClass === "dead" ? 99 : matchClass === "must_win" ? 1 : matchClass === "important" ? 2 : 3;
+  if (sk > 20) maxRot += 1;
+  if (sk < -15 && maxRot > 0) maxRot -= 1;
+  // Node 3: build rotation candidates per policy
+  const candidates = [];
+  for (let i = 0; i < starters.length; i++) {
+    const p = starters[i];
+    // A real #1 keeper starts nearly every match all season — goalkeeping doesn't carry the
+    // physical fatigue or workload-management logic outfield rotation is built around, so a
+    // keeper is only ever a rotation candidate in a genuine dead rubber (giving the backup
+    // a run out), never for stamina, consecutive-starts, or next-opponent look-ahead.
+    if (p.pos === "GK" && matchClass !== "dead") continue;
+    const st = p.stamina ?? 100;
+    const cs = dataOf(p)?.consecutiveStarts ?? 0;
+    const prot = POS_PROTECTION[p.pos] ?? 4;
+    const bestBench = bench.reduce((best, b, bi) => {
+      if (b.pos !== p.pos) return best;
+      return (!best || b.ovr > best.ovr) ? { idx: bi, ovr: b.ovr } : best;
+    }, null);
+    if (!bestBench) continue;
+    const gap = (p.ovr ?? 65) - bestBench.ovr;
+    let shouldRotate = false;
+    let priority = 0;
+    if (matchClass === "dead") {
+      shouldRotate = true;
+      priority = 100 - prot;
+    } else if (matchClass === "must_win") {
+      if (st < 35 && gap <= 3) { shouldRotate = true; priority = 100 - st; }
+    } else if (matchClass === "important") {
+      if (st < 55 && gap <= 8) { shouldRotate = true; priority = 100 - st; }
+      else if (cs >= 4 && gap <= 5) { shouldRotate = true; priority = 80 + cs; }
+      else if (st < 70 && cs >= 3 && gap <= 6) { shouldRotate = true; priority = 90 - st; }
+      else if (nextOppSkill != null && nextOppSkill > (oppSkill ?? 65) + 10 && st < 75) { shouldRotate = true; priority = 70 - st; }
+    } else {
+      if (cs >= 5) { shouldRotate = true; priority = 200 + cs; }
+      else if (cs >= 3 && gap <= 10) { shouldRotate = true; priority = 100 + cs; }
+      else if (st < 80 && gap <= 12) { shouldRotate = true; priority = 90 - st; }
+      else if (nextOppSkill != null && nextOppSkill > (oppSkill ?? 65) + 5 && st < 85) { shouldRotate = true; priority = 60 - st; }
+    }
+    if (shouldRotate) candidates.push({ idx: i, benchIdx: bestBench.idx, prot, priority });
+  }
+  // Node 4: position protection — if a protected player and an unprotected player both
+  // trigger, prefer rotating the less-protected one (sort by priority descending, but
+  // within similar priority prefer higher prot value = less protected).
+  candidates.sort((a, b) => {
+    const dp = b.priority - a.priority;
+    if (Math.abs(dp) > 5) return dp;
+    return b.prot - a.prot;
+  });
+  // Execute swaps up to maxRot
+  let rotations = 0;
+  const usedBench = new Set();
+  for (const c of candidates) {
+    if (rotations >= maxRot) break;
+    if (usedBench.has(c.benchIdx)) {
+      const alt = bench.findIndex((b, bi) => b.pos === starters[c.idx].pos && !usedBench.has(bi));
+      if (alt === -1) continue;
+      c.benchIdx = alt;
+    }
+    const out = starters[c.idx];
+    const inP = bench[c.benchIdx];
+    starters[c.idx] = inP;
+    bench[c.benchIdx] = out;
+    usedBench.add(c.benchIdx);
+    rotations++;
+  }
+  // Node 6: consecutive starts hard cap — exempts GK for the same reason as Node 3's
+  // candidate filter: an ever-present #1 keeper is normal, not a workload risk.
+  if (matchClass !== "must_win") {
+    for (let i = 0; i < starters.length; i++) {
+      if (starters[i].pos === "GK") continue;
+      const cs = dataOf(starters[i])?.consecutiveStarts ?? 0;
+      if (cs < 6) continue;
+      const bi = bench.findIndex(b => b.pos === starters[i].pos && !usedBench.has(bench.indexOf(b)));
+      if (bi === -1) continue;
+      const out = starters[i]; starters[i] = bench[bi]; bench[bi] = out;
+      usedBench.add(bi);
+    }
+  }
+  const matchIntensity = matchClass === "dead" ? -0.3
+    : matchClass === "must_win" ? (stakes.urgency ?? 0.8)
+    : matchClass === "important" ? (stakes.urgency ?? 0.3) * 0.8
+    : (stakes.urgency ?? 0) * 0.5;
+  return { ...capAtEleven(starters, bench), matchIntensity };
 }
 // Ban-aware starters/bench split for live matches: unavailable starters are replaced
 // by available bench players, and unavailable bench players are dropped entirely so
 // they can never be selected as a live substitute.
-function splitAvailSquad(squad, teamName, unavail) {
+function splitAvailSquad(squad, teamName, unavail, staminaData, rotationCtx) {
   const starters = squad.filter(p => !p.bench);
   const bench = squad.filter(p => p.bench);
   const keyOf = (name) => playerKey(teamName, name);
@@ -1392,7 +1662,7 @@ function splitAvailSquad(squad, teamName, unavail) {
     if (!rep) rep = availBench.find(p => !used.has(p.name));
     if (rep) { repMap.set(out.name, rep); used.add(rep.name); }
   }
-  const startResult = [];
+  let startResult = [];
   for (const p of starters) {
     if (unavail.has(keyOf(p.name))) { const rep = repMap.get(p.name); if (rep) startResult.push(rep); }
     else startResult.push(p);
@@ -1410,35 +1680,10 @@ function splitAvailSquad(squad, teamName, unavail) {
     }
     benchResult = benchResult.filter(p => !already.has(p.name));
   }
-  return { starters: startResult, bench: benchResult };
-}
-// Ban-aware starters/bench split for display: suspended/injured starters are shown
-// on the bench (tagged `out`), with their replacement promoted into the starting XI.
-function displaySquad(squad, teamName, playerStats) {
-  if (!squad) return { starters: [], bench: [] };
-  const kf = n => playerKey(teamName, n);
-  const isOut = n => { const v = playerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
-  const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
-  const availSt = st.filter(p => !isOut(p.name)), outSt = st.filter(p => isOut(p.name));
-  const availBn = bn.filter(p => !isOut(p.name)), outBn = bn.filter(p => isOut(p.name));
-  const used = new Set();
-  const promoMap = new Map();
-  for (const out of outSt) {
-    let rep = availBn.find(p => p.pos === out.pos && !used.has(p.name));
-    if (!rep) rep = availBn.find(p => p.pos !== "GK" && !used.has(p.name));
-    if (!rep) rep = availBn.find(p => !used.has(p.name));
-    if (rep) { promoMap.set(out.name, { ...rep, bench: false }); used.add(rep.name); }
-  }
-  const remainBn = availBn.filter(p => !used.has(p.name));
-  const startResult = [];
-  for (const p of st) {
-    if (isOut(p.name)) { const rep = promoMap.get(p.name); if (rep) startResult.push(rep); }
-    else startResult.push(p);
-  }
-  return {
-    starters: startResult,
-    bench: [...remainBn, ...outSt.map(p => ({ ...p, bench: true, out: true })), ...outBn.map(p => ({ ...p, out: true }))],
-  };
+  let matchIntensity = 0;
+  if (staminaData) { const sel = managerSelect(startResult, benchResult, keyOf, staminaData, rotationCtx); startResult = sel.starters; benchResult = sel.bench; matchIntensity = sel.matchIntensity; }
+  const capped = capAtEleven(startResult, benchResult);
+  return { starters: capped.starters, bench: capped.bench, matchIntensity };
 }
 
 // ═══ HOME ADVANTAGE ══════════════════════════════════════════════════════════
@@ -1483,7 +1728,13 @@ function resolveKOHomeAdv(m, config) {
 const GL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 function genRR(teams, legs) {
   const lg = legs || 1;
-  const list = [...teams]; if (list.length % 2 !== 0) list.push(null);
+  // The circle method below is correct for ANY starting order of `list` — every round is
+  // still a valid perfect matching and the full cycle still covers every pair exactly once
+  // — so shuffling the input first randomizes which pair lands in which round (real fixture
+  // lists don't read as a predictable rotation off the seed/draw order) at zero cost to
+  // correctness. Legs beyond the first are derived from this same shuffled base, so the
+  // randomization is naturally consistent across a double round-robin.
+  const list = [...teams].sort(() => Math.random() - 0.5); if (list.length % 2 !== 0) list.push(null);
   const n = list.length, base = [];
   for (let r = 0; r < n - 1; r++) {
     const matches = [];
@@ -1728,9 +1979,16 @@ function zoneFor(ri, N, zones) {
   }
   return null;
 }
+// Returns urgency (the existing continuous "how hard should we push" scale the tempo AI
+// already used) alongside two mutually-exclusive flags derived from the same arithmetic:
+// safe (mathematically locked into qualifying regardless of result) and eliminated
+// (mathematically unable to qualify regardless of result). Both can carry a mildly negative
+// urgency on their own, but they call for opposite lineup behavior — rest a safe team, but
+// play a hopelessly-eliminated team's stars anyway since there's nothing left to save them
+// for — so rotation logic needs the explicit flags, not just the blended scalar.
 function computeGroupUrg(standings, teamName, qualCount, remainingAfter) {
   const idx = standings.findIndex(s => s.name === teamName);
-  if (idx === -1 || qualCount <= 0 || qualCount >= standings.length) return 0;
+  if (idx === -1 || qualCount <= 0 || qualCount >= standings.length) return { urgency: 0, safe: false, eliminated: false };
   const team = standings[idx];
   const totalGames = remainingAfter + 1;
   const maxPts = team.pts + totalGames * 3;
@@ -1739,33 +1997,67 @@ function computeGroupUrg(standings, teamName, qualCount, remainingAfter) {
   const qualTeam = standings[qualIdx];
   const outTeam = standings[Math.min(qualCount, standings.length - 1)];
   if (idx <= qualIdx) {
-    if (qualCount >= standings.length) return -0.1;
+    if (qualCount >= standings.length) return { urgency: -0.1, safe: true, eliminated: false };
     const chaserMax = outTeam.pts + totalGames * 3;
-    if (team.pts > chaserMax) return -0.15;
+    if (team.pts > chaserMax) return { urgency: -0.15, safe: true, eliminated: false };
     const cushion = team.pts - outTeam.pts;
     const gdEdge = (team.gf - team.ga) - (outTeam.gf - outTeam.ga);
     if (isLast) {
-      if (cushion >= 4) return -0.05;
-      if (cushion >= 2) return 0.1;
-      if (cushion === 1) return 0.2;
-      return gdEdge > 0 ? 0.3 : 0.45;
+      if (cushion >= 4) return { urgency: -0.05, safe: false, eliminated: false };
+      if (cushion >= 2) return { urgency: 0.1, safe: false, eliminated: false };
+      if (cushion === 1) return { urgency: 0.2, safe: false, eliminated: false };
+      return { urgency: gdEdge > 0 ? 0.3 : 0.45, safe: false, eliminated: false };
     }
-    if (cushion >= 6) return -0.05;
-    return 0.05;
+    if (cushion >= 6) return { urgency: -0.05, safe: false, eliminated: false };
+    return { urgency: 0.05, safe: false, eliminated: false };
   }
   const deficit = qualTeam.pts - team.pts;
-  if (maxPts < qualTeam.pts) return -0.3;
+  if (maxPts < qualTeam.pts) return { urgency: -0.3, safe: false, eliminated: true };
   if (isLast) {
-    if (deficit > 3) return -0.2;
-    if (deficit === 3) return 0.7;
+    if (deficit > 3) return { urgency: -0.2, safe: false, eliminated: false };
+    if (deficit === 3) return { urgency: 0.7, safe: false, eliminated: false };
     const gdGap = (qualTeam.gf - qualTeam.ga) - (team.gf - team.ga);
-    if (deficit === 0) return gdGap > 3 ? 0.9 : gdGap > 0 ? 0.7 : 0.4;
-    if (deficit <= 2) return 0.6;
-    return 0.5;
+    if (deficit === 0) return { urgency: gdGap > 3 ? 0.9 : gdGap > 0 ? 0.7 : 0.4, safe: false, eliminated: false };
+    if (deficit <= 2) return { urgency: 0.6, safe: false, eliminated: false };
+    return { urgency: 0.5, safe: false, eliminated: false };
   }
-  if (deficit >= 6) return 0.3;
-  if (deficit >= 3) return 0.2;
-  return 0.1;
+  if (deficit >= 6) return { urgency: 0.3, safe: false, eliminated: false };
+  if (deficit >= 3) return { urgency: 0.2, safe: false, eliminated: false };
+  return { urgency: 0.1, safe: false, eliminated: false };
+}
+// Knockout equivalent of computeGroupUrg. Every KO match is inherently high-stakes (lose and
+// you're out), so it defaults to urgent rather than building up from neutral. A two-legged
+// tie's first leg isn't decisive yet; goals don't have the same hard per-game cap points do,
+// so instead of computing mathematical certainty this leans on a simple aggregate-cushion
+// threshold for the second leg; and a third-place playoff carries real but lesser stakes than
+// actually advancing.
+function computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor, aggAgainst } = {}) {
+  if (isFinal) return { urgency: 1, safe: false, eliminated: false };
+  if (isThirdPlace) return { urgency: 0.3, safe: false, eliminated: false };
+  if (isTwoLeg && leg === 1) return { urgency: 0.5, safe: false, eliminated: false };
+  if (isTwoLeg && leg === 2 && aggFor != null && aggAgainst != null) {
+    const cushion = aggFor - aggAgainst;
+    if (cushion >= 3) return { urgency: -0.1, safe: true, eliminated: false };
+    if (cushion <= -3) return { urgency: -0.1, safe: false, eliminated: true };
+    if (cushion >= 2) return { urgency: 0.2, safe: false, eliminated: false };
+    if (cushion <= -2) return { urgency: 0.7, safe: false, eliminated: false };
+    return { urgency: 0.8, safe: false, eliminated: false };
+  }
+  return { urgency: 0.8, safe: false, eliminated: false };
+}
+// The opponent skill of a group-stage team's next scheduled fixture after round ri, for
+// managerSelect's look-ahead — a real manager weighing whether to rest a tired player
+// today cares about what's coming, not just today's opponent. Only meaningful in the group
+// stage, where the whole round-robin is known in advance; a knockout bracket's next opponent
+// is usually still undetermined, so callers there simply don't pass one.
+function nextOpponentSkill(schedule, ri, teamName) {
+  for (let r = ri + 1; r < schedule.length; r++) {
+    const rd = schedule[r];
+    if (!rd) continue;
+    const m = rd.find(x => x.home?.name === teamName || x.away?.name === teamName);
+    if (m) return m.home.name === teamName ? m.away.skill : m.home.skill;
+  }
+  return null;
 }
 function koWinner(m) { if (!m.result || !m.home) return null; if (m.result.twoLeg) { if (m.result.partial) return null; if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const ah=m.result.agg.home, aa=m.result.agg.away; if (ah!==aa) return ah>aa?m.home:m.away; if (m.result.awayGoalsRule) return m.result.awayGoals.home>m.result.awayGoals.away?m.home:m.away; return m.home; } if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const h = m.result.ftHome + (m.result.et?.home || 0), a = m.result.ftAway + (m.result.et?.away || 0); return h > a ? m.home : h < a ? m.away : m.home; }
 function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.home; }
@@ -2134,14 +2426,31 @@ function TeamCrest({ team, size = 22, style }) {
   );
 }
 const hexToRgb = (hex) => { const h = (hex || "").replace("#", ""); if (h.length !== 6) return null; return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; };
+const hexToHsl = (hex) => {
+  const c = hexToRgb(hex); if (!c) return null;
+  const r = c.r/255, g = c.g/255, b = c.b/255, mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn;
+  let h = 0;
+  if (d !== 0) { if (mx===r) h=((g-b)/d)%6; else if (mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if (h<0) h+=360; }
+  const l = (mx+mn)/2, s = d===0 ? 0 : d/(1-Math.abs(2*l-1));
+  return { h, s, l };
+};
+const hueDist = (h1, h2) => { const d = Math.abs(h1-h2) % 360; return d > 180 ? 360-d : d; };
 // "redmean" — a cheap perceptually-weighted RGB distance, much better than plain
-// Euclidean distance at telling "different colors" apart from "near-duplicate shades".
+// Euclidean distance at telling "different colors" apart from "near-duplicate shades" — but
+// it's blind to hue: two shades of the SAME color (e.g. brick red #a8232b vs bright red
+// #EF0107, both clearly "red" to a viewer trying to tell two sides apart) can sit far enough
+// apart in raw RGB to pass, since one channel's brightness gap dominates the distance. Catch
+// that separately: if both colors are saturated enough to have a meaningful hue at all
+// (greys/blacks/whites are exempt — their hue is noise) and those hues sit within 30°, treat
+// it as a clash regardless of how far apart the shades are in brightness.
 const colorsClash = (hex1, hex2) => {
   const c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
   if (!c1 || !c2) return false;
   const rmean = (c1.r + c2.r) / 2, dR = c1.r - c2.r, dG = c1.g - c2.g, dB = c1.b - c2.b;
   const dist = Math.sqrt((2 + rmean/256) * dR*dR + 4 * dG*dG + (2 + (255-rmean)/256) * dB*dB);
-  return dist < 60;
+  if (dist < 60) return true;
+  const hsl1 = hexToHsl(hex1), hsl2 = hexToHsl(hex2);
+  return !!(hsl1 && hsl2 && hsl1.s > 0.25 && hsl2.s > 0.25 && hueDist(hsl1.h, hsl2.h) < 30);
 };
 // Picks a color visually distinct from bgHex: the color itself, else its alt (e.g. away
 // kit), else the color progressively lightened toward white as a last resort. Reuses the
@@ -2222,6 +2531,19 @@ function assistPlayer(rng, players, scorer, delta, teamSkill) {
 function parseOvr(raw) { if (!raw) return {name:raw,ovr:null,nat:null}; let s=raw.trimEnd().replace(/\s*\[[*+]\]$/, ""); let nat=null; const nm=s.match(/\s*\[([A-Za-z]{2,4})\]$/); if(nm){nat=nm[1].toUpperCase();s=s.slice(0,nm.index).trim();} const pre=s.match(/^\((\d{1,2})\)\s*/); if(pre) return {name:s.slice(pre[0].length).trim(),ovr:Math.max(1,Math.min(99,+pre[1])),nat}; const suf=s.match(/\((\d{1,2})\)$/); if(suf) return {name:s.slice(0,suf.index).trim(),ovr:Math.max(1,Math.min(99,+suf[1])),nat}; return {name:s,ovr:null,nat}; }
 const ovrSuffix = (ovr, teamSkill) => ovr != null && ovr !== teamSkill ? "(" + ovr + ") " : "";
 const natSuffix = (nat) => nat ? " [" + nat + "]" : "";
+// Known Gaelic clan surnames where "Mac" is followed by its own capitalized
+// root (MacDonald, MacKenzie) — NOT a general rule, since real surnames like
+// Machado/Machida/Macaraeg also start with "Mac" and must stay plain title-case.
+const MAC_SURNAMES = new Set(["macdonald","mackenzie","macleod","macarthur","macfarlane","macgregor","macintyre","mackay","macneil","macpherson","macqueen","macallister","macbride","macdougall","macewan","macinnes","macintosh","mackinnon","maclachlan","maclean","macmillan","macnab","macrae","mactavish"]);
+function titleCaseWord(word) {
+  const capSeg = s => s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s;
+  return word.split("-").map(seg => {
+    let out = seg.split("'").map(capSeg).join("'");
+    if (out.startsWith("Mc") && out.length > 2) out = "Mc" + capSeg(out.slice(2));
+    else if (out.startsWith("Mac") && out.length > 3 && MAC_SURNAMES.has(out.toLowerCase())) out = "Mac" + capSeg(out.slice(3));
+    return out;
+  }).join("-");
+}
 // Preset/bulk-import player names may be given as a full first name ("Gabriel
 // Alexandre"), ALL-CAPS-surname style ("Shō ITOSHI", "Lebogang DU PHIRI",
 // "Odd Isak HÆTTA", or a bare mononym "GESORGINÉ"), or already abbreviated
@@ -2241,7 +2563,6 @@ function abbrevName(raw) {
     if (words.length <= 1) return raw;
     return prefix + words[0][0].toUpperCase() + ". " + words.slice(1).join(" ");
   }
-  const titleCaseWord = w => w.split("-").map(seg => seg ? seg[0].toUpperCase() + seg.slice(1).toLowerCase() : seg).join("-");
   const normalWords = words.filter(w => !isAllCaps(w));
   const initial = normalWords.length ? normalWords[0][0].toUpperCase() + ". " : "";
   return prefix + initial + capsWords.map(titleCaseWord).join(" ");
@@ -2250,7 +2571,7 @@ function fullDisplayName(raw) {
   const { name } = parseOvr(raw);
   return name.trim().split(/\s+/).filter(Boolean).map(w => {
     const isC = /\p{L}/u.test(w) && w === w.toUpperCase() && w !== w.toLowerCase();
-    return isC ? w.split("-").map(s => s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s).join("-") : w;
+    return isC ? titleCaseWord(w) : w;
   }).join(" ") || name;
 }
 function buildSquad(formation, names) {
@@ -2359,6 +2680,7 @@ const scBtn = { width: "100%", background: "#e4002b", border: "none", borderRadi
 const chk = { fontSize: 11, color: "#7889a0", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
 const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770",CB:"#81a1c1",LB:"#81a1c1",RB:"#81a1c1",LWB:"#81a1c1",RWB:"#81a1c1",DM:"#a3be8c",CM:"#a3be8c",AM:"#a3be8c",LM:"#a3be8c",RM:"#a3be8c",LW:"#d08770",RW:"#d08770",ST:"#d08770"};
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
+const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
 // Bolds the given player name(s) wherever they appear in an already-filled commentary string.
 function boldNames(txt, names, clr) {
   const valid = [...new Set((Array.isArray(names) ? names : [names]).filter(Boolean))];
@@ -2389,14 +2711,14 @@ const splitFullName = (n) => {
 // abbrevName already isolated the originally-all-caps surname as everything after
 // its "X. " initial — reuse that instead of guessing the surname by word position,
 // which breaks for names like "Jens Petter KLOVNING" (bolds "Petter Klovning").
-const boldSurname = (n, abbrev) => {
+const splitSurname = (n, abbrev) => {
   const full = String(n || "");
   const m = String(abbrev || "").match(/^\p{L}\.\s+(.+)$/u);
-  if (m && full.endsWith(m[1])) {
-    const last = m[1], first = full.slice(0, full.length - last.length).trim();
-    return first ? <>{first} <b>{last}</b></> : <b>{last}</b>;
-  }
-  const { first, last } = splitFullName(full);
+  if (m && full.endsWith(m[1])) return { first: full.slice(0, full.length - m[1].length).trim(), last: m[1] };
+  return splitFullName(full);
+};
+const boldSurname = (n, abbrev) => {
+  const { first, last } = splitSurname(n, abbrev);
   return first ? <>{first} <b>{last}</b></> : <b>{last}</b>;
 };
 // Front-on goal mouth: ball animates from the grass to its zone, keeper dives. Used for all goals and penalty misses.
@@ -2683,6 +3005,8 @@ export default function App() {
   const [tab, setTab] = useState("teams");
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
+  const [expandedRounds, setExpandedRounds] = useState(() => new Set());
+  const toggleRound = (key) => setExpandedRounds(s => { const ns = new Set(s); ns.has(key) ? ns.delete(key) : ns.add(key); return ns; });
   const [teams, setTeams] = useState(() => PRESET_CATALOG.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
   // National team rating always wins over a club's own number for the same player — the
   // national squad is the canonical source. Resolved here (not baked into raw `teams`) so
@@ -2717,6 +3041,8 @@ export default function App() {
   const [playerClubFilter, setPlayerClubFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   const [dupCodeId, setDupCodeId] = useState(null);
+  const [bestXiNat, setBestXiNat] = useState("");
+  const [showBestXiExport, setShowBestXiExport] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // ─── LIVE MATCH ───
@@ -2733,6 +3059,7 @@ export default function App() {
   const lmRng = useRef(null);
   const lmFeedRef = useRef(null);
   const [manualSub, setManualSub] = useState({side:null,off:null});
+  const [preSwap, setPreSwap] = useState({side:null,off:null});
   const [gvReplayKeys, setGvReplayKeys] = useState({});
   const [chanceStep, setChanceStep] = useState({});
   const [goalFlash, setGoalFlash] = useState(null);
@@ -3033,7 +3360,7 @@ export default function App() {
   const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koGFReset: false, injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koGFReset: false, injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   const [tDrawLog, setTDrawLog] = useState([]);
@@ -3043,6 +3370,7 @@ export default function App() {
   const [tByeManual, setTByeManual] = useState(null);
   const [tDrawAnim, setTDrawAnim] = useState(null);
   const tDrawTimerRef = useRef(null);
+  const tModeClickRef = useRef({ n: 0, t: 0 });
   const [tPoolData, setTPoolData] = useState(null);
   const [tEdit, setTEdit] = useState(null); // {gi, ri, mi, h:"", a:""} for manual score entry
   const [tKoEdit, setTKoEdit] = useState(null); // {ri, mi, h:"", a:""} for knockout manual score
@@ -3055,6 +3383,35 @@ export default function App() {
   const tToggleHA = (key) => setTHomeAdvOverrides(p => { const c = p[key] || null; const n = c === null ? "home" : c === "home" ? "away" : c === "away" ? "off" : null; const nm = { ...p }; if (n === null) delete nm[key]; else nm[key] = n; return nm; });
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
 
+  // Earliest round with an unplayed match, across every group at once (one round-robin/Swiss
+  // round spans all groups simultaneously) — memoized because every mutating handler
+  // (tScorinate, tSetManualScore, tDeleteGroupResult, ...) replaces tGroups wholesale via
+  // JSON.parse(JSON.stringify(...)) + setTGroups, so reference equality is a correct proxy
+  // for "did the schedule actually change," letting this skip the O(rounds×groups×matches)
+  // scan on every unrelated re-render (a live match tick, typing elsewhere, etc).
+  const groupFirstOpen = useMemo(() => {
+    const maxRds = Math.max(0, ...tGroups.map(g => g.schedule.length));
+    for (let ri = 0; ri < maxRds; ri++) if (!tGroups.every(g => (g.schedule[ri] || []).every(m => m.result))) return ri;
+    return -1;
+  }, [tGroups]);
+  const allGroupForms = useMemo(() => tGroups.map(g => computeForm(g)), [tGroups]);
+  // WB and LB "done" checks are not symmetric — LB rounds tolerate permanently-empty slots
+  // from uneven drop-in seeding (a bye that never gets an opponent), WB rounds don't.
+  const wbRoundDone = (r) => r.matches.every(m => m.result && !m.result.partial);
+  const lbRoundDone = (r) => r.matches.every(m => (m.result && !m.result.partial) || (!m.home && !m.away));
+  const koActionable = useMemo(() => {
+    if (!tKO) return { wbRi: -1, lbRi: -1, tpReady: false, gfReady: false, resetReady: false };
+    const isDE = !!tKO.losers;
+    const wbScanEnd = isDE ? tKO.rounds.length : tKO.rounds.length - 1; // single-elim's last "round" is the Final, always shown, not part of this scan
+    let wbRi = -1;
+    for (let i = 0; i < wbScanEnd; i++) if (!wbRoundDone(tKO.rounds[i])) { wbRi = i; break; }
+    let lbRi = -1;
+    if (isDE) for (let i = 0; i < tKO.losers.length; i++) if (!lbRoundDone(tKO.losers[i])) { lbRi = i; break; }
+    const tpReady = !isDE && !!tKO.thirdPlace?.home && !!tKO.thirdPlace?.away && (!tKO.thirdPlace.result || tKO.thirdPlace.result.partial);
+    const gfReady = isDE && !!tKO.grandFinal?.home && !!tKO.grandFinal?.away && !tKO.grandFinal.result;
+    const resetReady = isDE && !!tKO.reset?.home && !!tKO.reset?.away && !tKO.reset.result;
+    return { wbRi, lbRi, tpReady, gfReady, resetReady };
+  }, [tKO]);
   useEffect(() => { if (lmFeedRef.current) lmFeedRef.current.scrollTop = lmFeedRef.current.scrollHeight; }, [lmMatch?.events.length]);
   useEffect(() => {
     if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
@@ -3071,8 +3428,8 @@ export default function App() {
         setLmMatch(prev => {
           if (!prev || prev.phase === "finished") { setAutoPlay(false); return prev; }
           const prevLen = prev.events.length;
-          const next = lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill });
-          if(pc?.atEnd){const cv=next.events[pc.idx]?.chanceViz;if(cv)cv._baseLen=cv.chain?.length||0;}
+          const next = lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: prev.testMode ? TEST_SKILL : teamById(lmH).skill }, { name: teamById(lmA).name, skill: prev.testMode ? TEST_SKILL : teamById(lmA).skill });
+          if(pc?.atEnd){const cv=next.events[pc.idx]?.chanceViz;if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[pc.idx]:Math.max(k[pc.idx]||0,newTotal-1)}));}}
           if (lmStopOnEvents) {
             const stopPhases = new Set(["half_time", "full_time", "et_half_time", "et_full_time", "finished"]);
             if (stopPhases.has(next.phase) && !stopPhases.has(prev.phase)) { setAutoPlay(false); }
@@ -3115,8 +3472,8 @@ export default function App() {
         homeCode: teamById(lmH)?.code, awayCode: teamById(lmA)?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
         goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
-        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0})),
-        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0})),
+        homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
+        awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
         penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
       });
     }
@@ -3138,8 +3495,8 @@ export default function App() {
       players.forEach(p => {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
-          goals: p.goals||0, assists: p.assists||0, matches: 1, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, chances: p.chances||0, defActs: p.defActs||0, saves: p.saves||0 };
+          goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, totalRating: p.rating||6,
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, chances: p.chances||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
       });
       return entries;
     };
@@ -3190,8 +3547,8 @@ export default function App() {
       const buildDiffs = (entries) => {
         const diffs = {};
         for (const [k, v] of Object.entries(entries)) {
-          const d = {matches:v.matches||0,subApp:0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,chances:v.chances||0,defActs:v.defActs||0,saves:v.saves||0};
-          if (v.rc) { d.reds = 1; d.suspended = rcSuspGames(v.rcVariant, Math.random()); }
+          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,chances:v.chances||0,defActs:v.defActs||0,saves:v.saves||0};
+          if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
           if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
         }
@@ -3205,18 +3562,32 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
           const d = homeDiffs[k] || awayDiffs[k];
           next[k].goals += d.goals;
           next[k].assists += d.assists;
           next[k].matches += d.matches;
+          next[k].subApp = (next[k].subApp||0) + d.subApp;
           next[k].totalRating += d.totalRating;
+          const prevYc = next[k].yellows||0;
           next[k].yellows += d.yellows;
           next[k].chances = (next[k].chances||0) + d.chances;
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
-          if (d.reds) { next[k].reds = (next[k].reds||0) + d.reds; next[k].suspended = (next[k].suspended||0) + d.suspended; }
+          // Fold into d.suspended itself (not a separate addend on next[k]) so the stored
+          // diff — later replayed by reverseMatchStats on a deleted result — undoes the
+          // yellow-triggered portion of the ban too, not just any red-card portion.
+          if (tConfig.suspensions !== false) d.suspended += ycSuspGames(prevYc, next[k].yellows);
+          if (d.reds || d.suspended) { next[k].reds = (next[k].reds||0) + d.reds; next[k].suspended = (next[k].suspended||0) + d.suspended; }
           if (d.injOut) { next[k].injOut = (next[k].injOut||0) + d.injOut; if (v.injSev) next[k].injSev = v.injSev; if (v.injPart) next[k].injPart = v.injPart; }
+          if (tConfig.staminaCarry && v.stamina != null) next[k].stamina = staminaRecoverFrom(v.stamina);
+          if (tConfig.staminaCarry) next[k].consecutiveStarts = d.matches > 0 ? (next[k].consecutiveStarts||0) + 1 : 0;
+        }
+        if (tConfig.staminaCarry) {
+          const featured = new Set(Object.keys({...homeEntries, ...awayEntries}));
+          [homeTeamObj, awayTeamObj].forEach(teamObj => {
+            (teamObj.squad||[]).forEach(p => { const k = teamObj.name + "|" + p.name; if (!featured.has(k) && next[k]) { next[k].stamina = 100; next[k].consecutiveStarts = 0; } });
+          });
         }
         return next;
       });
@@ -3290,23 +3661,57 @@ export default function App() {
     const venueHash = isL2 ? hashStr(venueKey + "_L2") : hashStr(venueKey);
     const venue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[venueHash % tHostVenuePool.length] : null;
 
-    const buildLiveSquad = (teamName, teamId) => {
+    const stamData = tConfig.staminaCarry ? tPlayerStats : null;
+    // Same stakes math as the bulk instasim paths (tScorinate/tSimKOMatch), just scoped to
+    // this one fixture instead of a whole round — see computeGroupUrg/computeKOStakes.
+    let homeStakes, awayStakes, homeNextOpp = null, awayNextOpp = null;
+    let liveIsKO = false, liveIsFinal = false, liveIsTP = false, liveRemH = 0, liveRemA = 0;
+    if (target.type === "group") {
+      const g = tGroups[target.gi];
+      const qc = tConfig.advPerGroup || 1;
+      liveRemH = g.schedule.slice(target.ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === homeTeam.name || x.away.name === homeTeam.name)).length, 0) - 1;
+      liveRemA = g.schedule.slice(target.ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === awayTeam.name || x.away.name === awayTeam.name)).length, 0) - 1;
+      homeStakes = computeGroupUrg(g.standings, homeTeam.name, qc, liveRemH);
+      awayStakes = computeGroupUrg(g.standings, awayTeam.name, qc, liveRemA);
+      homeNextOpp = nextOpponentSkill(g.schedule, target.ri, homeTeam.name);
+      awayNextOpp = nextOpponentSkill(g.schedule, target.ri, awayTeam.name);
+    } else {
+      liveIsKO = true;
+      const bk = target.bracket || (target.tp ? "tp" : "wb");
+      liveIsFinal = bk === "gf" || bk === "reset";
+      liveIsTP = bk === "tp";
+      const isTwoLeg = tConfig.koLegs === 2 && !liveIsFinal && !liveIsTP;
+      let leg = null, leg1Home = null, leg1Away = null;
+      if (isTwoLeg) {
+        if (target.leg === 1) leg = 1;
+        else if (target.leg === 2 && matchObj.result?.leg1) { leg = 2; leg1Home = matchObj.result.leg1.home; leg1Away = matchObj.result.leg1.away; }
+      }
+      homeStakes = computeKOStakes({ isFinal: liveIsFinal, isThirdPlace: liveIsTP, isTwoLeg, leg, aggFor: leg1Home, aggAgainst: leg1Away });
+      awayStakes = computeKOStakes({ isFinal: liveIsFinal, isThirdPlace: liveIsTP, isTwoLeg, leg, aggFor: leg1Away, aggAgainst: leg1Home });
+    }
+    const buildLiveSquad = (teamName, teamId, rotationCtx) => {
       const sq = teamById(teamId)?.squad || buildSquad(teamById(teamId)?.formation, null);
-      return splitAvailSquad(sq, teamName, unavail);
+      return splitAvailSquad(sq, teamName, unavail, stamData, rotationCtx);
     };
 
-    const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId);
-    const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId);
-    const mapP = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-    const mapB = (p) => ({name:p.name,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const hSkill = teamById(liveHId)?.skill, aSkill = teamById(liveAId)?.skill;
+    const hCtx = { stakes: isL2 ? awayStakes : homeStakes, ourSkill: hSkill, oppSkill: aSkill, nextOppSkill: isL2 ? awayNextOpp : homeNextOpp, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemA === 0 : liveRemH === 0, remainingGames: isL2 ? liveRemA : liveRemH };
+    const aCtx = { stakes: isL2 ? homeStakes : awayStakes, ourSkill: aSkill, oppSkill: hSkill, nextOppSkill: isL2 ? homeNextOpp : awayNextOpp, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemH === 0 : liveRemA === 0, remainingGames: isL2 ? liveRemH : liveRemA };
+    const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId, hCtx);
+    const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId, aCtx);
+    const _tsk = tConfig.testMode ? TEST_SKILL : null;
+    const mapP = (p) => ({name:p.name,pos:p.pos,ovr:_tsk??p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+    const mapB = (p) => ({name:p.name,pos:p.pos,ovr:_tsk??p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
     const init = createMatchState();
     init.forceResult = forceResult;
-    init.teamSkill = { home: teamById(liveHId).skill, away: teamById(liveAId).skill };
+    init.testMode = !!tConfig.testMode;
+    init.teamSkill = { home: _tsk ?? teamById(liveHId).skill, away: _tsk ?? teamById(liveAId).skill };
     init.styles = { home: teamById(liveHId).style || "balanced", away: teamById(liveAId).style || "balanced" };
     init.formations = { home: teamById(liveHId).formation || "4-3-3", away: teamById(liveAId).formation || "4-3-3" };
     init.allowTacChange = {home:true, away:true};
+    init.autoSubs = {home:true, away:true};
     init.homeAdv = homeAdv;
     init.venue = venue;
     init.strategy = { home: { ...STRAT_DEF, ...(teamById(liveHId).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(liveAId).strategy || {}) } };
@@ -3315,12 +3720,13 @@ export default function App() {
     init.isSecondLeg = isL2;
     init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
     init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
+    init.matchUrg = { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 };
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
 
     setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv); setLm2ndLeg(isL2);
     setTLiveTarget({...target, flipped: isL2});
-    setLmMatch(init); setManualSub({side:null,off:null}); setTab("live");
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTab("live");
   };
 
   // Auto-save tournament state to persistent storage
@@ -3435,29 +3841,45 @@ export default function App() {
 
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k); }
-    const hLive = splitAvailSquad(hSq, teamById(lmH).name, unavail);
-    const aLive = splitAvailSquad(aSq, teamById(lmA).name, unavail);
-    init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    const stamData = tConfig.staminaCarry ? tPlayerStats : null;
+    const hLive = splitAvailSquad(hSq, teamById(lmH).name, unavail, stamData);
+    const aLive = splitAvailSquad(aSq, teamById(lmA).name, unavail, stamData);
+    init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
+    init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    setLmMatch(init); setManualSub({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
-  const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: teamById(lmH).skill }, { name: teamById(lmA).name, skill: teamById(lmA).skill })); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const h = { name: teamById(lmH).name, skill: teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
+  const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail2 = new Set();
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail2.add(k); }
-    const hLive2 = splitAvailSquad(hSq2, teamById(lmH).name, unavail2);
-    const aLive2 = splitAvailSquad(aSq2, teamById(lmA).name, unavail2);
-    init.players = {home: hLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    const stamData2 = tConfig.staminaCarry ? tPlayerStats : null;
+    const hLive2 = splitAvailSquad(hSq2, teamById(lmH).name, unavail2, stamData2);
+    const aLive2 = splitAvailSquad(aSq2, teamById(lmA).name, unavail2, stamData2);
+    init.players = {home: hLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
+    init.bench = {home: hLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    let s = lmMatch && lmMatch.phase !== "pre_match" ? cloneState(lmMatch) : lmAdvance(init, rng, h, a); for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true); setAutoPlay(false); setLmMatch(s); setLoading(false); }, 40); };
+    // Must read the match to continue from via this functional updater's prevMatch, not the
+    // closed-over lmMatch — autoplay's own interval can tick (and commit via its own
+    // setLmMatch(prev=>...)) during the 40ms setTimeout above, and computing off a stale
+    // closure value here would silently overwrite that newer state with a replay of an
+    // older one when this call finally commits.
+    setLmMatch(prevMatch => {
+      // If prevMatch already exists (set up via tPlayLive, with managerSelect's rotation and
+      // any pre-match lineup edits already applied), it must always win over the from-scratch
+      // squad rebuilt above — that rebuild has no rotation context at all and would silently
+      // discard the real lineup; still in "pre_match" phase is not the same as "never set up."
+      let s = prevMatch ? (prevMatch.phase === "pre_match" ? lmAdvance(cloneState(prevMatch), rng, h, a) : cloneState(prevMatch)) : lmAdvance(init, rng, h, a);
+      for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true);
+      return s;
+    });
+    setAutoPlay(false); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
     setLmMatch(prev => {
       const s = cloneState(prev);
@@ -3467,17 +3889,32 @@ export default function App() {
       const onIdx = s.bench[side].findIndex(p => p.name === onName);
       if (!offP || onIdx === -1 || s.subs[side] >= 3) return prev;
       const onP = s.bench[side].splice(onIdx, 1)[0];
-      onP.sub = 'on'; onP.rating = 6.5;
+      onP.sub = 'on'; onP.startedBench = true; onP.rating = 6.5;
       offP.sub = 'off';
       s.subbedOff[side].push({...offP});
       s.players[side] = s.players[side].filter(p => p.name !== offName);
       s.players[side].push(onP);
       s.subs[side]++;
-      s.stamina[side] = Math.min(100, s.stamina[side] + 4);
       { const offFull=offP.fullName||offName, onFull=onP.fullName||onName; const reason=fill(CM.sub_in[Math.floor(Math.random()*CM.sub_in.length)],{t:sn,n:onFull,x:offFull}); s.events.push({min:dm,type:"sub",team:side,text:"\uD83D\uDD04 "+sn+"'s "+offFull+" \u2192 "+onFull+". "+reason,offName:offFull,onName:onFull,reason,offPos:offP.pos,offRating:offP.rating,onPos:onP.pos}); }
       return s;
     });
     setManualSub({side:null,off:null});
+  };
+  // Pre-kickoff lineup swap — a straight positional swap between starters/bench, no subs
+  // counter, no event log entry, no subbedOff record: nobody's actually played a minute yet.
+  const executePreMatchSwap = (side, offName, onName) => {
+    setLmMatch(prev => {
+      if (!prev || prev.phase !== "pre_match") return prev;
+      const s = cloneState(prev);
+      const offIdx = s.players[side].findIndex(p => p.name === offName);
+      const onIdx = s.bench[side].findIndex(p => p.name === onName);
+      if (offIdx === -1 || onIdx === -1) return prev;
+      const offP = s.players[side][offIdx], onP = s.bench[side][onIdx];
+      s.players[side][offIdx] = { ...onP, rating: 6.5 };
+      s.bench[side][onIdx] = { ...offP, rating: null };
+      return s;
+    });
+    setPreSwap({side:null,off:null});
   };
   const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
   const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
@@ -3510,6 +3947,7 @@ export default function App() {
     // Snapshot the selected participants' current squads/config at generation time —
     // roster edits afterward must not retroactively affect this tournament.
     const genTeams = tournamentTeams.map(t => ({...t, squad: t.squad ? t.squad.map(p => ({...p})) : null, strategy: {...t.strategy}}));
+    if (tConfig.testMode) genTeams.forEach(t => { t.skill = TEST_SKILL; if (t.squad) t.squad.forEach(p => { p.ovr = TEST_SKILL; }); });
     // Single knockout — skip groups entirely
     if (tConfig.mode === "single" && tConfig.singleType === "knockout") {
       const isDE = tConfig.koFormat === "double_elim";
@@ -3559,7 +3997,7 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTPoolData(null); setTDrawAnim(null); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
+  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
 
   useEffect(() => {
     if (tDrawAnim?.auto && !(tDrawAnim.index >= tDrawAnim.log.length && !tDrawAnim.pending)) {
@@ -3615,6 +4053,8 @@ export default function App() {
       const redP = simPlayers.find(p => p.rc);
       const injP = simPlayers.find(p => p.inj);
       const injDur = injP ? ((() => { const sev = INJ_SEV.find(s => s.id === injP.injSev); if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1)); const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+      const staminaOf = {};
+      simPlayers.forEach(p => { staminaOf[keyOf(p.name)] = p.stamina; });
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
@@ -3627,7 +4067,7 @@ export default function App() {
         d.chances += p.chances || 0;
         d.defActs += p.defActs || 0;
         d.saves += p.saves || 0;
-        if (p.rc) { d.reds++; d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
+        if (p.rc) { d.reds++; if (tConfig.suspensions !== false) d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
         if (p.inj) d.injOut += injDur;
       });
       setTPlayerStats(prev => {
@@ -3641,13 +4081,30 @@ export default function App() {
           next[k].goals = (next[k].goals||0) + d.goals;
           next[k].assists = (next[k].assists||0) + d.assists;
           next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
-          next[k].yellows = (next[k].yellows||0) + d.yellows;
+          const prevYc = next[k].yellows||0;
+          next[k].yellows = prevYc + d.yellows;
+          // Mutate d.suspended itself, not a separate addend — d is the object returned
+          // (and later stored) for reverseMatchStats to replay on a deleted result.
+          if (tConfig.suspensions !== false) d.suspended += ycSuspGames(prevYc, next[k].yellows);
           next[k].reds = (next[k].reds||0) + d.reds;
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
           next[k].chances = (next[k].chances||0) + d.chances;
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
+        }
+        // ponytail: stamina is an absolute snapshot, not a delta like the fields above, so
+        // reverseMatchStats can't undo it on a deleted/replayed result — it'll drift slightly
+        // stale until the next match overwrites it. Not worth threading prev-stamina through
+        // statDiffs for that edge case; values stay bounded [0,100] either way.
+        if (tConfig.staminaCarry) {
+          for (const k of Object.keys(diffs)) { if (next[k]) next[k].stamina = staminaRecoverFrom(staminaOf[k] ?? 100); }
+          // Anyone in the squad who didn't feature this match (rested, suspended, injured) recovers fully.
+          teamObj.squad.forEach(p => { const k = keyOf(p.name); if (!diffs[k] && next[k]) next[k].stamina = 100; });
+          // Consecutive-starts cadence for managerSelect — resets to 0 for anyone who wasn't a
+          // starter this match (subbed on, unused bench, unavailable), builds only for actual starts.
+          for (const [k, d] of Object.entries(diffs)) { if (next[k]) next[k].consecutiveStarts = d.matches > 0 ? (next[k].consecutiveStarts||0) + 1 : 0; }
+          teamObj.squad.forEach(p => { const k = keyOf(p.name); if (!diffs[k] && next[k]) next[k].consecutiveStarts = 0; });
         }
         if (injP) { const ik = keyOf(injP.name); next[ik].injSev = injP.injSev; next[ik].injPart = injP.injPart; }
         return next;
@@ -3676,7 +4133,7 @@ export default function App() {
     const redPlayer = (simCards ? (simCards.reds||0) > 0 : rng2.u() < 0.06) ? pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul") : null;
     const redName = redPlayer?.name || null;
     const rcVar = redName ? pickRedCardVariant(rng2, redPlayer.pos) : null;
-    const rcSusp = redName ? rcSuspGames(rcVar, rng2.u()) : 0;
+    const rcSusp = (redName && tConfig.suspensions !== false) ? rcSuspGames(rcVar, rng2.u()) : 0;
     const injName = (tConfig.injuries !== false) && (simCards ? (simCards.injuries||0) > 0 : rng2.u() < 0.053) ? allOnPitch[Math.floor(rng2.u() * allOnPitch.length)]?.name : null;
     const injPicked = injName ? pickInjury(rng2) : null;
     const injSevObj = injPicked?.sev || null;
@@ -3762,7 +4219,9 @@ export default function App() {
         next[k].goals = (next[k].goals||0) + d.goals;
         next[k].assists = (next[k].assists||0) + d.assists;
         next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
-        next[k].yellows = (next[k].yellows||0) + d.yellows;
+        const prevYc = next[k].yellows||0;
+        next[k].yellows = prevYc + d.yellows;
+        if (tConfig.suspensions !== false) d.suspended += ycSuspGames(prevYc, next[k].yellows);
         next[k].reds = (next[k].reds||0) + d.reds;
         next[k].suspended = (next[k].suspended||0) + d.suspended;
         next[k].injOut = (next[k].injOut||0) + d.injOut;
@@ -3913,12 +4372,13 @@ export default function App() {
     const rng = new RNG(Date.now());
     const ng = JSON.parse(JSON.stringify(tGroups));
     const maxRds = Math.max(...ng.map(g => g.schedule.length));
+    const stamData = tConfig.staminaCarry ? tPlayerStats : null;
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) {
       if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { team: v.team, suspended: v.suspended||0, injOut: v.injOut||0 };
     }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
-    const applyBan = (info) => { if (info?.redKey) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    const applyBan = (info) => { if (info?.redKey && tConfig.suspensions !== false) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
     for (let ri = 0; ri < maxRds; ri++) {
       if (targetRi !== -1 && targetRi !== ri) continue;
       const teams = new Set();
@@ -3929,12 +4389,15 @@ export default function App() {
       }
       const unavailSet = buildUnavail();
       const urgCache = {};
-      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const qc = tConfig.advPerGroup || 1; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.home.name || x.away.name === m.home.name)).length, 0) - 1; const remA = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.away.name || x.away.name === m.away.name)).length, 0) - 1; urgCache[`${gi}_${mi}`] = { home: computeGroupUrg(g.standings, m.home.name, qc, remH), away: computeGroupUrg(g.standings, m.away.name, qc, remA) }; }); });
+      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const qc = tConfig.advPerGroup || 1; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.home.name || x.away.name === m.home.name)).length, 0) - 1; const remA = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.away.name || x.away.name === m.away.name)).length, 0) - 1; urgCache[`${gi}_${mi}`] = { home: computeGroupUrg(g.standings, m.home.name, qc, remH), away: computeGroupUrg(g.standings, m.away.name, qc, remA), remH, remA }; }); });
       ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => {
         if (m.result) return;
         if (targetMi !== -1 && targetMi !== mi) return;
-        const hSq = filterSquad(m.home.squad, m.home.name, unavailSet), aSq = filterSquad(m.away.squad, m.away.name, unavailSet);
-        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, urgCache[`${gi}_${mi}`]);
+        const _ug = urgCache[`${gi}_${mi}`];
+        const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: nextOpponentSkill(g.schedule, ri, m.home.name), isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
+        const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: nextOpponentSkill(g.schedule, ri, m.away.name), isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
+        const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
+        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 });
         const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
         const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
         applyBan(rH); applyBan(rA);
@@ -4053,8 +4516,26 @@ export default function App() {
   const tSimKOMatch = (rng, m, legTarget, haKey, unavailSet) => {
     const haDefault = resolveKOHomeAdv(m, tConfig);
     const ov = tHomeAdvOverrides[haKey] || null;
-    const hSq = filterSquad(m.home.squad, m.home.name, unavailSet), aSq = filterSquad(m.away.squad, m.away.name, unavailSet);
-    if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq);
+    const stamData = tConfig.staminaCarry ? tPlayerStats : null;
+    // haKey uniquely tags which fixture this is ("gf"/"reset" = the true decider even in a
+    // double-elim bracket, "tp" = third place, anything else = a regular round in the wb/lb
+    // ladder) — cheaper than re-deriving bracket/round position from ko's own structure, and
+    // every regular round already defaults to high-stakes below regardless of which one it is.
+    const isFinal = haKey === "gf" || haKey === "reset";
+    const isThirdPlace = haKey === "tp";
+    const isTwoLeg = tConfig.koLegs === 2 && !isFinal && !isThirdPlace;
+    let leg = null, leg1Home = null, leg1Away = null;
+    if (isTwoLeg) {
+      if (legTarget === 1 || (!m.result && legTarget !== 0)) leg = 1;
+      else if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) { leg = 2; leg1Home = m.result.leg1.home; leg1Away = m.result.leg1.away; }
+    }
+    const hStakes = computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor: leg1Home, aggAgainst: leg1Away });
+    const aStakes = computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor: leg1Away, aggAgainst: leg1Home });
+    const hCtx = { stakes: hStakes, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
+    const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
+    const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
+    const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
+    if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
@@ -4072,7 +4553,7 @@ export default function App() {
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
-    const applyBan = (info) => { if (info?.redKey) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    const applyBan = (info) => { if (info?.redKey && tConfig.suspensions !== false) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
     const decLocal = (tms) => { for (const k of Object.keys(localBans)) { const tn = k.substring(0, k.indexOf("|")); if (tms.has(tn)) { if (localBans[k].suspended > 0) localBans[k].suspended--; if (localBans[k].injOut > 0) localBans[k].injOut--; } } };
     const accumStats = (m, unavailSet) => {
       if (!m.result || m.result.partial) return;
@@ -4143,6 +4624,103 @@ export default function App() {
     setTKoEdit(null);
     setTScoreError("");
     setTPhase("knockout");
+  };
+
+  // KO match-row shared adapters — tKoEdit's own dispatch convention is genuinely
+  // inconsistent across match types (not a bug to fix): 3rd place is a tp:true flag
+  // distinct from its own bracket field; wb/final are bare (both fields absent);
+  // lb/gf/reset use a bracket string. These translate a fixtureKey-shaped ref
+  // ({ri, mi, bracket?, tp?}) through that convention once, instead of every call
+  // site re-deriving its own tKoEdit shape by hand.
+  const koRefBracket = (ref) => ref.bracket || (ref.tp ? "tp" : "wb");
+  const koIsEditingRef = (ref) => {
+    if (!tKoEdit) return false;
+    const eb = tKoEdit.bracket || (tKoEdit.tp ? "tp" : "wb"), rb = koRefBracket(ref);
+    if (eb !== rb) return false;
+    // tp/gf/reset are each always exactly one match — bracket match alone is sufficient,
+    // same as the original per-block checks (gf/reset never compared ri/mi either).
+    return (rb === "gf" || rb === "reset" || rb === "tp") ? true : (tKoEdit.ri === ref.ri && tKoEdit.mi === ref.mi);
+  };
+  const koStartEdit = (ref) => {
+    const bracket = koRefBracket(ref);
+    const twoLeg = tConfig.koLegs === 2 && bracket !== "gf" && bracket !== "reset";
+    const base = { h: "", a: "", ...(twoLeg ? { twoLeg: true, step: "l1" } : {}) };
+    if (bracket === "tp") return setTKoEdit({ ri: -2, mi: -1, tp: true, ...base });
+    if (bracket === "gf" || bracket === "reset") return setTKoEdit({ ri: 0, mi: 0, bracket, ...base });
+    if (bracket === "lb") return setTKoEdit({ ri: ref.ri, mi: ref.mi, bracket: "lb", ...base });
+    return setTKoEdit({ ri: ref.ri, mi: ref.mi, tp: false, ...base }); // wb / final
+  };
+  const koResumeEdit = (ref, m) => {
+    const bracket = koRefBracket(ref);
+    if (bracket === "gf" || bracket === "reset") return setTKoEdit({ ri: 0, mi: 0, h: String(m.result.ftHome), a: String(m.result.ftAway), bracket });
+    const h = String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome);
+    const a = String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway);
+    const twoLegResult = m.result.twoLeg ? { twoLeg: true, step: "l1", l2h: String(m.result.leg2?.away ?? 0), l2a: String(m.result.leg2?.home ?? 0) } : {};
+    if (bracket === "tp") return setTKoEdit({ ri: -2, mi: -1, h, a, tp: true, ...twoLegResult });
+    if (bracket === "lb") return setTKoEdit({ ri: ref.ri, mi: ref.mi, h, a, bracket: "lb", ...twoLegResult });
+    return setTKoEdit({ ri: ref.ri, mi: ref.mi, h, a, tp: false, ...twoLegResult }); // wb / final
+  };
+  const koSim = (ref, leg) => koRefBracket(ref) === "tp" ? tScorinateKO(-2, -1, leg) : tScorinateKO(ref.ri, ref.mi, leg, ref.bracket);
+  const koDelete = (ref) => koRefBracket(ref) === "tp" ? tDeleteKoResult(-2, -1, true) : tDeleteKoResult(ref.ri, ref.mi, ref.bracket || false);
+  // Shared renderer for every KO match type (WB, LB, 3rd place, Final, Grand Final, Reset).
+  // opts.initialLeg preserves a genuine pre-existing quirk found while unifying these 6
+  // blocks: WB/3rd-place/Final's own sim button omits the leg argument (simFirstLeg only),
+  // while LB/GF/Reset's pass an explicit 0 (simTwoLegMatch, both legs at once) — a real
+  // difference in tScorinateKO/tSimKOMatch's dispatch, not something to silently normalize.
+  const renderKoMatchRow = (m, ref, opts = {}) => {
+    const haKey = fixtureKey({ type: "ko", ...ref });
+    const haVal = tHomeAdvOverrides[haKey] || null;
+    const editing = koIsEditingRef(ref);
+    const editForm = (<span style={{ display: "flex", alignItems: "center", gap: 2, margin: opts.cardLayout ? 0 : "0 4px", justifyContent: opts.cardLayout ? "center" : "flex-start" }}>
+      {tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}
+      {tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
+      {tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
+      {tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}
+      <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
+      <span style={{ color: "#7889a0", fontSize: 8 }}>–</span>
+      <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
+      <button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button>
+      <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
+    </span>);
+    const actionArea = editing ? editForm
+      : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
+          <span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span>
+          <button onClick={() => koSim(ref, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 2 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button>
+        </span>
+      : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
+          <span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span>
+          <button onClick={() => koResumeEdit(ref, m)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>
+          <button onClick={() => koDelete(ref)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button>
+        </span>
+      : m.home && m.away ? <span style={{ display: "flex", gap: opts.cardLayout ? 4 : 3, justifyContent: opts.cardLayout ? "center" : "flex-start", margin: opts.cardLayout ? 0 : "0 4px" }}>
+          <button onClick={() => koSim(ref, opts.initialLeg)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>
+          <button onClick={() => koStartEdit(ref)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>
+          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 1 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button>
+        </span>
+      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: opts.cardLayout ? 0 : "0 6px" }}>{opts.showByeInAction && m.bye ? "BYE" : "–"}</span>;
+    const homeName = <>{haVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}{opts.homeTag && <span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>{opts.homeTag}</span>}</>;
+    const awayName = <>{m.away?.name || (m.bye ? "BYE" : "TBD")}{opts.awayTag && <span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>{opts.awayTag}</span>}{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</>;
+    const haBtn = m.home && m.away && <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? (haVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: haVal ? 1 : 0.4, flexShrink: 0 }}>H</button>;
+    const homeWon = m.result && koWinner(m) === m.home, awayWon = m.result && koWinner(m) === m.away;
+    if (opts.cardLayout) return (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: homeWon ? "#ffffff" : "#7889a0", fontWeight: homeWon ? 600 : 400 }}>{homeName}</div>
+          {haBtn}
+        </div>
+        <div style={{ textAlign: "center", padding: "4px 0" }}>{actionArea}</div>
+        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: awayWon ? "#ffffff" : "#7889a0", fontWeight: awayWon ? 600 : 400, textAlign: "right" }}>{awayName}</div>
+      </div>
+    );
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, color: homeWon ? "#ffffff" : "#7889a0", fontWeight: homeWon ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{homeName}</span>
+        {haBtn}
+        {actionArea}
+        <span style={{ fontSize: 11, color: awayWon ? "#ffffff" : "#7889a0", fontWeight: awayWon ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{awayName}</span>
+      </div>
+    );
   };
 
   // Live-match team colors: primaryColor is a team's home kit, secondaryColor its away
@@ -4253,8 +4831,8 @@ export default function App() {
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
         const sn = shortName;
-        const PitchSVG = ({squad, formation}) => {
-          const starters = (squad||[]).filter(p => !p.bench);
+        const staminaClr = (v) => v > 60 ? "#7889a0" : v > 30 ? "#ebcb8b" : "#bf616a";
+        const PitchSVG = ({starters, formation}) => {
           const FPOS = {
             "4-4-2":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
             "4-3-3":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
@@ -4300,8 +4878,9 @@ export default function App() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
             {[{side:"home",id:lmH},{side:"away",id:lmA}].map(({side,id}) => {
               const tm = teamById(id);
-              const rawSq = tm?.squad || buildSquad(tm?.formation || "4-3-3", null);
-              const { starters, bench } = displaySquad(rawSq, tm?.name, tPlayerStats);
+              const starters = lmMatch.players[side] || [];
+              const bench = lmMatch.bench[side] || [];
+              const offP = preSwap.side === side ? starters.find(p => p.name === preSwap.off) : null;
               return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
@@ -4310,19 +4889,32 @@ export default function App() {
                     <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"#7889a0", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
                   </div>
                 </div>
-                <PitchSVG squad={[...starters, ...bench]} formation={tm?.formation} />
+                <PitchSVG starters={starters} formation={tm?.formation} />
                 <div style={{ marginTop: 6, padding: "0 2px" }}>
+                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "#e4002b14", border: "1px solid #e4002b44", borderRadius: 4 }}>
+                    <span style={{ fontSize: 8, color: "#7889a0" }}>Bench <b style={{ color: "#ffffff" }}>{offP.name}</b>, pick a replacement below</span>
+                    <span onClick={() => setPreSwap({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
+                  </div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
-                    {starters.map((p, pi) => (
-                      <div key={pi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0" }}>
+                    {starters.map((p, pi) => {
+                      const stam = p.stamina ?? 100;
+                      const isOffP = offP?.name === p.name;
+                      return (<div key={pi} onClick={() => setPreSwap(isOffP ? {side:null,off:null} : {side, off:p.name})} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0", cursor: "pointer", opacity: offP && !isOffP ? 0.5 : 1, background: isOffP ? "#e4002b1a" : "transparent", borderRadius: 3 }}>
                         <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, width: 20, flexShrink: 0, textAlign: "left", ...mono }}>{p.pos}</span>
                         <span style={{ color: "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
-                      </div>
-                    ))}
+                        <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600, flexShrink: 0 }}>🗲{Math.round(stam)}</span>
+                      </div>);
+                    })}
                   </div>
                   {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #2a3a5033" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0 8px", fontSize: 8, color: "#7889a0" }}>
-                      {bench.map((p, pi) => <span key={pi} style={p.out ? {color:"#bf616a"} : undefined}>{p.name}{p.out && " (OUT)"}</span>)}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                      {[...bench].sort((a,b) => (b.stamina??100)-(a.stamina??100)).map((p, pi) => { const stam = p.stamina ?? 100; return (
+                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 4, cursor: offP ? "pointer" : "default", background: "#141c2b", border: "1px solid #2a3a5088" }}>
+                          <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"#7889a0", fontWeight: 700 }}>{p.pos}</span>
+                          <span style={{ color: "#7889a0" }}>{p.name}</span>
+                          <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
+                        </span>
+                      ); })}
                     </div>
                   </div>}
                 </div>
@@ -4514,23 +5106,51 @@ export default function App() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
         {["home","away"].map((side,si) => {
           const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-          const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
           const onPitch = lmMatch.players[side] || [];
-          const off = lmMatch.subbedOff?.[side] || [];
           const bench = lmMatch.bench?.[side] || [];
+          // A player currently on the pitch or bench is authoritative. subbedOff can carry a
+          // stale/duplicate record for a name that's since reappeared elsewhere (e.g. the same
+          // name logged twice across a card + injury event) — deduped so a starter can never
+          // be double-counted as both "still out there" and "already left."
+          const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
+          const seenOff = new Set();
+          const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
+          // Reflect the ACTUAL match squad (post-rotation via managerSelect), not the raw squad
+          // definition's default starters/bench. Split by WHO STARTED WHERE, not current array
+          // membership — a bench player who's since been subbed on has left the bench array
+          // entirely, so keying off membership alone would silently fold them into "starters"
+          // with no trace they came off the bench, and vice versa for a subbed-off starter.
+          const squadDef = tm?.squad || buildSquad(tm?.formation, null);
+          const defByName = new Map(squadDef.map(p => [p.name, p]));
+          const kf = n => playerKey(tm?.name, n);
+          const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
+          const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
+          const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
+          const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
+          // startedBench (stamped once, at the moment a bench player first comes on, and
+          // preserved through any later departure) is what decides the bucket — NOT current
+          // location. A player who started on the bench, came on, and was later subbed off/
+          // injured/carded is still a bench starter, not a starting-XI departure: .sub gets
+          // overwritten to 'off' by every removal site, so it can no longer tell the two apart.
+          const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
+          const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
           // Masks the pending scorer's/assister's tally and every affected rating (scorer,
           // assist, conceding side's dip) — otherwise any of them would spoil who's about to
           // score before the card reveals it.
-          const pendingGoal = lmPendingGoal(lmMatch, chanceStep);
+          const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
           const lookup = (name) => {
             const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
             if (!found) return found;
-            const rating = lmAdjRating(pendingGoal, side, found);
-            if (pendingGoal?.team === side) {
-              if (found.name === pendingGoal.scorerName) return { ...found, goals: Math.max(0, (found.goals||0) - 1), rating };
-              if (found.name === pendingGoal.assistName) return { ...found, assists: Math.max(0, (found.assists||0) - 1), rating };
+            let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
+            for (const pg of hiddenGoals) {
+              rating = lmAdjRating(pg, side, { name: found.name, rating });
+              if (pg.team === side) {
+                if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
+                if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
+              }
             }
-            return rating === found.rating ? found : { ...found, rating };
+            if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
+            return { ...found, goals, assists, rating };
           };
           return (<>
           {si === 1 && <div style={{ background: "#7889a0" }}></div>}
@@ -4560,7 +5180,7 @@ export default function App() {
                 <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
               </>); })}
               <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-              {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); const eOvr = sq2.ovr ?? tm?.skill; return (<>
+              {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                 <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
@@ -4624,6 +5244,54 @@ export default function App() {
     return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
   }, [teams]);
 
+  const natOptions = useMemo(() => [...playerIndex.reduce((m, p) => {
+    if (!p.natCode) return m;
+    const e = m.get(p.natCode) || { skill: 0, count: 0 };
+    e.skill = Math.max(e.skill, p.natSkill || 0); e.count++;
+    m.set(p.natCode, e);
+    return m;
+  }, new Map())].sort((a, b) => b[1].skill - a[1].skill), [playerIndex]);
+
+  // Greedy best-XI, locked to the nation's own formation: repeatedly fill the scarcest
+  // open slot (fewest eligible unused players) with its highest-OVR eligible candidate.
+  // A slot with no specialist available is left empty rather than forcing a wrong-position player in.
+  const bestXi = useMemo(() => {
+    if (!bestXiNat) return null;
+    const natTeam = teams.find(t => t.league === "Avium International" && t.code === bestXiNat);
+    const formation = natTeam?.formation || "4-3-3";
+    const template = buildSquad(formation, []);
+    const broadOf = (sp) => sp === "GK" ? "GK" : POS_GROUP[sp];
+    // Starters must match their exact slot position; bench slots only need the broad
+    // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
+    const slots = template.map(p => p.bench ? broadOf(p.spos) : p.spos);
+    const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.map(broadOf)) }; });
+    const used = new Set();
+    const players = new Array(slots.length).fill(null);
+    // Fill the XI to completion before touching the bench — otherwise a bench slot's
+    // broader (group-only) match can look scarcer mid-loop and claim a strong
+    // multi-position player who should have started instead.
+    const fillPhase = (indices, isBench) => {
+      const remaining = [...indices];
+      while (remaining.length) {
+        let bestIdx = remaining[0], bestList = [], bestScore = Infinity;
+        for (const si of remaining) {
+          const cands = pool.filter(p => !used.has(p.fullName) && (isBench ? p.groups.has(slots[si]) : p.elig.includes(slots[si])));
+          if (cands.length < bestScore) { bestScore = cands.length; bestList = cands; bestIdx = si; if (bestScore === 0) break; }
+        }
+        if (bestList.length) {
+          const pick = bestList.reduce((a, b) => (b.ovr || 0) > (a.ovr || 0) ? b : a);
+          used.add(pick.fullName);
+          players[bestIdx] = pick;
+        }
+        remaining.splice(remaining.indexOf(bestIdx), 1);
+      }
+    };
+    const allIdx = slots.map((_, i) => i);
+    fillPhase(allIdx.filter(i => !template[i].bench), false);
+    fillPhase(allIdx.filter(i => template[i].bench), true);
+    return { template, players, formation, reqs: slots, skill: natTeam?.skill };
+  }, [playerIndex, teams, bestXiNat]);
+
   return (
     <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
       <style>{APP_CSS}</style>
@@ -4634,7 +5302,7 @@ export default function App() {
             <img src={headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {[["teams", "Teams"], ["live", "Live Match"], ["tournament", "Tournament"], ["docs", "Docs"]].map(([id, l]) => (
+            {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "#e4002b" : "transparent", color: tab === id ? "#ffffff" : "#7889a0", border: tab === id ? "1px solid #e4002b" : "1px solid #141c2b", boxShadow: tab === id ? "0 0 12px #e4002b44" : "none" }}>{l}</button>
             ))}
           </div>
@@ -4863,7 +5531,7 @@ export default function App() {
             <label style={{ ...lbl, margin: 0 }}>Players <span style={{ color: "#7889a0", fontWeight: 400 }}>({playerIndex.length})</span></label>
             <div style={{ display: "flex", gap: 6 }}>
               <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
-              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...new Set(playerIndex.map(p => p.natCode).filter(Boolean))].sort().map(c => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
               <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
               <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerClubFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
               <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: playerSearch ? "#e4002b" : "#7889a0", cursor: "text" }} />
@@ -4885,28 +5553,40 @@ export default function App() {
               if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
               return true;
             });
+            const PLR_COLW = { num: 32, player: 220, ovr: 44, pos: 70, nat: 130, club: 180 };
+            const thStyle = { position: "sticky", top: 0, background: "#141c2b", padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0", textAlign: "left", whiteSpace: "nowrap" };
+            const tdStyle = { padding: "5px 12px" };
             return (
               <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden" }}>
-                <div style={{ display: "flex", padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
-                  <span style={{ width: 28, flexShrink: 0 }}>#</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>Player</span>
-                  <span style={{ width: 36, textAlign: "center", flexShrink: 0, marginLeft: -4 }}>OVR</span>
-                  <span style={{ width: 52, textAlign: "center", flexShrink: 0 }}>POS</span>
-                  <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Nationality</span>
-                  <span style={{ width: 120, flexShrink: 0, paddingLeft: 8 }}>Club</span>
-                </div>
-                <div style={{ maxHeight: 1350, overflowY: "auto" }}>
-                  {filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: "#7889a066", textAlign: "center" }}>No players found.</div>}
-                  {filtered.map((p, i) => (
-                    <div key={p.fullName} style={{ display: "flex", padding: "5px 12px", alignItems: "center", fontSize: 11, background: i % 2 ? "transparent" : "#0a0e1708" }}>
-                      <span style={{ width: 28, flexShrink: 0, color: "#7889a0", fontSize: 10, ...mono }}>{i + 1}</span>
-                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(p.fullName || p.name, p.name)}</span>
-                      <span style={{ width: 36, textAlign: "center", flexShrink: 0, ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</span>
-                      <span style={{ width: 52, textAlign: "center", flexShrink: 0, color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</span>
-                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: "#7889a0", fontWeight: p.capped ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nationality}</span>
-                      <span style={{ width: 120, flexShrink: 0, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</span>
-                    </div>
-                  ))}
+                <div style={{ maxHeight: 1350, overflowY: "auto", overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: PLR_COLW.num }} /><col style={{ width: PLR_COLW.player }} /><col style={{ width: PLR_COLW.ovr }} /><col style={{ width: PLR_COLW.pos }} /><col style={{ width: PLR_COLW.nat }} /><col style={{ width: PLR_COLW.club }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>#</th>
+                        <th style={thStyle}>Player</th>
+                        <th style={{ ...thStyle, textAlign: "center" }}>OVR</th>
+                        <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
+                        <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
+                        <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "#7889a066", textAlign: "center" }}>No players found.</td></tr>}
+                      {filtered.map((p, i) => (
+                        <tr key={p.fullName} style={{ background: i % 2 ? "transparent" : "#0a0e1708" }}>
+                          <td style={{ ...tdStyle, color: "#7889a0", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
+                          <td style={tdStyle}>{boldSurname(p.fullName || p.name, p.name)}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8, color: "#7889a0", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             );
@@ -4937,16 +5617,40 @@ export default function App() {
                 </div>
               );
               const primaryLabel = lmIsSetup ? "⚽ Start Match" : finished ? "New Match" : pendingChance ? "▶ Continue" : lmBl;
-              const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (pendingChance) { if (pendingChance.atEnd) { const _h={name:teamById(lmH).name,skill:teamById(lmH).skill},_a={name:teamById(lmA).name,skill:teamById(lmA).skill};setLmMatch(prev=>{const cv=prev.events[pendingChance.idx]?.chanceViz;const oL=cv?.chain?.length||0;let s=lmAdvance(prev,lmRng.current,_h,_a);for(let j=0;j<9&&cv&&!cv._completed&&!cv.outcomeEvent&&(cv.chain?.length||0)<=oL;j++)lmAdvance(s,lmRng.current,_h,_a,true);if(cv&&!cv._completed&&!cv.outcomeEvent)cv._completed=true;if(cv)cv._baseLen=cv.chain?.length||0;return s;}); } else { setChanceStep(k => ({ ...k, [pendingChance.idx]: Math.min(pendingChance.totalSteps-1, (k[pendingChance.idx]||0)+1) })); } return; } if (autoPlay) setAutoPlay(false); else lmTick(); };
+              // A pending chance's "next" click used to only ever simulate one minute, so a
+              // chance that took N minutes to build needed N clicks to simulate it PLUS
+              // another click each to reveal every hop it grew — the old atEnd branch tried
+              // to paper over this with a 9-iteration fast-forward loop, but that loop checked
+              // a chain-length snapshot taken before the loop's own first advance, so it broke
+              // out on iteration one for any chain that was actually still growing (the common
+              // case) and only ever fired for a chain already stuck at CHANCE_MAX_HOPS. Simulating
+              // one minute and immediately revealing whatever that minute produced — new hop or
+              // outcome — in the same click halves the click count for every multi-minute chance,
+              // not just the stuck-at-cap edge case.
+              const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (pendingChance) { if (pendingChance.atEnd) {
+                // Must go through the functional setLmMatch(prev => ...) form, not compute
+                // lmAdvance(lmMatch, ...) eagerly off the closed-over value and setLmMatch(s)
+                // that result directly — auto-play's own interval can also be mid-flight on
+                // this exact match (it uses the same prev=>lmAdvance(prev,...) form below), and
+                // a direct-value setLmMatch(s) computed from a now-stale lmMatch can silently
+                // clobber whatever the interval just committed, re-simulating the same minute
+                // against an already-advanced RNG. That's what a goal appearing, vanishing, and
+                // reappearing on the next tick actually was — two divergent updates to the same
+                // state, applied out of order, not an intentional "reversal."
+                const _h={name:teamById(lmH).name,skill:teamById(lmH).skill},_a={name:teamById(lmA).name,skill:teamById(lmA).skill}, _idx=pendingChance.idx;
+                setLmMatch(prev => { const s=lmAdvance(prev,lmRng.current,_h,_a); const cv=s.events[_idx]?.chanceViz; if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[_idx]:Math.max(k[_idx]||0,newTotal-1)}));} return s; });
+              } else { setChanceStep(k => ({ ...k, [pendingChance.idx]: Math.min(pendingChance.totalSteps-1, (k[pendingChance.idx]||0)+1) })); } return; } if (autoPlay) setAutoPlay(false); else lmTick(); };
               const lmNotReady = teamErrors || teams.length < 2 || !teamById(lmH) || !teamById(lmA);
               const primaryDisabled = lmIsSetup ? lmNotReady : (!finished && autoPlay);
               const autoClick = () => { if (autoPlay) { setAutoPlay(false); return; } if (lmIsSetup) { lmKickOff(); setAutoPlay(true); } else setAutoPlay(true); };
               return primaryLabel ? (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
-                {!finished && <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "#e4002b", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
-                  <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 11, padding: "10px 14px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
-                </div>}
+                {finished ? (
+                  <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? 0.5 : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
+                ) : (<div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "#e4002b", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
+                  <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
+                  <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
+                </div>)}
                 {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
                     <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "#e4002b" : "#141c2b", border: "1px solid " + (autoSpeed === s.v ? "#e4002b" : "#7889a033"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
@@ -5035,7 +5739,7 @@ export default function App() {
             {lmMatch.phase === "finished" && renderStatsReport()}
             <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid #141c2b", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", textAlign: "center" }}>Match Events</div>
-              <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 290 : 220, overflowY: "auto" }}>
+              <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 270 : 220, overflowY: "auto" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 4, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
@@ -5111,7 +5815,7 @@ export default function App() {
                     const chanceClr = isH ? hClr : aClr;
                     const isOutcomeStep = hasOutcome && step === chainSteps;
                     if (isOutcomeStep) {
-                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"} };
+                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
                       body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(nextE.text.replace(/^[^\p{L}\p{N}]+/u, ''), nextE.playerFull, om.color)}</div>;
@@ -5193,7 +5897,7 @@ export default function App() {
                   <div style={{ width: `${ap}%`, background: aClr, borderRadius: 2, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
-              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds], ["Injuries", lmMatch.stats.home.injuries, lmMatch.stats.away.injuries], ["Subs Left", 3 - lmMatch.subs.home, 3 - lmMatch.subs.away]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
+              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
                 <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
@@ -5202,10 +5906,8 @@ export default function App() {
               </div>); })}
               {/* Momentum graph */}
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)} ▲</span>
+                <div style={{ textAlign: "center", marginBottom: 4 }}>
                   <span style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.15em", fontWeight: 600 }}>Momentum</span>
-                  <span style={{ fontSize: 8, color: "#7889a0" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)} ▼</span>
                 </div>
                 {(() => {
                   const W = 400, H = 44, mid = H / 2;
@@ -5214,12 +5916,21 @@ export default function App() {
                   const pts = h.length > 0 ? h.map(p => ({ x: (p.m / maxMin) * W, y: mid - p.v * mid })) : [];
                   const pathD = pts.length > 1 ? "M0," + mid + " " + pts.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + ` L${pts[pts.length-1].x.toFixed(1)},${mid} Z` : "";
                   return (
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 44, display: "block" }}>
-                    <rect x="0" y="0" width={W} height={H} fill="#141c2b" rx="3" />
-                    {[45,90,105,120].filter(m=>m<=maxMin).map(m => <line key={m} x1={(m/maxMin)*W} y1="0" x2={(m/maxMin)*W} y2={H} stroke="#7889a0" strokeWidth="0.5" strokeDasharray="2,2" />)}
-                    <line x1="0" y1={mid} x2={W} y2={mid} stroke="#7889a0" strokeWidth="1" />
-                    {pathD && <path d={pathD} fill="#7889a044" stroke="#7889a0" strokeWidth="1.5" />}
-                  </svg>);
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", top: 2, left: 6, fontSize: 8, color: hClr, fontWeight: 700, ...mono }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)} ▲</span>
+                    <span style={{ position: "absolute", bottom: 2, left: 6, fontSize: 8, color: aClr, fontWeight: 700, ...mono }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)} ▼</span>
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 44, display: "block" }}>
+                      <defs>
+                        <clipPath id="momClipTop"><rect x="0" y="0" width={W} height={mid} /></clipPath>
+                        <clipPath id="momClipBottom"><rect x="0" y={mid} width={W} height={mid} /></clipPath>
+                      </defs>
+                      <rect x="0" y="0" width={W} height={H} fill="#141c2b" rx="3" />
+                      {[45,90,105,120].filter(m=>m<=maxMin).map(m => <line key={m} x1={(m/maxMin)*W} y1="0" x2={(m/maxMin)*W} y2={H} stroke="#7889a0" strokeWidth="0.5" strokeDasharray="2,2" />)}
+                      <line x1="0" y1={mid} x2={W} y2={mid} stroke="#7889a0" strokeWidth="1" />
+                      {pathD && <g clipPath="url(#momClipTop)"><path d={pathD} fill={hClr + "55"} stroke={hClr} strokeWidth="1.5" /></g>}
+                      {pathD && <g clipPath="url(#momClipBottom)"><path d={pathD} fill={aClr + "55"} stroke={aClr} strokeWidth="1.5" /></g>}
+                    </svg>
+                  </div>);
                 })()}
               </div>
             </div>
@@ -5230,23 +5941,54 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-                const { starters, bench: benchSq } = displaySquad(tm?.squad || buildSquad(tm?.formation, null), tm?.name, tPlayerStats);
                 const onPitch = lmMatch.players[side] || [];
-                const off = lmMatch.subbedOff?.[side] || [];
                 const bench = lmMatch.bench?.[side] || [];
+                // A player currently on the pitch or bench is authoritative. subbedOff can carry
+                // a stale/duplicate record for a name that's since reappeared elsewhere (e.g. the
+                // same name logged twice across a card + injury event) — deduped so a starter can
+                // never be double-counted as both "still out there" and "already left."
+                const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
+                const seenOff = new Set();
+                const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
+                // Starters/bench must reflect the ACTUAL match squad (post-rotation via
+                // managerSelect), not the raw squad definition — a player rested for stamina
+                // or rotation reasons is a normal bench player this match, not still "starting."
+                // Split by WHO STARTED WHERE, not current array membership — a bench player
+                // who's since been subbed on has left the bench array entirely, so keying off
+                // membership alone would silently fold them into "starters" with no trace they
+                // came off the bench, and vice versa for a subbed-off starter.
+                const squadDef = tm?.squad || buildSquad(tm?.formation, null);
+                const defByName = new Map(squadDef.map(p => [p.name, p]));
+                const kf = n => playerKey(tm?.name, n);
+                const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
+                const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
+                const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
+                const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
+                // startedBench (stamped once, at the moment a bench player first comes on, and
+                // preserved through any later departure) is what decides the bucket — NOT
+                // current location. A player who started on the bench, came on, and was later
+                // subbed off/injured/carded is still a bench starter, not a starting-XI
+                // departure: .sub gets overwritten to 'off' by every removal site, so it can no
+                // longer tell the two apart.
+                const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
+                const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
                 // Masks the pending scorer's/assister's tally and every affected rating (scorer,
                 // assist, conceding side's dip) — otherwise any of them would spoil who's about
                 // to score before the card reveals it.
-                const pendingGoal = lmPendingGoal(lmMatch, chanceStep);
+                const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
                 const lookup = (name) => {
                   const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
                   if (!found) return found;
-                  const rating = lmAdjRating(pendingGoal, side, found);
-                  if (pendingGoal?.team === side) {
-                    if (found.name === pendingGoal.scorerName) return { ...found, goals: Math.max(0, (found.goals||0) - 1), rating };
-                    if (found.name === pendingGoal.assistName) return { ...found, assists: Math.max(0, (found.assists||0) - 1), rating };
+                  let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
+                  for (const pg of hiddenGoals) {
+                    rating = lmAdjRating(pg, side, { name: found.name, rating });
+                    if (pg.team === side) {
+                      if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
+                      if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
+                    }
                   }
-                  return rating === found.rating ? found : { ...found, rating };
+                  if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
+                  return { ...found, goals, assists, rating };
                 };
                 return (<>
                 {si === 1 && <div style={{ background: "#7889a0" }}></div>}
@@ -5276,7 +6018,7 @@ export default function App() {
                       <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const aOn = onPitch.some(x=>x.name===a.name); const bOn = onPitch.some(x=>x.name===b.name); return aOn===bOn?0:aOn?-1:1; }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = onPitch.some(x=>x.name===sq2.name); const eOvr = sq2.ovr ?? tm?.skill; return (<>
+                    {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
                       <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
@@ -5301,10 +6043,28 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
+                const sClr = side === "home" ? hClr : aClr;
                 const subsLeft = 3 - (lmMatch.subs[side]||0);
-                const onPitch = lmMatch.players[side]||[];
-                const bench = lmMatch.bench[side]||[];
+                // GK excluded on both ends — the OFF list never offered the keeper to begin
+                // with, but the ON list used to show the WHOLE bench including a backup GK,
+                // so picking one there could leave the side with two keepers and no keeper
+                // among the outfield, silently breaking the pitch/GK invariant elsewhere.
+                const onPitch = (lmMatch.players[side]||[]).filter(p => p.pos !== "GK");
+                const bench = (lmMatch.bench[side]||[]).filter(p => p.pos !== "GK");
                 const isActive = manualSub.side === side;
+                const offPlayer = isActive ? onPitch.find(p => p.name === manualSub.off) : null;
+                const staminaClr = (v) => v > 60 ? "#7889a0" : v > 30 ? "#ebcb8b" : "#bf616a";
+                // extra is only passed for on-pitch pills — bench players sit at a flat 100
+                // stamina until subbed on, so a fatigue readout there would just be noise.
+                const pill = (p, onClick, badge, badgeClr, extra) => (
+                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 4, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "#0a0e17", border: "1px solid #2a3a5088" }}>
+                    <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"#7889a0", fontWeight: 700 }}>{p.pos}</span>
+                    <span style={{ color: "#ffffff" }}>{p.name}</span>
+                    {badge != null && <span style={{ ...mono, color: badgeClr, fontWeight: 600 }}>{badge}</span>}
+                    {extra}
+                  </span>
+                );
+                const canSub = subsLeft > 0 && bench.length > 0;
                 return (<>
                   {si === 1 && <div style={{ background: "#7889a0" }} />}
                   <div>
@@ -5312,37 +6072,40 @@ export default function App() {
                       <span style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600 }}>{tm?.name?.toUpperCase()}</span>
                       <span style={{ fontSize: 8, color: subsLeft > 0 ? "#7889a0" : "#bf616a", ...mono }}>{subsLeft}/3</span>
                     </div>
-                    {subsLeft > 0 && bench.length > 0 ? (<>
-                      {/* On-pitch players - click to select for removal */}
-                      <div style={{ marginBottom: 6 }}>
-                        <div style={{ fontSize: 7, color: "#7889a0", marginBottom: 2, ...mono }}>OFF</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                          {onPitch.filter(p => p.pos !== "GK").map((p, pi) => (
-                            <span key={pi} onClick={() => setManualSub(isActive && manualSub.off === p.name ? {side:null,off:null} : {side,off:p.name})}
-                              style={{ fontSize: 8, padding: "2px 5px", borderRadius: 3, cursor: "pointer",
-                                background: isActive && manualSub.off === p.name ? "#7889a044" : "#141c2b",
-                                border: isActive && manualSub.off === p.name ? "1px solid #2a3a50" : "1px solid #2a3a50",
-                                color: POS_CLR[p.pos]||"#888" }}>{p.name}</span>
-                          ))}
-                        </div>
+                    {offPlayer && canSub ? (<>
+                      {/* Replacement step — bench, sorted best OVR first, click to confirm */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 4 }}>
+                        <span style={{ fontSize: 8, color: "#7889a0" }}>Replacing <b style={{ color: "#ffffff" }}>{offPlayer.name}</b></span>
+                        <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                       </div>
-                      {/* Bench players - click to confirm sub (only visible when off-player selected) */}
-                      {isActive && manualSub.off && (
-                        <div>
-                          <div style={{ fontSize: 7, color: "#7889a0", marginBottom: 2, ...mono }}>ON</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                            {bench.map((p, pi) => (
-                              <span key={pi} onClick={() => executeManualSub(side, manualSub.off, p.name)}
-                                style={{ fontSize: 8, padding: "2px 5px", borderRadius: 3, cursor: "pointer",
-                                  background: "#141c2b", border: "1px solid #2a3a50",
-                                  color: POS_CLR[p.pos]||"#888" }}>{p.name}</span>
-                            ))}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                        {[...bench].sort((a,b) => (b.ovr||0)-(a.ovr||0)).map(p => pill(p, () => executeManualSub(side, offPlayer.name, p.name), p.ovr!=null?p.ovr:"–", ovrColor(p.ovr)))}
+                      </div>
+                    </>) : (<>
+                      {/* On-pitch, grouped by line — click anyone to start a sub, when subs are
+                          available. Rating's already visible right above (Player Stats tab), so
+                          repeating it here was redundant — shows stamina plus how much fatigue
+                          has knocked off this player's OVR instead. Stays visible even once subs
+                          run out or the bench is empty, just with the pills no longer clickable —
+                          losing sight of who's gassed on the pitch was worse than a disabled row. */}
+                      {[["DEF"],["MID"],["FWD"]].map(([grp]) => {
+                        // Live-match squad players (mapP) only ever carry the broad pos
+                        // (GK/DEF/MID/FWD) — unlike playerIndex entries elsewhere, there's no
+                        // specific code to run through POS_GROUP, so compare pos directly.
+                        const inGrp = onPitch.filter(p => p.pos === grp);
+                        if (!inGrp.length) return null;
+                        return (<div key={grp} style={{ marginBottom: 4 }}>
+                          <div style={{ fontSize: 6, color: "#7889a066", letterSpacing: "0.1em", marginBottom: 2, ...mono }}>{grp}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            {inGrp.map(p => { const stam = p.stamina??100; const drop = Math.round((p.ovr??65) - fatigueOvr(p.ovr, stam)); return pill(p, canSub ? () => setManualSub({side, off:p.name}) : undefined, null, null, (<>
+                              <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
+                              {drop >= 1 && <span style={{ ...mono, fontSize: 7, color: "#bf616a", fontWeight: 600 }}>(▼{drop})</span>}
+                            </>)); })}
                           </div>
-                        </div>
-                      )}
-                    </>) : (
-                      <div style={{ fontSize: 8, color: "#7889a0", fontStyle: "italic" }}>{subsLeft === 0 ? "No subs remaining" : "No bench players"}</div>
-                    )}
+                        </div>);
+                      })}
+                      {!canSub && <div style={{ fontSize: 7, color: "#7889a088", fontStyle: "italic", marginTop: 2 }}>{subsLeft === 0 ? "No subs remaining" : "No bench players"}</div>}
+                    </>)}
                   </div>
                 </>);
               })}
@@ -5377,8 +6140,8 @@ export default function App() {
                     <div style={{ marginBottom: 6 }}>
                       <div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.1em", marginBottom: 3 }}>STAMINA</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "#141c2b", borderRadius: 2 }}><div style={{ width: `${Math.max(2, lmMatch.stamina[side])}%`, height: "100%", borderRadius: 2, background: lmMatch.stamina[side] > 60 ? "#7889a0" : lmMatch.stamina[side] > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
-                        <span style={{ fontSize: 8, color: "#7889a0", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(lmMatch.stamina[side])}</span>
+                        <div style={{ flex: 1, height: 4, background: "#141c2b", borderRadius: 2 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 2, background: teamStam(lmMatch, side) > 60 ? "#7889a0" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
+                        <span style={{ fontSize: 8, color: "#7889a0", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
                       </div>
                     </div>
                     {/* Strategy instructions */}
@@ -5541,7 +6304,13 @@ export default function App() {
                 const unavail = Object.values(tPlayerStats).filter(p => (p.suspended||0) > 0 || (p.injOut||0) > 0)
                   .flatMap(p => {
                     const rows = [];
-                    if ((p.suspended||0) > 0) rows.push({...p, reason: "red", out: p.suspended});
+                    // suspended doesn't record WHY each remaining game was added (a red-card
+                    // ban and a yellow-accumulation ban share the same counter so they can
+                    // share the same one-game-per-match decrement/undo path) — reds>0 is a
+                    // cheap, good-enough proxy rather than a fully attributed second counter;
+                    // the one edge case it misses is a fully-served old red plus a fresh,
+                    // independent yellow-only ban still reading as "red card".
+                    if ((p.suspended||0) > 0) rows.push({...p, reason: (p.reds||0) > 0 ? "red" : "yellows", out: p.suspended});
                     if ((p.injOut||0) > 0) rows.push({...p, reason: "inj", out: p.injOut});
                     return rows;
                   }).sort((a,b) => b.out - a.out);
@@ -5559,9 +6328,11 @@ export default function App() {
                           <span style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                           <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
                             {p.reason === "red"
-                              ? <span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1}} />
+                              ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1}} />
+                              : p.reason === "yellows"
+                              ? <span title="Suspended (accumulated yellows)" style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1}} />
                               : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="#c07070"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="#c07070"/></svg>}
-                            <span style={{ color: p.reason === "red" ? "#bf616a" : "#c07070", fontSize: 8, ...mono }}>{p.out}</span>
+                            <span style={{ color: p.reason === "red" ? "#bf616a" : p.reason === "yellows" ? "#ebcb8b" : "#c07070", fontSize: 8, ...mono }}>{p.out}</span>
                           </span>
                         </div>
                       );})}
@@ -5667,7 +6438,12 @@ export default function App() {
               </div>
               {/* Mode */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12 }}>Tournament Mode</div>
+                <div onClick={() => {
+                  const now = Date.now();
+                  const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
+                  tModeClickRef.current = { n: clicks, t: now };
+                  if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
+                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "#7889a0", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
                     <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "#e4002b" : "#141c2b", color: tConfig.mode === id ? "#ffffff" : "#7889a0" }}>{l}</button>
@@ -5814,11 +6590,6 @@ export default function App() {
                       <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Away Goals Rule</div></div>
                     </div>); })()}
-                  {(() => { const checked = tConfig.injuries !== false; return (
-                    <div onClick={() => setTConfig(c => ({ ...c, injuries: !c.injuries }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Injuries</div></div>
-                    </div>); })()}
                   {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -5835,6 +6606,22 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {/* Match Rules */}
+              <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+                  {[["injuries","Injuries"],["suspensions","Suspensions"],["staminaCarry","Stamina"]].map(([key,label]) => { const checked = tConfig[key] !== false; return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div onClick={() => setTConfig(c => ({ ...c, [key]: !checked }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
+                        <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                        <div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>{label}</div>
+                      </div>
+                      {key === "staminaCarry" && checked && <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 13 }}>🩹</span>
+                        <span style={{ ...mono, fontSize: 11, color: "#7889a0" }}>{Math.round(STAMINA_RECOVER_PCT * 100)}% of gap</span>
+                      </div>}
+                    </div>); })}
+                </div>
+              </div>
               {/* Home Advantage */}
               <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Home Advantage</div>
@@ -6072,7 +6859,7 @@ export default function App() {
 
             {/* Standings */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
-              {tGroups.map((g, gi) => { const form = computeForm(g); const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
                   <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "#7889a0", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "#7889a0", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
@@ -6098,8 +6885,7 @@ export default function App() {
               const bestCount = bestZones.reduce((s, z) => s + (z.bestCount || 0), 0);
               const bestZone = bestZones[0];
               if (pool.length === 0) return null;
-              const form = {};
-              tGroups.forEach(g => { const gf = computeForm(g); Object.assign(form, gf); });
+              const form = Object.assign({}, ...allGroupForms);
               return (
               <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: bestZone?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
@@ -6109,15 +6895,40 @@ export default function App() {
               </div>);
             })()}
 
-            {/* Fixtures - compact, scrollable per round */}
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", marginBottom: 12 }}>FIXTURES</div>
-              {(()=>{ const maxRds = Math.max(...tGroups.map(g => g.schedule.length)); const firstOpen = Array.from({length:maxRds},(_,ri)=>ri).findIndex(ri => !tGroups.every(g => (g.schedule[ri]||[]).every(m => m.result))); return Array.from({length:maxRds},(_,ri)=>ri).map(ri => { const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result)); return (<details key={ri} open={ri === firstOpen} style={{ marginBottom: 8 }}>
-                <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", cursor: "pointer", userSelect: "none", borderBottom: "1px solid #2a3a50" }}>
-                  <div style={{ fontSize: 10, color: "#7889a0", fontWeight: 600, letterSpacing: 2 }}><span className="dta">▶</span>ROUND {ri + 1} {rdDone && <span style={{ color: "#7889a0" }}>✓</span>}</div>
-                  {!rdDone && ri === firstOpen && <button onClick={e => {e.preventDefault();tScorinate(-1, ri, -1)}} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Sim Round</button>}
-                </summary>
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 0 12px", borderBottom: "1px solid #2a3a50" }}>
+            {/* Fixtures - collapsible per round, sticky current-round action bar */}
+            {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
+            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 560, overflowY: "auto", position: "relative" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#141c2b", padding: "16px 16px 10px", borderBottom: "1px solid #2a3a50", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>{groupFirstOpen >= 0 ? `ROUND ${groupFirstOpen + 1}` : "FIXTURES — ALL ROUNDS COMPLETE"}</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Sim Round</button>}
+                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Collapse All</button>
+                </div>
+              </div>
+              <div style={{ padding: "10px 16px 16px" }}>
+              {Array.from({length: groupMaxRds},(_,ri)=>ri).map(ri => {
+                const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result));
+                const key = `group_${ri}`;
+                const isOpen = expandedRounds.has(key);
+                return (<div key={ri} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
+                      {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
+                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {m.bye ? <span style={{ color: "#7889a0" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
+                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "#8fbf8f" : m.result.ftHome < m.result.ftAway ? "#7889a0" : "#ebcb8b") : "#7889a0" }}>{abbr(m.home?.name, m.home?.code)}</span>
+                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
+                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "#8fbf8f" : m.result.ftAway < m.result.ftHome ? "#7889a0" : "#ebcb8b") : "#7889a0" }}>{abbr(m.away?.name, m.away?.code)}</span>
+                          </>)}
+                        </span>))}
+                      </div>}
+                    </div>
+                    {rdDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0 }}>✓</span>}
+                  </div>
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid #2a3a50" }}>
                   {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
                     {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "#7889a0" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
@@ -6125,13 +6936,15 @@ export default function App() {
                       <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "#7889a0" : haVal === "off" ? "#bf616a" : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
                       {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 2, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
                         : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                        : ri === firstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "#7889a0" }}>–</span>}
+                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "#7889a0" }}>–</span>}
                       <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#ffffff" : m.result.ftAway < m.result.ftHome ? "#7889a0" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                     </div>); })}
                   </div>))}
-                </div>
-              </details>); }); })()}
+                  </div>}
+                </div>); })}
+              </div>
             </div>
+            ); })()}
 
             {/* Swiss: generate next round */}
             {tConfig.matchFormat === "swiss" && tSwissCurrentDone && tSwissRoundsPlayed < tConfig.swissRounds && (
@@ -6164,7 +6977,7 @@ export default function App() {
               </div>
             </div>
             {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "#7889a0", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
-              {tGroups.map((g, gi) => { const form = computeForm(g); const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
                   <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "#7889a0", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "#7889a0", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
@@ -6534,152 +7347,185 @@ export default function App() {
                 </div>
               );
             })()}
-            {!koBracketView && tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = round.matches.every(m => m.result && !m.result.partial); const rdReady = round.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
-              <div key={ri} style={{ background: "#141c2b", border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "#e4002b33" : "#2a3a50"), borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0" }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</div>
-                  {rdReady && !rdDone && (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4 }}>
-                    {round.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(ri, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
-                    {round.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(ri, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(ri, -1, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(ri, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Sim Round</button>)}
-                  {rdDone && <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>✓</span>}
+            {!koBracketView && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 640, overflowY: "auto", position: "relative" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#141c2b", padding: "16px 16px 10px", borderBottom: "1px solid #2a3a50", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>ALL CAUGHT UP</div>}
+                  {koActionable.wbRi >= 0 && (() => { const rd = tKO.rounds[koActionable.wbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>WB R{koActionable.wbRi + 1}</span>
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
+                    <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
+                  {koActionable.lbRi >= 0 && (() => { const rd = tKO.losers[koActionable.lbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>LB R{koActionable.lbRi + 1}</span>
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
+                    <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
+                  {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ 3rd Place</button>}
+                  {koActionable.gfReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "gf" }, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Grand Final</button>}
+                  {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Reset Match</button>}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: round.matches.length > 2 ? `repeat(${Math.min(round.matches.length, 2)}, 1fr)` : "1fr", gap: 8 }}>
-                  {round.matches.map((m, mi) => { const koHAKey = `ko_${ri}_${mi}`; const koHAVal = tHomeAdvOverrides[koHAKey] || null; return (
-                    <div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid #e4002b33" : "1px solid #2a3a50" }}>
-                      {round.matches.length > 2 ? (
-                        <div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400 }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</div>{m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}</div>
-                          <div style={{ textAlign: "center", padding: "4px 0" }}>
-                            {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp && !tKoEdit.bracket ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                              : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
-                              : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(ri, mi, false)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                              : m.home && m.away ? <span style={{ display: "flex", gap: 4, justifyContent: "center" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                                : <span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>–</span>}
-                          </div>
-                          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: m.result && koWinner(m) === m.away ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, textAlign: "right" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</div>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</span>
-                          {m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}
-                          {tKoEdit && tKoEdit.ri===ri && tKoEdit.mi===mi && !tKoEdit.tp && !tKoEdit.bracket ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                            : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(ri, mi, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
-                            : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), tp: false, ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(ri, mi, false)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                            : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                              : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                          <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
-                        </div>
-                      )}
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Collapse All</button>
+                </div>
+              </div>
+              <div style={{ padding: "10px 16px 16px" }}>
+              {tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = wbRoundDone(round); const key = `wb_${ri}`; const isOpen = expandedRounds.has(key); return (
+                <div key={ri} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "#e4002b33" : "#2a3a50"), borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0", flexShrink: 0 }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</span>
+                      {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
+                        {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {!m.home || !m.away ? <span style={{ color: "#7889a0" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "#7889a0" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "#7889a0" }}>{abbr(m.away.name, m.away.code)}</span>
+                          </>)}
+                        </span>))}
+                      </div>}
                     </div>
-                  ); })}
-                </div>
-              </div>
-            ); })}
-            {!koBracketView && !tKO.losers && tKO.thirdPlace && (()=>{ const tpHAVal = tHomeAdvOverrides["tp"] || null; return (
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
-                <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: tKO.thirdPlace.result && koWinner(tKO.thirdPlace) === tKO.thirdPlace.home ? "#ffffff" : "#7889a0", flex: 1 }}>{tpHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{tKO.thirdPlace.home?.name || "TBD"}</span>
-                    {tKO.thirdPlace.home && tKO.thirdPlace.away && <button onClick={() => tToggleHA("tp")} style={{ background: "none", border: "none", color: tpHAVal ? (tpHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: tpHAVal ? 1 : 0.4 }}>H</button>}
-                    {tKoEdit && tKoEdit.tp ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                      : tKO.thirdPlace.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(tKO.thirdPlace)}</span><button onClick={() => tScorinateKO(-2, -1, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,tp:true,leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
-                      : tKO.thirdPlace.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(tKO.thirdPlace)}</span><button onClick={() => setTKoEdit({ ri: -2, mi: -1, h: String(tKO.thirdPlace.result.twoLeg ? tKO.thirdPlace.result.leg1.home : tKO.thirdPlace.result.ftHome), a: String(tKO.thirdPlace.result.twoLeg ? tKO.thirdPlace.result.leg1.away : tKO.thirdPlace.result.ftAway), tp: true, ...(tKO.thirdPlace.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(tKO.thirdPlace.result.leg2.away), l2a:String(tKO.thirdPlace.result.leg2.home)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(-2, -1, true)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                      : tKO.thirdPlace.home && tKO.thirdPlace.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(-2, -1)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: -2, mi: -1, h: "", a: "", tp: true, ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,tp:true,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                        : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                    <span style={{ fontSize: 11, color: tKO.thirdPlace.result && koWinner(tKO.thirdPlace) === tKO.thirdPlace.away ? "#ffffff" : "#7889a0", flex: 1, textAlign: "right" }}>{tKO.thirdPlace.away?.name || "TBD"}{tpHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                    {rdDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: round.matches.length > 2 ? `repeat(${Math.min(round.matches.length, 2)}, 1fr)` : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid #2a3a50" }}>
+                    {round.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid #e4002b33" : "1px solid #2a3a50" }}>
+                      {renderKoMatchRow(m, { ri, mi }, { cardLayout: round.matches.length > 2 })}
+                    </div>))}
+                  </div>}
                 </div>
-              </div>
-            ); })()}
-            {/* FINAL — rendered after 3rd place (single elim only) */}
-            {!koBracketView && !tKO.losers && (()=>{ const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
-              <div style={{ background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>{round.name?.toUpperCase()}</div>
+              ); })}
+              {!tKO.losers && tKO.thirdPlace && (
+                <div style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
+                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
                 </div>
-                {round.matches.map((m, mi) => { const koHAKey = `ko_${ri}_${mi}`; const koHAVal = tHomeAdvOverrides[koHAKey] || null; return (
-                  <div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33", marginBottom: 4 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || "TBD"}</span>
-                      {m.home && m.away && <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? (koHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: koHAVal ? 1 : 0.4 }}>H</button>}
-                      {m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span></span>
-                        : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri, mi, h: "", a: "", tp: false })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri,mi,leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                        : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                      <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || "TBD"}{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+              )}
+              {!tKO.losers && (() => { const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
+                <div style={{ marginBottom: 6, border: "1px solid #e4002b33", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", marginBottom: 10 }}>{round.name?.toUpperCase()}</div>
+                  {round.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
+                </div>
+              ); })()}
+              {tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
+                <div key={"lb"+lr} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0", flexShrink: 0 }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></span>
+                      {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
+                        {lbRound.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {!m.home || !m.away ? <span style={{ color: "#7889a0" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "#7889a0" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "#7889a0" }}>{abbr(m.away.name, m.away.code)}</span>
+                          </>)}
+                        </span>))}
+                      </div>}
                     </div>
+                    {lbDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
-                ); })}
-              </div>
-            ); })()}
-            {/* ═══ LOWER BRACKET (double elim) ═══ */}
-            {!koBracketView && tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRound.matches.every(m => (m.result && !m.result.partial) || (!m.home && !m.away)); const lbReady = lbRound.matches.some(m => m.home && m.away && (!m.result || m.result.partial)); return (
-              <div key={"lb"+lr} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0" }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></div>
-                  {lbReady && !lbDone && (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4 }}>
-                    {lbRound.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(lr, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
-                    {lbRound.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(lr, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(lr, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(lr, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ Sim Round</button>)}
-                  {lbDone && <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>✓</span>}
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid #2a3a50" }}>
+                    {lbRound.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                      {renderKoMatchRow(m, { ri: lr, mi, bracket: "lb" }, { cardLayout: lbRound.matches.length > 2, showByeInAction: true, initialLeg: 0 })}
+                    </div>))}
+                  </div>}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8 }}>
-                  {lbRound.matches.map((m, mi) => { const lbHAKey = `lb_${lr}_${mi}`; const lbHAVal = tHomeAdvOverrides[lbHAKey] || null; return (
-                    <div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.home ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.home ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lbHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}</span>
-                        {m.home && m.away && <button onClick={() => tToggleHA(lbHAKey)} style={{ background: "none", border: "none", color: lbHAVal ? (lbHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: lbHAVal ? 1 : 0.4 }}>H</button>}
-                        {tKoEdit && tKoEdit.bracket === "lb" && tKoEdit.ri===lr && tKoEdit.mi===mi ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}{tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                          : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => tScorinateKO(lr, mi, 2, "lb")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button><button onClick={() => tPlayLive({type:"ko",ri:lr,mi,bracket:"lb",leg:2})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button></span>
-                          : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span><button onClick={() => setTKoEdit({ ri: lr, mi, h: String(m.result.twoLeg ? m.result.leg1.home : m.result.ftHome), a: String(m.result.twoLeg ? m.result.leg1.away : m.result.ftAway), bracket: "lb", ...(m.result.twoLeg ? {twoLeg:true, step:"l1", l2h:String(m.result.leg2?.away??0), l2a:String(m.result.leg2?.home??0)} : {}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(lr, mi, "lb")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                          : m.home && m.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(lr, mi, 0, "lb")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: lr, mi, h: "", a: "", bracket: "lb", ...(tConfig.koLegs===2?{twoLeg:true,step:"l1"}:{}) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:lr,mi,bracket:"lb",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                            : m.bye ? <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>BYE</span> : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                        <span style={{ fontSize: 11, color: m.result && koWinner(m) === m.away ? "#ffffff" : "#7889a0", fontWeight: m.result && koWinner(m) === m.away ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.away?.name || (m.bye ? "BYE" : "TBD")}{lbHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
-                      </div>
-                    </div>
-                  ); })}
+              ); })}
+              {tKO.losers && tKO.grandFinal && (
+                <div style={{ marginBottom: 6, border: "1px solid #e4002b33", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#e4002b", marginBottom: 10 }}>GRAND FINAL</div>
+                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33" }}>{renderKoMatchRow(tKO.grandFinal, { ri: 0, mi: 0, bracket: "gf" }, { homeTag: "UB", awayTag: "LB", initialLeg: 0 })}</div>
                 </div>
-              </div>
-            ); })}
-            {/* ═══ GRAND FINAL (double elim) ═══ */}
-            {!koBracketView && tKO.losers && tKO.grandFinal && (() => { const gf = tKO.grandFinal; const gfHAKey = "gf"; const gfHAVal = tHomeAdvOverrides[gfHAKey] || null; return (
-              <div style={{ background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#e4002b", marginBottom: 10 }}>GRAND FINAL</div>
-                <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.home ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.home ? 600 : 400, flex: 1 }}>{gfHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{gf.home?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>UB</span></span>
-                    {gf.home && gf.away && <button onClick={() => tToggleHA(gfHAKey)} style={{ background: "none", border: "none", color: gfHAVal ? (gfHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: gfHAVal ? 1 : 0.4 }}>H</button>}
-                    {tKoEdit && tKoEdit.bracket === "gf" ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                      : gf.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(gf)}</span><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: String(gf.result.ftHome), a: String(gf.result.ftAway), bracket: "gf" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(0, 0, "gf")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                      : gf.home && gf.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(0, 0, 0, "gf")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: "", a: "", bracket: "gf" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,bracket:"gf",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                    <span style={{ fontSize: 11, color: gf.result && koWinner(gf) === gf.away ? "#ffffff" : "#7889a0", fontWeight: gf.result && koWinner(gf) === gf.away ? 600 : 400, flex: 1, textAlign: "right" }}>{gf.away?.name || "TBD"}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>LB</span>{gfHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
-                  </div>
+              )}
+              {tKO.losers && tKO.reset && (tKO.reset.home || tKO.reset.away) && (
+                <div style={{ marginBottom: 6, border: "1px solid #ebcb8b33", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
+                  <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
+                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
                 </div>
+              )}
               </div>
-            ); })()}
-            {/* ═══ RESET (double elim) ═══ */}
-            {!koBracketView && tKO.losers && tKO.reset && (() => { const rs = tKO.reset; const rsHAKey = "reset"; const rsHAVal = tHomeAdvOverrides[rsHAKey] || null; if (!rs.home && !rs.away) return null; return (
-              <div style={{ background: "#141c2b", border: "1px solid #ebcb8b33", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
-                <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
-                <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: rs.result && koWinner(rs) === rs.home ? "#ffffff" : "#7889a0", fontWeight: rs.result && koWinner(rs) === rs.home ? 600 : 400, flex: 1 }}>{rsHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{rs.home?.name || "TBD"}</span>
-                    {rs.home && rs.away && <button onClick={() => tToggleHA(rsHAKey)} style={{ background: "none", border: "none", color: rsHAVal ? (rsHAVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: rsHAVal ? 1 : 0.4 }}>H</button>}
-                    {tKoEdit && tKoEdit.bracket === "reset" ? <span style={{ display: "flex", alignItems: "center", gap: 2, margin: "0 4px" }}>{tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}{tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}<input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} /><button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3 }}>OK</button><button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button></span>
-                      : rs.result ? <span style={{ display: "flex", alignItems: "center", gap: 3, margin: "0 4px" }}><span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(rs)}</span><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: String(rs.result.ftHome), a: String(rs.result.ftAway), bracket: "reset" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteKoResult(0, 0, "reset")} title="Delete result" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                      : rs.home && rs.away ? <span style={{ display: "flex", gap: 3, margin: "0 4px" }}><button onClick={() => tScorinateKO(0, 0, 0, "reset")} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTKoEdit({ ri: 0, mi: 0, h: "", a: "", bracket: "reset" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"ko",ri:0,mi:0,bracket:"reset",leg:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span>
-                      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: "0 6px" }}>–</span>}
-                    <span style={{ fontSize: 11, color: rs.result && koWinner(rs) === rs.away ? "#ffffff" : "#7889a0", fontWeight: rs.result && koWinner(rs) === rs.away ? 600 : 400, flex: 1, textAlign: "right" }}>{rs.away?.name || "TBD"}{rsHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
-                  </div>
-                </div>
-              </div>
-            ); })()}
+            </div>)}
           </div>)}
+        </div>)}
+
+        {/* ═══ UTILITIES TAB ═══ */}
+        {tab === "utilities" && (<div>
+          <label style={{ ...lbl, margin: "0 0 8px" }}>Best Possible National Team</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+            <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
+              <option value="">Select nation…</option>
+              {natOptions.map(([code, info]) => <option key={code} value={code}>{code} ({info.count})</option>)}
+            </select>
+          </div>
+          {!bestXiNat && <div style={{ fontSize: 11, color: "#7889a066", padding: "20px 0", textAlign: "center" }}>Pick a nation to compute its strongest XI.</div>}
+          {bestXiNat && bestXi && (() => {
+            // Bench slots are matched by broad group (DEF/MID/FWD), but display the
+            // assigned player's own exact position(s) — the broad group only drives the search.
+            const rows = bestXi.template.map((t, i) => { const player = bestXi.players[i]; return { spos: t.bench && player ? player.pos : bestXi.reqs[i], bench: t.bench, player }; });
+            const starters = rows.filter(x => !x.bench);
+            const bench = rows.filter(x => x.bench);
+            const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr || 0), 0) / starters.length;
+            const XI_COLW = { pos: 60, player: 220, ovr: 50, club: 200 };
+            const thS = { padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0", textAlign: "left", whiteSpace: "nowrap" };
+            const tdS = { padding: "5px 12px" };
+            const ColGroup = () => <colgroup><col style={{ width: XI_COLW.pos }} /><col style={{ width: XI_COLW.player }} /><col style={{ width: XI_COLW.ovr }} /><col style={{ width: XI_COLW.club }} /></colgroup>;
+            const Row = (x, i) => (
+              <tr key={i} style={{ background: i % 2 ? "transparent" : "#0a0e1708" }}>
+                <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
+                <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "#7889a066" }}>—</span>}</td>
+                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(x.player?.ovr) }}>{x.player?.ovr || "–"}</td>
+                <td style={{ ...tdS, paddingLeft: 8, color: "#7889a0", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
+              </tr>
+            );
+            return (<>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <label style={{ ...lbl, margin: 0 }}>Starting XI <span style={{ color: "#7889a0", fontWeight: 400 }}>({bestXi.formation})</span></label>
+                <span style={{ fontSize: 10, color: "#7889a0" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
+              </div>
+              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <ColGroup />
+                  <thead><tr><th style={thS}>Pos</th><th style={thS}>Player</th><th style={{ ...thS, textAlign: "center" }}>OVR</th><th style={{ ...thS, paddingLeft: 8 }}>Club</th></tr></thead>
+                  <tbody>{starters.map((x, i) => Row(x, i))}</tbody>
+                </table>
+              </div>
+              <label style={{ ...lbl, margin: "0 0 8px" }}>Bench</label>
+              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <ColGroup />
+                  <tbody>{bench.map((x, i) => Row(x, i))}</tbody>
+                </table>
+              </div>
+              {(() => {
+                // Preset rows always give every player an explicit "(NN)" and store the
+                // surname/mononym in caps — unlike exportTeamsText's suppress-if-default
+                // convention, this always shows the rating and re-caps the surname.
+                const exportText = () => bestXi.template.map((t, i) => {
+                  const p = bestXi.players[i];
+                  if (!p) return "#" + (i + 1);
+                  const { first, last } = splitSurname(p.fullName || p.name, p.name);
+                  return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
+                }).join("\t");
+                return (<>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBestXiExport ? "#bf616a" : "#7889a0" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
+                  </div>
+                  {showBestXiExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginTop: 8 }}>
+                    <p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste over a team's 16 player columns.</p>
+                    <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
+                    </div>
+                  </div>)}
+                </>);
+              })()}
+            </>);
+          })()}
         </div>)}
 
         {/* ═══ DOCS TAB ═══ */}
@@ -6749,7 +7595,7 @@ export default function App() {
             </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-skill"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Skill</H1></summary>
-            <P>A number from 25 to 100 representing overall team quality. Skill feeds into every probability calculation in the engine: pressing effectiveness, advance rate, shot conversion, save probability, counter-attack success, and penalty conversion. Most formulas use the ratio between the two teams' effective skill, so a 90 vs 70 matchup produces the same relative advantage as 60 vs 47. Effective skill is the base number modified at runtime by red cards (each reduces it by 15%, compounding), momentum (up to +8% after scoring), stamina (up to -25% when exhausted), home advantage (+3% when enabled), and extra-time fatigue (-0.4% per minute past 90').</P>
+            <P>A number from 25 to 100 representing overall team quality. Skill feeds into every probability calculation in the engine: pressing effectiveness, advance rate, shot conversion, save probability, counter-attack success, and penalty conversion. Most formulas use the ratio between the two teams' effective skill, so a 90 vs 70 matchup produces the same relative advantage as 60 vs 47. Effective skill is the base number modified at runtime by red cards (each reduces it by 15%, compounding), momentum (up to +12%, from goals, cards, penalty misses, and big chances), stamina (up to -25% when exhausted), home advantage (+3% when enabled), and extra-time fatigue (-0.4% per minute past 90').</P>
 
             </details>
 
@@ -6758,12 +7604,12 @@ export default function App() {
             <H2>Offensive</H2>
 
             <H3>Gegenpress</H3>
-            <P>High-intensity press designed to win the ball in dangerous areas and immediately attack. The pressing multiplier (1.5x) is the highest in the game, and the advance bonus pushes the team into the opponent's half quickly. The trade-off is structural: the team commits players forward to press, which hollows out the midfield and the backline. Possession retention is poor because the system prioritizes pressure over patience, and when the press is beaten, the defense is exposed with no covering structure. Counter-attacking ability is weak because the team is already high up the pitch with no one sitting deep to transition. Goal conversion per shot drops slightly, but the volume of chances compensates across a full match. Stamina drains faster than any other style because sustained high pressing is physically demanding.</P>
-            <Stat text="Press 1.5x · Advance +0.04 · Hold -0.08 · Long ball +0 · Box shot +0.03 · Goal prob -0.01 · Counter 0.6x · Counter shot +0 · Defense -0.06 · Long-range +0 · Corners 1.0x" />
+            <P>High-intensity press designed to win the ball in dangerous areas and immediately attack. The pressing multiplier (1.3x) is the highest in the game, and it's the main reason this style comes with a real stamina cost — winning the ball back more often than anyone else means playing more of the match as the team in possession, driving forward, and every one of those extra possessions costs individual stamina even before a shot is ever taken. The advance bonus is modest (+0.04) and the transition conversion (0.50x counter, +0.03 counter shot) trails a dedicated counter-attacking side by design — the press already forces more turnovers than any other style, so it doesn't also need every one of them converting into a shot to be dangerous. The trade-off is defensive exposure: committing players forward leaves the backline thin, and when the press is beaten the team is vulnerable. Possession retention is lower than neutral styles but not catastrophic, reflecting a system that prioritizes regaining the ball through pressing rather than keeping it through passing.</P>
+            <Stat text="Press 1.3x · Advance +0.04 · Hold -0.02 · Long ball +0 · Box shot +0.04 · Goal prob +0 · Counter 0.50x · Counter shot +0.03 · Defense -0.01 · Long-range +0 · Corners 1.0x" />
 
             <H3>Wing Play</H3>
-            <P>Width-oriented system that attacks through the flanks. The long ball bonus is the highest in the game, reflecting direct balls into wide channels, and the corner multiplier (1.5x) is the game's highest, representing the volume of crosses and cutbacks that produce set pieces. Long-range shooting is encouraged because wide play creates angles at the edge of the box. The cost is modest but real: defensive solidity takes a minor hit because full-backs push forward, and hold drops because the team progresses through width rather than short combinations. A good choice for teams that want to generate set-piece volume and shoot from range, weaker for teams that need to control the middle.</P>
-            <Stat text="Press 1.0x · Advance +0.02 · Hold -0.03 · Long ball +0.04 · Box shot +0.02 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense -0.02 · Long-range +0.04 · Corners 1.5x" />
+            <P>Width-oriented system that attacks through the flanks. The long ball bonus is the highest in the game, reflecting direct balls into wide channels, and the corner multiplier (1.4x) is the game's highest, representing the volume of crosses and cutbacks that produce set pieces. Long-range shooting is encouraged because wide play creates angles at the edge of the box. The advance bonus (+0.03) pushes the team forward through the wings. The cost is modest but real: defensive solidity takes a minor hit because full-backs push forward, and hold drops because the team progresses through width rather than short combinations. A good choice for teams that want to generate set-piece volume and shoot from range, weaker for teams that need to control the middle.</P>
+            <Stat text="Press 1.0x · Advance +0.03 · Hold -0.01 · Long ball +0.04 · Box shot +0.02 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense +0 · Long-range +0.04 · Corners 1.4x" />
 
             <H2>Neutral</H2>
 
@@ -6772,18 +7618,18 @@ export default function App() {
             <Stat text="Press 1.0x · Advance +0 · Hold +0 · Long ball +0 · Box shot +0 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense +0 · Long-range +0 · Corners 1.0x" />
 
             <H3>Tiki-Taka</H3>
-            <P>Possession-dominant system that holds the ball and waits for the right moment. The hold modifier (+0.10) is the highest in the game, meaning extended spells of midfield control and high possession percentages. When shots do come, they convert well because the system creates high-quality chances through patient buildup. The cost is volume: advance rate is negative, box shot probability drops, long-range is suppressed, and counter-attacking is weak because the team recycles possession rather than transitioning quickly. Corner generation is low because the style avoids wasteful crosses. Tiki-Taka teams dominate the ball but can struggle to break packed defenses.</P>
-            <Stat text="Press 1.1x · Advance -0.04 · Hold +0.10 · Long ball -0.04 · Box shot -0.03 · Goal prob +0.02 · Counter 0.7x · Counter shot +0 · Defense +0 · Long-range -0.04 · Corners 0.8x" />
+            <P>Possession-dominant system that holds the ball and waits for the right moment. The hold modifier (+0.10) is the highest in the game, meaning extended spells of midfield control and high possession percentages. When shots do come, they convert well because the system creates high-quality chances through patient buildup. Controlling the ball is itself a defensive act — opponents cannot score without it — reflected in a modest defensive bonus (+0.02). The cost is volume: advance rate is negative, box shot probability drops, long-range is suppressed, and counter-attacking is weak because the team recycles possession rather than transitioning quickly. Corner generation is slightly low because the style avoids wasteful crosses. Tiki-Taka teams dominate the ball but can struggle to break packed defenses.</P>
+            <Stat text="Press 1.1x · Advance -0.01 · Hold +0.10 · Long ball -0.02 · Box shot -0.01 · Goal prob +0.02 · Counter 0.80x · Counter shot +0 · Defense +0.02 · Long-range -0.02 · Corners 0.95x" />
 
             <H2>Defensive</H2>
 
             <H3>Counter</H3>
             <P>Built to absorb pressure and punish opponents on the break. The counter multiplier (2.0x) and counter shot bonus (+0.10) are both the highest in the game, meaning the team is lethal in transition. Defensive solidity is strong, and goal conversion is elevated because the chances that do come tend to be high-quality breakaways. The cost is territorial: the team concedes possession, rarely presses, advances slowly, and generates few chances from open play. The box shot penalty means the team relies almost entirely on counters and set pieces for goals. Tempo caps at Offensive to prevent the system from abandoning its defensive shape.</P>
-            <Stat text="Press 0.3x · Advance -0.06 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0.02 · Counter 2.0x · Counter shot +0.10 · Defense +0.08 · Long-range +0 · Corners 1.0x" />
+            <Stat text="Press 0.40x · Advance -0.04 · Hold -0.01 · Long ball +0.02 · Box shot -0.02 · Goal prob +0.02 · Counter 2.0x · Counter shot +0.10 · Defense +0.08 · Long-range +0 · Corners 1.0x" />
 
             <H3>Park the Bus</H3>
             <P>Maximum defensive solidity at the expense of everything else. The defense modifier (+0.10) is the highest in the game, reducing the opponent's shooting opportunities substantially. Counter ability is elevated, providing an outlet on the break. The cost is across the board: pressing is nearly nonexistent, advance rate is deeply negative, hold drops, box shot probability craters, and corners are rare. The tempo system enforces a minimum of Defensive, meaning a Park the Bus team will never play balanced or higher regardless of scoreline. Effective when protecting a lead or when a massive skill gap needs to be neutralized, but the team will struggle to score if it falls behind.</P>
-            <Stat text="Press 0.1x · Advance -0.10 · Hold -0.05 · Long ball +0.02 · Box shot -0.06 · Goal prob +0 · Counter 1.3x · Counter shot +0.05 · Defense +0.10 · Long-range -0.04 · Corners 0.7x · Min tempo: Defensive" />
+            <Stat text="Press 0.20x · Advance -0.08 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0 · Counter 1.3x · Counter shot +0.05 · Defense +0.10 · Long-range -0.02 · Corners 0.80x · Min tempo: Defensive" />
 
             </details>
 
@@ -6875,7 +7721,7 @@ export default function App() {
             <Stat text="Play For: corners 1.2x" />
 
             <H3 id="doc-tac-timewasting">Time Wasting</H3>
-            <P>Only active when leading. The team slows the game down through delayed restarts and ball retention in non-threatening areas. Dead minutes consume game time without progressing play, and the additional stoppage time added is less than the minutes consumed. Reduces stamina drain because the team is not exerting itself. Constantly time-wasting risks yellow cards (2.5% per dead minute). Useful for closing out matches.</P>
+            <P>Only active when leading. The team slows the game down through delayed restarts and ball retention in non-threatening areas, adding stoppage time (though less than the minutes it eats) and reducing stamina drain since the team isn't exerting itself. It doesn't freeze play, though — the same minute still falls through to normal pressing, shooting, and buildup play afterward, so a chance or a concession is still possible; time-wasting just costs the dead-minute chance on top, it doesn't remove the rest of the minute. Constantly time-wasting risks yellow cards (2.5% per dead minute). Useful for closing out matches, not a guaranteed way to kill the clock.</P>
             <Stat text="Sometimes: 25% dead minute chance, +15s stoppage · Constantly: 45% dead minute chance, +25s stoppage, 2.5% card risk" />
 
             <H2>Transition</H2>
@@ -6964,14 +7810,18 @@ export default function App() {
             <P>Offensive tempo adds 5% to advance probability; Ultra Offensive adds 10%. Defensive and Ultra Defensive reduce opponent shot probability in the box by 8% and 18% respectively. Changing tempo manually disables automatic adjustment for the rest of the match.</P>
 
             <H2 id="doc-momentum">Momentum</H2>
-            <P>After a goal, the scoring team receives a four-minute momentum boost. Each remaining minute increases effective skill by 2% (8% immediately, decaying to 0% over four minutes).</P>
+            <P>Momentum is a decaying counter (0-6 per side) that adds 2% effective skill per point — up to +12% at the cap. Every point fades by 1 each minute regardless of what triggered it, so any single swing is temporary, and a team already riding momentum that scores again stacks on top rather than resetting, up to the cap.</P>
+            <P>Triggers: a goal (+4, +3 for a corner own goal), a red or second yellow card (+3 to the opponent), a missed or saved penalty (+3 to the defending side), a big chance — a shot built up over 3+ hops, a header from a corner, or a direct free kick — saved or put wide (+2 to the defending side), and a shot cannoning off the woodwork (+1 to the attacking side, +1 for a header off the frame from a corner). Routine, low-buildup efforts that are comfortably saved or missed don't trigger anything.</P>
+            <P>The momentum graph blends this counter with the live ball-position/possession signal: the graph's own territorial reading is smoothed minute to minute, but the momentum counter is added on top unsmoothed, so a goal or red card shows up as an immediate jump rather than fading in over a few minutes.</P>
 
             <H2 id="doc-stamina">Stamina and fatigue</H2>
-            <P>Teams start at 100 stamina and drain each minute. Base drain is 0.75/min, modified by playstyle intensity (high-press styles drain faster), tactical tempo (Ultra Offensive adds +0.20/min, Ultra Defensive saves -0.15/min), and individual tactic choices. Minimum drain is 0.1/min regardless of settings.</P>
-            <P>Low stamina degrades effective skill: at 50 stamina, skill drops roughly 9%; at 20, roughly 18%. Half-time restores 15 stamina. ET half-time restores 5.</P>
+            <P>There's no separate team stamina pool — every player carries their own, starting at 100, and the team-wide figure shown elsewhere is just the average of whoever's currently on the pitch. Base ambient drain is 0.75/min, and it's the same for every playstyle — Gegenpress does not carry its own ambient penalty. Only tactical tempo and strategy sliders move it from there, adding up to 1.6x the baseline combined and never discounting below it: a team playing it safe (low press, defensive tactic, passive sliders) still drains at the full baseline rate, since the players are out there running for 45 minutes regardless of how much they press. A standard player who never touches the ball is still down to around 75 by half time. On top of that shared ambient cost, actually taking part in a chance costs more: every player touched by its build-up loses a chunk for the run, and whoever takes the shot loses more again for the sprint and the strike, win or lose — and that's the only thing that separates a high-press team's players from anyone else's now. A team that wins the ball back more plays more of the match in dangerous positions and naturally racks up more of this involvement cost on its own, with no explicit multiplier needed; stacking an extra ambient penalty on top of that on earlier tuning passes kept overshooting badly (real matches saw a Gegenpress side into the 40s while a Balanced side sat near 70), so the ambient side of the formula no longer tries to differentiate by press at all. Once that ambient premium was removed, the involvement cost itself turned out to still be tuned for a world where ambient drain was a much smaller trickle and involvement needed to carry the whole differentiation — with ambient now providing a real baseline on its own, the per-event build-up and shot costs were trimmed down to match, so a heavily-involved player's total burden stays proportionate instead of stacking two generations of tuning on top of each other.</P>
+            <P>Half-time restores 20 stamina per player, and both the start of extra time and ET half-time restore 10 each. A substitute comes on at 100 by default, or at their carried-over stamina from a previous match if Stamina Carry-Over is enabled for the tournament — either way, that's what lifts the team average when tired legs go off. Between-match recovery under Stamina Carry-Over isn't a flat number — it restores three-quarters of the gap back to full fitness, so a player who finished completely gassed recovers more in absolute terms than one who barely broke a sweat, rather than both getting the same top-up regardless of how the match went. That fraction is tuned to keep a typical squad mostly fresh across a long season — only the most heavily-involved players should be meaningfully tired on a regular basis, not the whole team.</P>
+            <P>Low stamina degrades performance two ways. Averaged across the pitch, it feeds the team's effective skill directly: at 50 average stamina, skill drops roughly 9%; at 20, roughly 18%. Individually, below 75 stamina a player's own effective rating starts falling below their nominal OVR, worth up to 8 points at 0 stamina — a real but modest dent, felt everywhere an individual player's OVR matters (shot conversion, goalkeeper saves, defensive contests, penalties), not enough on its own to turn a genuine talent into a liability.</P>
+            <P>A tired player is also weighted more heavily both as an injury risk and as a candidate for automatic substitution — that same current, fatigue-adjusted rating (not just nominal OVR) is what the automatic substitution logic weighs when deciding who to bring off. It's visible directly in the substitution panel so a manual sub can be made on the same information.</P>
 
             <H2 id="doc-subs">Substitutions</H2>
-            <P>Three per team per match. Trailing teams sub earlier (windows at minutes 50-55, 60-65, 70-75) and leading/drawing teams sub later (58-62, 68-72, 78-82). Each sub restores 4 stamina. If the team has a booked player, the sub preferentially removes them, clearing the yellow card risk.</P>
+            <P>Three per team per match, made automatically unless Auto Subs is switched off in match setup. Trailing teams sub earlier (windows at minutes 50-55, 60-65, 70-75) and leading/drawing teams sub later (58-62, 68-72, 78-82). The player coming off is weighted toward whoever's underperforming their match rating, below their team-relative current (fatigue-adjusted) OVR, gassed, or booked; the replacement is the bench's best-OVR player in the same position group. If the team has a booked player, the sub preferentially removes them, clearing the yellow card risk.</P>
 
             <H2 id="doc-injuries">Injuries</H2>
             <P>Approximately 0.14 per game. The base rate scales with fatigue (tired teams get injured more). If subs remain, the injured player is replaced. If no subs remain, the team plays a man down.</P>
