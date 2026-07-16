@@ -5,6 +5,7 @@ import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import kplTSV from "./presets/kar-prem.tsv?raw";
 import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
+import serie2TSV from "./presets/2eme-serie.tsv?raw";
 import aleTSV from "./presets/ale-oberliga.tsv?raw";
 import arvTSV from "./presets/champ-arv.tsv?raw";
 import vicTSV from "./presets/div-prima-vic.tsv?raw";
@@ -2639,17 +2640,18 @@ const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
+const PRESET_2EME_SERIE = parsePresetTSV(serie2TSV, null, 0, false, false);
 const PRESET_ALE = parsePresetTSV(aleTSV, null, 0, false, false);
 const PRESET_ARV = parsePresetTSV(arvTSV, null, 0, false, false);
 const PRESET_VIC = parsePresetTSV(vicTSV, null, 0, false, false);
 const PRESET_ELV = parsePresetTSV(elvTSV, null, 0, false, false);
 const PRESET_RUD = parsePresetTSV(rudTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
-const LEAGUE_NAT = {"Nichirin League One":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Elvesterian Premier League", "Championnat Arvernois", "Alemannischer Oberliga", "Prima Divisione Viciliana", "Karjanian Premier League", "Rudanian First League", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī",
+  "Nichirin League One", "Elvesterian Premier League", "Championnat Arvernois", "Alemannischer Oberliga", "Prima Divisione Viciliana", "Karjanian Premier League", "Rudanian First League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī",
   null,
   "Custom",
 ];
@@ -2663,6 +2665,7 @@ const PRESET_CATALOG = [
   ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
   ...PRESET_RUD.map(t => ({...t, league: "Rudanian First League"})),
   ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
+  ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
