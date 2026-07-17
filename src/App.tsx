@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
+import wc1933HeaderImg from "./1933-wc-banner.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
@@ -5365,7 +5366,7 @@ export default function App() {
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: 20, paddingBottom: 12 }}>
           <div style={{ marginBottom: 12, textAlign: "center" }}>
-            <img src={wcTheme ? "/1933-wc-banner.png" : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
+            <img src={wcTheme ? wc1933HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
