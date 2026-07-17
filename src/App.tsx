@@ -446,7 +446,7 @@ const TAC_MSG = {ultra:"throwing everything forward!",atk:"pushing more players 
 const STYLES = ["gegenpress","wingplay","balanced","tikitaka","counterattack","parkthebus"];
 const STYLE_GRP = [["Offensive",["gegenpress","wingplay"]],["Neutral",["balanced","tikitaka"]],["Defensive",["counterattack","parkthebus"]]];
 const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpress",tikitaka:"Tiki-Taka",counterattack:"Counter",wingplay:"Wing Play",parkthebus:"Park Bus"};
-const STYLE_CLR = {balanced:"#7889a0",gegenpress:"#ebcb8b",tikitaka:"#d4a0c0",counterattack:"#7dc9c9",wingplay:"#a3be8c",parkthebus:"#8b6e4e"};
+const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"#ebcb8b",tikitaka:"#d4a0c0",counterattack:"#7dc9c9",wingplay:"#a3be8c",parkthebus:"#8b6e4e"};
 // ponytail: replay counter store — closure keeps counts out of React DevTools; localStorage is hash-signed
 const _rc = (() => {
   const d = {}, sl = "xK9mQ2pL7vT4", lk = "aFe_rcs";
@@ -486,7 +486,7 @@ const TAC_DRAIN={park:-0.15,def:-0.08,bal:0,atk:0.10,ultra:0.18};
 function clampTac(tac,style){const m=STYLE_MOD[style]||STYLE_MOD.balanced;const i=TAC_ORD.indexOf(tac);if(m.maxT){const mx=TAC_ORD.indexOf(m.maxT);if(i>mx)return m.maxT;}if(m.minT){const mn=TAC_ORD.indexOf(m.minT);if(i<mn)return m.minT;}return tac;}
 const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2","4-1-4-1","4-3-2-1","5-3-2"];
 const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
-const FORM_CLR={"4-2-4":"#d08770","3-4-3":"#d08770","4-1-2-1-2":"#d08770","4-3-3":"#7889a0","4-4-2":"#7889a0","4-2-3-1":"#7889a0","3-5-2":"#7889a0","3-4-1-2":"#7889a0","4-1-4-1":"#4a7fd4","4-3-2-1":"#4a7fd4","5-3-2":"#4a7fd4"};
+const FORM_CLR={"4-2-4":"#d08770","3-4-3":"#d08770","4-1-2-1-2":"#d08770","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"#4a7fd4","4-3-2-1":"#4a7fd4","5-3-2":"#4a7fd4"};
 const FORM_MOD = {
   "4-3-3":   {press:1.0,adv:0,hold:0,lb:0,boxShot:0.01,goalP:0,ctr:1.0,ctrShot:0,def:0.01,lr:0,corn:1.0},
   "4-4-2":   {press:1.0,adv:0,hold:0,lb:0.02,boxShot:0.04,goalP:0,ctr:0.95,ctrShot:0,def:0.01,lr:-0.02,corn:1.15},
@@ -2292,6 +2292,9 @@ function buildKnockoutDraw(teams, hasTP, rng) {
 }
 
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
+// Venue fields may carry a trailing "(number)" population/capacity for user
+// reference only — stripped here so it never leaks into stadium-image lookups etc.
+const stripVenue = (s) => (s || "").replace(/\s*\([\d,]+\)\s*$/, "").trim();
 function parseBulk(text) {
   const styleLookup = {};
   STYLES.forEach(s => { styleLookup[s] = s; });
@@ -2353,10 +2356,7 @@ function parseBulk(text) {
     // Player names occupy a fixed 16-slot block right after the 14 tactic columns
     // (indices 18..33, shifted by o). Anything past that is optional trailing
     // metadata, in a fixed order: up to 2 #RRGGBB colors, then city, then stadium.
-    // Venue fields may carry a trailing "(number)" population/capacity for user
-    // reference only — stripped here.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
-    const stripVenue = (s) => (s||"").replace(/\s*\([\d,]+\)\s*$/, "").trim();
     const PLAYER_START = 18 + o, PLAYER_SLOTS = 16;
     const playerNames = [], playerFullNames = [], playerNats = [];
     for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) { playerNames.push(abbrevName(v)); playerFullNames.push(fullDisplayName(v)); playerNats.push(parseOvr(v).nat); } }
@@ -2384,7 +2384,7 @@ function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_
 function parseVenuePool(text) {
   return (text || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
     const [city, stadium] = line.split("\t");
-    return { city: (city || "").trim(), stadium: (stadium || "").trim() };
+    return { city: stripVenue(city), stadium: stripVenue(stadium) };
   }).filter(v => v.city || v.stadium);
 }
 // Long team names: instead of wrapping to a second line, clip to one line with a fade
@@ -2418,8 +2418,8 @@ function TeamCrest({ team, size = 22, style }) {
   if (code && !imgFailed) {
     return <img src={`${import.meta.env.BASE_URL}badges/${code}.png`} alt="" width={size} height={size * 1.1} style={{ objectFit: "contain", flexShrink: 0, ...style }} onError={() => setImgFailed(true)} />;
   }
-  const home = team?.primaryColor || "#7889a0";
-  const away = team?.secondaryColor || team?.primaryColor || "#2a3a50";
+  const home = team?.primaryColor || "var(--chrome-muted)";
+  const away = team?.secondaryColor || team?.primaryColor || "var(--chrome-border)";
   return (
     <svg width={size} height={size * 1.1} viewBox="-12 -12 64 68" style={{ flexShrink: 0, ...style }}>
       <path d="M20 2 L35 8 L35 20 C35 30 28.5 37.5 20 41.5 C11.5 37.5 5 30 5 20 L5 8 Z" fill={home} stroke={away} strokeWidth="2.5" strokeLinejoin="round" />
@@ -2515,7 +2515,7 @@ function ratePlayer(players, name, delta) {
   p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
-const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "#7889a0";
+const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "var(--chrome-muted)";
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
 const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
@@ -2672,15 +2672,15 @@ function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
-const ui = { fontFamily: "'Neue Montreal','Inter','Helvetica Neue',sans-serif" };
-const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", marginBottom: 6, ...ui };
-const chip = { border: "1px solid #2a3a50", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "'Neue Montreal','Inter','Helvetica Neue',sans-serif", fontWeight: 500, letterSpacing: "0.04em" };
-const inp = { background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#ffffff", outline: "none", fontFamily: "inherit" };
+const ui = { fontFamily: "var(--chrome-font)" };
+const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6, ...ui };
+const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.04em" };
+const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#ffffff", outline: "none", fontFamily: "inherit" };
 const sel = { ...inp, cursor: "pointer" };
-const addBtn = { background: "transparent", border: "1px solid #2a3a50", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "#7889a0", cursor: "pointer", fontFamily: "'Neue Montreal','Inter','Helvetica Neue',sans-serif", fontWeight: 500, letterSpacing: "0.06em" };
+const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.06em" };
 const delBtn = { background: "transparent", border: "none", color: "#bf616a", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
-const scBtn = { width: "100%", background: "#e4002b", border: "none", borderRadius: 8, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Neue Montreal','Inter','Helvetica Neue',sans-serif", boxShadow: "0 2px 8px #e4002b33" };
-const chk = { fontSize: 11, color: "#7889a0", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
+const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 8, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
+const chk = { fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
 const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770",CB:"#81a1c1",LB:"#81a1c1",RB:"#81a1c1",LWB:"#81a1c1",RWB:"#81a1c1",DM:"#a3be8c",CM:"#a3be8c",AM:"#a3be8c",LM:"#a3be8c",RM:"#a3be8c",LW:"#d08770",RW:"#d08770",ST:"#d08770"};
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
 const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
@@ -2747,21 +2747,21 @@ function gvGoalMouth(gv, delay) {
     <rect x="3" y={gB+2} width={W-6} height="18" fill="#0e1a12" rx="2" />
     <rect x="3" y={gB+2} width={W-6} height="4" fill="#142017" rx="1" opacity="0.4" />
     <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0a0f0a" rx="1" />
-    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="#7889a0" strokeWidth="0.5" opacity="0.06" />)}
-    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="#7889a0" strokeWidth="0.5" opacity="0.06" />)}
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="#7889a0" strokeWidth="3" rx="1" />
+    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
     <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
     <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
     <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <g className="gv-anim" style={{ "--gv-kdx": (dX[1]-dX[dive])+"px", animation: "gvKeep 0.3s ease-out "+(d+0.12).toFixed(2)+"s both" }}>
       <text x={dX[dive]} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" style={{opacity: saved ? 1 : 0.25}}>🧤</text>
     </g>
     <g className="gv-anim" style={{ "--gv-bdx": (pos[0]-bx)+"px", "--gv-bdy": (pos[1]-by)+"px", animation: "gvBallTo 0.45s cubic-bezier(0.25,0.8,0.4,1) "+d.toFixed(2)+"s both" }}>
-      <circle cx={bx} cy={by} r="7" fill={col} stroke="#141c2b" strokeWidth="1" />
-      <text x={bx} y={by+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="8" fontWeight="800">{result==="goal"?"✓":result==="save"?"✕":"×"}</text>
+      <circle cx={bx} cy={by} r="7" fill={col} stroke="var(--chrome-panel)" strokeWidth="1" />
+      <text x={bx} y={by+1} textAnchor="middle" dominantBaseline="middle" fill="var(--chrome-panel)" fontSize="8" fontWeight="800">{result==="goal"?"✓":result==="save"?"✕":"×"}</text>
     </g>
     {result !== "miss" && <circle cx={pos[0]} cy={pos[1]} r="5" fill="none" stroke={col} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(d+0.42).toFixed(2)+"s both" }} />}
   </svg>);
@@ -2782,26 +2782,26 @@ function gvPitch(gv, clr, staticAssist) {
   const ly = (y) => y < 16 ? y+13 : y-8;
   const dotClr = clr || "#ffffff";
   return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
-    <rect x="1" y="1" width="198" height="128" fill="#060b14" stroke="#7889a044" strokeWidth="0.8" rx="2" />
-    <line x1="100" y1="1" x2="100" y2="129" stroke="#7889a044" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="17" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="1" fill="#7889a044" />
-    <rect x="166" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <rect x="188" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="176" cy="65" r="0.8" fill="#7889a044" />
-    <rect x="1" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <rect x="1" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="24" cy="65" r="0.8" fill="#7889a044" />
-    <rect x="199" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
-    <rect x="-2.5" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
-    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="199" cy="56" r="1.2" fill="#7889a066" />
-    <circle cx="199" cy="74" r="1.2" fill="#7889a066" />
+    <rect x="1" y="1" width="198" height="128" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="2" />
+    <line x1="100" y1="1" x2="100" y2="129" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="17" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="1" fill="var(--chrome-muted-44)" />
+    <rect x="166" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <rect x="188" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="176" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
+    <rect x="1" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <rect x="1" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="24" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
+    <rect x="199" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
+    <rect x="-2.5" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
+    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
+    <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
     {A && (staticAssist
       ? <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} stroke="#ffffff66" strokeWidth="1.1" />
       : <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} className="gv-anim" stroke="#ffffff66" strokeWidth="1.1" strokeDasharray={len1} style={{ "--gv-len": len1+"px", animation: "gvLine 0.8s ease-in-out both" }} />
@@ -2809,16 +2809,16 @@ function gvPitch(gv, clr, staticAssist) {
     <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     {A && <g>
-      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
+      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity="0.95" />
       <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
     </g>}
-    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="#060b14" strokeWidth="1" opacity="0.95" />
+    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity="0.95" />
     <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
     {A && !staticAssist && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
-      <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="#060b14" strokeWidth="0.8" />
+      <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
     </g>}
     <g className="gv-anim" style={{ "--gv-dx": (G[0]-S[0])+"px", "--gv-dy": (G[1]-S[1])+"px", animation: "gvBallB 0.5s ease-in "+t2.toFixed(2)+"s both" }}>
-      <circle cx={S[0]} cy={S[1]} r="2.8" fill="#ffffff" stroke="#060b14" strokeWidth="0.8" />
+      <circle cx={S[0]} cy={S[1]} r="2.8" fill="#ffffff" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
     </g>
     <circle cx={G[0]} cy={G[1]} r="4" fill="none" stroke="#a3be8c" strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(t2+0.5).toFixed(2)+"s both" }} />
   </svg>);
@@ -2846,32 +2846,32 @@ function gvChancePitch(chain, clr, step, shotGv, replay) {
     labels.push({ idx: i, x: px, y: ly, name });
   }
   return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
-    <rect x="1" y="1" width="198" height="128" fill="#060b14" stroke="#7889a044" strokeWidth="0.8" rx="2" />
-    <line x1="100" y1="1" x2="100" y2="129" stroke="#7889a044" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="17" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="1" fill="#7889a044" />
-    <rect x="166" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <rect x="188" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="176" cy="65" r="0.8" fill="#7889a044" />
-    <rect x="1" y="28" width="33" height="74" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-    <rect x="1" y="44" width="11" height="42" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="24" cy="65" r="0.8" fill="#7889a044" />
-    <rect x="199" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
-    <rect x="-2.5" y="56" width="3.5" height="18" fill="#7889a022" stroke="#7889a066" strokeWidth="0.7" />
-    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="#7889a033" strokeWidth="0.5" />
-    <circle cx="199" cy="56" r="1.2" fill="#7889a066" />
-    <circle cx="199" cy="74" r="1.2" fill="#7889a066" />
+    <rect x="1" y="1" width="198" height="128" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="2" />
+    <line x1="100" y1="1" x2="100" y2="129" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="17" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <circle cx="100" cy="65" r="1" fill="var(--chrome-muted-44)" />
+    <rect x="166" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <rect x="188" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="176" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
+    <rect x="1" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+    <rect x="1" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="24" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
+    <rect x="199" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
+    <rect x="-2.5" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
+    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
+    <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
+    <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
     {pts.slice(1, s + 1).map((p, i) => { const prev = pts[i]; const len = Math.hypot(p[0]-prev[0], p[1]-prev[1]); const newest = i === s - 1; const anim = (replay || newest) ? { className: "gv-anim", strokeDasharray: len, style: { "--gv-len": len+"px", animation: `gvLine 0.4s ease-in ${replay ? (i*0.4).toFixed(2)+"s " : ""}both` } } : {}; return (<g key={"seg"+i}>
       <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" {...anim} />
       <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="#ffffffcc" strokeWidth="1.4" {...anim} />
     </g>); })}
     {pts.slice(0, s + 1).map((p, i) => { const isDrib = i > 0 && chain[i].name === chain[i-1].name; const lb = labels.find(l => l.idx === i); const newest = i === s; const dAnim = (replay || newest) ? { className: "gv-anim", style: { animation: `gvDotIn 0.15s ease-out ${replay ? ((i === 0 ? 0 : (i-1)*0.4+0.3).toFixed(2)+"s ") : ""}both` } } : {}; return (<g key={"dot"+i} {...dAnim}>
-      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="#060b14" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
+      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
       {lb && <text x={lb.x} y={lb.y} textAnchor="middle" fill="#ffffffcc" fontSize={FS} fontFamily="monospace" fontWeight="500">{lb.name}</text>}
     </g>); })}
     <circle cx={pts[s][0]} cy={pts[s][1]} r="5" fill="none" stroke={dotClr} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: `gvBurst 1.2s ease-out ${replay ? ((s > 0 ? (s-1)*0.4+0.35 : 0).toFixed(2)+"s ") : ""}infinite both` }} />
@@ -2890,29 +2890,30 @@ function gvChanceGoalPreview() {
     <rect x="3" y={gB+2} width={W-6} height="18" fill="#0e1a12" rx="2" />
     <rect x="3" y={gB+2} width={W-6} height="4" fill="#142017" rx="1" opacity="0.4" />
     <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0a0f0a" rx="1" />
-    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="#7889a0" strokeWidth="0.5" opacity="0.06" />)}
-    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="#7889a0" strokeWidth="0.5" opacity="0.06" />)}
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="#7889a0" strokeWidth="3" rx="1" />
+    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
     <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
     <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
     <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <text x={dX} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" opacity="0.35">🧤</text>
   </svg>);
 }
 const APP_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
+@import url('https://fonts.googleapis.com/css2?family=Aoboshi+One&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 html{overflow-y:scroll;}
 body{font-family:'Neue Montreal','Inter','Helvetica Neue',sans-serif;}
-::selection{background:#e4002b44;color:#ffffff;}
+::selection{background:var(--chrome-brand-44);color:#ffffff;}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#1e2a3d;border-radius:10px;}
-::-webkit-scrollbar-thumb:hover{background:#7889a0;}
+::-webkit-scrollbar-thumb:hover{background:var(--chrome-muted);}
 input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;}
 input[type=number]{-moz-appearance:textfield;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
@@ -2920,11 +2921,11 @@ input[type=color]{-webkit-appearance:none;appearance:none;padding:0;}
 input[type=color]::-webkit-color-swatch-wrapper{padding:0;border-radius:2px;}
 input[type=color]::-webkit-color-swatch{border:none;border-radius:2px;}
 input[type=color]::-moz-color-swatch{border:none;border-radius:2px;}
-input:focus,select:focus,textarea:focus{border-color:#e4002b !important;outline:none;box-shadow:0 0 0 3px #e4002b20;}
+input:focus,select:focus,textarea:focus{border-color:var(--chrome-brand) !important;outline:none;box-shadow:0 0 0 3px var(--chrome-brand-20);}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
 @keyframes goalPunch{0%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(0.95)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
-@keyframes goalGlow{0%{text-shadow:0 0 24px #ffffff,0 0 48px #e4002b44;}50%{text-shadow:0 0 36px #ffffff,0 0 72px #e4002b44;}100%{text-shadow:none;}}
+@keyframes goalGlow{0%{text-shadow:0 0 24px #ffffff,0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px #ffffff,0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes marqueeScroll{0%,20%{transform:translateX(0)}50%,70%{transform:translateX(var(--marquee-dist))}100%{transform:translateX(0)}}
@@ -2936,7 +2937,7 @@ input:focus,select:focus,textarea:focus{border-color:#e4002b !important;outline:
 .tick-btn:active{transform:scale(0.97) translateY(0);}
 button{transition:all 0.15s ease;}
 button:hover:not(:disabled){filter:brightness(1.18);}
-.gbtn:hover{filter:brightness(1.05) !important;box-shadow:0 0 12px #e4002b88,0 0 4px #e4002b66;}
+.gbtn:hover{filter:brightness(1.05) !important;box-shadow:0 0 12px var(--chrome-brand-88),0 0 4px var(--chrome-brand-66);}
 button:disabled{opacity:0.35;cursor:not-allowed;}
 details>summary{cursor:pointer;user-select:none;list-style:none;transition:color 0.15s;}
 details>summary:hover{color:#ffffff !important;}
@@ -2946,17 +2947,17 @@ details[id^="doc-"]>summary+p{margin-top:12px;}
 details[id^="doc-"]>summary+div{margin-top:12px;}
 details[open]>summary .dta{transform:rotate(90deg);}
 .team-row{transition:background 0.15s;}
-.team-row:hover{background:#141c2b !important;}
+.team-row:hover{background:var(--chrome-panel) !important;}
 .ko-match{transition:border-color 0.15s, box-shadow 0.15s;}
-.ko-match:hover{border-color:#7889a0 !important;}
-.panel{background:#141c2b;border:1px solid #2a3a50;border-radius:10px;}
+.ko-match:hover{border-color:var(--chrome-muted) !important;}
+.panel{background:var(--chrome-panel);border:1px solid var(--chrome-border);border-radius:10px;}
 select{cursor:pointer;}
-input::placeholder{color:#7889a0;}
+input::placeholder{color:var(--chrome-muted);}
 .warn-badge{position:relative;}
-.warn-badge::after{content:attr(data-tip);position:absolute;top:100%;left:0;margin-top:6px;background:#0a0e17;border:1px solid #2a3a50;border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;white-space:pre-line;color:#ffffff;z-index:1000;width:max-content;max-width:360px;box-shadow:0 4px 16px #00000066;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.1s ease;}
+.warn-badge::after{content:attr(data-tip);position:absolute;top:100%;left:0;margin-top:6px;background:var(--chrome-bg);border:1px solid var(--chrome-border);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;white-space:pre-line;color:#ffffff;z-index:1000;width:max-content;max-width:360px;box-shadow:0 4px 16px #00000066;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.1s ease;}
 .warn-badge:hover::after{opacity:1;visibility:visible;}
 table{border-spacing:0;}
-@keyframes goalFlash{0%{text-shadow:0 0 24px #ffffff,0 0 48px #e4002b44;}50%{text-shadow:0 0 36px #ffffff,0 0 72px #e4002b44;}100%{text-shadow:none;}}
+@keyframes goalFlash{0%{text-shadow:0 0 24px #ffffff,0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px #ffffff,0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
 @keyframes cardPop{0%{opacity:0;transform:translateY(8px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
 .ev-card{animation:cardPop 0.35s ease-out;}
 @keyframes gvLine{from{stroke-dashoffset:var(--gv-len);}to{stroke-dashoffset:0;}}
@@ -2966,7 +2967,7 @@ table{border-spacing:0;}
 @keyframes gvKeep{from{transform:translateX(var(--gv-kdx));}to{transform:translateX(0);}}
 @keyframes gvBurst{0%{opacity:0;transform:scale(0.4);}12%{opacity:0.9;}100%{opacity:0;transform:scale(2.4);}}
 @keyframes gvDotIn{from{opacity:0;}to{opacity:1;}}
-.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e4002b;animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--chrome-brand);animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
 @keyframes cardSlam{0%{transform:rotate(-70deg) scale(0.1) translateY(-14px);opacity:0;}55%{transform:rotate(18deg) scale(1.35);opacity:1;}75%{transform:rotate(-6deg) scale(0.92);}100%{transform:rotate(0deg) scale(1) translateY(0);opacity:1;}}
 .card-slam{display:inline-block;animation:cardSlam 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.15s both;}
 @keyframes sparklePop{0%{transform:scale(0.1) rotate(-40deg);opacity:0;}50%{transform:scale(1.7) rotate(18deg);opacity:1;}70%{transform:scale(0.85) rotate(-6deg);}100%{transform:scale(1) rotate(0deg);opacity:1;}}
@@ -3003,9 +3004,11 @@ const T_PRESETS = {
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
-const TB = (t) => t===2?<span style={{color:"#e4002b",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
+const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("teams");
+  const [wcTheme, setWcTheme] = useState(() => { try { return localStorage.getItem("avium-theme") === "wc1933"; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem("avium-theme", wcTheme ? "wc1933" : "default"); } catch {} }, [wcTheme]);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [expandedRounds, setExpandedRounds] = useState(() => new Set());
@@ -3077,6 +3080,10 @@ export default function App() {
   const [koBracketView, setKoBracketView] = useState(true);
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
+    // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
+    // so CSS custom properties from theme.css never resolve here — needs the literal
+    // font name baked in at generation time instead of var(--chrome-font).
+    const fontStack = wcTheme ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -3095,12 +3102,12 @@ export default function App() {
     const svgH = tH + hd + pd * 2 + (ko.thirdPlace ? 80 : 20);
     const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const W = (m) => koWinner(m);
-    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:#141c2b">';
-    s += '<style>text{font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;fill:#7889a0;font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:#7889a0;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}</style>';
-    s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#141c2b" stop-opacity="0"/><stop offset="55%" stop-color="#141c2b" stop-opacity="1"/><stop offset="100%" stop-color="#141c2b" stop-opacity="1"/></linearGradient></defs>';
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:var(--chrome-panel)">';
+    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}</style>';
+    s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--chrome-panel)" stop-opacity="0"/><stop offset="55%" stop-color="var(--chrome-panel)" stop-opacity="1"/><stop offset="100%" stop-color="var(--chrome-panel)" stop-opacity="1"/></linearGradient></defs>';
     const card = (m, x, y, fin) => {
-      const w = W(m), brd = fin ? "#e4002b" : "#7889a0", bw = fin ? 2 : 1;
-      s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="#141c2b" stroke="'+brd+'" stroke-width="'+bw+'"/>';
+      const w = W(m), brd = fin ? "var(--chrome-brand)" : "var(--chrome-muted)", bw = fin ? 2 : 1;
+      s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="var(--chrome-panel)" stroke="'+brd+'" stroke-width="'+bw+'"/>';
       const hn = esc(m.home?.name||(m.bye?"BYE":"TBD")), an = esc(m.away?.name||(m.bye?"BYE":"TBD"));
       const is2L = m.result?.twoLeg, isPart = m.result?.partial;
       const maxNameLen = is2L && !isPart ? 18 : 22;
@@ -3118,7 +3125,7 @@ export default function App() {
         const lblW = lbl.length * 5 + 6, fadeW = 44;
         const maskW = lblW + fadeW;
         s += '<rect x="'+(lx-maskW)+'" y="'+(ly-10)+'" width="'+maskW+'" height="13" fill="url(#nameFade)"/>';
-        s += '<text x="'+lx+'" y="'+ly+'" text-anchor="end" style="font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;font-size:10px;fill:'+clr+';font-weight:700;font-style:italic">'+lbl+'</text>';
+        s += '<text x="'+lx+'" y="'+ly+'" text-anchor="end" style="font-family:'+fontStack+';font-size:10px;fill:'+clr+';font-weight:700;font-style:italic">'+lbl+'</text>';
       };
       if (is2L && !isPart) {
         const l1h=m.result.leg1.home, l1a=m.result.leg1.away, l2h=m.result.leg2?.away||0, l2a=m.result.leg2?.home||0;
@@ -3128,7 +3135,7 @@ export default function App() {
         s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
         const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
         const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
-        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
+        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:var(--chrome-muted)">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
         const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
         legText(l1h, l1End, y+19);
@@ -3140,7 +3147,7 @@ export default function App() {
         aggText(aa, aggEnd, y+37, aCls);
         penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
-        const lblClr = m.result.pen ? "#d08770" : "#7889a0";
+        const lblClr = m.result.pen ? "#d08770" : "var(--chrome-muted)";
         addLabel(lbl, lblClr, l1End-legColW-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
@@ -3152,7 +3159,7 @@ export default function App() {
         let asc = String(as2); if(m.result?.pen) asc += ' ('+m.result.pen.away+')';
         s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
-        const lblClr = m.result?.pen ? "#d08770" : "#7889a0";
+        const lblClr = m.result?.pen ? "#d08770" : "var(--chrome-muted)";
         const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
         addLabel(lbl, lblClr, x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
       }
@@ -3170,28 +3177,28 @@ export default function App() {
         const h1=cs[2*i]!==null, h2=cs[2*i+1]!==null;
         if(!h1&&!h2) continue;
         if(side==="left"){
-          if(h1) s+='<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="#7889a0"/>';
-          if(h2) s+='<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="#7889a0"/>';
-          s+='<line x1="'+(x+cn/2)+'" y1="'+(h1?y1:mid)+'" x2="'+(x+cn/2)+'" y2="'+(h2?y2:mid)+'" stroke="#7889a0"/>';
-          s+='<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="#7889a0"/>';
+          if(h1) s+='<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="var(--chrome-muted)"/>';
+          if(h2) s+='<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="var(--chrome-muted)"/>';
+          s+='<line x1="'+(x+cn/2)+'" y1="'+(h1?y1:mid)+'" x2="'+(x+cn/2)+'" y2="'+(h2?y2:mid)+'" stroke="var(--chrome-muted)"/>';
+          s+='<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="var(--chrome-muted)"/>';
         } else {
-          if(h1) s+='<line x1="'+(x+cn)+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="#7889a0"/>';
-          if(h2) s+='<line x1="'+(x+cn)+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="#7889a0"/>';
-          s+='<line x1="'+(x+cn/2)+'" y1="'+(h1?y1:mid)+'" x2="'+(x+cn/2)+'" y2="'+(h2?y2:mid)+'" stroke="#7889a0"/>';
-          s+='<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+x+'" y2="'+mid+'" stroke="#7889a0"/>';
+          if(h1) s+='<line x1="'+(x+cn)+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="var(--chrome-muted)"/>';
+          if(h2) s+='<line x1="'+(x+cn)+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="var(--chrome-muted)"/>';
+          s+='<line x1="'+(x+cn/2)+'" y1="'+(h1?y1:mid)+'" x2="'+(x+cn/2)+'" y2="'+(h2?y2:mid)+'" stroke="var(--chrome-muted)"/>';
+          s+='<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+x+'" y2="'+mid+'" stroke="var(--chrome-muted)"/>';
         }
       }
       if (n % 2 === 1 && cs[n-1] !== null) {
         const y = pd+hd+(n-0.5)*(tH/n);
-        if (side==="left") s+='<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="#7889a0"/>';
-        else s+='<line x1="'+(x+cn)+'" y1="'+y+'" x2="'+x+'" y2="'+y+'" stroke="#7889a0"/>';
+        if (side==="left") s+='<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>';
+        else s+='<line x1="'+(x+cn)+'" y1="'+y+'" x2="'+x+'" y2="'+y+'" stroke="var(--chrome-muted)"/>';
       }
     };
     let cx = pd, prev = null, prevN = 0;
     leftR.forEach((lr, i) => { if(prev){lines(prev,cx,prevN,"left");cx+=cn;} const cs=col(lr.matches,cx,lr.name); prev=cs; prevN=lr.matches.length; cx+=cW; });
     if(prev){lines(prev,cx,prevN,"left");cx+=cn;}
     const fY=pd+hd+tH/2-cH/2;
-    s+='<text x="'+(cx+cW/2)+'" y="'+(fY-6)+'" style="fill:#7889a0;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">FINAL</text>';
+    s+='<text x="'+(cx+cW/2)+'" y="'+(fY-6)+'" style="fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">FINAL</text>';
     card(ko.rounds[nR-1].matches[0],cx,fY,true);
     if(ko.thirdPlace){const tpY=fY+cH+24; s+='<text x="'+(cx+cW/2)+'" y="'+(tpY-6)+'" style="fill:#d08770;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">3RD PLACE</text>'; card(ko.thirdPlace,cx,tpY,false);}
     cx+=cW;
@@ -3224,6 +3231,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
+    const fontStack = wcTheme ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -3242,12 +3250,12 @@ export default function App() {
     const svgH = pd + hd + wbH + 20 + hd + lbH + pd + 20;
     const esc = (str) => String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const W = (m) => koWinner(m);
-    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:#141c2b">';
-    s += '<style>text{font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;fill:#7889a0;font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:#7889a0;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}.sec{fill:#7889a0;font-size:9px;font-weight:700;letter-spacing:2px}.gfsec{fill:#e4002b;font-size:9px;font-weight:700;letter-spacing:2px}</style>';
-    s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#141c2b" stop-opacity="0"/><stop offset="55%" stop-color="#141c2b" stop-opacity="1"/><stop offset="100%" stop-color="#141c2b" stop-opacity="1"/></linearGradient></defs>';
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:var(--chrome-panel)">';
+    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}.sec{fill:var(--chrome-muted);font-size:9px;font-weight:700;letter-spacing:2px}.gfsec{fill:var(--chrome-brand);font-size:9px;font-weight:700;letter-spacing:2px}</style>';
+    s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--chrome-panel)" stop-opacity="0"/><stop offset="55%" stop-color="var(--chrome-panel)" stop-opacity="1"/><stop offset="100%" stop-color="var(--chrome-panel)" stop-opacity="1"/></linearGradient></defs>';
     const card = (m, x, y, brd, bw) => {
       const w = W(m);
-      s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="#141c2b" stroke="'+brd+'" stroke-width="'+bw+'"/>';
+      s += '<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+cH+'" rx="4" fill="var(--chrome-panel)" stroke="'+brd+'" stroke-width="'+bw+'"/>';
       const hn = esc(m.home?.name||(m.bye?"BYE":"TBD")), an = esc(m.away?.name||(m.bye?"BYE":"TBD"));
       const is2L = m.result?.twoLeg, isPart = m.result?.partial;
       const maxNL = is2L && !isPart ? 18 : 22;
@@ -3258,7 +3266,7 @@ export default function App() {
         if (!lbl) return;
         const lblW = lbl.length * 5 + 6, fadeW = 44, maskW = lblW + fadeW;
         s += '<rect x="'+(lx-maskW)+'" y="'+(ly-10)+'" width="'+maskW+'" height="13" fill="url(#nameFade)"/>';
-        s += '<text x="'+lx+'" y="'+ly+'" text-anchor="end" style="font-family:Neue Montreal,Inter,Helvetica Neue,sans-serif;font-size:10px;fill:'+clr+';font-weight:700;font-style:italic">'+lbl+'</text>';
+        s += '<text x="'+lx+'" y="'+ly+'" text-anchor="end" style="font-family:'+fontStack+';font-size:10px;fill:'+clr+';font-weight:700;font-style:italic">'+lbl+'</text>';
       };
       if (is2L && !isPart) {
         const l1h=m.result.leg1.home, l1a=m.result.leg1.away, l2h=m.result.leg2?.away||0, l2a=m.result.leg2?.home||0;
@@ -3268,13 +3276,13 @@ export default function App() {
         s += '<text x="'+(x+6)+'" y="'+(y+37)+'"'+aCls+'>'+anT+'</text>';
         const legColW = 18, aggColW = 24, penColW = m.result.pen ? 26 : 0;
         const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
-        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:#7889a0">'+val+'</text>'; };
+        const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:var(--chrome-muted)">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
         const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
         legText(l1h, l1End, y+19); legText(l2h, l2End, y+19); aggText(ah, aggEnd, y+19, hCls); penText(m.result.pen?.home, y+19);
         legText(l1a, l1End, y+37); legText(l2a, l2End, y+37); aggText(aa, aggEnd, y+37, aCls); penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
-        addLabel(lbl, m.result.pen ? "#d08770" : "#7889a0", l1End-legColW-4, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, m.result.pen ? "#d08770" : "var(--chrome-muted)", l1End-legColW-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
         const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
@@ -3286,7 +3294,7 @@ export default function App() {
         s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
         const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
-        addLabel(lbl, m.result?.pen ? "#d08770" : "#7889a0", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, m.result?.pen ? "#d08770" : "var(--chrome-muted)", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
       }
     };
     const pairLines = (srcMatches, x, baseY, height) => {
@@ -3295,16 +3303,16 @@ export default function App() {
         const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
         if (m1.bye && m2.bye) continue;
         const y1 = baseY + (2*i+0.5)*sl, y2 = baseY + (2*i+1.5)*sl, mid = (y1+y2)/2;
-        if (!m1.bye) s += '<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="#7889a0"/>';
-        if (!m2.bye) s += '<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="#7889a0"/>';
-        s += '<line x1="'+(x+cn/2)+'" y1="'+(m1.bye?mid:y1)+'" x2="'+(x+cn/2)+'" y2="'+(m2.bye?mid:y2)+'" stroke="#7889a0"/>';
-        s += '<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="#7889a0"/>';
+        if (!m1.bye) s += '<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="var(--chrome-muted)"/>';
+        if (!m2.bye) s += '<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="var(--chrome-muted)"/>';
+        s += '<line x1="'+(x+cn/2)+'" y1="'+(m1.bye?mid:y1)+'" x2="'+(x+cn/2)+'" y2="'+(m2.bye?mid:y2)+'" stroke="var(--chrome-muted)"/>';
+        s += '<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="var(--chrome-muted)"/>';
       }
-      if (srcN % 2 === 1 && !srcMatches[srcN-1].bye) { const y = baseY + (srcN-0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="#7889a0"/>'; }
+      if (srcN % 2 === 1 && !srcMatches[srcN-1].bye) { const y = baseY + (srcN-0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>'; }
     };
     const straightLines = (srcMatches, x, baseY, height) => {
       const srcN = srcMatches.length, sl = height / srcN;
-      for (let i = 0; i < srcN; i++) { if (srcMatches[i].bye) continue; const y = baseY + (i+0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="#7889a0"/>'; }
+      for (let i = 0; i < srcN; i++) { if (srcMatches[i].bye) continue; const y = baseY + (i+0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>'; }
     };
     const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes) => {
       let cx = pd;
@@ -3327,16 +3335,16 @@ export default function App() {
     s += '<text x="'+pd+'" y="'+(wbBaseY - 4)+'" class="sec">UPPER BRACKET</text>';
     const lbConnTypes = {};
     lbRounds.forEach((rd, i) => { if (i > 0) lbConnTypes[i] = rd.type === "internal" ? "pair" : "straight"; });
-    let wbEndX = renderSection(wbRounds, wbBaseY + 8, wbH, "#2a3a50", 1, "#7889a0", null);
+    let wbEndX = renderSection(wbRounds, wbBaseY + 8, wbH, "var(--chrome-border)", 1, "var(--chrome-muted)", null);
     // GF inline after WB final
     const gfMidY = wbBaseY + 8 + hd + wbH / 2;
-    s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="#7889a0"/>';
+    s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="var(--chrome-muted)"/>';
     wbEndX += cn;
-    s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:#e4002b">Grand Final</text>';
-    card(ko.grandFinal, wbEndX, gfMidY - cH/2, "#e4002b", 2);
+    s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:var(--chrome-brand)">Grand Final</text>';
+    card(ko.grandFinal, wbEndX, gfMidY - cH/2, "var(--chrome-brand)", 2);
     wbEndX += cW;
     if (ko.reset && (ko.reset.home || ko.reset.away)) {
-      s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="#7889a0"/>';
+      s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="var(--chrome-muted)"/>';
       wbEndX += cn;
       s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:#ebcb8b">RESET</text>';
       card(ko.reset, wbEndX, gfMidY - cH/2, "#ebcb8b", 1);
@@ -3344,9 +3352,9 @@ export default function App() {
     }
     // LB section
     const lbTopY = wbBaseY + 8 + hd + wbH + 16;
-    s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="#2a3a50" stroke-opacity="0.3"/>';
+    s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="var(--chrome-border)" stroke-opacity="0.3"/>';
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
-    renderSection(lbRounds, lbTopY + 16, lbH, "#2a3a50", 1, "#7889a0", lbConnTypes);
+    renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes);
     s += '</svg>';
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
@@ -3379,10 +3387,12 @@ export default function App() {
   const [tKoEdit, setTKoEdit] = useState(null); // {ri, mi, h:"", a:""} for knockout manual score
   const [tScoreError, setTScoreError] = useState("");
   const [tHomeAdvOverrides, setTHomeAdvOverrides] = useState({});
+  const [tVenueOverrides, setTVenueOverrides] = useState({}); // {[fixtureKey]: stadium name} — manual pick from the pre-match setup screen, host-team HA tournaments only
   const [tHostVenueText, setTHostVenueText] = useState("");
   const [_rcV, _setRcV] = useState(0);
   const tHostVenuePool = parseVenuePool(tHostVenueText);
   const [tLiveTarget, setTLiveTarget] = useState(null);
+  const [tPendingPlayLive, setTPendingPlayLive] = useState(null); // fixture target awaiting setup-screen confirmation before tPlayLive actually kicks off
   const tToggleHA = (key) => setTHomeAdvOverrides(p => { const c = p[key] || null; const n = c === null ? "home" : c === "home" ? "away" : c === "away" ? "off" : null; const nm = { ...p }; if (n === null) delete nm[key]; else nm[key] = n; return nm; });
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
 
@@ -3616,22 +3626,62 @@ export default function App() {
 
   };
 
-  const tPlayLive = (target) => {
-    let homeTeam, awayTeam, matchObj;
+  // Pure lookup, no side effects — shared by the pre-match setup screen (just needs to
+  // display/offer choices) and tPlayLive's actual commit (needs the same resolution to
+  // act on). tVenueOverrides wins over the automatic hash pick; hostModeActive/venueKey
+  // still exposed so callers can tell whether a stadium dropdown even applies here.
+  const tResolveVenueContext = (target) => {
+    if (!target) return null;
+    let matchObj;
     if (target.type === "group") {
-      matchObj = tGroups[target.gi].schedule[target.ri][target.mi];
-      homeTeam = matchObj.home; awayTeam = matchObj.away;
+      matchObj = tGroups[target.gi]?.schedule[target.ri]?.[target.mi];
     } else {
       const bk = target.bracket || (target.tp ? "tp" : "wb");
-      matchObj = bk === "lb" ? tKO.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? tKO.grandFinal : bk === "reset" ? tKO.reset : bk === "tp" ? tKO.thirdPlace : tKO.rounds[target.ri]?.matches[target.mi];
-      homeTeam = matchObj.home; awayTeam = matchObj.away;
+      matchObj = bk === "lb" ? tKO?.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? tKO?.grandFinal : bk === "reset" ? tKO?.reset : bk === "tp" ? tKO?.thirdPlace : tKO?.rounds[target.ri]?.matches[target.mi];
     }
-    if (!homeTeam || !awayTeam) return;
+    const homeTeam = matchObj?.home, awayTeam = matchObj?.away;
+    if (!homeTeam || !awayTeam) return null;
     const hi = teams.findIndex(t => t.name === homeTeam.name);
     const ai = teams.findIndex(t => t.name === awayTeam.name);
-    if (hi === -1 || ai === -1) return;
+    if (hi === -1 || ai === -1) return null;
 
     const isL2 = target.type === "ko" && target.leg === 2 && tConfig.koLegs === 2;
+    const venueKey = fixtureKey(target);
+    const overrideKey = venueKey + (isL2 ? "_L2" : "");
+    let homeAdv = null, hostModeActive = false;
+    if (target.type === "group") {
+      homeAdv = tGetHA(venueKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
+      hostModeActive = tConfig.homeAdvGroup === "host";
+    } else {
+      if (tConfig.koLegs === 2) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
+      else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
+      hostModeActive = tConfig.homeAdvKO === "host";
+    }
+    // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
+    // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
+    // World Cup plays every game across the host country's stadiums.
+    const venueHash = isL2 ? hashStr(venueKey + "_L2") : hashStr(venueKey);
+    const autoVenue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[venueHash % tHostVenuePool.length] : null;
+    const overrideStadium = tVenueOverrides[overrideKey];
+    const venue = overrideStadium ? { stadium: overrideStadium, city: tHostVenuePool.find(v => v.stadium === overrideStadium)?.city || "" } : autoVenue;
+    return { matchObj, homeTeam, awayTeam, hi, ai, isL2, venueKey, overrideKey, homeAdv, hostModeActive, autoVenue, venue };
+  };
+
+  // Every "play live" button across the tournament UI (Stacked view, both Bracket
+  // renderers, group fixtures, the post-match Replay button) already calls tPlayLive —
+  // repointing it at the setup gate here means none of those call sites need touching.
+  // The setup screen's Confirm button is what actually kicks off via tConfirmPlayLive.
+  const tPlayLive = (target) => {
+    const vc = tResolveVenueContext(target);
+    if (!vc) return;
+    setTPendingPlayLive(target);
+    setTab("live");
+  };
+
+  const tConfirmPlayLive = (target) => {
+    const vc = tResolveVenueContext(target);
+    if (!vc) return;
+    const { matchObj, homeTeam, awayTeam, hi, ai, isL2, venueKey, homeAdv, venue } = vc;
     const liveHId = isL2 ? teams[ai].id : teams[hi].id;
     const liveAId = isL2 ? teams[hi].id : teams[ai].id;
 
@@ -3646,23 +3696,8 @@ export default function App() {
       startScore = [matchObj.result.leg1.away, matchObj.result.leg1.home];
     }
 
-    const venueKey = fixtureKey(target);
-    let homeAdv = null, hostModeActive = false;
-    if (target.type === "group") {
-      homeAdv = tGetHA(venueKey, resolveHomeAdv(homeTeam.name, awayTeam.name, tConfig, true, teams[hi].skill, teams[ai].skill));
-      hostModeActive = tConfig.homeAdvGroup === "host";
-    } else {
-      if (tConfig.koLegs === 2) { const ov = tHomeAdvOverrides[venueKey]; homeAdv = ov === "off" ? null : "home"; }
-      else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
-      hostModeActive = tConfig.homeAdvKO === "host";
-    }
     const replayKey = venueKey + (isL2 ? "_L2" : "");
     _rc.inc(replayKey); _setRcV(v => v + 1);
-    // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
-    // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
-    // World Cup plays every game across the host country's stadiums.
-    const venueHash = isL2 ? hashStr(venueKey + "_L2") : hashStr(venueKey);
-    const venue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[venueHash % tHostVenuePool.length] : null;
 
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
     // Same stakes math as the bulk instasim paths (tScorinate/tSimKOMatch), just scoped to
@@ -3729,7 +3764,7 @@ export default function App() {
     setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv); setLm2ndLeg(isL2);
     setTLiveTarget({...target, flipped: isL2});
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTab("live");
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setTab("live");
   };
 
   // Auto-save tournament state to persistent storage
@@ -3754,11 +3789,11 @@ export default function App() {
     if (sessionSaveTimeoutRef.current) clearTimeout(sessionSaveTimeoutRef.current);
     sessionSaveTimeoutRef.current = setTimeout(() => {
       try {
-        const state = { v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tReplayCounts: _rc.all(), ts: Date.now() };
+        const state = { v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() };
         localStorage.setItem("avium-tournament-session", JSON.stringify(state));
       } catch (e) { /* storage unavailable */ }
     }, 1500);
-  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, _rcV]);
+  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, _rcV]);
 
   // Auto-load on mount: roster first (migrating the legacy combined-save key exactly
   // once if no roster-db exists yet), then the tournament session independently.
@@ -3815,6 +3850,9 @@ export default function App() {
           if (ss.tPhase) setTPhase(ss.tPhase);
           if (ss.lmH !== undefined) setLmH(ss.lmH);
           if (ss.lmA !== undefined) setLmA(ss.lmA);
+          if (ss.tHostVenueText) setTHostVenueText(ss.tHostVenueText);
+          if (ss.tHomeAdvOverrides) setTHomeAdvOverrides(ss.tHomeAdvOverrides);
+          if (ss.tVenueOverrides) setTVenueOverrides(ss.tVenueOverrides);
           if (ss.tReplayCounts) { _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1); }
         }
       } catch (e) { /* no saved data or storage unavailable */ }
@@ -4000,7 +4038,7 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
+  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
 
   useEffect(() => {
     if (tDrawAnim?.auto && !(tDrawAnim.index >= tDrawAnim.log.length && !tDrawAnim.pending)) {
@@ -4676,52 +4714,52 @@ export default function App() {
     const editing = koIsEditingRef(ref);
     const editForm = (<span style={{ display: "flex", alignItems: "center", gap: 2, margin: opts.cardLayout ? 0 : "0 4px", justifyContent: opts.cardLayout ? "center" : "flex-start" }}>
       {tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}
-      {tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"#7889a0"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
-      {tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"#7889a0"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
-      {tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"#7889a0"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}
-      <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
-      <span style={{ color: "#7889a0", fontSize: 8 }}>–</span>
-      <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
-      <button onClick={tSetKoManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button>
-      <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid #2a3a50", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
+      {tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"var(--chrome-muted)"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
+      {tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"var(--chrome-muted)"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
+      {tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"var(--chrome-muted)"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}
+      <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
+      <span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span>
+      <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
+      <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button>
+      <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid var(--chrome-border)", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
     </span>);
     const actionArea = editing ? editForm
       : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
           <span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span>
-          <button onClick={() => koSim(ref, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+          <button onClick={() => koSim(ref, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
           <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 2 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button>
         </span>
       : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
-          <span style={{ ...mono, fontSize: 10, color: "#7889a0", fontWeight: 600 }}>{koResultText(m)}</span>
-          <button onClick={() => koResumeEdit(ref, m)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>
-          <button onClick={() => koDelete(ref)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button>
+          <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600 }}>{koResultText(m)}</span>
+          <button onClick={() => koResumeEdit(ref, m)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>
+          <button onClick={() => koDelete(ref)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button>
         </span>
       : m.home && m.away ? <span style={{ display: "flex", gap: opts.cardLayout ? 4 : 3, justifyContent: opts.cardLayout ? "center" : "flex-start", margin: opts.cardLayout ? 0 : "0 4px" }}>
-          <button onClick={() => koSim(ref, opts.initialLeg)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>
-          <button onClick={() => koStartEdit(ref)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>
+          <button onClick={() => koSim(ref, opts.initialLeg)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>
+          <button onClick={() => koStartEdit(ref)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>
           <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 1 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button>
         </span>
-      : <span style={{ ...mono, fontSize: 10, color: "#7889a0", margin: opts.cardLayout ? 0 : "0 6px" }}>{opts.showByeInAction && m.bye ? "BYE" : "–"}</span>;
-    const homeName = <>{haVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}{opts.homeTag && <span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>{opts.homeTag}</span>}</>;
-    const awayName = <>{m.away?.name || (m.bye ? "BYE" : "TBD")}{opts.awayTag && <span style={{ fontSize: 8, color: "#7889a0", marginLeft: 4 }}>{opts.awayTag}</span>}{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</>;
-    const haBtn = m.home && m.away && <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? (haVal === "off" ? "#bf616a" : "#7889a0") : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: haVal ? 1 : 0.4, flexShrink: 0 }}>H</button>;
+      : <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", margin: opts.cardLayout ? 0 : "0 6px" }}>{opts.showByeInAction && m.bye ? "BYE" : "–"}</span>;
+    const homeName = <>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}{opts.homeTag && <span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 4 }}>{opts.homeTag}</span>}</>;
+    const awayName = <>{m.away?.name || (m.bye ? "BYE" : "TBD")}{opts.awayTag && <span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 4 }}>{opts.awayTag}</span>}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</>;
+    const haBtn = m.home && m.away && <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? (haVal === "off" ? "#bf616a" : "var(--chrome-muted)") : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: haVal ? 1 : 0.4, flexShrink: 0 }}>H</button>;
     const homeWon = m.result && koWinner(m) === m.home, awayWon = m.result && koWinner(m) === m.away;
     if (opts.cardLayout) return (
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: homeWon ? "#ffffff" : "#7889a0", fontWeight: homeWon ? 600 : 400 }}>{homeName}</div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: homeWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400 }}>{homeName}</div>
           {haBtn}
         </div>
         <div style={{ textAlign: "center", padding: "4px 0" }}>{actionArea}</div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: awayWon ? "#ffffff" : "#7889a0", fontWeight: awayWon ? 600 : 400, textAlign: "right" }}>{awayName}</div>
+        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: awayWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, textAlign: "right" }}>{awayName}</div>
       </div>
     );
     return (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: homeWon ? "#ffffff" : "#7889a0", fontWeight: homeWon ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{homeName}</span>
+        <span style={{ fontSize: 11, color: homeWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{homeName}</span>
         {haBtn}
         {actionArea}
-        <span style={{ fontSize: 11, color: awayWon ? "#ffffff" : "#7889a0", fontWeight: awayWon ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{awayName}</span>
+        <span style={{ fontSize: 11, color: awayWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{awayName}</span>
       </div>
     );
   };
@@ -4742,14 +4780,14 @@ export default function App() {
   const aClrPre = lmHomeAdv === "home" ? aAwayClr : (lmHomeAdv == null && clash) ? aAwayClr : aHomeClr;
   // Team-picked colors can be too dark to read against the app's near-black panels.
   // Fall back to the team's other kit color first, then lighten as a last resort.
-  const hClr = readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, "#141c2b");
-  let aClr = readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, "#141c2b");
+  const hClr = readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, "var(--chrome-panel)");
+  let aClr = readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, "var(--chrome-panel)");
   // The away-kit switch above is a no-op when a team has no away color set (it just
   // falls back to its home color), so a clash can survive it. Guarantee the two final
   // colors are distinguishable no matter what caused the collision: try the away side's
   // other kit color once more, then nudge it toward white until it's clearly distinct.
   if (colorsClash(hClr, aClr)) {
-    const aOtherReadable = readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, "#141c2b");
+    const aOtherReadable = readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, "var(--chrome-panel)");
     if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
     else { aClr = lightenUntil(aClr, hClr, 0.35); }
   }
@@ -4777,21 +4815,21 @@ export default function App() {
       const mPos=[[gL-4,gT-6],[gL+70,gT-10],[gR+4,gT-6],[gL-8,gB+4],[gL+70,gB+8],[gR+8,gB+4]];
       return (<svg viewBox={`0 0 ${W} ${H+10}`} style={{width:"100%",maxWidth:180,height:"auto",display:"block"}}>
         <rect x="0" y="0" width={W} height={H+10} fill="transparent" />
-        <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#141c2b" stroke="#7889a0" strokeWidth="2.5" rx="1" />
-        <line x1={gL+47} y1={gT} x2={gL+47} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-        <line x1={gL+93} y1={gT} x2={gL+93} y2={gB} stroke="#7889a0" strokeWidth="0.5" />
-        <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="#7889a0" strokeWidth="0.5" />
-        <circle cx={(gL+gR)/2} cy={gB+7} r="1.5" fill="#7889a0" />
+        <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--chrome-panel)" stroke="var(--chrome-muted)" strokeWidth="2.5" rx="1" />
+        <line x1={gL+47} y1={gT} x2={gL+47} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.5" />
+        <line x1={gL+93} y1={gT} x2={gL+93} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.5" />
+        <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.5" />
+        <circle cx={(gL+gR)/2} cy={gB+7} r="1.5" fill="var(--chrome-muted)" />
         {kicks.map((k,i) => {
           const isLast = i === kicks.length-1;
           const pos = k.result==="miss" ? mPos[k.zone] : zPos[k.zone];
           const r = isLast ? 5.5 : 3.5;
-          const col = k.result==="goal"?"#a3be8c":k.result==="save"?"#bf616a":"#7889a0";
+          const col = k.result==="goal"?"#a3be8c":k.result==="save"?"#bf616a":"var(--chrome-muted)";
           return (<>
             {isLast && <rect x={dX[k.dive]-14} y={dY-16} width={28} height={32} rx="3" fill={k.result==="save"?"#bf616a22":"#ffffff08"} stroke={k.result==="save"?"#bf616a44":"#ffffff15"} strokeWidth="1" />}
             <circle cx={pos[0]} cy={pos[1]} r={r} fill={col} opacity={isLast?1:0.6} />
             {k.result==="miss" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={isLast?"9":"7"} fontWeight="700">×</text>}
-            {isLast && k.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#141c2b" fontSize="7" fontWeight="700">✓</text>}
+            {isLast && k.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="var(--chrome-panel)" fontSize="7" fontWeight="700">✓</text>}
           </>);
         })}
         <text x={W/2} y={H+9} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace">{label}</text>
@@ -4826,15 +4864,40 @@ export default function App() {
     </div>);
   };
 
-  const renderScoreboard = () => (
-    <div style={{ background: `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`, border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
+  const renderScoreboard = () => {
+    // Stadium photo is a faint backdrop, not a skin — team-color gradient stays
+    // ~70% opaque on top so colors still read as the dominant signal. Not theme-gated
+    // and not host-mode-gated: any match where a stadium name resolves (explicit
+    // tournament/neutral venue, or falling back to whichever team holds home
+    // advantage's own ground) shows its photo if one exists in /stadiums, same
+    // fallback chain as venueText below so the two never disagree.
+    // Stadium images live at /stadiums/<exact stadium name>.jpg or .jpeg (tries both —
+    // a missing/wrong-extension file just renders no photo, background-image 404s
+    // are silent, so this isn't hunted down as a JS error).
+    const hostTeam = lmMatch.homeAdv === "away" ? teamById(lmA) : lmMatch.homeAdv === "home" ? teamById(lmH) : null;
+    // stripVenue here (not at each input site) because a team's own .stadium field is
+    // free-typed in the team editor, unlike the bulk-import/host-pool parsers which
+    // already strip population/capacity suffixes before they ever reach this point.
+    const venueStadium = stripVenue(lmMatch.venue?.stadium || hostTeam?.stadium || "") || null;
+    // Accented names (Chūkyō, etc.) can round-trip through Unicode normalization
+    // differently than the file was saved with — macOS Finder/drag-drop commonly writes
+    // NFD (decomposed: u + combining macron) while typed/pasted text is usually NFC
+    // (precomposed). Same visible name, different bytes, so try both forms — a no-op
+    // when the name has nothing to normalize (plain ASCII names hit the same URL twice).
+    const stadiumUrlNFC = venueStadium ? `/stadiums/${encodeURIComponent(venueStadium.normalize("NFC"))}` : null;
+    const stadiumUrlNFD = venueStadium ? `/stadiums/${encodeURIComponent(venueStadium.normalize("NFD"))}` : null;
+    const scoreboardBg = venueStadium
+      ? `linear-gradient(90deg, ${hClr2}b3 0%, ${hClr2}b3 40%, ${aClr2}b3 60%, ${aClr2}b3 100%), url("${stadiumUrlNFC}.jpg"), url("${stadiumUrlNFC}.jpeg"), url("${stadiumUrlNFD}.jpg"), url("${stadiumUrlNFD}.jpeg")`
+      : `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`;
+    return (
+    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
       {/* Venue + POTM sticker */}
       {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
         const sn = shortName;
-        const staminaClr = (v) => v > 60 ? "#7889a0" : v > 30 ? "#ebcb8b" : "#bf616a";
+        const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "#ebcb8b" : "#bf616a";
         const PitchSVG = ({starters, formation}) => {
           const FPOS = {
             "4-4-2":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
@@ -4859,18 +4922,18 @@ export default function App() {
           })();
           const pp = pitchPos2.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
           return (<svg viewBox="-10 0 120 100" style={{ width: "100%", height: "auto" }}>
-            <rect x="1" y="1" width="98" height="98" fill="#060b14" stroke="#7889a044" strokeWidth="0.6" rx="1.5" />
-            <rect x="26" y="1" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-            <rect x="37" y="1" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
-            <rect x="26" y="86" width="48" height="13" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-            <rect x="37" y="94" width="26" height="5" fill="none" stroke="#7889a033" strokeWidth="0.35" />
-            <circle cx="50" cy="50" r="9" fill="none" stroke="#7889a044" strokeWidth="0.5" />
-            <circle cx="50" cy="50" r="0.6" fill="#7889a044" />
-            <line x1="1" y1="50" x2="99" y2="50" stroke="#7889a044" strokeWidth="0.5" />
+            <rect x="1" y="1" width="98" height="98" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.6" rx="1.5" />
+            <rect x="26" y="1" width="48" height="13" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+            <rect x="37" y="1" width="26" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.35" />
+            <rect x="26" y="86" width="48" height="13" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+            <rect x="37" y="94" width="26" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.35" />
+            <circle cx="50" cy="50" r="9" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
+            <circle cx="50" cy="50" r="0.6" fill="var(--chrome-muted-44)" />
+            <line x1="1" y1="50" x2="99" y2="50" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
             {starters.map((p, pi) => {
               const pos = pp[pi]; if (!pos) return null;
               return (<g key={pi}>
-                <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="#060b14" strokeWidth="0.5" />
+                <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.5" />
                 <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="#ffffff" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
               </g>);
             })}
@@ -4884,37 +4947,37 @@ export default function App() {
               const starters = lmMatch.players[side] || [];
               const bench = lmMatch.bench[side] || [];
               const offP = preSwap.side === side ? starters.find(p => p.name === preSwap.off) : null;
-              return (<div key={side} style={{ background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
+              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <span style={{ fontSize: 8, color: SC[tm?.style]||"#888", fontWeight: 600 }}>{STYLE_LBL[tm?.style]||"Balanced"}</span>
-                    <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"#7889a0", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
+                    <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"var(--chrome-muted)", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
                   </div>
                 </div>
                 <PitchSVG starters={starters} formation={tm?.formation} />
                 <div style={{ marginTop: 6, padding: "0 2px" }}>
-                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "#e4002b14", border: "1px solid #e4002b44", borderRadius: 4 }}>
-                    <span style={{ fontSize: 8, color: "#7889a0" }}>Bench <b style={{ color: "#ffffff" }}>{offP.name}</b>, pick a replacement below</span>
+                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "var(--chrome-brand-14)", border: "1px solid var(--chrome-brand-44)", borderRadius: 4 }}>
+                    <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Bench <b style={{ color: "#ffffff" }}>{offP.name}</b>, pick a replacement below</span>
                     <span onClick={() => setPreSwap({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                   </div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
                     {starters.map((p, pi) => {
                       const stam = p.stamina ?? 100;
                       const isOffP = offP?.name === p.name;
-                      return (<div key={pi} onClick={() => setPreSwap(isOffP ? {side:null,off:null} : {side, off:p.name})} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0", cursor: "pointer", opacity: offP && !isOffP ? 0.5 : 1, background: isOffP ? "#e4002b1a" : "transparent", borderRadius: 3 }}>
+                      return (<div key={pi} onClick={() => setPreSwap(isOffP ? {side:null,off:null} : {side, off:p.name})} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0", cursor: "pointer", opacity: offP && !isOffP ? 0.5 : 1, background: isOffP ? "var(--chrome-brand-1a)" : "transparent", borderRadius: 3 }}>
                         <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, width: 20, flexShrink: 0, textAlign: "left", ...mono }}>{p.pos}</span>
                         <span style={{ color: "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
                         <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600, flexShrink: 0 }}>🗲{Math.round(stam)}</span>
                       </div>);
                     })}
                   </div>
-                  {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #2a3a5033" }}>
+                  {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border-33)" }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                       {[...bench].sort((a,b) => (b.stamina??100)-(a.stamina??100)).map((p, pi) => { const stam = p.stamina ?? 100; return (
-                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 4, cursor: offP ? "pointer" : "default", background: "#141c2b", border: "1px solid #2a3a5088" }}>
-                          <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"#7889a0", fontWeight: 700 }}>{p.pos}</span>
-                          <span style={{ color: "#7889a0" }}>{p.name}</span>
+                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 4, cursor: offP ? "pointer" : "default", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-88)" }}>
+                          <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
+                          <span style={{ color: "var(--chrome-muted)" }}>{p.name}</span>
                           <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
                         </span>
                       ); })}
@@ -4936,7 +4999,6 @@ export default function App() {
         let venueText;
         if (lmMatch.venue?.city || lmMatch.venue?.stadium) venueText = [lmMatch.venue.stadium, lmMatch.venue.city].filter(Boolean).join(", ");
         else {
-          const hostTeam = lmMatch.homeAdv === "away" ? teamById(lmA) : lmMatch.homeAdv === "home" ? teamById(lmH) : null;
           venueText = hostTeam?.stadium || hostTeam?.city ? [hostTeam.stadium, hostTeam.city].filter(Boolean).join(", ") : "Neutral Venue";
         }
         let potmEl = null;
@@ -4952,7 +5014,7 @@ export default function App() {
             }
           }
         }
-        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#141c2b", border: "1px solid #2a3a5066", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
+        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
           <span style={{ fontSize: 10 }}>📍</span>
           <span style={{ fontSize: 10, color: "#ffffffcc", fontWeight: 500, ...ui }}>{venueText}</span>
           {potmEl}
@@ -4980,7 +5042,7 @@ export default function App() {
         };
         const hI = buildItems("home"), aI = buildItems("away");
         const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-        const ball = (t) => t === "pen_miss" ? <span style={{ fontSize: 9, color: "#e4002b" }}>⚽︎</span>
+        const ball = (t) => t === "pen_miss" ? <span style={{ fontSize: 9, color: "var(--chrome-brand)" }}>⚽︎</span>
           : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9 }}>⚽︎</span>
           : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
           : null;
@@ -5084,6 +5146,7 @@ export default function App() {
       </>}
     </div>
   );
+  };
 
   const renderStatsReport = () => {
     const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph+pa||1;
@@ -5092,16 +5155,16 @@ export default function App() {
     const hXG = (lmMatch.xG?.home||0).toFixed(2), aXG = (lmMatch.xG?.away||0).toFixed(2);
     const statRows = [["Possession",hp+"%",ap+"%"],["Shots",st.home.shots,st.away.shots],["On Target",st.home.onTarget,st.away.onTarget],["xG",hXG,aXG],["Corners",st.home.corners,st.away.corners],["Fouls",st.home.fouls,st.away.fouls],["Yellows",st.home.yellows,st.away.yellows],["Reds",st.home.reds,st.away.reds]];
     return (
-      <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12 }}>
+      <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12 }}>
         {/* Match Stats */}
-        <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
+        <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
           {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
             <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hStatClr : "#7889a0", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
-              <span style={{ width: 60, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>{label}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "#7889a0", borderRadius: 2 }} /></div>
-              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aStatClr : "#7889a0", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
+              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hStatClr : "var(--chrome-muted)", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "var(--chrome-muted)", borderRadius: 2 }} /></div>
+              <span style={{ width: 60, textAlign: "center", color: "var(--chrome-muted)", fontSize: 9, flexShrink: 0 }}>{label}</span>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "var(--chrome-muted)", borderRadius: 2 }} /></div>
+              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aStatClr : "var(--chrome-muted)", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
             </div>
           ); })}
         </div>
@@ -5156,52 +5219,52 @@ export default function App() {
             return { ...found, goals, assists, rating };
           };
           return (<>
-          {si === 1 && <div style={{ background: "#7889a0" }}></div>}
+          {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
           <div>
-            <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
+            <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
             <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
-              <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>OVR</span>
-              <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
-              <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
+              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
               <span></span>
               {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
-                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ color: isOff?"var(--chrome-muted)":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
+                <span style={{ fontSize: 7, color: isOff?"#bf616a":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
               </>); })}
-              <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
+              <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
               {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
-                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
+                <span style={{ color: isOn?"#ffffff":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
+                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                <span style={{ fontSize: 7, color: isOn?"#a3be8c":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
               </>); })}
             </div>
           </div>
           </>);
         })}
         </div>
-        {tLiveTarget && <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50", textAlign: "center" }}>
-          <span style={{ fontSize: 9, color: "#7889a0" }} title="Tracked per fixture, persists across abandons and page reloads">Replays: {Math.max(0, _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget?.leg === 2 ? "_L2" : "")) - 1)}</span>
+        {tLiveTarget && <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)", textAlign: "center" }}>
+          <span style={{ fontSize: 9, color: "var(--chrome-muted)" }} title="Tracked per fixture, persists across abandons and page reloads">Replays: {Math.max(0, _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget?.leg === 2 ? "_L2" : "")) - 1)}</span>
         </div>}
       </div>
     );
@@ -5296,17 +5359,17 @@ export default function App() {
   }, [playerIndex, teams, bestXiNat]);
 
   return (
-    <div style={{ ...ui, background: "#0a0e17", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
+    <div data-theme={wcTheme ? "wc1933" : "default"} style={{ ...ui, background: "var(--chrome-bg)", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
       <style>{APP_CSS}</style>
-      {loading && <div style={{ position: "fixed", inset: 0, background: "#0a0e17dd", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid #141c2b", borderTop: "3px solid #7889a0", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "#7889a0", letterSpacing: "0.15em" }}>SIMULATING…</span></div>}
+      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.15em" }}>SIMULATING…</span></div>}
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: 20, paddingBottom: 12 }}>
           <div style={{ marginBottom: 12, textAlign: "center" }}>
-            <img src={headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
+            <img src={wcTheme ? "/1933-wc-banner.png" : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "#e4002b" : "transparent", color: tab === id ? "#ffffff" : "#7889a0", border: tab === id ? "1px solid #e4002b" : "1px solid #141c2b", boxShadow: tab === id ? "0 0 12px #e4002b44" : "none" }}>{l}</button>
+              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "#ffffff" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
         </div>
@@ -5314,19 +5377,19 @@ export default function App() {
         {tab === "teams" && (<>
         {/* TEAMS */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-          <label style={{ ...lbl, margin: 0 }}>Teams <span style={{ color: "#7889a0", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
+          <label style={{ ...lbl, margin: 0 }}>Teams <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
           <div style={{ display: "flex", gap: 6 }}>
-            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
-            <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "#e4002b" : "#7889a0", cursor: "text" }} />
-            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "#7889a0" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
-            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "#7889a0" }}>{showBulk ? "✕ Close" : "📂"}</button>}
+            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
+            <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
+            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "var(--chrome-muted)" }}>{showBulk ? "✕ Close" : "📂"}</button>}
             {teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
           </div>
         </div>
-        {showExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "#7889a0" }}>Merges into the roster as Custom teams</span></div></div>)}
-        <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid #2a3a50" }}>
+        {showExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
+        {showBulk && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
+        <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)" }}>
             <div style={{ display: "flex", gap: 4, flex: 1 }}>
               {[["name","Name"],["code","Code"],["skill","Skill"]].map(([k,l]) => { const active = teamSort?.key === k; const dir = active ? teamSort.dir : null; return (
                 <button key={k} onClick={() => {
@@ -5339,47 +5402,47 @@ export default function App() {
                     else d = (a.code||abbr(a.name,a.code)||"").localeCompare(b.code||abbr(b.name,b.code)||"");
                     return newDir === "desc" ? -d : d;
                   }));
-                }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid " + (active ? "#e4002b" : "#7889a033"), background: active ? "#e4002b22" : "transparent", color: active ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
+                }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid " + (active ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: active ? "var(--chrome-brand-22)" : "transparent", color: active ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
               ); })}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid #2a3a50", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0" }}>
+          <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid var(--chrome-border)", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>
             <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.sq, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: TEAM_COLW.tac, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span><span style={{ width: TEAM_COLW.inf, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>INF</span>{teamsFiltered.some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
           </div>
           {(() => { const visibleTeams = teamsFiltered; return (
           <div style={{ maxHeight: visibleTeams.length > 12 ? 520 : "none", overflowY: visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
             {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
               <div key={t.id}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "#141c2b" : i % 2 === 0 ? "transparent" : "#141c2b08", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); if (!exp) setViewSquad(null); }}>
-                <span style={{ color: "#7889a0", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); if (!exp) setViewSquad(null); }}>
+                <span style={{ color: "var(--chrome-muted)", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
                 <TeamCrest team={t} size={18} style={{ marginLeft: 8 }} />
-                <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                 <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => {
                   const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
                   if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) {
                     setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return;
                   }
                   updateTeam(t.id, "code", v);
-                }} style={{ ...inp, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "#7889a0", borderColor: dupCodeId === t.id ? "#bf616a" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#141c2b"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === t.id ? null : t.id); setExpandedTeam(null); }} style={{ width: TEAM_COLW.sq, textAlign: "center", fontSize: 9, color: viewSquad === t.id ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === t.id ? "#e4002b" : t.squad?.some(p => !p.name.startsWith("#")) ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === t.id ? "#7889a022" : "transparent" }}>{viewSquad === t.id ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
-                <span style={{ width: TEAM_COLW.tac, textAlign: "center", fontSize: 9, color: exp ? "#e4002b" : nonDefault > 0 ? "#7889a0" : "#7889a066", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "#e4002b" : nonDefault > 0 ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "#7889a022" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
-                {(() => { const hasInf = [t.city, t.stadium].filter(Boolean).length; const infOpen = viewInfo === t.id; return <span onClick={e => { e.stopPropagation(); setViewInfo(infOpen ? null : t.id); setViewSquad(null); setExpandedTeam(null); }} style={{ width: TEAM_COLW.inf, textAlign: "center", fontSize: 9, color: infOpen ? "#e4002b" : hasInf ? "#7889a0" : "#7889a066", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (infOpen ? "#e4002b" : hasInf ? "#7889a033" : "transparent"), borderRadius: 4, padding: "2px 0", background: infOpen ? "#7889a022" : "transparent" }}>{infOpen ? "\u25BE" : hasInf ? hasInf : "\u2013"}</span>; })()}
+                }} style={{ ...inp, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "var(--chrome-muted)", borderColor: dupCodeId === t.id ? "#bf616a" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === t.id ? null : t.id); setExpandedTeam(null); }} style={{ width: TEAM_COLW.sq, textAlign: "center", fontSize: 9, color: viewSquad === t.id ? "var(--chrome-brand)" : t.squad?.some(p => !p.name.startsWith("#")) ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === t.id ? "var(--chrome-brand)" : t.squad?.some(p => !p.name.startsWith("#")) ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === t.id ? "var(--chrome-muted-22)" : "transparent" }}>{viewSquad === t.id ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
+                <span style={{ width: TEAM_COLW.tac, textAlign: "center", fontSize: 9, color: exp ? "var(--chrome-brand)" : nonDefault > 0 ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "var(--chrome-brand)" : nonDefault > 0 ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "var(--chrome-muted-22)" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
+                {(() => { const hasInf = [t.city, t.stadium].filter(Boolean).length; const infOpen = viewInfo === t.id; return <span onClick={e => { e.stopPropagation(); setViewInfo(infOpen ? null : t.id); setViewSquad(null); setExpandedTeam(null); }} style={{ width: TEAM_COLW.inf, textAlign: "center", fontSize: 9, color: infOpen ? "var(--chrome-brand)" : hasInf ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (infOpen ? "var(--chrome-brand)" : hasInf ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: infOpen ? "var(--chrome-muted-22)" : "transparent" }}>{infOpen ? "\u25BE" : hasInf ? hasInf : "\u2013"}</span>; })()}
                 {t.league === "Custom" && <button onClick={e => { e.stopPropagation(); removeTeam(t.id); }} style={{ ...delBtn, width: TEAM_COLW.del, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
               </div>
-              {viewInfo === t.id && <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 4 }}>
+              {viewInfo === t.id && <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 4 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: "6px 8px", alignItems: "center", fontSize: 10 }}>
-                  <span style={{ color: "#7889a0", fontWeight: 600 }}>Colors</span>
+                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>Colors</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
-                    <span style={{ color: "#7889a066", fontSize: 9 }}>H</span>
-                    <input type="color" value={t.secondaryColor || t.primaryColor || "#141c2b"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid #2a3a50", borderRadius: 3, cursor: "pointer" }} />
-                    <span style={{ color: "#7889a066", fontSize: 9 }}>A</span>
+                    <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid var(--chrome-border)", borderRadius: 3, cursor: "pointer" }} />
+                    <span style={{ color: "var(--chrome-muted-66)", fontSize: 9 }}>H</span>
+                    <input type="color" value={t.secondaryColor || t.primaryColor || "var(--chrome-panel)"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid var(--chrome-border)", borderRadius: 3, cursor: "pointer" }} />
+                    <span style={{ color: "var(--chrome-muted-66)", fontSize: 9 }}>A</span>
                   </div>
-                  <span style={{ color: "#7889a0", fontWeight: 600 }}>Stadium</span>
-                  <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid #2a3a50", background: "#0d1117", fontSize: 10, width: "100%" }} />
-                  <span style={{ color: "#7889a0", fontWeight: 600 }}>City</span>
-                  <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid #2a3a50", background: "#0d1117", fontSize: 10, width: "100%" }} />
+                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>Stadium</span>
+                  <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid var(--chrome-border)", background: "var(--chrome-bg3)", fontSize: 10, width: "100%" }} />
+                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>City</span>
+                  <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid var(--chrome-border)", background: "var(--chrome-bg3)", fontSize: 10, width: "100%" }} />
                 </div>
               </div>}
               {viewSquad === t.id && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (() => {
@@ -5411,36 +5474,36 @@ export default function App() {
                 const pitchPos = pitchPosRaw.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
                 const lpos = pitchPos.map(p => ({ x: 6 + (1 - (p.y - 2) / 101) * 138, y: 6 + (p.x / 100) * 48 }));
                 return (<div onClick={() => setViewSquad(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 12, padding: "20px 24px", width: "90vw", maxWidth: 880, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", width: "90vw", maxWidth: 880, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "#7889a0" }}>SQUAD</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>SQUAD</span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>{t.name}</span>
-                      <span style={{ fontSize: 10, color: FORM_CLR[t.formation || "4-3-3"] || "#7889a0", fontWeight: 600, ...mono }}>{t.formation || "4-3-3"}</span>
+                      <span style={{ fontSize: 10, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)", fontWeight: 600, ...mono }}>{t.formation || "4-3-3"}</span>
                       <span style={{ fontSize: 9, color: STYLE_CLR[t.style || "balanced"], fontWeight: 600 }}>{STYLE_LBL[t.style || "balanced"]}</span>
                     </div>
-                    <span onClick={() => setViewSquad(null)} style={{ cursor: "pointer", color: "#7889a0", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
+                    <span onClick={() => setViewSquad(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
                     <svg viewBox="0 0 150 60" style={{ width: "100%", height: "auto", marginBottom: 16 }}>
-                      <rect x="2" y="2" width="146" height="56" fill="#060b14" stroke="#7889a044" strokeWidth="0.8" rx="1.5" />
-                      <line x1="75" y1="2" x2="75" y2="58" stroke="#7889a044" strokeWidth="0.6" />
-                      <circle cx="75" cy="30" r="7" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-                      <circle cx="75" cy="30" r="0.5" fill="#7889a044" />
-                      <rect x="2" y="12" width="16" height="36" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-                      <rect x="2" y="19" width="7" height="22" fill="none" stroke="#7889a033" strokeWidth="0.4" />
-                      <rect x="132" y="12" width="16" height="36" fill="none" stroke="#7889a044" strokeWidth="0.6" />
-                      <rect x="141" y="19" width="7" height="22" fill="none" stroke="#7889a033" strokeWidth="0.4" />
+                      <rect x="2" y="2" width="146" height="56" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="1.5" />
+                      <line x1="75" y1="2" x2="75" y2="58" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+                      <circle cx="75" cy="30" r="7" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+                      <circle cx="75" cy="30" r="0.5" fill="var(--chrome-muted-44)" />
+                      <rect x="2" y="12" width="16" height="36" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+                      <rect x="2" y="19" width="7" height="22" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.4" />
+                      <rect x="132" y="12" width="16" height="36" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
+                      <rect x="141" y="19" width="7" height="22" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.4" />
                       {starters.map((p, pi2) => {
                         const pos = lpos[pi2];
                         if (!pos) return null;
                         return (<g key={pi2}>
-                          <circle cx={pos.x} cy={pos.y} r="2.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="#060b14" strokeWidth="0.4" />
+                          <circle cx={pos.x} cy={pos.y} r="2.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.4" />
                           <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="#ffffff" fontSize="2.1" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
                         </g>);
                       })}
                     </svg>
-                    <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>STARTING XI</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>STARTING XI</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px", marginBottom: 10 }}>
                     {starters.map((p, pi) => (
                       <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
@@ -5449,20 +5512,20 @@ export default function App() {
                           const ns = [...sq]; ns[pi] = {...ns[pi], name: e.target.value, fullName: undefined};
                           updateTeam(t.id, "squad", ns);
                         }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
-                        onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                        onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                         <input type="number" min="1" max="99"
                           value={p.ovr != null ? p.ovr : (t.skill || 65)}
                           onChange={e => { const ns = [...sq]; ns[pi] = {...ns[pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
                           onClick={e => e.stopPropagation()}
-                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
-                          onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                          onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                           onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                         {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
                     ))}
                     </div>
-                    <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingTop: 6 }}>BENCH</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingTop: 6 }}>BENCH</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px" }}>
                     {bench.map((p, pi) => (
                       <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
@@ -5470,15 +5533,15 @@ export default function App() {
                         <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
                           const ns = [...sq]; ns[11 + pi] = {...ns[11+pi], name: e.target.value, fullName: undefined};
                           updateTeam(t.id, "squad", ns);
-                        }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "#7889a0" }}
-                        onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                        }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "var(--chrome-muted)" }}
+                        onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                         onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                         <input type="number" min="1" max="99"
                           value={p.ovr != null ? p.ovr : (t.skill || 65)}
                           onChange={e => { const ns = [...sq]; ns[11+pi] = {...ns[11+pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
                           onClick={e => e.stopPropagation()}
-                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "#7889a0", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
-                          onFocus={e => { e.target.style.borderColor = "#7889a0"; e.target.style.background = "#0a0e17"; }}
+                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                          onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                           onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                         {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
@@ -5490,31 +5553,31 @@ export default function App() {
               })()}
                             {exp && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (
                 <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid #2a3a50" }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "#7889a0" }}>TACTICS</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>TACTICS</span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>{t.name}</span>
                     </div>
-                    <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "#7889a0", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
+                    <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
                     <select value={t.style || "balanced"} onChange={e => updateTeam(t.id, "style", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:STYLE_CLR[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>FORMATION</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>FORMATION</div>
                     <select value={t.formation || "4-3-3"} onChange={e => updateTeam(t.id, "formation", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: FORM_CLR[t.formation || "4-3-3"] || "#888" }}>{FORM_GRP.map(([label, forms]) => <optgroup key={label} label={label}>{forms.map(f => <option key={f} value={f} style={{color:FORM_CLR[f]}}>{f}</option>)}</optgroup>)}</select>
                   </div>
                 </div>
                 {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
                   const hdr = grp !== lastGrp; lastGrp = grp;
-                  return (<div key={key}>{hdr && <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 10, marginBottom: 4 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
+                  return (<div key={key}>{hdr && <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 10, marginBottom: 4 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 10, color: "#7889a0", width: 60, flexShrink: 0 }}>{name}</span>
-                    <select value={strat[key] ?? 0} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "#7889a0" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
+                    <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
+                    <select value={strat[key] ?? 0} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
                       {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div></div>);
@@ -5525,19 +5588,19 @@ export default function App() {
               </div>); })}
           </div>
           ); })()}
-          {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", padding: "6px 12px", borderTop: "1px solid #2a3a50" }}>Skill values must be between 25 and 100.</div>}
+          {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", padding: "6px 12px", borderTop: "1px solid var(--chrome-border)" }}>Skill values must be between 25 and 100.</div>}
         </div>
 
 
         <div style={{ marginTop: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-            <label style={{ ...lbl, margin: 0 }}>Players <span style={{ color: "#7889a0", fontWeight: 400 }}>({playerIndex.length})</span></label>
+            <label style={{ ...lbl, margin: 0 }}>Players <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({playerIndex.length})</span></label>
             <div style={{ display: "flex", gap: 6 }}>
-              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
-              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerLeagueFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
-              <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerClubFilter ? "#e4002b" : "#7889a0", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
-              <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: playerSearch ? "#e4002b" : "#7889a0", cursor: "text" }} />
+              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
+              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
+              <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerClubFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
+              <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: playerSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
             </div>
           </div>
           {(() => { const dups = playerIndex.filter(p => p.clubs.length > 1); const badSyntax = []; teams.forEach(t => { if (!t.squad) return; t.squad.forEach(p => { if (!p.name || p.name.startsWith("#")) return; const n = p.fullName || p.name; if (/[\[\]{}()]/.test(n)) badSyntax.push(n + " (" + (t.code || abbr(t.name, t.code)) + ")"); }); }); if (dups.length === 0 && badSyntax.length === 0) return null; return (
@@ -5557,10 +5620,10 @@ export default function App() {
               return true;
             });
             const PLR_COLW = { num: 32, player: 220, ovr: 44, pos: 70, nat: 130, club: 180 };
-            const thStyle = { position: "sticky", top: 0, background: "#141c2b", padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0", textAlign: "left", whiteSpace: "nowrap" };
+            const thStyle = { position: "sticky", top: 0, background: "var(--chrome-panel)", padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
             const tdStyle = { padding: "5px 12px" };
             return (
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
                 <div style={{ maxHeight: 1350, overflowY: "auto", overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                     <colgroup>
@@ -5577,15 +5640,15 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "#7889a066", textAlign: "center" }}>No players found.</td></tr>}
+                      {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
                       {filtered.map((p, i) => (
-                        <tr key={p.fullName} style={{ background: i % 2 ? "transparent" : "#0a0e1708" }}>
-                          <td style={{ ...tdStyle, color: "#7889a0", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
+                        <tr key={p.fullName} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                          <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
                           <td style={tdStyle}>{boldSurname(p.fullName || p.name, p.name)}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
-                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
-                          <td style={{ ...tdStyle, paddingLeft: 8, color: "#7889a0", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
-                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "#7889a0", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8, color: "var(--chrome-muted)", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -5613,7 +5676,7 @@ export default function App() {
                 <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", textAlign: "center" }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                     {lastLiveResult && <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
-                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "#e4002b", border: "none", borderRadius: 4, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
+                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 4, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
                     <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 4, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
                     <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
                   </div>
@@ -5650,77 +5713,114 @@ export default function App() {
                 {finished ? (
                   <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? 0.5 : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
                 ) : (<div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "#e4002b", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
+                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "var(--chrome-brand)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
                   <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
                   <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
                 </div>)}
                 {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
-                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "#e4002b" : "#141c2b", border: "1px solid " + (autoSpeed === s.v ? "#e4002b" : "#7889a033"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
                   ))}
                 </div>}
               </div>) : null;
             })()}
           </div>
-          {lmIsSetup && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
+          {lmIsSetup && !tPendingPlayLive && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
                 <select value={lmH} onChange={e => { setLmH(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
-                <span style={{ fontSize: 12, color: "#7889a0", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>VS</span>
+                <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>VS</span>
                 <select value={lmA} onChange={e => { setLmA(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
               </div>
             </div>
-            <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
+            <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
                 {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs"], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds"]].map(([checked, onChange, label, sub], i) => (
                   <label key={i} onClick={() => onChange(!checked)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
-                    <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
-                      <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
+                    <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
-                      <div style={{ fontSize: 9, color: "#7889a0", lineHeight: 1.2 }}>{sub}</div>
+                      <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+                      <div style={{ fontSize: 9, color: "var(--chrome-muted)", lineHeight: 1.2 }}>{sub}</div>
                     </div>
                   </label>
                 ))}
               </div>
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2a3a50" }}>
-                <div style={{ fontSize: 10, color: "#7889a0", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
-                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #2a3a50" }}>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[["home", teamById(lmH)?.name || "Home"], [null, "Neutral"], ["away", teamById(lmA)?.name || "Away"]].map(([val, label]) => (
-                    <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "#e4002b" : "transparent", color: lmHomeAdv === val ? "#ffffff" : "#7889a0", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid #7889a033" : "none" }}>{label}</button>
+                    <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "var(--chrome-brand)" : "transparent", color: lmHomeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                   ))}
                 </div>
-                <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
                 {lmHomeAdv === null && <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <input value={lmNeutralVenueName} onChange={e => setLmNeutralVenueName(e.target.value)} placeholder="Neutral Venue Name (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
                   <input value={lmNeutralVenueLoc} onChange={e => setLmNeutralVenueLoc(e.target.value)} placeholder="Neutral Location (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
                 </div>}
               </div>
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2a3a50" }}>
-                <div style={{ fontSize: 10, color: "#7889a0", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>AGGREGATE SCORING</div>
-                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #2a3a50" }}>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>AGGREGATE SCORING</div>
+                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
-                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "#e4002b" : "transparent", color: lm2ndLeg === val ? "#ffffff" : "#7889a0", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid #7889a033" : "none" }}>{label}</button>
+                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                   ))}
                 </div>
                 {lm2ndLeg && <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginBottom: 6 }}>1st leg result</div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 6, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>1st leg result</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px" }}>
                     <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teamById(lmH)?.name}</span>
                     <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                    <span style={{ color: "#7889a0", fontSize: 14 }}>–</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 14 }}>–</span>
                     <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
                     <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teamById(lmA)?.name}</span>
                   </div>
                 </div>}
-                {!lm2ndLeg && <div style={{ fontSize: 9, color: "#7889a0", textAlign: "center", marginTop: 4 }}>Single match</div>}
+                {!lm2ndLeg && <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>Single match</div>}
               </div>
             </div>
             {teams.length < 2 && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
             {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
           </div>)}
-          {lmMatch && (<>
+          {tPendingPlayLive && (() => {
+            const vc = tResolveVenueContext(tPendingPlayLive);
+            if (!vc) return null;
+            return (
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", textAlign: "right" }}>{vc.homeTeam.name}</div>
+                  <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>{vc.isL2 ? "L2" : "VS"}</span>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff" }}>{vc.awayTeam.name}</div>
+                </div>
+                {vc.hostModeActive ? (
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>STADIUM</div>
+                    <select value={vc.venue?.stadium || ""} onChange={e => setTVenueOverrides(p => ({ ...p, [vc.overrideKey]: e.target.value }))} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
+                      {tHostVenuePool.length === 0 && <option value="">No host venues configured</option>}
+                      {tHostVenuePool.map((v, i) => <option key={i} value={v.stadium}>{[v.stadium, v.city].filter(Boolean).join(", ")}</option>)}
+                    </select>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{tVenueOverrides[vc.overrideKey] ? "Manually chosen" : "Automatic pick — change to lock this fixture to a specific stadium"}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                    <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
+                      {[["home", vc.homeTeam.name], [null, "Neutral"], ["away", vc.awayTeam.name]].map(([val, label]) => (
+                        <button key={label} onClick={() => setTHomeAdvOverrides(p => ({ ...p, [vc.venueKey]: val === null ? "off" : val }))} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "+3% skill bonus" : "No advantage"}</div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                  <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
+                  <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 2 }}>⚽ Kick Off</button>
+                </div>
+              </div>
+            );
+          })()}
+          {lmMatch && !tPendingPlayLive && (<>
             {renderScoreboard()}
             {lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
               <div style={{ marginBottom: 14 }}>
@@ -5730,8 +5830,8 @@ export default function App() {
                     {(() => { const _pc = lmPendingChance(lmMatch, chanceStep); const _pe = _pc ? lmMatch.events[_pc.idx] : null; const _dispBall = _pe?.team ? (_pe.team === "home" ? 4 : 0) : lmMatch.ball; const _dispPoss = _pe?.team || lmMatch.possession; return ["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
                       const active = _dispBall === z;
                       const clr = _dispPoss === "home" ? hClr : aClr;
-                      return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "#141c2b", border: `1px solid ${active ? clr : "#2a3a50"}`, borderRadius: 4, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.08em", color: active ? clr : "#7889a066", ...mono }}>{label}</span>
+                      return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "var(--chrome-panel)", border: `1px solid ${active ? clr : "var(--chrome-border)"}`, borderRadius: 4, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.08em", color: active ? clr : "var(--chrome-muted-66)", ...mono }}>{label}</span>
                       </div>;
                     }); })()}
                   </div>
@@ -5740,15 +5840,15 @@ export default function App() {
               </div>
             )}
             {lmMatch.phase === "finished" && renderStatsReport()}
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
-              <div style={{ padding: "10px 18px", borderBottom: "1px solid #141c2b", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7889a0", textAlign: "center" }}>Match Events</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 270 : 220, overflowY: "auto" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 4, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
                 </div>);
                 const mC = (min) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#7889a0", ...mono }}>{min}'</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min}'</span>
                 </div>);
                 const iC = (content, sz) => (<div style={{ width: 30, minWidth: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: sz || 14 }}>{content || " "}</div>);
                 const parseSub = (txt) => { const s = txt.replace(/^(?:🔄|⇄)\s*/, '').split(/\s*→\s*/); if (s.length < 2) return null; const tm = s[0].match(/^(.+?)'s\s+(.+)$/); const rm = s[1].match(/^(.+?)\.\s+(.+?)\.?$/); return { team: tm?.[1]||"", off: tm?.[2]||s[0], on: rm?.[1]||s[1].replace(/\.\s*$/,""), reason: rm?.[2]||"" }; };
@@ -5758,13 +5858,13 @@ export default function App() {
                 // gvPitch viewBox is 206x142 at up to 280px wide. Sizing the button so its
                 // bottom edge lands on the pitch view's bottom edge (mouth height + gap + button).
                 const GV_STACKED_BTN_H = Math.round(280 * 142 / 206) - Math.round(190 * 136 / 220) - 16;
-                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid #2a3a50", borderRadius: 6, color: "#7889a0", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
+                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
                 // The one chance (if any) the "next minute" button is currently driving — see
                 // lmPendingChance. A card is "gated" (external-button-only, no in-card Back)
                 // exactly when it's this one; every other chance card is historical.
                 const pendingChance = lmPendingChance(lmMatch, chanceStep);
                 return lmMatch.events.map((e, i) => {
-                if (e.type === "phase") return (<div key={i} className="ev-enter" style={{ padding: "8px 18px", textAlign: "center", fontSize: 10, fontWeight: 600, color: "#7889a0", letterSpacing: "0.12em", borderBottom: "1px solid #141c2b" }}>{e.text}</div>);
+                if (e.type === "phase") return (<div key={i} className="ev-enter" style={{ padding: "8px 18px", textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--chrome-muted)", letterSpacing: "0.12em", borderBottom: "1px solid var(--chrome-panel)" }}>{e.text}</div>);
                 // Nothing renders past the reveal frontier. A chance's own outcome can cascade
                 // into further events within the SAME tick (a save that wins a corner, that
                 // corner's own resolution) — those aren't independently gated, so without this
@@ -5792,7 +5892,7 @@ export default function App() {
                     const shotClr = isH ? hClr : aClr;
                     const aimPhrases = ["{n} shapes to shoot.", "{n} lines up the effort.", "{n} goes for goal.", "{n} steps into it."];
                     icon = <span>🎯</span>; header = "Shot!"; headerColor = shotClr;
-                    body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(aimPhrases[i % aimPhrases.length].replace("{n}", e.playerFull || ""), e.playerFull, shotClr)}</div>;
+                    body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(aimPhrases[i % aimPhrases.length].replace("{n}", e.playerFull || ""), e.playerFull, shotClr)}</div>;
                     // Establishing "who's taking it" includes where from — reuse the chain
                     // renderer with a synthetic 1-2 hop chain built from this shot's own
                     // (already-computed) position data, fully revealed. Never shows the
@@ -5802,12 +5902,12 @@ export default function App() {
                     body = (<>{body}<div style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{teaseChain && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(teaseChain, shotClr, teaseChain.length - 1)}</div>}<div style={{ flex: teaseChain ? "7 1 190px" : "1 1 260px", maxWidth: teaseChain ? 385 : 440, minWidth: 175 }}>{gvChanceGoalPreview()}</div></div></>);
                     bg = shotClr + "08";
                   }
-                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (!scorerMatch) return boldNames(txt, e.playerFull, goalClr); parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
-                  else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#ebcb8b08"; }
+                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (!scorerMatch) return boldNames(txt, e.playerFull, goalClr); parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
+                  else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#ebcb8b08"; }
                   else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#bf616a08"; }
-                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#7889a0" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
+                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
                   else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
-                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "#7889a0" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "#7889a0" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "#7889a0" }}>{e.text}</div>; bg = "transparent"; }
+                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "var(--chrome-muted)" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "var(--chrome-muted)" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{e.text}</div>; bg = "transparent"; }
                   else if (e.type === "chance") {
                     const chain = e.chanceViz?.chain || []; const nextE = e.chanceViz?.outcomeEvent;
                     const hasOutcome = !!nextE;
@@ -5821,7 +5921,7 @@ export default function App() {
                       const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
-                      body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(nextE.text.replace(/^[^\p{L}\p{N}]+/u, ''), nextE.playerFull, om.color)}</div>;
+                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(nextE.text.replace(/^[^\p{L}\p{N}]+/u, ''), nextE.playerFull, om.color)}</div>;
                       const gv = nextE.goalViz, rk = gvReplayKeys[i]||0;
                       if (gv) {
                         body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{chain.length > 0 && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, nextE.goalViz, rk > 0)}</div>}<div style={{ flex: chain.length > 0 ? "7 1 190px" : "1 1 260px", maxWidth: chain.length > 0 ? 385 : 440, minWidth: 175 }}>{chain.length > 0 ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>);
@@ -5831,7 +5931,7 @@ export default function App() {
                       bg = om.bg;
                     } else {
                       icon = <span className="sparkle-pop">✨</span>; header = "CHANCE!"; headerColor = evColor.chance || "#ebcb8b";
-                      body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>;
+                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>;
                       if (chain.length) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}><div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, gated ? step : chain.length - 1, null, !gated && rk > 0)}</div><div style={{ flex: "7 1 190px", maxWidth: 385, minWidth: 175 }}><div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvChanceGoalPreview()}{!gated && gvReplayBtn(i, true)}</div></div></div></>); }
                       bg = (evColor.chance || "#ebcb8b") + "08";
                     }
@@ -5843,11 +5943,11 @@ export default function App() {
                     const shotMeta = { save: {icon:"🧤", header:"Saved!", color:"#bf616a"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a"} };
                     const sm = shotMeta[e.type];
                     icon = <span>{sm.icon}</span>; header = sm.header; headerColor = sm.color;
-                    body = <div style={{ fontSize: 11, color: "#7889a0", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, sm.color)}</div>;
+                    body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, sm.color)}</div>;
                     if (e.goalViz) { const gv = e.goalViz, shotClr = isH ? hClr : aClr, hasPitch = !!gv.shotFrom, rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, shotClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); }
                     bg = "transparent";
                   }
-                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid #141c2b", background: bg, alignItems: (e.goalViz || e.chanceViz) ? "flex-start" : "center" }}>
+                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid var(--chrome-panel)", background: bg, alignItems: (e.goalViz || e.chanceViz) ? "flex-start" : "center" }}>
                     {mC(e.min)}
                     {iC(icon, 16)}
                     <div style={{ flex: 1, padding: "0 8px" }}>
@@ -5860,57 +5960,57 @@ export default function App() {
                 const T2 = new Set(["yellow","injury"]);
                 if (T2.has(e.type)) {
                   let icon, txt, clr;
-                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 1.5 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "#7889a0"; }
+                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 1.5 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
                   else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "#ffffff"); clr = "#c07070"; }
-                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid #141c2b", alignItems: "center" }}>
+                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
                     {mC(e.min)}
                     {iC(icon, 12)}
                     <div style={{ flex: 1, padding: "0 8px", fontSize: 11, color: clr }}>{txt}</div>
                   </div>);
                 }
                 const t3Icons = { corner: "🏴", foul: "⚠️", offside: "🚩", counter: "⚡", press: "🔥" };
-                return (<div key={i} className="ev-enter" style={{ display: "flex", gap: 0, padding: "3px 0", borderBottom: "1px solid #141c2b", alignItems: "center" }}>
+                return (<div key={i} className="ev-enter" style={{ display: "flex", gap: 0, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
                   {mC(e.min)}
                   {iC(t3Icons[e.type] ? <span>{t3Icons[e.type]}</span> : null, 10)}
-                  <div style={{ flex: 1, padding: "0 8px", fontSize: 10, color: evColor[e.type] || "#7889a0", lineHeight: 1.4 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
+                  <div style={{ flex: 1, padding: "0 8px", fontSize: 10, color: evColor[e.type] || "var(--chrome-muted)", lineHeight: 1.4 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
                 </div>);
               }); })()}
-              {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "#7889a0", fontSize: 11 }}>Awaiting kick off...</div>}
+              {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--chrome-muted)", fontSize: 11 }}>Awaiting kick off...</div>}
               </div>
             </div>
             {lmMatch.phase !== "finished" && (<>
-            <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "#141c2b", borderRadius: 6, padding: 2, border: "1px solid #2a3a50" }}>
+            <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "var(--chrome-panel)", borderRadius: 6, padding: 2, border: "1px solid var(--chrome-border)" }}>
               {[["stats","Stats"],["players","Players"],["tactics","Tactics"]].map(([id,label]) => (
-                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "#e4002b" : "transparent", border: "none", borderRadius: 4, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "#7889a0", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
+                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 4, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
               ))}
             </div>
             {lmTab === "stats" && <>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Match Stats</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hStatClr : "#7889a0", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
+                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hStatClr : "var(--chrome-muted)", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 70, textAlign: "center", color: "#7889a0", fontSize: 9, flexShrink: 0 }}>Possession</span>
+                  <span style={{ width: 70, textAlign: "center", color: "var(--chrome-muted)", fontSize: 9, flexShrink: 0 }}>Possession</span>
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aStatClr : "#7889a0", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
+                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aStatClr : "var(--chrome-muted)", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
                 </div>
-                <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", background: "#7889a0" }}>
+                <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", background: "var(--chrome-muted)" }}>
                   <div style={{ width: `${hp}%`, background: hClr, borderRadius: 2, transition: "width 0.3s" }} />
                   <div style={{ width: `${ap}%`, background: aClr, borderRadius: 2, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
               {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
-                <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "#7889a0", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
+                <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "var(--chrome-muted)", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "#7889a0", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "#7889a0", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "var(--chrome-muted)", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
+                <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "var(--chrome-muted)", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
               {/* Momentum graph */}
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2a3a50" }}>
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)" }}>
                 <div style={{ textAlign: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.15em", fontWeight: 600 }}>Momentum</span>
+                  <span style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.15em", fontWeight: 600 }}>Momentum</span>
                 </div>
                 {(() => {
                   const W = 400, H = 44, mid = H / 2;
@@ -5927,9 +6027,9 @@ export default function App() {
                         <clipPath id="momClipTop"><rect x="0" y="0" width={W} height={mid} /></clipPath>
                         <clipPath id="momClipBottom"><rect x="0" y={mid} width={W} height={mid} /></clipPath>
                       </defs>
-                      <rect x="0" y="0" width={W} height={H} fill="#141c2b" rx="3" />
-                      {[45,90,105,120].filter(m=>m<=maxMin).map(m => <line key={m} x1={(m/maxMin)*W} y1="0" x2={(m/maxMin)*W} y2={H} stroke="#7889a0" strokeWidth="0.5" strokeDasharray="2,2" />)}
-                      <line x1="0" y1={mid} x2={W} y2={mid} stroke="#7889a0" strokeWidth="1" />
+                      <rect x="0" y="0" width={W} height={H} fill="var(--chrome-panel)" rx="3" />
+                      {[45,90,105,120].filter(m=>m<=maxMin).map(m => <line key={m} x1={(m/maxMin)*W} y1="0" x2={(m/maxMin)*W} y2={H} stroke="var(--chrome-muted)" strokeWidth="0.5" strokeDasharray="2,2" />)}
+                      <line x1="0" y1={mid} x2={W} y2={mid} stroke="var(--chrome-muted)" strokeWidth="1" />
                       {pathD && <g clipPath="url(#momClipTop)"><path d={pathD} fill={hClr + "55"} stroke={hClr} strokeWidth="1.5" /></g>}
                       {pathD && <g clipPath="url(#momClipBottom)"><path d={pathD} fill={aClr + "55"} stroke={aClr} strokeWidth="1.5" /></g>}
                     </svg>
@@ -5939,8 +6039,8 @@ export default function App() {
             </div>
             </>}
             {lmTab === "players" && <>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b", ...ui }}>Player Stats</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -5994,44 +6094,44 @@ export default function App() {
                   return { ...found, goals, assists, rating };
                 };
                 return (<>
-                {si === 1 && <div style={{ background: "#7889a0" }}></div>}
+                {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
                 <div>
-                  <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
+                  <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
-                    <span style={{ color: "#7889a0", fontSize: 7 }}>POS</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>OVR</span>
-                    <span style={{ color: "#7889a0", fontSize: 7 }}>PLAYER</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>G</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>A</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
-                    <span style={{ color: "#7889a0", fontSize: 7, textAlign: "center" }}>RTG</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
                     <span></span>
                     {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOff?"#7889a0":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
-                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ color: isOff?"var(--chrome-muted)":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
+                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOff?"#bf616a":"#7889a0", textAlign: "center" }}>{isOff?"▼":""}</span>
+                      <span style={{ fontSize: 7, color: isOff?"#bf616a":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
-                    <span style={{ gridColumn: "1/-1", borderTop: "1px solid #2a3a50", marginTop: 2, marginBottom: 2 }}></span>
+                    <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
                     {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOn?"#ffffff":"#7889a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
-                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"#7889a0", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"#7889a0", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"#7889a0", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                      <span style={{ textAlign: "center", color: !isOn?"#7889a0":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOn?"#a3be8c":"#7889a0", textAlign: "center" }}>{isOn?"▲":""}</span>
+                      <span style={{ color: isOn?"#ffffff":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
+                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                      <span style={{ fontSize: 7, color: isOn?"#a3be8c":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
                     </>); })}
                   </div>
                 </div>
@@ -6041,8 +6141,8 @@ export default function App() {
             </div>
 
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && <>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Substitutions</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -6056,12 +6156,12 @@ export default function App() {
                 const bench = (lmMatch.bench[side]||[]).filter(p => p.pos !== "GK");
                 const isActive = manualSub.side === side;
                 const offPlayer = isActive ? onPitch.find(p => p.name === manualSub.off) : null;
-                const staminaClr = (v) => v > 60 ? "#7889a0" : v > 30 ? "#ebcb8b" : "#bf616a";
+                const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "#ebcb8b" : "#bf616a";
                 // extra is only passed for on-pitch pills — bench players sit at a flat 100
                 // stamina until subbed on, so a fatigue readout there would just be noise.
                 const pill = (p, onClick, badge, badgeClr, extra) => (
-                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 4, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "#0a0e17", border: "1px solid #2a3a5088" }}>
-                    <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"#7889a0", fontWeight: 700 }}>{p.pos}</span>
+                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 4, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-88)" }}>
+                    <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
                     <span style={{ color: "#ffffff" }}>{p.name}</span>
                     {badge != null && <span style={{ ...mono, color: badgeClr, fontWeight: 600 }}>{badge}</span>}
                     {extra}
@@ -6069,16 +6169,16 @@ export default function App() {
                 );
                 const canSub = subsLeft > 0 && bench.length > 0;
                 return (<>
-                  {si === 1 && <div style={{ background: "#7889a0" }} />}
+                  {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600 }}>{tm?.name?.toUpperCase()}</span>
-                      <span style={{ fontSize: 8, color: subsLeft > 0 ? "#7889a0" : "#bf616a", ...mono }}>{subsLeft}/3</span>
+                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600 }}>{tm?.name?.toUpperCase()}</span>
+                      <span style={{ fontSize: 8, color: subsLeft > 0 ? "var(--chrome-muted)" : "#bf616a", ...mono }}>{subsLeft}/3</span>
                     </div>
                     {offPlayer && canSub ? (<>
                       {/* Replacement step — bench, sorted best OVR first, click to confirm */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 4 }}>
-                        <span style={{ fontSize: 8, color: "#7889a0" }}>Replacing <b style={{ color: "#ffffff" }}>{offPlayer.name}</b></span>
+                        <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Replacing <b style={{ color: "#ffffff" }}>{offPlayer.name}</b></span>
                         <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -6098,7 +6198,7 @@ export default function App() {
                         const inGrp = onPitch.filter(p => p.pos === grp);
                         if (!inGrp.length) return null;
                         return (<div key={grp} style={{ marginBottom: 4 }}>
-                          <div style={{ fontSize: 6, color: "#7889a066", letterSpacing: "0.1em", marginBottom: 2, ...mono }}>{grp}</div>
+                          <div style={{ fontSize: 6, color: "var(--chrome-muted-66)", letterSpacing: "0.1em", marginBottom: 2, ...mono }}>{grp}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                             {inGrp.map(p => { const stam = p.stamina??100; const drop = Math.round((p.ovr??65) - fatigueOvr(p.ovr, stam)); return pill(p, canSub ? () => setManualSub({side, off:p.name}) : undefined, null, null, (<>
                               <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
@@ -6107,7 +6207,7 @@ export default function App() {
                           </div>
                         </div>);
                       })}
-                      {!canSub && <div style={{ fontSize: 7, color: "#7889a088", fontStyle: "italic", marginTop: 2 }}>{subsLeft === 0 ? "No subs remaining" : "No bench players"}</div>}
+                      {!canSub && <div style={{ fontSize: 7, color: "var(--chrome-muted-88)", fontStyle: "italic", marginTop: 2 }}>{subsLeft === 0 ? "No subs remaining" : "No bench players"}</div>}
                     </>)}
                   </div>
                 </>);
@@ -6117,8 +6217,8 @@ export default function App() {
             </>}
             </>}
             {lmTab === "tactics" && <>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Tactics</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Tactics</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -6126,34 +6226,34 @@ export default function App() {
                 const SC2 = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
                 const strat = lmMatch.strategy?.[side] || {};
                 return (<>
-                  {si === 1 && <div style={{ background: "#7889a0" }} />}
+                  {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
                   <div>
-                    <div style={{ fontSize: 8, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
+                    <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
                     {/* Style */}
                     <div style={{ marginBottom: 4 }}>
-                      <div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.1em", marginBottom: 2 }}>STYLE</div>
-                      {isBreak ? <select value={lmMatch.styles[side]} onChange={e => setLmMatch(m => ({...m, styles:{...m.styles, [side]:e.target.value}}))} style={{ ...inp, fontSize: 10, padding: "3px 6px", width: "100%", color: SC2[lmMatch.styles[side]]||"#7889a0" }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:SC2[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select> : <div style={{ fontSize: 10, color: SC2[lmMatch.styles[side]]||"#7889a0", fontWeight: 600, padding: "3px 0" }}>{STYLE_LBL[lmMatch.styles[side]]}</div>}
+                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em", marginBottom: 2 }}>STYLE</div>
+                      {isBreak ? <select value={lmMatch.styles[side]} onChange={e => setLmMatch(m => ({...m, styles:{...m.styles, [side]:e.target.value}}))} style={{ ...inp, fontSize: 10, padding: "3px 6px", width: "100%", color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)" }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:SC2[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select> : <div style={{ fontSize: 10, color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)", fontWeight: 600, padding: "3px 0" }}>{STYLE_LBL[lmMatch.styles[side]]}</div>}
                     </div>
                     {/* Formation + Tempo */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
-                      <div><div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.1em" }}>FORMATION</div><div style={{ fontSize: 10, color: "#888", padding: "2px 0" }}>{lmMatch.formations[side]}</div></div>
-                      <div><div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.1em" }}>TEMPO</div><select value={lmMatch.tactics[side]} onChange={e => setLmMatch(m => ({...m, tactics:{...m.tactics, [side]:e.target.value}, allowTacChange:{...m.allowTacChange, [side]:false}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", width: "100%", color: "#888" }}><option value="park">Ultra Defensive</option><option value="def">Defensive</option><option value="bal">Balanced</option><option value="atk">Offensive</option><option value="ultra">Ultra Offensive</option></select></div>
+                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em" }}>FORMATION</div><div style={{ fontSize: 10, color: "#888", padding: "2px 0" }}>{lmMatch.formations[side]}</div></div>
+                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em" }}>TEMPO</div><select value={lmMatch.tactics[side]} onChange={e => setLmMatch(m => ({...m, tactics:{...m.tactics, [side]:e.target.value}, allowTacChange:{...m.allowTacChange, [side]:false}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", width: "100%", color: "#888" }}><option value="park">Ultra Defensive</option><option value="def">Defensive</option><option value="bal">Balanced</option><option value="atk">Offensive</option><option value="ultra">Ultra Offensive</option></select></div>
                     </div>
                     {/* Stamina */}
                     <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.1em", marginBottom: 3 }}>STAMINA</div>
+                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em", marginBottom: 3 }}>STAMINA</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "#141c2b", borderRadius: 2 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 2, background: teamStam(lmMatch, side) > 60 ? "#7889a0" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
-                        <span style={{ fontSize: 8, color: "#7889a0", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
+                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 2 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 2, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
+                        <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
                       </div>
                     </div>
                     {/* Strategy instructions */}
                     {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
                       const hdr = grp !== lastGrp; lastGrp = grp;
-                      return (<div key={key}>{hdr && <div style={{ fontSize: 7, color: "#7889a0", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 6, marginBottom: 2 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
+                      return (<div key={key}>{hdr && <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 6, marginBottom: 2 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 1 }}>
-                        <span style={{ fontSize: 8, color: "#7889a0", width: 44, flexShrink: 0, ...mono }}>{name}</span>
-                        <select value={strat[key] ?? 0} onChange={e => setLmMatch(m => ({...m, strategy:{...m.strategy, [side]:{...(m.strategy?.[side]||{}), [key]: +e.target.value}}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "#7889a0" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
+                        <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 44, flexShrink: 0, ...mono }}>{name}</span>
+                        <select value={strat[key] ?? 0} onChange={e => setLmMatch(m => ({...m, strategy:{...m.strategy, [side]:{...(m.strategy?.[side]||{}), [key]: +e.target.value}}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
                           {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                       </div></div>);
@@ -6164,8 +6264,8 @@ export default function App() {
               </div>
             </div>
             {/* Player Stats */}
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid #141c2b" , ...ui }}>Live Modifiers</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
                 const cM = (side) => applyStrategy(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]), lmMatch.strategy?.[side]);
                 const hM = cM("home"), aM = cM("away");
@@ -6176,18 +6276,18 @@ export default function App() {
                   {k:"lr",l:"Long-range",m:false},{k:"corn",l:"Corners",m:true}
                 ];
                 const fmt = (v, mult) => mult ? v.toFixed(2)+"x" : (v >= 0 ? "+" : "")+v.toFixed(3);
-                const clr = (v, mult) => { const b = mult ? 1.0 : 0; if (Math.abs(v-b) < 0.001) return "#7889a0"; return v > b ? "#a3be8c" : "#bf616a"; };
+                const clr = (v, mult) => { const b = mult ? 1.0 : 0; if (Math.abs(v-b) < 0.001) return "var(--chrome-muted)"; return v > b ? "#a3be8c" : "#bf616a"; };
                 const wt = (v, mult) => Math.abs(v - (mult ? 1 : 0)) > 0.001 ? 600 : 400;
                 return (
                   <div style={{ ...mono }}>
                     <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
                       <span style={{ width: 66, flexShrink: 0 }} />
-                      <span style={{ flex: 1, textAlign: "right", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
-                      <span style={{ flex: 1, textAlign: "left", fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
+                      <span style={{ flex: 1, textAlign: "right", fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
+                      <span style={{ flex: 1, textAlign: "left", fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
                     </div>
                     {ps.map(({k,l,m}) => (
                       <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                        <span style={{ width: 66, flexShrink: 0, color: "#7889a0", fontSize: 9 }}>{l}</span>
+                        <span style={{ width: 66, flexShrink: 0, color: "var(--chrome-muted)", fontSize: 9 }}>{l}</span>
                         <span style={{ flex: 1, textAlign: "right", color: clr(hM[k],m), fontWeight: wt(hM[k],m) }}>{fmt(hM[k],m)}</span>
                         <span style={{ flex: 1, textAlign: "left", color: clr(aM[k],m), fontWeight: wt(aM[k],m) }}>{fmt(aM[k],m)}</span>
                       </div>
@@ -6207,19 +6307,19 @@ export default function App() {
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "#bf616a22", border: "1px solid #bf616a44", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "#bf616a", textAlign: "center" }}>⚠ {tScoreError}</div>}
           {/* Tournament Leaderboards */}
           {Object.keys(tPlayerStats).length > 0 && (
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, textAlign: "center", paddingBottom: 8, borderBottom: "1px solid #141c2b" }}>Tournament Leaders</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, textAlign: "center", paddingBottom: 8, borderBottom: "1px solid var(--chrome-panel)" }}>Tournament Leaders</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
                 {/* Top Scorers */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
                     </tr>
                   ))}
@@ -6227,14 +6327,14 @@ export default function App() {
                 </div>
                 {/* Top Assisters */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
                     </tr>
                   ))}
@@ -6242,16 +6342,16 @@ export default function App() {
                 </div>
                 {/* Top Rated */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {(() => { const _all = Object.values(tPlayerStats); const _ap = p => p.matches+(p.subApp||0); const _min = Math.ceil(Math.max(1,..._all.map(_ap))/6); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=_ap(a)>=_min?1:0,bq=_ap(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
                     const avg = (p.totalRating/(p.matches+(p.subApp||0)));
                     return (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
                     </tr>);
                   })}
@@ -6259,14 +6359,14 @@ export default function App() {
                 </div>
                 {/* Chances Created */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
                     </tr>
                   ))}
@@ -6274,14 +6374,14 @@ export default function App() {
                 </div>
                 {/* Defensive Actions */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
                     </tr>
                   ))}
@@ -6289,14 +6389,14 @@ export default function App() {
                 </div>
                 {/* Saves */}
                 <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "#7889a0", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "#7889a0" }}>▸</span></div>
+                  <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                   {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "#7889a0", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                       <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
                     </tr>
                   ))}
@@ -6319,16 +6419,16 @@ export default function App() {
                   }).sort((a,b) => b.out - a.out);
                 if (!unavail.length) return null;
                 return (
-                  <details style={{ marginTop: 12, borderTop: "1px solid #141c2b", paddingTop: 10 }}>
+                  <details style={{ marginTop: 12, borderTop: "1px solid var(--chrome-panel)", paddingTop: 10 }}>
                     <summary style={{ fontSize: 9, color: "#bf616a", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
                     <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
                       {unavail.map((p,i) => {
                         const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
                         return (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                          <span style={{ flex: 1, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "#7889a0" }}> ({injReason})</span>}</span>
-                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                          <span style={{ color: "#7889a0", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
+                          <span style={{ flex: 1, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
+                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
+                          <span style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                           <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
                             {p.reason === "red"
                               ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1}} />
@@ -6362,10 +6462,10 @@ export default function App() {
               : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
             return (
               <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid #141c2b" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "#7889a0" }}>{title}</span>
-                    <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "#7889a0", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
+                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-panel)" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>{title}</span>
+                    <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
@@ -6374,18 +6474,18 @@ export default function App() {
                       const avg = ap ? (p.totalRating/ap) : 0;
                       const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "chances" ? p.chances : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
                       return (
-                        <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid #141c2b" : "none" }}>
-                          <td style={{ color: "#7889a0", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
+                        <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
+                          <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
                           <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{p.name}</td>
-                          <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"#7889a0", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
-                          <td style={{ color: "#7889a0", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                          <td style={{ color: "#7889a0", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
+                          <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
+                          <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                          <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
                           <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "#ffffff", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
                         </tr>
                       );
                     })}
                     </tbody></table>
-                    {sorted.length === 0 && <div style={{ color: "#7889a0", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
+                    {sorted.length === 0 && <div style={{ color: "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
                   </div>
                 </div>
               </div>
@@ -6393,29 +6493,29 @@ export default function App() {
           })()}
           {/* SETUP */}
           {tPhase === "setup" && (<div>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0" }}>Participants <span style={{ color: "#7889a0", fontWeight: 400 }}>({tournamentTeamIds.length} selected)</span></div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Participants <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({tournamentTeamIds.length} selected)</span></div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#7889a0" }}>Select All</button>
+                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "var(--chrome-muted)" }}>Select All</button>
                   <button onClick={() => setTournamentTeamIds([])} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }}>Clear</button>
                 </div>
               </div>
               {groupByLeague(teams).map((entry, gi) => {
-                if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid #2a3a5033", margin: "8px 0" }} />;
+                if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid var(--chrome-border-33)", margin: "8px 0" }} />;
                 const [league, ts] = entry;
                 const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
                 const allSel = selCount === ts.length, noneSel = selCount === 0;
                 const expanded = expandedParticipantLeagues.has(league);
-                return (<div key={league} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 8, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#0a0e17", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
-                    <span style={{ color: "#7889a0", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
-                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "#e4002b" : noneSel ? "#7889a066" : "#e4002b88"), background: allSel ? "#e4002b" : noneSel ? "transparent" : "#e4002b33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#ffffff", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
+                return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
+                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#ffffff", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ffffff" }}>{league}</span>
-                    <span style={{ fontSize: 10, color: "#7889a0", ...mono }}>{selCount}/{ts.length}</span>
+                    <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{selCount}/{ts.length}</span>
                   </div>
                   {expanded && <div style={{ padding: "8px 10px" }}>
-                    {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #2a3a5033" }}>
+                    {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid var(--chrome-border-33)" }}>
                       <span style={{ fontSize: 9, color: "#81a1c1", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.06em" }}>TRIM:</span>
                       {TRIM_SIZES.filter(n => ts.length > n).map(n => (
                         <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid #81a1c144", background: "#81a1c11a", color: "#81a1c1", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
@@ -6423,17 +6523,17 @@ export default function App() {
                     </div>}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
-                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
                     </div>
                   </div>}
                 </div>);
               })}
             </div>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
               {/* Presets */}
               <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0" }}>Preset</div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Preset</div>
                 <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
                   <option value="" hidden>☰ Select</option>
                   {Object.entries(T_PRESETS).map(([id, p]) => p.divider ? <option key={id} disabled>{p.label}</option> : <option key={id} value={id}>{p.label}</option>)}
@@ -6446,47 +6546,47 @@ export default function App() {
                   const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
                   tModeClickRef.current = { n: clicks, t: now };
                   if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
-                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "#7889a0", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
+                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
-                    <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "#e4002b" : "#141c2b", color: tConfig.mode === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                    <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                   ))}
                 </div>
                 {tConfig.mode === "single" && (
                   <div style={{ display: "flex", gap: 6 }}>
                     {[["knockout", "Knockout Only"], ["groups", "Groups Only"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "#7889a080" : "#141c2b", color: tConfig.singleType === id ? "#ffffff" : "#7889a0", border: tConfig.singleType === id ? "1px solid #2a3a50" : "1px solid #2a3a50" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "var(--chrome-muted-80)" : "var(--chrome-panel)", color: tConfig.singleType === id ? "#ffffff" : "var(--chrome-muted)", border: tConfig.singleType === id ? "1px solid var(--chrome-border)" : "1px solid var(--chrome-border)" }}>{l}</button>
                     ))}
                   </div>
                 )}
               </div>
               {/* Group Stage / League Format */}
               {tHasGroups && (
-                <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Group Stage</div>
+                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Group Stage</div>
                   <div style={{ display: "flex", gap: 12, alignItems: "start", marginBottom: 16 }}>
-                    <div><div style={{ fontSize: 11, color: "#7889a0", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "#bf616a" : "#7889a0" }} /></div>
-                    <div><div style={{ fontSize: 11, color: "#7889a0", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
-                      ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "#bf616a" : "#7889a0" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "#7889a0", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
+                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "#bf616a" : "var(--chrome-muted)" }} /></div>
+                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
+                      ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "#bf616a" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
                       : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center" }} />
                     }</div>
-                    <div><div style={{ fontSize: 11, color: "#7889a0", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
+                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
                       {[["roundRobin", "Round Robin"], ["swiss", "Swiss"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "#e4002b" : "#141c2b", color: tConfig.matchFormat === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.matchFormat === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div></div>
                   </div>
                   {tConfig.numGroups > 1 && (<>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Allocation</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 12 : 0 }}>
                       {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "#e4002b" : "#141c2b", color: tConfig.allocMode === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
                     {tConfig.allocMode === "draw" && (
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <div style={{ fontSize: 11, color: "#7889a0" }}>Pots</div>
-                        <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "#bf616a" : "#7889a0" }} />
+                        <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Pots</div>
+                        <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "#bf616a" : "var(--chrome-muted)" }} />
                         {!tPotsOk && <span style={{ fontSize: 10, color: "#bf616a" }}>Must be 2–{tConfig.numGroups}</span>}
                       </div>
                     )}
@@ -6503,209 +6603,209 @@ export default function App() {
                 const setTBs = fn => setTConfig(c => ({ ...c, tiebreakers: fn(c.tiebreakers || ["gd", "gf", "h2h", "wins", "manual"]) }));
                 const activeTBs = tbs.filter(tb => allTBs.includes(tb));
                 return (
-                <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Tiebreakers</div>
+                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Tiebreakers</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
                     {activeTBs.map((tb, ti) => (
                       <Fragment key={tb}>
-                        {ti > 0 && <span style={{ color: "#7889a044", fontSize: 10, userSelect: "none" }}>→</span>}
-                        <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#0a0e17", border: "1px solid #2a3a50", borderRadius: 4, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
-                          <span style={{ ...mono, fontSize: 8, color: "#7889a066" }}>{ti + 1}</span>
+                        {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
+                        <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 4, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
+                          <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
                           <span style={{ fontSize: 11, color: "#ffffff" }}>{TBSH[tb]}</span>
-                          <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "#7889a066", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
+                          <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
                         </div>
                       </Fragment>
                     ))}
                     {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
-                      <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 4, border: "1px dashed #7889a044", background: "transparent", color: "#7889a066", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
+                      <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 4, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
                     ))}
                   </div>
                 </div>); })()}
               {/* Qualification Zones */}
               {tHasGroups && (() => {
-                const ZC = [["#5e9c6b","Green"],["#7889a0","Slate"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
+                const ZC = [["#5e9c6b","Green"],["var(--chrome-muted)","Slate"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
                 const setZones = fn => setTConfig(c => ({ ...c, qualZones: fn(c.qualZones || []) }));
                 return (
-                <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Qualification Zones</div>
-                    <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "#7889a0" }}>+ Zone</button>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Qualification Zones</div>
+                    <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "var(--chrome-muted)" }}>+ Zone</button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {qz.map((z, zi) => (
-                      <div key={zi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 6, padding: "8px 10px" }}>
+                      <div key={zi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 10px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                           <div style={{ width: 12, height: 12, borderRadius: 3, background: z.color, flexShrink: 0 }} />
                           <input value={z.label} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, label: e.target.value } : x))} placeholder="Label" style={{ ...inp, flex: 1, minWidth: 0, padding: "4px 8px", fontSize: 12, fontWeight: 500 }} />
                           <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-                            {zi > 0 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi-1], n[zi]] = [n[zi], n[zi-1]]; return n; })} style={{ background: "none", border: "none", color: "#7889a0", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▲</button>}
-                            {zi < (tConfig.qualZones||[]).length - 1 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi], n[zi+1]] = [n[zi+1], n[zi]]; return n; })} style={{ background: "none", border: "none", color: "#7889a0", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▼</button>}
+                            {zi > 0 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi-1], n[zi]] = [n[zi], n[zi-1]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▲</button>}
+                            {zi < (tConfig.qualZones||[]).length - 1 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi], n[zi+1]] = [n[zi+1], n[zi]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▼</button>}
                           </div>
                           <button onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 13, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <select value={z.color} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, color: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}>{ZC.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                          <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: "1px solid #2a3a50", flexShrink: 0 }}>
+                          <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
                             {[["top", "Top"], ["bottom", "Bot"]].map(([id, l]) => (
-                              <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "#7889a0" : "transparent", color: z.anchor === id ? "#ffffff" : "#7889a0", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
+                              <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
                             ))}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <input type="number" min={1} value={z.from} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, from: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
-                            <span style={{ color: "#7889a0", fontSize: 10 }}>–</span>
+                            <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>–</span>
                             <input type="number" min={1} value={z.to} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, to: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
                           </div>
                           <select value={z.type || "cosmetic"} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, type: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}><option value="cosmetic">Cosmetic</option>{tHasKO && <option value="advance">Direct Qualification</option>}{tHasKO && <option value="best">Pool Qualification</option>}</select>
-                          {z.type === "best" && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontSize: 10, color: "#7889a0" }}>Top</span><input type="number" min={1} max={tConfig.numGroups} value={z.bestCount || ""} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, bestCount: e.target.value === "" ? "" : Math.min(tConfig.numGroups, Math.max(1, +e.target.value)) } : x))} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} /><span style={{ fontSize: 10, color: "#7889a0" }}>qualify</span></div>}
+                          {z.type === "best" && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Top</span><input type="number" min={1} max={tConfig.numGroups} value={z.bestCount || ""} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, bestCount: e.target.value === "" ? "" : Math.min(tConfig.numGroups, Math.max(1, +e.target.value)) } : x))} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>qualify</span></div>}
                         </div>
                       </div>
                     ))}
-                    {qz.length === 0 && <div style={{ fontSize: 10, color: "#7889a0", padding: "4px 2px" }}>No zones configured</div>}
+                    {qz.length === 0 && <div style={{ fontSize: 10, color: "var(--chrome-muted)", padding: "4px 2px" }}>No zones configured</div>}
                   </div>
                 </div>); })()}
               {/* Knockout options */}
               {tHasKO && (
-                <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Knockout Stage</div>
-                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Format</div>
+                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Knockout Stage</div>
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Format</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                     {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "#e4002b" : "#141c2b", color: tConfig.koFormat === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                     ))}
                   </div>
                   {tConfig.koFormat === "double_elim" && (() => { const checked = tConfig.koGFReset; return (
                     <div onClick={() => setTConfig(c => ({ ...c, koGFReset: !c.koGFReset }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Grand Final Reset</div><div style={{ fontSize: 9, color: "#7889a0" }}>If LB winner wins GF, play a deciding match</div></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Grand Final Reset</div><div style={{ fontSize: 9, color: "var(--chrome-muted)" }}>If LB winner wins GF, play a deciding match</div></div>
                     </div>); })()}
                   {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
                     <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>3rd Place Match</div></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>3rd Place Match</div></div>
                     </div>); })()}
                   {(() => { const checked = tConfig.koLegs === 2; return (
                     <div onClick={() => setTConfig(c => ({ ...c, koLegs: c.koLegs === 2 ? 1 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>2-Legged Ties</div></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>2-Legged Ties</div></div>
                     </div>); })()}
                   {tConfig.koLegs === 2 && (() => { const checked = tConfig.koAwayGoals; return (
                     <div onClick={() => setTConfig(c => ({ ...c, koAwayGoals: !c.koAwayGoals }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8, paddingLeft: 16 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>Away Goals Rule</div></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Away Goals Rule</div></div>
                     </div>); })()}
                   {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[["auto", "By Ranking"], ["manual", "Manual"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "#e4002b" : "#141c2b", color: tConfig.koByeMode === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koByeMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
                   </div>}
-                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Allocation</div>
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "#e4002b" : "#141c2b", color: tConfig.koAllocMode === id ? "#ffffff" : "#7889a0" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                     ))}
                   </div>
                 </div>
               )}
               {/* Match Rules */}
-              <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
+              <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
                 <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
                   {[["injuries","Injuries"],["suspensions","Suspensions"],["staminaCarry","Stamina"]].map(([key,label]) => { const checked = tConfig[key] !== false; return (
                     <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div onClick={() => setTConfig(c => ({ ...c, [key]: !checked }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
-                        <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "#e4002b" : "#141c2b66", border: "1px solid " + (checked ? "#e4002b" : "#7889a033"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "#141c2b" : "#7889a066", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                        <div style={{ fontSize: 12, color: checked ? "#e4002b" : "#7889a0", fontWeight: 500 }}>{label}</div>
+                        <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                        <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>{label}</div>
                       </div>
                       {key === "staminaCarry" && checked && <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: 13 }}>🩹</span>
-                        <span style={{ ...mono, fontSize: 11, color: "#7889a0" }}>{Math.round(STAMINA_RECOVER_PCT * 100)}% of gap</span>
+                        <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{Math.round(STAMINA_RECOVER_PCT * 100)}% of gap</span>
                       </div>}
                     </div>); })}
                 </div>
               </div>
               {/* Home Advantage */}
-              <div style={{ borderTop: "1px solid #2a3a50", paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid #7889a0" }}>Home Advantage</div>
+              <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Home Advantage</div>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
                   {tHasGroups && <div>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
                     <select value={tConfig.homeAdvGroup} onChange={e => setTConfig(c => ({ ...c, homeAdvGroup: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvKO !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
                       <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option><option value="host">Host Team</option>
                     </select>
                   </div>}
                   {tHasKO && tConfig.koLegs !== 2 && <div>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 4 }}>Knockout Stage</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Knockout Stage</div>
                     <select value={tConfig.homeAdvKO} onChange={e => setTConfig(c => ({ ...c, homeAdvKO: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvGroup !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
                       <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option>{tHasGroups && <option value="weak_group">Weaker (Group)</option>}<option value="host">Host Team</option>
                     </select>
                   </div>}
                 </div>
                 {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
-                  <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Host Team</div>
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
-                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "#e4002b" : "#7889a033"), background: sel ? "#e4002b33" : "transparent", color: sel ? "#e4002b" : "#7889a0", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
                   </div>
-                  {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
+                  {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
                   {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 6 }}>Host Venues (Optional)</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
                     <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
-                    {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "#7889a0", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
+                    {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
                   </div>}
                 </div>)}
               </div>
               {/* Summary */}
-              <div style={{ background: "#141c2b", borderRadius: 8, padding: "14px 18px", marginBottom: 18, border: "1px solid #2a3a50" }}>
+              <div style={{ background: "var(--chrome-panel)", borderRadius: 8, padding: "14px 18px", marginBottom: 18, border: "1px solid var(--chrome-border)" }}>
                 {tConfig.mode === "single" && tConfig.singleType === "knockout" ? (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
                     <span style={{ color: "#ffffff" }}>{tournamentTeams.length}</span>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
                     <span style={{ color: "#ffffff" }}>Single-Elimination Bracket</span>
-                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "#ebcb8b" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
-                    {tConfig.koLegs === 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>KO DRAW</span>
+                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "#ebcb8b" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
+                    {tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
+                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span>
                     <span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span>
-                    {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
+                    {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
                   </div>
                   {tournamentTeamIds.length < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Select at least 2 teams</div>}
                   {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
-                  {tValid && <div style={{ color: "#7889a0", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
+                  {tValid && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>) : (()=>{ const swissOk = tSwissOk; const rrRounds = (tPerGroup - 1) * tConfig.rrLegs; const rrMatchesPerGroup = tPerGroup * (tPerGroup - 1) / 2 * tConfig.rrLegs; const totalMatches = tConfig.matchFormat === "swiss" ? Math.floor(tPerGroup / 2) * tConfig.swissRounds * tConfig.numGroups : tConfig.numGroups * rrMatchesPerGroup; return (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
                     <span style={{ color: "#ffffff" }}>{tournamentTeams.length}{tGroupsOk && tUneven ? <span style={{ color: "#ebcb8b", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>GROUPS</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>GROUPS</span>
                     <span style={{ color: "#ffffff" }}>{tGroupsOk ? tConfig.numGroups : "?"} × {tGroupsOk && tPerGroup >= 2 ? (tDivisible ? tPerGroup : tPerGroup+"–"+tPerGroupMax) : "?"} teams</span>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
                     <span style={{ color: "#ffffff" }}>{tConfig.matchFormat === "swiss" ? "Swiss" : "Round Robin"}{tConfig.matchFormat === "roundRobin" && tConfig.rrLegs > 1 ? " ("+tConfig.rrLegs+" legs)" : ""}</span>
-                    <span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>MATCHES</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>MATCHES</span>
                     <span style={{ color: "#ffffff" }}>{tConfig.matchFormat === "swiss" ? tConfig.swissRounds+" rounds" : rrRounds+" rounds"}{tValid && swissOk ? ", "+totalMatches+" total" : ""}</span>
-                    {tConfig.numGroups > 1 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.allocMode]}{tConfig.allocMode === "draw" ? " ("+tConfig.numPots+" pots)" : ""}</span></>}
-                    {tHasKO && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>ADVANCE</span><span style={{ color: "#ffffff" }}>{tUseZones ? tKoTeams + " teams via zones" : "Top " + tConfig.advPerGroup + " per group → " + tKoTeams + " teams"}{!isPow2(tKoTeams) ? " (+byes)" : ""}</span></>}
-                    {tHasKO && tConfig.koLegs === 2 && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>KO LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tHasKO && tConfig.thirdPlace && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
-                    {tHasKO && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>KO DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span></>}
-                    {!tHasKO && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>STAGE</span><span style={{ color: "#ffffff" }}>{tConfig.numGroups === 1 ? "League — no knockout" : "Groups only — no knockout"}</span></>}
-                    {(tConfig.homeAdvGroup !== "off" || tConfig.homeAdvKO !== "off") && <><span style={{ color: "#7889a0", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{tHasGroups ? ({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",host:"Host Team"})[tConfig.homeAdvGroup] || "Off" : ""}{tHasGroups && tHasKO && tConfig.homeAdvGroup !== "off" && tConfig.homeAdvKO !== "off" ? " / " : ""}{tHasKO && tConfig.koLegs !== 2 ? ({off:"",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "" : ""}</span></>}
+                    {tConfig.numGroups > 1 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.allocMode]}{tConfig.allocMode === "draw" ? " ("+tConfig.numPots+" pots)" : ""}</span></>}
+                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>ADVANCE</span><span style={{ color: "#ffffff" }}>{tUseZones ? tKoTeams + " teams via zones" : "Top " + tConfig.advPerGroup + " per group → " + tKoTeams + " teams"}{!isPow2(tKoTeams) ? " (+byes)" : ""}</span></>}
+                    {tHasKO && tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
+                    {tHasKO && tConfig.thirdPlace && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
+                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span></>}
+                    {!tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>STAGE</span><span style={{ color: "#ffffff" }}>{tConfig.numGroups === 1 ? "League — no knockout" : "Groups only — no knockout"}</span></>}
+                    {(tConfig.homeAdvGroup !== "off" || tConfig.homeAdvKO !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{tHasGroups ? ({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",host:"Host Team"})[tConfig.homeAdvGroup] || "Off" : ""}{tHasGroups && tHasKO && tConfig.homeAdvGroup !== "off" && tConfig.homeAdvKO !== "off" ? " / " : ""}{tHasKO && tConfig.koLegs !== 2 ? ({off:"",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "" : ""}</span></>}
                   </div>
                   {!tGroupsOk && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Groups must be 1–26</div>}
                   {tGroupsOk && tPerGroup < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Need ≥2 teams per group</div>}
                   {!swissOk && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Swiss rounds must be 1–{tPerGroup - 1}</div>}
                   {tHasKO && !tAdvOk && tDivisible && tPerGroup >= 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Advance must be 1–{tPerGroup}</div>}
                   {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
-                  {tValid && swissOk && <div style={{ color: "#7889a0", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
+                  {tValid && swissOk && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>); })()}
               </div>
             </div>
-            <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #0a0e17 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
+            <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <button onClick={() => createTournament()} disabled={!tValid} style={{ ...scBtn, opacity: tValid ? 1 : 0.4, cursor: tValid ? "pointer" : "default", flex: "0 0 auto" }}>▶ {tHasGroups && tConfig.allocMode === "manual" && tConfig.numGroups > 1 ? "Begin Allocation" : "Create Tournament"}</button>
-                <div style={{ fontSize: 10, color: "#7889a0", flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", flex: 1, minWidth: 0 }}>
                   {!tValid && tournamentTeamIds.length < 2 && <span style={{ color: "#bf616a" }}>Select at least 2 teams</span>}
                   {!tValid && tournamentTeamIds.length >= 2 && tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix skill values (25–100)</span>}
                   {!tValid && tournamentTeamIds.length >= 2 && !tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix config errors above</span>}
@@ -6729,33 +6829,33 @@ export default function App() {
             const justPlaced = !pending && index > 0 ? log[index - 1] : null;
             return (<div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>DRAW CEREMONY</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>DRAW CEREMONY</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{index}/{log.length}</span>
+                  <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{index}/{log.length}</span>
                   <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
                 </div>
               </div>
-              {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "#141c2b", border: "1px solid #e4002b44", borderRadius: 8, animation: "fadeIn 0.3s" }}>
-                <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: 2, marginBottom: 6 }}>POT {pendingEntry.pot}</div>
+              {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-44)", borderRadius: 8, animation: "fadeIn 0.3s" }}>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {pendingEntry.pot}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>{pendingEntry.team}</div>
-                <div style={{ ...mono, fontSize: 10, color: "#7889a0", marginTop: 4 }}>{pendingEntry.skill}</div>
-                <div style={{ fontSize: 10, color: "#7889a0", marginTop: 8, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>awaiting group…</div>
+                <div style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", marginTop: 4 }}>{pendingEntry.skill}</div>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>awaiting group…</div>
               </div>}
-              {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "#141c2b", border: "1px solid #e4002b", borderRadius: 8, animation: "fadeIn 0.3s" }}>
-                <div style={{ fontSize: 9, color: "#7889a0", letterSpacing: 2, marginBottom: 6 }}>POT {justPlaced.pot}</div>
+              {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand)", borderRadius: 8, animation: "fadeIn 0.3s" }}>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {justPlaced.pot}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>{justPlaced.team}</div>
-                <div style={{ fontSize: 14, color: "#7889a0", marginTop: 8, fontWeight: 700 }}>→ GROUP {justPlaced.group}</div>
+                <div style={{ fontSize: 14, color: "var(--chrome-muted)", marginTop: 8, fontWeight: 700 }}>→ GROUP {justPlaced.group}</div>
               </div>}
               {Object.keys(pots).map(p => {
                 const pot = pots[p];
                 return (<div key={p} style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: activePot === +p ? "#ffffff" : "#7889a0", marginBottom: 4 }}>POT {p}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: activePot === +p ? "#ffffff" : "var(--chrome-muted)", marginBottom: 4 }}>POT {p}</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {pot.map((e, ei) => {
                       const globalIdx = log.indexOf(e);
                       const isPlaced = globalIdx < index;
                       const isPending = pending && globalIdx === index;
-                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 4, background: isPending ? "#e4002b22" : "#141c2b", border: isPending ? "1px solid #e4002b" : "1px solid #7889a033", color: isPending ? "#ffffff" : "#7889a0", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
+                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 4, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "#ffffff" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
                     })}
                   </div>
                 </div>);
@@ -6765,14 +6865,14 @@ export default function App() {
                   const gt = groups[gl] || [];
                   const maxPerGroup = Math.ceil(log.length / allGroups.length);
                   const isTarget = justPlaced && justPlaced.group === gl;
-                  return (<div key={gl} style={{ background: "#141c2b", border: isTarget ? "1px solid #e4002b66" : "1px solid #2a3a50", borderRadius: 7, padding: "10px 8px", transition: "border 0.3s" }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 6 }}>GROUP {gl}</div>
+                  return (<div key={gl} style={{ background: "var(--chrome-panel)", border: isTarget ? "1px solid var(--chrome-brand-66)" : "1px solid var(--chrome-border)", borderRadius: 7, padding: "10px 8px", transition: "border 0.3s" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>GROUP {gl}</div>
                     {Array.from({ length: maxPerGroup }, (_, si) => {
                       const t = gt[si];
                       const isLatest = t && justPlaced && t.team === justPlaced.team;
-                      return <div key={si} style={{ fontSize: 11, padding: "4px 6px", borderBottom: si < maxPerGroup - 1 ? "1px solid #7889a022" : "none", color: t ? (isLatest ? "#ffffff" : "#7889a0") : "#7889a033", fontWeight: isLatest ? 700 : 400, transition: "all 0.3s", display: "flex", justifyContent: "space-between" }}>
+                      return <div key={si} style={{ fontSize: 11, padding: "4px 6px", borderBottom: si < maxPerGroup - 1 ? "1px solid var(--chrome-muted-22)" : "none", color: t ? (isLatest ? "#ffffff" : "var(--chrome-muted)") : "var(--chrome-muted-33)", fontWeight: isLatest ? 700 : 400, transition: "all 0.3s", display: "flex", justifyContent: "space-between" }}>
                         <span>{t ? t.team : "—"}</span>
-                        {t && <span style={{ ...mono, fontSize: 9, color: "#7889a0" }}>{t.skill}</span>}
+                        {t && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{t.skill}</span>}
                       </div>;
                     })}
                   </div>);
@@ -6780,9 +6880,9 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {!done && <button onClick={tDrawAdvance} style={{ ...scBtn, flex: 1 }}>{pending ? "Reveal Group" : "Draw Next"}</button>}
-                {!done && !tDrawAnim.auto && <button onClick={() => setTDrawAnim(p => p ? { ...p, auto: true } : p)} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "#7889a0" }}>▶ Auto</button>}
+                {!done && !tDrawAnim.auto && <button onClick={() => setTDrawAnim(p => p ? { ...p, auto: true } : p)} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>▶ Auto</button>}
                 {!done && tDrawAnim.auto && <button onClick={() => { setTDrawAnim(p => p ? { ...p, auto: false } : p); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } }} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "#bf616a" }}>⏸ Pause</button>}
-                {!done && <button onClick={tDrawSkip} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "#7889a0" }}>Skip</button>}
+                {!done && <button onClick={tDrawSkip} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>Skip</button>}
                 {done && <button onClick={tDrawConfirm} style={scBtn}>▶ Continue to Group Stage</button>}
               </div>
             </div>);
@@ -6791,13 +6891,13 @@ export default function App() {
           {/* MANUAL ALLOCATION */}
           {tPhase === "manual" && tManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>MANUAL ALLOCATION</div>
-              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>MANUAL ALLOCATION</div>
+              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
-                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid #141c2b", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{t.skill}</span></div>))}
+              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
+                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{t.skill}</span></div>))}
                 {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
               </div>))}
             </div>
@@ -6807,14 +6907,14 @@ export default function App() {
           {/* KO MANUAL ALLOCATION */}
           {tPhase === "ko_byes" && tByeManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>SELECT BYE TEAMS</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>SELECT BYE TEAMS</div>
               <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tByeManual.selected.length} / {tByeManual.numByes} selected</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 6, marginBottom: 16 }}>
               {tByeManual.pool.map((t, ti) => { const sel = tByeManual.selected.some(s => s.name === t.name); return (
                 <button key={ti} onClick={() => { if (sel) { setTByeManual(b => ({...b, selected: b.selected.filter(s => s.name !== t.name)})); } else if (tByeManual.selected.length < tByeManual.numByes) { setTByeManual(b => ({...b, selected: [...b.selected, t]})); } }}
-                  className={sel ? "gbtn" : ""} style={{ ...chip, background: sel ? "#e4002b" : "transparent", color: sel ? "#ffffff" : "#7889a0", borderColor: sel ? "#e4002b" : "#7889a033", fontSize: 10, padding: "6px 10px", textAlign: "left" }}>
-                  {t.name} <span style={{ color: sel ? "#a3be8c" : "#7889a0", fontSize: 9 }}>({t.skill})</span>
+                  className={sel ? "gbtn" : ""} style={{ ...chip, background: sel ? "var(--chrome-brand)" : "transparent", color: sel ? "#ffffff" : "var(--chrome-muted)", borderColor: sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)", fontSize: 10, padding: "6px 10px", textAlign: "left" }}>
+                  {t.name} <span style={{ color: sel ? "#a3be8c" : "var(--chrome-muted)", fontSize: 9 }}>({t.skill})</span>
                 </button>
               ); })}
             </div>
@@ -6822,15 +6922,15 @@ export default function App() {
           </div>)}
           {tPhase === "ko_manual" && tKOManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>KNOCKOUT BRACKET ALLOCATION</div>
-              <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>KNOCKOUT BRACKET ALLOCATION</div>
+              <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tKOManual.matches.length, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "#ebcb8b33" : "#7889a0"}`, borderRadius: 7, padding: "12px 10px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: m.home && !m.away || m.away && !m.home ? "#ebcb8b" : "#7889a0", textAlign: "center", marginBottom: 8, ...mono }}>{m.home && !m.away || m.away && !m.home ? "BYE" : `MATCH ${mi + 1}`}</div>
+              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "#ebcb8b33" : "var(--chrome-muted)"}`, borderRadius: 7, padding: "12px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: m.home && !m.away || m.away && !m.home ? "#ebcb8b" : "var(--chrome-muted)", textAlign: "center", marginBottom: 8, ...mono }}>{m.home && !m.away || m.away && !m.home ? "BYE" : `MATCH ${mi + 1}`}</div>
                 {["home", "away"].map(slot => (<div key={slot} style={{ marginBottom: 4 }}>
                   {m[slot] ? (
-                    <div style={{ fontSize: 11, padding: "4px 8px", background: "#141c2b", borderRadius: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 11, padding: "4px 8px", background: "var(--chrome-panel)", borderRadius: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>{m[slot].name}</span>
                       <button onClick={() => tKOManualRemove(mi, slot)} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 13, cursor: "pointer", padding: "0 2px" }}>×</button>
                     </div>
@@ -6849,24 +6949,24 @@ export default function App() {
           {/* GROUPS */}
           {tPhase === "groups" && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>{tConfig.numGroups === 1 ? "LEAGUE" : "GROUP STAGE"}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>{tConfig.numGroups === 1 ? "LEAGUE" : "GROUP STAGE"}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ ...mono, fontSize: 10, color: "#7889a0" }}>{tPlayedMatches}/{tTotalMatches}</span>
+                <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tPlayedMatches}/{tTotalMatches}</span>
                 {tPlayedMatches < tTotalMatches && <button onClick={() => tScorinate(-1, -1, -1)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
                 <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
               </div>
             </div>
 
             {/* Draw log */}
-            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "#7889a0", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid #141c2b" }}><td style={{ padding: "2px 4px", color: "#7889a0" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "#7889a0" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "#7889a0", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "#7889a0", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
+            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
 
             {/* Standings */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "#7889a0", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "#7889a0", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid #141c2b" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
 
@@ -6890,23 +6990,23 @@ export default function App() {
               if (pool.length === 0) return null;
               const form = Object.assign({}, ...allGroupForms);
               return (
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: bestZone?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "#7889a0", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "#4a7ab5") : "#7889a0", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "#4a7ab5") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "#7889a0", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "#7889a0", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid #141c2b" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: bestZone?.color || "#4a7ab5" }} /><span style={{ fontSize: 10, color: "#8892a6" }}>Top {bestCount} qualify</span></div></div>}
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "#4a7ab5") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: bestZone?.color || "#4a7ab5" }} /><span style={{ fontSize: 10, color: "#8892a6" }}>Top {bestCount} qualify</span></div></div>}
               </div>);
             })()}
 
             {/* Fixtures - collapsible per round, sticky current-round action bar */}
             {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 560, overflowY: "auto", position: "relative" }}>
-              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#141c2b", padding: "16px 16px 10px", borderBottom: "1px solid #2a3a50", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>{groupFirstOpen >= 0 ? `ROUND ${groupFirstOpen + 1}` : "FIXTURES — ALL ROUNDS COMPLETE"}</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 560, overflowY: "auto", position: "relative" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>{groupFirstOpen >= 0 ? `ROUND ${groupFirstOpen + 1}` : "FIXTURES — ALL ROUNDS COMPLETE"}</div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                   {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Sim Round</button>}
-                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Expand All</button>
-                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Collapse All</button>
+                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
               </div>
               <div style={{ padding: "10px 16px 16px" }}>
@@ -6914,33 +7014,33 @@ export default function App() {
                 const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result));
                 const key = `group_${ri}`;
                 const isOpen = expandedRounds.has(key);
-                return (<div key={ri} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, overflow: "hidden" }}>
-                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                return (<div key={ri} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
-                      <span style={{ fontSize: 10, color: "#7889a0", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
+                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {m.bye ? <span style={{ color: "#7889a0" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
-                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "#8fbf8f" : m.result.ftHome < m.result.ftAway ? "#7889a0" : "#ebcb8b") : "#7889a0" }}>{abbr(m.home?.name, m.home?.code)}</span>
-                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
-                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "#8fbf8f" : m.result.ftAway < m.result.ftHome ? "#7889a0" : "#ebcb8b") : "#7889a0" }}>{abbr(m.away?.name, m.away?.code)}</span>
+                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {m.bye ? <span style={{ color: "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
+                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "#8fbf8f" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
+                            <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
+                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "#8fbf8f" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "#ebcb8b") : "var(--chrome-muted)" }}>{abbr(m.away?.name, m.away?.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
                     </div>
-                    {rdDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0 }}>✓</span>}
+                    {rdDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>✓</span>}
                   </div>
-                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid #2a3a50" }}>
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid var(--chrome-border)" }}>
                   {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
-                    {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "#7889a0" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
-                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "#ffffff" : m.result.ftHome < m.result.ftAway ? "#7889a0" : "#ebcb8b") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "#7889a0", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
-                      <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "#7889a0" : haVal === "off" ? "#bf616a" : "#7889a0", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
-                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "#7889a0", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "#e4002b", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 2, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
-                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "#7889a0", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#bf616a", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#7889a0", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "#7889a0" }}>–</span>}
-                      <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#ffffff" : m.result.ftAway < m.result.ftHome ? "#7889a0" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
+                    {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "#ffffff" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
+                      <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "#bf616a" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
+                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 2, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
+                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#bf616a", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
+                      <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#ffffff" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                     </div>); })}
                   </div>))}
                   </div>}
@@ -6952,7 +7052,7 @@ export default function App() {
             {/* Swiss: generate next round */}
             {tConfig.matchFormat === "swiss" && tSwissCurrentDone && tSwissRoundsPlayed < tConfig.swissRounds && (
               <div style={{ textAlign: "center", marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: "#7889a0", marginBottom: 8, ...mono }}>Round {tSwissRoundsPlayed} complete — {tConfig.swissRounds - tSwissRoundsPlayed} remaining</div>
+                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 8, ...mono }}>Round {tSwissRoundsPlayed} complete — {tConfig.swissRounds - tSwissRoundsPlayed} remaining</div>
                 <button onClick={tGenNextSwissRound} style={scBtn}>▶ Generate Round {tSwissRoundsPlayed + 1}</button>
               </div>
             )}
@@ -6960,11 +7060,11 @@ export default function App() {
             {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (
               <div style={{ textAlign: "center", marginTop: 20 }}>
                 <div style={{ fontSize: 12, color: "#ffffff", marginBottom: 8, ...mono }}>✓ All {tConfig.numGroups === 1 ? "league " : "group "} matches complete</div>
-                {tHasKO ? (tHasUnresolved ? <div style={{ background: "#141c2b", border: "1px solid #bf616a33", borderRadius: 8, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "#bf616a", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "#7889a0" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
-                  : (<div style={{ background: "#141c2b", border: "1px solid #e4002b33", borderRadius: 8, padding: 20 }}>
-                    <div style={{ fontSize: 10, letterSpacing: 4, color: "#e4002b", marginBottom: 8, textShadow: "0 0 8px #e4002b66" }}>{tConfig.numGroups === 1 ? "🏆 CHAMPION" : "🏆 TOURNAMENT COMPLETE"}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#e4002b", textShadow: "0 0 12px #e4002b44" }}>{tGroups[0]?.standings[0]?.name}</div>
-                    <div style={{ fontSize: 11, color: "#7889a0", marginTop: 4, ...mono }}>Champion — {tGroups[0]?.standings[0]?.pts} pts</div>
+                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid #bf616a33", borderRadius: 8, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "#bf616a", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
+                  : (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-33)", borderRadius: 8, padding: 20 }}>
+                    <div style={{ fontSize: 10, letterSpacing: 4, color: "var(--chrome-brand)", marginBottom: 8, textShadow: "0 0 8px var(--chrome-brand-66)" }}>{tConfig.numGroups === 1 ? "🏆 CHAMPION" : "🏆 TOURNAMENT COMPLETE"}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--chrome-brand)", textShadow: "0 0 12px var(--chrome-brand-44)" }}>{tGroups[0]?.standings[0]?.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>Champion — {tGroups[0]?.standings[0]?.pts} pts</div>
                   </div>)}
               </div>
             )}
@@ -6973,40 +7073,40 @@ export default function App() {
           {/* KNOCKOUT */}
           {(tPhase === "knockout" || tPhase === "complete") && tKO && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>KNOCKOUT STAGE</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>KNOCKOUT STAGE</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
                 <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
               </div>
             </div>
-            {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "#7889a0", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "#7889a0", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "#7889a0", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid #141c2b" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+            {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
             {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 7, padding: "12px 10px", marginTop: 10 }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", marginTop: 10 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: bz?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
-                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "#141c2b66" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "#7889a0", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"#4a7ab5") : "#7889a0", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"#4a7ab5") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "#7889a0", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "#7889a0", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "#7889a0" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "#7889a0", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
+                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"#4a7ab5") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
               </div>); })()}
             </details>)}
-            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "#7889a0", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "#7889a0" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid #141c2b" }}><td style={{ padding: "2px 4px", color: "#7889a0" }}>{e.home} <span style={{ color: "#7889a0" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "#7889a0", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "#7889a0", textAlign: "right" }}>{e.away} <span style={{ color: "#7889a0" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
+            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
             {tPhase === "complete" && tKO.champion && (
-              <div style={{ textAlign: "center", background: "linear-gradient(145deg, #141c2b 0%, #1a1c12 50%, #141c2b 100%)", border: "1px solid #e4002b44", borderRadius: 12, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px #e4002b22, 0 0 40px #e4002b11" }}>
-                <div style={{ fontSize: 10, letterSpacing: 6, color: "#e4002b", marginBottom: 10, textShadow: "0 0 8px #e4002b66" }}>🏆 CHAMPION</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: "#e4002b", textShadow: "0 0 12px #e4002b44" }}>{tKO.champion.name}</div>
-                <div style={{ fontSize: 11, color: "#7889a0", marginTop: 6, ...mono }}>{tKO.champion.skill}</div>
+              <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 12, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
+                <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tKO.champion.name}</div>
+                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 6, ...mono }}>{tKO.champion.skill}</div>
               </div>
             )}
             {/* Bracket/Stacked toggle */}
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-              <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "#e4002b" : "#141c2b", color: koBracketView ? "#ffffff" : "#7889a0", border: "1px solid " + (koBracketView ? "#e4002b" : "#7889a033") }}>Bracket</button>
-              <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "#e4002b" : "#141c2b", color: !koBracketView ? "#ffffff" : "#7889a0", border: "1px solid " + (!koBracketView ? "#e4002b" : "#7889a033") }}>Stacked</button>
-              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "#141c2b", color: "#81a1c1", border: "1px solid #81a1c133", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
+              <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: koBracketView ? "#ffffff" : "var(--chrome-muted)", border: "1px solid " + (koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Bracket</button>
+              <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: !koBracketView ? "#ffffff" : "var(--chrome-muted)", border: "1px solid " + (!koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Stacked</button>
+              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "var(--chrome-panel)", color: "#81a1c1", border: "1px solid #81a1c133", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
             </div>
 
             {koBracketView && !tKO.losers && (() => {
@@ -7039,31 +7139,31 @@ export default function App() {
                 const has2LPen = is2L && !isPartial && m.result.pen;
                 const has2LAG = is2L && !isPartial && !m.result.et && !m.result.pen && m.result.awayGoalsRule && m.result.agg?.home === m.result.agg?.away;
                 const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
-                const decClr = hasPen || has2LPen ? "#d08770" : "#7889a0";
+                const decClr = hasPen || has2LPen ? "#d08770" : "var(--chrome-muted)";
                 const winner = w;
                 const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
-                const nameClr = (team) => w === team ? "#ffffff" : isBye && !team ? "#7889a0" : "#888";
+                const nameClr = (team) => w === team ? "#ffffff" : isBye && !team ? "var(--chrome-muted)" : "#888";
                 const nameWt = (team) => w === team ? 600 : 400;
-                const sClr = (team) => w === team ? "#ffffff" : "#7889a0";
+                const sClr = (team) => w === team ? "#ffffff" : "var(--chrome-muted)";
                 return (
-                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid #e4002b66" : ri === -2 ? "1px solid #d0877044" : "1px solid #2a3a50", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid #d0877044" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
+                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
                         : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
+                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
                         : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
                     </div>
 
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
-                          : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#7889a0", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                          : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
                         <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
-                        <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? "#e4002b" : "#7889a066", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
+                        <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
                   </div>
@@ -7101,15 +7201,15 @@ export default function App() {
                       return (
                         <g key={i}>
                           {side === "left" ? <>
-                            {hasTop && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="#7889a0" strokeWidth={1} />}
-                            {hasBot && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="#7889a0" strokeWidth={1} />}
-                            <line x1={connW/2} y1={hasTop ? y1 : midY} x2={connW/2} y2={hasBot ? y2 : midY} stroke="#7889a0" strokeWidth={1} />
-                            <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                            {hasTop && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                            {hasBot && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                            <line x1={connW/2} y1={hasTop ? y1 : midY} x2={connW/2} y2={hasBot ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
+                            <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                           </> : <>
-                            {hasTop && <line x1={connW} y1={y1} x2={connW/2} y2={y1} stroke="#7889a0" strokeWidth={1} />}
-                            {hasBot && <line x1={connW} y1={y2} x2={connW/2} y2={y2} stroke="#7889a0" strokeWidth={1} />}
-                            <line x1={connW/2} y1={hasTop ? y1 : midY} x2={connW/2} y2={hasBot ? y2 : midY} stroke="#7889a0" strokeWidth={1} />
-                            <line x1={connW/2} y1={midY} x2={0} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                            {hasTop && <line x1={connW} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                            {hasBot && <line x1={connW} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                            <line x1={connW/2} y1={hasTop ? y1 : midY} x2={connW/2} y2={hasBot ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
+                            <line x1={connW/2} y1={midY} x2={0} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                           </>}
                         </g>
                       );
@@ -7119,8 +7219,8 @@ export default function App() {
                       const hasSrc = !srcMatches[n-1].bye;
                       if (!hasSrc) return null;
                       return side === "left"
-                        ? <line x1={0} y1={y} x2={connW} y2={y} stroke="#7889a0" strokeWidth={1} />
-                        : <line x1={connW} y1={y} x2={0} y2={y} stroke="#7889a0" strokeWidth={1} />;
+                        ? <line x1={0} y1={y} x2={connW} y2={y} stroke="var(--chrome-muted)" strokeWidth={1} />
+                        : <line x1={connW} y1={y} x2={0} y2={y} stroke="var(--chrome-muted)" strokeWidth={1} />;
                     })()}
                   </svg>
                 );
@@ -7144,13 +7244,13 @@ export default function App() {
               const actualH = Math.max(dispHalf, 2) * (cardH + gap);
 
               return (
-                <div id="bracket-export" style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
+                <div id="bracket-export" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {/* Left half */}
                     {leftRounds.map((lr, i) => (<>
                       {i > 0 && connector(leftRounds[i-1].matches, "left")}
                       <div key={"l"+i} style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{lr.name}</div>
+                        <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{lr.name}</div>
                         {renderCol(lr.matches, lr.ri, "left")}
                       </div>
                     </>))}
@@ -7164,7 +7264,7 @@ export default function App() {
                       const centerH = tKO.thirdPlace ? tpTop + cAH : actualH;
                       return (
                         <div style={{ flexShrink: 0, marginTop: hdrH, position: "relative", height: centerH, width: colW }}>
-                          <div style={{ position: "absolute", top: fTop - 14, left: 0, right: 0, fontSize: 8, color: "#7889a0", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>FINAL</div>
+                          <div style={{ position: "absolute", top: fTop - 14, left: 0, right: 0, fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>FINAL</div>
                           <div style={{ position: "absolute", top: fTop, left: 0, right: 0 }}>{miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}</div>
                           {tKO.thirdPlace && <>
                             <div style={{ position: "absolute", top: tpTop - 14, left: 0, right: 0, fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>3RD PLACE</div>
@@ -7178,7 +7278,7 @@ export default function App() {
                     {/* Right half (reversed) */}
                     {[...rightRounds].reverse().map((rr, i, arr) => (<>
                       <div key={"r"+i} style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rr.name}</div>
+                        <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rr.name}</div>
                         {renderCol(rr.matches, rr.ri, "right")}
                       </div>
                       {i < arr.length - 1 && connector(arr[i+1].matches, "right")}
@@ -7220,32 +7320,32 @@ export default function App() {
                 const has2LPen = is2L && !isPartial && m.result.pen;
                 const has2LAG = is2L && !isPartial && !m.result.et && !m.result.pen && m.result.awayGoalsRule && m.result.agg?.home === m.result.agg?.away;
                 const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
-                const decClr = hasPen || has2LPen ? "#d08770" : "#7889a0";
+                const decClr = hasPen || has2LPen ? "#d08770" : "var(--chrome-muted)";
                 const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
-                const nameClr = (t) => w === t ? "#ffffff" : isBye && !t ? "#7889a0" : "#888";
+                const nameClr = (t) => w === t ? "#ffffff" : isBye && !t ? "var(--chrome-muted)" : "#888";
                 const nameWt = (t) => w === t ? 600 : 400;
-                const sClr = (t) => w === t ? "#ffffff" : "#7889a0";
-                const borderStyle = bk === "gf" ? "2px solid #e4002b66" : bk === "reset" ? "1px solid #ebcb8b44" : "1px solid #2a3a50";
+                const sClr = (t) => w === t ? "#ffffff" : "var(--chrome-muted)";
+                const borderStyle = bk === "gf" ? "2px solid var(--chrome-brand-66)" : bk === "reset" ? "1px solid #ebcb8b44" : "1px solid var(--chrome-border)";
                 const onSim = () => { if (bk === "wb") tScorinateKO(ri, mi, isPartial ? 2 : 0); else if (bk === "lb") tScorinateKO(ri, mi, isPartial ? 2 : 0, "lb"); else tScorinateKO(0, 0, 0, bk); };
                 const onLive = () => { if (bk === "wb") tPlayLive({type:"ko",ri,mi,leg:isPartial?2:1}); else if (bk === "lb") tPlayLive({type:"ko",ri,mi,bracket:"lb",leg:isPartial?2:1}); else tPlayLive({type:"ko",ri:0,mi:0,bracket:bk,leg:isPartial?2:1}); };
                 return (
-                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "home" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
+                      <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
                         : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
-                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "away" && <span style={{ color: "#7889a0", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, #141c2b 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "#7889a0", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
+                      <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
                         : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
                     </div>
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
-                          : <button onClick={onSim} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 2, color: "#7889a0", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                          : <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
                         <button onClick={onLive} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
-                        <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? "#e4002b" : "#7889a066", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
+                        <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
                   </div>
@@ -7278,14 +7378,14 @@ export default function App() {
                       const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
                       return (
                         <g key={i}>
-                          {!m1.bye && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="#7889a0" strokeWidth={1} />}
-                          {!m2.bye && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="#7889a0" strokeWidth={1} />}
-                          <line x1={connW/2} y1={!m1.bye ? y1 : midY} x2={connW/2} y2={!m2.bye ? y2 : midY} stroke="#7889a0" strokeWidth={1} />
-                          <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                          {!m1.bye && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          {!m2.bye && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          <line x1={connW/2} y1={!m1.bye ? y1 : midY} x2={connW/2} y2={!m2.bye ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
+                          <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="#7889a0" strokeWidth={1} />}
+                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
@@ -7295,7 +7395,7 @@ export default function App() {
                 const slotH = height / n;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="#7889a0" strokeWidth={1} />)}
+                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
                   </svg>
                 );
               };
@@ -7306,26 +7406,26 @@ export default function App() {
                 const midY = height / 2;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    <line x1={0} y1={midY} x2={connW} y2={midY} stroke="#7889a0" strokeWidth={1} />
+                    <line x1={0} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                   </svg>
                 );
               };
 
               return (
-                <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
+                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
                   {/* WB + GF + Reset in one row */}
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10 }}>UPPER BRACKET</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10 }}>UPPER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content", marginBottom: 8 }}>
                     {wbRounds.map((rd, i) => (<Fragment key={"wb"+i}>
                       {i > 0 && pairConn(wbRounds[i-1].matches, wbH)}
                       <div style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}</div>
+                        <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}</div>
                         {renderCol(rd.matches, wbH, "wb", wbFirst + i)}
                       </div>
                     </Fragment>))}
                     {gfConn(wbH)}
                     <div style={{ flexShrink: 0 }}>
-                      <div style={{ fontSize: 8, color: "#e4002b", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>Grand Final</div>
+                      <div style={{ fontSize: 8, color: "var(--chrome-brand)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>Grand Final</div>
                       {renderCol([tKO.grandFinal], wbH, "gf", 0)}
                     </div>
                     {tKO.reset && (tKO.reset.home || tKO.reset.away) && (<Fragment>
@@ -7337,12 +7437,12 @@ export default function App() {
                     </Fragment>)}
                   </div>
                   {/* LB */}
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#7889a0", marginBottom: 10, marginTop: 8, borderTop: "1px solid #2a3a5033", paddingTop: 12 }}>LOWER BRACKET</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {tKO.losers.map((rd, lr) => (<Fragment key={"lb"+lr}>
                       {lr > 0 && (rd.type === "internal" ? pairConn(tKO.losers[lr-1].matches, lbH) : straightConn(tKO.losers[lr-1].matches, lbH))}
                       <div style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "#7889a0", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
+                        <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                         {renderCol(rd.matches, lbH, "lb", lr)}
                       </div>
                     </Fragment>))}
@@ -7350,20 +7450,20 @@ export default function App() {
                 </div>
               );
             })()}
-            {!koBracketView && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 640, overflowY: "auto", position: "relative" }}>
-              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#141c2b", padding: "16px 16px 10px", borderBottom: "1px solid #2a3a50", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 640, overflowY: "auto", position: "relative" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0" }}>ALL CAUGHT UP</div>}
+                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>ALL CAUGHT UP</div>}
                   {koActionable.wbRi >= 0 && (() => { const rd = tKO.rounds[koActionable.wbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>WB R{koActionable.wbRi + 1}</span>
-                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
-                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
+                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>WB R{koActionable.wbRi + 1}</span>
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
                     <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
                   </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
                   {koActionable.lbRi >= 0 && (() => { const rd = tKO.losers[koActionable.lbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "#7889a0", ...mono }}>LB R{koActionable.lbRi + 1}</span>
-                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 1st Legs</button>}
-                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>▶ 2nd Legs</button>}
+                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>LB R{koActionable.lbRi + 1}</span>
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
                     <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
                   </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
                   {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ 3rd Place</button>}
@@ -7371,84 +7471,84 @@ export default function App() {
                   {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Reset Match</button>}
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Expand All</button>
-                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#7889a0" }}>Collapse All</button>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
               </div>
               <div style={{ padding: "10px 16px 16px" }}>
               {tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = wbRoundDone(round); const key = `wb_${ri}`; const isOpen = expandedRounds.has(key); return (
-                <div key={ri} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "#e4002b33" : "#2a3a50"), borderRadius: 6, overflow: "hidden" }}>
-                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                <div key={ri} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "var(--chrome-brand-33)" : "var(--chrome-border)"), borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0", flexShrink: 0 }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</span>
+                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", flexShrink: 0 }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {!m.home || !m.away ? <span style={{ color: "#7889a0" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
-                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "#7889a0" }}>{abbr(m.home.name, m.home.code)}</span>
-                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
-                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "#7889a0" }}>{abbr(m.away.name, m.away.code)}</span>
+                        {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
                     </div>
-                    {rdDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0, ...mono }}>✓</span>}
+                    {rdDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
-                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: round.matches.length > 2 ? `repeat(${Math.min(round.matches.length, 2)}, 1fr)` : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid #2a3a50" }}>
-                    {round.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid #e4002b33" : "1px solid #2a3a50" }}>
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: round.matches.length > 2 ? `repeat(${Math.min(round.matches.length, 2)}, 1fr)` : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
+                    {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid var(--chrome-brand-33)" : "1px solid var(--chrome-border)" }}>
                       {renderKoMatchRow(m, { ri, mi }, { cardLayout: round.matches.length > 2 })}
                     </div>))}
                   </div>}
                 </div>
               ); })}
               {!tKO.losers && tKO.thirdPlace && (
-                <div style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, padding: "10px 12px" }}>
+                <div style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
-                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
                 </div>
               )}
               {!tKO.losers && (() => { const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
-                <div style={{ marginBottom: 6, border: "1px solid #e4002b33", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#7889a0", marginBottom: 10 }}>{round.name?.toUpperCase()}</div>
-                  {round.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
+                <div style={{ marginBottom: 6, border: "1px solid var(--chrome-brand-33)", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", marginBottom: 10 }}>{round.name?.toUpperCase()}</div>
+                  {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
                 </div>
               ); })()}
               {tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
-                <div key={"lb"+lr} style={{ marginBottom: 6, border: "1px solid #2a3a50", borderRadius: 6, overflow: "hidden" }}>
-                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "#0d1117" : "transparent", gap: 8 }}>
+                <div key={"lb"+lr} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
+                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 8, color: "#7889a0", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#7889a0", flexShrink: 0 }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "#7889a0", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></span>
+                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", flexShrink: 0 }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {lbRound.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "#0d1117", border: "1px solid #2a3a50", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {!m.home || !m.away ? <span style={{ color: "#7889a0" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
-                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "#7889a0" }}>{abbr(m.home.name, m.home.code)}</span>
-                            <span style={{ color: "#7889a0", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
-                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "#7889a0" }}>{abbr(m.away.name, m.away.code)}</span>
+                        {lbRound.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
                     </div>
-                    {lbDone && <span style={{ fontSize: 9, color: "#7889a0", flexShrink: 0, ...mono }}>✓</span>}
+                    {lbDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
-                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid #2a3a50" }}>
-                    {lbRound.matches.map((m, mi) => (<div key={mi} style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
+                    {lbRound.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
                       {renderKoMatchRow(m, { ri: lr, mi, bracket: "lb" }, { cardLayout: lbRound.matches.length > 2, showByeInAction: true, initialLeg: 0 })}
                     </div>))}
                   </div>}
                 </div>
               ); })}
               {tKO.losers && tKO.grandFinal && (
-                <div style={{ marginBottom: 6, border: "1px solid #e4002b33", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#e4002b", marginBottom: 10 }}>GRAND FINAL</div>
-                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #e4002b33" }}>{renderKoMatchRow(tKO.grandFinal, { ri: 0, mi: 0, bracket: "gf" }, { homeTag: "UB", awayTag: "LB", initialLeg: 0 })}</div>
+                <div style={{ marginBottom: 6, border: "1px solid var(--chrome-brand-33)", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-brand)", marginBottom: 10 }}>GRAND FINAL</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)" }}>{renderKoMatchRow(tKO.grandFinal, { ri: 0, mi: 0, bracket: "gf" }, { homeTag: "UB", awayTag: "LB", initialLeg: 0 })}</div>
                 </div>
               )}
               {tKO.losers && tKO.reset && (tKO.reset.home || tKO.reset.away) && (
                 <div style={{ marginBottom: 6, border: "1px solid #ebcb8b33", borderRadius: 6, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
-                  <div style={{ fontSize: 9, color: "#7889a0", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
-                  <div style={{ background: "#141c2b", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
+                  <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
                 </div>
               )}
               </div>
@@ -7458,6 +7558,13 @@ export default function App() {
 
         {/* ═══ UTILITIES TAB ═══ */}
         {tab === "utilities" && (<div>
+          <label style={{ ...lbl, margin: "0 0 8px" }}>Theme</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+            <select value={wcTheme ? "wc1933" : "default"} onChange={e => setWcTheme(e.target.value === "wc1933")} style={{ ...inp, flex: 1 }}>
+              <option value="default">Standard</option>
+              <option value="wc1933">1933 WC</option>
+            </select>
+          </div>
           <label style={{ ...lbl, margin: "0 0 8px" }}>Best Possible National Team</label>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -7465,7 +7572,7 @@ export default function App() {
               {natOptions.map(([code, info]) => <option key={code} value={code}>{code} ({info.count})</option>)}
             </select>
           </div>
-          {!bestXiNat && <div style={{ fontSize: 11, color: "#7889a066", padding: "20px 0", textAlign: "center" }}>Pick a nation to compute its strongest XI.</div>}
+          {!bestXiNat && <div style={{ fontSize: 11, color: "var(--chrome-muted-66)", padding: "20px 0", textAlign: "center" }}>Pick a nation to compute its strongest XI.</div>}
           {bestXiNat && bestXi && (() => {
             // Bench slots are matched by broad group (DEF/MID/FWD), but display the
             // assigned player's own exact position(s) — the broad group only drives the search.
@@ -7474,23 +7581,23 @@ export default function App() {
             const bench = rows.filter(x => x.bench);
             const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr || 0), 0) / starters.length;
             const XI_COLW = { pos: 60, player: 220, ovr: 50, club: 200 };
-            const thS = { padding: "8px 12px", borderBottom: "1px solid #2a3a50", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0", textAlign: "left", whiteSpace: "nowrap" };
+            const thS = { padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
             const tdS = { padding: "5px 12px" };
             const ColGroup = () => <colgroup><col style={{ width: XI_COLW.pos }} /><col style={{ width: XI_COLW.player }} /><col style={{ width: XI_COLW.ovr }} /><col style={{ width: XI_COLW.club }} /></colgroup>;
             const Row = (x, i) => (
-              <tr key={i} style={{ background: i % 2 ? "transparent" : "#0a0e1708" }}>
-                <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "#7889a0", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
-                <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "#7889a066" }}>—</span>}</td>
+              <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
+                <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "var(--chrome-muted-66)" }}>—</span>}</td>
                 <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(x.player?.ovr) }}>{x.player?.ovr || "–"}</td>
-                <td style={{ ...tdS, paddingLeft: 8, color: "#7889a0", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
+                <td style={{ ...tdS, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
               </tr>
             );
             return (<>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <label style={{ ...lbl, margin: 0 }}>Starting XI <span style={{ color: "#7889a0", fontWeight: 400 }}>({bestXi.formation})</span></label>
-                <span style={{ fontSize: 10, color: "#7889a0" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
+                <label style={{ ...lbl, margin: 0 }}>Starting XI <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({bestXi.formation})</span></label>
+                <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
               </div>
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <ColGroup />
                   <thead><tr><th style={thS}>Pos</th><th style={thS}>Player</th><th style={{ ...thS, textAlign: "center" }}>OVR</th><th style={{ ...thS, paddingLeft: 8 }}>Club</th></tr></thead>
@@ -7498,7 +7605,7 @@ export default function App() {
                 </table>
               </div>
               <label style={{ ...lbl, margin: "0 0 8px" }}>Bench</label>
-              <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <ColGroup />
                   <tbody>{bench.map((x, i) => Row(x, i))}</tbody>
@@ -7516,13 +7623,13 @@ export default function App() {
                 }).join("\t");
                 return (<>
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBestXiExport ? "#bf616a" : "#7889a0" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
+                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBestXiExport ? "#bf616a" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
                   </div>
-                  {showBestXiExport && (<div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginTop: 8 }}>
-                    <p style={{ fontSize: 10, color: "#7889a0", margin: "0 0 8px" }}>Copy this text and paste over a team's 16 player columns.</p>
+                  {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginTop: 8 }}>
+                    <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's 16 player columns.</p>
                     <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "#e4002b", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
+                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
                     </div>
                   </div>)}
                 </>);
@@ -7532,12 +7639,12 @@ export default function App() {
         </div>)}
 
         {/* ═══ DOCS TAB ═══ */}
-        {tab === "docs" && (<div style={{ lineHeight: 1.7, fontSize: 12, color: "#7889a0" }}>
+        {tab === "docs" && (<div style={{ lineHeight: 1.7, fontSize: 12, color: "var(--chrome-muted)" }}>
           {(()=>{
-            const H1 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0" }}>{children}</div>;
-            const H2 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7889a0", marginTop: 24, marginBottom: 10, ...ui }}>{children}</div>;
+            const H1 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>{children}</div>;
+            const H2 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", marginTop: 24, marginBottom: 10, ...ui }}>{children}</div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", marginTop: 18, marginBottom: 8 }}>{children}</div>;
-            const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "#7889a0" }}>{children}</p>;
+            const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
             const Stat = ({text}) => {
               const items = text.split(" \u00b7 ").map(s => {
                 const tempo = s.match(/^(Max|Min) tempo: (.+)$/);
@@ -7548,28 +7655,28 @@ export default function App() {
                 const neut = isM ? n === 1 : n === 0;
                 return { name: m[1], value: m[2], neutral: neut, positive: isM ? n > 1 : n > 0, isMulti: isM };
               });
-              return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "#7889a0", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "#141c2b", borderRadius: 5, marginTop: 6, border: "1px solid #2a3a50" }}>
+              return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "var(--chrome-panel)", borderRadius: 5, marginTop: 6, border: "1px solid var(--chrome-border)" }}>
                 {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "#5e9c6b0a" : it.isTempo ? "#d087700a" : "#bf616a0a", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid #5e9c6b33" : it.isTempo ? "2px solid #d0877033" : "2px solid #bf616a33" }}>
-                  <span style={{ color: "#7889a0", fontSize: 10 }}>{it.name}</span>
-                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "#7889a0" : it.positive ? "#5e9c6b" : it.isTempo ? "#d08770" : "#bf616a" }}>{it.value}</span>
+                  <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>{it.name}</span>
+                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "var(--chrome-muted)" : it.positive ? "#5e9c6b" : it.isTempo ? "#d08770" : "#bf616a" }}>{it.value}</span>
                 </div>)}
               </div></details>;
             };
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "#ffffff" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
-            const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "#7889a0", fontSize: 13, fontWeight: 500 }}>{label}</span>;
+            const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<>
-            <div style={{ background: "#141c2b", border: "1px solid #2a3a50", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#7889a0", marginBottom: 8 }}>Contents</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 8 }}>Contents</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {tocLink("doc-overview", "Overview")}
                 {tocLink("doc-engine", "How Matches Play Out")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-dynamics", "Match Dynamics")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-modifiers", "Modifiers")}
                 {tocLink("doc-skill", "Skill")}
@@ -7577,16 +7684,16 @@ export default function App() {
                 {tocLink("doc-formations", "Formations")}
                 {tocLink("doc-tactics", "Tactics")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  <span style={{ color: "#7889a0", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 8, marginBottom: 2 }}>IN POSSESSION</span>
-                  {[["doc-tac-approach","Approach Play"],["doc-tac-passing","Passing Direction"],["doc-tac-chances","Chance Creation"],["doc-tac-dribbling","Dribbling"],["doc-tac-creativity","Creative Freedom"],["doc-tac-setpieces","Set Pieces"],["doc-tac-timewasting","Time Wasting"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                  <span style={{ color: "#7889a0", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>TRANSITION</span>
-                  {[["doc-tac-posslost","On Possession Lost"],["doc-tac-posswon","On Possession Won"],["doc-tac-gkdist","GK Distribution"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                  <span style={{ color: "#7889a0", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>DEFENSE</span>
-                  {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 8, marginBottom: 2 }}>IN POSSESSION</span>
+                  {[["doc-tac-approach","Approach Play"],["doc-tac-passing","Passing Direction"],["doc-tac-chances","Chance Creation"],["doc-tac-dribbling","Dribbling"],["doc-tac-creativity","Creative Freedom"],["doc-tac-setpieces","Set Pieces"],["doc-tac-timewasting","Time Wasting"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>TRANSITION</span>
+                  {[["doc-tac-posslost","On Possession Lost"],["doc-tac-posswon","On Possession Won"],["doc-tac-gkdist","GK Distribution"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>DEFENSE</span>
+                  {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "#7889a0", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-bulkimport", "Bulk Import")}
               </div>
@@ -7875,12 +7982,12 @@ export default function App() {
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
             <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
-            <div style={{ background: "#141c2b", borderRadius: 8, border: "1px solid #2a3a50", overflow: "hidden", marginBottom: 10 }}>
+            <div style={{ background: "var(--chrome-panel)", borderRadius: 8, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
-                <thead><tr style={{ borderBottom: "1px solid #2a3a50" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "#7889a0", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>PARAMETER</th>
-                  <th style={{ padding: "8px 10px", textAlign: "center", color: "#7889a0", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em", width: 50 }}>TYPE</th>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "#7889a0", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>EFFECT</th>
+                <thead><tr style={{ borderBottom: "1px solid var(--chrome-border)" }}>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>PARAMETER</th>
+                  <th style={{ padding: "8px 10px", textAlign: "center", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em", width: 50 }}>TYPE</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>EFFECT</th>
                 </tr></thead>
                 <tbody>
                 {[
@@ -7899,7 +8006,7 @@ export default function App() {
                 ].map(([name, type, desc], i) => (
                   <tr key={i} style={{ borderBottom: i < 11 ? "1px solid #0f1612" : "none" }}>
                     <td style={{ padding: "7px 12px", color: "#ffffff", fontWeight: 600, fontSize: 11 }}>{name}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "#7889a022" : type === "+" ? "#4a7ab522" : "#d0877022", color: type === "×" ? "#5e9c6b" : type === "+" ? "#4a7ab5" : "#d08770", border: "1px solid " + (type === "×" ? "#5e9c6b33" : type === "+" ? "#4a7ab533" : "#d0877033") }}>{type}</span></td>
+                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "var(--chrome-muted-22)" : type === "+" ? "#4a7ab522" : "#d0877022", color: type === "×" ? "#5e9c6b" : type === "+" ? "#4a7ab5" : "#d08770", border: "1px solid " + (type === "×" ? "#5e9c6b33" : type === "+" ? "#4a7ab533" : "#d0877033") }}>{type}</span></td>
                     <td style={{ padding: "7px 12px", color: "#888" }}>{desc}</td>
                   </tr>
                 ))}
@@ -7912,7 +8019,7 @@ export default function App() {
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
             <P>Tab-separated, one team per line. Columns in order:</P>
-            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "#141c2b", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
+            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
             <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
 
             </details>

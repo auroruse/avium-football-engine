@@ -1,0 +1,84 @@
+
+/* Chrome/UI color tokens — NOT used for semantic colors (ratings, positions,
+   match events, W/D/L). Default values below match the app's original hardcoded
+   palette exactly, so [data-theme] absent/unknown renders identically to before
+   this file existed. */
+:root {
+  --chrome-font: 'Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-bg: #0a0e17;
+  --chrome-bg-08: #0a0e1708;
+  --chrome-bg-dd: #0a0e17dd;
+  --chrome-bg2: #060b14;
+  --chrome-bg3: #0d1117;
+  --chrome-panel: #141c2b;
+  --chrome-panel-08: #141c2b08;
+  --chrome-panel-66: #141c2b66;
+  --chrome-border: #2a3a50;
+  --chrome-border-33: #2a3a5033;
+  --chrome-border-66: #2a3a5066;
+  --chrome-border-88: #2a3a5088;
+  --chrome-muted: #7889a0;
+  --chrome-muted-22: #7889a022;
+  --chrome-muted-33: #7889a033;
+  --chrome-muted-44: #7889a044;
+  --chrome-muted-66: #7889a066;
+  --chrome-muted-80: #7889a080;
+  --chrome-muted-88: #7889a088;
+  --chrome-brand: #e4002b;
+  --chrome-brand-11: #e4002b11;
+  --chrome-brand-14: #e4002b14;
+  --chrome-brand-1a: #e4002b1a;
+  --chrome-brand-20: #e4002b20;
+  --chrome-brand-22: #e4002b22;
+  --chrome-brand-33: #e4002b33;
+  --chrome-brand-44: #e4002b44;
+  --chrome-brand-66: #e4002b66;
+  --chrome-brand-88: #e4002b88;
+  /* champion banner accent — equals brand by default, real gold in wc1933 */
+  --chrome-gold: #e4002b;
+  --chrome-gold-11: #e4002b11;
+  --chrome-gold-22: #e4002b22;
+  --chrome-gold-44: #e4002b44;
+  --chrome-gold-66: #e4002b66;
+  --chrome-champion-glow: #1a1c12;
+}
+
+/* 1933 World Cup special edition */
+[data-theme="wc1933"] {
+  --chrome-font: 'Aoboshi One','Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-bg: #120d08;
+  --chrome-bg-08: #120d0808;
+  --chrome-bg-dd: #120d08dd;
+  --chrome-bg2: #0d0906;
+  --chrome-bg3: #150f09;
+  --chrome-panel: #211a10;
+  --chrome-panel-08: #211a1008;
+  --chrome-panel-66: #211a1066;
+  --chrome-border: #a9843e;
+  --chrome-border-33: #a9843e33;
+  --chrome-border-66: #a9843e66;
+  --chrome-border-88: #a9843e88;
+  --chrome-muted: #a89684;
+  --chrome-muted-22: #a8968422;
+  --chrome-muted-33: #a8968433;
+  --chrome-muted-44: #a8968444;
+  --chrome-muted-66: #a8968466;
+  --chrome-muted-80: #a8968480;
+  --chrome-muted-88: #a8968488;
+  --chrome-brand: #b23529;
+  --chrome-brand-11: #b2352911;
+  --chrome-brand-14: #b2352914;
+  --chrome-brand-1a: #b235291a;
+  --chrome-brand-20: #b2352920;
+  --chrome-brand-22: #b2352922;
+  --chrome-brand-33: #b2352933;
+  --chrome-brand-44: #b2352944;
+  --chrome-brand-66: #b2352966;
+  --chrome-brand-88: #b2352988;
+  --chrome-gold: #cba456;
+  --chrome-gold-11: #cba45611;
+  --chrome-gold-22: #cba45622;
+  --chrome-gold-44: #cba45644;
+  --chrome-gold-66: #cba45666;
+  --chrome-champion-glow: #2e2410;
+}
