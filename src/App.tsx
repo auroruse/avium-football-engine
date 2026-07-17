@@ -459,6 +459,10 @@ const _rc = (() => {
     inc(key) { d[key] = (d[key] || 0) + 1; this.save(); },
     get(key) { return d[key] || 0; },
     all() { return { ...d }; },
+    // Fixture keys (g_0_0_0, ko_0_0, ...) are slot positions, not identities unique to one
+    // tournament run — resetting the tournament must wipe these or a brand-new tournament's
+    // first-ever match inherits whatever count the same slot racked up in a prior run.
+    clear() { for (const x in d) delete d[x]; this.save(); },
   };
 })();
 const STYLE_MOD = {
@@ -4039,7 +4043,7 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
+  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
 
   useEffect(() => {
     if (tDrawAnim?.auto && !(tDrawAnim.index >= tDrawAnim.log.length && !tDrawAnim.pending)) {
@@ -5663,8 +5667,12 @@ export default function App() {
 
         {/* ═══ LIVE MATCH TAB ═══ */}
         {tab === "live" && (<div>
-          {/* Unified match controls — always at top */}
-          <div style={{ marginBottom: 12 }}>
+          {/* Unified match controls — always at top, except while the tournament
+              pre-match setup screen is up: lmIsSetup (=!lmMatch) doesn't know about
+              tPendingPlayLive, so left ungated this renders "Start Match"/"Sim to End"
+              wired to the standalone flow's lmKickOff/lmSimAll — the wrong match
+              entirely — concurrently with the setup screen's own Kick Off button. */}
+          {!tPendingPlayLive && <div style={{ marginBottom: 12 }}>
             {(() => {
               const finished = lmMatch?.phase === "finished";
               // If the most recent chance hasn't finished revealing, the "next minute" button
@@ -5725,7 +5733,7 @@ export default function App() {
                 </div>}
               </div>) : null;
             })()}
-          </div>
+          </div>}
           {lmIsSetup && !tPendingPlayLive && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
