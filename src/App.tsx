@@ -5047,8 +5047,13 @@ export default function App() {
         };
         const hI = buildItems("home"), aI = buildItems("away");
         const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-        const ball = (t) => t === "pen_miss" ? <span style={{ fontSize: 9, color: "var(--chrome-brand)" }}>⚽︎</span>
-          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9 }}>⚽︎</span>
+        // lineHeight matches the scorer-name/minute rows exactly (see below) — the ⚽︎
+        // glyph's own font-dependent line-height was 14px vs. their fixed 13px, and since
+        // this cell shares a CSS grid row with the name cells, Grid's tallest-cell sizing
+        // rounded every row up to 14px, drifting the minute column (plain block stacking,
+        // unaffected by this cell) further out of alignment on every subsequent row.
+        const ball = (t) => t === "pen_miss" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--chrome-brand)" }}>⚽︎</span>
+          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9, lineHeight: "13px" }}>⚽︎</span>
           : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
           : null;
         const ballWithP = (t) => {
@@ -5094,7 +5099,7 @@ export default function App() {
                 </div>
               </div>
               {evRows.map((row, i) => (
-                <div key={i} style={{ fontSize: 9, color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.h ? mTxt(row.h.min) :" "}</div>
+                <div key={i} style={{ fontSize: 9, lineHeight: "13px", color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.h ? mTxt(row.h.min) :" "}</div>
               ))}
             </div>
             {/* Middle: phase/clock bar, then name+skill (stacked, as a unit) | score | name+skill —
@@ -5120,12 +5125,12 @@ export default function App() {
                     Minutes live under the crests instead (separate columns, see either side). */}
                 {evRows.map((row, i) => (
                   <Fragment key={i}>
-                    <div style={{ textAlign: "right", fontSize: 9, color: "#ffffff" }}>{row.h?.name}</div>
+                    <div style={{ textAlign: "right", fontSize: 9, lineHeight: "13px", color: "#ffffff" }}>{row.h?.name}</div>
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(-6.5px)" }}>{row.h && ballWithP(row.h.type)}</div>
                       <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(6.5px)" }}>{row.a && ballWithP(row.a.type)}</div>
                     </div>
-                    <div style={{ textAlign: "left", fontSize: 9, color: "#ffffff" }}>{row.a?.name}</div>
+                    <div style={{ textAlign: "left", fontSize: 9, lineHeight: "13px", color: "#ffffff" }}>{row.a?.name}</div>
                   </Fragment>
                 ))}
               </div>
@@ -5138,7 +5143,7 @@ export default function App() {
                 </div>
               </div>
               {evRows.map((row, i) => (
-                <div key={i} style={{ fontSize: 9, color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.a ? mTxt(row.a.min) :" "}</div>
+                <div key={i} style={{ fontSize: 9, lineHeight: "13px", color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.a ? mTxt(row.a.min) :" "}</div>
               ))}
             </div>
           </div>
