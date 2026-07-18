@@ -2419,28 +2419,37 @@ function MarqueeName({ text, align = "left", style }) {
 // Inspect Element's "Edit as HTML" to change; it's pixels, not markup. Doesn't protect
 // the underlying count (nothing reads this back into app state anyway) — it's specifically
 // so a screenshot of this number can't be casually faked in a few seconds of DOM editing.
-function CanvasText({ text, fontSize = 9, colorVar = "--chrome-muted", title }) {
+function CanvasText({ text, fontSize = 9, color = "--chrome-muted", title }) {
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
     const font = `${fontSize}px 'JetBrains Mono', monospace`;
-    const color = getComputedStyle(canvas).getPropertyValue(colorVar).trim() || "#7889a0";
+    const cs = getComputedStyle(canvas);
+    // A leading "--" means a CSS custom property to resolve (theme-aware); anything else
+    // (e.g. a literal "#ffffff") is used as-is — canvas fillStyle doesn't understand
+    // var() syntax, so a raw custom-property reference would silently paint nothing.
+    const resolvedColor = color.startsWith("--") ? (cs.getPropertyValue(color).trim() || "#7889a0") : color;
+    // Match whatever line-height this element would actually inherit here (the WC1933
+    // theme's global rule, or the browser/font default in Standard) instead of guessing a
+    // fixed ratio — same root cause as the scorer-row misalignment fixed earlier: two
+    // independently-sized boxes drift apart the moment their heights aren't forced equal.
+    const inheritedLH = parseFloat(cs.lineHeight);
+    const height = Number.isFinite(inheritedLH) && inheritedLH > 0 ? Math.ceil(inheritedLH) : Math.ceil(fontSize * 1.4);
     const ctx = canvas.getContext("2d");
     ctx.font = font;
     const width = Math.ceil(ctx.measureText(text).width) + 2;
-    const height = Math.ceil(fontSize * 1.6);
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = width + "px";
     canvas.style.height = height + "px";
     ctx.scale(dpr, dpr);
     ctx.font = font;
-    ctx.fillStyle = color;
+    ctx.fillStyle = resolvedColor;
     ctx.textBaseline = "middle";
     ctx.fillText(text, 0, height / 2);
-  }, [text, fontSize, colorVar]);
+  }, [text, fontSize, color]);
   return <canvas ref={canvasRef} title={title} style={{ verticalAlign: "middle", display: "inline-block" }} />;
 }
 // Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
@@ -5139,7 +5148,7 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
                 <div style={{ textAlign: "right", minWidth: 0 }}>
                   <MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "#ffffff" }}>· {teamById(lmH)?.skill}</span></div>
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "#ffffff" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="#ffffff" /></div>
                 </div>
                 <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
                   <span className={goalFlash==="home"?"goal-flash":""}>{dispScore[0]}</span>
@@ -5148,7 +5157,7 @@ export default function App() {
                 </div>
                 <div style={{ textAlign: "left", minWidth: 0 }}>
                   <MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{teamById(lmA)?.skill} ·</span> <span style={{ color: "#ffffff" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
+                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="#ffffff" /><span style={{ color: "#ffffff" }}> ·</span> <span style={{ color: "#ffffff" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
                 </div>
                 {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
                     name/score above — ball icons share the score column, names share the name columns.
