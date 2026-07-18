@@ -46,6 +46,13 @@
 /* 1933 World Cup special edition */
 [data-theme="wc1933"] {
   --chrome-font: 'Aoboshi One','Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  /* line-height is an inherited property — setting it once here covers every element
+     that doesn't already set its own (an explicit inline lineHeight, e.g. the scorer-row
+     fix, always wins over this regardless). Standard theme is left untouched: it already
+     works fine on the browser's per-font default, this is purely to stop Aoboshi One's
+     line-height from silently diverging from surrounding elements at every font boundary,
+     not just the one crossing we already found and patched by hand. */
+  line-height: 1.4;
   --chrome-bg: #120d08;
   --chrome-bg-08: #120d0808;
   --chrome-bg-dd: #120d08dd;

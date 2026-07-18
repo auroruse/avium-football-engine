@@ -2414,6 +2414,35 @@ function MarqueeName({ text, align = "left", style }) {
     </span>
   );
 }
+// Renders text onto a <canvas> instead of a DOM text node — unlike a <span> (or an SVG
+// <text> element, which is just as editable a DOM node), there's nothing here for
+// Inspect Element's "Edit as HTML" to change; it's pixels, not markup. Doesn't protect
+// the underlying count (nothing reads this back into app state anyway) — it's specifically
+// so a screenshot of this number can't be casually faked in a few seconds of DOM editing.
+function CanvasText({ text, fontSize = 9, colorVar = "--chrome-muted", title }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const font = `${fontSize}px 'JetBrains Mono', monospace`;
+    const color = getComputedStyle(canvas).getPropertyValue(colorVar).trim() || "#7889a0";
+    const ctx = canvas.getContext("2d");
+    ctx.font = font;
+    const width = Math.ceil(ctx.measureText(text).width) + 2;
+    const height = Math.ceil(fontSize * 1.6);
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx.scale(dpr, dpr);
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 0, height / 2);
+  }, [text, fontSize, colorVar]);
+  return <canvas ref={canvasRef} title={title} style={{ verticalAlign: "middle", display: "inline-block" }} />;
+}
 // Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
 // shield in the team's home color, outlined in its away color, if none exists.
 function TeamCrest({ team, size = 22, style }) {
@@ -2912,6 +2941,7 @@ const APP_CSS = `
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
 @import url('https://fonts.googleapis.com/css2?family=Aoboshi+One&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
+td,th{vertical-align:middle;}
 html{overflow-y:scroll;}
 body{font-family:'Neue Montreal','Inter','Helvetica Neue',sans-serif;}
 ::selection{background:var(--chrome-brand-44);color:#ffffff;}
@@ -5274,7 +5304,7 @@ export default function App() {
         })}
         </div>
         {tLiveTarget && <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)", textAlign: "center" }}>
-          <span style={{ fontSize: 9, color: "var(--chrome-muted)" }} title="Tracked per fixture, persists across abandons and page reloads">Replays: {Math.max(0, _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget?.leg === 2 ? "_L2" : "")) - 1)}</span>
+          <CanvasText text={`Replays: ${Math.max(0, _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget?.leg === 2 ? "_L2" : "")) - 1)}`} title="Tracked per fixture, persists across abandons and page reloads" />
         </div>}
       </div>
     );
