@@ -4928,8 +4928,12 @@ export default function App() {
     // NFD (decomposed: u + combining macron) while typed/pasted text is usually NFC
     // (precomposed). Same visible name, different bytes, so try both forms — a no-op
     // when the name has nothing to normalize (plain ASCII names hit the same URL twice).
-    const stadiumUrlNFC = venueStadium ? `/stadiums/${encodeURIComponent(venueStadium.normalize("NFC"))}` : null;
-    const stadiumUrlNFD = venueStadium ? `/stadiums/${encodeURIComponent(venueStadium.normalize("NFD"))}` : null;
+    // BASE_URL (not a hardcoded leading "/") because this deploys to GitHub Pages under
+    // /avium-football-engine/, not domain root — an absolute "/stadiums/..." resolves
+    // against the wrong root there even though it works fine locally, same as how the
+    // crest badges above already do it.
+    const stadiumUrlNFC = venueStadium ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(venueStadium.normalize("NFC"))}` : null;
+    const stadiumUrlNFD = venueStadium ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(venueStadium.normalize("NFD"))}` : null;
     const scoreboardBg = venueStadium
       ? `linear-gradient(90deg, ${hClr2}b3 0%, ${hClr2}b3 40%, ${aClr2}b3 60%, ${aClr2}b3 100%), url("${stadiumUrlNFC}.jpg"), url("${stadiumUrlNFC}.jpeg"), url("${stadiumUrlNFD}.jpg"), url("${stadiumUrlNFD}.jpeg")`
       : `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`;
