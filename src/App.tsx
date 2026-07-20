@@ -936,7 +936,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     s.possession=op;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
     const _clDfs=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID");const _clDf=_clDfs.length?pickPlayer(rng,_clDfs,"defend",s.teamSkill?.[op]):s.players[op].find(p=>p.pos==="GK");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,0.15);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
     const _clOvr=_clDf?ovrN(fatigueOvr(_clDf.ovr,_clDf.stamina),s.teamSkill?.[op])*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
-    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
+    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;const cnEv={min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=cnEv;cnEv.suppressStandalone=true;}s.events.push(cnEv);lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
     else if(cl<0.70-0.20*defR){s.ball=2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
@@ -3828,7 +3828,7 @@ export default function App() {
     setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv); setLm2ndLeg(isL2);
     setTLiveTarget({...target, flipped: isL2});
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setTab("live");
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setChanceStep({}); setTab("live");
   };
 
   // Auto-save tournament state to persistent storage
@@ -3957,7 +3957,7 @@ export default function App() {
     init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); };
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); setChanceStep({}); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
@@ -3984,7 +3984,7 @@ export default function App() {
       for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true);
       return s;
     });
-    setAutoPlay(false); setLoading(false); }, 40); };
+    setChanceStep({}); setAutoPlay(false); setLoading(false); }, 40); };
   const executeManualSub = (side, offName, onName) => {
     setLmMatch(prev => {
       const s = cloneState(prev);
@@ -6016,7 +6016,7 @@ export default function App() {
                     const chanceClr = isH ? hClr : aClr;
                     const isOutcomeStep = hasOutcome && step === chainSteps;
                     if (isOutcomeStep) {
-                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"} };
+                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"}, corner: {icon:"🏴", header:"Corner!", color:"#ebcb8b", bg:"#ebcb8b08"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
                       body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(nextE.text.replace(/^[^\p{L}\p{N}]+/u, ''), nextE.playerFull, om.color)}</div>;
@@ -6666,7 +6666,7 @@ export default function App() {
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "#bf616a" : "var(--chrome-muted)" }} /></div>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
                       ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "#bf616a" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
-                      : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center" }} />
+                      : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: "var(--chrome-muted)" }} />
                     }</div>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
                       {[["roundRobin", "Round Robin"], ["swiss", "Swiss"]].map(([id, l]) => (
