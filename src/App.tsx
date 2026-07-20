@@ -4756,7 +4756,15 @@ export default function App() {
     const haKey = fixtureKey({ type: "ko", ...ref });
     const haVal = tHomeAdvOverrides[haKey] || null;
     const editing = koIsEditingRef(ref);
-    const editForm = (<span style={{ display: "flex", alignItems: "center", gap: 2, margin: opts.cardLayout ? 0 : "0 4px", justifyContent: opts.cardLayout ? "center" : "flex-start" }}>
+    // Deferred into a function, not a plain const — this dereferences tKoEdit
+    // unconditionally, and tKoEdit is null whenever nothing is being edited (i.e. on
+    // basically every call). A plain `const editForm = <span>{tKoEdit.step...}</span>`
+    // evaluates that JSX expression immediately regardless of whether `editing` ends up
+    // true, crashing every single row the moment nothing is mid-edit — which is always,
+    // except for the one row someone's actually clicked ✎ on. Calling it only inside the
+    // `editing ? editForm() : ...` branch below means it only runs when tKoEdit is
+    // guaranteed non-null (koIsEditingRef returns false immediately if !tKoEdit).
+    const editForm = () => (<span style={{ display: "flex", alignItems: "center", gap: 2, margin: opts.cardLayout ? 0 : "0 4px", justifyContent: opts.cardLayout ? "center" : "flex-start" }}>
       {tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}
       {tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"var(--chrome-muted)"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
       {tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"var(--chrome-muted)"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
@@ -4767,7 +4775,7 @@ export default function App() {
       <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button>
       <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid var(--chrome-border)", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
     </span>);
-    const actionArea = editing ? editForm
+    const actionArea = editing ? editForm()
       : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
           <span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span>
           <button onClick={() => koSim(ref, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
