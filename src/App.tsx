@@ -1307,10 +1307,10 @@ function lmAdvance(prev, rng, home, away, mutate) {
       const cs = (side === "home" ? s.score[1] : s.score[0]) === 0;
       s.players[side].forEach(p => {
         let b = 0;
-        if (p.pos === "GK") b = Math.min(0.4, 0.04 * (p.saves || 0) + (cs ? 0.15 : 0));
+        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.3 : 0));
         else if (p.pos === "DEF") b = Math.min(0.5, 0.08 * Math.min(p.defActs || 0, 8) + (cs ? 0.12 : 0));
-        else if (p.pos === "MID") b = Math.min(0.4, 0.05 * Math.min(p.chances || 0, 5));
-        else if (p.pos === "FWD") b = Math.min(0.4, 0.05 * Math.min(p.chances || 0, 5));
+        else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
+        else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
         if (b > 0) p.rating = Math.min(10, +(p.rating + b).toFixed(2));
       });
     }
@@ -2573,7 +2573,7 @@ const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50
 const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
 // d = pre-goal difference (us-them). Positive = leading, negative = trailing.
-const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=us-them; let b; if(us===0&&them===0)b=1.0; else if(d===-1)b=1.4; else if(d===0)b=1.2; else if(d===1)b=0.7; else if(d>1)b=Math.max(0.35,0.6-(d-1)*0.15); else if(d===-2)b=0.85; else b=Math.max(0.35,0.55+(d+1)*0.1); return b*(min>=85?1.3:min>=75?1.15:min>=60?1.05:1.0); };
+const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=us-them; let b; if(us===0&&them===0)b=1.15; else if(d===-1)b=1.2; else if(d===0)b=1.15; else if(d>0)b=Math.max(0.8,1.1-d*0.1); else b=0.9; return b*(min>=85?1.3:min>=75?1.15:min>=60?1.05:1.0); };
 function assistPlayer(rng, players, scorer, delta, teamSkill) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
@@ -4266,49 +4266,82 @@ export default function App() {
     const injSevObj = injPicked?.sev || null;
     const injDur = injSevObj ? injSevObj.dur[0] + Math.floor(rng2.u() * (injSevObj.dur[1] - injSevObj.dur[0] + 1)) : 0;
     const injPartName = injPicked?.part || null;
-    const scorers = [];
+    // Mirrors the live match engine's rating model rather than an independent formula:
+    // every player starts at the same 6.5 base (no win/draw/loss head start, no
+    // starter/sub split), goals and assists run through the exact same
+    // goalAtkMult/goalCtxMult/goalPosMult/assistAtkMult math via a synthesized
+    // minute-ordered goal timeline (so goalCtxMult sees a real running scoreline+
+    // minute, same as it would live), and the conceding penalty and involvement
+    // bonuses reuse the live engine's own coefficients. The one thing that can't be
+    // reproduced is per-minute saves/defActs/chances, since this path never simulates
+    // individual minutes — those are estimated from live-match averages (~2.9 GK
+    // saves, ~3.2 combined DEF defActs, ~11.2 combined MID+FWD chances per side) and
+    // spread across eligible players with the same pickPlayer weighting used for
+    // goals/cards above, then run through the identical bonus formulas.
+    const playerRtgs = {};
+    [...sq, ...matchSubs].forEach(p => { playerRtgs[p.name] = { rtg: 6.5, gCount: 0, aCount: 0 }; });
     const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
     const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    for (let g = 0; g < goalsFor; g++) {
-      if (subGoalPool.length > 0 && rng2.u() < 0.2) { scorers.push(pickPlayer(rng2, subGoalPool, "goal", teamObj.skill).name); }
-      else { scorers.push(pickPlayer(rng2, starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,ovr:null}], "goal", teamObj.skill).name); }
-    }
-    const assisters = [];
     const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    for (let g = 0; g < goalsFor; g++) {
-      const others = allOutfield.filter(p => p.name !== scorers[g]);
-      if (others.length > 0) { assisters.push(pickPlayer(rng2, others, "any").name); }
+    const timeline = [];
+    for (let g = 0; g < goalsFor; g++) timeline.push({ us: true, min: 1 + Math.floor(rng2.u() * 90) });
+    for (let g = 0; g < goalsAgainst; g++) timeline.push({ us: false, min: 1 + Math.floor(rng2.u() * 90) });
+    timeline.sort((a, b) => a.min - b.min);
+    let usScore = 0, themScore = 0;
+    for (const ev of timeline) {
+      if (!ev.us) { themScore++; continue; }
+      const gCtx = goalCtxMult([usScore, themScore], 0, ev.min);
+      const aCtx = 1 + (gCtx - 1) * 0.5;
+      const fromSub = subGoalPool.length > 0 && rng2.u() < 0.2;
+      const scorer = pickPlayer(rng2, fromSub ? subGoalPool : (starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,ovr:null}]), "goal", teamObj.skill);
+      const sr = playerRtgs[scorer.name];
+      sr.gCount++; sr.rtg = Math.min(10, sr.rtg + goalAtkMult(scorer.atkW) * gCtx * goalPosMult(scorer.pos));
+      const others = allOutfield.filter(p => p.name !== scorer.name);
+      if (others.length > 0) {
+        const assister = pickPlayer(rng2, others, "assist", teamObj.skill);
+        const ar = playerRtgs[assister.name];
+        ar.aCount++; ar.rtg = Math.max(3, Math.min(10, ar.rtg + 0.6 * assistAtkMult(assister.atkW) * aCtx));
+      }
+      usScore++;
     }
-    const playerRtgs = {};
-    sq.forEach(p => {
-      let rtg = isDraw ? 6.5 : isWin ? 7.0 : 6.0;
-      rtg += (rng2.u() - 0.4) * 1.0;
-      const gCount = scorers.filter(n => n === p.name).length;
-      const aCount = assisters.filter(n => n === p.name).length;
-      rtg += gCount * goalAtkMult(p.atkW) * goalPosMult(p.pos) + aCount * 0.4 * assistAtkMult(p.atkW);
-      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
-      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
-      playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
-    });
-    matchSubs.forEach(p => {
-      let rtg = isDraw ? 6.3 : isWin ? 6.8 : 5.8;
-      rtg += (rng2.u() - 0.4) * 0.8;
-      const gCount = scorers.filter(n => n === p.name).length;
-      const aCount = assisters.filter(n => n === p.name).length;
-      rtg += gCount * 1.2 * goalAtkMult(p.atkW) * goalPosMult(p.pos) + aCount * 0.5 * assistAtkMult(p.atkW);
-      if (goalsAgainst > 0 && p.pos === "GK") rtg -= goalsAgainst * 0.035;
-      if (goalsAgainst > 0 && p.pos === "DEF") rtg -= goalsAgainst * 0.02;
-      playerRtgs[p.name] = { rtg: Math.max(3, Math.min(10, rtg)), gCount, aCount };
+    allOnPitch.forEach(p => {
+      if (p.pos === "GK") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - 0.15 * goalsAgainst);
+      else if (p.pos === "DEF") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - 0.08 * goalsAgainst);
     });
     const csBonus = goalsAgainst === 0;
-    allOnPitch.forEach(p => {
-      if (!playerRtgs[p.name]) return;
-      const pr = playerRtgs[p.name];
-      if (p.pos === "GK") { if (csBonus) pr.rtg += 1.25; else pr.rtg += Math.min(0.48, rng2.u() * 0.22 + goalsAgainst * 0.06); }
-      else if (p.pos === "DEF") { if (csBonus) pr.rtg += 0.68; else if (goalsAgainst === 1) pr.rtg += 0.36; else if (goalsAgainst === 2) pr.rtg += 0.22; }
-      else if (p.pos === "MID") { pr.rtg += (rng2.u() - 0.3) * 0.3; if (goalsFor >= 2) pr.rtg += 0.08; }
-      pr.rtg = Math.max(3, Math.min(10, pr.rtg));
-    });
+    const gkPl = allOnPitch.find(p => p.pos === "GK");
+    if (gkPl) {
+      const estSaves = Math.floor(rng2.u() * 7);
+      let b = 0.02 * estSaves + Math.min(1.0, 0.05 * estSaves + (csBonus ? 0.3 : 0));
+      if (estSaves === 0 && !csBonus) b -= 0.01;
+      playerRtgs[gkPl.name].rtg = Math.max(3, Math.min(10, playerRtgs[gkPl.name].rtg + b));
+    }
+    const defPool = allOnPitch.filter(p => p.pos === "DEF").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
+    if (defPool.length > 0) {
+      const totalDefActs = 1 + Math.floor(rng2.u() * 5);
+      const perDA = {};
+      for (let i = 0; i < totalDefActs; i++) { const dp = pickPlayer(rng2, defPool, "defend", teamObj.skill); perDA[dp.name] = (perDA[dp.name]||0) + 1; }
+      defPool.forEach(p => {
+        const da = perDA[p.name] || 0;
+        let b = 0.03 * da + Math.min(0.5, 0.08 * Math.min(da, 8) + (csBonus ? 0.12 : 0));
+        if (da >= 3 && goalsAgainst <= 1) b += 0.15;
+        if (da === 0) b -= 0.02;
+        playerRtgs[p.name].rtg = Math.max(3, Math.min(10, playerRtgs[p.name].rtg + b));
+      });
+    }
+    const mfPool = allOnPitch.filter(p => p.pos === "MID" || p.pos === "FWD").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
+    if (mfPool.length > 0) {
+      const totalChances = 6 + Math.floor(rng2.u() * 11);
+      const perCh = {};
+      for (let i = 0; i < totalChances; i++) { const cp = pickPlayer(rng2, mfPool, "goal", teamObj.skill); perCh[cp.name] = (perCh[cp.name]||0) + 1; }
+      mfPool.forEach(p => {
+        const ch = perCh[p.name] || 0;
+        let b = 0.015 * ch;
+        if (p.pos === "MID") { b += Math.min(0.8, 0.10 * Math.min(ch, 5)); if (ch >= 3 && goalsFor > 0) b += 0.08; if (ch === 0) b -= 0.01; }
+        else { b += Math.min(0.5, 0.06 * Math.min(ch, 4)); if (ch === 0 && playerRtgs[p.name].gCount === 0 && playerRtgs[p.name].aCount === 0 && playerRtgs[p.name].rtg <= 6.7) b -= 0.04; }
+        playerRtgs[p.name].rtg = Math.max(3, Math.min(10, playerRtgs[p.name].rtg + b));
+      });
+    }
     const diffs = {};
     const diffOf = (k) => diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
     sq.forEach(p => {
