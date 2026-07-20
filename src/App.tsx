@@ -2296,6 +2296,16 @@ function buildKnockoutDraw(teams, hasTP, rng) {
   return { ko: buildKOShell(first, hasTP), log };
 }
 
+// Bracket SVG export (exportBracket/exportDEBracket) is a standalone downloaded file
+// opened outside the app's DOM, so var(--chrome-*) references in the generated markup
+// never resolve — same root cause as the font, just missed when that was fixed. Single
+// source of truth for the literal fallback values, mirrored from theme.css, applied via
+// a find/replace pass over the finished SVG string right before each Blob is created.
+function chromeExportColors(wcTheme) {
+  return wcTheme
+    ? { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" }
+    : { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
+}
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
 // Venue fields may carry a trailing "(number)" population/capacity for user
 // reference only — stripped here so it never leaks into stadium-image lookups etc.
@@ -3264,6 +3274,7 @@ export default function App() {
     }
     if (prevR) lines(prevR, cx, prevRN, "right");
     s+='</svg>';
+    { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3400,6 +3411,7 @@ export default function App() {
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
     renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes);
     s += '</svg>';
+    { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3486,7 +3498,15 @@ export default function App() {
           if (!prev || prev.phase === "finished") { setAutoPlay(false); return prev; }
           const prevLen = prev.events.length;
           const next = lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: prev.testMode ? TEST_SKILL : teamById(lmH).skill }, { name: teamById(lmA).name, skill: prev.testMode ? TEST_SKILL : teamById(lmA).skill });
-          if(pc?.atEnd){const cv=next.events[pc.idx]?.chanceViz;if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[pc.idx]:Math.max(k[pc.idx]||0,newTotal-1)}));}}
+          // Re-resolve against `prev`, not the `pc` captured outside this updater from
+          // lmMatchRef — if another queued update landed between reading that ref and this
+          // updater actually running, `pc.idx` can point at the wrong event. Mutating the
+          // wrong event's chanceViz is worse than a no-op: cloneState only shallow-copies
+          // events, so that object reference is shared across every future snapshot too,
+          // corrupting it permanently (no more commentary or goals for the rest of the
+          // match) instead of just missing one update.
+          const freshPc = lmPendingChance(prev, chanceStepRef.current);
+          if(freshPc?.atEnd){const idx=freshPc.idx; const cv=next.events[idx]?.chanceViz;if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[idx]:Math.max(k[idx]||0,newTotal-1)}));}}
           if (lmStopOnEvents) {
             const stopPhases = new Set(["half_time", "full_time", "et_half_time", "et_full_time", "finished"]);
             if (stopPhases.has(next.phase) && !stopPhases.has(prev.phase)) { setAutoPlay(false); }
@@ -5768,8 +5788,21 @@ export default function App() {
                 // against an already-advanced RNG. That's what a goal appearing, vanishing, and
                 // reappearing on the next tick actually was — two divergent updates to the same
                 // state, applied out of order, not an intentional "reversal."
-                const _h={name:teamById(lmH).name,skill:teamById(lmH).skill},_a={name:teamById(lmA).name,skill:teamById(lmA).skill}, _idx=pendingChance.idx;
-                setLmMatch(prev => { const s=lmAdvance(prev,lmRng.current,_h,_a); const cv=s.events[_idx]?.chanceViz; if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[_idx]:Math.max(k[_idx]||0,newTotal-1)}));} return s; });
+                const _h={name:teamById(lmH).name,skill:teamById(lmH).skill},_a={name:teamById(lmA).name,skill:teamById(lmA).skill};
+                setLmMatch(prev => {
+                  const s=lmAdvance(prev,lmRng.current,_h,_a);
+                  // Re-resolve the pending chance's index against `prev` here, not the
+                  // `pendingChance.idx` captured at render time — if auto-play's own interval
+                  // (or another queued update) advanced the match in between, that render-time
+                  // index can point at the wrong event. Mutating the wrong event's chanceViz
+                  // is worse than a no-op: cloneState only shallow-copies events, so that
+                  // object reference is shared across every future snapshot too, corrupting
+                  // it permanently instead of just missing one update.
+                  const freshPc = lmPendingChance(prev, chanceStepRef.current);
+                  const idx = freshPc?.idx;
+                  if (idx != null) { const cv=s.events[idx]?.chanceViz; if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[idx]:Math.max(k[idx]||0,newTotal-1)}));} }
+                  return s;
+                });
               } else { setChanceStep(k => ({ ...k, [pendingChance.idx]: Math.min(pendingChance.totalSteps-1, (k[pendingChance.idx]||0)+1) })); } return; } if (autoPlay) setAutoPlay(false); else lmTick(); };
               const lmNotReady = teamErrors || teams.length < 2 || !teamById(lmH) || !teamById(lmA);
               const primaryDisabled = lmIsSetup ? lmNotReady : (!finished && autoPlay);
