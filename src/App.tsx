@@ -2745,6 +2745,28 @@ function boldNames(txt, names, clr) {
   const rx = new RegExp("(" + valid.map(esc).join("|") + ")");
   return txt.split(rx).map((part, i) => valid.includes(part) ? <span key={"bn" + i} style={{ fontWeight: 700, color: clr || "#ffffff" }}>{part}</span> : part);
 }
+// Goal text bolds the scorer AND (when present) the assister by parsing "X (POS) ... Assisted
+// by Y (POS)." structure directly, rather than boldNames' single-name-lookup — a goal is the
+// one event type where two different players' names both need their own bold span. Falls back
+// to boldNames (scorer only) if the text doesn't match the expected shape.
+function styledGoalText(txt, playerFull, clr) {
+  const parts = []; let rest = txt;
+  const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/);
+  if (!scorerMatch) return boldNames(txt, playerFull, clr);
+  parts.push(scorerMatch[1]);
+  parts.push(<span key="s" style={{ fontWeight: 700, color: clr }}>{scorerMatch[2]}</span>);
+  parts.push(scorerMatch[3]);
+  rest = rest.slice(scorerMatch[0].length);
+  const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/);
+  if (astMatch) {
+    parts.push(astMatch[1]);
+    parts.push(<span key="a" style={{ fontWeight: 700, color: clr }}>{astMatch[2]}</span>);
+    parts.push(astMatch[3]);
+  } else {
+    parts.push(rest);
+  }
+  return parts;
+}
 const evColor = { goal: "#ffffff", penalty: "#d08770", chance: "#ebcb8b", red: "#bf616a", second_yellow: "#bf616a", pen_miss: "#bf616a", yellow: "#ebcb8b", save: "#ffffff", miss: "#ffffff", sub: "#7a8b9b", injury: "#c07070", press: "#ffffff", counter: "#ffffff", phase: "#ffffff", foul: "#ffffff", corner: "#ffffff", neutral: "#ffffff", offside: "#ffffff", buildup: "#ffffff", clearance: "#ffffff" };
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
 const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
@@ -2862,10 +2884,10 @@ function gvPitch(gv, clr, staticAssist) {
     <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     {A && <g>
-      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity="0.95" />
+      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity="0.95" />
       <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
     </g>}
-    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity="0.95" />
+    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity="0.95" />
     <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
     {A && !staticAssist && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
       <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
@@ -2924,7 +2946,7 @@ function gvChancePitch(chain, clr, step, shotGv, replay) {
       <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="#ffffffcc" strokeWidth="1.4" {...anim} />
     </g>); })}
     {pts.slice(0, s + 1).map((p, i) => { const isDrib = i > 0 && chain[i].name === chain[i-1].name; const lb = labels.find(l => l.idx === i); const newest = i === s; const dAnim = (replay || newest) ? { className: "gv-anim", style: { animation: `gvDotIn 0.15s ease-out ${replay ? ((i === 0 ? 0 : (i-1)*0.4+0.3).toFixed(2)+"s ") : ""}both` } } : {}; return (<g key={"dot"+i} {...dAnim}>
-      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="var(--chrome-bg2)" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
+      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
       {lb && <text x={lb.x} y={lb.y} textAnchor="middle" fill="#ffffffcc" fontSize={FS} fontFamily="monospace" fontWeight="500">{lb.name}</text>}
     </g>); })}
     <circle cx={pts[s][0]} cy={pts[s][1]} r="5" fill="none" stroke={dotClr} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: `gvBurst 1.2s ease-out ${replay ? ((s > 0 ? (s-1)*0.4+0.35 : 0).toFixed(2)+"s ") : ""}infinite both` }} />
@@ -6000,7 +6022,7 @@ export default function App() {
                     body = (<>{body}<div style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{teaseChain && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(teaseChain, shotClr, teaseChain.length - 1)}</div>}<div style={{ flex: teaseChain ? "7 1 190px" : "1 1 260px", maxWidth: teaseChain ? 385 : 440, minWidth: 175 }}>{gvChanceGoalPreview()}</div></div></>);
                     bg = shotClr + "08";
                   }
-                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); const styledGoal = (txt) => { const parts = []; let rest = txt; const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/); if (!scorerMatch) return boldNames(txt, e.playerFull, goalClr); parts.push(scorerMatch[1]); parts.push(<span key="s" style={{ fontWeight: 700, color: goalClr }}>{scorerMatch[2]}</span>); parts.push(scorerMatch[3]); rest = rest.slice(scorerMatch[0].length); const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/); if (astMatch) { parts.push(astMatch[1]); parts.push(<span key="a" style={{ fontWeight: 700, color: goalClr }}>{astMatch[2]}</span>); parts.push(astMatch[3]); } else { parts.push(rest); } return parts; }; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoal(gt)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
+                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoalText(gt, e.playerFull, goalClr)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
                   else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#ebcb8b08"; }
                   else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#bf616a08"; }
                   else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
@@ -6019,7 +6041,8 @@ export default function App() {
                       const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"}, corner: {icon:"🏴", header:"Corner!", color:"#ebcb8b", bg:"#ebcb8b08"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
-                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(nextE.text.replace(/^[^\p{L}\p{N}]+/u, ''), nextE.playerFull, om.color)}</div>;
+                      const nextText = nextE.text.replace(/^[^\p{L}\p{N}]+/u, '');
+                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{nextE.type === "goal" ? styledGoalText(nextText, nextE.playerFull, chanceClr) : boldNames(nextText, nextE.playerFull, om.color)}</div>;
                       const gv = nextE.goalViz, rk = gvReplayKeys[i]||0;
                       if (gv) {
                         body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{chain.length > 0 && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, nextE.goalViz, rk > 0)}</div>}<div style={{ flex: chain.length > 0 ? "7 1 190px" : "1 1 260px", maxWidth: chain.length > 0 ? 385 : 440, minWidth: 175 }}>{chain.length > 0 ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>);
