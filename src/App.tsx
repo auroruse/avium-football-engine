@@ -561,11 +561,12 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
     scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
+    s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.10)).toFixed(2));});
     {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g});}
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 4);
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
-    if (cGk) cGk.saves = (cGk.saves || 0) + 1;
+    if (cGk) { cGk.saves = (cGk.saves || 0) + 1; cGk.rating = Math.min(10, +(cGk.rating + xgSaveBonus(cGoalP, 1.3)).toFixed(2)); }
     momBump(s, def, 2);
     {const _t=comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name,g:cGk?.fullName||cGk?.name||"the keeper"},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm, type:"save", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDDE4 "+_t, goalViz:_g});}
     if (rng.u() < 0.25) {
@@ -656,7 +657,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
     const finalMethod = isDeflection ? "deflection" : (method||null);
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
     shooter.goals++;let _ast;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_ast=pickAssist(shooter.name,0);if(_ast){const oldA=_ast.rating;_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_ast.name,delta:+(_ast.rating-oldA).toFixed(2)};}}
-    s.players[def].forEach(p=>{if(p.pos==="GK"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.15).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}else if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.08).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
+    s.players[def].forEach(p=>{if(p.pos==="GK"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.18)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}else if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
     {const _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast),_g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
   } else if (roll < goalP+saveP) {
@@ -666,13 +667,13 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       // GK error → goal
       s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:"gk-error"});
       shooter.goals++;let _astGk;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_astGk=pickAssist(shooter.name,0);if(_astGk){const oldA=_astGk.rating;_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_astGk.name,delta:+(_astGk.rating-oldA).toFixed(2)};}}
-      const gk=s.players[def].find(p=>p.pos==="GK");if(gk){const old=gk.rating;gk.rating=Math.max(3,+(gk.rating-0.8).toFixed(1));ratingDeltas.conceding.push({name:gk.name,delta:+(gk.rating-old).toFixed(2)});}
-      s.players[def].forEach(p=>{if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-0.08).toFixed(1));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
+      const gk=s.players[def].find(p=>p.pos==="GK");if(gk){const old=gk.rating;gk.rating=Math.max(3,+(gk.rating-(xgConcedePenalty(goalP,0.18)+0.3)).toFixed(2));ratingDeltas.conceding.push({name:gk.name,delta:+(gk.rating-old).toFixed(2)});}
+      s.players[def].forEach(p=>{if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
       {const _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk),_g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
       s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
-      s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;if(sGk){sGk.saves=(sGk.saves||0)+1;sGk.rating=Math.min(10,+(sGk.rating+0.15).toFixed(2));}
+      s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;if(sGk){sGk.saves=(sGk.saves||0)+1;sGk.rating=Math.min(10,+(sGk.rating+xgSaveBonus(goalP,1.0)).toFixed(2));}
       ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});
       momBump(s,atk,1);
       {const _t=comm(rng,"woodwork_save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="woodwork";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"woodwork",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDEA8 "+_t,goalViz:_g});}
@@ -680,7 +681,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       else{s.possession=def;s.ball=2;s.pressure=0;}
     } else {
       // Normal save
-      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.2).toFixed(2));gk.saves=(gk.saves||0)+1;}ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});}
+      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(goalP,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});}
       if(isBigChance)momBump(s,def,2);
       {const _t=comm(rng,"save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="save";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"save",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}
       if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
@@ -954,8 +955,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
-    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+0.15).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
+    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(lrGoal,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
   }
@@ -1185,7 +1186,6 @@ function lmSimMinute(s, rng, home, away) {
           const da = (p.defActs||0) - (p._rDa||0); p._rDa = p.defActs||0;
           if (da > 0) p.rating = Math.min(10, +(p.rating + 0.03 * da).toFixed(2));
           if (!p._rDaT && (p.defActs||0) >= 3 && gaConceded <= 1) { p._rDaT = true; p.rating = Math.min(10, +(p.rating + 0.15).toFixed(2)); }
-          if (s.stats[op].onTarget > s.minute / 10) p.rating = Math.max(3, +(p.rating - 0.02).toFixed(2));
         }
         if (p.pos === "MID") {
           const ch = (p.chances||0) - (p._rCh||0); p._rCh = p.chances||0;
@@ -1308,7 +1308,7 @@ function lmAdvance(prev, rng, home, away, mutate) {
       s.players[side].forEach(p => {
         let b = 0;
         if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.15 : 0));
-        else if (p.pos === "DEF") b = Math.min(0.5, 0.08 * Math.min(p.defActs || 0, 8) + (cs ? 0.12 : 0));
+        else if (p.pos === "DEF") b = Math.min(0.7, 0.12 * Math.min(p.defActs || 0, 8) + (cs ? 0.15 : 0));
         else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
         else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
         if (b > 0) p.rating = Math.min(10, +(p.rating + b).toFixed(2));
@@ -2574,6 +2574,11 @@ const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === 
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
 // d = pre-goal difference (us-them). Positive = leading, negative = trailing.
 const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=us-them; let b; if(us===0&&them===0)b=1.15; else if(d===-1)b=1.2; else if(d===0)b=1.15; else if(d>0)b=Math.max(0.8,1.1-d*0.1); else b=0.9; return b*(min>=85?1.3:min>=75?1.15:min>=60?1.05:1.0); };
+// A shot's own scoring probability doubles as its "xG": saving a shot that was likely to
+// score is a bigger save than stopping a speculative one, and conceding a shot that was
+// unlikely to score reflects worse on the keeper/defense than conceding a near-certain one.
+const xgSaveBonus = (xg, base) => base * Math.max(0, Math.min(1, xg));
+const xgConcedePenalty = (xg, base) => base * (1 - Math.max(0, Math.min(1, xg)));
 function assistPlayer(rng, players, scorer, delta, teamSkill) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
@@ -4283,13 +4288,19 @@ export default function App() {
     const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
     const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
     const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
+    // Each conceded goal and each save gets its own synthetic xG (0.05-0.40, a plausible
+    // shot-difficulty spread) run through the same xgConcedePenalty/xgSaveBonus the live
+    // engine uses per-shot — quick-sim has no real per-shot data, but a flat per-goal
+    // penalty was the actual bug being fixed (it made a GK's rating nearly immovable
+    // regardless of how bad the goals conceded were).
+    const randXg = () => 0.05 + rng2.u() * 0.35;
     const timeline = [];
     for (let g = 0; g < goalsFor; g++) timeline.push({ us: true, min: 1 + Math.floor(rng2.u() * 90) });
-    for (let g = 0; g < goalsAgainst; g++) timeline.push({ us: false, min: 1 + Math.floor(rng2.u() * 90) });
+    for (let g = 0; g < goalsAgainst; g++) timeline.push({ us: false, min: 1 + Math.floor(rng2.u() * 90), xg: randXg() });
     timeline.sort((a, b) => a.min - b.min);
-    let usScore = 0, themScore = 0;
+    let usScore = 0, themScore = 0, concedeGk = 0, concedeDef = 0;
     for (const ev of timeline) {
-      if (!ev.us) { themScore++; continue; }
+      if (!ev.us) { themScore++; concedeGk += xgConcedePenalty(ev.xg, 0.18); concedeDef += xgConcedePenalty(ev.xg, 0.10); continue; }
       const gCtx = goalCtxMult([usScore, themScore], 0, ev.min);
       const aCtx = 1 + (gCtx - 1) * 0.5;
       const fromSub = subGoalPool.length > 0 && rng2.u() < 0.2;
@@ -4305,15 +4316,17 @@ export default function App() {
       usScore++;
     }
     allOnPitch.forEach(p => {
-      if (p.pos === "GK") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - 0.15 * goalsAgainst);
-      else if (p.pos === "DEF") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - 0.08 * goalsAgainst);
+      if (p.pos === "GK") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - concedeGk);
+      else if (p.pos === "DEF") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - concedeDef);
     });
     const csBonus = goalsAgainst === 0;
     const gkPl = allOnPitch.find(p => p.pos === "GK");
     if (gkPl) {
-      const estSaves = Math.floor(rng2.u() * 7);
-      let b = 0.02 * estSaves + Math.min(1.0, 0.05 * estSaves + (csBonus ? 0.15 : 0));
-      if (estSaves === 0 && !csBonus) b -= 0.01;
+      const nSaves = Math.floor(rng2.u() * 7);
+      let saveSum = 0;
+      for (let i = 0; i < nSaves; i++) saveSum += xgSaveBonus(randXg(), 1.3);
+      let b = Math.min(1.2, saveSum) + (csBonus ? 0.15 : 0);
+      if (nSaves === 0 && !csBonus) b -= 0.01;
       playerRtgs[gkPl.name].rtg = Math.max(3, Math.min(10, playerRtgs[gkPl.name].rtg + b));
     }
     const defPool = allOnPitch.filter(p => p.pos === "DEF").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
@@ -4323,7 +4336,7 @@ export default function App() {
       for (let i = 0; i < totalDefActs; i++) { const dp = pickPlayer(rng2, defPool, "defend", teamObj.skill); perDA[dp.name] = (perDA[dp.name]||0) + 1; }
       defPool.forEach(p => {
         const da = perDA[p.name] || 0;
-        let b = 0.03 * da + Math.min(0.5, 0.08 * Math.min(da, 8) + (csBonus ? 0.12 : 0));
+        let b = 0.03 * da + Math.min(0.7, 0.12 * Math.min(da, 8) + (csBonus ? 0.15 : 0));
         if (da >= 3 && goalsAgainst <= 1) b += 0.15;
         if (da === 0) b -= 0.02;
         playerRtgs[p.name].rtg = Math.max(3, Math.min(10, playerRtgs[p.name].rtg + b));
