@@ -1307,7 +1307,7 @@ function lmAdvance(prev, rng, home, away, mutate) {
       const cs = (side === "home" ? s.score[1] : s.score[0]) === 0;
       s.players[side].forEach(p => {
         let b = 0;
-        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.3 : 0));
+        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.15 : 0));
         else if (p.pos === "DEF") b = Math.min(0.5, 0.08 * Math.min(p.defActs || 0, 8) + (cs ? 0.12 : 0));
         else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
         else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
@@ -4312,7 +4312,7 @@ export default function App() {
     const gkPl = allOnPitch.find(p => p.pos === "GK");
     if (gkPl) {
       const estSaves = Math.floor(rng2.u() * 7);
-      let b = 0.02 * estSaves + Math.min(1.0, 0.05 * estSaves + (csBonus ? 0.3 : 0));
+      let b = 0.02 * estSaves + Math.min(1.0, 0.05 * estSaves + (csBonus ? 0.15 : 0));
       if (estSaves === 0 && !csBonus) b -= 0.01;
       playerRtgs[gkPl.name].rtg = Math.max(3, Math.min(10, playerRtgs[gkPl.name].rtg + b));
     }
