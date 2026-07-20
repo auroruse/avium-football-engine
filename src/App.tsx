@@ -605,7 +605,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
         s.possession = def; s.ball = 2; s.pressure = 0;
       }
     } else {
-      {const _dfs=s.players[def].filter(p=>p.pos==="DEF"||p.pos==="MID"||p.pos==="FWD");const _cd=_dfs.length?pickPlayer(rng,_dfs,"defend",s.teamSkill?.[def]):s.players[def].find(p=>p.pos==="GK");if(_cd){_cd.defActs=(_cd.defActs||0)+1;ratePlayer(s.players[def],_cd.name,0.15);}
+      {const _cd=pickDefActPlayer(rng,s,def,"defendCorner");if(_cd){_cd.defActs=(_cd.defActs||0)+1;ratePlayer(s.players[def],_cd.name,xgSaveBonus(cGoalP,1.0));}
       s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def],n:_cd?.fullName||_cd?.name||nm[def]},s)});}
       s.possession = def; s.ball = 2; s.pressure = 0;
     }
@@ -890,14 +890,13 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     // Defensive contest: a named defender can end an active chance before a shot happens
     if(s.activeChance&&s.pressure>1){
-      const defs=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID"||p.pos==="FWD");
-      const df=defs.length?pickPlayer(rng,defs,"defend",s.teamSkill?.[op]):s.players[op].find(p=>p.pos==="GK");
+      const df=pickDefActPlayer(rng,s,op,"defendBox");
       const dfOvr=df?ovrN(fatigueOvr(df.ovr,df.stamina),s.teamSkill?.[op])*0.12:0;
-      const dcP=0.24+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.08:opSt.tackling===-1?-0.04:0);
+      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.08:opSt.tackling===-1?-0.04:0);
       if(rng.u()<dcP&&df){
         const _lc=s.activeChance;
         df.defActs=(df.defActs||0)+1;
-        ratePlayer(s.players[op],df.name,0.25);
+        ratePlayer(s.players[op],df.name,xgSaveBonus(shotP,0.45));
         const dcType=rng.u()<0.45?"tackle":rng.u()<0.636?"interception":"block";
         const dcPool=dcType==="tackle"?"tackle_won":dcType==="interception"?"interception":"def_block";
         const dcEv={min:dm,type:dcType,team:op,playerFull:df.fullName||df.name,text:"🛡️ "+comm(rng,dcPool,{t:nm[op],o:nm[po],n:df.fullName||df.name},s)};
@@ -935,7 +934,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     // defensive-contest branch above use for goal/save/miss/woodwork/tackle/interception/block.
     const _clChance = s.activeChance;
     s.possession=op;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
-    const _clDfs=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID"||p.pos==="FWD");const _clDf=_clDfs.length?pickPlayer(rng,_clDfs,"defend",s.teamSkill?.[op]):s.players[op].find(p=>p.pos==="GK");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,_clChance?0.25:0.12);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
+    const _clDf=pickDefActPlayer(rng,s,op,"defendClear");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,_clChance?xgSaveBonus(shotP,0.45):0.12);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
     const _clOvr=_clDf?ovrN(fatigueOvr(_clDf.ovr,_clDf.stamina),s.teamSkill?.[op])*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
     if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;const cnEv={min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=cnEv;cnEv.suppressStandalone=true;}s.events.push(cnEv);lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
     else if(cl<0.70-0.20*defR){s.ball=2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
@@ -1006,18 +1005,17 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
     if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
-    else{s.possession=op;if(rng.u()<0.5){const _tp=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID"||p.pos==="FWD");const _tw=_tp.length?pickPlayer(rng,_tp,"defend",s.teamSkill?.[op]):null;if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
+    else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
     if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
     s.possession=op;
     // Winning the ball back in open play is by far the most common defensive moment in a
-    // match — the 3 other defActs sites (corner clear, defensive contest, box clearance)
-    // are all gated behind specific, comparatively rare situations, so most of a back four
-    // finished a match with zero recorded contributions despite defending the whole game.
-    // Gated at 50% (not every turnover) so this doesn't dwarf those more meaningful ones.
-    if(rng.u()<0.5){const _tp=s.players[op].filter(p=>p.pos==="DEF"||p.pos==="MID"||p.pos==="FWD");const _tw=_tp.length?pickPlayer(rng,_tp,"defend",s.teamSkill?.[op]):null;if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}
+    // match, and the main lever for making defActs volume track chances-created volume —
+    // gated below 100% only so an occasional turnover has no single credited player (ball
+    // bounces loose, no clean tackle), not to artificially suppress the count.
+    if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendTurnover");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}
     const ctrP=(dg<=2?0.14:0.06)*opM.ctr;
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
@@ -2546,14 +2544,20 @@ const ensureMinLum = (hex) => {
   return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
 };
 
-const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:55,MID:20,FWD:24},foul:{GK:1,DEF:35,MID:45,FWD:19},defend:{GK:1,DEF:55,MID:30,FWD:14},penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},assist:{GK:0,DEF:10,MID:50,FWD:40},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
+const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:55,MID:20,FWD:24},foul:{GK:1,DEF:35,MID:45,FWD:19},defend:{GK:1,DEF:55,MID:30,FWD:14},
+  // Per-defAct-site pools (see pickDefActPlayer) — each reflects who's realistically there.
+  // Box defending (last-ditch tackle/interception/block, corner headers, shooting-zone
+  // clearances) is DEF-heavy with FWD near-zero; general-play turnovers are where pressing
+  // forwards genuinely contribute, so FWD's share is highest there and DEF's lowest.
+  defendBox:{GK:0,DEF:78,MID:19,FWD:3},defendCorner:{GK:0,DEF:68,MID:24,FWD:8},defendClear:{GK:0,DEF:70,MID:23,FWD:7},defendLongBall:{GK:0,DEF:58,MID:37,FWD:5},defendTurnover:{GK:0,DEF:38,MID:44,FWD:18},
+  penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},assist:{GK:0,DEF:10,MID:50,FWD:40},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
 function pickPlayer(rng, players, type, teamSkill) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
   const hasAtk = players[0]?.atkW != null;
   const pureAtk = (type === "goal" || type === "penalty") && hasAtk;
   const w = POS_W[type] || POS_W.any;
-  const useOvr = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner" || type === "assist" || type === "foul" || type === "defend";
+  const useOvr = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner" || type === "assist" || type === "foul" || type === "defend" || type.startsWith("defend");
   const weighted = players.map(p => {
     const tw = useOvr ? Math.max(0.2, 1 + ovrN(p.ovr, teamSkill) * 0.6) : 1;
     if (pureAtk) return {p, w: (p.atkW || 0) * tw};
@@ -2566,6 +2570,16 @@ function pickPlayer(rng, players, type, teamSkill) {
   let r = rng.u() * total;
   for (const x of weighted) { r -= x.w; if (r <= 0) return x.p; }
   return weighted[weighted.length - 1].p;
+}
+
+// Each defAct site draws from its own POS_W defend* pool (kind) instead of one pool shared
+// by all 5 sites — a last-ditch box tackle is realistically ~never a forward's job, but a
+// general-play turnover often is (pressing), so one shared pool either starves FWD at every
+// site or dilutes DEF/MID at every site. Per-site weights let each event draw from whoever
+// would actually be there, no shared-pool tradeoff between them.
+function pickDefActPlayer(rng, s, side, kind) {
+  const pool = s.players[side].filter(p => p.pos !== "GK");
+  return pool.length ? pickPlayer(rng, pool, kind, s.teamSkill?.[side]) : s.players[side].find(p => p.pos === "GK");
 }
 
 function ratePlayer(players, name, delta) {
