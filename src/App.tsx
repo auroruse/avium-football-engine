@@ -60,7 +60,7 @@ const EMERGENCY_GK_SAVE_PENALTY = 0.22;
 // already riding a spell of good luck and THEN scoring stacks — capped so it can't
 // snowball indefinitely, and decay (lmSimMinute, -1/minute) keeps every swing temporary.
 const MOMENTUM_CAP = 6;
-const momBump = (s, side, amt) => { s.momentum[side] = Math.max(0, Math.min(MOMENTUM_CAP, s.momentum[side] + amt)); };
+const momBump = (s, side, amt) => { const m = s.momProfile?.[side]?.mult ?? (STYLE_MOM[s.styles?.[side]]?.mult ?? 1.0); s.momentum[side] = Math.max(0, Math.min(MOMENTUM_CAP, s.momentum[side] + Math.round(amt * m))); };
 // A chance's starting chain (genChanceViz can seed 1-5 hops for a worked move) all
 // represent genuine attacking involvement — running, receiving, carrying — on top of the
 // blanket per-minute team drain every on-pitch player already pays. Dedup by name first: a
@@ -282,7 +282,7 @@ function gvSync(txt, gv) {
 // system as genGoalViz's shotFrom (x 0-100 toward the attacking goal, y 0-65). "solo" is a
 // lone dribble (chance_magic) — same player at every hop. "passed" is a short passing move
 // (trap_beaten / enter_box) — one synthesized teammate feeding the player who gets the chance.
-function genChanceViz(rng, chanceType, playerName, teamPlayers) {
+function genChanceViz(rng, chanceType, playerName, teamPlayers, cp) {
   const R = (lo, hi) => lo + rng.u() * (hi - lo);
   const clampY = (y) => Math.max(5, Math.min(60, y));
   const fx = R(78, 92), fy = R(18, 47);
@@ -302,7 +302,7 @@ function genChanceViz(rng, chanceType, playerName, teamPlayers) {
   // to 5) — variety, not every chance reading the same length. Each hop's x is pulled toward
   // the picked player's own position (DEF deep, MID midfield, FWD advanced) so the chain
   // roughly traces a realistic role progression instead of a random walk.
-  const HOP_W = [15, 35, 30, 14, 6]; // weights for 1..5 hops
+  const HOP_W = cp?.hopW || [15, 35, 30, 14, 6];
   const hopRoll = rng.u() * HOP_W.reduce((a, b) => a + b, 0);
   let acc = 0, hopCount = 1;
   for (let i = 0; i < HOP_W.length; i++) { acc += HOP_W[i]; if (hopRoll <= acc) { hopCount = i + 1; break; } }
@@ -312,7 +312,7 @@ function genChanceViz(rng, chanceType, playerName, teamPlayers) {
   const chain = [{ name: playerName, pos: { x: fx, y: fy } }];
   let cx = fx, cy = fy;
   for (let i = 1; i < hopCount; i++) {
-    if (rng.u() < DRIBBLE_P) {
+    if (rng.u() < (cp?.dribbleP ?? DRIBBLE_P)) {
       const prevHop = chain[0];
       cx = Math.max(8, Math.min(85, cx - R(8, 18)));
       cy = clampY(cy + R(-8, 8));
@@ -321,7 +321,7 @@ function genChanceViz(rng, chanceType, playerName, teamPlayers) {
     }
     const pool = teamPlayers.filter(p => p.pos !== "GK" && !used.has(p.name));
     if (!pool.length) break;
-    const teammate = pickPlayer(rng, pool, "any");
+    const teammate = pickPlayer(rng, pool, "any", null, cp?.formPosW);
     used.add(teammate.name);
     const range = ROLE_X[teammate.pos] || ROLE_X.MID;
     cx = Math.max(range[0], Math.min(range[1], cx - R(15, 26)));
@@ -342,13 +342,12 @@ function chanceCtxFromChain(chain) {
 // through to disconnected filler text — see the dg===0 block in lmSimMinute. Capped so an
 // astronomically unlucky sustained spell can't grow the click-through chain unboundedly.
 const CHANCE_MAX_HOPS = 7;
-// ponytail: 0.25 now, playstyle-tunable later (tiki-taka → lower, direct → higher)
 const DRIBBLE_P = 0.25;
-function genChanceExtension(rng, chain, teamPlayers, dm) {
+function genChanceExtension(rng, chain, teamPlayers, dm, dribbleP) {
   const R = (lo, hi) => lo + rng.u() * (hi - lo);
   const clampY = (y) => Math.max(5, Math.min(60, y));
   const prev = chain[chain.length - 1];
-  const dribble = rng.u() < DRIBBLE_P;
+  const dribble = rng.u() < (dribbleP ?? DRIBBLE_P);
   const next = dribble ? prev : pickPlayer(rng, teamPlayers.filter(p => p.pos !== "GK" && p.name !== prev.name), "any");
   return { name: next.name, pos: { x: Math.max(76, Math.min(94, prev.pos.x + R(-8, 8))), y: clampY(prev.pos.y + R(-10, 10)) }, min: dm };
 }
@@ -473,6 +472,69 @@ const STYLE_MOD = {
   wingplay:     {press:1.0,adv:0.03,hold:-0.01,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0.04,corn:1.4,maxT:null,minT:null},
   parkthebus:   {press:0.20,adv:-0.08,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.02,corn:0.80,maxT:null,minT:"def"},
 };
+const STYLE_CHANCE = {
+  balanced:      { hopW: [15, 35, 30, 14, 6], dribbleP: 0.25, soloBase: 0 },
+  gegenpress:    { hopW: [25, 35, 25, 10, 5], dribbleP: 0.20, soloBase: 0.02 },
+  tikitaka:      { hopW: [5, 20, 35, 25, 15], dribbleP: 0.15, soloBase: 0 },
+  counterattack: { hopW: [35, 35, 20, 8, 2],  dribbleP: 0.35, soloBase: 0.03 },
+  wingplay:      { hopW: [10, 30, 35, 18, 7], dribbleP: 0.30, soloBase: 0.01 },
+  parkthebus:    { hopW: [40, 35, 18, 5, 2],  dribbleP: 0.20, soloBase: 0 },
+};
+const STYLE_DEFPOOL = {
+  balanced: {},
+  gegenpress: { defendTurnover: { DEF: -10, MID: 4, FWD: 6 }, defendBox: { DEF: -3, MID: 2, FWD: 1 } },
+  tikitaka: { defendTurnover: { DEF: -5, MID: 3, FWD: 2 } },
+  counterattack: { defendBox: { DEF: 5, MID: -3, FWD: -2 } },
+  wingplay: { defendCorner: { DEF: 3, MID: -2, FWD: -1 } },
+  parkthebus: { defendBox: { DEF: 8, MID: -5, FWD: -3 }, defendClear: { DEF: 5, MID: -3, FWD: -2 }, defendTurnover: { DEF: 5, MID: -2, FWD: -3 } },
+};
+const FORM_DEFPOOL = {
+  "4-3-3": {},
+  "4-4-2": { defendTurnover: { MID: 3, FWD: -3 } },
+  "4-2-4": { defendTurnover: { DEF: -4, MID: -2, FWD: 6 }, defendBox: { DEF: -3, MID: 1, FWD: 2 } },
+  "3-4-3": { defendTurnover: { DEF: -2, MID: -2, FWD: 4 } },
+  "4-1-2-1-2": { defendBox: { MID: 2, FWD: -2 } },
+  "4-2-3-1": { defendTurnover: { MID: 3, FWD: -3 }, defendLongBall: { MID: 2, FWD: -2 } },
+  "3-5-2": { defendTurnover: { DEF: -3, MID: 5, FWD: -2 }, defendLongBall: { DEF: -2, MID: 4, FWD: -2 }, defendClear: { MID: 3, FWD: -3 } },
+  "3-4-1-2": { defendTurnover: { DEF: -1, MID: 2, FWD: -1 } },
+  "4-1-4-1": { defendTurnover: { MID: 4, FWD: -4 }, defendClear: { MID: 2, FWD: -2 } },
+  "4-3-2-1": { defendTurnover: { MID: 3, FWD: -3 } },
+  "5-3-2": { defendBox: { DEF: 5, MID: -3, FWD: -2 }, defendClear: { DEF: 4, MID: -2, FWD: -2 }, defendTurnover: { DEF: 3, MID: -1, FWD: -2 } },
+};
+const STYLE_MOM = {
+  balanced:      { mult: 1.0, decay: 1.0 },
+  gegenpress:    { mult: 1.3, decay: 1.3 },
+  tikitaka:      { mult: 0.75, decay: 0.6 },
+  counterattack: { mult: 1.2, decay: 0.8 },
+  wingplay:      { mult: 1.1, decay: 1.0 },
+  parkthebus:    { mult: 0.7, decay: 0.5 },
+};
+const FORM_CHANCE = {
+  "4-3-3":     { hopAdj: [0, 0, 0, 0, 0], dribbleAdj: 0, soloAdj: 0 },
+  "4-4-2":     { hopAdj: [3, 2, -2, -2, -1], dribbleAdj: 0.02, soloAdj: 0 },
+  "4-2-4":     { hopAdj: [8, 4, -4, -5, -3], dribbleAdj: 0.05, soloAdj: 0.01 },
+  "3-4-3":     { hopAdj: [5, 3, -3, -3, -2], dribbleAdj: 0.03, soloAdj: 0 },
+  "4-1-2-1-2": { hopAdj: [2, 2, 0, -2, -2], dribbleAdj: 0.03, soloAdj: 0 },
+  "4-2-3-1":   { hopAdj: [-3, -2, 2, 2, 1], dribbleAdj: -0.03, soloAdj: 0 },
+  "3-5-2":     { hopAdj: [-1, 0, 1, 0, 0], dribbleAdj: 0, soloAdj: 0 },
+  "3-4-1-2":   { hopAdj: [-2, -1, 1, 1, 1], dribbleAdj: 0.02, soloAdj: 0 },
+  "4-1-4-1":   { hopAdj: [-3, -1, 2, 1, 1], dribbleAdj: -0.02, soloAdj: 0 },
+  "4-3-2-1":   { hopAdj: [-4, -2, 3, 2, 1], dribbleAdj: -0.02, soloAdj: 0 },
+  "5-3-2":     { hopAdj: [6, 3, -3, -4, -2], dribbleAdj: 0, soloAdj: 0.01 },
+};
+const FORM_MOM = {
+  "4-3-3":     { mult: 1.0, decay: 1.0 },
+  "4-4-2":     { mult: 1.0, decay: 1.0 },
+  "4-2-4":     { mult: 1.2, decay: 1.2 },
+  "3-4-3":     { mult: 1.15, decay: 1.1 },
+  "4-1-2-1-2": { mult: 1.05, decay: 1.0 },
+  "4-2-3-1":   { mult: 0.9, decay: 0.85 },
+  "3-5-2":     { mult: 1.0, decay: 0.9 },
+  "3-4-1-2":   { mult: 0.95, decay: 0.9 },
+  "4-1-4-1":   { mult: 0.85, decay: 0.8 },
+  "4-3-2-1":   { mult: 0.9, decay: 0.85 },
+  "5-3-2":     { mult: 0.8, decay: 0.7 },
+};
 const TEST_SKILL = 65;
 // A fraction of the gap to full fitness, not a flat number — a player who ends a match
 // completely gassed recovers more in absolute terms than one who barely broke a sweat, so a
@@ -490,6 +552,7 @@ const TAC_ORD=["park","def","bal","atk","ultra"];
 const TAC_DRAIN={park:-0.15,def:-0.08,bal:0,atk:0.10,ultra:0.18};
 function clampTac(tac,style){const m=STYLE_MOD[style]||STYLE_MOD.balanced;const i=TAC_ORD.indexOf(tac);if(m.maxT){const mx=TAC_ORD.indexOf(m.maxT);if(i>mx)return m.maxT;}if(m.minT){const mn=TAC_ORD.indexOf(m.minT);if(i<mn)return m.minT;}return tac;}
 const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2","4-1-4-1","4-3-2-1","5-3-2"];
+function parseFormation(f) { const p = (f || "4-3-3").split("-").map(Number); return { DEF: p[0], MID: p.slice(1, -1).reduce((a, b) => a + b, 0), FWD: p[p.length - 1] }; }
 const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
 const FORM_CLR={"4-2-4":"#d08770","3-4-3":"#d08770","4-1-2-1-2":"#d08770","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"#4a7fd4","4-3-2-1":"#4a7fd4","5-3-2":"#4a7fd4"};
 const FORM_MOD = {
@@ -552,7 +615,7 @@ function applyStrategy(mod, strat) {
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
-  const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk]);
+  const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk], s.formPosW?.[atk]);
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
   const cGoalP = 0.04 * sm * (1 + ovrN(fatigueOvr(scorer.ovr, scorer.stamina), s.teamSkill?.[atk]) * 0.18) + cEmergency;
@@ -560,7 +623,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
-    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
+    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk],s.formPosW?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
     s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.10)).toFixed(2));});
     {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g});}
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 4);
@@ -621,7 +684,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   // dangerous — a long-built chain (real buildup) or a direct free kick — so routine
   // speculative efforts don't trigger a swing every time they're comfortably dealt with.
   const isBigChance = (_linkedChance && (_linkedChance.chanceViz.chain?.length || 0) >= 3) || method === "long-range";
-  const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.teamSkill?.[atk]);
+  const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.teamSkill?.[atk], s.formPosW?.[atk]);
   // The shot itself — sprint into space plus a full-power strike — costs extra regardless
   // of whether it capped off a long buildup or was spontaneous (counter/long-range/free
   // kick), which is why this lives here rather than only in the chain-drain call sites.
@@ -635,7 +698,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       if (p) { p.assists++; p.rating=Math.max(3,Math.min(10,+(p.rating+(delta??0.6)).toFixed(2))); return p; }
     }
     if (chanceCtx && !chanceCtx.assistName) return null;
-    return assistPlayer(rng, s.players[atk], scorerName, delta, s.teamSkill?.[atk]);
+    return assistPlayer(rng, s.players[atk], scorerName, delta, s.teamSkill?.[atk], s.formPosW?.[atk]);
   };
   // Always shows the connecting pass on the pitch when the chance had one, even for
   // save/miss/woodwork outcomes where genGoalViz was given assistName=null (no assist
@@ -823,9 +886,10 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   }
 
   // Creative freedom — brilliant chance (expressive: 4% chance to skip to shooting zone)
-  if (poSt.creativity === 1 && rng.u() < 0.04) {
+  const _soloP = (poSt.creativity === 1 ? 0.04 : 0) + (STYLE_CHANCE[s.styles?.[po]]?.soloBase || 0);
+  if (_soloP > 0 && rng.u() < _soloP) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
+    {const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
     return;
   }
 
@@ -864,7 +928,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       // Penalty — award now, defer the kick to the next tick so auto-play can pause before it is taken
       s.events.push({min:dm,type:"penalty",team:po,playerFull:fouler.fullName||fouler.name,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.fullName||fouler.name},s)});s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
-      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po]);
+      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po],s.formPosW?.[po]);
       s.pendingPenalty={po,op,taker:taker.name,dm};
       return;
     }
@@ -917,7 +981,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
         if(chain.length<CHANCE_MAX_HOPS){
           // The player receiving this hop made the run/movement to get on the ball —
           // extra cost on top of the blanket per-minute team drain everyone else pays.
-          const hop=genChanceExtension(rng,chain,s.players[po],dm);
+          const hop=genChanceExtension(rng,chain,s.players[po],dm,s.chanceProfile?.[po]?.dribbleP);
           chain.push(hop);
           const hopP=s.players[po].find(p=>p.name===hop.name);
           if(hopP)hopP.stamina=Math.max(0,(hopP.stamina??100)-1.0);
@@ -941,7 +1005,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
       else {const clEv={min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     }
     return;
@@ -951,10 +1015,10 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po],s.formPosW?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po],s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(lrGoal,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -990,12 +1054,12 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(nd<=1&&rng.u()<offsideRate){
       if (dlBeh === 2 && rng.u() < 0.15) {
         s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-        {const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
+        {const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
         return;
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
     else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist",s.teamSkill?.[po]);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
@@ -1003,7 +1067,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
@@ -1020,7 +1084,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any");cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
       else s.events.push({min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
     }else s.events.push({min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
   }
@@ -1030,8 +1094,7 @@ function lmSimMinute(s, rng, home, away) {
   const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
   let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
   if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
-  if(s.momentum.home > 0) s.momentum.home--;
-  if(s.momentum.away > 0) s.momentum.away--;
+  ["home","away"].forEach(_ds => { if (s.momentum[_ds] > 0) { const _dr = s.momProfile?.[_ds]?.decay ?? (STYLE_MOM[s.styles?.[_ds]]?.decay ?? 1.0); if (_dr >= 1) { s.momentum[_ds]--; if (s.momentum[_ds] > 0 && rng.u() < _dr - 1) s.momentum[_ds]--; } else if (rng.u() < _dr) s.momentum[_ds]--; } });
   const nm = {home:home.name,away:away.name};
 
   // Tactics (with style constraints + skill mismatch)
@@ -1231,7 +1294,7 @@ function resolvePendingPenalty(s, rng, home, away) {
   const pp = s.pendingPenalty; s.pendingPenalty = null; if(s.activeChance)s.activeChance.chanceViz._completed=true; s.activeChance = null;
   const po = pp.po, op = pp.op, dm = pp.dm;
   const nm = {home:home.name,away:away.name};
-  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po]);
+  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po],s.formPosW?.[po]);
   const poE = lmEffSkill(po==="home"?home.skill:away.skill, s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(teamStam(s,po));
   const opE = lmEffSkill(op==="home"?home.skill:away.skill, s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(teamStam(s,op));
   const skillF2=Math.min(1,poE/85+ovrN(fatigueOvr(taker.ovr,taker.stamina),s.teamSkill?.[po])*0.12);
@@ -1431,6 +1494,7 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
+  initMatchEnhancements(s);
   const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
   const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
   if (homeSquad && awaySquad) {
@@ -2551,12 +2615,80 @@ const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:
   // forwards genuinely contribute, so FWD's share is highest there and DEF's lowest.
   defendBox:{GK:0,DEF:78,MID:19,FWD:3},defendCorner:{GK:0,DEF:68,MID:24,FWD:8},defendClear:{GK:0,DEF:70,MID:23,FWD:7},defendLongBall:{GK:0,DEF:58,MID:37,FWD:5},defendTurnover:{GK:0,DEF:38,MID:44,FWD:18},
   penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},assist:{GK:0,DEF:10,MID:50,FWD:40},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
-function pickPlayer(rng, players, type, teamSkill) {
+const FORM_BASE = { DEF: 4, MID: 3, FWD: 3 };
+function scalePosW(formation) {
+  const fc = parseFormation(formation);
+  const sc = { GK: 1, DEF: Math.pow(fc.DEF / FORM_BASE.DEF, 0.5), MID: Math.pow(fc.MID / FORM_BASE.MID, 0.5), FWD: Math.pow(fc.FWD / FORM_BASE.FWD, 0.5) };
+  const result = {};
+  for (const [pool, w] of Object.entries(POS_W)) {
+    const raw = { GK: w.GK * sc.GK, DEF: w.DEF * sc.DEF, MID: w.MID * sc.MID, FWD: w.FWD * sc.FWD };
+    const t = raw.GK + raw.DEF + raw.MID + raw.FWD;
+    result[pool] = t > 0 ? { GK: raw.GK / t * 100, DEF: raw.DEF / t * 100, MID: raw.MID / t * 100, FWD: raw.FWD / t * 100 } : w;
+  }
+  return result;
+}
+function computeMatchPosW(formation, style, strat) {
+  const base = scalePosW(formation);
+  const apply = (adj) => { for (const [pool, shifts] of Object.entries(adj)) { if (base[pool]) { const p = { ...base[pool] }; for (const [pos, d] of Object.entries(shifts)) p[pos] = Math.max(0, (p[pos]||0) + d); base[pool] = p; } } };
+  apply(STYLE_DEFPOOL[style] || {});
+  apply(FORM_DEFPOOL[formation] || {});
+  const st = strat || STRAT_DEF;
+  const tAdj = {};
+  if (st.pressingLOE) tAdj.defendTurnover = { DEF: -st.pressingLOE * 2, FWD: st.pressingLOE * 2 };
+  if (st.defLine) tAdj.defendBox = { DEF: -st.defLine * 2, MID: st.defLine * 2 };
+  if (st.tackling === 1) { tAdj.defendBox = { ...(tAdj.defendBox || {}), DEF: (tAdj.defendBox?.DEF||0) + 3, MID: (tAdj.defendBox?.MID||0) + 2, FWD: (tAdj.defendBox?.FWD||0) - 3 }; }
+  if (st.possLost === 1) { tAdj.defendTurnover = { ...(tAdj.defendTurnover || {}), DEF: (tAdj.defendTurnover?.DEF||0) - 3, FWD: (tAdj.defendTurnover?.FWD||0) + 3 }; }
+  else if (st.possLost === -1) { tAdj.defendTurnover = { ...(tAdj.defendTurnover || {}), DEF: (tAdj.defendTurnover?.DEF||0) + 3, FWD: (tAdj.defendTurnover?.FWD||0) - 3 }; }
+  apply(tAdj);
+  return base;
+}
+function buildChanceProfile(style, formation, strat, formPosW) {
+  const base = STYLE_CHANCE[style] || STYLE_CHANCE.balanced;
+  const fc = FORM_CHANCE[formation] || FORM_CHANCE["4-3-3"];
+  const st = strat || STRAT_DEF;
+  // tactic hop adjustments: chanceCreation (Work Ball In / Shoot On Sight), approachPlay (Play Out / Into Space), possWon (Hold Shape / Counter)
+  const tHop = [0,0,0,0,0];
+  if (st.chanceCreation === -1) { tHop[0] -= 4; tHop[1] -= 2; tHop[2] += 2; tHop[3] += 2; tHop[4] += 2; }
+  if (st.chanceCreation === 1) { tHop[0] += 4; tHop[1] += 2; tHop[2] -= 2; tHop[3] -= 2; tHop[4] -= 2; }
+  if (st.approachPlay === -1) { tHop[0] -= 2; tHop[2] += 1; tHop[3] += 1; }
+  if (st.approachPlay === 1) { tHop[0] += 2; tHop[2] -= 1; tHop[3] -= 1; }
+  if (st.possWon === -1) { tHop[0] -= 2; tHop[2] += 1; tHop[3] += 1; }
+  if (st.possWon === 1) { tHop[0] += 3; tHop[1] += 1; tHop[2] -= 2; tHop[3] -= 1; tHop[4] -= 1; }
+  const hopW = base.hopW.map((v, i) => Math.max(1, v + (fc.hopAdj[i] || 0) + tHop[i]));
+  const tDrib = (st.dribbling === 1 ? 0.06 : st.dribbling === -1 ? -0.04 : 0);
+  const dribbleP = Math.max(0.05, Math.min(0.50, base.dribbleP + fc.dribbleAdj + tDrib));
+  const tSolo = (st.possWon === 1 ? 0.01 : 0);
+  const soloBase = base.soloBase + fc.soloAdj + tSolo;
+  return { hopW, dribbleP, soloBase, formPosW };
+}
+function initMatchEnhancements(s) {
+  s.formPosW = { home: computeMatchPosW(s.formations.home, s.styles.home, s.strategy?.home), away: computeMatchPosW(s.formations.away, s.styles.away, s.strategy?.away) };
+  s.chanceProfile = {
+    home: buildChanceProfile(s.styles.home, s.formations.home, s.strategy?.home, s.formPosW.home),
+    away: buildChanceProfile(s.styles.away, s.formations.away, s.strategy?.away, s.formPosW.away),
+  };
+  const sm = (side) => STYLE_MOM[s.styles?.[side]] || STYLE_MOM.balanced;
+  const fm = (side) => FORM_MOM[s.formations?.[side]] || FORM_MOM["4-3-3"];
+  const tm = (side) => {
+    const st = s.strategy?.[side] || STRAT_DEF;
+    let m = 1.0, d = 1.0;
+    if (st.timeWasting === 1) { m *= 0.9; d *= 0.85; }
+    if (st.timeWasting === 2) { m *= 0.75; d *= 0.7; }
+    if (st.possLost === 1) { m *= 1.1; d *= 1.1; }
+    if (st.possLost === -1) { m *= 0.9; d *= 0.9; }
+    return { mult: m, decay: d };
+  };
+  s.momProfile = {
+    home: { mult: sm("home").mult * fm("home").mult * tm("home").mult, decay: sm("home").decay * fm("home").decay * tm("home").decay },
+    away: { mult: sm("away").mult * fm("away").mult * tm("away").mult, decay: sm("away").decay * fm("away").decay * tm("away").decay },
+  };
+}
+function pickPlayer(rng, players, type, teamSkill, overridePosW) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
   const hasAtk = players[0]?.atkW != null;
   const pureAtk = (type === "goal" || type === "penalty") && hasAtk;
-  const w = POS_W[type] || POS_W.any;
+  const w = (overridePosW || POS_W)[type] || (overridePosW || POS_W).any;
   const useOvr = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner" || type === "assist" || type === "foul" || type === "defend" || type.startsWith("defend");
   const weighted = players.map(p => {
     const tw = useOvr ? Math.max(0.2, 1 + ovrN(p.ovr, teamSkill) * 0.6) : 1;
@@ -2579,7 +2711,7 @@ function pickPlayer(rng, players, type, teamSkill) {
 // would actually be there, no shared-pool tradeoff between them.
 function pickDefActPlayer(rng, s, side, kind) {
   const pool = s.players[side].filter(p => p.pos !== "GK");
-  return pool.length ? pickPlayer(rng, pool, kind, s.teamSkill?.[side]) : s.players[side].find(p => p.pos === "GK");
+  return pool.length ? pickPlayer(rng, pool, kind, s.teamSkill?.[side], s.formPosW?.[side]) : s.players[side].find(p => p.pos === "GK");
 }
 
 function ratePlayer(players, name, delta) {
@@ -2599,10 +2731,10 @@ const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=
 // unlikely to score reflects worse on the keeper/defense than conceding a near-certain one.
 const xgSaveBonus = (xg, base) => base * Math.max(0, Math.min(1, xg));
 const xgConcedePenalty = (xg, base) => base * (1 - Math.max(0, Math.min(1, xg)));
-function assistPlayer(rng, players, scorer, delta, teamSkill) {
+function assistPlayer(rng, players, scorer, delta, teamSkill, overridePosW) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
-  const a = pickPlayer(rng, others, "assist", teamSkill);
+  const a = pickPlayer(rng, others, "assist", teamSkill, overridePosW);
   a.assists++;
   a.rating = Math.max(3, Math.min(10, +(a.rating + (delta != null ? delta : 0.6)).toFixed(2)));
   return a;
@@ -2726,6 +2858,14 @@ const PRESET_ELV = parsePresetTSV(elvTSV, null, 0, false, false);
 const PRESET_RUD = parsePresetTSV(rudTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 const LEAGUE_NAT = {"Nichirin League One":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
+// National-team codes grouped by Avium confederation — drives the tournament setup
+// Conference preset (select every team in a confederation with one click).
+const CONFERENCES = {
+  CONSEAF: ["ESU","HOL","AUR","CAL","PON","VER","SAL","ABB","NMZ","MOR","RAN","AED","RCO","ACS","SSA","KKM","VAN"],
+  EUFA: ["ALE","ARV","REI","VIC","KAR","SKJ","ELV","RUD","GEN","AST","SID","LEC","THO","POL","LVO","NIT","AEK"],
+  PFA: ["SEL","NKI","VAR","VKT","NHO","SHI","ASP","ADV","ENR","AWB","ANH","ARU","AKG","GUP","NRG","ASG"],
+  VAFC: ["NCH","CAH","ATK","GIA","SGD","FUR","GUA","PER","AKN","AXE","ANB","ENC","AGN","KFK","AAD"],
+};
 const LEAGUE_ORDER = [
   "Avium International",
   null,
@@ -3859,6 +3999,7 @@ export default function App() {
     init.teamSkill = { home: _tsk ?? teamById(liveHId).skill, away: _tsk ?? teamById(liveAId).skill };
     init.styles = { home: teamById(liveHId).style || "balanced", away: teamById(liveAId).style || "balanced" };
     init.formations = { home: teamById(liveHId).formation || "4-3-3", away: teamById(liveAId).formation || "4-3-3" };
+    initMatchEnhancements(init);
     init.allowTacChange = {home:true, away:true};
     init.autoSubs = {home:true, away:true};
     init.homeAdv = homeAdv;
@@ -3993,7 +4134,7 @@ export default function App() {
 
 
   // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail = new Set();
@@ -4006,7 +4147,7 @@ export default function App() {
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
     setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); setChanceStep({}); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
+  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
     const unavail2 = new Set();
@@ -4263,166 +4404,7 @@ export default function App() {
       });
       return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur, diffs };
     }
-    const rng2 = new RNG(Date.now() + Math.random() * 99999);
-    const starters = teamObj.squad.filter(p => !p.bench);
-    const bench = teamObj.squad.filter(p => p.bench);
-    const keyOf = (pName) => playerKey(teamObj.name, pName);
-    const available = unavailSet ? starters.filter(p => !unavailSet.has(keyOf(p.name))) : starters;
-    const replacements = bench.slice(0, starters.length - available.length);
-    const sq = [...available, ...replacements];
-    const key = keyOf;
-    const subCandidates = bench.filter(p => p.pos !== "GK" && !sq.some(s => s.name === p.name) && (!unavailSet || !unavailSet.has(keyOf(p.name))));
-    const nSubs = Math.min(subCandidates.length, rng2.u() < 0.15 ? 1 : rng2.u() < 0.55 ? 2 : 3);
-    const matchSubs = []; const subUsed = new Set();
-    for (let si = 0; si < nSubs; si++) { const rem = subCandidates.filter(p => !subUsed.has(p.name)); if (!rem.length) break; const pk = rem[Math.floor(rng2.u() * rem.length)]; matchSubs.push(pk); subUsed.add(pk.name); }
-    const allOnPitch = [...sq, ...matchSubs];
-    const nYellows = simCards ? (simCards.yellows||0) : ((() => { const r = rng2.u(); return r<0.08?0:r<0.307?1:r<0.5665?2:r<0.7655?3:r<0.891?4:r<0.96?5:r<0.9855?6:r<0.9965?7:8; })());
-    const cardedYellows = [];
-    for (let cy = 0; cy < nYellows; cy++) {
-      const cp = pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul");
-      cardedYellows.push(cp.name);
-    }
-    const redPlayer = (simCards ? (simCards.reds||0) > 0 : rng2.u() < 0.06) ? pickPlayer(rng2, allOnPitch.map(p=>({name:p.name,pos:p.pos})), "foul") : null;
-    const redName = redPlayer?.name || null;
-    const rcVar = redName ? pickRedCardVariant(rng2, redPlayer.pos) : null;
-    const rcSusp = (redName && tConfig.suspensions !== false) ? rcSuspGames(rcVar, rng2.u()) : 0;
-    const injName = (tConfig.injuries !== false) && (simCards ? (simCards.injuries||0) > 0 : rng2.u() < 0.053) ? allOnPitch[Math.floor(rng2.u() * allOnPitch.length)]?.name : null;
-    const injPicked = injName ? pickInjury(rng2) : null;
-    const injSevObj = injPicked?.sev || null;
-    const injDur = injSevObj ? injSevObj.dur[0] + Math.floor(rng2.u() * (injSevObj.dur[1] - injSevObj.dur[0] + 1)) : 0;
-    const injPartName = injPicked?.part || null;
-    // Mirrors the live match engine's rating model rather than an independent formula:
-    // every player starts at the same 6.5 base (no win/draw/loss head start, no
-    // starter/sub split), goals and assists run through the exact same
-    // goalAtkMult/goalCtxMult/goalPosMult/assistAtkMult math via a synthesized
-    // minute-ordered goal timeline (so goalCtxMult sees a real running scoreline+
-    // minute, same as it would live), and the conceding penalty and involvement
-    // bonuses reuse the live engine's own coefficients. The one thing that can't be
-    // reproduced is per-minute saves/defActs/chances, since this path never simulates
-    // individual minutes — those are estimated from live-match averages (~2.9 GK
-    // saves, ~3.2 combined DEF defActs, ~11.2 combined MID+FWD chances per side) and
-    // spread across eligible players with the same pickPlayer weighting used for
-    // goals/cards above, then run through the identical bonus formulas.
-    const playerRtgs = {};
-    [...sq, ...matchSubs].forEach(p => { playerRtgs[p.name] = { rtg: 6.5, gCount: 0, aCount: 0 }; });
-    const starterGoalPool = sq.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    const subGoalPool = matchSubs.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    const allOutfield = allOnPitch.filter(p => p.pos !== "GK").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    // Each conceded goal and each save gets its own synthetic xG (0.05-0.40, a plausible
-    // shot-difficulty spread) run through the same xgConcedePenalty/xgSaveBonus the live
-    // engine uses per-shot — quick-sim has no real per-shot data, but a flat per-goal
-    // penalty was the actual bug being fixed (it made a GK's rating nearly immovable
-    // regardless of how bad the goals conceded were).
-    const randXg = () => 0.05 + rng2.u() * 0.35;
-    const timeline = [];
-    for (let g = 0; g < goalsFor; g++) timeline.push({ us: true, min: 1 + Math.floor(rng2.u() * 90) });
-    for (let g = 0; g < goalsAgainst; g++) timeline.push({ us: false, min: 1 + Math.floor(rng2.u() * 90), xg: randXg() });
-    timeline.sort((a, b) => a.min - b.min);
-    let usScore = 0, themScore = 0, concedeGk = 0, concedeDef = 0;
-    for (const ev of timeline) {
-      if (!ev.us) { themScore++; concedeGk += xgConcedePenalty(ev.xg, 0.18); concedeDef += xgConcedePenalty(ev.xg, 0.10); continue; }
-      const gCtx = goalCtxMult([usScore, themScore], 0, ev.min);
-      const aCtx = 1 + (gCtx - 1) * 0.5;
-      const fromSub = subGoalPool.length > 0 && rng2.u() < 0.2;
-      const scorer = pickPlayer(rng2, fromSub ? subGoalPool : (starterGoalPool.length > 0 ? starterGoalPool : [{name:"?",pos:"MID",atkW:0,ovr:null}]), "goal", teamObj.skill);
-      const sr = playerRtgs[scorer.name];
-      sr.gCount++; sr.rtg = Math.min(10, sr.rtg + goalAtkMult(scorer.atkW) * gCtx * goalPosMult(scorer.pos));
-      const others = allOutfield.filter(p => p.name !== scorer.name);
-      if (others.length > 0) {
-        const assister = pickPlayer(rng2, others, "assist", teamObj.skill);
-        const ar = playerRtgs[assister.name];
-        ar.aCount++; ar.rtg = Math.max(3, Math.min(10, ar.rtg + 0.6 * assistAtkMult(assister.atkW) * aCtx));
-      }
-      usScore++;
-    }
-    allOnPitch.forEach(p => {
-      if (p.pos === "GK") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - concedeGk);
-      else if (p.pos === "DEF") playerRtgs[p.name].rtg = Math.max(3, playerRtgs[p.name].rtg - concedeDef);
-    });
-    const csBonus = goalsAgainst === 0;
-    const gkPl = allOnPitch.find(p => p.pos === "GK");
-    if (gkPl) {
-      const nSaves = Math.floor(rng2.u() * 7);
-      let saveSum = 0;
-      for (let i = 0; i < nSaves; i++) saveSum += xgSaveBonus(randXg(), 1.3);
-      let b = Math.min(1.2, saveSum) + (csBonus ? 0.15 : 0);
-      if (nSaves === 0 && !csBonus) b -= 0.01;
-      playerRtgs[gkPl.name].rtg = Math.max(3, Math.min(10, playerRtgs[gkPl.name].rtg + b));
-    }
-    const defPool = allOnPitch.filter(p => p.pos === "DEF").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    if (defPool.length > 0) {
-      const totalDefActs = 2 + Math.floor(rng2.u() * 7);
-      const perDA = {};
-      for (let i = 0; i < totalDefActs; i++) { const dp = pickPlayer(rng2, defPool, "defend", teamObj.skill); perDA[dp.name] = (perDA[dp.name]||0) + 1; }
-      defPool.forEach(p => {
-        const da = perDA[p.name] || 0;
-        let b = 0.03 * da + Math.min(0.7, 0.12 * Math.min(da, 8) + (csBonus ? 0.15 : 0));
-        if (da >= 3 && goalsAgainst <= 1) b += 0.15;
-        if (da === 0) b -= 0.02;
-        playerRtgs[p.name].rtg = Math.max(3, Math.min(10, playerRtgs[p.name].rtg + b));
-      });
-    }
-    const mfPool = allOnPitch.filter(p => p.pos === "MID" || p.pos === "FWD").map(p => ({name:p.name,pos:p.pos,atkW:p.atkW||0,ovr:p.ovr}));
-    if (mfPool.length > 0) {
-      const totalChances = 6 + Math.floor(rng2.u() * 11);
-      const perCh = {};
-      for (let i = 0; i < totalChances; i++) { const cp = pickPlayer(rng2, mfPool, "goal", teamObj.skill); perCh[cp.name] = (perCh[cp.name]||0) + 1; }
-      mfPool.forEach(p => {
-        const ch = perCh[p.name] || 0;
-        let b = 0.015 * ch;
-        if (p.pos === "MID") { b += Math.min(0.8, 0.10 * Math.min(ch, 5)); if (ch >= 3 && goalsFor > 0) b += 0.08; if (ch === 0) b -= 0.01; }
-        else { b += Math.min(0.5, 0.06 * Math.min(ch, 4)); if (ch === 0 && playerRtgs[p.name].gCount === 0 && playerRtgs[p.name].aCount === 0 && playerRtgs[p.name].rtg <= 6.7) b -= 0.04; }
-        playerRtgs[p.name].rtg = Math.max(3, Math.min(10, playerRtgs[p.name].rtg + b));
-      });
-    }
-    const diffs = {};
-    const diffOf = (k) => diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0});
-    sq.forEach(p => {
-      const k = key(p.name);
-      const d = diffOf(k);
-      d.matches++;
-      const pr = playerRtgs[p.name];
-      d.goals += pr.gCount;
-      d.assists += pr.aCount;
-      d.totalRating += pr.rtg;
-      d.yellows += cardedYellows.filter(n => n === p.name).length;
-      if (redName === p.name) { d.reds++; d.suspended += rcSusp; }
-      if (p.name === injName) d.injOut += injDur;
-    });
-    matchSubs.forEach(p => {
-      const k = key(p.name);
-      const d = diffOf(k);
-      d.subApp++;
-      const pr = playerRtgs[p.name];
-      d.goals += pr.gCount;
-      d.assists += pr.aCount;
-      d.totalRating += pr.rtg;
-      d.yellows += cardedYellows.filter(n => n === p.name).length;
-      if (redName === p.name) { d.reds++; d.suspended += rcSusp; }
-      if (p.name === injName) d.injOut += injDur;
-    });
-    setTPlayerStats(prev => {
-      const next = {};
-      for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-      const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0});
-      [...sq, ...matchSubs].forEach(p => { const k = key(p.name); if (!next[k]) next[k] = initP(p); });
-      for (const [k, d] of Object.entries(diffs)) {
-        next[k].matches = (next[k].matches||0) + d.matches;
-        next[k].subApp = (next[k].subApp||0) + d.subApp;
-        next[k].goals = (next[k].goals||0) + d.goals;
-        next[k].assists = (next[k].assists||0) + d.assists;
-        next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
-        const prevYc = next[k].yellows||0;
-        next[k].yellows = prevYc + d.yellows;
-        if (tConfig.suspensions !== false) d.suspended += ycSuspGames(prevYc, next[k].yellows);
-        next[k].reds = (next[k].reds||0) + d.reds;
-        next[k].suspended = (next[k].suspended||0) + d.suspended;
-        next[k].injOut = (next[k].injOut||0) + d.injOut;
-      }
-      if (injName) { const ik = key(injName); next[ik].injSev = injSevObj?.id; next[ik].injPart = injPartName; }
-      return next;
-    });
-    return { redKey: redName ? keyOf(redName) : null, injKey: injName ? keyOf(injName) : null, injDur, diffs };
+    return null;
   };
   const decrementBans = (teamNames) => {
     setTPlayerStats(prev => {
@@ -4473,8 +4455,11 @@ export default function App() {
     gm.result = { ftHome: hg, ftAway: ag };
     decrementBans(new Set([gm.home.name, gm.away.name]));
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
-    const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, null, mUnavail);
-    const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, null, mUnavail);
+    const _stamD = tConfig.staminaCarry ? tPlayerStats : null;
+    const _hSq = filterSquad(gm.home.squad, gm.home.name, mUnavail, _stamD), _aSq = filterSquad(gm.away.squad, gm.away.name, mUnavail, _stamD);
+    const _sr = simInstantMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq);
+    const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
+    const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
     ng[gi].standings = recalcStandings(ng[gi], tConfig.tiebreakers);
     setTGroups(ng); setTEdit(null); setTScoreError("");
@@ -4521,7 +4506,13 @@ export default function App() {
       const target = getTarget(ko);
       target.result = result; cascade(ko);
       setTKO(ko); setTKoEdit(null); setTScoreError("");
-      if (result && !result.partial) { const km = target; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); } const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,null,koUnavail) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,null,koUnavail) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
+      if (result && !result.partial) { const km = target; const hGoals = result.twoLeg?(result.agg?.home||0):(result.ftHome+(result.et?.home||0)); const aGoals = result.twoLeg?(result.agg?.away||0):(result.ftAway+(result.et?.away||0)); const dn=new Set(); if(km?.home)dn.add(km.home.name); if(km?.away)dn.add(km.away.name); if(dn.size)decrementBans(dn); const koUnavail = new Set(); for (const [k2,v2] of Object.entries(tPlayerStats)) { if ((v2.suspended||0)>0||(v2.injOut||0)>0) koUnavail.add(k2); }
+        const _stamD2 = tConfig.staminaCarry ? tPlayerStats : null;
+        const _hSq2 = km?.home ? filterSquad(km.home.squad, km.home.name, koUnavail, _stamD2) : null;
+        const _aSq2 = km?.away ? filterSquad(km.away.squad, km.away.name, koUnavail, _stamD2) : null;
+        const _haKey = bracket === "lb" ? `lb_${ri}_${mi}` : bracket === "gf" ? "gf" : bracket === "reset" ? "reset" : bracket === "tp" ? "tp" : `ko_${ri}_${mi}`;
+        const _sr2 = (km?.home && km?.away) ? simInstantMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2) : null;
+        const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
       if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
     };
     if (isTL) {
@@ -6684,6 +6675,17 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Participants <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({tournamentTeamIds.length} selected)</span></div>
                 <div style={{ display: "flex", gap: 6 }}>
+                  <select onChange={e => {
+                    const v = e.target.value; e.target.value = "";
+                    const codes = CONFERENCES[v];
+                    if (!codes) return;
+                    const codeSet = new Set(codes);
+                    setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
+                    setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
+                  }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
+                    <option value="" hidden>☰ Conference</option>
+                    {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                   <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "var(--chrome-muted)" }}>Select All</button>
                   <button onClick={() => setTournamentTeamIds([])} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }}>Clear</button>
                 </div>
@@ -7928,6 +7930,17 @@ export default function App() {
             <P>Maximum defensive solidity at the expense of everything else. The defense modifier (+0.10) is the highest in the game, reducing the opponent's shooting opportunities substantially. Counter ability is elevated, providing an outlet on the break. The cost is across the board: pressing is nearly nonexistent, advance rate is deeply negative, hold drops, box shot probability craters, and corners are rare. The tempo system enforces a minimum of Defensive, meaning a Park the Bus team will never play balanced or higher regardless of scoreline. Effective when protecting a lead or when a massive skill gap needs to be neutralized, but the team will struggle to score if it falls behind.</P>
             <Stat text="Press 0.20x · Advance -0.08 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0 · Counter 1.3x · Counter shot +0.05 · Defense +0.10 · Long-range -0.02 · Corners 0.80x · Min tempo: Defensive" />
 
+            <H2>Chance Creation Profiles</H2>
+            <P>Beyond the modifier parameters above, each playstyle shapes how chances are built. When a team enters the box or creates an opportunity, the engine generates a passing chain of 1 to 5 hops before the shot. The distribution across those chain lengths differs by style — direct styles weight heavily toward 1-2 hop sequences (quick, simple chances), while possession styles produce longer chains (intricate, multi-pass buildups). Formations and tactics further adjust these values on top of the style baseline (see below).</P>
+            <P>Dribble probability controls how often a player in the chain beats a man instead of passing (clamped 5-50%). Solo breakaway rate adds a flat chance per minute of a single player skipping the buildup entirely to create a 1v1 — this stacks with the Expressive creativity tactic's moment-of-magic chance but fires independently.</P>
+            <Stat text="Balanced: chains 15/35/30/14/6%, dribble 25%, solo 0% · Gegenpress: chains 25/35/25/10/5%, dribble 20%, solo 2% · Tiki-Taka: chains 5/20/35/25/15%, dribble 15%, solo 0% · Counter: chains 35/35/20/8/2%, dribble 35%, solo 3% · Wing Play: chains 10/30/35/18/7%, dribble 30%, solo 1% · Park the Bus: chains 40/35/18/5/2%, dribble 20%, solo 0%" />
+            <P>Formations apply additive adjustments to the style's chain weights, dribble probability, and solo rate. Offensive formations (4-2-4, 3-4-3) shift toward shorter chains and more dribbling — four attackers create direct, physical chances. Defensive formations (4-3-2-1, 4-1-4-1) shift toward longer chains — more midfielders mean more passing before the shot arrives. The 5-3-2 is an exception: its chances are direct (short chains, +1% solo) because the team attacks on the counter rather than building through midfield.</P>
+            <P>Tactics also adjust the profile. Work Ball In lengthens chains; Shoot On Sight shortens them. Into Space shortens chains (direct play into gaps); Play Out lengthens them (patient buildup). Counter (possession won) shortens chains and adds +1% solo rate; Hold Shape lengthens them. Run At Defence adds +6% dribble probability; Disciplined dribbling subtracts 4%. All adjustments are additive and stack with style and formation values.</P>
+
+            <H2>Defensive Action Pools</H2>
+            <P>When the engine assigns a defensive action (a block, interception, clearance, or tackle) to a specific player, it draws from position-weighted pools that reflect where each position group realistically operates. A box clearance is overwhelmingly a defender's job; a turnover recovery in midfield is where pressing forwards contribute. Playstyles provide the first layer of shifts; formations and tactics add further adjustments on top (see those sections for details).</P>
+            <P>Gegenpress pushes forwards into turnover recoveries (DEF -10, FWD +6) and slightly into box defending (DEF -3, FWD +1), reflecting how a high press commits attackers to defensive work. Park the Bus does the opposite: defenders dominate box defending (DEF +8), clearances (DEF +5), and turnovers (DEF +5), with midfielders and forwards contributing less across the board. Counter-Attack reinforces box defending with extra defender weight (DEF +5). Wing Play shifts corner defending toward defenders (DEF +3). Tiki-Taka nudges turnover recoveries slightly toward midfielders (DEF -5, MID +3). Balanced applies no shifts.</P>
+
             </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-formations"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Formations</H1></summary>
@@ -7981,6 +7994,23 @@ export default function App() {
             <H3>5-3-2</H3>
             <P>The most defensive formation. Five at the back produces the highest defensive modifier in the game. Two strikers wait for the break with the strongest counter multiplier among formations (1.30x) and a counter shot bonus. Long ball gets a boost for direct transitions. The cost is everywhere else: press is weak, advance is negative, and corner generation is low. This formation concedes few chances and creates fewer, relying on counters for goals. Effective when protecting a lead or absorbing pressure from a stronger team.</P>
             <Stat text="Press 0.8x · Advance -0.02 · Hold +0 · Long ball +0.03 · Box shot +0 · Goal prob +0 · Counter 1.30x · Counter shot +0.02 · Defense +0.07 · Long-range +0 · Corners 0.85x" />
+
+            <H2>Player Selection Weights</H2>
+            <P>Beyond the modifier parameters, formations change which players the engine picks for goals, assists, defensive actions, and other events. A baseline of 4-3-3 defines standard position weights (e.g., forwards score 70% of goals, midfielders 25%, defenders 5%). Other formations scale these weights based on how many players occupy each line, using square-root scaling to avoid over-amplification.</P>
+            <P>Square-root scaling means a formation with 1 forward (like 4-2-3-1) doesn't drop forward goal involvement to a third of normal — instead it drops to about 58% (the square root of 1/3). This keeps solo strikers involved without making them score at the same rate as a front three. Conversely, a 4-2-4 with 4 forwards gets a modest boost (square root of 4/3, about 115%) rather than a linear 133%. The scaling applies to every selection pool: goalscorers, long-range shooters, corner scorers, assist providers, penalty takers, foul drawers, and all five defensive action pools.</P>
+            <P>The formation-scaled weights are further adjusted by playstyle defensive pool shifts (documented under Playstyles), formation-specific defensive pool shifts (below), and tactic-driven shifts (documented under Tactics), then renormalized. The combined result determines who appears in match events — a 5-3-2 Counter-Attack side will see its defenders dominate box clearances even more than their numbers suggest, while a 3-4-3 Gegenpress side will see forwards winning the ball back in turnover situations.</P>
+
+            <H2>Chance Creation Profiles</H2>
+            <P>Formations also adjust chance creation on top of the playstyle baseline. Offensive formations produce shorter, more direct passing chains: a 4-2-4 shifts heavily toward 1-2 hop sequences (+8/+4 to short chains) with elevated dribble probability (+5%) and solo breakaway rate (+1%). A 5-3-2 is similarly direct (+6/+3 short, +1% solo) because its rare attacks come on the counter. Defensive and midfield-heavy formations produce longer chains: a 4-3-2-1 shifts toward 4-5 hop sequences (-4/-2 short, +3/+2/+1 long) with reduced dribble probability (-2%), reflecting patient buildup through the Christmas tree midfield.</P>
+
+            <H2>Momentum</H2>
+            <P>Formations shape momentum independently of playstyle. The formation's momentum multiplier and decay combine multiplicatively with the style's values. Offensive formations are emotionally volatile: a 4-2-4 amplifies momentum bumps by 1.2x and loses them at 1.2 decay (fast swings, fast fades). A 3-4-3 is slightly less extreme (1.15x bump, 1.1 decay). Defensive formations are stoic: a 5-3-2 dampens bumps to 0.8x with 0.7 decay (small swings that stick), and a 4-1-4-1 sits at 0.85x/0.8. The 4-2-3-1 and 4-3-2-1 are both patient (0.9x bump, 0.85 decay). Baseline formations (4-3-3, 4-4-2) apply no adjustment (1.0x/1.0).</P>
+            <Stat text="4-2-4: 1.2× bump, 1.2 decay · 3-4-3: 1.15×, 1.1 · 4-1-2-1-2: 1.05×, 1.0 · 4-3-3/4-4-2: 1.0×, 1.0 · 3-5-2: 1.0×, 0.9 · 3-4-1-2: 0.95×, 0.9 · 4-2-3-1/4-3-2-1: 0.9×, 0.85 · 4-1-4-1: 0.85×, 0.8 · 5-3-2: 0.8×, 0.7" />
+
+            <H2>Defensive Action Pools</H2>
+            <P>Formations shift who gets credited with defensive actions based on how many bodies each line contributes. These adjustments stack additively on top of the playstyle shifts. Formations with extra forwards push them into turnover recoveries; formations with packed midfields shift midfielders into every defensive pool; formations with extra defenders reinforce box defending and clearances.</P>
+            <P>A 4-2-4 pushes forwards heavily into turnovers (DEF -4, MID -2, FWD +6) and slightly into box defending (DEF -3, FWD +2) — four attackers press high and engage. A 3-5-2 shifts midfielders into turnovers (DEF -3, MID +5), long ball defending (DEF -2, MID +4), and clearances (MID +3) — five midfielders dominate the middle third. A 5-3-2 does the opposite: defenders dominate box defending (DEF +5), clearances (DEF +4), and turnovers (DEF +3). Baseline formations (4-3-3) apply no shifts.</P>
+            <Stat text="4-2-4: turnover DEF -4/FWD +6, box DEF -3/FWD +2 · 3-4-3: turnover DEF -2/FWD +4 · 3-5-2: turnover MID +5, long ball MID +4, clear MID +3 · 5-3-2: box DEF +5, clear DEF +4, turnover DEF +3 · 4-1-4-1: turnover MID +4/FWD -4" />
 
             </details>
 
@@ -8059,6 +8089,14 @@ export default function App() {
             <P><strong style={{color:"#ffffff",fontSize:10}}>Get Stuck In</strong> — Players commit to tackles aggressively. Press effectiveness increases. Foul rate rises substantially, and card chance rises even more. Generates more turnovers but also more fouls, more cards, and more penalties. Best for teams that need to disrupt the opponent's rhythm and are willing to risk the disciplinary consequences.</P>
             <Stat text="Stay On Feet: press 0.95x, foul rate 0.75x, card chance 0.65x · Get Stuck In: press 1.08x, foul rate 1.3x, card chance 1.4x" />
 
+            <H2>Defensive Action Pools</H2>
+            <P>Four tactical settings shift who gets credited with defensive actions, stacking additively on top of playstyle and formation shifts. Higher pressing pushes forwards into turnover recoveries (per level: DEF -2, FWD +2) — a team pressing at Much Higher commits its attackers to winning the ball back. Lower pressing pulls defenders in (DEF +2/level, FWD -2/level). Defensive line height shifts box defending: a higher line moves midfielders into the box pool (DEF -2/level, MID +2/level); a lower line reinforces defenders. Get Stuck In tackling adds defenders and midfielders to box defending (DEF +3, MID +2, FWD -3). Counter-Press pushes forwards into turnovers (DEF -3, FWD +3); Regroup does the opposite (DEF +3, FWD -3).</P>
+            <Stat text="Pressing: per level DEF ∓2, FWD ±2 in turnovers · Def. Line: per level DEF ∓2, MID ±2 in box · Get Stuck In: box DEF +3, MID +2, FWD -3 · Counter-Press: turnover DEF -3, FWD +3 · Regroup: turnover DEF +3, FWD -3" />
+
+            <H2>Momentum</H2>
+            <P>Two tactical settings adjust momentum, multiplied on top of playstyle and formation values. Time Wasting dampens momentum because the team is slowing the game down rather than building intensity — Sometimes reduces bumps to 0.9x with 0.85 decay; Constantly reduces bumps to 0.75x with 0.7 decay. Counter-Press amplifies momentum (1.1x bump, 1.1 decay) because aggressive ball recovery creates emotional swings; Regroup dampens it (0.9x bump, 0.9 decay) because the team absorbs pressure calmly.</P>
+            <Stat text="Time Wasting (Sometimes): 0.9× bump, 0.85 decay · Time Wasting (Constantly): 0.75× bump, 0.7 decay · Counter-Press: 1.1× bump, 1.1 decay · Regroup: 0.9× bump, 0.9 decay" />
+
             </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-engine"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>How Matches Play Out</H1></summary>
@@ -8107,8 +8145,10 @@ export default function App() {
             <P>Offensive tempo adds 5% to advance probability; Ultra Offensive adds 10%. Defensive and Ultra Defensive reduce opponent shot probability in the box by 8% and 18% respectively. Changing tempo manually disables automatic adjustment for the rest of the match.</P>
 
             <H2 id="doc-momentum">Momentum</H2>
-            <P>Momentum is a decaying counter (0-6 per side) that adds 2% effective skill per point — up to +12% at the cap. Every point fades by 1 each minute regardless of what triggered it, so any single swing is temporary, and a team already riding momentum that scores again stacks on top rather than resetting, up to the cap.</P>
-            <P>Triggers: a goal (+4, +3 for a corner own goal), a red or second yellow card (+3 to the opponent), a missed or saved penalty (+3 to the defending side), a big chance — a shot built up over 3+ hops, a header from a corner, or a direct free kick — saved or put wide (+2 to the defending side), and a shot cannoning off the woodwork (+1 to the attacking side, +1 for a header off the frame from a corner). Routine, low-buildup efforts that are comfortably saved or missed don't trigger anything.</P>
+            <P>Momentum is a decaying counter (0-6 per side) that adds 2% effective skill per point — up to +12% at the cap. Both the size of momentum swings and how fast they fade are shaped by playstyle, formation, and tactics (all multiplied together).</P>
+            <P>Triggers: a goal (+4, +3 for a corner own goal), a red or second yellow card (+3 to the opponent), a missed or saved penalty (+3 to the defending side), a big chance — a shot built up over 3+ hops, a header from a corner, or a direct free kick — saved or put wide (+2 to the defending side), and a shot cannoning off the woodwork (+1 to the attacking side, +1 for a header off the frame from a corner). Routine, low-buildup efforts that are comfortably saved or missed don't trigger anything. The raw trigger value is multiplied by the style's momentum multiplier before being added to the counter, so the same goal gives a Gegenpress team +5 (4 × 1.3, rounded) but a Park the Bus team only +3 (4 × 0.7).</P>
+            <P>Decay is also style-dependent. Each minute, every point of momentum has a chance to fade. A decay of 1.0 (Balanced, Wing Play) loses exactly 1 point per minute. Decay above 1.0 (Gegenpress at 1.3) always loses 1 and has a 30% chance of losing a second — momentum spikes hard but burns out fast. Decay below 1.0 (Tiki-Taka at 0.6, Park the Bus at 0.5) only loses a point with that probability — momentum builds slowly but sticks. Counter-Attack sits between: big swings (1.2×) that fade at a measured pace (0.8 decay).</P>
+            <Stat text="Balanced: 1.0× bump, 1.0 decay · Gegenpress: 1.3× bump, 1.3 decay · Tiki-Taka: 0.75× bump, 0.6 decay · Counter: 1.2× bump, 0.8 decay · Wing Play: 1.1× bump, 1.0 decay · Park the Bus: 0.7× bump, 0.5 decay" />
             <P>The momentum graph blends this counter with the live ball-position/possession signal: the graph's own territorial reading is smoothed minute to minute, but the momentum counter is added on top unsmoothed, so a goal or red card shows up as an immediate jump rather than fading in over a few minutes.</P>
 
             <H2 id="doc-stamina">Stamina and fatigue</H2>
