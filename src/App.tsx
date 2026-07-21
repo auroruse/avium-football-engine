@@ -5979,6 +5979,16 @@ export default function App() {
                     </select>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{tVenueOverrides[vc.overrideKey] ? "Manually chosen" : "Automatic pick — change to lock this fixture to a specific stadium"}</div>
                   </div>
+                ) : tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset" ? (
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                    <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
+                      {[["home", "Alternating"], [null, "Neutral"]].map(([val, label]) => (
+                        <button key={label} onClick={() => setTHomeAdvOverrides(p => { const nm = { ...p }; if (val === null) nm[vc.venueKey] = "off"; else delete nm[vc.venueKey]; return nm; })} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== null ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "Each team hosts one leg" : "No advantage"}</div>
+                  </div>
                 ) : (
                   <div>
                     <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
