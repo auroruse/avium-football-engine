@@ -482,7 +482,7 @@ const STYLE_MOD = {
   balanced:     {press:1.0,adv:0,hold:0,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0,corn:1.0,maxT:null,minT:null},
   gegenpress:   {press:1.3,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:0.50,ctrShot:0.03,def:-0.01,lr:0,corn:1.0,maxT:null,minT:null},
   tikitaka:     {press:1.1,adv:-0.01,hold:0.10,lb:-0.02,boxShot:-0.01,goalP:0.02,ctr:0.80,ctrShot:0,def:0.02,lr:-0.02,corn:0.95,maxT:"ultra",minT:null},
-  counterattack:{press:0.40,adv:-0.04,hold:-0.01,lb:0.02,boxShot:-0.02,goalP:0.02,ctr:2.0,ctrShot:0.10,def:0.08,lr:0,corn:1.0,maxT:"ultra",minT:null},
+  counterattack:{press:0.50,adv:-0.06,hold:-0.02,lb:0.02,boxShot:-0.03,goalP:0.02,ctr:1.5,ctrShot:0.06,def:0.05,lr:0,corn:1.0,maxT:"ultra",minT:null},
   wingplay:     {press:1.0,adv:0.03,hold:-0.01,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0.04,corn:1.4,maxT:null,minT:null},
   parkthebus:   {press:0.20,adv:-0.08,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.02,corn:0.80,maxT:null,minT:"def"},
 };
@@ -591,8 +591,7 @@ const STYLE_FIT_SPOS = {
   wingplay:      { wide: 0.6, fb: 0.3, fwd: 0.1 },
   gegenpress:    { cmid: 0.45, fwd: 0.30, all: 0.25 },
   tikitaka:      { cmid: 0.50, all: 0.50 },
-  counterattack: { fwd: 0.40, def: 0.35, gk: 0.25 },
-  parkthebus:    { def: 0.45, gk: 0.35, cmid: 0.20 },
+  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15 },
 };
 const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
 const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
@@ -606,7 +605,7 @@ function computeStyleFit(style, squad) {
   if (w.fb) avg += w.fb * avgOf(_isFitFB);
   if (w.fwd) avg += w.fwd * avgOf(sp => sp === "ST" || sp === "FWD");
   if (w.cmid) avg += w.cmid * avgOf(_isFitCMid);
-  if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "DEF");
+  if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
   if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
   if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
   return Math.max(0.3, Math.min(1.25, (avg - 65) / 20));
@@ -614,7 +613,7 @@ function computeStyleFit(style, squad) {
 function applyStyleFit(mod, fit) {
   if (fit === 1) return mod;
   const BAL = STYLE_MOD.balanced;
-  return { press: mod.press, adv: BAL.adv + (mod.adv - BAL.adv) * fit, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: mod.ctr, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
+  return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
 const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, setPieces:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
@@ -634,24 +633,24 @@ const STRAT_LABELS = {
   tackling: { name:"Tackle", vals:[[-1,"Stay On Feet"],[0,"No Instruction"],[1,"Get Stuck In"]], grp:"defense" },
 };
 const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
+// MC-balanced coefficients (5000-leg test, all ±3.5% net win rate vs default).
+// Passing: ±0.008 adv/lb per step, -0.006 def per step (direct = attack, short = defend).
+// DL: Step Up +0.008 adv / -0.014 def, OT +0.012 adv / -0.018 def.
+// Tackling: GSI +1.04 press / +0.012 def, SOF 0.97 press / -0.005 def. Engine: foul 1.10/0.88, card 1.25/0.75, dcP +0.12/-0.06.
+// Creativity: Expressive +0.002 goalP / -0.014 def / 1% solo chance. Disciplined +0.003 goalP.
+// GK dist engine: short = midfield + pressure 1, long = 35% turnover (was 60%).
 function applyStrategy(mod, strat) {
   const st = strat || STRAT_DEF;
   return {
-    // Counter-Press: 1.20 (down from 1.25) + def cost below. High line: pressing synergy. RAD: press cost.
-    press: mod.press * PRESS_LOE_MULT[st.pressingLOE + 2] * (st.possLost === 1 ? 1.20 : st.possLost === -1 ? 0.85 : 1.0) * (st.tackling === 1 ? 1.08 : st.tackling === -1 ? 0.95 : 1.0) * (st.dribbling === 1 ? 0.95 : 1.0) * (st.defLine > 0 ? 1 + st.defLine * 0.05 : 1.0),
-    // High line: advance boost (+0.008/step). Step Up/OT: advance (compress space). Set Pieces: advance cost. Disciplined dribbling: halved from -0.01.
-    adv: mod.adv + st.passingDir * 0.015 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0) + (st.dribbling === 1 ? 0.02 : st.dribbling === -1 ? -0.005 : 0) + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.012 : st.dlBehavior === 2 ? 0.018 : 0) + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0) + (st.setPieces === 1 ? -0.008 : 0) + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0),
-    hold: mod.hold + st.passingDir * -0.02 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0) + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.02 : 0),
-    lb: mod.lb + st.passingDir * 0.015,
-    // SoS: slight box shot penalty (shooting from range). WBiB: keeps +0.03.
+    press: mod.press * PRESS_LOE_MULT[st.pressingLOE + 2] * (st.possLost === 1 ? 1.20 : st.possLost === -1 ? 0.85 : 1.0) * (st.tackling === 1 ? 1.04 : st.tackling === -1 ? 0.97 : 1.0) * (st.dribbling === 1 ? 0.95 : 1.0) * (st.defLine > 0 ? 1 + st.defLine * 0.05 : 1.0),
+    adv: mod.adv + st.passingDir * 0.008 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0) + (st.dribbling === 1 ? 0.012 : st.dribbling === -1 ? -0.005 : 0) + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0) + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0) + (st.setPieces === 1 ? -0.008 : 0) + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0),
+    hold: mod.hold + st.passingDir * -0.02 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0) + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.01 : 0),
+    lb: mod.lb + st.passingDir * 0.008,
     boxShot: mod.boxShot + (st.chanceCreation === -1 ? 0.03 : st.chanceCreation === 1 ? -0.015 : 0),
-    // SoS: removed goalP penalty. Disciplined creativity: now +0.003 (more clinical) instead of -0.005.
-    goalP: mod.goalP + (st.creativity === 1 ? 0.012 : st.creativity === -1 ? 0.003 : 0),
+    goalP: mod.goalP + (st.creativity === 1 ? 0.002 : st.creativity === -1 ? 0.003 : 0),
     ctr: mod.ctr * (st.possWon === -1 ? 0.5 : st.possWon === 1 ? 1.5 : 1.0) * (st.possLost === -1 ? 0.92 : 1.0),
     ctrShot: mod.ctrShot + (st.possWon === 1 ? 0.04 : 0),
-    // Counter-Press: def cost -0.008. Expressive: def cost -0.006. Step Up/OT: def cost. Disciplined dribbling: def +0.005.
-    def: mod.def + st.defLine * -0.012 + (st.possLost === -1 ? 0.010 : st.possLost === 1 ? -0.008 : 0) + (st.dlBehavior === -1 ? 0.012 : st.dlBehavior === 1 ? -0.005 : st.dlBehavior === 2 ? -0.008 : 0) + (st.creativity === 1 ? -0.006 : 0) + (st.dribbling === -1 ? 0.005 : 0),
-    // WBiB: removed lr reduction (was double-positive). SoS: keeps lr increase.
+    def: mod.def + st.defLine * -0.012 + st.passingDir * -0.006 + (st.possLost === -1 ? 0.016 : st.possLost === 1 ? -0.008 : 0) + (st.dlBehavior === -1 ? 0.012 : st.dlBehavior === 1 ? -0.014 : st.dlBehavior === 2 ? -0.018 : 0) + (st.creativity === 1 ? -0.014 : 0) + (st.dribbling === 1 ? -0.008 : st.dribbling === -1 ? 0.005 : 0) + (st.tackling === 1 ? 0.012 : st.tackling === -1 ? -0.005 : 0),
     lr: mod.lr + (st.chanceCreation === 1 ? 0.04 : st.chanceCreation === -1 ? -0.02 : 0),
     corn: mod.corn * (st.setPieces === 1 ? 1.2 : 1.0), maxT: mod.maxT, minT: mod.minT,
   };
@@ -814,8 +813,8 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
         s.pressure=0;
-        if (gkD === -1) { s.ball = def === "home" ? 1 : 3; s.possession = def; }
-        else if (gkD === 1) { if (rng.u() < 0.6) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
+        if (gkD === -1) { s.ball = 2; s.possession = def; s.pressure = 1; }
+        else if (gkD === 1) { if (rng.u() < 0.35) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
         else { s.ball = 2; s.possession = def; }
       }
     }
@@ -834,8 +833,8 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       else{
         const gkD = s.strategy?.[def]?.gkDist || 0;
         s.pressure=0;
-        if (gkD === -1) { s.ball = def === "home" ? 1 : 3; s.possession = def; }
-        else if (gkD === 1) { if (rng.u() < 0.6) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
+        if (gkD === -1) { s.ball = 2; s.possession = def; s.pressure = 1; }
+        else if (gkD === 1) { if (rng.u() < 0.35) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
         else { s.ball = 2; s.possession = def; }
       }
     }
@@ -948,8 +947,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     }
   }
 
-  // Creative freedom — brilliant chance (expressive: 4% chance to skip to shooting zone)
-  const _soloP = (poSt.creativity === 1 ? 0.04 : 0) + (STYLE_CHANCE[s.styles?.[po]]?.soloBase || 0);
+  // Creative freedom — brilliant chance (expressive: 1% solo chance, stacks with style soloBase)
+  const _soloP = (poSt.creativity === 1 ? 0.01 : 0) + (STYLE_CHANCE[s.styles?.[po]]?.soloBase || 0);
   if (_soloP > 0 && rng.u() < _soloP) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
     {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
@@ -978,8 +977,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   // Foul (modified by dribbling + tackling)
   const dribbleFoulMod = poSt.dribbling === 1 ? 1.25 : poSt.dribbling === -1 ? 0.9 : 1.0;
   const opSt = s.strategy?.[op] || STRAT_DEF;
-  const tackleFoulMod = opSt.tackling === 1 ? 1.3 : opSt.tackling === -1 ? 0.75 : 1.0;
-  const tackleCardMod = opSt.tackling === 1 ? 1.4 : opSt.tackling === -1 ? 0.65 : 1.0;
+  const tackleFoulMod = opSt.tackling === 1 ? 1.10 : opSt.tackling === -1 ? 0.88 : 1.0;
+  const tackleCardMod = opSt.tackling === 1 ? 1.25 : opSt.tackling === -1 ? 0.75 : 1.0;
   if(rng.u()<0.15*dribbleFoulMod*tackleFoulMod){
     // A foul stops the phase of play — whatever chance was building closes out here;
     // the free kick (or penalty) that follows is a new, separate situation.
@@ -1019,7 +1018,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(s.activeChance&&s.pressure>1){
       const df=pickDefActPlayer(rng,s,op,"defendBox");
       const dfOvr=df?ovrN(fatigueOvr(df.ovr,df.stamina),s.teamSkill?.[op])*0.12:0;
-      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.08:opSt.tackling===-1?-0.04:0);
+      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.12:opSt.tackling===-1?-0.06:0);
       if(rng.u()<dcP&&df){
         const _lc=s.activeChance;
         df.defActs=(df.defActs||0)+1;
@@ -1556,21 +1555,17 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   s.homeAdv=homeAdv||null;
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
-  const _hFit=computeStyleFit(s.styles.home,s.players.home),_aFit=computeStyleFit(s.styles.away,s.players.away);
+  const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const hSquadRaw = homeSquad || buildSquad(homeForm || "4-3-3", null);
+  const aSquadRaw = awaySquad || buildSquad(awayForm || "4-3-3", null);
+  s.players={home:hSquadRaw.filter(p=>!p.bench).map(mapP),away:aSquadRaw.filter(p=>!p.bench).map(mapP)};
+  s.bench={home:hSquadRaw.filter(p=>p.bench).map(mapB),away:aSquadRaw.filter(p=>p.bench).map(mapB)};
+  if (homeSquad && awaySquad) { ensureStartingGK(s.players.home); ensureStartingGK(s.players.away); }
+  const _hFit=computeStyleFit(s.styles.home,hSquadRaw),_aFit=computeStyleFit(s.styles.away,aSquadRaw);
   s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
   s.styleFit={home:_hFit,away:_aFit};
   initMatchEnhancements(s);
-  const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
-  if (homeSquad && awaySquad) {
-    s.players={home:homeSquad.filter(p=>!p.bench).map(mapP),away:awaySquad.filter(p=>!p.bench).map(mapP)};
-    s.bench={home:homeSquad.filter(p=>p.bench).map(mapB),away:awaySquad.filter(p=>p.bench).map(mapB)};
-    ensureStartingGK(s.players.home); ensureStartingGK(s.players.away);
-  } else {
-    const hAll = buildSquad(homeForm || "4-3-3", null), aAll = buildSquad(awayForm || "4-3-3", null);
-    s.players={home:hAll.filter(p=>!p.bench).map(mapP),away:aAll.filter(p=>!p.bench).map(mapP)};
-    s.bench={home:hAll.filter(p=>p.bench).map(mapB),away:aAll.filter(p=>p.bench).map(mapB)};
-  }
   s.events={length:0,push(){this.length++;}};
   lmAdvance(s,rng,home,away,true);let ftS=null;
   for(let i=0;i<300&&s.phase!=="finished";i++){if(s.phase==="full_time"&&!ftS)ftS=[...s.score];lmAdvance(s,rng,home,away,true);}
