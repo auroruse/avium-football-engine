@@ -7569,7 +7569,7 @@ export default function App() {
               const wbRounds = tKO.rounds.slice(wbFirst);
               const wbN0 = wbRounds[0].matches.length;
               const wbH = Math.max(wbN0, 2) * (cardH + gap);
-              const lbN0 = tKO.losers[0].matches.length;
+              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => m.home || m.away || m.result || m.bye).length));
               const lbH = Math.max(lbN0, 2) * (cardH + gap);
 
               const deMiniCard = (m, bk, ri, mi) => {
@@ -7625,14 +7625,17 @@ export default function App() {
                 );
               };
 
+              const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
               const renderCol = (matches, height, bk, ri) => {
-                const n = matches.length;
+                const live = matches.filter(m => !_dead(m));
+                const n = live.length || 1;
                 const slotH = height / n;
                 return (
                   <div style={{ position: "relative", height, width: colW, flexShrink: 0 }}>
-                    {matches.map((m, mi) => {
+                    {live.map((m, vi) => {
+                      const mi = matches.indexOf(m);
                       if (m.bye) return null;
-                      const top = (mi + 0.5) * slotH - (cardH - gap) / 2;
+                      const top = (vi + 0.5) * slotH - (cardH - gap) / 2;
                       return <div key={mi} style={{ position: "absolute", top, left: 0 }}>{deMiniCard(m, bk, ri, mi)}</div>;
                     })}
                   </div>
@@ -7640,13 +7643,15 @@ export default function App() {
               };
 
               const pairConn = (srcMatches, height) => {
-                const n = srcMatches.length;
+                const live = srcMatches.filter(m => !_dead(m));
+                const n = live.length || 1;
                 const slotH = height / n;
                 const pairs = Math.floor(n / 2);
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
                     {Array.from({ length: pairs }, (_, i) => {
-                      const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
+                      const m1 = live[2*i], m2 = live[2*i+1];
+                      if (!m1 || !m2) return null;
                       if (m1.bye && m2.bye) return null;
                       const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
                       return (
@@ -7658,17 +7663,18 @@ export default function App() {
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                    {n % 2 === 1 && !live[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
 
               const straightConn = (srcMatches, height) => {
-                const n = srcMatches.length;
+                const live = srcMatches.filter(m => !_dead(m));
+                const n = live.length || 1;
                 const slotH = height / n;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
+                    {live.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
                   </svg>
                 );
               };
@@ -7712,13 +7718,13 @@ export default function App() {
                   {/* LB */}
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
-                    {tKO.losers.map((rd, lr) => (<Fragment key={"lb"+lr}>
-                      {lr > 0 && (rd.type === "internal" ? pairConn(tKO.losers[lr-1].matches, lbH) : straightConn(tKO.losers[lr-1].matches, lbH))}
+                    {tKO.losers.map((rd, lr) => { if (rd.matches.every(_dead)) return null; return (<Fragment key={"lb"+lr}>
+                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(_dead)) prev--; if (prev < 0) return null; return rd.type === "internal" ? pairConn(tKO.losers[prev].matches, lbH) : straightConn(tKO.losers[prev].matches, lbH); })()}
                       <div style={{ flexShrink: 0 }}>
                         <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                         {renderCol(rd.matches, lbH, "lb", lr)}
                       </div>
-                    </Fragment>))}
+                    </Fragment>); })}
                   </div>
                 </div>
               );
@@ -7786,14 +7792,14 @@ export default function App() {
                   {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
                 </div>
               ); })()}
-              {tKO.losers && tKO.losers.map((lbRound, lr) => { const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
+              {tKO.losers && tKO.losers.map((lbRound, lr) => { if (lbRound.matches.every(m => !m.home && !m.away && !m.result && !m.bye)) return null; const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
                 <div key={"lb"+lr} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
                   <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", flexShrink: 0 }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {lbRound.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
                             <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
@@ -7805,7 +7811,7 @@ export default function App() {
                     {lbDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
                   {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
-                    {lbRound.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                    {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
                       {renderKoMatchRow(m, { ri: lr, mi, bracket: "lb" }, { cardLayout: lbRound.matches.length > 2, showByeInAction: true, initialLeg: 0 })}
                     </div>))}
                   </div>}
