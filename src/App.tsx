@@ -7663,7 +7663,7 @@ export default function App() {
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && !live[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                    {n % 2 === 1 && live[n-1] && !live[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
