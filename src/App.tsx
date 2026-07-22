@@ -3553,8 +3553,9 @@ export default function App() {
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
     const wbRounds = ko.rounds.slice(wbFirst);
     const wbN0 = wbRounds[0].matches.length;
-    const lbRounds = ko.losers;
-    const lbN0 = lbRounds[0].matches.length;
+    const _xd = (m) => (!m.home && !m.away && !m.result && !m.bye) || m.bye;
+    const lbRounds = ko.losers.map(rd => ({...rd, matches: rd.matches.filter(m => !_xd(m))})).filter(rd => rd.matches.length > 0);
+    const lbN0 = Math.max(1, ...lbRounds.map(rd => rd.matches.length));
     const cW = 180, cH = 48, gp = 8, cn = 24, pd = 24, hd = 18;
     const wbH = Math.max(wbN0, 2) * (cH + gp);
     const lbH = Math.max(lbN0, 2) * (cH + gp);
@@ -7570,7 +7571,7 @@ export default function App() {
               const wbN0 = wbRounds[0].matches.length;
               const wbH = Math.max(wbN0, 2) * (cardH + gap);
               const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
-              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => !_dead(m) && !m.bye).length));
+              const lbN0 = tKO.losers[0].matches.length;
               const lbH = Math.max(lbN0, 2) * (cardH + gap);
 
               const deMiniCard = (m, bk, ri, mi) => {
@@ -7628,21 +7629,20 @@ export default function App() {
 
               const renderCol = (matches, height, bk, ri) => {
                 const isLB = bk === "lb";
-                const items = isLB ? matches.filter(m => !_dead(m) && !m.bye) : matches;
-                const n = items.length || 1;
+                const n = matches.length || 1;
                 const slotH = height / n;
                 return (
                   <div style={{ position: "relative", height, width: colW, flexShrink: 0 }}>
-                    {items.map((m, vi) => {
-                      if (!isLB && m.bye) return null;
-                      const mi = isLB ? matches.indexOf(m) : vi;
-                      const top = (vi + 0.5) * slotH - (cardH - gap) / 2;
+                    {matches.map((m, mi) => {
+                      if (isLB ? (_dead(m) || m.bye) : m.bye) return null;
+                      const top = (mi + 0.5) * slotH - (cardH - gap) / 2;
                       return <div key={mi} style={{ position: "absolute", top, left: 0 }}>{deMiniCard(m, bk, ri, mi)}</div>;
                     })}
                   </div>
                 );
               };
 
+              const _skip = (m) => m.bye || _dead(m);
               const pairConn = (srcMatches, height) => {
                 const n = srcMatches.length;
                 const slotH = height / n;
@@ -7651,18 +7651,18 @@ export default function App() {
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
                     {Array.from({ length: pairs }, (_, i) => {
                       const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
-                      if (m1.bye && m2.bye) return null;
+                      if (_skip(m1) && _skip(m2)) return null;
                       const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
                       return (
                         <g key={i}>
-                          {!m1.bye && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
-                          {!m2.bye && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
-                          <line x1={connW/2} y1={!m1.bye ? y1 : midY} x2={connW/2} y2={!m2.bye ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
+                          {!_skip(m1) && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          {!_skip(m2) && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          <line x1={connW/2} y1={!_skip(m1) ? y1 : midY} x2={connW/2} y2={!_skip(m2) ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                           <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && srcMatches[n-1] && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                    {n % 2 === 1 && srcMatches[n-1] && !_skip(srcMatches[n-1]) && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
@@ -7672,7 +7672,7 @@ export default function App() {
                 const slotH = height / n;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
+                    {srcMatches.map((m, i) => _skip(m) ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
                   </svg>
                 );
               };
@@ -7717,7 +7717,7 @@ export default function App() {
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {tKO.losers.map((rd, lr) => { if (rd.matches.every(m => _dead(m) || m.bye)) return null; return (<Fragment key={"lb"+lr}>
-                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(m => _dead(m) || m.bye)) prev--; if (prev < 0) return null; const src = tKO.losers[prev].matches.filter(m => !_dead(m) && !m.bye); if (!src.length) return null; return rd.type === "internal" ? pairConn(src, lbH) : straightConn(src, lbH); })()}
+                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(m => _dead(m) || m.bye)) prev--; if (prev < 0) return null; return rd.type === "internal" ? pairConn(tKO.losers[prev].matches, lbH) : straightConn(tKO.losers[prev].matches, lbH); })()}
                       <div style={{ flexShrink: 0 }}>
                         <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                         {renderCol(rd.matches, lbH, "lb", lr)}
