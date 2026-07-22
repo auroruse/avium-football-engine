@@ -2235,6 +2235,20 @@ function propagateKO(ko) {
       const wbRd = ko.rounds[wbDR];
       if (wbRd) { const n = lbRd.matches.length; for (let i = 0; i < n; i++) { const wbM = wbRd.matches[n - 1 - i]; if (wbM && !wbM.bye && wbM.result && wbM.home && wbM.away) lbRd.matches[i].away = koLoser(wbM); if (lbRd.matches[i].home && !lbRd.matches[i].away && wbM && wbM.bye) lbRd.matches[i].bye = true; } }
     }
+    // Detect byes from permanently-empty predecessor slots (cascades from bye-heavy WB R0)
+    if (lr > 0) {
+      const prevRd = ko.losers[lr - 1];
+      const noTeam = (s) => !s || (!s.home && !s.away && !s.bye && !s.result);
+      lbRd.matches.forEach((m, mi) => {
+        if (m.bye || m.result || (m.home && m.away) || (!m.home && !m.away)) return;
+        if (lbRd.type === "dropin") {
+          if (!m.home && m.away && noTeam(prevRd.matches[mi])) { m.bye = true; m.home = m.away; m.away = null; }
+        } else {
+          if (!m.home && m.away && noTeam(prevRd.matches[2 * mi])) { m.bye = true; m.home = m.away; m.away = null; }
+          else if (m.home && !m.away && (2 * mi + 1 >= prevRd.matches.length || noTeam(prevRd.matches[2 * mi + 1]))) m.bye = true;
+        }
+      });
+    }
     if (lr < ko.losers.length - 1) {
       const nxt = ko.losers[lr + 1];
       lbRd.matches.forEach((m, mi) => {
