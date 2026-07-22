@@ -3554,8 +3554,8 @@ export default function App() {
     const wbRounds = ko.rounds.slice(wbFirst);
     const wbN0 = wbRounds[0].matches.length;
     const _xd = (m) => (!m.home && !m.away && !m.result && !m.bye) || m.bye;
-    const lbRounds = ko.losers.map(rd => ({...rd, matches: rd.matches.filter(m => !_xd(m))})).filter(rd => rd.matches.length > 0);
-    const lbN0 = Math.max(1, ...lbRounds.map(rd => rd.matches.length));
+    const lbRounds = ko.losers;
+    const lbN0 = lbRounds[0].matches.length;
     const cW = 180, cH = 48, gp = 8, cn = 24, pd = 24, hd = 18;
     const wbH = Math.max(wbN0, 2) * (cH + gp);
     const lbH = Math.max(lbN0, 2) * (cH + gp);
@@ -3614,24 +3614,27 @@ export default function App() {
         addLabel(lbl, m.result?.pen ? "#d08770" : "var(--chrome-muted)", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
       }
     };
+    const _sk = (m) => _xd(m);
     const pairLines = (srcMatches, x, baseY, height) => {
       const srcN = srcMatches.length, sl = height / srcN;
       for (let i = 0; i < (srcN>>1); i++) {
         const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
-        if (m1.bye && m2.bye) continue;
+        const s1 = _sk(m1), s2 = _sk(m2);
         const y1 = baseY + (2*i+0.5)*sl, y2 = baseY + (2*i+1.5)*sl, mid = (y1+y2)/2;
-        if (!m1.bye) s += '<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="var(--chrome-muted)"/>';
-        if (!m2.bye) s += '<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="var(--chrome-muted)"/>';
-        s += '<line x1="'+(x+cn/2)+'" y1="'+(m1.bye?mid:y1)+'" x2="'+(x+cn/2)+'" y2="'+(m2.bye?mid:y2)+'" stroke="var(--chrome-muted)"/>';
+        if (s1 && s2) { s += '<line x1="'+x+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="var(--chrome-muted)" opacity="0.2"/>'; continue; }
+        if (!s1) s += '<line x1="'+x+'" y1="'+y1+'" x2="'+(x+cn/2)+'" y2="'+y1+'" stroke="var(--chrome-muted)"/>';
+        if (!s2) s += '<line x1="'+x+'" y1="'+y2+'" x2="'+(x+cn/2)+'" y2="'+y2+'" stroke="var(--chrome-muted)"/>';
+        s += '<line x1="'+(x+cn/2)+'" y1="'+(s1?mid:y1)+'" x2="'+(x+cn/2)+'" y2="'+(s2?mid:y2)+'" stroke="var(--chrome-muted)"/>';
         s += '<line x1="'+(x+cn/2)+'" y1="'+mid+'" x2="'+(x+cn)+'" y2="'+mid+'" stroke="var(--chrome-muted)"/>';
       }
-      if (srcN % 2 === 1 && !srcMatches[srcN-1].bye) { const y = baseY + (srcN-0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>'; }
+      if (srcN % 2 === 1 && srcMatches[srcN-1] && !_sk(srcMatches[srcN-1])) { const y = baseY + (srcN-0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>'; }
     };
     const straightLines = (srcMatches, x, baseY, height) => {
       const srcN = srcMatches.length, sl = height / srcN;
-      for (let i = 0; i < srcN; i++) { if (srcMatches[i].bye) continue; const y = baseY + (i+0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)"/>'; }
+      for (let i = 0; i < srcN; i++) { const y = baseY + (i+0.5)*sl; s += '<line x1="'+x+'" y1="'+y+'" x2="'+(x+cn)+'" y2="'+y+'" stroke="var(--chrome-muted)" opacity="'+(_sk(srcMatches[i]) ? 0.2 : 1)+'"/>'; }
     };
-    const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes) => {
+    const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes, skipCard) => {
+      const sf = skipCard || (m => m.bye);
       let cx = pd;
       rounds.forEach((rd, ri) => {
         if (ri > 0) {
@@ -3640,9 +3643,12 @@ export default function App() {
           else pairLines(prevM, cx, baseY + hd, height);
           cx += cn;
         }
+        const allDead = rd.matches.every(m => sf(m));
         const n = rd.matches.length, sl = height / n;
-        s += '<text x="'+(cx+cW/2)+'" y="'+(baseY+12)+'" class="h" style="fill:'+sectionClr+'">'+esc((rd.name||"").toUpperCase())+'</text>';
-        rd.matches.forEach((m, mi) => { if (m.bye) return; const y = baseY + hd + (mi+0.5)*sl - cH/2; card(m, cx, y, brd, bw); });
+        if (!allDead) {
+          s += '<text x="'+(cx+cW/2)+'" y="'+(baseY+12)+'" class="h" style="fill:'+sectionClr+'">'+esc((rd.name||"").toUpperCase())+(rd.type==="dropin"?" ↓":"")+'</text>';
+          rd.matches.forEach((m, mi) => { if (sf(m)) return; const y = baseY + hd + (mi+0.5)*sl - cH/2; card(m, cx, y, brd, bw); });
+        }
         cx += cW;
       });
       return cx;
@@ -3671,7 +3677,7 @@ export default function App() {
     const lbTopY = wbBaseY + 8 + hd + wbH + 16;
     s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="var(--chrome-border)" stroke-opacity="0.3"/>';
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
-    renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes);
+    renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, _xd);
     s += '</svg>';
     { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
@@ -7651,13 +7657,14 @@ export default function App() {
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
                     {Array.from({ length: pairs }, (_, i) => {
                       const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
-                      if (_skip(m1) && _skip(m2)) return null;
+                      const s1 = _skip(m1), s2 = _skip(m2);
                       const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
+                      if (s1 && s2) return <g key={i}><line x1={0} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} opacity={0.2} /></g>;
                       return (
                         <g key={i}>
-                          {!_skip(m1) && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
-                          {!_skip(m2) && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
-                          <line x1={connW/2} y1={!_skip(m1) ? y1 : midY} x2={connW/2} y2={!_skip(m2) ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
+                          {!s1 && <line x1={0} y1={y1} x2={connW/2} y2={y1} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          {!s2 && <line x1={0} y1={y2} x2={connW/2} y2={y2} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                          <line x1={connW/2} y1={!s1 ? y1 : midY} x2={connW/2} y2={!s2 ? y2 : midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                           <line x1={connW/2} y1={midY} x2={connW} y2={midY} stroke="var(--chrome-muted)" strokeWidth={1} />
                         </g>
                       );
@@ -7672,7 +7679,7 @@ export default function App() {
                 const slotH = height / n;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    {srcMatches.map((m, i) => _skip(m) ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
+                    {srcMatches.map((m, i) => <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} opacity={_skip(m) ? 0.2 : 1} />)}
                   </svg>
                 );
               };
@@ -7716,11 +7723,11 @@ export default function App() {
                   {/* LB */}
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
-                    {tKO.losers.map((rd, lr) => { if (rd.matches.every(m => _dead(m) || m.bye)) return null; return (<Fragment key={"lb"+lr}>
-                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(m => _dead(m) || m.bye)) prev--; if (prev < 0) return null; return rd.type === "internal" ? pairConn(tKO.losers[prev].matches, lbH) : straightConn(tKO.losers[prev].matches, lbH); })()}
-                      <div style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
-                        {renderCol(rd.matches, lbH, "lb", lr)}
+                    {tKO.losers.map((rd, lr) => { const allSkip = rd.matches.every(m => _dead(m) || m.bye); return (<Fragment key={"lb"+lr}>
+                      {lr > 0 && (rd.type === "internal" ? pairConn(tKO.losers[lr-1].matches, lbH) : straightConn(tKO.losers[lr-1].matches, lbH))}
+                      <div style={{ flexShrink: 0, width: allSkip ? 0 : colW }}>
+                        {!allSkip && <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>}
+                        {!allSkip && renderCol(rd.matches, lbH, "lb", lr)}
                       </div>
                     </Fragment>); })}
                   </div>
