@@ -609,7 +609,7 @@ function computeStyleFit(style, squad) {
   if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "DEF");
   if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
   if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
-  return Math.max(0, Math.min(1.25, (avg - 65) / 20));
+  return Math.max(0.3, Math.min(1.25, (avg - 65) / 20));
 }
 function applyStyleFit(mod, fit) {
   if (fit === 1) return mod;
