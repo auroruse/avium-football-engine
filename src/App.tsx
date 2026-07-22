@@ -132,6 +132,7 @@ const CM = {
   corner_won:["Corner {t}.","Pushed behind! Corner to {t}.","Behind for a corner! {t} send men forward.","Deflected behind. Corner {t}.","Another set piece opportunity. Corner {t}.","Behind off the last defender. Corner {t}.","Cleared for a corner! {t} sending bodies up.","Last touch {o}. Corner {t}."],
   miss_corner:["Takes a wicked deflection off {o}, behind for a corner.","Nicks off a defender's boot. Corner {t}.","Cannons off {o} and behind. Corner {t}.","Deflects off a despairing challenge. Corner {t}.","Inside out off a defensive leg. Corner {t}."],
   corner_again:["Another corner {t}.","Taken short... and another corner {t}!","Still {t}'s corner. The pressure builds.","Worked back in... and it's another corner!","The corner leads to another! {t} keep the pressure on.","Blocked behind. Corner number two in quick succession for {t}.","In it comes, out it goes... and behind again. Corner {t}.","{o} can only put it behind. {t} will go again.","Deflected over. {t} keep the set-piece pressure coming.","Same routine, same result. Another {t} corner."],
+  corner_delivery:["{t}'s {n} stands over the corner. In it comes!","The delivery from {t}'s {n}! Into the mixer!","{t}'s {n} whips it into the box!","{t}'s {n} curls it toward the six-yard area!","In it comes from {t}'s {n}! Looking for heads!","{t}'s {n} delivers to the far post!","{t}'s {n} floats it to the near post!","Swinging delivery from {t}'s {n}!","{t}'s {n} fires it in low! Near post!","Inswinger from {t}'s {n}! Bodies everywhere!"],
   corner_rebound:["Off the woodwork and behind for a corner!","Parried behind! Corner {t}.","Tipped over! Corner to {t}.","Rebounds for a corner!","The save deflects behind for a corner!","Pushed behind by the keeper! Corner {t}."],
   free_kick:["Free kick in a shooting position for {t}. {n} stands over it.","{t} with a direct free kick in range. {n} steps up.","Foul leaves {t} a real sight of goal. {n} eyes the wall.","{t}'s {n} places the ball down for the free kick.","Dangerous free kick for {t}. {n} takes the run-up.","Wall's set. {t}'s {n} ready to strike it.","{n} fancies this one for {t}. Free kick in a good area.","{t} have a direct shot at goal. {n} over the ball.","Promising free kick for {t}. {n} lines it up.","{t}'s {n} steps back, sizing up the free kick."],
   buildup:["{t}'s {n} drives forward into {o}'s half.","{t} working it wide. {n} has options.","{t} probing through the middle. {n} on the ball.","{t}'s {n} carries it forward. Space opening up.","Ball switched by {t}. {n} receives in space.","{t} patient in possession. {n} picks the pass.","Good move from {t}. {n} advancing.","{n} plays a one-two and surges forward for {t}.","{t}'s {n} finds space between the lines.","{t} building nicely. {n} turns and looks forward.","Neat combination from {t}. {n} carrying it forward.","{t}'s {n} clips one over the top. {t} progressing.","Quick passing from {t}. {n} picks it up on the half turn.","{t}'s {n} beats the press and drives on.","{t} overloading the flank. {n} involved.","{t}'s {n} drops deep, collects, turns and plays forward.","Sharp pass from {t}'s {n}. Through the first line.","Crossfield ball from {t}'s {n}. Play shifted wide.","{t}'s {n} threads it through the midfield. On the move.","Lovely first touch from {t}'s {n}. Turns and plays it forward."],
@@ -186,11 +187,11 @@ function genGoalViz(rng, method, scorerName, assistName, zone, dive) {
   else if (m !== "og") {
     if (m === "header") { shotFrom = { x: R(88,96), y: R(20,45) }; assistFrom = { x: R(95,100), y: rng.u() < 0.5 ? R(2,12) : R(53,63) }; }
     else if (m === "corner") { shotFrom = { x: R(90,97), y: R(18,47) }; assistFrom = { x: 100, y: rng.u() < 0.5 ? R(0,5) : R(60,65) }; }
-    else if (m === "long-range") { shotFrom = { x: R(68,82), y: R(15,50) }; assistFrom = { x: R(48,68), y: R(12,53) }; }
+    else if (m === "long-range") { shotFrom = { x: R(72,80), y: R(15,50) }; assistFrom = { x: R(48,68), y: R(12,53) }; }
     else if (m === "deflection") { shotFrom = { x: R(75,90), y: R(16,49) }; assistFrom = { x: R(55,78), y: R(12,53) }; }
     else if (m === "counter") { shotFrom = { x: R(80,94), y: R(18,47) }; assistFrom = { x: R(20,45), y: R(15,50) }; }
     else if (m === "gk-error") { shotFrom = { x: R(82,95), y: R(20,45) }; assistFrom = { x: R(55,78), y: R(15,50) }; }
-    else { shotFrom = { x: R(78,92), y: R(18,47) }; assistFrom = { x: R(55,80), y: R(10,55) }; }
+    else { shotFrom = { x: R(82,94), y: R(18,47) }; assistFrom = { x: R(55,80), y: R(10,55) }; }
     if (!assistName) assistFrom = null;
   }
   let gz = zone, dv = dive;
@@ -261,22 +262,35 @@ function gvSync(txt, gv) {
     if (dw.includes("bar")) forceTopRow();
     if (dw.includes("post") || dw.includes("upright")) forceSideColumn();
   }
-  if (gv.shotFrom && gv.method !== "pen") {
+  if (gv.shotFrom && gv.method !== "pen" && !gv._posLocked) {
     const d = txt.toLowerCase();
     if (d.includes("six yard box") || d.includes("very close range") || d.includes("tap-in") || d.includes("close range")) gv.shotFrom.x = Math.max(gv.shotFrom.x, 93);
     else if (d.includes("outside the box") || d.includes("from distance") || d.includes("from range") || d.includes("25 yards") || d.includes("30 yards") || d.includes("28 yards") || d.includes("22 yards")) gv.shotFrom.x = Math.min(gv.shotFrom.x, 78);
     else if (d.includes("edge of the box") || d.includes("edge of the area") || d.includes("penalty spot")) { gv.shotFrom.x = Math.max(Math.min(gv.shotFrom.x, 88), 84); }
     else if (d.includes("of the box")) gv.shotFrom.x = Math.max(gv.shotFrom.x, 83);
-    if (d.includes("right side")) gv.shotFrom.y = Math.max(gv.shotFrom.y, 43);
-    else if (d.includes("left side")) gv.shotFrom.y = Math.min(gv.shotFrom.y, 22);
-    else if (d.includes("center of the box") || d.includes("center of the six yard box")) gv.shotFrom.y = Math.max(24, Math.min(gv.shotFrom.y, 41));
+    if (d.includes("right side")) gv.shotFrom.y = Math.max(gv.shotFrom.y, 40);
+    else if (d.includes("left side")) gv.shotFrom.y = Math.min(gv.shotFrom.y, 25);
+    else if (d.includes("center of the box") || d.includes("center of the six yard box")) gv.shotFrom.y = Math.max(27, Math.min(gv.shotFrom.y, 38));
     if (d.includes("tight angle")) gv.shotFrom.y = gv.shotFrom.y < 32.5 ? Math.min(gv.shotFrom.y, 15) : Math.max(gv.shotFrom.y, 50);
   }
   if (gv.method !== "pen" && gv.goalZone != null) {
     const d = txt.toLowerCase(), col = gv.goalZone % 3;
-    if (d.includes("wrong-foot") || d.includes("the wrong way")) { if (gv.dive === col) gv.dive = col === 2 ? 0 : col + 1; }
+    if (gv.result === "save") gv.dive = col;
+    else if (d.includes("wrong-foot") || d.includes("the wrong way")) { if (gv.dive === col) gv.dive = col === 2 ? 0 : col + 1; }
     else if (d.includes("rooted") || d.includes("could only watch") || d.includes("through the keeper") || d.includes("through his legs") || d.includes("empty net") || d.includes("unguarded") || d.includes("vacant") || d.includes("stranded")) gv.dive = 1;
   }
+}
+function fixDescCoords(txt, gv) {
+  if (!gv?.shotFrom || gv.method === "pen" || gv.method === "og") return txt;
+  const x = gv.shotFrom.x, y = gv.shotFrom.y;
+  const side = y <= 24 ? "left" : y >= 41 ? "right" : "center";
+  let pos;
+  if (x >= 95) pos = "from very close range";
+  else if (x >= 93) pos = side === "center" ? "from the center of the six yard box" : "from the " + side + " side of the six yard box";
+  else if (x >= 83) pos = side === "center" ? "from the center of the box" : "from the " + side + " side of the box";
+  else if (x >= 78) pos = "from the edge of the box";
+  else pos = "from outside the box";
+  return txt.replace(/from (?:the (?:left|right|center) (?:side )?of (?:the )?(?:box|six yard box|area)|the edge of (?:the )?(?:box|six yard box|area)|the (?:left|right) side|(?:very )?close range|outside the box|the penalty spot|\d+ yards|long range|distance|range)/i, pos);
 }
 // Synthetic player-to-player build-up for a "chance" event, on the same pitch coordinate
 // system as genGoalViz's shotFrom (x 0-100 toward the attacking goal, y 0-65). "solo" is a
@@ -572,6 +586,36 @@ function mergeModifiers(sm, fm) {
   if (!fm) return sm;
   return { press:sm.press*(fm.press||1), adv:sm.adv+(fm.adv||0), hold:sm.hold+(fm.hold||0), lb:sm.lb+(fm.lb||0), boxShot:sm.boxShot+(fm.boxShot||0), goalP:sm.goalP+(fm.goalP||0), ctr:sm.ctr*(fm.ctr||1), ctrShot:sm.ctrShot+(fm.ctrShot||0), def:sm.def+(fm.def||0), lr:sm.lr+(fm.lr||0), corn:sm.corn*(fm.corn||1), maxT:sm.maxT, minT:sm.minT };
 }
+// ponytail: style fit — key-position OVR determines how much of a style's bonus you actually get
+const STYLE_FIT_SPOS = {
+  wingplay:      { wide: 0.6, fb: 0.3, fwd: 0.1 },
+  gegenpress:    { cmid: 0.45, fwd: 0.30, all: 0.25 },
+  tikitaka:      { cmid: 0.50, all: 0.50 },
+  counterattack: { fwd: 0.40, def: 0.35, gk: 0.25 },
+  parkthebus:    { def: 0.45, gk: 0.35, cmid: 0.20 },
+};
+const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
+const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
+const _isFitCMid = (sp) => sp==="CM"||sp==="DM"||sp==="AM";
+function computeStyleFit(style, squad) {
+  const w = STYLE_FIT_SPOS[style]; if (!w) return 1;
+  const starters = squad.filter(p => !p.bench);
+  const avgOf = (pred) => { const m = starters.filter(p => pred(p.spos || p.pos)); return m.length ? m.reduce((a, p) => a + (p.ovr || 65), 0) / m.length : 65; };
+  let avg = 0;
+  if (w.wide) avg += w.wide * avgOf(_isFitWide);
+  if (w.fb) avg += w.fb * avgOf(_isFitFB);
+  if (w.fwd) avg += w.fwd * avgOf(sp => sp === "ST" || sp === "FWD");
+  if (w.cmid) avg += w.cmid * avgOf(_isFitCMid);
+  if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "DEF");
+  if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
+  if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
+  return Math.max(0, Math.min(1.25, (avg - 65) / 20));
+}
+function applyStyleFit(mod, fit) {
+  if (fit === 1) return mod;
+  const BAL = STYLE_MOD.balanced;
+  return { press: mod.press, adv: BAL.adv + (mod.adv - BAL.adv) * fit, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: mod.ctr, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
+}
 const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, setPieces:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
@@ -613,9 +657,21 @@ function applyStrategy(mod, strat) {
   };
 }
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
+  if (s.activeChance) { s.activeChance.chanceViz._completed = true; }
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
-  const cornerPl = s.players[atk].filter(p => p.pos !== "GK"); const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk], s.formPosW?.[atk]);
+  const cornerPl = s.players[atk].filter(p => p.pos !== "GK");
+  const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk], s.formPosW?.[atk]);
+  const deliverPool = cornerPl.filter(p => p.name !== scorer.name);
+  const deliverer = deliverPool.length > 0 ? pickPlayer(rng, deliverPool, "any", s.teamSkill?.[atk], s.formPosW?.[atk]) : scorer;
+  const _R = (lo, hi) => lo + rng.u() * (hi - lo);
+  const cornerY = rng.u() < 0.5 ? _R(2, 5) : _R(60, 63);
+  const headerX = _R(90, 97), headerY = _R(18, 47);
+  const chain = [{ name: deliverer.name, pos: { x: 100, y: cornerY } }, { name: scorer.name, pos: { x: headerX, y: headerY } }];
+  const cv = { chain, _baseLen: 2, contested: 0 };
+  const ce = { min: dm, type: "chance", team: atk, playerFull: deliverer.fullName || deliverer.name, chanceViz: cv, text: "🏴 " + comm(rng, "corner_delivery", { t: nm[atk], o: nm[def], n: deliverer.fullName || deliverer.name }, s) };
+  s.events.push(ce); s.activeChance = ce; drainChain(s, atk, chain, 1.0);
+  const _lockPos = (_g) => { _g.shotFrom = { x: headerX, y: headerY }; _g._posLocked = true; _g.assistFrom = { x: 100, y: cornerY }; if (!_g.assist) _g.assist = deliverer.name; };
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
   const cGoalP = 0.04 * sm * (1 + ovrN(fatigueOvr(scorer.ovr, scorer.stamina), s.teamSkill?.[atk]) * 0.18) + cEmergency;
@@ -625,35 +681,39 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
     scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk],s.formPosW?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
     s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.10)).toFixed(2));});
-    {const _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn),_g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g});}
+    {let _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn);const _g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);_lockPos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);const _oc={min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
+    ce.chanceViz._completed=true;s.activeChance=null;
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 4);
   } else if (r < (0.10 + cGkBonus) * sm) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
     if (cGk) { cGk.saves = (cGk.saves || 0) + 1; cGk.rating = Math.min(10, +(cGk.rating + xgSaveBonus(cGoalP, 1.3)).toFixed(2)); }
     momBump(s, def, 2);
-    {const _t=comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name,g:cGk?.fullName||cGk?.name||"the keeper"},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm, type:"save", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDDE4 "+_t, goalViz:_g});}
+    {const _t=comm(rng,"corner_save",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name,g:cGk?.fullName||cGk?.name||"the keeper"},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="save";gvSync(_t,_g);_lockPos(_g);const _oc={min:dm, type:"save", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDDE4 "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
     if (rng.u() < 0.25) {
+      ce.chanceViz._completed=true;s.activeChance=null;
       s.stats[atk].corners++;
       s.events.push({min:dm, type:"corner", team:atk, text:"\uD83C\uDFF4 "+comm(rng,"corner_again",{t:nm[atk],o:nm[def]},s)});
       lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm);
-    } else { s.possession = def; s.ball = 2; s.pressure = 0; }
+    } else { ce.chanceViz._completed=true;s.activeChance=null; s.possession = def; s.ball = 2; s.pressure = 0; }
   } else if (r < 0.18) {
     // Miss — 12% chance of hitting the bar
     s.stats[atk].shots++;
     if (rng.u() < 0.12) {
       s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
       momBump(s, atk, 1);
-      {const _t=comm(rng,"woodwork_hdr",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="woodwork";gvSync(_t,_g);s.events.push({min:dm, type:"woodwork", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDEA8 "+_t, goalViz:_g});}
+      {const _t=comm(rng,"woodwork_hdr",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="woodwork";gvSync(_t,_g);_lockPos(_g);const _oc={min:dm, type:"woodwork", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83E\uDEA8 "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
     } else {
       momBump(s, def, 2);
-      {const _t=comm(rng,"corner_miss",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm, type:"miss", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83D\uDCA8 "+_t, goalViz:_g});}
+      {const _t=comm(rng,"corner_miss",{t:nm[atk],o:nm[def],n:scorer.fullName||scorer.name},s),_g=genGoalViz(rng,"corner",scorer.name,null);_g.result="miss";gvSync(_t,_g);_lockPos(_g);const _oc={min:dm, type:"miss", team:atk, playerFull:scorer.fullName||scorer.name, text:"\uD83D\uDCA8 "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
     }
+    ce.chanceViz._completed=true;s.activeChance=null;
     s.possession = def; s.ball = 2; s.pressure = 0;
   } else if (r < 0.43) {
-    s.events.push({min:dm, type:"neutral", text:comm(rng,"corner_retain",{t:nm[atk],o:nm[def]},s)});
+    const _oc={min:dm, type:"neutral", text:comm(rng,"corner_retain",{t:nm[atk],o:nm[def]},s), suppressStandalone:true};
+    ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);
+    ce.chanceViz._completed=true;s.activeChance=null;
     s.ball = atk === "home" ? 3 : 1; s.pressure = Math.min(s.pressure + 1, 4);
   } else {
-    // Clear — 2% chance of own goal
     if (rng.u() < 0.02) {
       const defPlayers = s.players[def].filter(p => p.pos === "DEF");
       const ogPlayer = defPlayers.length > 0 ? defPlayers[Math.floor(rng.u()*defPlayers.length)] : s.players[def].find(p=>p.pos!=="GK");
@@ -661,15 +721,18 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
         s.score[atk === "home" ? 0 : 1]++;
         if(s.goalscorers)s.goalscorers[atk].push({name:ogPlayer.name,min:dm,method:"og",ogTeam:nm[def]});
         ogPlayer.rating=Math.max(3,+(ogPlayer.rating-1.0).toFixed(1));
-        {const _t=ownGoalText(rng,s,nm,ogPlayer),_g=genGoalViz(rng,"og",ogPlayer.name,null);gvSync(_t,_g);s.events.push({min:dm, type:"goal", team:atk, playerFull:ogPlayer.fullName||ogPlayer.name, text:"\u26BD "+_t, goalViz:_g});}
+        {const _t=ownGoalText(rng,s,nm,ogPlayer),_g=genGoalViz(rng,"og",ogPlayer.name,null);gvSync(_t,_g);_lockPos(_g);const _oc={min:dm, type:"goal", team:atk, playerFull:ogPlayer.fullName||ogPlayer.name, text:"\u26BD "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
+        ce.chanceViz._completed=true;s.activeChance=null;
         s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 3);
       } else {
-        s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s)});
+        {const _oc={min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def]},s), suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
+        ce.chanceViz._completed=true;s.activeChance=null;
         s.possession = def; s.ball = 2; s.pressure = 0;
       }
     } else {
       {const _cd=pickDefActPlayer(rng,s,def,"defendCorner");if(_cd){_cd.defActs=(_cd.defActs||0)+1;ratePlayer(s.players[def],_cd.name,xgSaveBonus(cGoalP,1.0));}
-      s.events.push({min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def],n:_cd?.fullName||_cd?.name||nm[def]},s)});}
+      const _oc={min:dm, type:"clearance", text:comm(rng,"corner_clear",{t:nm[atk],o:nm[def],n:_cd?.fullName||_cd?.name||nm[def]},s), suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
+      ce.chanceViz._completed=true;s.activeChance=null;
       s.possession = def; s.ball = 2; s.pressure = 0;
     }
   }
@@ -704,14 +767,14 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   // save/miss/woodwork outcomes where genGoalViz was given assistName=null (no assist
   // *stat* is credited for a non-goal, but the pass that created the chance still happened
   // and should still be visible) — falls back to the chance's own passer name as the label.
-  const applyChancePos = (_g) => { if (chanceCtx) { _g.shotFrom = {...chanceCtx.shotFrom}; if (chanceCtx.assistFrom) { _g.assistFrom = {...chanceCtx.assistFrom}; if (!_g.assist) _g.assist = chanceCtx.assistName; } else _g.assistFrom = null; } };
+  const applyChancePos = (_g) => { if (chanceCtx) { _g.shotFrom = {...chanceCtx.shotFrom}; _g._posLocked = true; if (chanceCtx.assistFrom) { _g.assistFrom = {...chanceCtx.assistFrom}; if (!_g.assist) _g.assist = chanceCtx.assistName; } else _g.assistFrom = null; } };
   if(chanceCtx?.assistName){const _kp=s.players[atk].find(p=>p.name===chanceCtx.assistName);if(_kp)_kp.chances=(_kp.chances||0)+1;}
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.11+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(fatigueOvr(shooter.ovr, shooter.stamina), s.teamSkill?.[atk]) * 0.18) + sEmergency;
+  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(fatigueOvr(shooter.ovr, shooter.stamina), s.teamSkill?.[atk]) * 0.18) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
-  const saveP = Math.max(0.02, 0.16+0.16*defE/(atkE+defE) + ovrN(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - sEmergency);
+  const saveP = Math.max(0.02, 0.20+0.16*defE/(atkE+defE) + ovrN(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -721,7 +784,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
     s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
     shooter.goals++;let _ast;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_ast=pickAssist(shooter.name,0);if(_ast){const oldA=_ast.rating;_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_ast.name,delta:+(_ast.rating-oldA).toFixed(2)};}}
     s.players[def].forEach(p=>{if(p.pos==="GK"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.18)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}else if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
-    {const _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast),_g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
+    {let _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast);const _g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);applyChancePos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
     s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
   } else if (roll < goalP+saveP) {
     // Save — check for GK error (3%) or tipped onto woodwork (8%)
@@ -732,7 +795,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       shooter.goals++;let _astGk;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_astGk=pickAssist(shooter.name,0);if(_astGk){const oldA=_astGk.rating;_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_astGk.name,delta:+(_astGk.rating-oldA).toFixed(2)};}}
       const gk=s.players[def].find(p=>p.pos==="GK");if(gk){const old=gk.rating;gk.rating=Math.max(3,+(gk.rating-(xgConcedePenalty(goalP,0.18)+0.3)).toFixed(2));ratingDeltas.conceding.push({name:gk.name,delta:+(gk.rating-old).toFixed(2)});}
       s.players[def].forEach(p=>{if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
-      {const _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk),_g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);applyChancePos(_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
+      {let _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk);const _g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);applyChancePos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
       s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
     } else if (gkErrRoll < 0.09) {
       // Tipped onto woodwork
@@ -903,8 +966,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     // without ever touching s.ball — so without this, a team could press the ball away,
     // then win it straight back via a second press with the ball never having moved, landing
     // right back in a dg===0 tick that would silently reattach to the interrupted chance.
-    s.possession=op;s.possCount[op]++;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
-    s.events.push({min:dm,type:"press",text:comm(rng,"press_won",{t:nm[op],o:nm[po]},s)});
+    s.possession=op;s.possCount[op]++;s.pressure=0;const _prChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
+    {const _prEv={min:dm,type:"press",text:comm(rng,"press_won",{t:nm[op],o:nm[po]},s)};if(_prChance){_prChance.chanceViz.outcomeEvent=_prEv;_prEv.suppressStandalone=true;}s.events.push(_prEv);}
     return;
   }
   s.possCount[po]++;
@@ -920,25 +983,25 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   if(rng.u()<0.15*dribbleFoulMod*tackleFoulMod){
     // A foul stops the phase of play — whatever chance was building closes out here;
     // the free kick (or penalty) that follows is a new, separate situation.
-    if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
+    const _foulChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
     let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);
     if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}
     s.stats[op].fouls++;
     if(dg===0&&rng.u()<0.12){
       // Penalty — award now, defer the kick to the next tick so auto-play can pause before it is taken
-      s.events.push({min:dm,type:"penalty",team:po,playerFull:fouler.fullName||fouler.name,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.fullName||fouler.name},s)});s.stoppageBank+=90;s.stats[po].penalties++;
+      {const _penEv={min:dm,type:"penalty",team:po,playerFull:fouler.fullName||fouler.name,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.fullName||fouler.name},s)};if(_foulChance){_foulChance.chanceViz.outcomeEvent=_penEv;_penEv.suppressStandalone=true;}s.events.push(_penEv);}s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
       const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po],s.formPosW?.[po]);
       s.pendingPenalty={po,op,taker:taker.name,dm};
       return;
     }
-    s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;
+    {const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_foulChance){_foulChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;
     ratePlayer(s.players[op],fouler.name,-0.1);lmHandleCard(s,rng,dm,op,fouler,nm,0.28*tackleCardMod);
     // Free kick in a shooting position — resolves as a genuine shot (goal/save/miss/woodwork all possible).
     if(dg<=1&&rng.u()<0.18){
       const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");
-      s.events.push({min:dm,type:"neutral",text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.fullName||fkShooter.name},s)});
-      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,"long-range");
+      fkShooter.chances=(fkShooter.chances||0)+1;const _fkChain=[{name:fkShooter.name,pos:{x:75+rng.u()*10,y:30+rng.u()*40}}];const _fkCv={chain:_fkChain,_baseLen:1,contested:0};const _fkCe={min:dm,type:"chance",team:po,playerFull:fkShooter.fullName||fkShooter.name,chanceViz:_fkCv,text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.fullName||fkShooter.name},s)};s.events.push(_fkCe);s.activeChance=_fkCe;drainChain(s,po,_fkChain,1.0);
+      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,"long-range",chanceCtxFromChain(_fkChain));
     }
     else if(dg>1)s.ball+=dir; // free kick advances position
     return;
@@ -950,7 +1013,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(!s.activeChance && s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
     const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[op]) * 0.05 : 0), 0);
-    let shotP=0.55+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
+    let shotP=0.48+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     // Defensive contest: a named defender can end an active chance before a shot happens
     if(s.activeChance&&s.pressure>1){
@@ -972,7 +1035,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       }
       s.activeChance.chanceViz.contested=(s.activeChance.chanceViz.contested||0)+1;
     }
-    if(rng.u()<shotP){lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,s.activeChance?chanceCtxFromChain(s.activeChance.chanceViz.chain):undefined);return;}
+    if(rng.u()<shotP){if(!s.activeChance){const _sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);_sp.chances=(_sp.chances||0)+1;const _sv=genChanceViz(rng,"passed",_sp.name,s.players[po],s.chanceProfile?.[po]);const _si=_sv.chain.length>1?(s.players[po].find(p=>p.name===_sv.chain[0].name)||_sp):_sp;const _spool=_sv.chain.length>1?"chance_created":"enter_box";const _se={min:dm,type:"chance",team:po,playerFull:_si.fullName||_si.name,chanceViz:_sv,text:comm(rng,_spool,{t:nm[po],o:nm[op],n:_si.fullName||_si.name},s)};s.events.push(_se);s.activeChance=_se;drainChain(s,po,_sv.chain,1.0);}lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(s.activeChance.chanceViz.chain));return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
     if(rng.u()<keepP){
@@ -1005,7 +1068,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
       else {const clEv={min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     }
     return;
@@ -1018,7 +1081,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po],s.formPosW?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po],s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{const _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr),_g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po],s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{let _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr);const _g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);_t=fixDescCoords(_t,_g);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(lrGoal,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -1059,7 +1122,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
     else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist",s.teamSkill?.[po]);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
@@ -1067,14 +1130,14 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);if(rng.u()<0.25+0.35*poE/(poE+opE))lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}s.events.push({min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)});s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
-    s.possession=op;
+    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
+    s.possession=op;const _toChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
     // Winning the ball back in open play is by far the most common defensive moment in a
     // match, and the main lever for making defActs volume track chances-created volume —
     // gated below 100% only so an occasional turnover has no single credited player (ball
@@ -1084,9 +1147,9 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);s.events.push({min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)});if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot)lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter");}
-      else s.events.push({min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
-    }else s.events.push({min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)});
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
+      else {const _cEv={min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}
+    }else {const _nEv={min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_nEv;_nEv.suppressStandalone=true;}s.events.push(_nEv);}
   }
 }
 
@@ -1331,16 +1394,16 @@ function lmAdvance(prev, rng, home, away, mutate) {
   switch(s.phase){
     case "pre_match": s.phase="first_half";s.minute=1;s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:home.name})});playMin();break;
     case "first_half": s.minute++;playMin();if(s.minute>=45)toStop("first_half");break;
-    case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
+    case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
     case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "second_half": s.minute++;playMin();if(s.minute>=90)toStop("second_half");break;
-    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ft_whistle)+" "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
+    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ft_whistle)+" "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
     case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+pick(rng,CM.et_start)});break;
     case "et_first": s.minute++;playMin();if(s.minute>=105)toStop("et_first");break;
-    case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
+    case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
     case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
     case "et_second": s.minute++;playMin();if(s.minute>=120)toStop("et_second");break;
-    case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
+    case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
         const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
         s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
     case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(tk==="home"?home.skill:away.skill,s.stats[tk].reds,s.minute);const gE=lmEffSkill(ok==="home"?home.skill:away.skill,s.stats[ok].reds,s.minute);
@@ -1493,7 +1556,9 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   s.homeAdv=homeAdv||null;
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
-  s.modifiers={home:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),s.strategy.home),away:applyStrategy(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),s.strategy.away)};
+  const _hFit=computeStyleFit(s.styles.home,s.players.home),_aFit=computeStyleFit(s.styles.away,s.players.away);
+  s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
+  s.styleFit={home:_hFit,away:_aFit};
   initMatchEnhancements(s);
   const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
   const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
@@ -6105,7 +6170,7 @@ export default function App() {
                     const chanceClr = isH ? hClr : aClr;
                     const isOutcomeStep = hasOutcome && step === chainSteps;
                     if (isOutcomeStep) {
-                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"}, corner: {icon:"🏴", header:"Corner!", color:"#ebcb8b", bg:"#ebcb8b08"} };
+                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"}, corner: {icon:"🏴", header:"Corner!", color:"#ebcb8b", bg:"#ebcb8b08"}, neutral: {icon:"🔄", header:"Retained", color:"var(--chrome-muted)", bg:"transparent"}, foul: {icon:"⚠️", header:"Fouled!", color:"#ebcb8b", bg:"#ebcb8b08"}, penalty: {icon:"🎯", header:"Penalty!", color:"#ebcb8b", bg:"#ebcb8b08"}, press: {icon:"💪", header:"Pressed!", color:"#81a1c1", bg:"#81a1c108"}, counter: {icon:"⚡", header:"Counter!", color:"#81a1c1", bg:"#81a1c108"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
                       const nextText = nextE.text.replace(/^[^\p{L}\p{N}]+/u, '');
@@ -6455,7 +6520,7 @@ export default function App() {
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
-                const cM = (side) => applyStrategy(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]), lmMatch.strategy?.[side]);
+                const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
                 const hM = cM("home"), aM = cM("away");
                 const ps = [
                   {k:"press",l:"Press",m:true},{k:"adv",l:"Advance",m:false},{k:"hold",l:"Hold",m:false},
@@ -8127,10 +8192,10 @@ export default function App() {
             <P>If no shot is generated, the defending team may clear the ball: partially (staying near the box, possible corner), fully (back to midfield), or long (possible counter-attack for the clearing team).</P>
 
             <H2 id="doc-shots">Shot resolution</H2>
-            <P>Three outcomes per shot. Goal probability: approximately 13% base, modified by the goal probability parameter and the skill ratio. Save probability: approximately 24% for equal teams. Everything else is a miss. Total on-target rate is approximately 37%, matching modern Premier League averages. Saves produce a corner 45% of the time; misses produce a corner 30% of the time.</P>
+            <P>Three outcomes per shot. Goal probability: approximately 16% base, modified by the goal probability parameter and the skill ratio. Save probability: approximately 28% for equal teams. Everything else is a miss. Total on-target rate is approximately 44%, matching modern Premier League averages. Saves produce a corner 45% of the time; misses produce a corner 30% of the time.</P>
 
             <H2 id="doc-xg">Expected goals (xG)</H2>
-            <P>Every shot attempt accumulates its goal probability into a running xG total. Box shots add their computed goalP (approximately 13% base, scaled by skill ratio and modifiers). Long-range shots add approximately 5%. Corners add approximately 4%. The xG total is displayed in match stats alongside actual goals, providing a measure of chance quality independent of finishing luck.</P>
+            <P>Every shot attempt accumulates its goal probability into a running xG total. Box shots add their computed goalP (approximately 16% base, scaled by skill ratio and modifiers). Long-range shots add approximately 5%. Corners add approximately 4%. The xG total is displayed in match stats alongside actual goals, providing a measure of chance quality independent of finishing luck.</P>
 
             <H2 id="doc-counters">Counter-attacks</H2>
             <P>Counters trigger when the defending team clears long from the box or when the possessing team turns the ball over in attacking territory. Counter probability scales with the counter multiplier (14% base in attacking zones, 6% deeper). A successful counter carries an elevated shot probability of approximately 45% for equal teams, boosted by the counter shot modifier.</P>
