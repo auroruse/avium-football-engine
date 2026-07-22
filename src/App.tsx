@@ -2227,6 +2227,9 @@ function propagateKO(ko) {
     if (lm.home && !lm.away && bot.bye) { lm.bye = true; }
     else if (!lm.home && lm.away && top.bye) { lm.bye = true; lm.home = lm.away; lm.away = null; }
   }
+  // Track structurally dead LB slots (permanently empty due to WB R0 byes)
+  const lbDead = ko.losers.map(r => r.matches.map(() => false));
+  ko.losers[0].matches.forEach((m, mi) => { if (!m.home && !m.away && !m.bye && !m.result) lbDead[0][mi] = true; });
   // Propagate through LB rounds
   for (let lr = 0; lr < ko.losers.length; lr++) {
     const lbRd = ko.losers[lr];
@@ -2235,17 +2238,22 @@ function propagateKO(ko) {
       const wbRd = ko.rounds[wbDR];
       if (wbRd) { const n = lbRd.matches.length; for (let i = 0; i < n; i++) { const wbM = wbRd.matches[n - 1 - i]; if (wbM && !wbM.bye && wbM.result && wbM.home && wbM.away) lbRd.matches[i].away = koLoser(wbM); if (lbRd.matches[i].home && !lbRd.matches[i].away && wbM && wbM.bye) lbRd.matches[i].bye = true; } }
     }
-    // Detect byes from permanently-empty predecessor slots (cascades from bye-heavy WB R0)
+    // Detect byes ONLY from structurally dead predecessor slots (not pending unplayed matches)
     if (lr > 0) {
-      const prevRd = ko.losers[lr - 1];
-      const noTeam = (s) => !s || (!s.home && !s.away && !s.bye && !s.result);
+      const dead = (ri, mi) => lbDead[ri] && lbDead[ri][mi];
       lbRd.matches.forEach((m, mi) => {
-        if (m.bye || m.result || (m.home && m.away) || (!m.home && !m.away)) return;
+        if (m.bye || m.result || (m.home && m.away) || (!m.home && !m.away)) {
+          if (!m.home && !m.away && !m.bye && !m.result) {
+            if (lbRd.type === "dropin") lbDead[lr][mi] = dead(lr - 1, mi);
+            else lbDead[lr][mi] = dead(lr - 1, 2 * mi) && (2 * mi + 1 >= ko.losers[lr - 1].matches.length || dead(lr - 1, 2 * mi + 1));
+          }
+          return;
+        }
         if (lbRd.type === "dropin") {
-          if (!m.home && m.away && noTeam(prevRd.matches[mi])) { m.bye = true; m.home = m.away; m.away = null; }
+          if (!m.home && m.away && dead(lr - 1, mi)) { m.bye = true; m.home = m.away; m.away = null; }
         } else {
-          if (!m.home && m.away && noTeam(prevRd.matches[2 * mi])) { m.bye = true; m.home = m.away; m.away = null; }
-          else if (m.home && !m.away && (2 * mi + 1 >= prevRd.matches.length || noTeam(prevRd.matches[2 * mi + 1]))) m.bye = true;
+          if (!m.home && m.away && dead(lr - 1, 2 * mi)) { m.bye = true; m.home = m.away; m.away = null; }
+          else if (m.home && !m.away && (2 * mi + 1 >= ko.losers[lr - 1].matches.length || dead(lr - 1, 2 * mi + 1))) m.bye = true;
         }
       });
     }
