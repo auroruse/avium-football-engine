@@ -3653,12 +3653,13 @@ export default function App() {
         s += '<line x1="'+midX+'" y1="'+((srcs[0]+srcs[srcs.length-1])/2)+'" x2="'+(x+cn)+'" y2="'+dstY+'" stroke="var(--chrome-muted)"/>';
       }
     };
-    const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes, skipCard) => {
+    const renderSection = (rounds, baseY, height, brd, bw, sectionClr, connTypes, skipCard, renumberLB) => {
       const sf = skipCard || ((m, ri) => m.bye);
-      let cx = pd, prevVisRi = -1;
+      let cx = pd, prevVisRi = -1, visN = 0;
       rounds.forEach((rd, ri) => {
         const allDead = rd.matches.every(m => sf(m, ri));
         if (skipCard && allDead) return;
+        visN++;
         if (prevVisRi >= 0) {
           if (prevVisRi === ri - 1) {
             const prevM = rounds[prevVisRi].matches;
@@ -3671,7 +3672,8 @@ export default function App() {
         }
         const n = rd.matches.length, sl = height / n;
         if (!allDead) {
-          s += '<text x="'+(cx+cW/2)+'" y="'+(baseY+12)+'" class="h" style="fill:'+sectionClr+'">'+esc((rd.name||"").toUpperCase())+(rd.type==="dropin"?" ↓":"")+'</text>';
+          const label = renumberLB ? (ri === rounds.length - 1 ? "LB Final" : `LB Round ${visN}`) : (rd.name || "");
+          s += '<text x="'+(cx+cW/2)+'" y="'+(baseY+12)+'" class="h" style="fill:'+sectionClr+'">'+esc(label.toUpperCase())+(rd.type==="dropin"?" ↓":"")+'</text>';
           rd.matches.forEach((m, mi) => { if (sf(m, ri)) return; const y = baseY + hd + (mi+0.5)*sl - cH/2; card(m, cx, y, brd, bw); });
         }
         cx += cW;
@@ -3703,7 +3705,7 @@ export default function App() {
     const lbTopY = wbBaseY + 8 + hd + wbH + 16;
     s += '<line x1="'+pd+'" y1="'+(lbTopY - 4)+'" x2="'+(svgW-pd)+'" y2="'+(lbTopY - 4)+'" stroke="var(--chrome-border)" stroke-opacity="0.3"/>';
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
-    renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, (m, ri) => ri === 0 ? _xd(m) : m.bye);
+    renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, (m, ri) => ri === 0 ? _xd(m) : m.bye, true);
     s += '</svg>';
     { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
@@ -7774,14 +7776,16 @@ export default function App() {
                   {/* LB */}
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
-                    {(() => { const losers = tKO.losers; const isDead = losers.map((rd, lr) => lr === 0 && rd.matches.every(m => _dead(m) || m.bye)); return losers.map((rd, lr) => {
+                    {(() => { const losers = tKO.losers; const isDead = losers.map((rd, lr) => lr === 0 && rd.matches.every(m => _dead(m) || m.bye)); let lbVisN = 0; return losers.map((rd, lr) => {
                       if (isDead[lr]) return null;
+                      lbVisN++;
                       let prevVis = -1; for (let p = lr - 1; p >= 0; p--) if (!isDead[p]) { prevVis = p; break; }
                       const conn = prevVis < 0 ? null : prevVis === lr - 1 ? (rd.type === "internal" ? pairConn(losers[prevVis].matches, lbH) : straightConn(losers[prevVis].matches, lbH)) : compoundConn(losers, prevVis, lr, lbH);
+                      const lbLabel = lr === losers.length - 1 ? "LB Final" : `LB Round ${lbVisN}`;
                       return (<Fragment key={"lb"+lr}>
                         {conn}
                         <div style={{ flexShrink: 0 }}>
-                          <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
+                          <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{lbLabel}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                           {renderCol(rd.matches, lbH, "lb", lr)}
                         </div>
                       </Fragment>);
