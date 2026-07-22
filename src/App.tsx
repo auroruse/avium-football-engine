@@ -7570,7 +7570,7 @@ export default function App() {
               const wbN0 = wbRounds[0].matches.length;
               const wbH = Math.max(wbN0, 2) * (cardH + gap);
               const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
-              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => !_dead(m)).length));
+              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => !_dead(m) && !m.bye).length));
               const lbH = Math.max(lbN0, 2) * (cardH + gap);
 
               const deMiniCard = (m, bk, ri, mi) => {
@@ -7628,7 +7628,7 @@ export default function App() {
 
               const renderCol = (matches, height, bk, ri) => {
                 const isLB = bk === "lb";
-                const items = isLB ? matches.filter(m => !_dead(m)) : matches;
+                const items = isLB ? matches.filter(m => !_dead(m) && !m.bye) : matches;
                 const n = items.length || 1;
                 const slotH = height / n;
                 return (
@@ -7716,8 +7716,8 @@ export default function App() {
                   {/* LB */}
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
-                    {tKO.losers.map((rd, lr) => { if (rd.matches.every(_dead)) return null; return (<Fragment key={"lb"+lr}>
-                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(_dead)) prev--; if (prev < 0) return null; const src = tKO.losers[prev].matches.filter(m => !_dead(m)); if (!src.length) return null; return rd.type === "internal" ? pairConn(src, lbH) : straightConn(src, lbH); })()}
+                    {tKO.losers.map((rd, lr) => { if (rd.matches.every(m => _dead(m) || m.bye)) return null; return (<Fragment key={"lb"+lr}>
+                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(m => _dead(m) || m.bye)) prev--; if (prev < 0) return null; const src = tKO.losers[prev].matches.filter(m => !_dead(m) && !m.bye); if (!src.length) return null; return rd.type === "internal" ? pairConn(src, lbH) : straightConn(src, lbH); })()}
                       <div style={{ flexShrink: 0 }}>
                         <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                         {renderCol(rd.matches, lbH, "lb", lr)}
