@@ -7569,7 +7569,8 @@ export default function App() {
               const wbRounds = tKO.rounds.slice(wbFirst);
               const wbN0 = wbRounds[0].matches.length;
               const wbH = Math.max(wbN0, 2) * (cardH + gap);
-              const lbN0 = tKO.losers[0].matches.length;
+              const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
+              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => !_dead(m)).length));
               const lbH = Math.max(lbN0, 2) * (cardH + gap);
 
               const deMiniCard = (m, bk, ri, mi) => {
@@ -7625,15 +7626,17 @@ export default function App() {
                 );
               };
 
-              const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
               const renderCol = (matches, height, bk, ri) => {
-                const n = matches.length;
+                const isLB = bk === "lb";
+                const items = isLB ? matches.filter(m => !_dead(m)) : matches;
+                const n = items.length || 1;
                 const slotH = height / n;
                 return (
                   <div style={{ position: "relative", height, width: colW, flexShrink: 0 }}>
-                    {matches.map((m, mi) => {
-                      if (m.bye) return null;
-                      const top = (mi + 0.5) * slotH - (cardH - gap) / 2;
+                    {items.map((m, vi) => {
+                      if (!isLB && m.bye) return null;
+                      const mi = isLB ? matches.indexOf(m) : vi;
+                      const top = (vi + 0.5) * slotH - (cardH - gap) / 2;
                       return <div key={mi} style={{ position: "absolute", top, left: 0 }}>{deMiniCard(m, bk, ri, mi)}</div>;
                     })}
                   </div>
@@ -7659,7 +7662,7 @@ export default function App() {
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                    {n % 2 === 1 && srcMatches[n-1] && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
@@ -7714,7 +7717,7 @@ export default function App() {
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10, marginTop: 8, borderTop: "1px solid var(--chrome-border-33)", paddingTop: 12 }}>LOWER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {tKO.losers.map((rd, lr) => { if (rd.matches.every(_dead)) return null; return (<Fragment key={"lb"+lr}>
-                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(_dead)) prev--; if (prev < 0) return null; return rd.type === "internal" ? pairConn(tKO.losers[prev].matches, lbH) : straightConn(tKO.losers[prev].matches, lbH); })()}
+                      {lr > 0 && (() => { let prev = lr - 1; while (prev >= 0 && tKO.losers[prev].matches.every(_dead)) prev--; if (prev < 0) return null; const src = tKO.losers[prev].matches.filter(m => !_dead(m)); if (!src.length) return null; return rd.type === "internal" ? pairConn(src, lbH) : straightConn(src, lbH); })()}
                       <div style={{ flexShrink: 0 }}>
                         <div style={{ fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>{rd.name}<span style={{ fontSize: 6, marginLeft: 3 }}>{rd.type === "dropin" ? "↓" : ""}</span></div>
                         {renderCol(rd.matches, lbH, "lb", lr)}
