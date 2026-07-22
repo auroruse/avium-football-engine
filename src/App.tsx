@@ -7569,7 +7569,7 @@ export default function App() {
               const wbRounds = tKO.rounds.slice(wbFirst);
               const wbN0 = wbRounds[0].matches.length;
               const wbH = Math.max(wbN0, 2) * (cardH + gap);
-              const lbN0 = Math.max(1, ...tKO.losers.map(rd => rd.matches.filter(m => m.home || m.away || m.result || m.bye).length));
+              const lbN0 = tKO.losers[0].matches.length;
               const lbH = Math.max(lbN0, 2) * (cardH + gap);
 
               const deMiniCard = (m, bk, ri, mi) => {
@@ -7627,15 +7627,13 @@ export default function App() {
 
               const _dead = (m) => !m.home && !m.away && !m.result && !m.bye;
               const renderCol = (matches, height, bk, ri) => {
-                const live = matches.filter(m => !_dead(m));
-                const n = live.length || 1;
+                const n = matches.length;
                 const slotH = height / n;
                 return (
                   <div style={{ position: "relative", height, width: colW, flexShrink: 0 }}>
-                    {live.map((m, vi) => {
-                      const mi = matches.indexOf(m);
+                    {matches.map((m, mi) => {
                       if (m.bye) return null;
-                      const top = (vi + 0.5) * slotH - (cardH - gap) / 2;
+                      const top = (mi + 0.5) * slotH - (cardH - gap) / 2;
                       return <div key={mi} style={{ position: "absolute", top, left: 0 }}>{deMiniCard(m, bk, ri, mi)}</div>;
                     })}
                   </div>
@@ -7643,15 +7641,13 @@ export default function App() {
               };
 
               const pairConn = (srcMatches, height) => {
-                const live = srcMatches.filter(m => !_dead(m));
-                const n = live.length || 1;
+                const n = srcMatches.length;
                 const slotH = height / n;
                 const pairs = Math.floor(n / 2);
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
                     {Array.from({ length: pairs }, (_, i) => {
-                      const m1 = live[2*i], m2 = live[2*i+1];
-                      if (!m1 || !m2) return null;
+                      const m1 = srcMatches[2*i], m2 = srcMatches[2*i+1];
                       if (m1.bye && m2.bye) return null;
                       const y1 = (2*i + 0.5) * slotH, y2 = (2*i + 1.5) * slotH, midY = (y1 + y2) / 2;
                       return (
@@ -7663,18 +7659,17 @@ export default function App() {
                         </g>
                       );
                     })}
-                    {n % 2 === 1 && live[n-1] && !live[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
+                    {n % 2 === 1 && !srcMatches[n-1].bye && <line x1={0} y1={(n - 0.5) * slotH} x2={connW} y2={(n - 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />}
                   </svg>
                 );
               };
 
               const straightConn = (srcMatches, height) => {
-                const live = srcMatches.filter(m => !_dead(m));
-                const n = live.length || 1;
+                const n = srcMatches.length;
                 const slotH = height / n;
                 return (
                   <svg style={{ width: connW, height, flexShrink: 0, marginTop: hdrH }}>
-                    {live.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
+                    {srcMatches.map((m, i) => m.bye ? null : <line key={i} x1={0} y1={(i + 0.5) * slotH} x2={connW} y2={(i + 0.5) * slotH} stroke="var(--chrome-muted)" strokeWidth={1} />)}
                   </svg>
                 );
               };
