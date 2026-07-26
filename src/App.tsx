@@ -481,7 +481,7 @@ const _rc = (() => {
 const STYLE_MOD = {
   balanced:     {press:1.0,adv:0,hold:0,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0,corn:1.0,maxT:null,minT:null},
   gegenpress:   {press:1.3,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:0.50,ctrShot:0.03,def:-0.01,lr:0,corn:1.0,maxT:null,minT:null},
-  tikitaka:     {press:1.1,adv:-0.01,hold:0.10,lb:-0.02,boxShot:-0.01,goalP:0.02,ctr:0.80,ctrShot:0,def:0.02,lr:-0.02,corn:0.95,maxT:"ultra",minT:null},
+  tikitaka:     {press:1.1,adv:-0.01,hold:0.10,lb:-0.02,boxShot:0.02,goalP:0.035,ctr:0.80,ctrShot:0,def:0.02,lr:-0.02,corn:1.0,maxT:"ultra",minT:null},
   counterattack:{press:0.50,adv:-0.06,hold:-0.02,lb:0.02,boxShot:-0.03,goalP:0.02,ctr:1.5,ctrShot:0.06,def:0.05,lr:0,corn:1.0,maxT:"ultra",minT:null},
   wingplay:     {press:1.0,adv:0.03,hold:-0.01,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0.04,corn:1.4,maxT:null,minT:null},
   parkthebus:   {press:0.20,adv:-0.08,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.02,corn:0.80,maxT:null,minT:"def"},
@@ -576,7 +576,7 @@ const FORM_MOD = {
   "4-1-4-1": {press:1.0,adv:0,hold:0.03,lb:0,boxShot:0,goalP:0,ctr:0.85,ctrShot:0,def:0.05,lr:0,corn:1.2},
   "4-1-2-1-2":{press:1.0,adv:0.01,hold:0.01,lb:0,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:-0.03,lr:0.03,corn:0.75},
   "4-3-2-1": {press:1.0,adv:0,hold:0.03,lb:-0.01,boxShot:0,goalP:0,ctr:0.9,ctrShot:0,def:0.03,lr:0.04,corn:0.85},
-  "4-2-4":   {press:0.8,adv:0.04,hold:-0.08,lb:0.03,boxShot:0.04,goalP:0.01,ctr:0.9,ctrShot:0,def:-0.08,lr:0,corn:1.1},
+  "4-2-4":   {press:0.8,adv:0.04,hold:-0.08,lb:0.03,boxShot:0.04,goalP:0,ctr:0.9,ctrShot:0,def:-0.11,lr:0,corn:1.1},
   "3-5-2":   {press:1.0,adv:0.02,hold:0.01,lb:0,boxShot:0.02,goalP:0,ctr:1.05,ctrShot:0,def:-0.04,lr:0,corn:1.15},
   "3-4-3":   {press:1.05,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:1.0,ctrShot:0,def:-0.05,lr:0,corn:1.0},
   "3-4-1-2": {press:1.0,adv:0.01,hold:0.02,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:-0.03,lr:0.03,corn:0.95},
@@ -2867,6 +2867,62 @@ function fullDisplayName(raw) {
     return isC ? titleCaseWord(w) : w;
   }).join(" ") || name;
 }
+const FORM_SPOS = {
+  "4-2-4":     ["GK","LB","CB","CB","RB","CM","CM","LW","ST","ST","RW"],
+  "4-4-2":     ["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"],
+  "4-3-3":     ["GK","LB","CB","CB","RB","CM","CM","CM","LW","ST","RW"],
+  "4-2-3-1":   ["GK","LB","CB","CB","RB","DM","DM","AM","AM","AM","ST"],
+  "4-1-4-1":   ["GK","LB","CB","CB","RB","DM","LW","CM","CM","RW","ST"],
+  "4-1-2-1-2": ["GK","LB","CB","CB","RB","DM","CM","CM","AM","ST","ST"],
+  "4-3-2-1":   ["GK","LB","CB","CB","RB","CM","CM","CM","AM","AM","ST"],
+  "3-4-3":     ["GK","CB","CB","CB","LWB","CM","CM","RWB","LW","ST","RW"],
+  "3-5-2":     ["GK","CB","CB","CB","LWB","CM","CM","CM","RWB","ST","ST"],
+  "3-4-1-2":   ["GK","CB","CB","CB","LWB","CM","CM","RWB","AM","ST","ST"],
+  "5-3-2":     ["GK","LWB","CB","CB","CB","RWB","CM","CM","CM","ST","ST"],
+};
+function sposFor(fm) {
+  if (FORM_SPOS[fm]) return FORM_SPOS[fm];
+  const d2=fm.split("-").map(Number); const s=["GK"]; const nd=d2[0]; if(nd<=3)for(let i=0;i<nd;i++)s.push("CB"); else{for(let i=0;i<nd;i++)s.push(i===0?"LB":i===nd-1?"RB":"CB");} for(let d=1;d<d2.length-1;d++){const isDeep=d===1&&d2.length>3;for(let i=0;i<d2[d];i++)s.push(isDeep?"DM":"CM");} const nf=d2[d2.length-1];if(nf===1)s.push("ST");else if(nf===2){s.push("ST","ST");}else{for(let i=0;i<nf;i++)s.push(i===0?"LW":i===nf-1?"RW":"ST");} return s;
+}
+// Natural-position model: [line, side] — line GK→DEF→WB→DM→MID→AM→FWD, side left/centre/right.
+// Side mismatches cost slightly more than line ones: a left back at right back is a worse ask
+// than a left back pushed to left midfield.
+const POS_ROLE = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
+function posFitCost(a, b) {
+  if ((a === "GK") !== (b === "GK")) return 1000;
+  const A = POS_ROLE[a] || POS_ROLE.CM, B = POS_ROLE[b] || POS_ROLE.CM;
+  return Math.abs(A[0] - B[0]) + 1.2 * Math.abs(A[1] - B[1]);
+}
+// A squad's positions come from slot index + formation, so changing formation without reordering
+// silently reassigns roles (a RB becomes a third CB, a winger becomes a CM). Reorder the XI so each
+// player lands in the slot closest to their natural position. Greedy seed + 2-opt; optimal at n=11.
+function refitLineup(squad, formation) {
+  const xi = (squad || []).filter(p => !p.bench), bench = (squad || []).filter(p => p.bench);
+  if (xi.length !== 11) return squad || [];
+  const target = sposFor(formation || "4-3-3");
+  const nat = xi.map(p => p.natPos || p.spos || p.pos);
+  const n = 11, slotOf = new Array(n).fill(-1), taken = new Array(n).fill(false);
+  // Formations repeat slots (4-3-3 has three CMs) but weight them differently via atkW, so a pure
+  // position match leaves the order among equal slots arbitrary and toggling formation would shuffle
+  // it. Bias toward the player's existing index by SQUARED distance: strictly convex, so among
+  // interchangeable players it is uniquely minimised by preserving their relative order and cannot
+  // tie (plain |s-p| ties, e.g. two CMs at 6,7 filling slots 5,6 either way). Peaks at 0.01, far
+  // under the 0.5 smallest real position gap, so it only ever breaks ties.
+  const cost = (p, s) => posFitCost(nat[p], target[s]) + 0.0001 * (s - p) * (s - p);
+  const pairs = [];
+  for (let s = 0; s < n; s++) for (let p = 0; p < n; p++) pairs.push([cost(p, s), s, p]);
+  pairs.sort((a, b) => a[0] - b[0]);
+  for (const [, s, p] of pairs) if (slotOf[s] < 0 && !taken[p]) { slotOf[s] = p; taken[p] = true; }
+  for (let go = true; go; ) {
+    go = false;
+    for (let i = 0; i < n && !go; i++) for (let j = i + 1; j < n; j++) {
+      const now = cost(slotOf[i], i) + cost(slotOf[j], j);
+      const swp = cost(slotOf[j], i) + cost(slotOf[i], j);
+      if (swp < now - 1e-9) { const t = slotOf[i]; slotOf[i] = slotOf[j]; slotOf[j] = t; go = true; break; }
+    }
+  }
+  return [...slotOf.map(i => xi[i]), ...bench];
+}
 function buildSquad(formation, names) {
   const n = names || [];
   const dg = (formation || "4-3-3").split("-").map(Number);
@@ -2886,21 +2942,8 @@ function buildSquad(formation, names) {
     "3-4-1-2":   [0, 3,4,3, 16,12,12,16, 28, 38,40],         // CB CB CB | LWB CM CM RWB | AM | ST ST
     "5-3-2":     [0, 10,3,4,3,10, 18,16,18, 38,40],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
   };
-  const SPOS = {
-    "4-2-4":     ["GK","LB","CB","CB","RB","CM","CM","LW","ST","ST","RW"],
-    "4-4-2":     ["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"],
-    "4-3-3":     ["GK","LB","CB","CB","RB","CM","CM","CM","LW","ST","RW"],
-    "4-2-3-1":   ["GK","LB","CB","CB","RB","DM","DM","AM","AM","AM","ST"],
-    "4-1-4-1":   ["GK","LB","CB","CB","RB","DM","LW","CM","CM","RW","ST"],
-    "4-1-2-1-2": ["GK","LB","CB","CB","RB","DM","CM","CM","AM","ST","ST"],
-    "4-3-2-1":   ["GK","LB","CB","CB","RB","CM","CM","CM","AM","AM","ST"],
-    "3-4-3":     ["GK","CB","CB","CB","LWB","CM","CM","RWB","LW","ST","RW"],
-    "3-5-2":     ["GK","CB","CB","CB","LWB","CM","CM","CM","RWB","ST","ST"],
-    "3-4-1-2":   ["GK","CB","CB","CB","LWB","CM","CM","RWB","AM","ST","ST"],
-    "5-3-2":     ["GK","LWB","CB","CB","CB","RWB","CM","CM","CM","ST","ST"],
-  };
   const fm = formation || "4-3-3";
-  const sposArr = SPOS[fm] || (()=>{ const d2=fm.split("-").map(Number); const s=["GK"]; const nd=d2[0]; if(nd<=3)for(let i=0;i<nd;i++)s.push("CB"); else{for(let i=0;i<nd;i++)s.push(i===0?"LB":i===nd-1?"RB":"CB");} for(let d=1;d<d2.length-1;d++){const isDeep=d===1&&d2.length>3;for(let i=0;i<d2[d];i++)s.push(isDeep?"DM":"CM");} const nf=d2[d2.length-1];if(nf===1)s.push("ST");else if(nf===2){s.push("ST","ST");}else{for(let i=0;i<nf;i++)s.push(i===0?"LW":i===nf-1?"RW":"ST");} return s; })();
+  const sposArr = sposFor(fm);
   const atkGrad = FG[fm] || (()=>{ const d2=fm.split("-").map(Number); const g=[0]; let ii=1; for(let i=0;i<d2[0];i++){g.push(4);ii++;} for(let di=1;di<d2.length-1;di++){const isDeep=di===1&&d2.length>3;for(let i=0;i<d2[di];i++){g.push(isDeep?10:Math.round(12+26*((ii-d2[0]-1)/Math.max(1,10-d2[0]-d2[d2.length-1]-1))));ii++;}} for(let i=0;i<d2[d2.length-1];i++){const nf=d2[d2.length-1];g.push(nf===1?36:nf===2?(i===0?40:42):(i===nf-1?38:36));ii++;} return g; })();
   sq.push({ name: n[0] || "#1", pos: "GK", spos: "GK", atkW: 0 });
   let idx = 1;
@@ -2912,7 +2955,7 @@ function buildSquad(formation, names) {
   const benchSpos = ["GK", "CB", "CM", "CM", "ST"];
   const benchAtk = [0, 8, 20, 25, 42];
   for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i] });
-  sq.forEach(p => { const {name,ovr} = parseOvr(p.name); p.name = name; p.ovr = ovr; });
+  sq.forEach(p => { const {name,ovr} = parseOvr(p.name); p.name = name; p.ovr = ovr; if (!p.natPos) p.natPos = p.spos; });
   return sq;
 }
 
@@ -3831,7 +3874,7 @@ export default function App() {
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
   const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
-  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = tm.squad || []; nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null); nt.squad.forEach((p, i) => { if (i < old.length) { if (old[i].ovr != null) p.ovr = old[i].ovr; if (old[i].fullName) p.fullName = old[i].fullName; if (old[i].nat) p.nat = old[i].nat; } }); } return nt; }));
+  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; }));
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
