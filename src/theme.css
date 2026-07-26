@@ -3,8 +3,28 @@
    match events, W/D/L). Default values below match the app's original hardcoded
    palette exactly, so [data-theme] absent/unknown renders identically to before
    this file existed. */
+/* Digits render from JetBrains Mono everywhere, without every call site having to opt in.
+   unicode-range limits this face to 0-9, so the browser pulls digits from here and falls
+   through to the proportional font for every other glyph. Punctuation is deliberately NOT
+   included — a mono comma or full stop mid-sentence reads as a typo. */
+@font-face {
+  font-family: 'AviumNumerals';
+  src: local('JetBrains Mono'), local('JetBrainsMono-Regular'), local('JetBrains Mono Regular'),
+       local('Fira Code'), local('FiraCode-Regular'), local('SFMono-Regular'), local('Menlo');
+  unicode-range: U+0030-0039;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'AviumNumerals';
+  src: local('JetBrains Mono Bold'), local('JetBrainsMono-Bold'), local('Fira Code Bold'),
+       local('FiraCode-Bold'), local('Menlo Bold');
+  unicode-range: U+0030-0039;
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
-  --chrome-font: 'Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-font: 'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;
   --chrome-bg: #0a0e17;
   --chrome-bg-08: #0a0e1708;
   --chrome-bg-dd: #0a0e17dd;
@@ -45,7 +65,7 @@
 
 /* 1933 World Cup special edition */
 [data-theme="wc1933"] {
-  --chrome-font: 'Aoboshi One','Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-font: 'AviumNumerals','Aoboshi One','Neue Montreal','Inter','Helvetica Neue',sans-serif;
   /* line-height is an inherited property — setting it once here covers every element
      that doesn't already set its own (an explicit inline lineHeight, e.g. the scorer-row
      fix, always wins over this regardless). Standard theme is left untouched: it already
@@ -88,4 +108,46 @@
   --chrome-gold-44: #cba45644;
   --chrome-gold-66: #cba45666;
   --chrome-champion-glow: #2e2410;
+}
+
+/* Nichirin League One — palette lifted from nl1-banner.png. The banner is red line art on
+   black, so: neutral near-black surfaces (not the default theme's navy) and the banner's own
+   #ff2222 as the brand. Font is deliberately the standard stack — unlike wc1933 this theme
+   changes colour only, so no line-height override is needed either. */
+[data-theme="nl1"] {
+  --chrome-bg: #08090b;
+  --chrome-bg-08: #08090b08;
+  --chrome-bg-dd: #08090bdd;
+  --chrome-bg2: #050506;
+  --chrome-bg3: #0d0f12;
+  --chrome-panel: #14171c;
+  --chrome-panel-08: #14171c08;
+  --chrome-panel-66: #14171c66;
+  --chrome-border: #2f343c;
+  --chrome-border-33: #2f343c33;
+  --chrome-border-66: #2f343c66;
+  --chrome-border-88: #2f343c88;
+  --chrome-muted: #8b9099;
+  --chrome-muted-22: #8b909922;
+  --chrome-muted-33: #8b909933;
+  --chrome-muted-44: #8b909944;
+  --chrome-muted-66: #8b909966;
+  --chrome-muted-80: #8b909980;
+  --chrome-muted-88: #8b909988;
+  --chrome-brand: #ff2222;
+  --chrome-brand-11: #ff222211;
+  --chrome-brand-14: #ff222214;
+  --chrome-brand-1a: #ff22221a;
+  --chrome-brand-20: #ff222220;
+  --chrome-brand-22: #ff222222;
+  --chrome-brand-33: #ff222233;
+  --chrome-brand-44: #ff222244;
+  --chrome-brand-66: #ff222266;
+  --chrome-brand-88: #ff222288;
+  --chrome-gold: #ff2222;
+  --chrome-gold-11: #ff222211;
+  --chrome-gold-22: #ff222222;
+  --chrome-gold-44: #ff222244;
+  --chrome-gold-66: #ff222266;
+  --chrome-champion-glow: #2a0d0d;
 }

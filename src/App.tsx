@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
 import wc1933HeaderImg from "./1933-wc-banner.png";
+import nl1HeaderImg from "./nl1-banner.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
@@ -2451,10 +2452,12 @@ function buildKnockoutDraw(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-function chromeExportColors(wcTheme) {
-  return wcTheme
-    ? { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" }
-    : { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
+const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["nl1", "Nichirin League One"]];
+const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
+function chromeExportColors(uiTheme) {
+  if (uiTheme === "wc1933") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
+  if (uiTheme === "nl1") return { panel: "#14171c", border: "#2f343c", muted: "#8b9099", brand: "#ff2222" };
+  return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
 // Venue fields may carry a trailing "(number)" population/capacity for user
@@ -3016,15 +3019,165 @@ function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
 const ui = { fontFamily: "var(--chrome-font)" };
-const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6, ...ui };
-const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.04em" };
+const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6, ...ui };
+const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
 const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#ffffff", outline: "none", fontFamily: "inherit" };
 const sel = { ...inp, cursor: "pointer" };
-const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.06em" };
+const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
 const delBtn = { background: "transparent", border: "none", color: "#bf616a", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
-const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 8, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
+const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
 const chk = { fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
 const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770",CB:"#81a1c1",LB:"#81a1c1",RB:"#81a1c1",LWB:"#81a1c1",RWB:"#81a1c1",DM:"#a3be8c",CM:"#a3be8c",AM:"#a3be8c",LM:"#a3be8c",RM:"#a3be8c",LW:"#d08770",RW:"#d08770",ST:"#d08770"};
+
+// ─── SHARED PANEL CHROME ─────────────────────────────────────────────────────
+// The tournament screens all hand-rolled the same panel/heading/row styling. These are that
+// pattern, extracted, so a change lands everywhere instead of in one panel out of six.
+const panelBox = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 };
+const panelHead = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 };
+// ─── DESIGN SCALE ────────────────────────────────────────────────────────────
+// Before this the file carried 13 corner radii and 17 letter-spacings, so the same kind of
+// control looked slightly different depending on which screen you were on. These are the
+// allowed values; reach for a token rather than a new number.
+const R = { sm: 3, md: 6, lg: 10, pill: 999 };            // chips/inputs · buttons/rows · panels
+const LS = { tight: "0.08em", label: "0.12em", head: "0.16em", caps: "0.18em" };
+const SP = { xs: 4, sm: 6, md: 8, lg: 12, xl: 16, xxl: 24 };
+// Button sizes. Three, and they are the only three — most call sites used to re-specify
+// padding and fontSize inline, which is where the drift came from.
+const xsBtn = { ...addBtn, padding: "2px 8px", fontSize: 9 };
+const smBtn = { ...addBtn, padding: "4px 8px", fontSize: 10 };
+// Data-table cells. Previously defined twice, verbatim, in two separate component scopes.
+const thCell = { padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: LS.label, textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
+const thCellSticky = { ...thCell, position: "sticky", top: 0, background: "var(--chrome-panel)" };
+const tdCell = { padding: "5px 12px" };
+const rowBox = { border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 6 };
+const rowHead = { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)" };
+const metaTxt = { fontSize: 10, color: "var(--chrome-muted)", fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
+// Heading: brand accent rule + white title, so a panel's name reads as a heading rather than
+// as another line of muted label text competing with the data under it.
+function PanelTitle({ children, sub, accent, id }) {
+  return (<div id={id} style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+    <span style={{ width: 3, height: 13, borderRadius: 3, background: accent || "var(--chrome-brand)", flexShrink: 0 }} />
+    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", whiteSpace: "nowrap" }}>{children}</span>
+    {sub != null && sub !== "" && <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 400 }}>{sub}</span>}
+  </div>);
+}
+// One labelled figure. Used in a row so a tournament's properties read as a stat block.
+function StatCell({ label, value, color }) {
+  return (<div style={{ minWidth: 0 }}>
+    <div style={{ fontSize: 8, letterSpacing: "0.16em", fontWeight: 700, color: "var(--chrome-muted)", marginBottom: 3 }}>{label}</div>
+    <div style={{ fontSize: 12, fontWeight: 700, color: color || "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" }}>{value}</div>
+  </div>);
+}
+// Centred label inside a card (GROUP A, ROUND 3, qualification zones, leaderboard heads).
+// PanelTitle's accent rule reads wrong centred, so these get their own small-caps treatment.
+const cardLabel = { fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" };
+// Left-aligned heading for a section inside a panel — white, so it outranks the data beneath it.
+const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff" };
+const PHASE_CLR = { setup: "var(--chrome-muted)", drawing: "#ebcb8b", groups: "#81a1c1", league: "#81a1c1", knockout: "var(--chrome-brand)", done: "#a3be8c" };
+function PhaseBadge({ phase }) {
+  const c = PHASE_CLR[phase] || "var(--chrome-muted)";
+  return <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: c, border: "1px solid " + c + "55", background: c + "1a", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>{SLOT_PHASE_LBL[phase] || phase || "Setup"}</span>;
+}
+function ProgressBar({ played, total, color }) {
+  const pct = total ? Math.round((played / total) * 100) : 0;
+  return (<div style={{ height: 4, borderRadius: 3, background: "var(--chrome-border-33)", overflow: "hidden" }}>
+    <div style={{ width: pct + "%", height: "100%", background: color || "var(--chrome-brand)", borderRadius: 3, transition: "width 0.3s" }} />
+  </div>);
+}
+
+// ─── TOURNAMENT SAVE SLOTS ───────────────────────────────────────────────────
+// Index holds metadata only (names, timestamps, progress); each tournament's payload
+// lives under its own key so switching slots reads one save instead of all of them.
+const SLOT_INDEX_KEY = "avium-tournament-slots";
+const SLOT_KEY = (id) => "avium-tournament-slot-" + id;
+const LEGACY_SESSION_KEY = "avium-tournament-session";
+const SLOT_FILE_KIND = "avium-tournament";
+const newSlotId = () => "s" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+function readSlotIndex() {
+  try { const r = JSON.parse(localStorage.getItem(SLOT_INDEX_KEY)); return r && r.v && Array.isArray(r.slots) ? r : null; } catch { return null; }
+}
+function writeSlotIndex(slots, activeId) {
+  try { localStorage.setItem(SLOT_INDEX_KEY, JSON.stringify({ v: 1, activeId, slots })); return true; } catch { return false; }
+}
+// Fixtures hold whole team objects, squad included. In memory those are shared references, but
+// JSON expands every one — a 20-team season serialises at ~1.9 MB, of which ~1.8 MB is the same
+// 20 squads repeated across 380 fixtures. Swap them for name refs on write and rehydrate on read:
+// identical in-memory shape, ~17x smaller on disk, which is what makes many saved tournaments fit.
+const TEAM_REF = "$t";
+function packPayload(p) {
+  if (!p || p.__packed) return p;
+  const table = {};
+  const ref = (t) => { if (!t || typeof t !== "object" || !t.name) return t; if (!table[t.name]) table[t.name] = t; return { [TEAM_REF]: t.name }; };
+  const packMs = (ms) => (ms || []).map(m => (m && (m.home || m.away)) ? { ...m, home: ref(m.home), away: ref(m.away) } : m);
+  const packM = (m) => (m && (m.home || m.away)) ? { ...m, home: ref(m.home), away: ref(m.away) } : m;
+  const tGroups = (p.tGroups || []).map(g => ({ ...g, teams: (g.teams || []).map(ref), schedule: (g.schedule || []).map(packMs) }));
+  let tKO = p.tKO;
+  if (tKO) {
+    const packRd = (r) => ({ ...r, matches: packMs(r.matches) });
+    tKO = { ...tKO,
+      rounds: (tKO.rounds || []).map(packRd),
+      losers: tKO.losers ? tKO.losers.map(packRd) : tKO.losers,
+      thirdPlace: packM(tKO.thirdPlace), grandFinal: packM(tKO.grandFinal), reset: packM(tKO.reset),
+      champion: tKO.champion ? ref(tKO.champion) : tKO.champion };
+  }
+  return { ...p, tGroups, tKO, __teams: table, __packed: 1 };
+}
+function unpackPayload(p) {
+  if (!p || !p.__packed) return p;
+  const table = p.__teams || {};
+  // Clone per occurrence: a JSON round-trip always gave each fixture its own team object, and some
+  // paths write to it, so handing every fixture the same instance would alias them together.
+  const deref = (v) => (v && typeof v === "object" && v[TEAM_REF] !== undefined)
+    ? (table[v[TEAM_REF]] ? JSON.parse(JSON.stringify(table[v[TEAM_REF]])) : null) : v;
+  const unMs = (ms) => (ms || []).map(m => (m && (m.home || m.away)) ? { ...m, home: deref(m.home), away: deref(m.away) } : m);
+  const unM = (m) => (m && (m.home || m.away)) ? { ...m, home: deref(m.home), away: deref(m.away) } : m;
+  const tGroups = (p.tGroups || []).map(g => ({ ...g, teams: (g.teams || []).map(deref), schedule: (g.schedule || []).map(unMs) }));
+  let tKO = p.tKO;
+  if (tKO) {
+    const unRd = (r) => ({ ...r, matches: unMs(r.matches) });
+    tKO = { ...tKO,
+      rounds: (tKO.rounds || []).map(unRd),
+      losers: tKO.losers ? tKO.losers.map(unRd) : tKO.losers,
+      thirdPlace: unM(tKO.thirdPlace), grandFinal: unM(tKO.grandFinal), reset: unM(tKO.reset),
+      champion: tKO.champion ? deref(tKO.champion) : tKO.champion };
+  }
+  const out = { ...p, tGroups, tKO };
+  delete out.__teams; delete out.__packed;
+  return out;
+}
+function readSlot(id) {
+  try { const r = JSON.parse(localStorage.getItem(SLOT_KEY(id))); return r ? unpackPayload(r) : null; } catch { return null; }
+}
+// Returns false on quota exhaustion so callers can surface it instead of silently losing a save.
+function writeSlot(id, payload) {
+  try { localStorage.setItem(SLOT_KEY(id), JSON.stringify(packPayload(payload))); return true; } catch { return false; }
+}
+function slotSummary(p) {
+  let played = 0, total = 0;
+  (p?.tGroups || []).forEach(g => (g.schedule || []).forEach(r => (r || []).forEach(m => { total++; if (m?.result) played++; })));
+  const ko = p?.tKO;
+  if (ko) {
+    const count = (ms) => (ms || []).forEach(m => { if (!m?.bye && (m?.home || m?.away)) { total++; if (m.result) played++; } });
+    (ko.rounds || []).forEach(r => count(r.matches));
+    (ko.losers || []).forEach(r => count(r.matches));
+  }
+  return { phase: p?.tPhase || "setup", nTeams: p?.tournamentTeamIds?.length || 0, played, total };
+}
+const SLOT_PHASE_LBL = { setup: "Setup", drawing: "Draw", groups: "Group stage", league: "League", knockout: "Knockout", done: "Finished" };
+function fmtAgo(ts) {
+  if (!ts) return "";
+  const d = Date.now() - ts;
+  if (d < 60000) return "just now";
+  const m = Math.floor(d / 60000); if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+  const dy = Math.floor(h / 24); return dy === 1 ? "yesterday" : dy + "d ago";
+}
+function uniqueSlotName(slots, base) {
+  const taken = new Set(slots.map(s => s.name));
+  if (!taken.has(base)) return base;
+  let i = 2; while (taken.has(`${base} ${i}`)) i++;
+  return `${base} ${i}`;
+}
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
 const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
 // Bolds the given player name(s) wherever they appear in an already-filled commentary string.
@@ -3274,7 +3427,7 @@ const APP_CSS = `
 *{box-sizing:border-box;margin:0;padding:0;}
 td,th{vertical-align:middle;}
 html{overflow-y:scroll;}
-body{font-family:'Neue Montreal','Inter','Helvetica Neue',sans-serif;}
+body{font-family:'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;}
 ::selection{background:var(--chrome-brand-44);color:#ffffff;}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -3360,21 +3513,21 @@ details{border:none;border-bottom:none;}
 `;
 
 const T_PRESETS = {
-  league: { label: "League", config: { mode: "single", singleType: "groups", numGroups: 1, matchFormat: "roundRobin", rrLegs: 2, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 1, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 1, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [{ anchor: "top", from: 1, to: 1, label: "Champion", color: "#ebcb8b", type: "cosmetic" }, { anchor: "bottom", from: 1, to: 3, label: "Relegation", color: "#bf616a", type: "cosmetic" }] } },
-  cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
-  worldCup: { label: "World Cup", config: { mode: "double", singleType: "groups", numGroups: 12, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 3, to: 3, label: "Pool Qualification", color: "#4a7ab5", type: "best", bestCount: 8 }] } },
-  clubWorldCup: { label: "Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "swiss", rrLegs: 1, allocMode: "seed", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: false, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 8, numPots: 4, swissRounds: 8, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'buchholz', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
-  nationsLeague: { label: "Nations League", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "random", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "double_elim", koGFReset: false, homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
+  league: { label: "League", config: { mode: "single", singleType: "groups", numGroups: 1, matchFormat: "roundRobin", rrLegs: 2, allocMode: "seed", homeAdvGroup: "first", homeAdvKO: "off", thirdPlace: false, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 1, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [{ anchor: "top", from: 1, to: 1, label: "Champion", color: "#ebcb8b", type: "cosmetic" }, { anchor: "bottom", from: 1, to: 3, label: "Relegation", color: "#bf616a", type: "cosmetic" }] } },
+  cup: { label: "Cup", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "seed", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
+  worldCup: { label: "World Cup", config: { mode: "double", singleType: "groups", numGroups: 12, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 3, to: 3, label: "Pool Qualification", color: "#4a7ab5", type: "best", bestCount: 8 }] } },
+  clubWorldCup: { label: "Club World Cup", config: { mode: "double", singleType: "groups", numGroups: 1, matchFormat: "swiss", rrLegs: 1, allocMode: "seed", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: false, koFormat: "single", homeAdvTeams: [], advPerGroup: 8, numPots: 4, swissRounds: 8, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'buchholz', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 8, label: "Direct Qualification", color: "#5e9c6b", type: "advance" }, { anchor: "top", from: 9, to: 24, label: "Playoff", color: "#4a7ab5", type: "advance" }] } },
+  nationsLeague: { label: "Nations League", config: { mode: "single", singleType: "knockout", koLegs: 1, koAllocMode: "random", homeAdvKO: "weak_skill", homeAdvGroup: "off", thirdPlace: false, koAwayGoals: true, koFormat: "double_elim", homeAdvTeams: [], numGroups: 8, advPerGroup: 2, numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, allocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins'], qualZones: [] } },
   _divider1: { label: "──────────", divider: true },
-  oldUCL: { label: "Legacy UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
-  oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", koGFReset: false, homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  oldUCL: { label: "Legacy UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
 const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("teams");
-  const [wcTheme, setWcTheme] = useState(() => { try { return localStorage.getItem("avium-theme") === "wc1933"; } catch { return false; } });
-  useEffect(() => { try { localStorage.setItem("avium-theme", wcTheme ? "wc1933" : "default"); } catch {} }, [wcTheme]);
+  const [uiTheme, setUiTheme] = useState(() => { try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
+  useEffect(() => { try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [expandedRounds, setExpandedRounds] = useState(() => new Set());
@@ -3405,13 +3558,31 @@ export default function App() {
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
-  const [viewSquad, setViewSquad] = useState(null);
-  const [viewInfo, setViewInfo] = useState(null);
+      // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
+  // inside the 1350px scroll box are ever visible — mounting the rest is what made opening the
+  // Roster tab lag. Render the visible slice plus overscan, and pad with spacer rows so the
+  // scrollbar still reflects the full list.
+  const plScrollRef = useRef(null);
+  const plFirstRowRef = useRef(null);
+  const plRafRef = useRef(0);
+  const [plScroll, setPlScroll] = useState(0);
+  const [plRowH, setPlRowH] = useState(26);
   const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
   const [playerNatFilter, setPlayerNatFilter] = useState("");
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   const [playerClubFilter, setPlayerClubFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
+  // Measure the real row height rather than hardcoding it — line-height differs between themes,
+  // and a wrong constant makes the spacer rows drift out of sync with the scrollbar.
+  useEffect(() => {
+    const h = plFirstRowRef.current?.offsetHeight;
+    if (h && Math.abs(h - plRowH) > 0.5) setPlRowH(h);
+  });
+  // Narrowing a filter shortens the list; without this you stay scrolled past the new end.
+  useEffect(() => {
+    if (plScrollRef.current) plScrollRef.current.scrollTop = 0;
+    setPlScroll(0);
+  }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerClubFilter, playerSearch]);
   const [dupCodeId, setDupCodeId] = useState(null);
   const [bestXiNat, setBestXiNat] = useState("");
   const [showBestXiExport, setShowBestXiExport] = useState(false);
@@ -3449,7 +3620,7 @@ export default function App() {
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
-    const fontStack = wcTheme ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -3586,7 +3757,7 @@ export default function App() {
     }
     if (prevR) lines(prevR, cx, prevRN, "right");
     s+='</svg>';
-    { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
+    { const cc = chromeExportColors(uiTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3598,7 +3769,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
-    const fontStack = wcTheme ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -3758,7 +3929,7 @@ export default function App() {
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
     renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, (m, ri) => ri === 0 ? _xd(m) : m.bye, true);
     s += '</svg>';
-    { const cc = chromeExportColors(wcTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
+    { const cc = chromeExportColors(uiTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3774,7 +3945,7 @@ export default function App() {
   const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', koGFReset: false, injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   const [tDrawLog, setTDrawLog] = useState([]);
@@ -3796,6 +3967,17 @@ export default function App() {
   const tHostVenuePool = parseVenuePool(tHostVenueText);
   const [tLiveTarget, setTLiveTarget] = useState(null);
   const [tPendingPlayLive, setTPendingPlayLive] = useState(null); // fixture target awaiting setup-screen confirmation before tPlayLive actually kicks off
+  // Save slots: several tournaments in flight, one active at a time.
+  const [tSlots, setTSlots] = useState([]);          // metadata only — payloads live under their own keys
+  const [tActiveSlot, setTActiveSlot] = useState(null);
+  const [showSaves, setShowSaves] = useState(false);
+  const [slotMsg, setSlotMsg] = useState("");
+  const [slotRenaming, setSlotRenaming] = useState(null); // {id, name}
+  const [slotConfirmDelete, setSlotConfirmDelete] = useState(null);
+  // Set while a payload is being applied, so the autosave effect doesn't write the outgoing
+  // tournament's state into the slot we just switched to.
+  const slotBusyRef = useRef(false);
+  const importInputRef = useRef(null);
   const tToggleHA = (key) => setTHomeAdvOverrides(p => { const c = p[key] || null; const n = c === null ? "home" : c === "home" ? "away" : c === "away" ? "off" : null; const nm = { ...p }; if (n === null) delete nm[key]; else nm[key] = n; return nm; });
   const tGetHA = (key, fallback) => { const o = tHomeAdvOverrides[key]; if (o === "off") return null; if (o === "home" || o === "away") return o; return fallback; };
 
@@ -4196,16 +4378,160 @@ export default function App() {
 
   // Tournament/live-match session — resets independently of the roster.
   const sessionSaveTimeoutRef = useRef(null);
+  const buildSlotPayload = () => ({ v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() });
+  const hasTournamentState = () => !!tPhase || tournamentTeamIds.length > 0;
+  // Restores a saved tournament. Transient UI state is cleared rather than restored — an open
+  // score editor or half-finished draw belongs to the tournament you were looking at, not this one.
+  const applySlotPayload = (ss) => {
+    slotBusyRef.current = true;
+    setTournamentTeamIds(ss.tournamentTeamIds || []);
+    setTConfig(c => ({ ...c, ...(ss.tConfig || {}), qualZones: ss.tConfig?.qualZones || c.qualZones, tiebreakers: ss.tConfig?.tiebreakers || c.tiebreakers }));
+    setTGroups(ss.tGroups || []);
+    setTKO(ss.tKO || null);
+    setTPlayerStats(ss.tPlayerStats || {});
+    setTPhase(ss.tPhase || "setup");
+    if (ss.lmH !== undefined) setLmH(ss.lmH);
+    if (ss.lmA !== undefined) setLmA(ss.lmA);
+    setTHostVenueText(ss.tHostVenueText || "");
+    setTHomeAdvOverrides(ss.tHomeAdvOverrides || {});
+    setTVenueOverrides(ss.tVenueOverrides || {});
+    _rc.clear(); if (ss.tReplayCounts) _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1);
+    setTEdit(null); setTKoEdit(null); setTScoreError(""); setTManual(null); setTKOManual(null);
+    setTDrawLog([]); setTKODrawLog([]); setTPoolData(null); setTDrawAnim(null);
+    setTPendingPlayLive(null); setTLiveTarget(null); setExpandedRounds(new Set());
+    if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; }
+  };
+  const commitSlots = (slots, activeId) => { setTSlots(slots); writeSlotIndex(slots, activeId); };
+
   useEffect(() => {
-    if (!tPhase && tournamentTeamIds.length === 0) return; // nothing to save
+    if (slotBusyRef.current) return;          // mid-switch; the incoming payload is not ours to save
+    if (!hasTournamentState()) return;
     if (sessionSaveTimeoutRef.current) clearTimeout(sessionSaveTimeoutRef.current);
     sessionSaveTimeoutRef.current = setTimeout(() => {
-      try {
-        const state = { v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() };
-        localStorage.setItem("avium-tournament-session", JSON.stringify(state));
-      } catch (e) { /* storage unavailable */ }
+      const payload = buildSlotPayload();
+      // First tournament on a fresh install has no slot yet — adopt one rather than drop the save.
+      const id = tActiveSlot || newSlotId();
+      if (!writeSlot(id, payload)) { setSlotMsg("Save failed — browser storage is full. Export a tournament and delete it to free space."); return; }
+      setTSlots(prev => {
+        const exists = prev.some(s => s.id === id);
+        const next = exists
+          ? prev.map(s => s.id === id ? { ...s, ts: payload.ts, ...slotSummary(payload) } : s)
+          : [...prev, { id, name: uniqueSlotName(prev, "Tournament"), ts: payload.ts, ...slotSummary(payload) }];
+        writeSlotIndex(next, id);
+        return next;
+      });
+      if (!tActiveSlot) setTActiveSlot(id);
     }, 1500);
-  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, _rcV]);
+  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, _rcV, tActiveSlot]);
+  // Declared after the autosave effect so it clears the guard only once that effect has skipped.
+  useEffect(() => { slotBusyRef.current = false; });
+
+  // Flush the active tournament immediately — every operation that leaves the current slot
+  // calls this first, since the 1.5s autosave debounce may not have fired yet.
+  const flushActiveSlot = () => {
+    if (sessionSaveTimeoutRef.current) { clearTimeout(sessionSaveTimeoutRef.current); sessionSaveTimeoutRef.current = null; }
+    if (!tActiveSlot || !hasTournamentState()) return tSlots;
+    const payload = buildSlotPayload();
+    if (!writeSlot(tActiveSlot, payload)) { setSlotMsg("Save failed — browser storage is full."); return tSlots; }
+    const next = tSlots.map(s => s.id === tActiveSlot ? { ...s, ts: payload.ts, ...slotSummary(payload) } : s);
+    commitSlots(next, tActiveSlot);
+    return next;
+  };
+  const slotSwitch = (id) => {
+    if (id === tActiveSlot) return;
+    const ss = readSlot(id);
+    if (!ss) { setSlotMsg("That save could not be read."); return; }
+    const next = flushActiveSlot();
+    applySlotPayload(ss);
+    setTActiveSlot(id);
+    commitSlots(next, id);
+    setSlotMsg("");
+  };
+  const slotNew = () => {
+    const after = flushActiveSlot();
+    const id = newSlotId();
+    const name = uniqueSlotName(after, "Tournament");
+    // Write the blank payload up front: the busy guard suppresses the autosave for this render,
+    // so without this the new slot would have an index entry but no save behind it.
+    const blank = { v: 1, tournamentTeamIds: [], tConfig, tGroups: [], tKO: null, tPlayerStats: {}, tPhase: "setup", lmH, lmA, tHostVenueText: "", tHomeAdvOverrides: {}, tVenueOverrides: {}, tReplayCounts: {}, ts: Date.now() };
+    if (!writeSlot(id, blank)) { setSlotMsg("Could not start a new tournament — browser storage is full."); return; }
+    slotBusyRef.current = true;
+    resetTournament();
+    setTournamentTeamIds([]);
+    setTActiveSlot(id);
+    commitSlots([...after, { id, name, ts: blank.ts, ...slotSummary(blank) }], id);
+  };
+  const slotRename = (id, name) => {
+    const clean = (name || "").trim().slice(0, 48);
+    if (!clean) return;
+    const others = tSlots.filter(s => s.id !== id);
+    const final = uniqueSlotName(others, clean);
+    commitSlots(tSlots.map(s => s.id === id ? { ...s, name: final } : s), tActiveSlot);
+    setSlotRenaming(null);
+  };
+  const slotDuplicate = (id) => {
+    const src = id === tActiveSlot ? buildSlotPayload() : readSlot(id);
+    if (!src) { setSlotMsg("That save could not be read."); return; }
+    const nid = newSlotId();
+    if (!writeSlot(nid, src)) { setSlotMsg("Copy failed — browser storage is full."); return; }
+    const base = tSlots.find(s => s.id === id)?.name || "Tournament";
+    const meta = { id: nid, name: uniqueSlotName(tSlots, base + " copy"), ts: Date.now(), ...slotSummary(src) };
+    commitSlots([...tSlots, meta], tActiveSlot);
+  };
+  const slotDelete = (id) => {
+    try { localStorage.removeItem(SLOT_KEY(id)); } catch {}
+    const rest = tSlots.filter(s => s.id !== id);
+    setSlotConfirmDelete(null);
+    if (id !== tActiveSlot) { commitSlots(rest, tActiveSlot); return; }
+    // Deleting the open tournament: fall through to another save, or clear the board.
+    const nextSlot = rest[0] || null;
+    if (nextSlot) {
+      const ss = readSlot(nextSlot.id);
+      if (ss) applySlotPayload(ss);
+      setTActiveSlot(nextSlot.id);
+      commitSlots(rest, nextSlot.id);
+    } else {
+      slotBusyRef.current = true;
+      resetTournament();
+      setTournamentTeamIds([]);
+      setTActiveSlot(null);
+      commitSlots([], null);
+    }
+  };
+  const slotExport = (id) => {
+    const payload = id === tActiveSlot ? buildSlotPayload() : readSlot(id);
+    if (!payload) { setSlotMsg("That save could not be read."); return; }
+    const meta = tSlots.find(s => s.id === id);
+    const name = meta?.name || "tournament";
+    const body = JSON.stringify({ kind: SLOT_FILE_KIND, v: 1, name, exported: new Date().toISOString(), payload: packPayload(payload) });
+    const blob = new Blob([body], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name.replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".avium.json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  };
+  const slotImportFile = (file) => {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const j = JSON.parse(String(rd.result));
+        // Accept both a wrapped export and a bare payload, so an older raw save still imports.
+        const payload = unpackPayload(j && j.kind === SLOT_FILE_KIND ? j.payload : j);
+        if (!payload || typeof payload !== "object" || (!payload.tGroups && !payload.tKO && !payload.tournamentTeamIds)) throw new Error("not an Avium tournament save");
+        const id = newSlotId();
+        if (!writeSlot(id, payload)) throw new Error("browser storage is full");
+        const meta = { id, name: uniqueSlotName(tSlots, (j?.name || "Imported").trim().slice(0, 48) || "Imported"), ts: payload.ts || Date.now(), ...slotSummary(payload) };
+        commitSlots([...tSlots, meta], tActiveSlot);
+        setShowSaves(true);
+      } catch (e) { setSlotMsg("Import failed: " + (e?.message || "unreadable file")); }
+    };
+    rd.onerror = () => setSlotMsg("Import failed: could not read that file.");
+    rd.readAsText(file);
+  };
 
   // Auto-load on mount: roster first (migrating the legacy combined-save key exactly
   // once if no roster-db exists yet), then the tournament session independently.
@@ -4251,21 +4577,25 @@ export default function App() {
         rosterLoadedRef.current = true;
         // Load tournament session independently — it exists whether or not
         // avium-roster-db does (roster-db only gets written when custom teams exist).
-        const sessionRaw = localStorage.getItem("avium-tournament-session");
-        if (sessionRaw) {
-          const ss = JSON.parse(sessionRaw);
-          if (ss.tournamentTeamIds) setTournamentTeamIds(ss.tournamentTeamIds);
-          if (ss.tConfig) setTConfig(c => ({ ...c, ...ss.tConfig, qualZones: ss.tConfig.qualZones || c.qualZones, tiebreakers: ss.tConfig.tiebreakers || c.tiebreakers }));
-          if (ss.tGroups) setTGroups(ss.tGroups);
-          if (ss.tKO) setTKO(ss.tKO);
-          if (ss.tPlayerStats) setTPlayerStats(ss.tPlayerStats);
-          if (ss.tPhase) setTPhase(ss.tPhase);
-          if (ss.lmH !== undefined) setLmH(ss.lmH);
-          if (ss.lmA !== undefined) setLmA(ss.lmA);
-          if (ss.tHostVenueText) setTHostVenueText(ss.tHostVenueText);
-          if (ss.tHomeAdvOverrides) setTHomeAdvOverrides(ss.tHomeAdvOverrides);
-          if (ss.tVenueOverrides) setTVenueOverrides(ss.tVenueOverrides);
-          if (ss.tReplayCounts) { _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1); }
+        // Save slots. First run after the single-session build migrates that save into slot 1,
+        // and only drops the old key once the new one has been written back successfully.
+        let idx = readSlotIndex();
+        if (!idx) {
+          const legacyRaw = localStorage.getItem(LEGACY_SESSION_KEY);
+          if (legacyRaw) {
+            const p = JSON.parse(legacyRaw);
+            const id = newSlotId();
+            if (writeSlot(id, p) && readSlot(id)) {
+              idx = { v: 1, activeId: id, slots: [{ id, name: "Tournament", ts: p.ts || Date.now(), ...slotSummary(p) }] };
+              if (writeSlotIndex(idx.slots, id)) { try { localStorage.removeItem(LEGACY_SESSION_KEY); } catch {} }
+            }
+          }
+        }
+        if (idx) {
+          setTSlots(idx.slots);
+          setTActiveSlot(idx.activeId || null);
+          const ss = idx.activeId ? readSlot(idx.activeId) : null;
+          if (ss) applySlotPayload(ss);
         }
       } catch (e) { /* no saved data or storage unavailable */ }
     })();
@@ -4305,7 +4635,7 @@ export default function App() {
     init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setViewSquad(null); setChanceStep({}); };
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setChanceStep({}); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
@@ -4412,7 +4742,7 @@ export default function App() {
         setTPhase("ko_byes"); setLoading(false); return;
       }
       const km = tConfig.koAllocMode;
-      const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, tConfig.koGFReset); };
+      const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, false); };
       if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(genTeams, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
@@ -4774,7 +5104,7 @@ export default function App() {
     const isDE = tConfig.koFormat === "double_elim";
     const hasTP = !isDE && tConfig.thirdPlace && qualified.length >= 4;
     const km = tConfig.koAllocMode;
-    const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, tConfig.koGFReset); };
+    const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, false); };
     if (km === "seed") {
       const ko = buildKnockoutSeeded(qualified, hasTP);
       applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout");
@@ -4810,7 +5140,7 @@ export default function App() {
     const first = [];
     for (let i = 0; i < n2; i += 2) { const h = slots[i], a = slots[i+1]; first.push({ home: h||a, away: h&&a?a:null, result:null, ...((!h||!a)?{bye:true}:{}) }); }
     const ko = buildKOShell(first, hasTP);
-    if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, tConfig.koGFReset);
+    if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, false);
     propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTByeManual(null); setTPlayerStats({});
   };
@@ -4844,7 +5174,7 @@ export default function App() {
       for (let i = 0; i < tKOManual.n2; i += 2) { const h = slots[i], a = slots[i+1]; first.push({ home: h||a, away: h&&a?a:null, result:null, ...((!h||!a)?{bye:true}:{}) }); }
       const hasTP = tConfig.koFormat !== "double_elim" && tKOManual.hasTP;
       const ko = buildKOShell(first, hasTP);
-      if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, tConfig.koGFReset);
+      if (tConfig.koFormat === "double_elim") convertToDoubleElim(ko, false);
       propagateKO(ko); setTKO(ko);
       setTPhase("knockout"); setTKOManual(null); return;
     }
@@ -4853,7 +5183,7 @@ export default function App() {
     const isDE2 = tConfig.koFormat === "double_elim";
     const hasTP = !isDE2 && tConfig.thirdPlace && first.length * 2 >= 4;
     const ko = buildKOShell(first, hasTP);
-    if (isDE2) convertToDoubleElim(ko, tConfig.koGFReset);
+    if (isDE2) convertToDoubleElim(ko, false);
     propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTKOManual(null);
   };
@@ -5031,7 +5361,7 @@ export default function App() {
       <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
       <span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span>
       <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
-      <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.05em" }}>OK</button>
+      <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.08em" }}>OK</button>
       <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid var(--chrome-border)", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
     </span>);
     const actionArea = editing ? editForm()
@@ -5149,7 +5479,7 @@ export default function App() {
     return (<div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "center" }}>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{hS}</span>
-        <span style={{ fontSize: 9, color: "#ffffff", letterSpacing: "0.15em" }}>PENALTIES</span>
+        <span style={{ fontSize: 9, color: "#ffffff", letterSpacing: "0.16em" }}>PENALTIES</span>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{aS}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0 6px", alignItems: "start" }}>
@@ -5207,7 +5537,7 @@ export default function App() {
     return (
     <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
       {/* Venue + POTM sticker */}
-      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>PRE-MATCH</div>}
+      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
@@ -5262,7 +5592,7 @@ export default function App() {
               const starters = lmMatch.players[side] || [];
               const bench = lmMatch.bench[side] || [];
               const offP = preSwap.side === side ? starters.find(p => p.name === preSwap.off) : null;
-              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
+              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -5272,7 +5602,7 @@ export default function App() {
                 </div>
                 <PitchSVG starters={starters} formation={tm?.formation} />
                 <div style={{ marginTop: 6, padding: "0 2px" }}>
-                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "var(--chrome-brand-14)", border: "1px solid var(--chrome-brand-44)", borderRadius: 4 }}>
+                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "var(--chrome-brand-14)", border: "1px solid var(--chrome-brand-44)", borderRadius: 6 }}>
                     <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Bench <b style={{ color: "#ffffff" }}>{offP.name}</b>, pick a replacement below</span>
                     <span onClick={() => setPreSwap({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                   </div>}
@@ -5290,7 +5620,7 @@ export default function App() {
                   {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border-33)" }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                       {[...bench].sort((a,b) => (b.stamina??100)-(a.stamina??100)).map((p, pi) => { const stam = p.stamina ?? 100; return (
-                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 4, cursor: offP ? "pointer" : "default", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-88)" }}>
+                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 6, cursor: offP ? "pointer" : "default", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-88)" }}>
                           <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
                           <span style={{ color: "var(--chrome-muted)" }}>{p.name}</span>
                           <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
@@ -5415,7 +5745,7 @@ export default function App() {
             {/* Middle: phase/clock bar, then name+skill (stacked, as a unit) | score | name+skill —
                 score centers against the whole 2-line name+skill block, matching the classic layout. */}
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
                 <div style={{ textAlign: "right", minWidth: 0 }}>
                   <MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
@@ -5460,7 +5790,7 @@ export default function App() {
         </div>;
       })()}
       {lmMatch.penalties && (lmMatch.phase === "penalties" || lmMatch.phase === "finished") && <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #ffffff33" }}>
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#ffffff", marginBottom: 8, textAlign: "center" }}>Penalty Shootout</div>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#ffffff", marginBottom: 8, textAlign: "center" }}>Penalty Shootout</div>
         {renderPenaltyShootout(lmMatch.penalties, abbr(teamById(lmH)?.name, teamById(lmH)?.code), abbr(teamById(lmA)?.name, teamById(lmA)?.code))}
       </div>}
       </>}
@@ -5481,9 +5811,9 @@ export default function App() {
           {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
             <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
               <span style={{ width: 32, textAlign: "right", color: hv >= av ? hStatClr : "var(--chrome-muted)", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "var(--chrome-muted)", borderRadius: 2 }} /></div>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3 }} /></div>
               <span style={{ width: 60, textAlign: "center", color: "var(--chrome-muted)", fontSize: 9, flexShrink: 0 }}>{label}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "var(--chrome-muted)", borderRadius: 2 }} /></div>
+              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "var(--chrome-muted)", borderRadius: 3 }} /></div>
               <span style={{ width: 32, textAlign: "left", color: av >= hv ? aStatClr : "var(--chrome-muted)", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
             </div>
           ); })}
@@ -5592,7 +5922,7 @@ export default function App() {
 
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
-  const TEAM_COLW = { num: 22, crest: 26, code: 40, skill: 40, sq: 32, tac: 32, inf: 32, del: 28 };
+  const TEAM_COLW = { num: 22, crest: 26, code: 40, skill: 40, open: 44, del: 28 };
   const teamSearchQ = teamSearchQuery.trim().toLowerCase();
   // Prefix match only — code or any word in the name must START with the query, so "NCH"
   // finds Nichirin (code) without also matching the "nch" buried inside "Manchester".
@@ -5679,13 +6009,13 @@ export default function App() {
   }, [playerIndex, teams, bestXiNat]);
 
   return (
-    <div data-theme={wcTheme ? "wc1933" : "default"} style={{ ...ui, background: "var(--chrome-bg)", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
+    <div data-theme={uiTheme} style={{ ...ui, background: "var(--chrome-bg)", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
       <style>{APP_CSS}</style>
-      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.15em" }}>SIMULATING…</span></div>}
+      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: 20, paddingBottom: 12 }}>
           <div style={{ marginBottom: 12, textAlign: "center" }}>
-            <img src={wcTheme ? wc1933HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
+            <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
@@ -5697,12 +6027,12 @@ export default function App() {
         {tab === "teams" && (<>
         {/* TEAMS */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-          <label style={{ ...lbl, margin: 0 }}>Teams <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>{(teamLeagueFilter || teamSearchQ) ? `(${teamsFiltered.length} / ${teams.length})` : `(${teams.length})`}</span></label>
+          <PanelTitle sub={(teamLeagueFilter || teamSearchQ) ? `${teamsFiltered.length} / ${teams.length}` : `${teams.length}`}>Teams</PanelTitle>
           <div style={{ display: "flex", gap: 6 }}>
-            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
+            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...smBtn, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
             <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
-            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showExport ? "#bf616a" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
-            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBulk ? "#bf616a" : "var(--chrome-muted)" }}>{showBulk ? "✕ Close" : "📂"}</button>}
+            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...smBtn, color: showExport ? "#bf616a" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
+            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "#bf616a" : "var(--chrome-muted)" }}>{showBulk ? "✕ Close" : "📂"}</button>}
             {teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
           </div>
         </div>
@@ -5722,18 +6052,18 @@ export default function App() {
                     else d = (a.code||abbr(a.name,a.code)||"").localeCompare(b.code||abbr(b.name,b.code)||"");
                     return newDir === "desc" ? -d : d;
                   }));
-                }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid " + (active ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: active ? "var(--chrome-brand-22)" : "transparent", color: active ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
+                }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 6, border: "1px solid " + (active ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: active ? "var(--chrome-brand-22)" : "transparent", color: active ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
               ); })}
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid var(--chrome-border)", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>
-            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.sq, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>SQ</span><span style={{ width: TEAM_COLW.tac, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TAC</span><span style={{ width: TEAM_COLW.inf, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>INF</span>{teamsFiltered.some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
+            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.open, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TEAM</span>{teamsFiltered.some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
           </div>
           {(() => { const visibleTeams = teamsFiltered; return (
           <div style={{ maxHeight: visibleTeams.length > 12 ? 520 : "none", overflowY: visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
             {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
               <div key={t.id}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); if (!exp) setViewSquad(null); }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }}>
                 <span style={{ color: "var(--chrome-muted)", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
                 <TeamCrest team={t} size={18} style={{ marginLeft: 8 }} />
                 <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
@@ -5745,27 +6075,65 @@ export default function App() {
                   updateTeam(t.id, "code", v);
                 }} style={{ ...inp, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "var(--chrome-muted)", borderColor: dupCodeId === t.id ? "#bf616a" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
                 <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setViewSquad(viewSquad === t.id ? null : t.id); setExpandedTeam(null); }} style={{ width: TEAM_COLW.sq, textAlign: "center", fontSize: 9, color: viewSquad === t.id ? "var(--chrome-brand)" : t.squad?.some(p => !p.name.startsWith("#")) ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (viewSquad === t.id ? "var(--chrome-brand)" : t.squad?.some(p => !p.name.startsWith("#")) ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: viewSquad === t.id ? "var(--chrome-muted-22)" : "transparent" }}>{viewSquad === t.id ? "▾" : t.squad?.some(p => !p.name.startsWith("#")) ? t.squad.filter(p => !p.name.startsWith("#")).length : "–"}</span>
-                <span style={{ width: TEAM_COLW.tac, textAlign: "center", fontSize: 9, color: exp ? "var(--chrome-brand)" : nonDefault > 0 ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, whiteSpace: "nowrap", fontWeight: 600, border: "1px solid " + (exp ? "var(--chrome-brand)" : nonDefault > 0 ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: exp ? "var(--chrome-muted-22)" : "transparent" }}>{exp ? "\u25BE" : nonDefault > 0 ? nonDefault : "\u2013"}</span>
-                {(() => { const hasInf = [t.city, t.stadium].filter(Boolean).length; const infOpen = viewInfo === t.id; return <span onClick={e => { e.stopPropagation(); setViewInfo(infOpen ? null : t.id); setViewSquad(null); setExpandedTeam(null); }} style={{ width: TEAM_COLW.inf, textAlign: "center", fontSize: 9, color: infOpen ? "var(--chrome-brand)" : hasInf ? "var(--chrome-muted)" : "var(--chrome-muted-66)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", border: "1px solid " + (infOpen ? "var(--chrome-brand)" : hasInf ? "var(--chrome-muted-33)" : "transparent"), borderRadius: 4, padding: "2px 0", background: infOpen ? "var(--chrome-muted-22)" : "transparent" }}>{infOpen ? "\u25BE" : hasInf ? hasInf : "\u2013"}</span>; })()}
+                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }} title="Open team, squad and tactics" style={{ width: TEAM_COLW.open, textAlign: "center", fontSize: 9, color: exp ? "var(--chrome-brand)" : "var(--chrome-muted)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.08em", border: "1px solid " + (exp ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "2px 0", background: exp ? "var(--chrome-muted-22)" : "transparent" }}>{exp ? "▾" : (t.squad?.filter(p => !p.name.startsWith("#")).length || "–")}</span>
                 {t.league === "Custom" && <button onClick={e => { e.stopPropagation(); removeTeam(t.id); }} style={{ ...delBtn, width: TEAM_COLW.del, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
               </div>
-              {viewInfo === t.id && <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 4 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: "6px 8px", alignItems: "center", fontSize: 10 }}>
-                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>Colors</span>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid var(--chrome-border)", borderRadius: 3, cursor: "pointer" }} />
-                    <span style={{ color: "var(--chrome-muted-66)", fontSize: 9 }}>H</span>
-                    <input type="color" value={t.secondaryColor || t.primaryColor || "var(--chrome-panel)"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 22, height: 22, border: "1px solid var(--chrome-border)", borderRadius: 3, cursor: "pointer" }} />
-                    <span style={{ color: "var(--chrome-muted-66)", fontSize: 9 }}>A</span>
+              {exp && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (
+              <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                <div onClick={e => e.stopPropagation()} style={{ ...panelBox, marginBottom: 0, padding: 0, width: "100%", maxWidth: 1000, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: "13px 20px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+                    <PanelTitle sub={t.league === "Custom" ? "Custom" : t.league}>{t.code || abbr(t.name, t.code)}</PanelTitle>
+                    <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
                   </div>
-                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>Stadium</span>
-                  <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid var(--chrome-border)", background: "var(--chrome-bg3)", fontSize: 10, width: "100%" }} />
-                  <span style={{ color: "var(--chrome-muted)", fontWeight: 600 }}>City</span>
-                  <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="–" style={{ ...inp, padding: "4px 6px", border: "1px solid var(--chrome-border)", background: "var(--chrome-bg3)", fontSize: 10, width: "100%" }} />
-                </div>
-              </div>}
-              {viewSquad === t.id && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (() => {
+                  <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
+                    {/* Identity: crest on one half, editable name/colours/venue on the other. */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 22, alignItems: "center", marginBottom: 4 }}>
+                      {/* No inner padding: the badge art already carries its own margin, so anything
+                          here just shrinks the crest. size= is a px fallback for the SVG crest; the
+                          style below overrides it so the image scales to the column. */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-33)", borderRadius: 10, padding: 0, overflow: "hidden" }}>
+                        <TeamCrest team={t} size={320} style={{ width: "100%", height: "auto", maxHeight: "56vh" }} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+                        <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, padding: "6px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        <div>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Colours</div>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
+                              <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
+                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Home</span>
+                            </label>
+                            <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
+                              <input type="color" value={t.secondaryColor || t.primaryColor || "#2a3a50"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
+                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Away</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>City</div>
+                            <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="&#8211;" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
+                          </div>
+                          <div>
+                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Stadium</div>
+                            <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="&#8211;" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
+                          </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Code</div>
+                            <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "#bf616a" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
+                          </div>
+                          <div>
+                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Skill</div>
+                            <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "#bf616a" : "var(--chrome-border)" }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
+                    <div style={{ marginBottom: 12 }}><PanelTitle accent="#81a1c1">Squad</PanelTitle></div>
+                    {(() => {
                 const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
                 const starters = sq.filter(p => !p.bench);
                 const bench = sq.filter(p => p.bench);
@@ -5793,18 +6161,7 @@ export default function App() {
                 })();
                 const pitchPos = pitchPosRaw.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
                 const lpos = pitchPos.map(p => ({ x: 6 + (1 - (p.y - 2) / 101) * 138, y: 6 + (p.x / 100) * 48 }));
-                return (<div onClick={() => setViewSquad(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", width: "90vw", maxWidth: 880, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>SQUAD</span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>{t.name}</span>
-                      <span style={{ fontSize: 10, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)", fontWeight: 600, ...mono }}>{t.formation || "4-3-3"}</span>
-                      <span style={{ fontSize: 9, color: STYLE_CLR[t.style || "balanced"], fontWeight: 600 }}>{STYLE_LBL[t.style || "balanced"]}</span>
-                    </div>
-                    <span onClick={() => setViewSquad(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
-                  </div>
-                  <div style={{ overflowY: "auto", flex: 1 }}>
+                return (<>
                     <svg viewBox="0 0 150 60" style={{ width: "100%", height: "auto", marginBottom: 16 }}>
                       <rect x="2" y="2" width="146" height="56" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="1.5" />
                       <line x1="75" y1="2" x2="75" y2="58" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
@@ -5867,21 +6224,10 @@ export default function App() {
                       </div>
                     ))}
                     </div>
-                  </div>
-                </div>
-                </div>);
+                </>);
               })()}
-                            {exp && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (
-                <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>TACTICS</span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>{t.name}</span>
-                    </div>
-                    <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
-                  </div>
-                  <div style={{ overflowY: "auto", flex: 1 }}>
+                    <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
+                    <div style={{ marginBottom: 12 }}><PanelTitle accent="#ebcb8b">Tactics</PanelTitle></div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
@@ -5904,7 +6250,7 @@ export default function App() {
                 }); })()}
                   </div>
                 </div>
-                </div>)}
+              </div>)}
               </div>); })}
           </div>
           ); })()}
@@ -5914,12 +6260,12 @@ export default function App() {
 
         <div style={{ marginTop: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-            <label style={{ ...lbl, margin: 0 }}>Players <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({playerIndex.length})</span></label>
+            <PanelTitle sub={`${playerIndex.length}`}>Players</PanelTitle>
             <div style={{ display: "flex", gap: 6 }}>
-              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
-              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerNatFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
-              <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: playerClubFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
+              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...smBtn, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
+              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...smBtn, color: playerNatFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...smBtn, color: playerLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
+              <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...smBtn, color: playerClubFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
               <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: playerSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
             </div>
           </div>
@@ -5939,12 +6285,22 @@ export default function App() {
               if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
               return true;
             });
+            // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
+            const PL_VIEW_H = 1350, PL_OVER = 12;
+            const plTotal = filtered.length;
+            // Clamp: when a filter shrinks the list, plScroll stays stale for one frame before the
+            // reset effect fires, and an unclamped value would window past the end and blank the view.
+            const plY = Math.max(0, Math.min(plScroll, Math.max(0, plTotal * plRowH - PL_VIEW_H)));
+            const plStart = Math.max(0, Math.min(plTotal, Math.floor(plY / plRowH) - PL_OVER));
+            const plEnd = Math.min(plTotal, Math.ceil((plY + PL_VIEW_H) / plRowH) + PL_OVER);
+            const plWin = { top: plStart * plRowH, bottom: Math.max(0, (plTotal - plEnd) * plRowH) };
+            const plRows = filtered.slice(plStart, plEnd);
             const PLR_COLW = { num: 32, player: 220, ovr: 44, pos: 70, nat: 130, club: 180 };
-            const thStyle = { position: "sticky", top: 0, background: "var(--chrome-panel)", padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
-            const tdStyle = { padding: "5px 12px" };
+            const thStyle = thCellSticky;
+            const tdStyle = tdCell;
             return (
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
-                <div style={{ maxHeight: 1350, overflowY: "auto", overflowX: "auto" }}>
+                <div ref={plScrollRef} onScroll={() => { if (plRafRef.current) return; plRafRef.current = requestAnimationFrame(() => { plRafRef.current = 0; setPlScroll(plScrollRef.current?.scrollTop || 0); }); }} style={{ maxHeight: 1350, overflowY: "auto", overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                     <colgroup>
                       <col style={{ width: PLR_COLW.num }} /><col style={{ width: PLR_COLW.player }} /><col style={{ width: PLR_COLW.ovr }} /><col style={{ width: PLR_COLW.pos }} /><col style={{ width: PLR_COLW.nat }} /><col style={{ width: PLR_COLW.club }} />
@@ -5960,17 +6316,18 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
+                      {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
                       {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
-                      {filtered.map((p, i) => (
-                        <tr key={p.fullName} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                      {plRows.map((p, wi) => { const i = plStart + wi; return (
+                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                           <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
                           <td style={tdStyle}>{boldSurname(p.fullName || p.name, p.name)}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
                           <td style={{ ...tdStyle, paddingLeft: 8, color: "var(--chrome-muted)", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
                           <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
-                        </tr>
-                      ))}
+                        </tr>); })}
+                      {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -5997,12 +6354,12 @@ export default function App() {
               // Tournament fixtures have no "New Match" escape hatch — Import/Replay/Abandon
               // are the only way out, so tReplayCounts can't be bypassed by resetting around them.
               if (finished && tLiveTarget) return (
-                <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 8, padding: "6px 12px", textAlign: "center" }}>
+                <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                     {lastLiveResult && <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
-                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 4, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
-                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 4, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
-                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 4, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
+                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 6, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
+                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 6, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
+                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 6, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
                   </div>
                 </div>
               );
@@ -6056,7 +6413,7 @@ export default function App() {
                 </div>)}
                 {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
-                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 4, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
                   ))}
                 </div>}
               </div>) : null;
@@ -6066,7 +6423,7 @@ export default function App() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
                 <select value={lmH} onChange={e => { setLmH(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
-                <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>VS</span>
+                <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.18em", fontWeight: 700, ...ui }}>VS</span>
                 <select value={lmA} onChange={e => { setLmA(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
               </div>
             </div>
@@ -6074,7 +6431,7 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
                 {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs"], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds"]].map(([checked, onChange, label, sub], i) => (
                   <label key={i} onClick={() => onChange(!checked)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
-                    <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
                       <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
                     </div>
                     <div>
@@ -6085,7 +6442,7 @@ export default function App() {
                 ))}
               </div>
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
-                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[["home", teamById(lmH)?.name || "Home"], [null, "Neutral"], ["away", teamById(lmA)?.name || "Away"]].map(([val, label]) => (
                     <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "var(--chrome-brand)" : "transparent", color: lmHomeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
@@ -6098,7 +6455,7 @@ export default function App() {
                 </div>}
               </div>
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
-                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>AGGREGATE SCORING</div>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
                     <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
@@ -6127,12 +6484,12 @@ export default function App() {
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", textAlign: "right" }}>{vc.homeTeam.name}</div>
-                  <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.2em", fontWeight: 700, ...ui }}>{vc.isL2 ? "L2" : "VS"}</span>
+                  <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.18em", fontWeight: 700, ...ui }}>{vc.isL2 ? "L2" : "VS"}</span>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff" }}>{vc.awayTeam.name}</div>
                 </div>
                 {vc.hostModeActive ? (
                   <div>
-                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>STADIUM</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>STADIUM</div>
                     <select value={vc.venue?.stadium || ""} onChange={e => setTVenueOverrides(p => ({ ...p, [vc.overrideKey]: e.target.value }))} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
                       {tHostVenuePool.length === 0 && <option value="">No host venues configured</option>}
                       {tHostVenuePool.map((v, i) => <option key={i} value={v.stadium}>{[v.stadium, v.city].filter(Boolean).join(", ")}</option>)}
@@ -6141,7 +6498,7 @@ export default function App() {
                   </div>
                 ) : tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset" ? (
                   <div>
-                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                     <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                       {[["home", "Alternating"], [null, "Neutral"]].map(([val, label]) => (
                         <button key={label} onClick={() => setTHomeAdvOverrides(p => { const nm = { ...p }; if (val === null) nm[vc.venueKey] = "off"; else delete nm[vc.venueKey]; return nm; })} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== null ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
@@ -6151,7 +6508,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 600, letterSpacing: "0.08em", textAlign: "center" }}>HOME ADVANTAGE</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                     <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                       {[["home", vc.homeTeam.name], [null, "Neutral"], ["away", vc.awayTeam.name]].map(([val, label]) => (
                         <button key={label} onClick={() => setTHomeAdvOverrides(p => ({ ...p, [vc.venueKey]: val === null ? "off" : val }))} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
@@ -6177,7 +6534,7 @@ export default function App() {
                     {(() => { const _pc = lmPendingChance(lmMatch, chanceStep); const _pe = _pc ? lmMatch.events[_pc.idx] : null; const _dispBall = _pe?.team ? (_pe.team === "home" ? 4 : 0) : lmMatch.ball; const _dispPoss = _pe?.team || lmMatch.possession; return ["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
                       const active = _dispBall === z;
                       const clr = _dispPoss === "home" ? hClr : aClr;
-                      return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "var(--chrome-panel)", border: `1px solid ${active ? clr : "var(--chrome-border)"}`, borderRadius: 4, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "var(--chrome-panel)", border: `1px solid ${active ? clr : "var(--chrome-border)"}`, borderRadius: 6, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.08em", color: active ? clr : "var(--chrome-muted-66)", ...mono }}>{label}</span>
                       </div>;
                     }); })()}
@@ -6187,12 +6544,12 @@ export default function App() {
               </div>
             )}
             {lmMatch.phase === "finished" && renderStatsReport()}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
-              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 270 : 220, overflowY: "auto" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <div style={{ padding: "2px 6px", borderRadius: 4, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.05em", ...mono }}>{isH ? hC : aC}</div>
+                  <div style={{ padding: "2px 6px", borderRadius: 6, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.08em", ...mono }}>{isH ? hC : aC}</div>
                 </div>);
                 const mC = (min) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min}'</span>
@@ -6205,7 +6562,7 @@ export default function App() {
                 // gvPitch viewBox is 206x142 at up to 280px wide. Sizing the button so its
                 // bottom edge lands on the pitch view's bottom edge (mouth height + gap + button).
                 const GV_STACKED_BTN_H = Math.round(280 * 142 / 206) - Math.round(190 * 136 / 220) - 16;
-                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
+                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
                 // The one chance (if any) the "next minute" button is currently driving — see
                 // lmPendingChance. A card is "gated" (external-button-only, no in-card Back)
                 // exactly when it's this one; every other chance card is historical.
@@ -6251,7 +6608,7 @@ export default function App() {
                   }
                   else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoalText(gt, e.playerFull, goalClr)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
                   else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#ebcb8b08"; }
-                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 1.5 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#bf616a08"; }
+                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 3 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#bf616a08"; }
                   else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
                   else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
                   else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "var(--chrome-muted)" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "var(--chrome-muted)" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{e.text}</div>; bg = "transparent"; }
@@ -6308,7 +6665,7 @@ export default function App() {
                 const T2 = new Set(["yellow","injury"]);
                 if (T2.has(e.type)) {
                   let icon, txt, clr;
-                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 1.5 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
+                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
                   else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "#ffffff"); clr = "#c07070"; }
                   return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
                     {mC(e.min)}
@@ -6329,12 +6686,12 @@ export default function App() {
             {lmMatch.phase !== "finished" && (<>
             <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "var(--chrome-panel)", borderRadius: 6, padding: 2, border: "1px solid var(--chrome-border)" }}>
               {[["stats","Stats"],["players","Players"],["tactics","Tactics"]].map(([id,label]) => (
-                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 4, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
+                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
               ))}
             </div>
             {lmTab === "stats" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
                   <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hStatClr : "var(--chrome-muted)", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
@@ -6343,22 +6700,22 @@ export default function App() {
                   <div style={{ flex: 1, margin: "0 4px" }}></div>
                   <span style={{ width: 20, textAlign: "left", color: ap > hp ? aStatClr : "var(--chrome-muted)", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
                 </div>
-                <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", background: "var(--chrome-muted)" }}>
-                  <div style={{ width: `${hp}%`, background: hClr, borderRadius: 2, transition: "width 0.3s" }} />
-                  <div style={{ width: `${ap}%`, background: aClr, borderRadius: 2, transition: "width 0.3s" }} />
+                <div style={{ display: "flex", height: 4, borderRadius: 3, overflow: "hidden", background: "var(--chrome-muted)" }}>
+                  <div style={{ width: `${hp}%`, background: hClr, borderRadius: 3, transition: "width 0.3s" }} />
+                  <div style={{ width: `${ap}%`, background: aClr, borderRadius: 3, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
               {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
                 <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "var(--chrome-muted)", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 2, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "var(--chrome-muted)", borderRadius: 2, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
+                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "var(--chrome-muted)", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
               {/* Momentum graph */}
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)" }}>
                 <div style={{ textAlign: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.15em", fontWeight: 600 }}>Momentum</span>
+                  <span style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.16em", fontWeight: 600 }}>Momentum</span>
                 </div>
                 {(() => {
                   const W = 400, H = 44, mid = H / 2;
@@ -6387,8 +6744,8 @@ export default function App() {
             </div>
             </>}
             {lmTab === "players" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -6489,8 +6846,8 @@ export default function App() {
             </div>
 
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -6508,7 +6865,7 @@ export default function App() {
                 // extra is only passed for on-pitch pills — bench players sit at a flat 100
                 // stamina until subbed on, so a fatigue readout there would just be noise.
                 const pill = (p, onClick, badge, badgeClr, extra) => (
-                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 4, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-88)" }}>
+                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 6, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-88)" }}>
                     <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
                     <span style={{ color: "#ffffff" }}>{p.name}</span>
                     {badge != null && <span style={{ ...mono, color: badgeClr, fontWeight: 600 }}>{badge}</span>}
@@ -6525,7 +6882,7 @@ export default function App() {
                     </div>
                     {offPlayer && canSub ? (<>
                       {/* Replacement step — bench, sorted best OVR first, click to confirm */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 6 }}>
                         <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Replacing <b style={{ color: "#ffffff" }}>{offPlayer.name}</b></span>
                         <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                       </div>
@@ -6546,7 +6903,7 @@ export default function App() {
                         const inGrp = onPitch.filter(p => p.pos === grp);
                         if (!inGrp.length) return null;
                         return (<div key={grp} style={{ marginBottom: 4 }}>
-                          <div style={{ fontSize: 6, color: "var(--chrome-muted-66)", letterSpacing: "0.1em", marginBottom: 2, ...mono }}>{grp}</div>
+                          <div style={{ fontSize: 6, color: "var(--chrome-muted-66)", letterSpacing: "0.12em", marginBottom: 2, ...mono }}>{grp}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                             {inGrp.map(p => { const stam = p.stamina??100; const drop = Math.round((p.ovr??65) - fatigueOvr(p.ovr, stam)); return pill(p, canSub ? () => setManualSub({side, off:p.name}) : undefined, null, null, (<>
                               <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
@@ -6566,7 +6923,7 @@ export default function App() {
             </>}
             {lmTab === "tactics" && <>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Tactics</div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Tactics</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
@@ -6579,19 +6936,19 @@ export default function App() {
                     <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
                     {/* Style */}
                     <div style={{ marginBottom: 4 }}>
-                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em", marginBottom: 2 }}>STYLE</div>
+                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", marginBottom: 2 }}>STYLE</div>
                       {isBreak ? <select value={lmMatch.styles[side]} onChange={e => setLmMatch(m => ({...m, styles:{...m.styles, [side]:e.target.value}}))} style={{ ...inp, fontSize: 10, padding: "3px 6px", width: "100%", color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)" }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:SC2[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select> : <div style={{ fontSize: 10, color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)", fontWeight: 600, padding: "3px 0" }}>{STYLE_LBL[lmMatch.styles[side]]}</div>}
                     </div>
                     {/* Formation + Tempo */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
-                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em" }}>FORMATION</div><div style={{ fontSize: 10, color: "#888", padding: "2px 0" }}>{lmMatch.formations[side]}</div></div>
-                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em" }}>TEMPO</div><select value={lmMatch.tactics[side]} onChange={e => setLmMatch(m => ({...m, tactics:{...m.tactics, [side]:e.target.value}, allowTacChange:{...m.allowTacChange, [side]:false}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", width: "100%", color: "#888" }}><option value="park">Ultra Defensive</option><option value="def">Defensive</option><option value="bal">Balanced</option><option value="atk">Offensive</option><option value="ultra">Ultra Offensive</option></select></div>
+                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em" }}>FORMATION</div><div style={{ fontSize: 10, color: "#888", padding: "2px 0" }}>{lmMatch.formations[side]}</div></div>
+                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em" }}>TEMPO</div><select value={lmMatch.tactics[side]} onChange={e => setLmMatch(m => ({...m, tactics:{...m.tactics, [side]:e.target.value}, allowTacChange:{...m.allowTacChange, [side]:false}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", width: "100%", color: "#888" }}><option value="park">Ultra Defensive</option><option value="def">Defensive</option><option value="bal">Balanced</option><option value="atk">Offensive</option><option value="ultra">Ultra Offensive</option></select></div>
                     </div>
                     {/* Stamina */}
                     <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.1em", marginBottom: 3 }}>STAMINA</div>
+                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", marginBottom: 3 }}>STAMINA</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 2 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 2, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
+                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 3 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 3, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
                         <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
                       </div>
                     </div>
@@ -6612,8 +6969,8 @@ export default function App() {
               </div>
             </div>
             {/* Player Stats */}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
                 const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
                 const hM = cM("home"), aM = cM("away");
@@ -6653,10 +7010,115 @@ export default function App() {
         {/* ═══ TOURNAMENT TAB ═══ */}
         {tab === "tournament" && (<div>
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "#bf616a22", border: "1px solid #bf616a44", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "#bf616a", textAlign: "center" }}>⚠ {tScoreError}</div>}
+          {/* Save slots — several tournaments in flight, one open at a time */}
+          {(() => {
+            const active = tSlots.find(s => s.id === tActiveSlot) || null;
+            const others = tSlots.filter(s => s.id !== tActiveSlot).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+            const renameField = (s) => (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1, minWidth: 0 }}>
+                <input autoFocus value={slotRenaming.name} onChange={e => setSlotRenaming({ id: s.id, name: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Enter") slotRename(s.id, slotRenaming.name); if (e.key === "Escape") setSlotRenaming(null); }}
+                  style={{ ...inp, padding: "4px 9px", fontSize: 12, flex: 1, minWidth: 0, maxWidth: 260 }} />
+                <button onClick={() => slotRename(s.id, slotRenaming.name)} style={smBtn}>Save</button>
+                <button onClick={() => setSlotRenaming(null)} style={smBtn}>Cancel</button>
+              </div>
+            );
+            const rowActions = (s, isActive) => (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: "auto" }}>
+                {!isActive && <button onClick={() => slotSwitch(s.id)} style={{ ...smBtn, color: "#ffffff", borderColor: "var(--chrome-border-88)" }}>Open</button>}
+                <button onClick={() => setSlotRenaming({ id: s.id, name: s.name })} style={smBtn}>Rename</button>
+                <button onClick={() => slotDuplicate(s.id)} style={smBtn}>Copy</button>
+                <button onClick={() => slotExport(s.id)} style={smBtn}>Export</button>
+                <button onClick={() => setSlotConfirmDelete(s.id)} style={{ ...smBtn, color: "#bf616a" }}>Delete</button>
+              </div>
+            );
+            return (
+            <div style={panelBox}>
+              <div style={panelHead}>
+                <PanelTitle sub={tSlots.length ? `${tSlots.length} saved` : ""}>Saved Tournaments</PanelTitle>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button onClick={slotNew} style={smBtn}>+ New</button>
+                  <button onClick={() => importInputRef.current?.click()} style={smBtn}>Import</button>
+                  <button onClick={() => tActiveSlot && slotExport(tActiveSlot)} disabled={!tActiveSlot}
+                    style={{ ...smBtn, opacity: tActiveSlot ? 1 : 0.35, cursor: tActiveSlot ? "pointer" : "default" }}>Export</button>
+                </div>
+              </div>
+
+              {/* The tournament currently open — name, phase, progress and its headline figures. */}
+              <div style={{ border: "1px solid var(--chrome-brand-44)", borderRadius: 10, background: "var(--chrome-brand-11)", padding: "13px 15px" }}>
+                {active ? (<>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 11 }}>
+                    {slotRenaming?.id === active.id ? renameField(active) : (<>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{active.name}</span>
+                      <PhaseBadge phase={active.phase} />
+                      {rowActions(active, true)}
+                    </>)}
+                  </div>
+                  <ProgressBar played={active.played} total={active.total} />
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(78px,1fr))", gap: 14, marginTop: 12 }}>
+                    <StatCell label="TEAMS" value={active.nTeams || "—"} />
+                    <StatCell label="PLAYED" value={active.total ? `${active.played}/${active.total}` : "—"} />
+                    <StatCell label="LEFT" value={active.total ? active.total - active.played : "—"} color={active.total && active.played === active.total ? "#a3be8c" : undefined} />
+                    <StatCell label="DONE" value={active.total ? Math.round((active.played / active.total) * 100) + "%" : "—"} />
+                    <StatCell label="SAVED" value={fmtAgo(active.ts)} color="var(--chrome-muted)" />
+                  </div>
+                </>) : (
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>
+                    No tournament open yet. Set one up below — it saves itself as you go, and you can come back to it any day.
+                  </div>
+                )}
+              </div>
+
+              {others.length > 0 && (<>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "16px 0 8px" }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", color: "var(--chrome-muted)" }}>OTHER SAVES</span>
+                  <button onClick={() => { setShowSaves(v => !v); setSlotConfirmDelete(null); }} style={smBtn}>{showSaves ? "Hide" : `Show ${others.length}`}</button>
+                </div>
+                {showSaves && others.map(s => (
+                  <div key={s.id} style={rowBox}>
+                    <div style={{ ...rowHead, flexWrap: "wrap" }}>
+                      {slotRenaming?.id === s.id ? renameField(s) : (<>
+                        <button onClick={() => slotSwitch(s.id)} title="Open this tournament"
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "#ffffff", textAlign: "left" }}>{s.name}</button>
+                        <PhaseBadge phase={s.phase} />
+                        <span style={metaTxt}>{s.total ? `${s.played}/${s.total}` : "not started"}{s.nTeams ? ` · ${s.nTeams} teams` : ""} · {fmtAgo(s.ts)}</span>
+                        {rowActions(s, false)}
+                      </>)}
+                    </div>
+                  </div>
+                ))}
+              </>)}
+
+              {/* Deleting a tournament is unrecoverable, so it gets a real dialog rather than an
+                  inline second button that is easy to hit by accident. */}
+              {slotConfirmDelete && (() => {
+                const s = tSlots.find(x => x.id === slotConfirmDelete);
+                if (!s) return null;
+                return (<div onClick={() => setSlotConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ ...panelBox, marginBottom: 0, maxWidth: 440, width: "100%" }}>
+                    <div style={panelHead}><PanelTitle accent="#bf616a">Delete Tournament</PanelTitle></div>
+                    <div style={{ fontSize: 12, color: "var(--chrome-muted)", lineHeight: 1.65, marginBottom: 18 }}>
+                      Permanently delete <span style={{ color: "#ffffff", fontWeight: 700 }}>{s.name}</span>?
+                      {s.total ? <> It has <span style={{ color: "#ffffff" }}>{s.played} of {s.total}</span> matches played.</> : null}
+                      <br />This cannot be undone. Export it first if you want to keep a copy.
+                    </div>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      <button onClick={() => setSlotConfirmDelete(null)} style={smBtn}>Cancel</button>
+                      <button onClick={() => slotExport(s.id)} style={smBtn}>Export first</button>
+                      <button onClick={() => slotDelete(s.id)} style={{ ...smBtn, color: "#bf616a", borderColor: "#bf616a66", background: "#bf616a1a" }}>Delete</button>
+                    </div>
+                  </div>
+                </div>);
+              })()}
+              {slotMsg && <div style={{ marginTop: 12, fontSize: 10, color: /fail|full|could not/i.test(slotMsg) ? "#bf616a" : "var(--chrome-muted)" }}>{slotMsg}</div>}
+              <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                onChange={e => { slotImportFile(e.target.files?.[0]); e.target.value = ""; }} />
+            </div>);
+          })()}
           {/* Tournament Leaderboards */}
           {Object.keys(tPlayerStats).length > 0 && (
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, textAlign: "center", paddingBottom: 8, borderBottom: "1px solid var(--chrome-panel)" }}>Tournament Leaders</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ ...panelHead, marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid var(--chrome-border-33)" }}><PanelTitle accent="#ebcb8b">Tournament Leaders</PanelTitle></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
                 {/* Top Scorers */}
                 <div style={{ minWidth: 0 }}>
@@ -6810,9 +7272,9 @@ export default function App() {
               : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
             return (
               <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 12, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-panel)" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "var(--chrome-muted)" }}>{title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "#ffffff" }}>{title}</span>
                     <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
@@ -6841,9 +7303,9 @@ export default function App() {
           })()}
           {/* SETUP */}
           {tPhase === "setup" && (<div>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Participants <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({tournamentTeamIds.length} selected)</span></div>
+            <div style={panelBox}>
+              <div style={panelHead}>
+                <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
                 <div style={{ display: "flex", gap: 6 }}>
                   <select onChange={e => {
                     const v = e.target.value; e.target.value = "";
@@ -6852,12 +7314,12 @@ export default function App() {
                     const codeSet = new Set(codes);
                     setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
                     setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
-                  }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
-                    <option value="" hidden>☰ Conference</option>
+                  }} style={{ ...smBtn, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
+                    <option value="" hidden>☰ Presets</option>
                     {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "var(--chrome-muted)" }}>Select All</button>
-                  <button onClick={() => setTournamentTeamIds([])} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#bf616a" }}>Clear</button>
+                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
+                  <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "#bf616a" }}>Clear</button>
                 </div>
               </div>
               {groupByLeague(teams).map((entry, gi) => {
@@ -6866,7 +7328,7 @@ export default function App() {
                 const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
                 const allSel = selCount === ts.length, noneSel = selCount === 0;
                 const expanded = expandedParticipantLeagues.has(league);
-                return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
+                return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
                     <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#ffffff", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
@@ -6875,14 +7337,14 @@ export default function App() {
                   </div>
                   {expanded && <div style={{ padding: "8px 10px" }}>
                     {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                      <span style={{ fontSize: 9, color: "#81a1c1", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.06em" }}>TRIM:</span>
+                      <span style={{ fontSize: 9, color: "#81a1c1", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.08em" }}>TRIM:</span>
                       {TRIM_SIZES.filter(n => ts.length > n).map(n => (
                         <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid #81a1c144", background: "#81a1c11a", color: "#81a1c1", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
                       ))}
                     </div>}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
-                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
                     </div>
                   </div>}
@@ -6890,10 +7352,11 @@ export default function App() {
               })}
             </div>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={panelHead}><PanelTitle>Tournament Setup</PanelTitle></div>
               {/* Presets */}
               <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Preset</div>
-                <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff" }}>Preset</div>
+                <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...smBtn, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
                   <option value="" hidden>☰ Select</option>
                   {Object.entries(T_PRESETS).map(([id, p]) => p.divider ? <option key={id} disabled>{p.label}</option> : <option key={id} value={id}>{p.label}</option>)}
                 </select>
@@ -6905,7 +7368,7 @@ export default function App() {
                   const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
                   tModeClickRef.current = { n: clicks, t: now };
                   if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
-                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
+                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
                     <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
@@ -6922,7 +7385,7 @@ export default function App() {
               {/* Group Stage / League Format */}
               {tHasGroups && (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Group Stage</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Group Stage</div>
                   <div style={{ display: "flex", gap: 12, alignItems: "start", marginBottom: 16 }}>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "#bf616a" : "var(--chrome-muted)" }} /></div>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
@@ -6963,12 +7426,12 @@ export default function App() {
                 const activeTBs = tbs.filter(tb => allTBs.includes(tb));
                 return (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Tiebreakers</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
                     {activeTBs.map((tb, ti) => (
                       <Fragment key={tb}>
                         {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
-                        <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 4, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
+                        <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
                           <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
                           <span style={{ fontSize: 11, color: "#ffffff" }}>{TBSH[tb]}</span>
                           <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
@@ -6976,7 +7439,7 @@ export default function App() {
                       </Fragment>
                     ))}
                     {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
-                      <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 4, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
+                      <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
                     ))}
                   </div>
                 </div>); })()}
@@ -6987,7 +7450,7 @@ export default function App() {
                 return (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Qualification Zones</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Qualification Zones</div>
                     <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "var(--chrome-muted)" }}>+ Zone</button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -7004,7 +7467,7 @@ export default function App() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <select value={z.color} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, color: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}>{ZC.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                          <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+                          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
                             {[["top", "Top"], ["bottom", "Bot"]].map(([id, l]) => (
                               <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
                             ))}
@@ -7025,31 +7488,26 @@ export default function App() {
               {/* Knockout options */}
               {tHasKO && (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Knockout Stage</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Knockout Stage</div>
                   <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Format</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                     {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
                       <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
                     ))}
                   </div>
-                  {tConfig.koFormat === "double_elim" && (() => { const checked = tConfig.koGFReset; return (
-                    <div onClick={() => setTConfig(c => ({ ...c, koGFReset: !c.koGFReset }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Grand Final Reset</div><div style={{ fontSize: 9, color: "var(--chrome-muted)" }}>If LB winner wins GF, play a deciding match</div></div>
-                    </div>); })()}
                   {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
                     <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>3rd Place Match</div></div>
                     </div>); })()}
                   {(() => { const checked = tConfig.koLegs === 2; return (
                     <div onClick={() => setTConfig(c => ({ ...c, koLegs: c.koLegs === 2 ? 1 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>2-Legged Ties</div></div>
                     </div>); })()}
                   {tConfig.koLegs === 2 && (() => { const checked = tConfig.koAwayGoals; return (
                     <div onClick={() => setTConfig(c => ({ ...c, koAwayGoals: !c.koAwayGoals }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8, paddingLeft: 16 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                       <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Away Goals Rule</div></div>
                     </div>); })()}
                   {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
@@ -7074,19 +7532,15 @@ export default function App() {
                   {[["injuries","Injuries"],["suspensions","Suspensions"],["staminaCarry","Stamina"]].map(([key,label]) => { const checked = tConfig[key] !== false; return (
                     <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div onClick={() => setTConfig(c => ({ ...c, [key]: !checked }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
-                        <div style={{ width: 32, height: 18, borderRadius: 9, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                        <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
                         <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>{label}</div>
                       </div>
-                      {key === "staminaCarry" && checked && <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 13 }}>🩹</span>
-                        <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{Math.round(STAMINA_RECOVER_PCT * 100)}% of gap</span>
-                      </div>}
                     </div>); })}
                 </div>
               </div>
               {/* Home Advantage */}
               <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-muted)" }}>Home Advantage</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
                   {tHasGroups && <div>
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
@@ -7105,7 +7559,7 @@ export default function App() {
                   <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
-                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
                     ); })}
                   </div>
                   {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
@@ -7117,7 +7571,7 @@ export default function App() {
                 </div>)}
               </div>
               {/* Summary */}
-              <div style={{ background: "var(--chrome-panel)", borderRadius: 8, padding: "14px 18px", marginBottom: 18, border: "1px solid var(--chrome-border)" }}>
+              <div style={{ background: "var(--chrome-panel)", borderRadius: 10, padding: "14px 18px", marginBottom: 18, border: "1px solid var(--chrome-border)" }}>
                 {tConfig.mode === "single" && tConfig.singleType === "knockout" ? (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
@@ -7164,11 +7618,6 @@ export default function App() {
             <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <button onClick={() => createTournament()} disabled={!tValid} style={{ ...scBtn, opacity: tValid ? 1 : 0.4, cursor: tValid ? "pointer" : "default", flex: "0 0 auto" }}>▶ {tHasGroups && tConfig.allocMode === "manual" && tConfig.numGroups > 1 ? "Begin Allocation" : "Create Tournament"}</button>
-                <div style={{ fontSize: 10, color: "var(--chrome-muted)", flex: 1, minWidth: 0 }}>
-                  {!tValid && tournamentTeamIds.length < 2 && <span style={{ color: "#bf616a" }}>Select at least 2 teams</span>}
-                  {!tValid && tournamentTeamIds.length >= 2 && tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix skill values (25–100)</span>}
-                  {!tValid && tournamentTeamIds.length >= 2 && !tParticipantErrors && <span style={{ color: "#bf616a" }}>Fix config errors above</span>}
-                </div>
               </div>
             </div>
           </div>)}
@@ -7188,21 +7637,21 @@ export default function App() {
             const justPlaced = !pending && index > 0 ? log[index - 1] : null;
             return (<div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>DRAW CEREMONY</div>
+                <PanelTitle accent="#ebcb8b">Draw Ceremony</PanelTitle>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{index}/{log.length}</span>
                   <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
                 </div>
               </div>
-              {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-44)", borderRadius: 8, animation: "fadeIn 0.3s" }}>
+              {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-44)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {pendingEntry.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>{pendingEntry.team}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.08em" }}>{pendingEntry.team}</div>
                 <div style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", marginTop: 4 }}>{pendingEntry.skill}</div>
                 <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>awaiting group…</div>
               </div>}
-              {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand)", borderRadius: 8, animation: "fadeIn 0.3s" }}>
+              {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {justPlaced.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>{justPlaced.team}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.08em" }}>{justPlaced.team}</div>
                 <div style={{ fontSize: 14, color: "var(--chrome-muted)", marginTop: 8, fontWeight: 700 }}>→ GROUP {justPlaced.group}</div>
               </div>}
               {Object.keys(pots).map(p => {
@@ -7214,7 +7663,7 @@ export default function App() {
                       const globalIdx = log.indexOf(e);
                       const isPlaced = globalIdx < index;
                       const isPending = pending && globalIdx === index;
-                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 4, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "#ffffff" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
+                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "#ffffff" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
                     })}
                   </div>
                 </div>);
@@ -7224,8 +7673,8 @@ export default function App() {
                   const gt = groups[gl] || [];
                   const maxPerGroup = Math.ceil(log.length / allGroups.length);
                   const isTarget = justPlaced && justPlaced.group === gl;
-                  return (<div key={gl} style={{ background: "var(--chrome-panel)", border: isTarget ? "1px solid var(--chrome-brand-66)" : "1px solid var(--chrome-border)", borderRadius: 7, padding: "10px 8px", transition: "border 0.3s" }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>GROUP {gl}</div>
+                  return (<div key={gl} style={{ background: "var(--chrome-panel)", border: isTarget ? "1px solid var(--chrome-brand-66)" : "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 8px", transition: "border 0.3s" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>GROUP {gl}</div>
                     {Array.from({ length: maxPerGroup }, (_, si) => {
                       const t = gt[si];
                       const isLatest = t && justPlaced && t.team === justPlaced.team;
@@ -7250,12 +7699,12 @@ export default function App() {
           {/* MANUAL ALLOCATION */}
           {tPhase === "manual" && tManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>MANUAL ALLOCATION</div>
+              <PanelTitle accent="#ebcb8b" >Manual Allocation</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
+              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
                 {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{t.skill}</span></div>))}
                 {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
               </div>))}
@@ -7266,7 +7715,7 @@ export default function App() {
           {/* KO MANUAL ALLOCATION */}
           {tPhase === "ko_byes" && tByeManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>SELECT BYE TEAMS</div>
+              <PanelTitle accent="#ebcb8b" >Select Bye Teams</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tByeManual.selected.length} / {tByeManual.numByes} selected</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 6, marginBottom: 16 }}>
@@ -7281,15 +7730,15 @@ export default function App() {
           </div>)}
           {tPhase === "ko_manual" && tKOManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>KNOCKOUT BRACKET ALLOCATION</div>
+              <PanelTitle accent="#ebcb8b" >Knockout Bracket Allocation</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tKOManual.matches.length, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "#ebcb8b33" : "var(--chrome-muted)"}`, borderRadius: 7, padding: "12px 10px" }}>
+              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "#ebcb8b33" : "var(--chrome-muted)"}`, borderRadius: 6, padding: "12px 10px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: m.home && !m.away || m.away && !m.home ? "#ebcb8b" : "var(--chrome-muted)", textAlign: "center", marginBottom: 8, ...mono }}>{m.home && !m.away || m.away && !m.home ? "BYE" : `MATCH ${mi + 1}`}</div>
                 {["home", "away"].map(slot => (<div key={slot} style={{ marginBottom: 4 }}>
                   {m[slot] ? (
-                    <div style={{ fontSize: 11, padding: "4px 8px", background: "var(--chrome-panel)", borderRadius: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 11, padding: "4px 8px", background: "var(--chrome-panel)", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>{m[slot].name}</span>
                       <button onClick={() => tKOManualRemove(mi, slot)} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 13, cursor: "pointer", padding: "0 2px" }}>×</button>
                     </div>
@@ -7308,7 +7757,7 @@ export default function App() {
           {/* GROUPS */}
           {tPhase === "groups" && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>{tConfig.numGroups === 1 ? "LEAGUE" : "GROUP STAGE"}</div>
+              <PanelTitle accent="#81a1c1">{tConfig.numGroups === 1 ? "League" : "Group Stage"}</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tPlayedMatches}/{tTotalMatches}</span>
                 {tPlayedMatches < tTotalMatches && <button onClick={() => tScorinate(-1, -1, -1)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
@@ -7317,15 +7766,15 @@ export default function App() {
             </div>
 
             {/* Draw log */}
-            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
+            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
 
             {/* Standings */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
                   <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
 
@@ -7349,11 +7798,11 @@ export default function App() {
               if (pool.length === 0) return null;
               const form = Object.assign({}, ...allGroupForms);
               return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: bestZone?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bestZone?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
                 <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "#4a7ab5") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: bestZone?.color || "#4a7ab5" }} /><span style={{ fontSize: 10, color: "#8892a6" }}>Top {bestCount} qualify</span></div></div>}
+                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: bestZone?.color || "#4a7ab5" }} /><span style={{ fontSize: 10, color: "#8892a6" }}>Top {bestCount} qualify</span></div></div>}
               </div>);
             })()}
 
@@ -7361,11 +7810,11 @@ export default function App() {
             {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 560, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>{groupFirstOpen >= 0 ? `ROUND ${groupFirstOpen + 1}` : "FIXTURES — ALL ROUNDS COMPLETE"}</div>
+                <PanelTitle accent="#81a1c1">{groupFirstOpen >= 0 ? `Round ${groupFirstOpen + 1}` : "Fixtures"}</PanelTitle>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Sim Round</button>}
-                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Expand All</button>
-                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Collapse All</button>
+                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Sim Round</button>}
+                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
               </div>
               <div style={{ padding: "10px 16px 16px" }}>
@@ -7379,7 +7828,7 @@ export default function App() {
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                       <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {m.bye ? <span style={{ color: "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
                             <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "#8fbf8f" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
@@ -7396,7 +7845,7 @@ export default function App() {
                     {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
                       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "#ffffff" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
                       <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "#bf616a" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
-                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 2, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
+                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 3, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
                         : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#bf616a", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
                         : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
                       <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#ffffff" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
@@ -7419,8 +7868,8 @@ export default function App() {
             {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (
               <div style={{ textAlign: "center", marginTop: 20 }}>
                 <div style={{ fontSize: 12, color: "#ffffff", marginBottom: 8, ...mono }}>✓ All {tConfig.numGroups === 1 ? "league " : "group "} matches complete</div>
-                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid #bf616a33", borderRadius: 8, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "#bf616a", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
-                  : (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-33)", borderRadius: 8, padding: 20 }}>
+                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid #bf616a33", borderRadius: 10, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "#bf616a", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
+                  : (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-33)", borderRadius: 10, padding: 20 }}>
                     <div style={{ fontSize: 10, letterSpacing: 4, color: "var(--chrome-brand)", marginBottom: 8, textShadow: "0 0 8px var(--chrome-brand-66)" }}>{tConfig.numGroups === 1 ? "🏆 CHAMPION" : "🏆 TOURNAMENT COMPLETE"}</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "var(--chrome-brand)", textShadow: "0 0 12px var(--chrome-brand-44)" }}>{tGroups[0]?.standings[0]?.name}</div>
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>Champion — {tGroups[0]?.standings[0]?.pts} pts</div>
@@ -7432,30 +7881,30 @@ export default function App() {
           {/* KNOCKOUT */}
           {(tPhase === "knockout" || tPhase === "complete") && tKO && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>KNOCKOUT STAGE</div>
+              <PanelTitle>Knockout Stage</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
                 <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
               </div>
             </div>
             {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
                   <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
             {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 7, padding: "12px 10px", marginTop: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: bz?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginTop: 10 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bz?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
                 <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"#4a7ab5") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
               </div>); })()}
             </details>)}
-            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 5, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
+            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
             {tPhase === "complete" && tKO.champion && (
-              <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 12, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
+              <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tKO.champion.name}</div>
                 <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 6, ...mono }}>{tKO.champion.skill}</div>
@@ -7505,7 +7954,7 @@ export default function App() {
                 const nameWt = (team) => w === team ? 600 : 400;
                 const sClr = (team) => w === team ? "#ffffff" : "var(--chrome-muted)";
                 return (
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid #d0877044" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid #d0877044" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
@@ -7519,9 +7968,9 @@ export default function App() {
 
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
-                          : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
-                        <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
+                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                          : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
                         <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
@@ -7689,7 +8138,7 @@ export default function App() {
                 const onSim = () => { if (bk === "wb") tScorinateKO(ri, mi, isPartial ? 2 : 0); else if (bk === "lb") tScorinateKO(ri, mi, isPartial ? 2 : 0, "lb"); else tScorinateKO(0, 0, 0, bk); };
                 const onLive = () => { if (bk === "wb") tPlayLive({type:"ko",ri,mi,leg:isPartial?2:1}); else if (bk === "lb") tPlayLive({type:"ko",ri,mi,bracket:"lb",leg:isPartial?2:1}); else tPlayLive({type:"ko",ri:0,mi:0,bracket:bk,leg:isPartial?2:1}); };
                 return (
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
                       {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
@@ -7702,9 +8151,9 @@ export default function App() {
                     </div>
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
-                          : <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 2, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
-                        <button onClick={onLive} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 2, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
+                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                          : <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
+                        <button onClick={onLive} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
                         <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
@@ -7848,26 +8297,26 @@ export default function App() {
             {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 640, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)" }}>ALL CAUGHT UP</div>}
+                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <PanelTitle accent="#a3be8c">All Caught Up</PanelTitle>}
                   {koActionable.wbRi >= 0 && (() => { const rd = tKO.rounds[koActionable.wbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>WB R{koActionable.wbRi + 1}</span>
-                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
-                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
+                    <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...xsBtn, color: "#81a1c1" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...xsBtn, color: "#ffffff" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
                   {koActionable.lbRi >= 0 && (() => { const rd = tKO.losers[koActionable.lbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>LB R{koActionable.lbRi + 1}</span>
-                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
-                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#81a1c1" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
-                  {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ 3rd Place</button>}
-                  {koActionable.gfReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "gf" }, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Grand Final</button>}
-                  {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "#ffffff" }}>▶ Reset Match</button>}
+                    {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
+                    {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
+                    <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "#81a1c1" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "#ffffff" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
+                  {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...xsBtn, color: "#ffffff" }}>▶ 3rd Place</button>}
+                  {koActionable.gfReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "gf" }, 0)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Grand Final</button>}
+                  {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Reset Match</button>}
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Expand All</button>
-                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...addBtn, fontSize: 9, padding: "2px 8px", color: "var(--chrome-muted)" }}>Collapse All</button>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
+                  <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
               </div>
               <div style={{ padding: "10px 16px 16px" }}>
@@ -7878,7 +8327,7 @@ export default function App() {
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", flexShrink: 0 }}>{(tKO.losers ? "WB " : "") + round.name.toUpperCase()}</span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
                             <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
@@ -7890,7 +8339,7 @@ export default function App() {
                     {rdDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
                   {isOpen && <div style={{ display: "grid", gridTemplateColumns: round.matches.length > 2 ? `repeat(${Math.min(round.matches.length, 2)}, 1fr)` : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
-                    {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid var(--chrome-brand-33)" : "1px solid var(--chrome-border)" }}>
+                    {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: ri === tKO.rounds.length - 1 ? "1px solid var(--chrome-brand-33)" : "1px solid var(--chrome-border)" }}>
                       {renderKoMatchRow(m, { ri, mi }, { cardLayout: round.matches.length > 2 })}
                     </div>))}
                   </div>}
@@ -7899,13 +8348,13 @@ export default function App() {
               {!tKO.losers && tKO.thirdPlace && (
                 <div style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
                 </div>
               )}
               {!tKO.losers && (() => { const ri = tKO.rounds.length - 1; const round = tKO.rounds[ri]; if (!round) return null; return (
                 <div style={{ marginBottom: 6, border: "1px solid var(--chrome-brand-33)", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-muted)", marginBottom: 10 }}>{round.name?.toUpperCase()}</div>
-                  {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginBottom: 10 }}>{round.name?.toUpperCase()}</div>
+                  {round.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)", marginBottom: 4 }}>{renderKoMatchRow(m, { ri, mi })}</div>))}
                 </div>
               ); })()}
               {tKO.losers && tKO.losers.map((lbRound, lr) => { if (lbRound.matches.every(m => !m.home && !m.away && !m.result && !m.bye)) return null; const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
@@ -7915,7 +8364,7 @@ export default function App() {
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", flexShrink: 0 }}>{lbRound.name.toUpperCase()}<span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 6 }}>{lbRound.type === "dropin" ? "DROP-IN" : "INTERNAL"}</span></span>
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 8, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
                             <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
@@ -7927,7 +8376,7 @@ export default function App() {
                     {lbDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
                   {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
-                    {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                    {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid #d0877022" }}>
                       {renderKoMatchRow(m, { ri: lr, mi, bracket: "lb" }, { cardLayout: lbRound.matches.length > 2, showByeInAction: true, initialLeg: 0 })}
                     </div>))}
                   </div>}
@@ -7935,15 +8384,15 @@ export default function App() {
               ); })}
               {tKO.losers && tKO.grandFinal && (
                 <div style={{ marginBottom: 6, border: "1px solid var(--chrome-brand-33)", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "var(--chrome-brand)", marginBottom: 10 }}>GRAND FINAL</div>
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)" }}>{renderKoMatchRow(tKO.grandFinal, { ri: 0, mi: 0, bracket: "gf" }, { homeTag: "UB", awayTag: "LB", initialLeg: 0 })}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-brand)", marginBottom: 10 }}>GRAND FINAL</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid var(--chrome-brand-33)" }}>{renderKoMatchRow(tKO.grandFinal, { ri: 0, mi: 0, bracket: "gf" }, { homeTag: "UB", awayTag: "LB", initialLeg: 0 })}</div>
                 </div>
               )}
               {tKO.losers && tKO.reset && (tKO.reset.home || tKO.reset.away) && (
                 <div style={{ marginBottom: 6, border: "1px solid #ebcb8b33", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
                   <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 4, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
                 </div>
               )}
               </div>
@@ -7953,17 +8402,16 @@ export default function App() {
 
         {/* ═══ UTILITIES TAB ═══ */}
         {tab === "utilities" && (<div>
-          <label style={{ ...lbl, margin: "0 0 8px" }}>Theme</label>
+          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-            <select value={wcTheme ? "wc1933" : "default"} onChange={e => setWcTheme(e.target.value === "wc1933")} style={{ ...inp, flex: 1 }}>
-              <option value="default">Standard</option>
-              <option value="wc1933">1933 WC</option>
+            <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
+              {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </div>
-          <label style={{ ...lbl, margin: "0 0 8px" }}>Best Possible National Team</label>
+          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
-              <option value="">Select nation…</option>
+              <option value="">Select Nation</option>
               {natOptions.map(([code, info]) => <option key={code} value={code}>{code} ({info.count})</option>)}
             </select>
           </div>
@@ -7976,8 +8424,8 @@ export default function App() {
             const bench = rows.filter(x => x.bench);
             const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr || 0), 0) / starters.length;
             const XI_COLW = { pos: 60, player: 220, ovr: 50, club: 200 };
-            const thS = { padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
-            const tdS = { padding: "5px 12px" };
+            const thS = thCell;
+            const tdS = tdCell;
             const ColGroup = () => <colgroup><col style={{ width: XI_COLW.pos }} /><col style={{ width: XI_COLW.player }} /><col style={{ width: XI_COLW.ovr }} /><col style={{ width: XI_COLW.club }} /></colgroup>;
             const Row = (x, i) => (
               <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
@@ -7989,7 +8437,7 @@ export default function App() {
             );
             return (<>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <label style={{ ...lbl, margin: 0 }}>Starting XI <span style={{ color: "var(--chrome-muted)", fontWeight: 400 }}>({bestXi.formation})</span></label>
+                <PanelTitle accent="var(--chrome-muted)" sub={bestXi.formation}>Starting XI</PanelTitle>
                 <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
               </div>
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
@@ -7999,7 +8447,7 @@ export default function App() {
                   <tbody>{starters.map((x, i) => Row(x, i))}</tbody>
                 </table>
               </div>
-              <label style={{ ...lbl, margin: "0 0 8px" }}>Bench</label>
+              <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--chrome-muted)">Bench</PanelTitle></div>
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <ColGroup />
@@ -8018,7 +8466,7 @@ export default function App() {
                 }).join("\t");
                 return (<>
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...addBtn, padding: "4px 8px", fontSize: 10, color: showBestXiExport ? "#bf616a" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
+                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "#bf616a" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
                   </div>
                   {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginTop: 8 }}>
                     <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's 16 player columns.</p>
@@ -8036,8 +8484,11 @@ export default function App() {
         {/* ═══ DOCS TAB ═══ */}
         {tab === "docs" && (<div style={{ lineHeight: 1.7, fontSize: 12, color: "var(--chrome-muted)" }}>
           {(()=>{
-            const H1 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>{children}</div>;
-            const H2 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)", marginTop: 24, marginBottom: 10, ...ui }}>{children}</div>;
+            // Same heading treatment as the League/Group Stage panels, so the docs read as part of
+            // the app rather than as a separate document. H1 keeps the brand accent, H2 takes the
+            // League blue — matching it exactly while still reading as one level down.
+            const H1 = ({children, id}) => <PanelTitle id={id}>{children}</PanelTitle>;
+            const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="#81a1c1">{children}</PanelTitle></div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
             const Stat = ({text}) => {
@@ -8051,7 +8502,7 @@ export default function App() {
                 return { name: m[1], value: m[2], neutral: neut, positive: isM ? n > 1 : n > 0, isMulti: isM };
               });
               return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "var(--chrome-panel)", borderRadius: 5, marginTop: 6, border: "1px solid var(--chrome-border)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "var(--chrome-panel)", borderRadius: 6, marginTop: 6, border: "1px solid var(--chrome-border)" }}>
                 {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "#5e9c6b0a" : it.isTempo ? "#d087700a" : "#bf616a0a", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid #5e9c6b33" : it.isTempo ? "2px solid #d0877033" : "2px solid #bf616a33" }}>
                   <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>{it.name}</span>
                   <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "var(--chrome-muted)" : it.positive ? "#5e9c6b" : it.isTempo ? "#d08770" : "#bf616a" }}>{it.value}</span>
@@ -8061,8 +8512,8 @@ export default function App() {
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "#ffffff" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
             const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 8 }}>Contents</div>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+              <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Contents</PanelTitle></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {tocLink("doc-overview", "Overview")}
                 {tocLink("doc-engine", "How Matches Play Out")}
@@ -8415,12 +8866,12 @@ export default function App() {
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
             <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
-            <div style={{ background: "var(--chrome-panel)", borderRadius: 8, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
+            <div style={{ background: "var(--chrome-panel)", borderRadius: 10, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
                 <thead><tr style={{ borderBottom: "1px solid var(--chrome-border)" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>PARAMETER</th>
-                  <th style={{ padding: "8px 10px", textAlign: "center", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em", width: 50 }}>TYPE</th>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.1em" }}>EFFECT</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em" }}>PARAMETER</th>
+                  <th style={{ padding: "8px 10px", textAlign: "center", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em", width: 50 }}>TYPE</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em" }}>EFFECT</th>
                 </tr></thead>
                 <tbody>
                 {[
@@ -8452,7 +8903,7 @@ export default function App() {
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
             <P>Tab-separated, one team per line. Columns in order:</P>
-            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 4, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
+            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 6, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
             <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
 
             </details>
