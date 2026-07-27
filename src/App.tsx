@@ -461,7 +461,7 @@ const TAC_MSG = {ultra:"throwing everything forward!",atk:"pushing more players 
 const STYLES = ["gegenpress","wingplay","balanced","tikitaka","counterattack","parkthebus"];
 const STYLE_GRP = [["Offensive",["gegenpress","wingplay"]],["Neutral",["balanced","tikitaka"]],["Defensive",["counterattack","parkthebus"]]];
 const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpress",tikitaka:"Tiki-Taka",counterattack:"Counter",wingplay:"Wing Play",parkthebus:"Park Bus"};
-const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"#ebcb8b",tikitaka:"#d4a0c0",counterattack:"#7dc9c9",wingplay:"#a3be8c",parkthebus:"#8b6e4e"};
+const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"var(--ui-warn)",tikitaka:"var(--ui-style-tikitaka)",counterattack:"var(--ui-style-counter)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-style-parkbus)"};
 // ponytail: replay counter store — closure keeps counts out of React DevTools; localStorage is hash-signed
 const _rc = (() => {
   const d = {}, sl = "xK9mQ2pL7vT4", lk = "aFe_rcs";
@@ -569,7 +569,7 @@ function clampTac(tac,style){const m=STYLE_MOD[style]||STYLE_MOD.balanced;const 
 const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2","4-1-4-1","4-3-2-1","5-3-2"];
 function parseFormation(f) { const p = (f || "4-3-3").split("-").map(Number); return { DEF: p[0], MID: p.slice(1, -1).reduce((a, b) => a + b, 0), FWD: p[p.length - 1] }; }
 const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
-const FORM_CLR={"4-2-4":"#d08770","3-4-3":"#d08770","4-1-2-1-2":"#d08770","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"#4a7fd4","4-3-2-1":"#4a7fd4","5-3-2":"#4a7fd4"};
+const FORM_CLR={"4-2-4":"var(--ui-attack)","3-4-3":"var(--ui-attack)","4-1-2-1-2":"var(--ui-attack)","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"var(--ui-form-defensive)","4-3-2-1":"var(--ui-form-defensive)","5-3-2":"var(--ui-form-defensive)"};
 const FORM_MOD = {
   "4-3-3":   {press:1.0,adv:0,hold:0,lb:0,boxShot:0.01,goalP:0,ctr:1.0,ctrShot:0,def:0.01,lr:0,corn:1.0},
   "4-4-2":   {press:1.0,adv:0,hold:0,lb:0.02,boxShot:0.04,goalP:0,ctr:0.95,ctrShot:0,def:0.01,lr:-0.02,corn:1.15},
@@ -603,7 +603,9 @@ function computeStyleFit(style, squad) {
   const avgOf = (pred) => { const m = starters.filter(p => pred(p.spos || p.pos)); return m.length ? m.reduce((a, p) => a + (p.ovr || 65), 0) / m.length : 65; };
   let avg = 0;
   if (w.wide) avg += w.wide * avgOf(_isFitWide);
-  if (w.fb) avg += w.fb * avgOf(_isFitFB);
+  // No true fullbacks in the shape (3-4-3's LM/RM, 4-2-4 aside) means the wide players ARE the
+  // width from deep — fall back to them rather than letting avgOf return its empty-set 65.
+  if (w.fb) avg += w.fb * (starters.some(p => _isFitFB(p.spos || p.pos)) ? avgOf(_isFitFB) : avgOf(_isFitWide));
   if (w.fwd) avg += w.fwd * avgOf(sp => sp === "ST" || sp === "FWD");
   if (w.cmid) avg += w.cmid * avgOf(_isFitCMid);
   if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
@@ -901,7 +903,7 @@ function ensureGoalkeeper(s, side, dm, nm, rng) {
   if (s.players[side].some(p => p.pos === "GK")) return;
   const sn = nm[side];
   const benchIdx = s.bench[side].findIndex(p => p.pos === "GK");
-  if (benchIdx !== -1 && s.subs[side] < 3 && s.players[side].length > 0) {
+  if (benchIdx !== -1 && s.subs[side] < subLimit(s, side) && s.players[side].length > 0) {
     s.subs[side]++;
     const subOn = s.bench[side].splice(benchIdx, 1)[0];
     subOn.sub = 'on'; subOn.startedBench = true; subOn.rating = 6.5; subOn.chances = 0; subOn.defActs = 0; subOn.saves = 0;
@@ -1212,13 +1214,18 @@ function lmSimMinute(s, rng, home, away) {
   }
   // Substitutions \u2014 weighted by rating, tier, and booking status
   for (const side of ["home","away"]) {
-    if (s.subs[side] < 3 && s.autoSubs?.[side] !== false && s.bench[side].some(p => p.pos !== "GK")) {
+    if (s.subs[side] < subLimit(s, side) && s.autoSubs?.[side] !== false && s.bench[side].some(p => p.pos !== "GK")) {
       const scoreDiff = side === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
       const trailing = scoreDiff < 0;
-      const windows = trailing ? [[50,55],[60,65],[70,75]] : [[58,62],[68,72],[78,82]];
+      // One window per permitted substitution, indexed by how many have been made. The 3-sub
+      // schedule is unchanged; the 5-sub one (international, 11-man bench) spreads the extra two
+      // across the same stretch rather than bunching them at the end.
+      const windows = subLimit(s, side) >= 5
+        ? (trailing ? [[46,51],[55,60],[62,67],[70,75],[78,83]] : [[55,60],[62,67],[70,74],[76,80],[82,86]])
+        : (trailing ? [[50,55],[60,65],[70,75]] : [[58,62],[68,72],[78,82]]);
       const prob = trailing ? 0.55 : 0.40;
       const w = windows[s.subs[side]];
-      if (s.minute >= w[0] && s.minute <= w[1] && rng.u() < prob) {
+      if (w && s.minute >= w[0] && s.minute <= w[1] && rng.u() < prob) {
         s.subs[side]++;
         const sn = side === "home" ? home.name : away.name;
         const cands = s.players[side].filter(p => p.pos !== "GK");
@@ -1269,8 +1276,8 @@ function lmSimMinute(s, rng, home, away) {
       s.stoppageBank += 60; s.stats[side].injuries++;
       const isGK = injured.pos === "GK";
       const canSub = isGK
-        ? (s.subs[side] < 3 && s.bench[side].some(p => p.pos === "GK"))
-        : (s.subs[side] < 3 && s.bench[side].some(p => p.pos !== "GK"));
+        ? (s.subs[side] < subLimit(s, side) && s.bench[side].some(p => p.pos === "GK"))
+        : (s.subs[side] < subLimit(s, side) && s.bench[side].some(p => p.pos !== "GK"));
       if (canSub) {
         s.subs[side]++; injured.inj = true; injured.injSev = injSev.id; injured.injPart = injPart;
         const wasBooked = s.booked[side].includes(injured);
@@ -1337,7 +1344,7 @@ function lmSimMinute(s, rng, home, away) {
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, injuriesEnabled:true };
 }
 
 function cloneState(p) {
@@ -1349,7 +1356,7 @@ function cloneState(p) {
     goalscorers:{home:[...p.goalscorers.home],away:[...p.goalscorers.away]},
     subbedOff:{home:p.subbedOff?p.subbedOff.home.map(x=>({...x})):[],away:p.subbedOff?p.subbedOff.away.map(x=>({...x})):[]},
     tactics:{...p.tactics}, possCount:{...p.possCount}, momentum:{...p.momentum},
-    subs:{...p.subs}, startScore:p.startScore||[0,0], xG:{home:p.xG?.home||0,away:p.xG?.away||0}, momHist:p.momHist?[...p.momHist]:[],
+    subs:{...p.subs}, subCap:{...(p.subCap||{home:3,away:3})}, startScore:p.startScore||[0,0], xG:{home:p.xG?.home||0,away:p.xG?.away||0}, momHist:p.momHist?[...p.momHist]:[],
     strategy:{home:{...p.strategy.home},away:{...p.strategy.away}},
     penalties:p.penalties?{...p.penalties,home:[...p.penalties.home],away:[...p.penalties.away],homeOrder:p.penalties.homeOrder?[...p.penalties.homeOrder]:[],awayOrder:p.penalties.awayOrder?[...p.penalties.awayOrder]:[]}:null };
 }
@@ -1557,11 +1564,12 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   if (matchUrg) s.matchUrg = matchUrg;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,benchSize:p.benchSize});
   const hSquadRaw = homeSquad || buildSquad(homeForm || "4-3-3", null);
   const aSquadRaw = awaySquad || buildSquad(awayForm || "4-3-3", null);
   s.players={home:hSquadRaw.filter(p=>!p.bench).map(mapP),away:aSquadRaw.filter(p=>!p.bench).map(mapP)};
   s.bench={home:hSquadRaw.filter(p=>p.bench).map(mapB),away:aSquadRaw.filter(p=>p.bench).map(mapB)};
+  s.subCap={home:subCapFor(s.bench.home),away:subCapFor(s.bench.away)};
   if (homeSquad && awaySquad) { ensureStartingGK(s.players.home); ensureStartingGK(s.players.away); }
   const _hFit=computeStyleFit(s.styles.home,hSquadRaw),_aFit=computeStyleFit(s.styles.away,aSquadRaw);
   s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
@@ -2197,6 +2205,14 @@ function nextOpponentSkill(schedule, ri, teamName) {
 function koWinner(m) { if (!m.result || !m.home) return null; if (m.result.twoLeg) { if (m.result.partial) return null; if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const ah=m.result.agg.home, aa=m.result.agg.away; if (ah!==aa) return ah>aa?m.home:m.away; if (m.result.awayGoalsRule) return m.result.awayGoals.home>m.result.awayGoals.away?m.home:m.away; return m.home; } if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const h = m.result.ftHome + (m.result.et?.home || 0), a = m.result.ftAway + (m.result.et?.away || 0); return h > a ? m.home : h < a ? m.away : m.home; }
 function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.home; }
 function koRoundName(total, ri) { const r = total / Math.pow(2, ri); return r === 2 ? "Final" : r === 4 ? "Semi-finals" : r === 8 ? "Quarter-finals" : `Round of ${r}`; }
+// Kicks scored by each side in a shootout. The full-time label carries this now that the
+// kick-by-kick panel is gone, so it must read straight off the kick arrays.
+const penScore = (pen) => [pen?.home?.filter(k => k.scored).length || 0, pen?.away?.filter(k => k.scored).length || 0];
+// Full-time label suffix: the shootout result outranks AET, which outranks the away-goals note.
+function ftSuffix({ pen, et, awayGoals }) {
+  if (pen) { const [h, a] = penScore(pen); return ` (${h}–${a} PENS)`; }
+  return et ? " (AET)" : awayGoals ? " (AG)" : "";
+}
 function koResultText(m) { if (!m.result) return null; if (m.result.twoLeg) { const r=m.result; if (r.partial) return `${r.leg1.home}–${r.leg1.away} (L1)`; let t=`${r.leg1.home}–${r.leg1.away} / ${r.leg2.away}–${r.leg2.home} (${r.agg.home}–${r.agg.away} agg.)`; if (r.et) t+=` AET`; if (r.pen) t+=` (${r.pen.home}–${r.pen.away} PENS)`; if (!r.et&&!r.pen&&r.agg.home===r.agg.away&&r.awayGoalsRule) t+=` (away goals)`; return t; } let t = `${m.result.ftHome}–${m.result.ftAway}`; if (m.result.et) t = `${m.result.ftHome + m.result.et.home}–${m.result.ftAway + m.result.et.away} AET`; if (m.result.pen) t += ` (${m.result.pen.home}–${m.result.pen.away} PENS)`; return t; }
 function propagateKO(ko) {
   // WB propagation (shared by single & double elim)
@@ -2456,7 +2472,7 @@ const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["nl1", "Nich
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 function chromeExportColors(uiTheme) {
   if (uiTheme === "wc1933") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
-  if (uiTheme === "nl1") return { panel: "#14171c", border: "#2f343c", muted: "#8b9099", brand: "#ff2222" };
+  if (uiTheme === "nl1") return { panel: "#ffffff", border: "#dfe3e8", muted: "#666d79", brand: "#dd0a1a" };
   return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
@@ -2480,7 +2496,11 @@ function parseBulk(text) {
 
   const isCode = (s) => /^[A-Za-z0-9]{1,4}$/.test(s.trim());
 
-  return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+  // Strip \r and surrounding spaces but NEVER trailing tabs: an empty last player column is a
+  // real, positional empty slot, and trimming it away shortens the row enough that the 22-slot
+  // detection below falls back to 16 — which silently demoted every national team whose last
+  // bench slot was unfilled to a 5-man bench. Individual fields are trimmed where they are read.
+  return text.split("\n").map(l => l.replace(/\r/g, "").replace(/^ +| +$/g, "")).filter(l => l.trim()).map(line => {
     const parts = line.split("\t");
     // Detect if first column is a ≤3-letter code (no spaces, letters only)
     let code = null;
@@ -2525,9 +2545,30 @@ function parseBulk(text) {
     // (indices 18..33, shifted by o). Anything past that is optional trailing
     // metadata, in a fixed order: up to 2 #RRGGBB colors, then city, then stadium.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
-    const PLAYER_START = 18 + o, PLAYER_SLOTS = 16;
+    const PLAYER_START = 18 + o;
+    // The player block is 16 slots (11 + a 5-man bench) or 22 (11 + the 11-man international
+    // bench). Metadata always opens with a #RRGGBB colour, so the first colour terminates the
+    // block; only the two legal widths are accepted, so a malformed row falls back to 16 rather
+    // than silently eating a city name as a substitute.
+    let PLAYER_SLOTS = 16;
+    { let e = PLAYER_START;
+      while (e < p.length && e < PLAYER_START + 22 && !isHexColor(p[e])) e++;
+      const n = e - PLAYER_START;
+      // Exactly 22 when a colour terminates the block. When the row simply ends instead (the
+      // international rows carry no colours, so players are the last columns), anything past 16
+      // is a 22-slot row whose trailing blanks were eaten upstream — by a spreadsheet export or
+      // an editor stripping trailing tabs — so recover rather than demote it to a 5-man bench.
+      if (n === 22 || (n > 16 && e >= p.length)) PLAYER_SLOTS = 22; }
+    // Blank slots are positional, not padding: an empty bench column means that mirrored slot is
+    // unoccupied. Push a placeholder rather than skipping, or every later name shifts up one and
+    // the whole bench lands on the wrong positions. "–" is accepted as an explicit empty marker.
+    const isBlankSlot = (v) => !v || v === "–" || v === "—" || v === "-";
     const playerNames = [], playerFullNames = [], playerNats = [];
-    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) { const v = p[i]?.trim(); if (v) { playerNames.push(abbrevName(v)); playerFullNames.push(fullDisplayName(v)); playerNats.push(parseOvr(v).nat); } }
+    for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) {
+      const v = p[i]?.trim();
+      if (isBlankSlot(v)) { playerNames.push(""); playerFullNames.push(""); playerNats.push(null); }
+      else { playerNames.push(abbrevName(v)); playerFullNames.push(fullDisplayName(v)); playerNats.push(parseOvr(v).nat); }
+    }
     const meta = [];
     for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) { const v = p[i]?.trim(); if (v) meta.push(v); }
     let primaryColor = null, secondaryColor = null;
@@ -2536,8 +2577,10 @@ function parseBulk(text) {
     let city = null, stadium = null;
     if (meta.length > 0) city = stripVenue(meta.shift());
     if (meta.length > 0) stadium = stripVenue(meta.shift());
-    const squad = buildSquad(formation, playerNames.length > 0 ? playerNames : null);
-    squad.forEach((p, i) => { if (i < playerFullNames.length) p.fullName = playerFullNames[i]; if (i < playerNats.length && playerNats[i]) p.nat = playerNats[i]; });
+    const squad = buildSquad(formation, playerNames.some(Boolean) ? playerNames : null, PLAYER_SLOTS === 22 ? 11 : 5);
+    // Key off p.slot, not the array index: buildSquad drops unfilled bench slots, so a row with a
+    // gap has a shorter squad than its column list and the two no longer line up positionally.
+    squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
     return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}) };
   }).filter(Boolean);
 }
@@ -2582,7 +2625,10 @@ function MarqueeName({ text, align = "left", style }) {
 // Inspect Element's "Edit as HTML" to change; it's pixels, not markup. Doesn't protect
 // the underlying count (nothing reads this back into app state anyway) — it's specifically
 // so a screenshot of this number can't be casually faked in a few seconds of DOM editing.
-function CanvasText({ text, fontSize = 9, color = "--chrome-muted", title }) {
+// The scoreboard lifts its text off the stadium photo with this shadow. Shared so the DOM text and
+// the canvas-rendered numbers beside it can't drift apart.
+const SCOREBOARD_SHADOW = "0 1px 3px rgba(0,0,0,0.75)";
+function CanvasText({ text, fontSize = 9, color = "--chrome-muted", title, shadow }) {
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -2613,7 +2659,10 @@ function CanvasText({ text, fontSize = 9, color = "--chrome-muted", title }) {
     ctx.textBaseline = "middle";
     ctx.fillText(text, 0, height / 2);
   }, [text, fontSize, color]);
-  return <canvas ref={canvasRef} title={title} style={{ verticalAlign: "middle", display: "inline-block" }} />;
+  // CSS text-shadow cannot reach glyphs painted into a canvas, so the same lift is applied as a
+  // drop-shadow filter on the element. Filters render outside the element box, so unlike a canvas
+  // shadowBlur this needs no extra padding and shifts nothing in the layout around it.
+  return <canvas ref={canvasRef} title={title} style={{ verticalAlign: "middle", display: "inline-block", ...(shadow ? { filter: `drop-shadow(${shadow})` } : null) }} />;
 }
 // Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
 // shield in the team's home color, outlined in its away color, if none exists.
@@ -2681,16 +2730,39 @@ const readableClr = (hex, altHex, bgHex) => {
   if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
   return lightenUntil(hex, bgHex, 0.3);
 };
+// Perceived brightness, 0..1 — the same 0.299/0.587/0.114 weighting the floor below has always
+// used, pulled out so the floor and the ceiling cannot drift apart.
+const TEAM_LUM_MIN = 0.3, TEAM_LUM_MAX = 0.82;
+const percLum = (r, g, b) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+const toHex = (r, g, b) => "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+// A near-white kit renders as a white name and a white gradient half — indistinguishable from the
+// chrome in a light theme and washed out in a dark one. Pull it down toward black, which keeps the
+// hue (a white-ish red stays red) rather than clamping to a flat grey.
+const ensureMaxLum = (hex) => {
+  const c = hexToRgb(hex); if (!c) return hex;
+  let { r, g, b } = c;
+  for (let i = 0; i < 12 && percLum(r, g, b) > TEAM_LUM_MAX; i++) {
+    r = Math.round(r * 0.88); g = Math.round(g * 0.88); b = Math.round(b * 0.88);
+  }
+  return toHex(r, g, b);
+};
+// Every team colour shown on the scoreboard passes through here. Ceiling only: a kit that is not
+// too light must come out exactly as the team set it, so the floor is NOT applied here — it would
+// wash out any deep colour (the NL1 red sits just under it) for no reason.
+const clampTeamClr = (hex) => ensureMaxLum(hex);
+// Lifts a colour to the readable floor. Scaling the channels keeps their ratios, so the hue and
+// saturation survive — blending toward white instead turned a deep red into pink. Only a colour
+// with no channel to scale (black and its neighbours) has to be blended, having no hue to lose.
 const ensureMinLum = (hex) => {
   const c = hexToRgb(hex); if (!c) return "#ffffff";
   let r = c.r, g = c.g, b = c.b;
-  for (let i = 0; i < 10; i++) {
-    if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.3) break;
-    r = Math.min(255, Math.round(r + (255 - r) * 0.3));
-    g = Math.min(255, Math.round(g + (255 - g) * 0.3));
-    b = Math.min(255, Math.round(b + (255 - b) * 0.3));
+  for (let i = 0; i < 24 && percLum(r, g, b) < TEAM_LUM_MIN; i++) {
+    if (Math.max(r, g, b) < 8) { r += 12; g += 12; b += 12; continue; }
+    const k = Math.min(255 / Math.max(r, g, b, 1), 1.12);
+    if (k <= 1.0001) { r = Math.min(255, r + 8); g = Math.min(255, g + 8); b = Math.min(255, b + 8); continue; }
+    r = Math.min(255, Math.round(r * k)); g = Math.min(255, Math.round(g * k)); b = Math.min(255, Math.round(b * k));
   }
-  return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+  return toHex(r, g, b);
 };
 
 const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:20},corner:{GK:1,DEF:55,MID:20,FWD:24},foul:{GK:1,DEF:35,MID:45,FWD:19},defend:{GK:1,DEF:55,MID:30,FWD:14},
@@ -2806,6 +2878,13 @@ function ratePlayer(players, name, delta) {
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
 const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "var(--chrome-muted)";
+// City and stadium are one "Location" field in the UI, written "Stadium, City". Split on the FIRST
+// comma so a stadium whose own name contains one keeps it and only the tail becomes the city.
+const formatLocation = (t) => [t.stadium, t.city].filter(Boolean).join(", ");
+function parseLocation(v) {
+  const i = (v || "").indexOf(",");
+  return { stadium: (i === -1 ? (v || "") : v.slice(0, i)).trim() || null, city: (i === -1 ? "" : v.slice(i + 1)).trim() || null };
+}
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
 const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
@@ -2878,7 +2957,7 @@ const FORM_SPOS = {
   "4-1-4-1":   ["GK","LB","CB","CB","RB","DM","LW","CM","CM","RW","ST"],
   "4-1-2-1-2": ["GK","LB","CB","CB","RB","DM","CM","CM","AM","ST","ST"],
   "4-3-2-1":   ["GK","LB","CB","CB","RB","CM","CM","CM","AM","AM","ST"],
-  "3-4-3":     ["GK","CB","CB","CB","LWB","CM","CM","RWB","LW","ST","RW"],
+  "3-4-3":     ["GK","CB","CB","CB","LM","CM","CM","RM","LW","ST","RW"],
   "3-5-2":     ["GK","CB","CB","CB","LWB","CM","CM","CM","RWB","ST","ST"],
   "3-4-1-2":   ["GK","CB","CB","CB","LWB","CM","CM","RWB","AM","ST","ST"],
   "5-3-2":     ["GK","LWB","CB","CB","CB","RWB","CM","CM","CM","ST","ST"],
@@ -2899,11 +2978,25 @@ function posFitCost(a, b) {
 // A squad's positions come from slot index + formation, so changing formation without reordering
 // silently reassigns roles (a RB becomes a third CB, a winger becomes a CM). Reorder the XI so each
 // player lands in the slot closest to their natural position. Greedy seed + 2-opt; optimal at n=11.
+// Substitutions allowed this match. An 11-man bench is the international squad (avium.tsv),
+// which plays to 5 subs; every other roster keeps the 3 it always had. Read off the bench
+// the side actually started with, so the two teams can differ within one match.
+const subLimit = (s, side) => s?.subCap?.[side] ?? 3;
+// Set once at kickoff from the bench each side actually named. Stored rather than derived:
+// red cards and unsubbed injuries also move players out, so a live count would drift.
+// Five substitutions is a property of the DECLARED bench width, not of how many names are in it —
+// a nation that lists 8 of its 11 subs still plays international rules. The length test stays as a
+// fallback for squads built before benchSize existed, including those inside older saves.
+const subCapFor = (bench) => ((bench || []).some(p => p.benchSize >= 11) || (bench || []).length >= 11 ? 5 : 3);
 function refitLineup(squad, formation) {
   const xi = (squad || []).filter(p => !p.bench), bench = (squad || []).filter(p => p.bench);
   if (xi.length !== 11) return squad || [];
   const target = sposFor(formation || "4-3-3");
-  const nat = xi.map(p => p.natPos || p.spos || p.pos);
+  // An 11-man bench mirrors the XI slot for slot, so a formation change has to reorder it by the
+  // same target — otherwise the understudies stop lining up with the starters they cover. The
+  // 5-man bench has its own fixed shape and is passed through untouched.
+  const order = (group) => {
+  const nat = group.map(p => p.natPos || p.spos || p.pos);
   const n = 11, slotOf = new Array(n).fill(-1), taken = new Array(n).fill(false);
   // Formations repeat slots (4-3-3 has three CMs) but weight them differently via atkW, so a pure
   // position match leaves the order among equal slots arbitrary and toggling formation would shuffle
@@ -2924,10 +3017,15 @@ function refitLineup(squad, formation) {
       if (swp < now - 1e-9) { const t = slotOf[i]; slotOf[i] = slotOf[j]; slotOf[j] = t; go = true; break; }
     }
   }
-  return [...slotOf.map(i => xi[i]), ...bench];
+  return slotOf.map(i => group[i]);
+  };
+  return [...order(xi), ...(bench.length === 11 ? order(bench) : bench)];
 }
-function buildSquad(formation, names) {
+function buildSquad(formation, names, benchSize) {
   const n = names || [];
+  // benchSize is explicit where the caller knows it (the TSV parser reads it off the row
+  // width); otherwise it is inferred from the name count, which is how a rebuild from an
+  // existing squad keeps whatever bench that squad already had.
   const dg = (formation || "4-3-3").split("-").map(Number);
   const sq = [];
   // Per-formation attacking weight gradients (contextual to role)
@@ -2940,7 +3038,7 @@ function buildSquad(formation, names) {
     "4-1-4-1":   [0, 4,3,3,4, 8, 26,16,16,26, 38],           // LB CB CB RB | DM | LW CM CM RW | ST
     "4-1-2-1-2": [0, 4,3,3,4, 8, 16,16, 30, 40,42],          // LB CB CB RB | DM | CM CM | AM | ST ST
     "4-3-2-1":   [0, 4,3,3,4, 12,18,12, 28,28, 42],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
-    "3-4-3":     [0, 3,4,3, 14,12,12,14, 34,40,34],          // CB CB CB | LWB CM CM RWB | LW ST RW
+    "3-4-3":     [0, 3,4,3, 14,12,12,14, 34,40,34],          // CB CB CB | LM CM CM RM | LW ST RW
     "3-5-2":     [0, 3,4,3, 16,14,18,14,16, 38,40],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
     "3-4-1-2":   [0, 3,4,3, 16,12,12,16, 28, 38,40],         // CB CB CB | LWB CM CM RWB | AM | ST ST
     "5-3-2":     [0, 10,3,4,3,10, 18,16,18, 38,40],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
@@ -2954,10 +3052,26 @@ function buildSquad(formation, names) {
   for (let d = 1; d < dg.length - 1; d++)
     for (let i = 0; i < dg[d]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "MID", spos: sposArr[idx] || "CM", atkW: atkGrad[idx] || 20 }); idx++; }
   for (let i = 0; i < dg[dg.length - 1]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "FWD", spos: sposArr[idx] || "ST", atkW: atkGrad[idx] || 48 }); idx++; }
-  const benchPos = ["GK", "DEF", "MID", "MID", "FWD"];
-  const benchSpos = ["GK", "CB", "CM", "CM", "ST"];
-  const benchAtk = [0, 8, 20, 25, 42];
-  for (let i = 0; i < 5; i++) sq.push({ name: n[11 + i] || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i] });
+  // Bench size follows the roster: 22 names = the 11-man international bench (avium.tsv),
+  // anything else keeps the classic 5. An 11-man bench mirrors the starting XI slot for slot,
+  // so every starter has a like-for-like understudy; the 5-man bench keeps its own generic shape.
+  const benchN = benchSize === 11 || benchSize === 5 ? benchSize : (n.length > 16 ? 11 : 5);
+  const benchPos = benchN === 11 ? sq.map(p => p.pos) : ["GK", "DEF", "MID", "MID", "FWD"];
+  const benchSpos = benchN === 11 ? sq.map(p => p.spos) : ["GK", "CB", "CM", "CM", "ST"];
+  const benchAtk = benchN === 11 ? sq.map(p => p.atkW) : [0, 8, 20, 25, 42];
+  // A roster with gaps simply has a smaller bench. An unfilled slot is left out rather than filled
+  // with a "#14" placeholder, because a placeholder is a selectable substitute rated at the team's
+  // own skill — a nation listing 6 subs was getting 5 more for free. With no real names at all this
+  // is a blank template (the national-team selector builds one), so the slots are kept.
+  // benchSize records the DECLARED width so a short bench still knows it plays international rules,
+  // and slot records where the name came from so callers can zip their own per-slot data back on.
+  const named = n.some(v => v && !String(v).startsWith("#"));
+  sq.forEach((p, i) => { p.slot = i; });
+  for (let i = 0; i < benchN; i++) {
+    const nm = n[11 + i];
+    if (named && (!nm || String(nm).startsWith("#"))) continue;
+    sq.push({ name: nm || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i], benchSize: benchN, slot: 11 + i });
+  }
   sq.forEach(p => { const {name,ovr} = parseOvr(p.name); p.name = name; p.ovr = ovr; if (!p.natPos) p.natPos = p.spos; });
   return sq;
 }
@@ -3021,19 +3135,22 @@ const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariant
 const ui = { fontFamily: "var(--chrome-font)" };
 const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6, ...ui };
 const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
-const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#ffffff", outline: "none", fontFamily: "inherit" };
+const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--ui-text)", outline: "none", fontFamily: "inherit" };
 const sel = { ...inp, cursor: "pointer" };
 const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
-const delBtn = { background: "transparent", border: "none", color: "#bf616a", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
+const delBtn = { background: "transparent", border: "none", color: "var(--ui-danger)", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
 const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
 const chk = { fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
-const POS_CLR = {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770",CB:"#81a1c1",LB:"#81a1c1",RB:"#81a1c1",LWB:"#81a1c1",RWB:"#81a1c1",DM:"#a3be8c",CM:"#a3be8c",AM:"#a3be8c",LM:"#a3be8c",RM:"#a3be8c",LW:"#d08770",RW:"#d08770",ST:"#d08770"};
+const POS_CLR = {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)",CB:"var(--ui-info)",LB:"var(--ui-info)",RB:"var(--ui-info)",LWB:"var(--ui-info)",RWB:"var(--ui-info)",DM:"var(--ui-ok)",CM:"var(--ui-ok)",AM:"var(--ui-ok)",LM:"var(--ui-ok)",RM:"var(--ui-ok)",LW:"var(--ui-attack)",RW:"var(--ui-attack)",ST:"var(--ui-attack)"};
 
 // ─── SHARED PANEL CHROME ─────────────────────────────────────────────────────
 // The tournament screens all hand-rolled the same panel/heading/row styling. These are that
 // pattern, extracted, so a change lands everywhere instead of in one panel out of six.
-const panelBox = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022", marginBottom: 16 };
-const panelHead = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 };
+const panelBox = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px var(--ui-shadow-2)", marginBottom: 16 };
+const panelHead = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14, minWidth: 0 };
+// A PanelTitle's rail + gap occupy 12px before the text. When the header lives inside the same box
+// as the body it labels, pull its left padding back by that much so the two share a left edge.
+const PANEL_HEAD_INSET = 12;
 // ─── DESIGN SCALE ────────────────────────────────────────────────────────────
 // Before this the file carried 13 corner radii and 17 letter-spacings, so the same kind of
 // control looked slightly different depending on which screen you were on. These are the
@@ -3054,10 +3171,14 @@ const rowHead = { display: "flex", alignItems: "center", gap: 8, padding: "8px 1
 const metaTxt = { fontSize: 10, color: "var(--chrome-muted)", fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
 // Heading: brand accent rule + white title, so a panel's name reads as a heading rather than
 // as another line of muted label text competing with the data under it.
+// The rail sits in the flow, so a title occupies rail (3) + gap (9) = 12px before its text. Headers
+// that sit OUTSIDE their panel align rail-to-box-edge, which lands the text on the panel's own 12px
+// inner padding. Headers INSIDE a box must offset their own left padding by that 12 instead — see
+// PANEL_HEAD_INSET — or the title drifts 12px right of the body it labels.
 function PanelTitle({ children, sub, accent, id }) {
   return (<div id={id} style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
     <span style={{ width: 3, height: 13, borderRadius: 3, background: accent || "var(--chrome-brand)", flexShrink: 0 }} />
-    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", whiteSpace: "nowrap" }}>{children}</span>
+    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", whiteSpace: "nowrap" }}>{children}</span>
     {sub != null && sub !== "" && <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 400 }}>{sub}</span>}
   </div>);
 }
@@ -3065,15 +3186,15 @@ function PanelTitle({ children, sub, accent, id }) {
 function StatCell({ label, value, color }) {
   return (<div style={{ minWidth: 0 }}>
     <div style={{ fontSize: 8, letterSpacing: "0.16em", fontWeight: 700, color: "var(--chrome-muted)", marginBottom: 3 }}>{label}</div>
-    <div style={{ fontSize: 12, fontWeight: 700, color: color || "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" }}>{value}</div>
+    <div style={{ fontSize: 12, fontWeight: 700, color: color || "var(--ui-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" }}>{value}</div>
   </div>);
 }
 // Centred label inside a card (GROUP A, ROUND 3, qualification zones, leaderboard heads).
 // PanelTitle's accent rule reads wrong centred, so these get their own small-caps treatment.
 const cardLabel = { fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" };
 // Left-aligned heading for a section inside a panel — white, so it outranks the data beneath it.
-const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff" };
-const PHASE_CLR = { setup: "var(--chrome-muted)", drawing: "#ebcb8b", groups: "#81a1c1", league: "#81a1c1", knockout: "var(--chrome-brand)", done: "#a3be8c" };
+const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" };
+const PHASE_CLR = { setup: "var(--chrome-muted)", drawing: "var(--ui-warn)", groups: "var(--ui-info)", league: "var(--ui-info)", knockout: "var(--chrome-brand)", done: "var(--ui-ok)" };
 function PhaseBadge({ phase }) {
   const c = PHASE_CLR[phase] || "var(--chrome-muted)";
   return <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: c, border: "1px solid " + c + "55", background: c + "1a", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>{SLOT_PHASE_LBL[phase] || phase || "Setup"}</span>;
@@ -3179,6 +3300,29 @@ function uniqueSlotName(slots, base) {
   return `${base} ${i}`;
 }
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
+// How willing a national-team slot is to take a player whose natural position is not exactly it.
+// posFitCost's two terms are treated differently here, because they mean different things:
+//   line  — moving up or down the pitch. Easy within your own group (a striker dropping into the
+//           wide forward slot), so discounted by XI_SAME_LINE there and charged in full otherwise.
+//   side  — moving left/centre/right. This is the one that makes a centre-back at full-back a
+//           compromise rather than a like-for-like, so it is NEVER discounted. Discounting it was
+//           what handed 38% of full-back slots to players with no wide-defensive position at all.
+// A slot takes anything within XI_FIT_MAX, at a rating penalty of XI_OOP_PENALTY per unit, so a
+// natural beats an equal-rated stand-in and only a clearly better player displaces him.
+const XI_FIT_MAX = 1.8, XI_OOP_PENALTY = 6, XI_SAME_LINE = 0.6, XI_SIDE = 1.2;
+// Sets of roles that are one job under different names — free in both directions, and free within
+// a set rather than by chaining, so overlapping sets stay independent. Wing-back, wide midfielder
+// and winger are three heights of the same flank; a wide attacking midfielder is that same flank
+// player again, but he is NOT a wing-back, so AM shares a set with the wide roles and not with
+// LWB/RWB. The geometry below would price LWB→LW at 2.5 and AM→LM at 1.2 and refuse the first
+// outright, which is why this runs ahead of it.
+const XI_SAME_ROLE = [["LWB", "LM", "LW"], ["RWB", "RM", "RW"], ["AM", "LM", "LW"], ["AM", "RM", "RW"]];
+function xiFit(natural, slot) {
+  if ((natural === "GK") !== (slot === "GK")) return 1000;
+  if (XI_SAME_ROLE.some(c => c.includes(natural) && c.includes(slot))) return 0;
+  const A = POS_ROLE[natural] || POS_ROLE.CM, B = POS_ROLE[slot] || POS_ROLE.CM;
+  return Math.abs(A[0] - B[0]) * (POS_GROUP[natural] === POS_GROUP[slot] ? XI_SAME_LINE : 1) + XI_SIDE * Math.abs(A[1] - B[1]);
+}
 const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
 // Bolds the given player name(s) wherever they appear in an already-filled commentary string.
 function boldNames(txt, names, clr) {
@@ -3186,7 +3330,7 @@ function boldNames(txt, names, clr) {
   if (!valid.length) return txt;
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const rx = new RegExp("(" + valid.map(esc).join("|") + ")");
-  return txt.split(rx).map((part, i) => valid.includes(part) ? <span key={"bn" + i} style={{ fontWeight: 700, color: clr || "#ffffff" }}>{part}</span> : part);
+  return txt.split(rx).map((part, i) => valid.includes(part) ? <span key={"bn" + i} style={{ fontWeight: 700, color: clr || "var(--ui-text)" }}>{part}</span> : part);
 }
 // Goal text bolds the scorer AND (when present) the assister by parsing "X (POS) ... Assisted
 // by Y (POS)." structure directly, rather than boldNames' single-name-lookup — a goal is the
@@ -3210,7 +3354,7 @@ function styledGoalText(txt, playerFull, clr) {
   }
   return parts;
 }
-const evColor = { goal: "#ffffff", penalty: "#d08770", chance: "#ebcb8b", red: "#bf616a", second_yellow: "#bf616a", pen_miss: "#bf616a", yellow: "#ebcb8b", save: "#ffffff", miss: "#ffffff", sub: "#7a8b9b", injury: "#c07070", press: "#ffffff", counter: "#ffffff", phase: "#ffffff", foul: "#ffffff", corner: "#ffffff", neutral: "#ffffff", offside: "#ffffff", buildup: "#ffffff", clearance: "#ffffff" };
+const evColor = { goal: "var(--ui-text)", penalty: "var(--ui-attack)", chance: "var(--ui-warn)", red: "var(--ui-danger)", second_yellow: "var(--ui-danger)", pen_miss: "var(--ui-danger)", yellow: "var(--ui-warn)", save: "var(--ui-text)", miss: "var(--ui-text)", sub: "var(--ui-sub)", injury: "var(--ui-injury)", press: "var(--ui-text)", counter: "var(--ui-text)", phase: "var(--ui-text)", foul: "var(--ui-text)", corner: "var(--ui-text)", neutral: "var(--ui-text)", offside: "var(--ui-text)", buildup: "var(--ui-text)", clearance: "var(--ui-text)" };
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
 const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
 const shortName = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; if (p.length === 2 && NAME_PFX.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!NAME_PFX.has(p[i].toLowerCase())) { let s = i; while (s > 1 && NAME_PFX.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
@@ -3262,15 +3406,15 @@ function gvGoalMouth(gv, delay) {
   const saved = result === "save";
   const d = Math.max(0, delay || 0);
   return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    <rect x="3" y={gB+2} width={W-6} height="18" fill="#0e1a12" rx="2" />
-    <rect x="3" y={gB+2} width={W-6} height="4" fill="#142017" rx="1" opacity="0.4" />
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0a0f0a" rx="1" />
+    <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
+    <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
+    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
     {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
     {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
     <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
-    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
     <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
@@ -3321,24 +3465,24 @@ function gvPitch(gv, clr, staticAssist) {
     <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
     <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
     {A && (staticAssist
-      ? <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} stroke="#ffffff66" strokeWidth="1.1" />
-      : <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} className="gv-anim" stroke="#ffffff66" strokeWidth="1.1" strokeDasharray={len1} style={{ "--gv-len": len1+"px", animation: "gvLine 0.8s ease-in-out both" }} />
+      ? <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} stroke="var(--ui-text-66)" strokeWidth="1.1" />
+      : <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} className="gv-anim" stroke="var(--ui-text-66)" strokeWidth="1.1" strokeDasharray={len1} style={{ "--gv-len": len1+"px", animation: "gvLine 0.8s ease-in-out both" }} />
     )}
-    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
-    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
+    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
+    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-text-cc)" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
     {A && <g>
-      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity="0.95" />
-      <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
+      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity="0.95" />
+      <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="var(--ui-text)" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
     </g>}
-    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity="0.95" />
-    <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
+    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity="0.95" />
+    <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="var(--ui-text)" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
     {A && !staticAssist && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
-      <circle cx={A[0]} cy={A[1]} r="2.8" fill="#ffffff" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
+      <circle cx={A[0]} cy={A[1]} r="2.8" fill="var(--ui-text)" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
     </g>}
     <g className="gv-anim" style={{ "--gv-dx": (G[0]-S[0])+"px", "--gv-dy": (G[1]-S[1])+"px", animation: "gvBallB 0.5s ease-in "+t2.toFixed(2)+"s both" }}>
-      <circle cx={S[0]} cy={S[1]} r="2.8" fill="#ffffff" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
+      <circle cx={S[0]} cy={S[1]} r="2.8" fill="var(--ui-text)" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
     </g>
-    <circle cx={G[0]} cy={G[1]} r="4" fill="none" stroke="#a3be8c" strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(t2+0.5).toFixed(2)+"s both" }} />
+    <circle cx={G[0]} cy={G[1]} r="4" fill="none" stroke="var(--ui-ok)" strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(t2+0.5).toFixed(2)+"s both" }} />
   </svg>);
 }
 // Click-through build-up pitch for "chance" events: reveals chain[0..step] one hop at a
@@ -3385,17 +3529,17 @@ function gvChancePitch(chain, clr, step, shotGv, replay) {
     <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
     <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
     {pts.slice(1, s + 1).map((p, i) => { const prev = pts[i]; const len = Math.hypot(p[0]-prev[0], p[1]-prev[1]); const newest = i === s - 1; const anim = (replay || newest) ? { className: "gv-anim", strokeDasharray: len, style: { "--gv-len": len+"px", animation: `gvLine 0.4s ease-in ${replay ? (i*0.4).toFixed(2)+"s " : ""}both` } } : {}; return (<g key={"seg"+i}>
-      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" {...anim} />
-      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="#ffffffcc" strokeWidth="1.4" {...anim} />
+      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" {...anim} />
+      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="var(--ui-text-cc)" strokeWidth="1.4" {...anim} />
     </g>); })}
     {pts.slice(0, s + 1).map((p, i) => { const isDrib = i > 0 && chain[i].name === chain[i-1].name; const lb = labels.find(l => l.idx === i); const newest = i === s; const dAnim = (replay || newest) ? { className: "gv-anim", style: { animation: `gvDotIn 0.15s ease-out ${replay ? ((i === 0 ? 0 : (i-1)*0.4+0.3).toFixed(2)+"s ") : ""}both` } } : {}; return (<g key={"dot"+i} {...dAnim}>
-      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="#ffffff" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
-      {lb && <text x={lb.x} y={lb.y} textAnchor="middle" fill="#ffffffcc" fontSize={FS} fontFamily="monospace" fontWeight="500">{lb.name}</text>}
+      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
+      {lb && <text x={lb.x} y={lb.y} textAnchor="middle" fill="var(--ui-text-cc)" fontSize={FS} fontFamily="monospace" fontWeight="500">{lb.name}</text>}
     </g>); })}
     <circle cx={pts[s][0]} cy={pts[s][1]} r="5" fill="none" stroke={dotClr} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: `gvBurst 1.2s ease-out ${replay ? ((s > 0 ? (s-1)*0.4+0.35 : 0).toFixed(2)+"s ") : ""}infinite both` }} />
     {shotGv && (() => { const G = [199, 65], last = pts[s], sLen = Math.hypot(G[0]-last[0], G[1]-last[1]); return (<>
-      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#a3be8c22" strokeWidth="5" strokeLinecap="round" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
-      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="#ffffffcc" strokeWidth="1.4" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
+      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
+      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-text-cc)" strokeWidth="1.4" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
     </>); })()}
   </svg>);
 }
@@ -3405,15 +3549,15 @@ function gvChancePitch(chain, clr, step, shotGv, replay) {
 function gvChanceGoalPreview() {
   const W=220, gL=25, gR=195, gT=10, gB=82, dX=(gL+gR)/2, dY=(gT+gB)/2+4;
   return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    <rect x="3" y={gB+2} width={W-6} height="18" fill="#0e1a12" rx="2" />
-    <rect x="3" y={gB+2} width={W-6} height="4" fill="#142017" rx="1" opacity="0.4" />
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="#0a0f0a" rx="1" />
+    <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
+    <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
+    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
     {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
     {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
     <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
-    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="#a0b0c0" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
     <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
     <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
@@ -3428,12 +3572,20 @@ const APP_CSS = `
 td,th{vertical-align:middle;}
 html{overflow-y:scroll;}
 body{font-family:'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;}
-::selection{background:var(--chrome-brand-44);color:#ffffff;}
+::selection{background:var(--chrome-brand-44);color:var(--ui-text);}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:#1e2a3d;border-radius:10px;}
+::-webkit-scrollbar-thumb{background:var(--ui-scrollbar);border-radius:10px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--chrome-muted);}
 input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;}
+/* Roster rows open a full team panel on click, so they need to read as buttons, not as table
+   rows: a brand rail slides in from the left and the chevron lights up under the cursor. */
+.teamrow{position:relative;transition:background 0.13s,padding-left 0.13s;}
+.teamrow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--chrome-brand);transform:scaleX(0);transform-origin:left;transition:transform 0.13s;}
+.teamrow:hover{background:var(--chrome-muted-22);padding-left:16px;}
+.teamrow:hover::before{transform:scaleX(1);}
+.teamrow:hover .teamrow-go{color:var(--chrome-brand);transform:translateX(2px);}
+.teamrow-go{transition:color 0.13s,transform 0.13s;}
 input[type=number]{-moz-appearance:textfield;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[type=color]{-webkit-appearance:none;appearance:none;padding:0;}
@@ -3444,7 +3596,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--chrome-brand) !import
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
 @keyframes goalPunch{0%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(0.95)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
-@keyframes goalGlow{0%{text-shadow:0 0 24px #ffffff,0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px #ffffff,0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
+@keyframes goalGlow{0%{text-shadow:0 0 24px var(--ui-text),0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px var(--ui-text),0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes marqueeScroll{0%,20%{transform:translateX(0)}50%,70%{transform:translateX(var(--marquee-dist))}100%{transform:translateX(0)}}
@@ -3459,7 +3611,7 @@ button:hover:not(:disabled){filter:brightness(1.18);}
 .gbtn:hover{filter:brightness(1.05) !important;box-shadow:0 0 12px var(--chrome-brand-88),0 0 4px var(--chrome-brand-66);}
 button:disabled{opacity:0.35;cursor:not-allowed;}
 details>summary{cursor:pointer;user-select:none;list-style:none;transition:color 0.15s;}
-details>summary:hover{color:#ffffff !important;}
+details>summary:hover{color:var(--ui-text) !important;}
 details>summary::-webkit-details-marker{display:none;}
 details>summary .dta{display:inline-block;margin-right:6px;transition:transform 0.15s;}
 details[id^="doc-"]>summary+p{margin-top:12px;}
@@ -3473,10 +3625,10 @@ details[open]>summary .dta{transform:rotate(90deg);}
 select{cursor:pointer;}
 input::placeholder{color:var(--chrome-muted);}
 .warn-badge{position:relative;}
-.warn-badge::after{content:attr(data-tip);position:absolute;top:100%;left:0;margin-top:6px;background:var(--chrome-bg);border:1px solid var(--chrome-border);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;white-space:pre-line;color:#ffffff;z-index:1000;width:max-content;max-width:360px;box-shadow:0 4px 16px #00000066;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.1s ease;}
+.warn-badge::after{content:attr(data-tip);position:absolute;top:100%;left:0;margin-top:6px;background:var(--chrome-bg);border:1px solid var(--chrome-border);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;white-space:pre-line;color:var(--ui-text);z-index:1000;width:max-content;max-width:360px;box-shadow:0 4px 16px var(--ui-shadow-4);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.1s ease;}
 .warn-badge:hover::after{opacity:1;visibility:visible;}
 table{border-spacing:0;}
-@keyframes goalFlash{0%{text-shadow:0 0 24px #ffffff,0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px #ffffff,0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
+@keyframes goalFlash{0%{text-shadow:0 0 24px var(--ui-text),0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px var(--ui-text),0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
 @keyframes cardPop{0%{opacity:0;transform:translateY(8px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
 .ev-card{animation:cardPop 0.35s ease-out;}
 @keyframes gvLine{from{stroke-dashoffset:var(--gv-len);}to{stroke-dashoffset:0;}}
@@ -3497,12 +3649,59 @@ table{border-spacing:0;}
 @keyframes subSlideOff{0%{opacity:0;transform:translateX(32px);}100%{opacity:1;transform:translateX(0);}}
 .sub-on-line{animation:subSlideOn 0.55s cubic-bezier(0.22,1,0.36,1) both;}
 .sub-off-line{animation:subSlideOff 0.55s cubic-bezier(0.22,1,0.36,1) 0.35s both;}
-@media(max-width:600px){
-  .grid-2col{grid-template-columns:1fr !important;gap:10px 0 !important;}
+/* ── Narrow viewports ──────────────────────────────────────────────────────────
+   Layout only. Deliberately NOT a theme: data-theme carries the colour palette, so a
+   phone keeps whichever palette is selected and just gets a layout that fits.
+
+   Two breakpoints, because the failures happen at different widths. The dense
+   two-team panels (player stats, pre-match cards) need roughly 380px per side for
+   their POS/OVR/PLAYER/G/A/C/D/S/RTG columns, so they break well before a phone —
+   they stack at 900px. Everything else holds until a genuine phone width. */
+@media(max-width:1000px){
+  /* One team's stats above the other, never side by side: each side needs ~380px for its
+     POS/OVR/PLAYER/G/A/C/D/S/RTG columns, so two of them stop fitting well before phone width. */
+  .grid-2col{grid-template-columns:1fr !important;gap:14px 0 !important;}
   .grid-2col>.divider-col{display:none !important;}
-  .grid-3col{grid-template-columns:1fr 1fr !important;}
-  .grid-4col{grid-template-columns:1fr !important;}
   .pre-match-grid{grid-template-columns:1fr !important;}
+  /* A head row must break onto a second line rather than letting its title and its controls
+     shrink past their own content and overlap. */
+  .panel-head-row{flex-wrap:wrap !important;gap:8px !important;}
+  .panel-head-row>*{min-width:0 !important;}
+  .squad-grid{grid-template-columns:1fr 1fr !important;}
+  .wide-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+  .player-row{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+@media(max-width:600px){
+  .app-root{padding:10px 8px !important;}
+  .grid-4col,.grid-stack{grid-template-columns:1fr !important;}
+  .squad-grid{grid-template-columns:1fr !important;}
+
+  /* Dialogs go effectively full-screen rather than sitting in a 900-1000px box. */
+  .modal-shell{max-width:100% !important;width:100% !important;max-height:100dvh !important;
+    border-radius:0 !important;padding-left:12px !important;padding-right:12px !important;}
+
+  /* Scoreboard. Five logical columns (crest, minutes, names, score, names, minutes, crest)
+     cannot survive a phone, so the full team names go and the code+skill line beneath them
+     carries the identity instead — it says the same thing in a third of the width, and
+     MarqueeName only clips to nonsense ("gawa") when squeezed. */
+  .sb-grid{column-gap:8px !important;grid-template-columns:auto auto auto !important;
+    justify-content:center !important;}
+  .sb-col{min-width:0 !important;}
+  .sb-name{display:none !important;}
+  .sb-rows{column-gap:6px !important;}
+  .sb-crest{width:34px !important;height:34px !important;}
+  .sb-crest img,.sb-crest svg{width:34px !important;height:auto !important;}
+  .sb-crest>div{position:static !important;transform:none !important;}
+  .sb-score{font-size:24px !important;letter-spacing:0 !important;}
+
+  /* Touch targets and wrapping. */
+  button,select{min-height:32px;}
+  input,select,textarea{font-size:16px;}   /* iOS zooms the page below 16px */
+}
+@media(max-width:380px){
+  .sb-crest,.sb-crest img,.sb-crest svg{width:26px !important;}
+  .sb-crest{height:26px !important;}
+  .sb-score{font-size:20px !important;}
 }
 details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
@@ -3523,7 +3722,7 @@ const T_PRESETS = {
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
-const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"#5b8fa8",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
+const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"var(--ui-captain)",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("teams");
   const [uiTheme, setUiTheme] = useState(() => { try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
@@ -3553,9 +3752,7 @@ export default function App() {
   }), [teams, natOvrMap]);
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
   const [showBulk, setShowBulk] = useState(false);
-  const [teamSort, setTeamSort] = useState(null);
   const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
-  const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
       // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
@@ -4073,7 +4270,7 @@ export default function App() {
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
   const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
-  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; }));
+  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; }));
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
@@ -4369,6 +4566,7 @@ export default function App() {
     init.isSecondLeg = isL2;
     init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
     init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
+    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
     init.matchUrg = { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 };
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
 
@@ -4421,9 +4619,13 @@ export default function App() {
   const commitSlots = (slots, activeId) => { setTSlots(slots); writeSlotIndex(slots, activeId); };
 
   useEffect(() => {
+    // Cancel any pending save FIRST, before the guards below can return early. A timeout armed by
+    // an earlier render carries that render's closure — including its `tActiveSlot` — so one left
+    // armed across the on-mount restore fires with tActiveSlot still null, adopts a brand-new slot
+    // id, and every later edit then lands in that copy instead of the save that was just loaded.
+    if (sessionSaveTimeoutRef.current) { clearTimeout(sessionSaveTimeoutRef.current); sessionSaveTimeoutRef.current = null; }
     if (slotBusyRef.current) return;          // mid-switch; the incoming payload is not ours to save
     if (!hasTournamentState()) return;
-    if (sessionSaveTimeoutRef.current) clearTimeout(sessionSaveTimeoutRef.current);
     sessionSaveTimeoutRef.current = setTimeout(() => {
       const payload = buildSlotPayload();
       // First tournament on a fresh install has no slot yet — adopt one rather than drop the save.
@@ -4644,26 +4846,32 @@ export default function App() {
   const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
+    // A match started here belongs to no tournament: bans, injuries and carried stamina are
+    // tournament state and must not follow players into an unrelated fixture. tPlayLive builds
+    // its own squads with that state applied; this path deliberately has none of it.
+    setTLiveTarget(null);
     const unavail = new Set();
-    for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k); }
-    const stamData = tConfig.staminaCarry ? tPlayerStats : null;
+    const stamData = null;
     const hLive = splitAvailSquad(hSq, teamById(lmH).name, unavail, stamData);
     const aLive = splitAvailSquad(aSq, teamById(lmA).name, unavail, stamData);
     init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
     setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setChanceStep({}); };
   const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
   const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
     const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
     const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
+    const isTournamentMatch = !!tLiveTarget;
     const unavail2 = new Set();
-    for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail2.add(k); }
-    const stamData2 = tConfig.staminaCarry ? tPlayerStats : null;
+    if (isTournamentMatch) for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail2.add(k); }
+    const stamData2 = isTournamentMatch && tConfig.staminaCarry ? tPlayerStats : null;
     const hLive2 = splitAvailSquad(hSq2, teamById(lmH).name, unavail2, stamData2);
     const aLive2 = splitAvailSquad(aSq2, teamById(lmA).name, unavail2, stamData2);
     init.players = {home: hLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
     init.bench = {home: hLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
+    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
     // Must read the match to continue from via this functional updater's prevMatch, not the
     // closed-over lmMatch — autoplay's own interval can tick (and commit via its own
@@ -4687,7 +4895,7 @@ export default function App() {
       const sn = side === "home" ? teamById(lmH)?.name : teamById(lmA)?.name;
       const offP = s.players[side].find(p => p.name === offName);
       const onIdx = s.bench[side].findIndex(p => p.name === onName);
-      if (!offP || onIdx === -1 || s.subs[side] >= 3) return prev;
+      if (!offP || onIdx === -1 || s.subs[side] >= subLimit(s, side)) return prev;
       const onP = s.bench[side].splice(onIdx, 1)[0];
       onP.sub = 'on'; onP.startedBench = true; onP.rating = 6.5;
       offP.sub = 'off';
@@ -4873,7 +5081,7 @@ export default function App() {
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
+        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
@@ -5371,53 +5579,53 @@ export default function App() {
     // `editing ? editForm() : ...` branch below means it only runs when tKoEdit is
     // guaranteed non-null (koIsEditingRef returns false immediately if !tKoEdit).
     const editForm = () => (<span style={{ display: "flex", alignItems: "center", gap: 2, margin: opts.cardLayout ? 0 : "0 4px", justifyContent: opts.cardLayout ? "center" : "flex-start" }}>
-      {tKoEdit.step === "l1" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}
-      {tKoEdit.step === "l2" && <span style={{ color: "#81a1c1", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"var(--chrome-muted)"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
-      {tKoEdit.step === "et" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"var(--chrome-muted)"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
-      {tKoEdit.step === "pen" && <span style={{ color: "#d08770", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"var(--chrome-muted)"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}
-      <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
+      {tKoEdit.step === "l1" && <span style={{ color: "var(--ui-info)", fontSize: 9, whiteSpace: "nowrap" }}>Leg 1:</span>}
+      {tKoEdit.step === "l2" && <span style={{ color: "var(--ui-info)", fontSize: 9, whiteSpace: "nowrap" }}>Leg 2 <span style={{color:"var(--chrome-muted)"}}>(L1: {tKoEdit.l1h}–{tKoEdit.l1a})</span></span>}
+      {tKoEdit.step === "et" && <span style={{ color: "var(--ui-attack)", fontSize: 9, whiteSpace: "nowrap" }}>After ET <span style={{color:"var(--chrome-muted)"}}>(FT: {tKoEdit.ftH}–{tKoEdit.ftA})</span></span>}
+      {tKoEdit.step === "pen" && <span style={{ color: "var(--ui-attack)", fontSize: 9, whiteSpace: "nowrap" }}>Penalties <span style={{color:"var(--chrome-muted)"}}>(ET: {tKoEdit.etH}–{tKoEdit.etA})</span></span>}
+      <input type="number" min={0} value={tKoEdit.h} onChange={e => setTKoEdit(p => ({...p, h: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit" }} />
       <span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span>
-      <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit" }} />
-      <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.08em" }}>OK</button>
-      <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid var(--chrome-border)", color: "#bf616a", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
+      <input type="number" min={0} value={tKoEdit.a} onChange={e => setTKoEdit(p => ({...p, a: e.target.value}))} style={{ width: 34, padding: "2px 3px", fontSize: 11, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit" }} />
+      <button onClick={tSetKoManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "var(--ui-on-accent)", fontSize: 9, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit", borderRadius: 3, letterSpacing: "0.08em" }}>OK</button>
+      <button onClick={() => { setTKoEdit(null); setTScoreError(""); }} style={{ background: "none", border: "1px solid var(--chrome-border)", color: "var(--ui-danger)", fontSize: 9, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit", borderRadius: 3 }}>✗</button>
     </span>);
     const actionArea = editing ? editForm()
       : m.result?.partial ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
-          <span style={{ ...mono, fontSize: 10, color: "#81a1c1", fontWeight: 600 }}>{koResultText(m)}</span>
+          <span style={{ ...mono, fontSize: 10, color: "var(--ui-info)", fontWeight: 600 }}>{koResultText(m)}</span>
           <button onClick={() => koSim(ref, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
-          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 2 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button>
+          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 2 })} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play L2 live">⚽ L2</button>
         </span>
       : m.result ? <span style={{ display: "flex", alignItems: "center", justifyContent: opts.cardLayout ? "center" : "flex-start", gap: opts.cardLayout ? 4 : 3, margin: opts.cardLayout ? 0 : "0 4px" }}>
           <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600 }}>{koResultText(m)}</span>
-          <button onClick={() => koResumeEdit(ref, m)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>
-          <button onClick={() => koDelete(ref)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#bf616a", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button>
+          <button onClick={() => koResumeEdit(ref, m)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button>
+          <button onClick={() => koDelete(ref)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-danger)", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button>
         </span>
       : m.home && m.away ? <span style={{ display: "flex", gap: opts.cardLayout ? 4 : 3, justifyContent: opts.cardLayout ? "center" : "flex-start", margin: opts.cardLayout ? 0 : "0 4px" }}>
           <button onClick={() => koSim(ref, opts.initialLeg)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 9, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>
-          <button onClick={() => koStartEdit(ref)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>
-          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 1 })} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button>
+          <button onClick={() => koStartEdit(ref)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }}>✎</button>
+          <button onClick={() => tPlayLive({ type: "ko", ...ref, leg: 1 })} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 9, padding: "1px 4px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button>
         </span>
       : <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", margin: opts.cardLayout ? 0 : "0 6px" }}>{opts.showByeInAction && m.bye ? "BYE" : "–"}</span>;
     const homeName = <>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name || (m.bye ? "BYE" : "TBD")}{opts.homeTag && <span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 4 }}>{opts.homeTag}</span>}</>;
     const awayName = <>{m.away?.name || (m.bye ? "BYE" : "TBD")}{opts.awayTag && <span style={{ fontSize: 8, color: "var(--chrome-muted)", marginLeft: 4 }}>{opts.awayTag}</span>}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</>;
-    const haBtn = m.home && m.away && <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? (haVal === "off" ? "#bf616a" : "var(--chrome-muted)") : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: haVal ? 1 : 0.4, flexShrink: 0 }}>H</button>;
+    const haBtn = m.home && m.away && <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? (haVal === "off" ? "var(--ui-danger)" : "var(--chrome-muted)") : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, opacity: haVal ? 1 : 0.4, flexShrink: 0 }}>H</button>;
     const homeWon = m.result && koWinner(m) === m.home, awayWon = m.result && koWinner(m) === m.away;
     if (opts.cardLayout) return (
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: homeWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400 }}>{homeName}</div>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: homeWon ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400 }}>{homeName}</div>
           {haBtn}
         </div>
         <div style={{ textAlign: "center", padding: "4px 0" }}>{actionArea}</div>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: awayWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, textAlign: "right" }}>{awayName}</div>
+        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: awayWon ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, textAlign: "right" }}>{awayName}</div>
       </div>
     );
     return (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: homeWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{homeName}</span>
+        <span style={{ fontSize: 11, color: homeWon ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: homeWon ? 600 : 400, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{homeName}</span>
         {haBtn}
         {actionArea}
-        <span style={{ fontSize: 11, color: awayWon ? "#ffffff" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{awayName}</span>
+        <span style={{ fontSize: 11, color: awayWon ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: awayWon ? 600 : 400, flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{awayName}</span>
       </div>
     );
   };
@@ -5438,89 +5646,29 @@ export default function App() {
   const aClrPre = lmHomeAdv === "home" ? aAwayClr : (lmHomeAdv == null && clash) ? aAwayClr : aHomeClr;
   // Team-picked colors can be too dark to read against the app's near-black panels.
   // Fall back to the team's other kit color first, then lighten as a last resort.
-  const hClr = readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, "var(--chrome-panel)");
-  let aClr = readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, "var(--chrome-panel)");
+  const sbPanel = chromeExportColors(uiTheme).panel;
+  const hClr = clampTeamClr(readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, sbPanel));
+  let aClr = clampTeamClr(readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, sbPanel));
   // The away-kit switch above is a no-op when a team has no away color set (it just
   // falls back to its home color), so a clash can survive it. Guarantee the two final
   // colors are distinguishable no matter what caused the collision: try the away side's
   // other kit color once more, then nudge it toward white until it's clearly distinct.
   if (colorsClash(hClr, aClr)) {
-    const aOtherReadable = readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, "var(--chrome-panel)");
+    const aOtherReadable = clampTeamClr(readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, sbPanel));
     if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
-    else { aClr = lightenUntil(aClr, hClr, 0.35); }
+    else { aClr = clampTeamClr(lightenUntil(aClr, hClr, 0.35)); }
   }
-  const hStatClr = ensureMinLum(hClr), aStatClr = ensureMinLum(aClr);
+  const hStatClr = clampTeamClr(ensureMinLum(hClr)), aStatClr = clampTeamClr(ensureMinLum(aClr));
   // The card background gradient below IS the panel, not text drawn on top of it, so
   // it doesn't need the panel-contrast swap readableClr applies — a dark home kit should
   // stay dark there. Start from the pre-swap colors and only resolve a clash between the
   // two halves themselves (same pattern as hClr/aClr above, just against each other).
-  let hClr2 = hClrPre, aClr2 = aClrPre;
+  let hClr2 = clampTeamClr(hClrPre), aClr2 = clampTeamClr(aClrPre);
   if (colorsClash(hClr2, aClr2)) {
     const aOther2 = aClr2 === aHomeClr ? aAwayClr : aHomeClr;
     if (!colorsClash(hClr2, aOther2)) aClr2 = aOther2;
-    else aClr2 = lightenUntil(aClr2, hClr2, 0.35);
+    else aClr2 = clampTeamClr(lightenUntil(aClr2, hClr2, 0.35));
   }
-
-  // Shared penalty-shootout diagram (goal SVGs + kick-by-kick list), used by both
-  // the live/persistent scoreboard and the match report.
-  const renderPenaltyShootout = (pen, hCode, aCode) => {
-    const hS = pen.home.filter(k=>k.scored).length, aS = pen.away.filter(k=>k.scored).length;
-    const GoalSVG = ({kicks, label}) => {
-      const W=180,H=80,gL=20,gR=160,gT=8,gB=72;
-      const zPos=[[gL+22,gT+18],[gL+70,gT+14],[gR-22,gT+18],[gL+22,gB-16],[gL+70,gB-12],[gR-22,gB-16]];
-      const dX=[(gL+gR)/2-36,(gL+gR)/2,(gL+gR)/2+36];
-      const dY=(gT+gB)/2+4;
-      const mPos=[[gL-4,gT-6],[gL+70,gT-10],[gR+4,gT-6],[gL-8,gB+4],[gL+70,gB+8],[gR+8,gB+4]];
-      return (<svg viewBox={`0 0 ${W} ${H+10}`} style={{width:"100%",maxWidth:180,height:"auto",display:"block"}}>
-        <rect x="0" y="0" width={W} height={H+10} fill="transparent" />
-        <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--chrome-panel)" stroke="var(--chrome-muted)" strokeWidth="2.5" rx="1" />
-        <line x1={gL+47} y1={gT} x2={gL+47} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.5" />
-        <line x1={gL+93} y1={gT} x2={gL+93} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.5" />
-        <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.5" />
-        <circle cx={(gL+gR)/2} cy={gB+7} r="1.5" fill="var(--chrome-muted)" />
-        {kicks.map((k,i) => {
-          const isLast = i === kicks.length-1;
-          const pos = k.result==="miss" ? mPos[k.zone] : zPos[k.zone];
-          const r = isLast ? 5.5 : 3.5;
-          const col = k.result==="goal"?"#a3be8c":k.result==="save"?"#bf616a":"var(--chrome-muted)";
-          return (<>
-            {isLast && <rect x={dX[k.dive]-14} y={dY-16} width={28} height={32} rx="3" fill={k.result==="save"?"#bf616a22":"#ffffff08"} stroke={k.result==="save"?"#bf616a44":"#ffffff15"} strokeWidth="1" />}
-            <circle cx={pos[0]} cy={pos[1]} r={r} fill={col} opacity={isLast?1:0.6} />
-            {k.result==="miss" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={isLast?"9":"7"} fontWeight="700">×</text>}
-            {isLast && k.result==="goal" && <text x={pos[0]} y={pos[1]+1} textAnchor="middle" dominantBaseline="middle" fill="var(--chrome-panel)" fontSize="7" fontWeight="700">✓</text>}
-          </>);
-        })}
-        <text x={W/2} y={H+9} textAnchor="middle" fill="#ffffff" fontSize="7" fontFamily="monospace">{label}</text>
-      </svg>);
-    };
-    return (<div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, justifyContent: "center" }}>
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{hS}</span>
-        <span style={{ fontSize: 9, color: "#ffffff", letterSpacing: "0.16em" }}>PENALTIES</span>
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", ...mono }}>{aS}</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0 6px", alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <GoalSVG kicks={pen.home} label={hCode} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 0, paddingTop: 4 }}>
-          {Array.from({length: Math.max(pen.home.length, pen.away.length)}, (_,i) => {
-            const h = pen.home[i], a = pen.away[i];
-            return (<div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 9 }}>
-              <span style={{ width: 90, textAlign: "right", color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{h?.name||""}</span>
-              <span style={{ color: h ? (h.scored ? "#a3be8c" : "#bf616a") : "#ffffff", fontSize: 12, width: 14, textAlign: "center" }}>{h ? (h.scored ? "●" : "○") : ""}</span>
-              <span style={{ color: "#ffffff", fontSize: 8, width: 12, textAlign: "center", ...mono }}>{i+1}</span>
-              <span style={{ color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#ffffff", fontSize: 12, width: 14, textAlign: "center" }}>{a ? (a.scored ? "●" : "○") : ""}</span>
-              <span style={{ width: 90, textAlign: "left", color: a ? (a.scored ? "#a3be8c" : "#bf616a") : "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{a?.name||""}</span>
-            </div>);
-          })}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <GoalSVG kicks={pen.away} label={aCode} />
-        </div>
-      </div>
-    </div>);
-  };
 
   const renderScoreboard = () => {
     // Stadium photo is a faint backdrop, not a skin — team-color gradient stays
@@ -5552,14 +5700,14 @@ export default function App() {
       ? `linear-gradient(90deg, ${hClr2}b3 0%, ${hClr2}b3 40%, ${aClr2}b3 60%, ${aClr2}b3 100%), url("${stadiumUrlNFC}.jpg"), url("${stadiumUrlNFC}.jpeg"), url("${stadiumUrlNFD}.jpg"), url("${stadiumUrlNFD}.jpeg")`
       : `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`;
     return (
-    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px #00000040", textShadow: "0 1px 3px rgba(0,0,0,0.75)" }}>
+    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px var(--ui-shadow-3)", textShadow: SCOREBOARD_SHADOW }}>
       {/* Venue + POTM sticker */}
-      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10 }}>PRE-MATCH</div>}
+      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
         const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
         const sn = shortName;
-        const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "#ebcb8b" : "#bf616a";
+        const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
         const PitchSVG = ({starters, formation}) => {
           const FPOS = {
             "4-4-2":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
@@ -5596,22 +5744,22 @@ export default function App() {
               const pos = pp[pi]; if (!pos) return null;
               return (<g key={pi}>
                 <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.5" />
-                <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="#ffffff" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
+                <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="var(--ui-text)" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
               </g>);
             })}
           </svg>);
         };
         return (<div style={{ marginTop: 10, marginBottom: 6 }}>
           {/* Formation pitches with team info */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
+          <div className="pre-match-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
             {[{side:"home",id:lmH},{side:"away",id:lmA}].map(({side,id}) => {
               const tm = teamById(id);
               const starters = lmMatch.players[side] || [];
               const bench = lmMatch.bench[side] || [];
               const offP = preSwap.side === side ? starters.find(p => p.name === preSwap.off) : null;
-              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 10px 8px", display: "flex", flexDirection: "column" }}>
+              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 10px 8px", display: "flex", flexDirection: "column", textShadow: "none" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#ffffff" }}>{tm?.name}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)" }}>{tm?.name}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <span style={{ fontSize: 8, color: SC[tm?.style]||"#888", fontWeight: 600 }}>{STYLE_LBL[tm?.style]||"Balanced"}</span>
                     <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"var(--chrome-muted)", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
@@ -5620,8 +5768,8 @@ export default function App() {
                 <PitchSVG starters={starters} formation={tm?.formation} />
                 <div style={{ marginTop: 6, padding: "0 2px" }}>
                   {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "var(--chrome-brand-14)", border: "1px solid var(--chrome-brand-44)", borderRadius: 6 }}>
-                    <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Bench <b style={{ color: "#ffffff" }}>{offP.name}</b>, pick a replacement below</span>
-                    <span onClick={() => setPreSwap({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
+                    <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Bench <b style={{ color: "var(--ui-text)" }}>{offP.name}</b>, pick a replacement below</span>
+                    <span onClick={() => setPreSwap({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "var(--ui-danger)", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                   </div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
                     {starters.map((p, pi) => {
@@ -5629,7 +5777,7 @@ export default function App() {
                       const isOffP = offP?.name === p.name;
                       return (<div key={pi} onClick={() => setPreSwap(isOffP ? {side:null,off:null} : {side, off:p.name})} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0", cursor: "pointer", opacity: offP && !isOffP ? 0.5 : 1, background: isOffP ? "var(--chrome-brand-1a)" : "transparent", borderRadius: 3 }}>
                         <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, width: 20, flexShrink: 0, textAlign: "left", ...mono }}>{p.pos}</span>
-                        <span style={{ color: "#ffffff", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
+                        <span style={{ color: "var(--ui-text)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
                         <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600, flexShrink: 0 }}>🗲{Math.round(stam)}</span>
                       </div>);
                     })}
@@ -5672,13 +5820,13 @@ export default function App() {
               const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
               const tCode = isHome ? abbr(teamById(lmH)?.name, teamById(lmH)?.code) : abbr(teamById(lmA)?.name, teamById(lmA)?.code);
               const tClr = isHome ? hClr : aClr;
-              potmEl = <><span style={{ margin: "0 8px", color: "#ffffff33" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 10, color: "#ffffff", fontWeight: 600, ...ui }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></span></>;
+              potmEl = <><span style={{ margin: "0 8px", color: "var(--ui-text-33)" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 10, color: "var(--ui-text)", fontWeight: 600, ...ui }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></span></>;
             }
           }
         }
-        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8 }}>
+        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8, textShadow: "none" }}>
           <span style={{ fontSize: 10 }}>📍</span>
-          <span style={{ fontSize: 10, color: "#ffffffcc", fontWeight: 500, ...ui }}>{venueText}</span>
+          <span style={{ fontSize: 10, color: "var(--ui-text-cc)", fontWeight: 500, ...ui }}>{venueText}</span>
           {potmEl}
         </div>;
       })()}
@@ -5695,6 +5843,13 @@ export default function App() {
           for (const e of lmMatch.events || [])
             if (e.team === side && e.player && (e.type === "red" || (e.type === "pen_miss" && e.min !== "PEN")))
               items.push({ type: e.type, name: e.player, min: e.min });
+          // Shootout kicks join the same list rather than getting a panel of their own: they already
+          // render correctly here as a ball with a "P", red when missed, and mTxt prints no minute
+          // for "PEN". Read from penalties[] and not the events, because that array is the kick
+          // order and a shootout goal is deliberately absent from goalscorers[] (it must not move
+          // the scoreline). The 999 sort fallback keeps them after every timed event.
+          for (const k of (lmMatch.penalties?.[side] || []))
+            items.push({ type: k.scored ? "so_goal" : "so_miss", name: k.name, min: "PEN" });
           items.sort((a, b) => {
             const am = typeof a.min === "number" ? a.min : parseInt(a.min) || 999;
             const bm = typeof b.min === "number" ? b.min : parseInt(b.min) || 999;
@@ -5709,9 +5864,13 @@ export default function App() {
         // this cell shares a CSS grid row with the name cells, Grid's tallest-cell sizing
         // rounded every row up to 14px, drifting the minute column (plain block stacking,
         // unaffected by this cell) further out of alignment on every subsequent row.
-        const ball = (t) => t === "pen_miss" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--chrome-brand)" }}>⚽︎</span>
-          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9, lineHeight: "13px" }}>⚽︎</span>
-          : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="#bf616a" transform="rotate(15 4 5.5)"/></svg>
+        // Shootout kicks get their own types so the outcome reads off the colour alone — scored
+        // green, missed red — and they carry no "P": below the divider every kick is a penalty,
+        // so the marker only added noise. An in-game penalty still keeps its white ball and its P.
+        const ball = (t) => t === "pen_miss" || t === "so_miss" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--chrome-brand)" }}>⚽︎</span>
+          : t === "so_goal" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-ok)" }}>⚽︎</span>
+          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>⚽︎</span>
+          : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="var(--ui-danger)" transform="rotate(15 4 5.5)"/></svg>
           : null;
         const ballWithP = (t) => {
           const isPen = t === "pen_goal" || t === "pen_miss";
@@ -5719,10 +5878,28 @@ export default function App() {
           const label = isPen ? "P" : isOG ? "OG" : null;
           return <span style={{ display: "inline-flex", alignItems: "flex-start", position: "relative" }}>
             {ball(t)}
-            {label && <span style={{ fontSize: 6, color: "#ffffff", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
+            {label && <span style={{ fontSize: 6, color: "var(--ui-on-accent)", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
           </span>;
         };
-        const evRows = Array.from({ length: Math.max(hI.length, aI.length) }, (_, i) => ({ h: hI[i], a: aI[i] }));
+        // Shootout kicks pair up among themselves, under a hairline separating them from the timed
+        // events. The divider is a row like any other and holds the same 13px line box, so the two
+        // minute columns — which stack independently of this grid — stay level with the names.
+        const isPenItem = (it) => it && it.min === "PEN";
+        const rowsOf = (h, a) => Array.from({ length: Math.max(h.length, a.length) }, (_, i) => ({ h: h[i], a: a[i] }));
+        const hP = hI.filter(isPenItem), aP = aI.filter(isPenItem);
+        // The event area is three independent stacks in a grid with a 16px columnGap, so the
+        // divider is drawn per column and each piece overhangs half the gap to close it — the
+        // result reads as one line across the whole box. Outer edges stay flush.
+        const dividerCell = (edge, extra) => (
+          <div style={{ height: 13, display: "flex", alignItems: "center", marginLeft: edge === "left" ? 0 : -8, marginRight: edge === "right" ? 0 : -8, ...extra }}>
+            <span style={{ flex: 1, height: 1, background: "var(--ui-text-33)" }} />
+          </div>
+        );
+        const evRows = [
+          ...rowsOf(hI.filter(x => !isPenItem(x)), aI.filter(x => !isPenItem(x))),
+          ...(hP.length || aP.length ? [{ divider: true }] : []),
+          ...rowsOf(hP, aP),
+        ];
         const phaseLabelBase = lmMatch.phase === "half_time" ? "HALF TIME"
           : lmMatch.phase === "full_time" ? "FULL TIME"
           : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
@@ -5738,78 +5915,78 @@ export default function App() {
           if (lmMatch.isSecondLeg) {
             const aggH = dispScore[0] + (lmMatch.startScore?.[0] || 0), aggA = dispScore[1] + (lmMatch.startScore?.[1] || 0);
             if (!isTerminal) return `${phaseLabelBase} (${aggH}–${aggA} agg.)`;
-            const suffix = hasPen ? " PENS" : hasET ? " AET" : (aggH === aggA && lmMatch.forceResult) ? " AG" : "";
-            return `FULL TIME (${aggH}–${aggA} agg.${suffix})`;
+            // Already inside brackets here, so the shared suffix's own pair is stripped off.
+            const suffix = ftSuffix({ pen: hasPen && lmMatch.penalties, et: hasET, awayGoals: aggH === aggA && lmMatch.forceResult }).replace(/^ \(|\)$/g, " ").trimEnd();
+            return `FULL TIME (${aggH}–${aggA} agg.${suffix ? " " + suffix : ""})`;
           }
           if (!isTerminal) return phaseLabelBase;
-          const suffix = hasPen ? " (PENS)" : hasET ? " (AET)" : "";
-          return `FULL TIME${suffix}`;
+          return `FULL TIME${ftSuffix({ pen: hasPen && lmMatch.penalties, et: hasET })}`;
         })();
         return <div style={{ marginBottom: 6 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "start", columnGap: 16 }}>
+          <div className="sb-grid" style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "start", columnGap: 16 }}>
             {/* Left: home crest, big, own column, top-aligned with the phase/clock label.
                 Event minutes stack below it, in order, rather than crowding the name row. */}
-            <div style={{ minWidth: 100 }}>
-              <div style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
+            <div className="sb-col" style={{ minWidth: 100 }}>
+              <div className="sb-crest" style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
                 <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
                   <TeamCrest team={teamById(lmH)} size={100} />
                 </div>
               </div>
               {evRows.map((row, i) => (
-                <div key={i} style={{ fontSize: 9, lineHeight: "13px", color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.h ? mTxt(row.h.min) :" "}</div>
+                <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{row.divider ? dividerCell("left") : <div style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent-cc)", textAlign: "center", ...mono }}>{row.h ? mTxt(row.h.min) : "\u00a0"}</div>}</div>
               ))}
             </div>
             {/* Middle: phase/clock bar, then name+skill (stacked, as a unit) | score | name+skill —
                 score centers against the whole 2-line name+skill block, matching the classic layout. */}
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
+              <div className="sb-rows" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
                 <div style={{ textAlign: "right", minWidth: 0 }}>
-                  <MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "#ffffff" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "#ffffff" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="#ffffff" /></div>
+                  <div className="sb-name"><MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)" }} /></div>
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
                 </div>
-                <div style={{ fontSize: 40, fontWeight: 700, color: "#ffffff", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
+                <div className="sb-score" style={{ fontSize: 40, fontWeight: 700, color: "var(--ui-on-accent)", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
                   <span className={goalFlash==="home"?"goal-flash":""}>{dispScore[0]}</span>
-                  <span style={{ color: "#ffffff", margin: "0 6px" }}>-</span>
+                  <span style={{ color: "var(--ui-on-accent)", margin: "0 6px" }}>-</span>
                   <span className={goalFlash==="away"?"goal-flash":""}>{dispScore[1]}</span>
                 </div>
                 <div style={{ textAlign: "left", minWidth: 0 }}>
-                  <MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }} />
-                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="#ffffff" /><span style={{ color: "#ffffff" }}> ·</span> <span style={{ color: "#ffffff" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
+                  <div className="sb-name"><MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)" }} /></div>
+                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
                 </div>
                 {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
                     name/score above — ball icons share the score column, names share the name columns.
                     Minutes live under the crests instead (separate columns, see either side). */}
                 {evRows.map((row, i) => (
                   <Fragment key={i}>
-                    <div style={{ textAlign: "right", fontSize: 9, lineHeight: "13px", color: "#ffffff" }}>{row.h?.name}</div>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(-6.5px)" }}>{row.h && ballWithP(row.h.type)}</div>
-                      <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(6.5px)" }}>{row.a && ballWithP(row.a.type)}</div>
-                    </div>
-                    <div style={{ textAlign: "left", fontSize: 9, lineHeight: "13px", color: "#ffffff" }}>{row.a?.name}</div>
+                    {row.divider
+                      ? dividerCell(null, { gridColumn: "1 / -1" })
+                      : <>
+                        <div style={{ textAlign: "right", fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>{row.h?.name}</div>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(-6.5px)" }}>{row.h && ballWithP(row.h.type)}</div>
+                          <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(6.5px)" }}>{row.a && ballWithP(row.a.type)}</div>
+                        </div>
+                        <div style={{ textAlign: "left", fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>{row.a?.name}</div>
+                      </>}
                   </Fragment>
                 ))}
               </div>
             </div>
             {/* Right: away crest, big, own column. Event minutes stack below it. */}
-            <div style={{ minWidth: 100 }}>
-              <div style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
+            <div className="sb-col" style={{ minWidth: 100 }}>
+              <div className="sb-crest" style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
                 <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
                   <TeamCrest team={teamById(lmA)} size={100} />
                 </div>
               </div>
               {evRows.map((row, i) => (
-                <div key={i} style={{ fontSize: 9, lineHeight: "13px", color: "#ffffffcc", textAlign: "center", marginTop: i === 0 ? 0 : 4, ...mono }}>{row.a ? mTxt(row.a.min) :" "}</div>
+                <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{row.divider ? dividerCell("right") : <div style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent-cc)", textAlign: "center", ...mono }}>{row.a ? mTxt(row.a.min) : "\u00a0"}</div>}</div>
               ))}
             </div>
           </div>
         </div>;
       })()}
-      {lmMatch.penalties && (lmMatch.phase === "penalties" || lmMatch.phase === "finished") && <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #ffffff33" }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#ffffff", marginBottom: 8, textAlign: "center" }}>Penalty Shootout</div>
-        {renderPenaltyShootout(lmMatch.penalties, abbr(teamById(lmH)?.name, teamById(lmH)?.code), abbr(teamById(lmA)?.name, teamById(lmA)?.code))}
-      </div>}
       </>}
     </div>
   );
@@ -5889,7 +6066,7 @@ export default function App() {
           {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
           <div>
             <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+            <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
               <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
               <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
               <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
@@ -5903,27 +6080,27 @@ export default function App() {
               {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOff?"var(--chrome-muted)":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
-                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOff?"#bf616a":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
+                <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
               </>); })}
               <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
               {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                 <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                 <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOn?"#ffffff":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
-                <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                 <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOn?"#a3be8c":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
+                <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
               </>); })}
             </div>
           </div>
@@ -5939,16 +6116,18 @@ export default function App() {
 
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
-  const TEAM_COLW = { num: 22, crest: 26, code: 40, skill: 40, open: 44, del: 28 };
-  const teamSearchQ = teamSearchQuery.trim().toLowerCase();
-  // Prefix match only — code or any word in the name must START with the query, so "NCH"
-  // finds Nichirin (code) without also matching the "nch" buried inside "Manchester".
-  const teamMatchesSearch = (t) => {
-    if (!teamSearchQ) return true;
-    if (abbr(t.name, t.code).toLowerCase().startsWith(teamSearchQ)) return true;
-    return t.name.toLowerCase().split(/\s+/).some(w => w.startsWith(teamSearchQ));
-  };
-  const teamsFiltered = teams.filter(t => (!teamLeagueFilter || (t.league||"Custom") === teamLeagueFilter) && teamMatchesSearch(t));
+  const TEAM_COLW = { num: 22, crest: 26, code: 42, skill: 42, go: 18, del: 28 };
+  // Preset teams are owned by the TSV files — the app renders them, the spreadsheet edits them.
+  // Only Custom teams stay editable in-app, so everything else renders as coloured read-only text.
+  const isEditableTeam = (t) => t.league === "Custom";
+  // Plain text, not a disabled input: no border or fill, and no horizontal padding, so every value
+  // sits flush under its own label instead of being inset by an input's inner padding.
+  const RO = ({ children, style, mono: m }) => (
+    <div style={{ padding: "6px 0", fontSize: 12, color: "var(--ui-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", ...(m ? mono : null), ...style }}>
+      {children || <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}
+    </div>
+  );
+  const setTeamLocation = (t, v) => { const { stadium, city } = parseLocation(v); updateTeam(t.id, "stadium", stadium); updateTeam(t.id, "city", city); };
 
   const playerIndex = useMemo(() => {
     const natNames = new Map();
@@ -5962,17 +6141,22 @@ export default function App() {
         if (!p.name || p.name.startsWith("#")) return;
         const key = p.fullName || p.name;
         const eff = p.ovr ?? t.skill;
-        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, positions: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
+        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, clubPos: new Set(), natPos: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
         const e = byName.get(key);
+        // Club and national slots are kept apart. A national squad is picked for a shape, so its
+        // slot says where the manager put the player, not what he is; the club slot is the better
+        // evidence and wins outright wherever it exists.
         const sp = p.spos || p.pos;
-        if (sp) e.positions.add(sp);
+        if (sp) (isIntl ? e.natPos : e.clubPos).add(sp);
         if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
         else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
       });
     });
     const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
     const arr = [...byName.values()];
-    arr.forEach(p => { p.pos = [...p.positions].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).join("/"); delete p.positions; });
+    // Uncapped players and anyone with no club listed still need a position, so the national slot
+    // remains the fallback — it is only ignored when there is club evidence to prefer.
+    arr.forEach(p => { const src = p.clubPos.size ? p.clubPos : p.natPos; p.pos = [...src].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).join("/"); delete p.clubPos; delete p.natPos; });
     // Tiebreak equal ratings by club skill, then national team skill.
     return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
   }, [teams]);
@@ -5992,11 +6176,21 @@ export default function App() {
     if (!bestXiNat) return null;
     const natTeam = teams.find(t => t.league === "Avium International" && t.code === bestXiNat);
     const formation = natTeam?.formation || "4-3-3";
-    const template = buildSquad(formation, []);
+    // National teams play international rules, so the selector always picks a full 22:
+    // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
+    const template = buildSquad(formation, [], 11);
     const broadOf = (sp) => sp === "GK" ? "GK" : POS_GROUP[sp];
+    // Club positions are exact, so matching starters exactly leaves slots empty and benches better
+    // players. Each slot takes the nearest role it can live with instead — see xiFit.
+    const fitOf = (p, sp) => Math.min(...p.elig.map(e => xiFit(e, sp)));
+    const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * fitOf(p, sp);
     // Starters must match their exact slot position; bench slots only need the broad
     // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
-    const slots = template.map(p => p.bench ? broadOf(p.spos) : p.spos);
+    // That group is the slot's own `pos`, which buildSquad derives from the formation's bands.
+    // Re-deriving it from spos instead disagrees wherever a band and POS_GROUP differ — a
+    // 4-1-4-1's wide slots are midfield-band but POS_GROUP calls them forwards, so the bench
+    // demanded a forward there and left the actual striker slot empty.
+    const slots = template.map(p => p.bench ? p.pos : p.spos);
     const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.map(broadOf)) }; });
     const used = new Set();
     const players = new Array(slots.length).fill(null);
@@ -6008,11 +6202,14 @@ export default function App() {
       while (remaining.length) {
         let bestIdx = remaining[0], bestList = [], bestScore = Infinity;
         for (const si of remaining) {
-          const cands = pool.filter(p => !used.has(p.fullName) && (isBench ? p.groups.has(slots[si]) : p.elig.includes(slots[si])));
+          const cands = pool.filter(p => !used.has(p.fullName) && (isBench ? p.groups.has(slots[si]) : fitOf(p, slots[si]) <= XI_FIT_MAX));
           if (cands.length < bestScore) { bestScore = cands.length; bestList = cands; bestIdx = si; if (bestScore === 0) break; }
         }
         if (bestList.length) {
-          const pick = bestList.reduce((a, b) => (b.ovr || 0) > (a.ovr || 0) ? b : a);
+          const target = slots[bestIdx];
+          const pick = isBench
+            ? bestList.reduce((a, b) => (b.ovr || 0) > (a.ovr || 0) ? b : a)
+            : bestList.reduce((a, b) => scoreFor(b, target) > scoreFor(a, target) ? b : a);
           used.add(pick.fullName);
           players[bestIdx] = pick;
         }
@@ -6026,7 +6223,7 @@ export default function App() {
   }, [playerIndex, teams, bestXiNat]);
 
   return (
-    <div data-theme={uiTheme} style={{ ...ui, background: "var(--chrome-bg)", color: "#ffffff", minHeight: "100vh", padding: "24px 18px" }}>
+    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: "24px 18px" }}>
       <style>{APP_CSS}</style>
       {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -6036,69 +6233,58 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "#ffffff" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
+              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
         </div>
 
         {tab === "teams" && (<>
         {/* TEAMS */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-          <PanelTitle sub={(teamLeagueFilter || teamSearchQ) ? `${teamsFiltered.length} / ${teams.length}` : `${teams.length}`}>Teams</PanelTitle>
+        <div className="panel-head-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
+          <PanelTitle sub={teamLeagueFilter ? `${teams.filter(t => (t.league || "Custom") === teamLeagueFilter).length} / ${teams.length}` : `${teams.length}`}>Teams</PanelTitle>
+          {/* Export/import/add used to be gated on the filter reading "Custom". They stay visible
+              regardless now — hiding the only route to adding a team behind a filter state was a trap. */}
           <div style={{ display: "flex", gap: 6 }}>
             <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...smBtn, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
-            <input value={teamSearchQuery} onChange={e => setTeamSearchQuery(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 160, background: "transparent", color: teamSearchQuery ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
-            {teamLeagueFilter === "Custom" && <button onClick={exportState} style={{ ...smBtn, color: showExport ? "#bf616a" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>}
-            {teamLeagueFilter === "Custom" && <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "#bf616a" : "var(--chrome-muted)" }}>{showBulk ? "✕ Close" : "📂"}</button>}
-            {teamLeagueFilter === "Custom" && <button onClick={addTeam} style={addBtn}>+ Add</button>}
+            <button onClick={exportState} style={{ ...smBtn, color: showExport ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>
+            <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Bulk import">{showBulk ? "✕ Close" : "📂"}</button>
+            <button onClick={addTeam} style={addBtn}>+ Add</button>
           </div>
         </div>
-        {showExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
+        {showExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
+        {showBulk && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
         <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)" }}>
-            <div style={{ display: "flex", gap: 4, flex: 1 }}>
-              {[["name","Name"],["code","Code"],["skill","Skill"]].map(([k,l]) => { const active = teamSort?.key === k; const dir = active ? teamSort.dir : null; return (
-                <button key={k} onClick={() => {
-                  const newDir = active ? (dir === "desc" ? "asc" : "desc") : (k === "skill" ? "desc" : "asc");
-                  setTeamSort({ key: k, dir: newDir });
-                  setTeams(ts => [...ts].sort((a, b) => {
-                    let d = 0;
-                    if (k === "skill") d = (a.skill||0) - (b.skill||0);
-                    else if (k === "name") d = (a.name||"").localeCompare(b.name||"");
-                    else d = (a.code||abbr(a.name,a.code)||"").localeCompare(b.code||abbr(b.name,b.code)||"");
-                    return newDir === "desc" ? -d : d;
-                  }));
-                }} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 6, border: "1px solid " + (active ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: active ? "var(--chrome-brand-22)" : "transparent", color: active ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.08em" }}>{l} {active ? (dir === "asc" ? "↑" : "↓") : ""}</button>
-              ); })}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 6, padding: "10px 12px 8px", borderBottom: "1px solid var(--chrome-border)", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>
-            <span style={{ width: TEAM_COLW.num, flexShrink: 0 }} /><span style={{ width: TEAM_COLW.crest, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>Name</span><span style={{ width: TEAM_COLW.code, textAlign: "center", flexShrink: 0 }}>Code</span><span style={{ width: TEAM_COLW.skill, textAlign: "center", flexShrink: 0 }}>Skill</span><span style={{ width: TEAM_COLW.open, textAlign: "center", flexShrink: 0, paddingRight: 6 }}>TEAM</span>{teamsFiltered.some(t => t.league === "Custom") && <span style={{ width: TEAM_COLW.del, flexShrink: 0 }} />}
-          </div>
-          {(() => { const visibleTeams = teamsFiltered; return (
+          {(() => { const visibleTeams = teamLeagueFilter ? teams.filter(t => (t.league || "Custom") === teamLeagueFilter) : teams; return (
           <div style={{ maxHeight: visibleTeams.length > 12 ? 520 : "none", overflowY: visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
-            {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const nonDefault = Object.entries(strat).filter(([,v]) => v !== 0).length; return (
+            {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const ed = isEditableTeam(t); return (
               <div key={t.id}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }}>
+              {/* Custom rows carry their own input and delete button, so they can't also be a
+                  button — only the read-only rows take the role and keyboard handler. */}
+              <div className="teamrow" title={"Open " + t.name} {...(ed ? {} : { role: "button", tabIndex: 0, onKeyDown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } } })} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }}>
                 <span style={{ color: "var(--chrome-muted)", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
                 <TeamCrest team={t} size={18} style={{ marginLeft: 8 }} />
-                <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => {
-                  const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
-                  if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) {
-                    setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return;
-                  }
-                  updateTeam(t.id, "code", v);
-                }} style={{ ...inp, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", color: t.code ? "#ffffff" : "var(--chrome-muted)", borderColor: dupCodeId === t.id ? "#bf616a" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "#bf616a" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                <span onClick={e => { e.stopPropagation(); if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }} title="Open team, squad and tactics" style={{ width: TEAM_COLW.open, textAlign: "center", fontSize: 9, color: exp ? "var(--chrome-brand)" : "var(--chrome-muted)", flexShrink: 0, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.08em", border: "1px solid " + (exp ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "2px 0", background: exp ? "var(--chrome-muted-22)" : "transparent" }}>{exp ? "▾" : (t.squad?.filter(p => !p.name.startsWith("#")).length || "–")}</span>
+                {ed
+                  ? <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => {
+                      const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
+                      if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) {
+                        setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return;
+                      }
+                      updateTeam(t.id, "code", v);
+                    }} style={{ ...inp, ...mono, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                  : <span style={{ width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>}
+                {ed
+                  ? <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", marginLeft: -8, border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                  : <span style={{ flex: 1, minWidth: 0, padding: "5px 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</span>}
+                {ed
+                  ? <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, ...mono, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "var(--ui-danger)" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
+                  : <span style={{ width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>}
+                <span className="teamrow-go" style={{ width: TEAM_COLW.go, textAlign: "center", flexShrink: 0, fontSize: 13, lineHeight: 1, color: exp ? "var(--chrome-brand)" : "var(--chrome-muted-66)" }}>{exp ? "▾" : "›"}</span>
                 {t.league === "Custom" && <button onClick={e => { e.stopPropagation(); removeTeam(t.id); }} style={{ ...delBtn, width: TEAM_COLW.del, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
               </div>
               {exp && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (
-              <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                <div onClick={e => e.stopPropagation()} style={{ ...panelBox, marginBottom: 0, padding: 0, width: "100%", maxWidth: 1000, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: "13px 20px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+              <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-lift)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ ...panelBox, marginBottom: 0, padding: 0, width: "100%", maxWidth: 1000, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `13px 20px 13px ${20 - PANEL_HEAD_INSET}px`, borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
                     <PanelTitle sub={t.league === "Custom" ? "Custom" : t.league}>{t.code || abbr(t.name, t.code)}</PanelTitle>
                     <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
                   </div>
@@ -6112,38 +6298,40 @@ export default function App() {
                         <TeamCrest team={t} size={320} style={{ width: "100%", height: "auto", maxHeight: "56vh" }} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-                        <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, padding: "6px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        {ed
+                          ? <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, padding: "6px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <div style={{ fontSize: 26, fontWeight: 700, padding: "6px 0", lineHeight: 1.15 }}>{t.name}</div>}
                         <div>
                           <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Colours</div>
                           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                              <input type="color" value={t.primaryColor || "#81a1c1"} onChange={e => updateTeam(t.id, "primaryColor", e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
-                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Home</span>
-                            </label>
-                            <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                              <input type="color" value={t.secondaryColor || t.primaryColor || "#2a3a50"} onChange={e => updateTeam(t.id, "secondaryColor", e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
-                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Away</span>
-                            </label>
+                            {[["primaryColor", "Home", "#81a1c1"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
+                              <label key={f} style={{ display: "flex", gap: 6, alignItems: "center", cursor: ed ? "pointer" : "default" }}>
+                                {ed
+                                  ? <input type="color" value={t[f] || fallback} onChange={e => updateTeam(t.id, f, e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
+                                  : <span style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--chrome-border)", background: t[f] || fallback, flexShrink: 0 }} />}
+                                <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>{lbl}</span>
+                              </label>
+                            ))}
                           </div>
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <div>
-                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>City</div>
-                            <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="&#8211;" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
-                          </div>
-                          <div>
-                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Stadium</div>
-                            <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="&#8211;" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
-                          </div>
+                        <div>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Location</div>
+                          {ed
+                            ? <input value={formatLocation(t)} onChange={e => setTeamLocation(t, e.target.value)} placeholder="Stadium, City" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
+                            : <RO>{formatLocation(t)}</RO>}
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div className="grid-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           <div>
                             <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Code</div>
-                            <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "#bf616a" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
+                            {ed
+                              ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
+                              : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>}
                           </div>
                           <div>
                             <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Skill</div>
-                            <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "#bf616a" : "var(--chrome-border)" }} />
+                            {ed
+                              ? <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "var(--ui-danger)" : "var(--chrome-border)" }} />
+                              : <RO mono style={{ color: ovrColor(t.skill), fontWeight: 600 }}>{t.skill}</RO>}
                           </div>
                         </div>
                       </div>
@@ -6193,51 +6381,59 @@ export default function App() {
                         if (!pos) return null;
                         return (<g key={pi2}>
                           <circle cx={pos.x} cy={pos.y} r="2.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.4" />
-                          <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="#ffffff" fontSize="2.1" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
+                          <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="var(--ui-text)" fontSize="2.1" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
                         </g>);
                       })}
                     </svg>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>STARTING XI</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px", marginBottom: 10 }}>
+                    <div className="squad-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px", marginBottom: 10 }}>
                     {starters.map((p, pi) => (
                       <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
                         <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
-                        <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                          const ns = [...sq]; ns[pi] = {...ns[pi], name: e.target.value, fullName: undefined};
-                          updateTeam(t.id, "squad", ns);
-                        }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
-                        onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                        onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <input type="number" min="1" max="99"
-                          value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                          onChange={e => { const ns = [...sq]; ns[pi] = {...ns[pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
-                          onClick={e => e.stopPropagation()}
-                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
-                          onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                          onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
+                        {ed
+                          ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
+                              const ns = [...sq]; ns[pi] = {...ns[pi], name: e.target.value, fullName: undefined};
+                              updateTeam(t.id, "squad", ns);
+                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
+                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <span style={{ flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.fullName || p.name}</span>}
+                        {ed
+                          ? <input type="number" min="1" max="99"
+                              value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                              onChange={e => { const ns = [...sq]; ns[pi] = {...ns[pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                              onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                              onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <span style={{ width: 18, fontSize: 10, textAlign: "center", flexShrink: 0, marginLeft: -6, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "var(--ui-nat-override)", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
                     ))}
                     </div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingTop: 6 }}>BENCH</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px" }}>
+                    <div className="squad-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px" }}>
                     {bench.map((p, pi) => (
                       <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
                         <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
-                        <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                          const ns = [...sq]; ns[11 + pi] = {...ns[11+pi], name: e.target.value, fullName: undefined};
-                          updateTeam(t.id, "squad", ns);
-                        }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "var(--chrome-muted)" }}
-                        onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                        onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        <input type="number" min="1" max="99"
-                          value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                          onChange={e => { const ns = [...sq]; ns[11+pi] = {...ns[11+pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
-                          onClick={e => e.stopPropagation()}
-                          style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
-                          onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                          onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "#9a7ab5", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
+                        {ed
+                          ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
+                              const ns = [...sq]; ns[11 + pi] = {...ns[11+pi], name: e.target.value, fullName: undefined};
+                              updateTeam(t.id, "squad", ns);
+                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "var(--chrome-muted)" }}
+                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <span style={{ flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, color: "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.fullName || p.name}</span>}
+                        {ed
+                          ? <input type="number" min="1" max="99"
+                              value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                              onChange={e => { const ns = [...sq]; ns[11+pi] = {...ns[11+pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                              onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                              onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <span style={{ width: 18, fontSize: 10, textAlign: "center", flexShrink: 0, marginLeft: -6, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "var(--ui-nat-override)", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
                       </div>
                     ))}
                     </div>
@@ -6248,11 +6444,15 @@ export default function App() {
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
-                    <select value={t.style || "balanced"} onChange={e => updateTeam(t.id, "style", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:STYLE_CLR[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select>
+                    {ed
+                      ? <select value={t.style || "balanced"} onChange={e => updateTeam(t.id, "style", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:STYLE_CLR[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select>
+                      : <RO style={{ color: STYLE_CLR[t.style || "balanced"], fontWeight: 600 }}>{STYLE_LBL[t.style || "balanced"]}</RO>}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>FORMATION</div>
-                    <select value={t.formation || "4-3-3"} onChange={e => updateTeam(t.id, "formation", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: FORM_CLR[t.formation || "4-3-3"] || "#888" }}>{FORM_GRP.map(([label, forms]) => <optgroup key={label} label={label}>{forms.map(f => <option key={f} value={f} style={{color:FORM_CLR[f]}}>{f}</option>)}</optgroup>)}</select>
+                    {ed
+                      ? <select value={t.formation || "4-3-3"} onChange={e => updateTeam(t.id, "formation", e.target.value)} style={{ ...inp, width: "100%", fontSize: 12, padding: "5px 6px", cursor: "pointer", color: FORM_CLR[t.formation || "4-3-3"] || "#888" }}>{FORM_GRP.map(([label, forms]) => <optgroup key={label} label={label}>{forms.map(f => <option key={f} value={f} style={{color:FORM_CLR[f]}}>{f}</option>)}</optgroup>)}</select>
+                      : <RO mono style={{ color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)", fontWeight: 600 }}>{t.formation || "4-3-3"}</RO>}
                   </div>
                 </div>
                 {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
@@ -6260,9 +6460,16 @@ export default function App() {
                   return (<div key={key}>{hdr && <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 10, marginBottom: 4 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
-                    <select value={strat[key] ?? 0} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
-                      {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
+                    {(() => {
+                      const v = strat[key] ?? 0;
+                      // Same three-way colouring in both modes: neutral muted, aggressive warm, cautious cool.
+                      const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "#d08770" : "#81a1c1";
+                      return ed
+                        ? <select value={v} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: clr }}>
+                            {vals.map(([vv, l]) => <option key={vv} value={vv}>{l}</option>)}
+                          </select>
+                        : <RO style={{ flex: 1, minWidth: 0, fontSize: 11, padding: "3px 0", color: clr }}>{vals.find(([vv]) => vv === v)?.[1] || "No Instruction"}</RO>;
+                    })()}
                   </div></div>);
                 }); })()}
                   </div>
@@ -6271,12 +6478,12 @@ export default function App() {
               </div>); })}
           </div>
           ); })()}
-          {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", padding: "6px 12px", borderTop: "1px solid var(--chrome-border)" }}>Skill values must be between 25 and 100.</div>}
+          {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "6px 12px", borderTop: "1px solid var(--chrome-border)" }}>Skill values must be between 25 and 100.</div>}
         </div>
 
 
         <div style={{ marginTop: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
+          <div className="panel-head-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
             <PanelTitle sub={`${playerIndex.length}`}>Players</PanelTitle>
             <div style={{ display: "flex", gap: 6 }}>
               <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...smBtn, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
@@ -6288,8 +6495,8 @@ export default function App() {
           </div>
           {(() => { const dups = playerIndex.filter(p => p.clubs.length > 1); const badSyntax = []; teams.forEach(t => { if (!t.squad) return; t.squad.forEach(p => { if (!p.name || p.name.startsWith("#")) return; const n = p.fullName || p.name; if (/[\[\]{}()]/.test(n)) badSyntax.push(n + " (" + (t.code || abbr(t.name, t.code)) + ")"); }); }); if (dups.length === 0 && badSyntax.length === 0) return null; return (
             <div style={{ display: "flex", gap: 14, marginBottom: 8 }}>
-              {dups.length > 0 && <span className="warn-badge" data-tip={dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")).join("\n")} style={{ fontSize: 10, color: "#bf616a", cursor: "help" }}>&#x26A0; {dups.length} duplicate{dups.length > 1 ? "s" : ""}</span>}
-              {badSyntax.length > 0 && <span className="warn-badge" data-tip={badSyntax.join("\n")} style={{ fontSize: 10, color: "#ebcb8b", cursor: "help" }}>&#x26A0; {badSyntax.length} syntax</span>}
+              {dups.length > 0 && <span className="warn-badge" data-tip={dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")).join("\n")} style={{ fontSize: 10, color: "var(--ui-danger)", cursor: "help" }}>&#x26A0; {dups.length} duplicate{dups.length > 1 ? "s" : ""}</span>}
+              {badSyntax.length > 0 && <span className="warn-badge" data-tip={badSyntax.join("\n")} style={{ fontSize: 10, color: "var(--ui-warn)", cursor: "help" }}>&#x26A0; {badSyntax.length} syntax</span>}
             </div>
           ); })()}
           {(() => {
@@ -6342,7 +6549,7 @@ export default function App() {
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
                           <td style={{ ...tdStyle, paddingLeft: 8, color: "var(--chrome-muted)", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
-                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "#bf616a" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "var(--ui-danger)" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
                         </tr>); })}
                       {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
                     </tbody>
@@ -6371,12 +6578,12 @@ export default function App() {
               // Tournament fixtures have no "New Match" escape hatch — Import/Replay/Abandon
               // are the only way out, so tReplayCounts can't be bypassed by resetting around them.
               if (finished && tLiveTarget) return (
-                <div style={{ background: "#81a1c122", border: "1px solid #81a1c144", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
+                <div style={{ background: "var(--ui-info-22)", border: "1px solid var(--ui-info-44)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-                    {lastLiveResult && <span style={{ fontSize: 10, color: "#81a1c1" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
-                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 6, color: "#ffffff", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
-                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 6, color: "#81a1c1", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
-                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid #bf616a66", borderRadius: 6, color: "#bf616a", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
+                    {lastLiveResult && <span style={{ fontSize: 10, color: "var(--ui-info)" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
+                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 6, color: "var(--ui-on-accent)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
+                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 6, color: "var(--ui-info)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
+                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid var(--ui-danger-66)", borderRadius: 6, color: "var(--ui-danger)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
                   </div>
                 </div>
               );
@@ -6424,19 +6631,19 @@ export default function App() {
                 {finished ? (
                   <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? 0.5 : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
                 ) : (<div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, #bf616a 0%, #a04050 100%)" : "var(--chrome-brand)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
+                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, var(--ui-danger) 0%, var(--ui-danger-deep) 100%)" : "var(--chrome-brand)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
                   <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
                   <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
                 </div>)}
                 {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
-                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "var(--ui-on-accent)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
                   ))}
                 </div>}
               </div>) : null;
             })()}
           </div>}
-          {lmIsSetup && !tPendingPlayLive && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
+          {lmIsSetup && !tPendingPlayLive && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
                 <select value={lmH} onChange={e => { setLmH(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
@@ -6462,7 +6669,7 @@ export default function App() {
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[["home", teamById(lmH)?.name || "Home"], [null, "Neutral"], ["away", teamById(lmA)?.name || "Away"]].map(([val, label]) => (
-                    <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "var(--chrome-brand)" : "transparent", color: lmHomeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                    <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "var(--chrome-brand)" : "transparent", color: lmHomeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                   ))}
                 </div>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
@@ -6475,7 +6682,7 @@ export default function App() {
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
-                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                   ))}
                 </div>
                 {lm2ndLeg && <div style={{ marginTop: 10 }}>
@@ -6491,18 +6698,18 @@ export default function App() {
                 {!lm2ndLeg && <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>Single match</div>}
               </div>
             </div>
-            {teams.length < 2 && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
-            {teamErrors && <div style={{ fontSize: 10, color: "#bf616a", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
+            {teams.length < 2 && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
+            {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
           </div>)}
           {tPendingPlayLive && (() => {
             const vc = tResolveVenueContext(tPendingPlayLive);
             if (!vc) return null;
             return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px #00000022" }}>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", textAlign: "right" }}>{vc.homeTeam.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", textAlign: "right" }}>{vc.homeTeam.name}</div>
                   <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.18em", fontWeight: 700, ...ui }}>{vc.isL2 ? "L2" : "VS"}</span>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff" }}>{vc.awayTeam.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)" }}>{vc.awayTeam.name}</div>
                 </div>
                 {vc.hostModeActive ? (
                   <div>
@@ -6518,7 +6725,7 @@ export default function App() {
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                     <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                       {[["home", "Alternating"], [null, "Neutral"]].map(([val, label]) => (
-                        <button key={label} onClick={() => setTHomeAdvOverrides(p => { const nm = { ...p }; if (val === null) nm[vc.venueKey] = "off"; else delete nm[vc.venueKey]; return nm; })} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== null ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                        <button key={label} onClick={() => setTHomeAdvOverrides(p => { const nm = { ...p }; if (val === null) nm[vc.venueKey] = "off"; else delete nm[vc.venueKey]; return nm; })} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== null ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                       ))}
                     </div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "Each team hosts one leg" : "No advantage"}</div>
@@ -6528,7 +6735,7 @@ export default function App() {
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
                     <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                       {[["home", vc.homeTeam.name], [null, "Neutral"], ["away", vc.awayTeam.name]].map(([val, label]) => (
-                        <button key={label} onClick={() => setTHomeAdvOverrides(p => ({ ...p, [vc.venueKey]: val === null ? "off" : val }))} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                        <button key={label} onClick={() => setTHomeAdvOverrides(p => ({ ...p, [vc.venueKey]: val === null ? "off" : val }))} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
                       ))}
                     </div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "+3% skill bonus" : "No advantage"}</div>
@@ -6561,7 +6768,7 @@ export default function App() {
               </div>
             )}
             {lmMatch.phase === "finished" && renderStatsReport()}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
               <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 270 : 220, overflowY: "auto" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
@@ -6623,12 +6830,12 @@ export default function App() {
                     body = (<>{body}<div style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{teaseChain && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(teaseChain, shotClr, teaseChain.length - 1)}</div>}<div style={{ flex: teaseChain ? "7 1 190px" : "1 1 260px", maxWidth: teaseChain ? 385 : 440, minWidth: 175 }}>{gvChanceGoalPreview()}</div></div></>);
                     bg = shotClr + "08";
                   }
-                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "#ffffff"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoalText(gt, e.playerFull, goalClr)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "#ffffff08"; }
-                  else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "#ebcb8b"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#ebcb8b08"; }
-                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#bf616a", borderRadius: 3 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "#ffffff" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "#bf616a08"; }
-                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "#bf616a"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
-                  else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "#c07070", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
-                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "#5e9c6b", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "var(--chrome-muted)" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "#bf616a", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "var(--chrome-muted)" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{e.text}</div>; bg = "transparent"; }
+                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "var(--ui-text)"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoalText(gt, e.playerFull, goalClr)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "var(--ui-text-08)"; }
+                  else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "var(--ui-warn)"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "var(--ui-warn-08)"; }
+                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-danger)", borderRadius: 3 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "var(--ui-danger)"; body = <div style={{ fontSize: 11, color: "var(--ui-text)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "var(--ui-danger-08)"; }
+                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "var(--ui-danger)"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
+                  else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "var(--ui-injury)", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
+                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "var(--ui-qual-direct)", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "var(--chrome-muted)" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "var(--ui-danger)", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "var(--chrome-muted)" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{e.text}</div>; bg = "transparent"; }
                   else if (e.type === "chance") {
                     const chain = e.chanceViz?.chain || []; const nextE = e.chanceViz?.outcomeEvent;
                     const hasOutcome = !!nextE;
@@ -6639,7 +6846,7 @@ export default function App() {
                     const chanceClr = isH ? hClr : aClr;
                     const isOutcomeStep = hasOutcome && step === chainSteps;
                     if (isOutcomeStep) {
-                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"#ffffff", bg:"#ffffff08"}, save: {icon:"🧤", header:"Saved!", color:"#bf616a", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"#81a1c1", bg:"#81a1c108"}, interception: {icon:"🛡️", header:"Intercepted!", color:"#81a1c1", bg:"#81a1c108"}, block: {icon:"🛡️", header:"Blocked!", color:"#81a1c1", bg:"#81a1c108"}, clearance: {icon:"🛡️", header:"Cleared!", color:"#81a1c1", bg:"#81a1c108"}, corner: {icon:"🏴", header:"Corner!", color:"#ebcb8b", bg:"#ebcb8b08"}, neutral: {icon:"🔄", header:"Retained", color:"var(--chrome-muted)", bg:"transparent"}, foul: {icon:"⚠️", header:"Fouled!", color:"#ebcb8b", bg:"#ebcb8b08"}, penalty: {icon:"🎯", header:"Penalty!", color:"#ebcb8b", bg:"#ebcb8b08"}, press: {icon:"💪", header:"Pressed!", color:"#81a1c1", bg:"#81a1c108"}, counter: {icon:"⚡", header:"Counter!", color:"#81a1c1", bg:"#81a1c108"} };
+                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"var(--ui-text)", bg:"var(--ui-text-08)"}, save: {icon:"🧤", header:"Saved!", color:"var(--ui-danger)", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"var(--ui-danger)", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"var(--ui-danger)", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, interception: {icon:"🛡️", header:"Intercepted!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, block: {icon:"🛡️", header:"Blocked!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, clearance: {icon:"🛡️", header:"Cleared!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, corner: {icon:"🏴", header:"Corner!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, neutral: {icon:"🔄", header:"Retained", color:"var(--chrome-muted)", bg:"transparent"}, foul: {icon:"⚠️", header:"Fouled!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, penalty: {icon:"🎯", header:"Penalty!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, press: {icon:"💪", header:"Pressed!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, counter: {icon:"⚡", header:"Counter!", color:"var(--ui-info)", bg:"var(--ui-info-08)"} };
                       const om = outcomeMeta[nextE.type];
                       icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
                       const nextText = nextE.text.replace(/^[^\p{L}\p{N}]+/u, '');
@@ -6652,17 +6859,17 @@ export default function App() {
                       }
                       bg = om.bg;
                     } else {
-                      icon = <span className="sparkle-pop">✨</span>; header = "CHANCE!"; headerColor = evColor.chance || "#ebcb8b";
+                      icon = <span className="sparkle-pop">✨</span>; header = "CHANCE!"; headerColor = evColor.chance || "var(--ui-warn)";
                       body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>;
                       if (chain.length) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}><div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, gated ? step : chain.length - 1, null, !gated && rk > 0)}</div><div style={{ flex: "7 1 190px", maxWidth: 385, minWidth: 175 }}><div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvChanceGoalPreview()}{!gated && gvReplayBtn(i, true)}</div></div></div></>); }
-                      bg = (evColor.chance || "#ebcb8b") + "08";
+                      bg = "var(--ui-warn-08)";
                     }
                   }
                   else if (e.type === "save" || e.type === "miss" || e.type === "woodwork") {
                     // Every shot outcome gets the same pitch+goal-mouth treatment goals do,
                     // not just ones that happened to follow a chance — the data (goalViz) is
                     // already generated unconditionally in lmResolveShot's non-goal branches.
-                    const shotMeta = { save: {icon:"🧤", header:"Saved!", color:"#bf616a"}, miss: {icon:"💨", header:"Off Target!", color:"#bf616a"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"#bf616a"} };
+                    const shotMeta = { save: {icon:"🧤", header:"Saved!", color:"var(--ui-danger)"}, miss: {icon:"💨", header:"Off Target!", color:"var(--ui-danger)"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"var(--ui-danger)"} };
                     const sm = shotMeta[e.type];
                     icon = <span>{sm.icon}</span>; header = sm.header; headerColor = sm.color;
                     body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, sm.color)}</div>;
@@ -6682,7 +6889,7 @@ export default function App() {
                 const T2 = new Set(["yellow","injury"]);
                 if (T2.has(e.type)) {
                   let icon, txt, clr;
-                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "#ebcb8b", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
+                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-warn)", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
                   else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "#ffffff"); clr = "#c07070"; }
                   return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
                     {mC(e.min)}
@@ -6703,11 +6910,11 @@ export default function App() {
             {lmMatch.phase !== "finished" && (<>
             <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "var(--chrome-panel)", borderRadius: 6, padding: 2, border: "1px solid var(--chrome-border)" }}>
               {[["stats","Stats"],["players","Players"],["tactics","Tactics"]].map(([id,label]) => (
-                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "#ffffff" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
+                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
               ))}
             </div>
             {lmTab === "stats" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
@@ -6725,7 +6932,7 @@ export default function App() {
               {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
                 <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "var(--chrome-muted)", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 70, textAlign: "center", color: "#ffffff", fontSize: 9, flexShrink: 0 }}>{label}</span>
+                <span style={{ width: 70, textAlign: "center", color: "var(--ui-text)", fontSize: 9, flexShrink: 0 }}>{label}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "var(--chrome-muted)", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
               </div>); })}
@@ -6761,7 +6968,7 @@ export default function App() {
             </div>
             </>}
             {lmTab === "players" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side,si) => {
@@ -6819,7 +7026,7 @@ export default function App() {
                 {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
                 <div>
                   <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
+                  <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
@@ -6833,27 +7040,27 @@ export default function App() {
                     {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOff?"var(--chrome-muted)":"#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}</span>
-                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOff?"#bf616a":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
+                      <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
                     </>); })}
                     <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
                     {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
                       <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
                       <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOn?"#ffffff":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"#c07070"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"#bf616a",fontWeight:700}}>OUT</span>}</span>
-                      <span style={{ textAlign: "center", color: p.goals>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.assists>0?"#ffffff":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.chances>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.defActs>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ textAlign: "center", color: p.saves>0?"#ffffff":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
                       <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOn?"#a3be8c":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
+                      <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
                     </>); })}
                   </div>
                 </div>
@@ -6863,7 +7070,7 @@ export default function App() {
             </div>
 
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
@@ -6878,13 +7085,13 @@ export default function App() {
                 const bench = (lmMatch.bench[side]||[]).filter(p => p.pos !== "GK");
                 const isActive = manualSub.side === side;
                 const offPlayer = isActive ? onPitch.find(p => p.name === manualSub.off) : null;
-                const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "#ebcb8b" : "#bf616a";
+                const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
                 // extra is only passed for on-pitch pills — bench players sit at a flat 100
                 // stamina until subbed on, so a fatigue readout there would just be noise.
                 const pill = (p, onClick, badge, badgeClr, extra) => (
                   <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 6, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-88)" }}>
                     <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
-                    <span style={{ color: "#ffffff" }}>{p.name}</span>
+                    <span style={{ color: "var(--ui-text)" }}>{p.name}</span>
                     {badge != null && <span style={{ ...mono, color: badgeClr, fontWeight: 600 }}>{badge}</span>}
                     {extra}
                   </span>
@@ -6895,13 +7102,13 @@ export default function App() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600 }}>{tm?.name?.toUpperCase()}</span>
-                      <span style={{ fontSize: 8, color: subsLeft > 0 ? "var(--chrome-muted)" : "#bf616a", ...mono }}>{subsLeft}/3</span>
+                      <span style={{ fontSize: 8, color: subsLeft > 0 ? "var(--chrome-muted)" : "var(--ui-danger)", ...mono }}>{subsLeft}/3</span>
                     </div>
                     {offPlayer && canSub ? (<>
                       {/* Replacement step — bench, sorted best OVR first, click to confirm */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 6 }}>
-                        <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Replacing <b style={{ color: "#ffffff" }}>{offPlayer.name}</b></span>
-                        <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "#bf616a", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
+                        <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Replacing <b style={{ color: "var(--ui-text)" }}>{offPlayer.name}</b></span>
+                        <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "var(--ui-danger)", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                         {[...bench].sort((a,b) => (b.ovr||0)-(a.ovr||0)).map(p => pill(p, () => executeManualSub(side, offPlayer.name, p.name), p.ovr!=null?p.ovr:"–", ovrColor(p.ovr)))}
@@ -6924,7 +7131,7 @@ export default function App() {
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                             {inGrp.map(p => { const stam = p.stamina??100; const drop = Math.round((p.ovr??65) - fatigueOvr(p.ovr, stam)); return pill(p, canSub ? () => setManualSub({side, off:p.name}) : undefined, null, null, (<>
                               <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
-                              {drop >= 1 && <span style={{ ...mono, fontSize: 7, color: "#bf616a", fontWeight: 600 }}>(▼{drop})</span>}
+                              {drop >= 1 && <span style={{ ...mono, fontSize: 7, color: "var(--ui-danger)", fontWeight: 600 }}>(▼{drop})</span>}
                             </>)); })}
                           </div>
                         </div>);
@@ -6965,7 +7172,7 @@ export default function App() {
                     <div style={{ marginBottom: 6 }}>
                       <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", marginBottom: 3 }}>STAMINA</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 3 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 3, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "#ebcb8b" : "#bf616a", transition: "width 0.3s, background 0.3s" }} /></div>
+                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 3 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 3, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "var(--ui-warn)" : "var(--ui-danger)", transition: "width 0.3s, background 0.3s" }} /></div>
                         <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
                       </div>
                     </div>
@@ -6975,7 +7182,7 @@ export default function App() {
                       return (<div key={key}>{hdr && <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 6, marginBottom: 2 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 1 }}>
                         <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 44, flexShrink: 0, ...mono }}>{name}</span>
-                        <select value={strat[key] ?? 0} onChange={e => setLmMatch(m => ({...m, strategy:{...m.strategy, [side]:{...(m.strategy?.[side]||{}), [key]: +e.target.value}}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "#d08770" : "#81a1c1" }}>
+                        <select value={strat[key] ?? 0} onChange={e => setLmMatch(m => ({...m, strategy:{...m.strategy, [side]:{...(m.strategy?.[side]||{}), [key]: +e.target.value}}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "var(--ui-attack)" : "var(--ui-info)" }}>
                           {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                       </div></div>);
@@ -6986,7 +7193,7 @@ export default function App() {
               </div>
             </div>
             {/* Player Stats */}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
                 const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
@@ -7026,7 +7233,7 @@ export default function App() {
 
         {/* ═══ TOURNAMENT TAB ═══ */}
         {tab === "tournament" && (<div>
-          {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "#bf616a22", border: "1px solid #bf616a44", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "#bf616a", textAlign: "center" }}>⚠ {tScoreError}</div>}
+          {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
           {/* Save slots — several tournaments in flight, one open at a time */}
           {(() => {
             const active = tSlots.find(s => s.id === tActiveSlot) || null;
@@ -7042,11 +7249,11 @@ export default function App() {
             );
             const rowActions = (s, isActive) => (
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: "auto" }}>
-                {!isActive && <button onClick={() => slotSwitch(s.id)} style={{ ...smBtn, color: "#ffffff", borderColor: "var(--chrome-border-88)" }}>Open</button>}
+                {!isActive && <button onClick={() => slotSwitch(s.id)} style={{ ...smBtn, color: "var(--ui-text)", borderColor: "var(--chrome-border-88)" }}>Open</button>}
                 <button onClick={() => setSlotRenaming({ id: s.id, name: s.name })} style={smBtn}>Rename</button>
                 <button onClick={() => slotDuplicate(s.id)} style={smBtn}>Copy</button>
                 <button onClick={() => slotExport(s.id)} style={smBtn}>Export</button>
-                <button onClick={() => setSlotConfirmDelete(s.id)} style={{ ...smBtn, color: "#bf616a" }}>Delete</button>
+                <button onClick={() => setSlotConfirmDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)" }}>Delete</button>
               </div>
             );
             return (
@@ -7066,7 +7273,7 @@ export default function App() {
                 {active ? (<>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 11 }}>
                     {slotRenaming?.id === active.id ? renameField(active) : (<>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{active.name}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ui-text)" }}>{active.name}</span>
                       <PhaseBadge phase={active.phase} />
                       {rowActions(active, true)}
                     </>)}
@@ -7096,7 +7303,7 @@ export default function App() {
                     <div style={{ ...rowHead, flexWrap: "wrap" }}>
                       {slotRenaming?.id === s.id ? renameField(s) : (<>
                         <button onClick={() => slotSwitch(s.id)} title="Open this tournament"
-                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "#ffffff", textAlign: "left" }}>{s.name}</button>
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "left" }}>{s.name}</button>
                         <PhaseBadge phase={s.phase} />
                         <span style={metaTxt}>{s.total ? `${s.played}/${s.total}` : "not started"}{s.nTeams ? ` · ${s.nTeams} teams` : ""} · {fmtAgo(s.ts)}</span>
                         {rowActions(s, false)}
@@ -7111,30 +7318,30 @@ export default function App() {
               {slotConfirmDelete && (() => {
                 const s = tSlots.find(x => x.id === slotConfirmDelete);
                 if (!s) return null;
-                return (<div onClick={() => setSlotConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                  <div onClick={e => e.stopPropagation()} style={{ ...panelBox, marginBottom: 0, maxWidth: 440, width: "100%" }}>
+                return (<div onClick={() => setSlotConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                  <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ ...panelBox, marginBottom: 0, maxWidth: 440, width: "100%" }}>
                     <div style={panelHead}><PanelTitle accent="#bf616a">Delete Tournament</PanelTitle></div>
                     <div style={{ fontSize: 12, color: "var(--chrome-muted)", lineHeight: 1.65, marginBottom: 18 }}>
-                      Permanently delete <span style={{ color: "#ffffff", fontWeight: 700 }}>{s.name}</span>?
-                      {s.total ? <> It has <span style={{ color: "#ffffff" }}>{s.played} of {s.total}</span> matches played.</> : null}
+                      Permanently delete <span style={{ color: "var(--ui-text)", fontWeight: 700 }}>{s.name}</span>?
+                      {s.total ? <> It has <span style={{ color: "var(--ui-text)" }}>{s.played} of {s.total}</span> matches played.</> : null}
                       <br />This cannot be undone. Export it first if you want to keep a copy.
                     </div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                       <button onClick={() => setSlotConfirmDelete(null)} style={smBtn}>Cancel</button>
                       <button onClick={() => slotExport(s.id)} style={smBtn}>Export first</button>
-                      <button onClick={() => slotDelete(s.id)} style={{ ...smBtn, color: "#bf616a", borderColor: "#bf616a66", background: "#bf616a1a" }}>Delete</button>
+                      <button onClick={() => slotDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-66)", background: "var(--ui-danger-1a)" }}>Delete</button>
                     </div>
                   </div>
                 </div>);
               })()}
-              {slotMsg && <div style={{ marginTop: 12, fontSize: 10, color: /fail|full|could not/i.test(slotMsg) ? "#bf616a" : "var(--chrome-muted)" }}>{slotMsg}</div>}
+              {slotMsg && <div style={{ marginTop: 12, fontSize: 10, color: /fail|full|could not/i.test(slotMsg) ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{slotMsg}</div>}
               <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }}
                 onChange={e => { slotImportFile(e.target.files?.[0]); e.target.value = ""; }} />
             </div>);
           })()}
           {/* Tournament Leaderboards */}
           {Object.keys(tPlayerStats).length > 0 && (
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ ...panelHead, marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid var(--chrome-border-33)" }}><PanelTitle accent="#ebcb8b">Tournament Leaders</PanelTitle></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
                 {/* Top Scorers */}
@@ -7144,10 +7351,10 @@ export default function App() {
                   {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
+                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
                     </tr>
                   ))}
                   </tbody></table>
@@ -7159,10 +7366,10 @@ export default function App() {
                   {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
+                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
                     </tr>
                   ))}
                   </tbody></table>
@@ -7176,8 +7383,8 @@ export default function App() {
                     return (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                       <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
                     </tr>);
@@ -7191,10 +7398,10 @@ export default function App() {
                   {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
+                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
                     </tr>
                   ))}
                   </tbody></table>
@@ -7206,10 +7413,10 @@ export default function App() {
                   {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
+                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
                     </tr>
                   ))}
                   </tbody></table>
@@ -7221,10 +7428,10 @@ export default function App() {
                   {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                     <tr key={i} style={{ fontSize: 10 }}>
                       <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                       <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "#ffffff", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
+                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
                     </tr>
                   ))}
                   </tbody></table>
@@ -7247,22 +7454,22 @@ export default function App() {
                 if (!unavail.length) return null;
                 return (
                   <details style={{ marginTop: 12, borderTop: "1px solid var(--chrome-panel)", paddingTop: 10 }}>
-                    <summary style={{ fontSize: 9, color: "#bf616a", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
+                    <summary style={{ fontSize: 9, color: "var(--ui-danger)", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
                     <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
                       {unavail.map((p,i) => {
                         const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
                         return (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                          <span style={{ flex: 1, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
-                          <span style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
+                          <span style={{ flex: 1, color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
+                          <span style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
                           <span style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
                           <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
                             {p.reason === "red"
-                              ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"#bf616a",borderRadius:1}} />
+                              ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1}} />
                               : p.reason === "yellows"
-                              ? <span title="Suspended (accumulated yellows)" style={{display:"inline-block",width:6,height:8,background:"#ebcb8b",borderRadius:1}} />
-                              : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="#c07070"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="#c07070"/></svg>}
-                            <span style={{ color: p.reason === "red" ? "#bf616a" : p.reason === "yellows" ? "#ebcb8b" : "#c07070", fontSize: 8, ...mono }}>{p.out}</span>
+                              ? <span title="Suspended (accumulated yellows)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1}} />
+                              : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="var(--ui-injury)"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="var(--ui-injury)"/></svg>}
+                            <span style={{ color: p.reason === "red" ? "var(--ui-danger)" : p.reason === "yellows" ? "var(--ui-warn)" : "var(--ui-injury)", fontSize: 8, ...mono }}>{p.out}</span>
                           </span>
                         </div>
                       );})}
@@ -7276,6 +7483,13 @@ export default function App() {
             const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
             const all = Object.values(tPlayerStats);
             const tApp = p => p.matches + (p.subApp||0);
+            // Stats recorded before fullName was kept fall back to the team's own squad. Matching
+            // inside the team means an abbreviated name cannot pick up a different player's full
+            // name from elsewhere in the roster.
+            const fullNameOf = (p) => p.fullName
+              || teams.find(t => (p.code && (t.code || abbr(t.name, t.code)) === p.code) || t.name === p.team)
+                   ?.squad?.find(q => q.name === p.name)?.fullName
+              || p.name;
             const sorted = tLeaderboard === "goals"
               ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
               : tLeaderboard === "assists"
@@ -7288,10 +7502,10 @@ export default function App() {
               ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tApp(a)-tApp(b)))
               : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
             return (
-              <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px #00000066" }}>
+              <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-panel)" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "#ffffff" }}>{title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "var(--ui-text)" }}>{title}</span>
                     <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
@@ -7303,11 +7517,11 @@ export default function App() {
                       return (
                         <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
                           <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
-                          <td style={{ color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{p.name}</td>
-                          <td style={{ color: {GK:"#ebcb8b",DEF:"#81a1c1",MID:"#a3be8c",FWD:"#d08770"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
+                          <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{boldSurname(fullNameOf(p), p.name)}</td>
+                          <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
                           <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
                           <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
-                          <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "#ffffff", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
+                          <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "var(--ui-text)", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
                         </tr>
                       );
                     })}
@@ -7331,12 +7545,12 @@ export default function App() {
                     const codeSet = new Set(codes);
                     setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
                     setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
-                  }} style={{ ...smBtn, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
+                  }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
                     <option value="" hidden>☰ Presets</option>
                     {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
-                  <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "#bf616a" }}>Clear</button>
+                  <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                 </div>
               </div>
               {groupByLeague(teams).map((entry, gi) => {
@@ -7348,15 +7562,15 @@ export default function App() {
                 return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
-                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#ffffff", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ffffff" }}>{league}</span>
+                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--ui-on-accent)", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--ui-text)" }}>{league}</span>
                     <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{selCount}/{ts.length}</span>
                   </div>
                   {expanded && <div style={{ padding: "8px 10px" }}>
                     {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                      <span style={{ fontSize: 9, color: "#81a1c1", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.08em" }}>TRIM:</span>
+                      <span style={{ fontSize: 9, color: "var(--ui-info)", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.08em" }}>TRIM:</span>
                       {TRIM_SIZES.filter(n => ts.length > n).map(n => (
-                        <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid #81a1c144", background: "#81a1c11a", color: "#81a1c1", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
+                        <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid var(--ui-info-44)", background: "var(--ui-info-1a)", color: "var(--ui-info)", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
                       ))}
                     </div>}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -7368,12 +7582,12 @@ export default function App() {
                 </div>);
               })}
             </div>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px #00000022" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={panelHead}><PanelTitle>Tournament Setup</PanelTitle></div>
               {/* Presets */}
               <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff" }}>Preset</div>
-                <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...smBtn, color: "#81a1c1", background: "transparent", cursor: "pointer" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" }}>Preset</div>
+                <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
                   <option value="" hidden>☰ Select</option>
                   {Object.entries(T_PRESETS).map(([id, p]) => p.divider ? <option key={id} disabled>{p.label}</option> : <option key={id} value={id}>{p.label}</option>)}
                 </select>
@@ -7385,16 +7599,16 @@ export default function App() {
                   const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
                   tModeClickRef.current = { n: clicks, t: now };
                   if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
-                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: tConfig.testMode ? "#ebcb8b" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
+                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: tConfig.testMode ? "var(--ui-warn)" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
-                    <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                    <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                   ))}
                 </div>
                 {tConfig.mode === "single" && (
                   <div style={{ display: "flex", gap: 6 }}>
                     {[["knockout", "Knockout Only"], ["groups", "Groups Only"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "var(--chrome-muted-80)" : "var(--chrome-panel)", color: tConfig.singleType === id ? "#ffffff" : "var(--chrome-muted)", border: tConfig.singleType === id ? "1px solid var(--chrome-border)" : "1px solid var(--chrome-border)" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "var(--chrome-muted-80)" : "var(--chrome-panel)", color: tConfig.singleType === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tConfig.singleType === id ? "1px solid var(--chrome-border)" : "1px solid var(--chrome-border)" }}>{l}</button>
                     ))}
                   </div>
                 )}
@@ -7402,16 +7616,16 @@ export default function App() {
               {/* Group Stage / League Format */}
               {tHasGroups && (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Group Stage</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Group Stage</div>
                   <div style={{ display: "flex", gap: 12, alignItems: "start", marginBottom: 16 }}>
-                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "#bf616a" : "var(--chrome-muted)" }} /></div>
+                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} /></div>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
-                      ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "#bf616a" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
+                      ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
                       : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: "var(--chrome-muted)" }} />
                     }</div>
                     <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
                       {[["roundRobin", "Round Robin"], ["swiss", "Swiss"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.matchFormat === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.matchFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div></div>
                   </div>
@@ -7419,14 +7633,14 @@ export default function App() {
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 12 : 0 }}>
                       {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
                     {tConfig.allocMode === "draw" && (
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Pots</div>
-                        <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "#bf616a" : "var(--chrome-muted)" }} />
-                        {!tPotsOk && <span style={{ fontSize: 10, color: "#bf616a" }}>Must be 2–{tConfig.numGroups}</span>}
+                        <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />
+                        {!tPotsOk && <span style={{ fontSize: 10, color: "var(--ui-danger)" }}>Must be 2–{tConfig.numGroups}</span>}
                       </div>
                     )}
                   </>)}
@@ -7443,14 +7657,14 @@ export default function App() {
                 const activeTBs = tbs.filter(tb => allTBs.includes(tb));
                 return (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
                     {activeTBs.map((tb, ti) => (
                       <Fragment key={tb}>
                         {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
                         <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
                           <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
-                          <span style={{ fontSize: 11, color: "#ffffff" }}>{TBSH[tb]}</span>
+                          <span style={{ fontSize: 11, color: "var(--ui-text)" }}>{TBSH[tb]}</span>
                           <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
                         </div>
                       </Fragment>
@@ -7467,7 +7681,7 @@ export default function App() {
                 return (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Qualification Zones</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Qualification Zones</div>
                     <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "var(--chrome-muted)" }}>+ Zone</button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -7480,13 +7694,13 @@ export default function App() {
                             {zi > 0 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi-1], n[zi]] = [n[zi], n[zi-1]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▲</button>}
                             {zi < (tConfig.qualZones||[]).length - 1 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi], n[zi+1]] = [n[zi+1], n[zi]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▼</button>}
                           </div>
-                          <button onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 13, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
+                          <button onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 13, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <select value={z.color} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, color: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}>{ZC.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
                           <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
                             {[["top", "Top"], ["bottom", "Bot"]].map(([id, l]) => (
-                              <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "#ffffff" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
+                              <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
                             ))}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -7505,11 +7719,11 @@ export default function App() {
               {/* Knockout options */}
               {tHasKO && (
                 <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Knockout Stage</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Knockout Stage</div>
                   <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Format</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                     {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                     ))}
                   </div>
                   {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
@@ -7531,14 +7745,14 @@ export default function App() {
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[["auto", "By Ranking"], ["manual", "Manual"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koByeMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koByeMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
                   </div>}
                   <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "#ffffff" : "var(--chrome-muted)" }}>{l}</button>
+                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                     ))}
                   </div>
                 </div>
@@ -7557,7 +7771,7 @@ export default function App() {
               </div>
               {/* Home Advantage */}
               <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffffff", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
                   {tHasGroups && <div>
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
@@ -7592,42 +7806,42 @@ export default function App() {
                 {tConfig.mode === "single" && tConfig.singleType === "knockout" ? (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "#ffffff" }}>{tournamentTeams.length}</span>
+                    <span style={{ color: "var(--ui-text)" }}>{tournamentTeams.length}</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
-                    <span style={{ color: "#ffffff" }}>Single-Elimination Bracket</span>
-                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "#ebcb8b" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
-                    {tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
+                    <span style={{ color: "var(--ui-text)" }}>Single-Elimination Bracket</span>
+                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "var(--ui-warn)" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
+                    {tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "var(--ui-text)" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
+                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "var(--ui-text)" }}>3rd Place Match</span></>}
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span>
-                    <span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span>
-                    {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
+                    <span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span>
+                    {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "var(--ui-text)" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
                   </div>
-                  {tournamentTeamIds.length < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Select at least 2 teams</div>}
-                  {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
+                  {tournamentTeamIds.length < 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Select at least 2 teams</div>}
+                  {tParticipantErrors && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
                   {tValid && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>) : (()=>{ const swissOk = tSwissOk; const rrRounds = (tPerGroup - 1) * tConfig.rrLegs; const rrMatchesPerGroup = tPerGroup * (tPerGroup - 1) / 2 * tConfig.rrLegs; const totalMatches = tConfig.matchFormat === "swiss" ? Math.floor(tPerGroup / 2) * tConfig.swissRounds * tConfig.numGroups : tConfig.numGroups * rrMatchesPerGroup; return (<>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "#ffffff" }}>{tournamentTeams.length}{tGroupsOk && tUneven ? <span style={{ color: "#ebcb8b", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
+                    <span style={{ color: "var(--ui-text)" }}>{tournamentTeams.length}{tGroupsOk && tUneven ? <span style={{ color: "var(--ui-warn)", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>GROUPS</span>
-                    <span style={{ color: "#ffffff" }}>{tGroupsOk ? tConfig.numGroups : "?"} × {tGroupsOk && tPerGroup >= 2 ? (tDivisible ? tPerGroup : tPerGroup+"–"+tPerGroupMax) : "?"} teams</span>
+                    <span style={{ color: "var(--ui-text)" }}>{tGroupsOk ? tConfig.numGroups : "?"} × {tGroupsOk && tPerGroup >= 2 ? (tDivisible ? tPerGroup : tPerGroup+"–"+tPerGroupMax) : "?"} teams</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
-                    <span style={{ color: "#ffffff" }}>{tConfig.matchFormat === "swiss" ? "Swiss" : "Round Robin"}{tConfig.matchFormat === "roundRobin" && tConfig.rrLegs > 1 ? " ("+tConfig.rrLegs+" legs)" : ""}</span>
+                    <span style={{ color: "var(--ui-text)" }}>{tConfig.matchFormat === "swiss" ? "Swiss" : "Round Robin"}{tConfig.matchFormat === "roundRobin" && tConfig.rrLegs > 1 ? " ("+tConfig.rrLegs+" legs)" : ""}</span>
                     <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>MATCHES</span>
-                    <span style={{ color: "#ffffff" }}>{tConfig.matchFormat === "swiss" ? tConfig.swissRounds+" rounds" : rrRounds+" rounds"}{tValid && swissOk ? ", "+totalMatches+" total" : ""}</span>
-                    {tConfig.numGroups > 1 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.allocMode]}{tConfig.allocMode === "draw" ? " ("+tConfig.numPots+" pots)" : ""}</span></>}
-                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>ADVANCE</span><span style={{ color: "#ffffff" }}>{tUseZones ? tKoTeams + " teams via zones" : "Top " + tConfig.advPerGroup + " per group → " + tKoTeams + " teams"}{!isPow2(tKoTeams) ? " (+byes)" : ""}</span></>}
-                    {tHasKO && tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO LEGS</span><span style={{ color: "#ffffff" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tHasKO && tConfig.thirdPlace && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "#ffffff" }}>3rd Place Match</span></>}
-                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span><span style={{ color: "#ffffff" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span></>}
-                    {!tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>STAGE</span><span style={{ color: "#ffffff" }}>{tConfig.numGroups === 1 ? "League — no knockout" : "Groups only — no knockout"}</span></>}
-                    {(tConfig.homeAdvGroup !== "off" || tConfig.homeAdvKO !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "#ffffff" }}>{tHasGroups ? ({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",host:"Host Team"})[tConfig.homeAdvGroup] || "Off" : ""}{tHasGroups && tHasKO && tConfig.homeAdvGroup !== "off" && tConfig.homeAdvKO !== "off" ? " / " : ""}{tHasKO && tConfig.koLegs !== 2 ? ({off:"",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "" : ""}</span></>}
+                    <span style={{ color: "var(--ui-text)" }}>{tConfig.matchFormat === "swiss" ? tConfig.swissRounds+" rounds" : rrRounds+" rounds"}{tValid && swissOk ? ", "+totalMatches+" total" : ""}</span>
+                    {tConfig.numGroups > 1 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>DRAW</span><span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.allocMode]}{tConfig.allocMode === "draw" ? " ("+tConfig.numPots+" pots)" : ""}</span></>}
+                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>ADVANCE</span><span style={{ color: "var(--ui-text)" }}>{tUseZones ? tKoTeams + " teams via zones" : "Top " + tConfig.advPerGroup + " per group → " + tKoTeams + " teams"}{!isPow2(tKoTeams) ? " (+byes)" : ""}</span></>}
+                    {tHasKO && tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO LEGS</span><span style={{ color: "var(--ui-text)" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
+                    {tHasKO && tConfig.thirdPlace && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "var(--ui-text)" }}>3rd Place Match</span></>}
+                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span><span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span></>}
+                    {!tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>STAGE</span><span style={{ color: "var(--ui-text)" }}>{tConfig.numGroups === 1 ? "League — no knockout" : "Groups only — no knockout"}</span></>}
+                    {(tConfig.homeAdvGroup !== "off" || tConfig.homeAdvKO !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "var(--ui-text)" }}>{tHasGroups ? ({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",host:"Host Team"})[tConfig.homeAdvGroup] || "Off" : ""}{tHasGroups && tHasKO && tConfig.homeAdvGroup !== "off" && tConfig.homeAdvKO !== "off" ? " / " : ""}{tHasKO && tConfig.koLegs !== 2 ? ({off:"",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "" : ""}</span></>}
                   </div>
-                  {!tGroupsOk && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Groups must be 1–26</div>}
-                  {tGroupsOk && tPerGroup < 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Need ≥2 teams per group</div>}
-                  {!swissOk && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Swiss rounds must be 1–{tPerGroup - 1}</div>}
-                  {tHasKO && !tAdvOk && tDivisible && tPerGroup >= 2 && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Advance must be 1–{tPerGroup}</div>}
-                  {tParticipantErrors && <div style={{ color: "#bf616a", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
+                  {!tGroupsOk && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Groups must be 1–26</div>}
+                  {tGroupsOk && tPerGroup < 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Need ≥2 teams per group</div>}
+                  {!swissOk && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Swiss rounds must be 1–{tPerGroup - 1}</div>}
+                  {tHasKO && !tAdvOk && tDivisible && tPerGroup >= 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Advance must be 1–{tPerGroup}</div>}
+                  {tParticipantErrors && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
                   {tValid && swissOk && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
                 </>); })()}
               </div>
@@ -7657,30 +7871,30 @@ export default function App() {
                 <PanelTitle accent="#ebcb8b">Draw Ceremony</PanelTitle>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{index}/{log.length}</span>
-                  <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
+                  <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
                 </div>
               </div>
               {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-44)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {pendingEntry.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.08em" }}>{pendingEntry.team}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.08em" }}>{pendingEntry.team}</div>
                 <div style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", marginTop: 4 }}>{pendingEntry.skill}</div>
                 <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>awaiting group…</div>
               </div>}
               {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {justPlaced.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.08em" }}>{justPlaced.team}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.08em" }}>{justPlaced.team}</div>
                 <div style={{ fontSize: 14, color: "var(--chrome-muted)", marginTop: 8, fontWeight: 700 }}>→ GROUP {justPlaced.group}</div>
               </div>}
               {Object.keys(pots).map(p => {
                 const pot = pots[p];
                 return (<div key={p} style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: activePot === +p ? "#ffffff" : "var(--chrome-muted)", marginBottom: 4 }}>POT {p}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: activePot === +p ? "var(--ui-text)" : "var(--chrome-muted)", marginBottom: 4 }}>POT {p}</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {pot.map((e, ei) => {
                       const globalIdx = log.indexOf(e);
                       const isPlaced = globalIdx < index;
                       const isPending = pending && globalIdx === index;
-                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "#ffffff" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
+                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "var(--ui-on-accent)" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
                     })}
                   </div>
                 </div>);
@@ -7695,7 +7909,7 @@ export default function App() {
                     {Array.from({ length: maxPerGroup }, (_, si) => {
                       const t = gt[si];
                       const isLatest = t && justPlaced && t.team === justPlaced.team;
-                      return <div key={si} style={{ fontSize: 11, padding: "4px 6px", borderBottom: si < maxPerGroup - 1 ? "1px solid var(--chrome-muted-22)" : "none", color: t ? (isLatest ? "#ffffff" : "var(--chrome-muted)") : "var(--chrome-muted-33)", fontWeight: isLatest ? 700 : 400, transition: "all 0.3s", display: "flex", justifyContent: "space-between" }}>
+                      return <div key={si} style={{ fontSize: 11, padding: "4px 6px", borderBottom: si < maxPerGroup - 1 ? "1px solid var(--chrome-muted-22)" : "none", color: t ? (isLatest ? "var(--ui-text)" : "var(--chrome-muted)") : "var(--chrome-muted-33)", fontWeight: isLatest ? 700 : 400, transition: "all 0.3s", display: "flex", justifyContent: "space-between" }}>
                         <span>{t ? t.team : "—"}</span>
                         {t && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{t.skill}</span>}
                       </div>;
@@ -7706,7 +7920,7 @@ export default function App() {
               <div style={{ display: "flex", gap: 8 }}>
                 {!done && <button onClick={tDrawAdvance} style={{ ...scBtn, flex: 1 }}>{pending ? "Reveal Group" : "Draw Next"}</button>}
                 {!done && !tDrawAnim.auto && <button onClick={() => setTDrawAnim(p => p ? { ...p, auto: true } : p)} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>▶ Auto</button>}
-                {!done && tDrawAnim.auto && <button onClick={() => { setTDrawAnim(p => p ? { ...p, auto: false } : p); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } }} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "#bf616a" }}>⏸ Pause</button>}
+                {!done && tDrawAnim.auto && <button onClick={() => { setTDrawAnim(p => p ? { ...p, auto: false } : p); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } }} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--ui-danger)" }}>⏸ Pause</button>}
                 {!done && <button onClick={tDrawSkip} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>Skip</button>}
                 {done && <button onClick={tDrawConfirm} style={scBtn}>▶ Continue to Group Stage</button>}
               </div>
@@ -7717,10 +7931,10 @@ export default function App() {
           {tPhase === "manual" && tManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <PanelTitle accent="#ebcb8b" >Manual Allocation</PanelTitle>
-              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
+              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
+              {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
                 {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{t.skill}</span></div>))}
                 {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
@@ -7733,13 +7947,13 @@ export default function App() {
           {tPhase === "ko_byes" && tByeManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <PanelTitle accent="#ebcb8b" >Select Bye Teams</PanelTitle>
-              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tByeManual.selected.length} / {tByeManual.numByes} selected</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
+              <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--ui-warn)" }}>{tByeManual.selected.length} / {tByeManual.numByes} selected</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 6, marginBottom: 16 }}>
               {tByeManual.pool.map((t, ti) => { const sel = tByeManual.selected.some(s => s.name === t.name); return (
                 <button key={ti} onClick={() => { if (sel) { setTByeManual(b => ({...b, selected: b.selected.filter(s => s.name !== t.name)})); } else if (tByeManual.selected.length < tByeManual.numByes) { setTByeManual(b => ({...b, selected: [...b.selected, t]})); } }}
-                  className={sel ? "gbtn" : ""} style={{ ...chip, background: sel ? "var(--chrome-brand)" : "transparent", color: sel ? "#ffffff" : "var(--chrome-muted)", borderColor: sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)", fontSize: 10, padding: "6px 10px", textAlign: "left" }}>
-                  {t.name} <span style={{ color: sel ? "#a3be8c" : "var(--chrome-muted)", fontSize: 9 }}>({t.skill})</span>
+                  className={sel ? "gbtn" : ""} style={{ ...chip, background: sel ? "var(--chrome-brand)" : "transparent", color: sel ? "var(--ui-on-accent)" : "var(--chrome-muted)", borderColor: sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)", fontSize: 10, padding: "6px 10px", textAlign: "left" }}>
+                  {t.name} <span style={{ color: sel ? "var(--ui-ok)" : "var(--chrome-muted)", fontSize: 9 }}>({t.skill})</span>
                 </button>
               ); })}
             </div>
@@ -7748,16 +7962,16 @@ export default function App() {
           {tPhase === "ko_manual" && tKOManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <PanelTitle accent="#ebcb8b" >Knockout Bracket Allocation</PanelTitle>
-              <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "#ebcb8b" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a" }}>Reset</button></div>
+              <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "var(--ui-warn)" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tKOManual.matches.length, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "#ebcb8b33" : "var(--chrome-muted)"}`, borderRadius: 6, padding: "12px 10px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: m.home && !m.away || m.away && !m.home ? "#ebcb8b" : "var(--chrome-muted)", textAlign: "center", marginBottom: 8, ...mono }}>{m.home && !m.away || m.away && !m.home ? "BYE" : `MATCH ${mi + 1}`}</div>
+              {tKOManual.matches.map((m, mi) => (<div key={mi} style={{ background: "var(--chrome-panel)", border: `1px solid ${m.home && !m.away || m.away && !m.home ? "var(--ui-warn-33)" : "var(--chrome-muted)"}`, borderRadius: 6, padding: "12px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: m.home && !m.away || m.away && !m.home ? "var(--ui-warn)" : "var(--chrome-muted)", textAlign: "center", marginBottom: 8, ...mono }}>{m.home && !m.away || m.away && !m.home ? "BYE" : `MATCH ${mi + 1}`}</div>
                 {["home", "away"].map(slot => (<div key={slot} style={{ marginBottom: 4 }}>
                   {m[slot] ? (
                     <div style={{ fontSize: 11, padding: "4px 8px", background: "var(--chrome-panel)", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>{m[slot].name}</span>
-                      <button onClick={() => tKOManualRemove(mi, slot)} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 13, cursor: "pointer", padding: "0 2px" }}>×</button>
+                      <button onClick={() => tKOManualRemove(mi, slot)} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 13, cursor: "pointer", padding: "0 2px" }}>×</button>
                     </div>
                   ) : (
                     <select onChange={e => { if (e.target.value !== "") { tKOManualAssign(+e.target.value, mi, slot); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}>
@@ -7777,21 +7991,21 @@ export default function App() {
               <PanelTitle accent="#81a1c1">{tConfig.numGroups === 1 ? "League" : "Group Stage"}</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tPlayedMatches}/{tTotalMatches}</span>
-                {tPlayedMatches < tTotalMatches && <button onClick={() => tScorinate(-1, -1, -1)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
-                <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
+                {tPlayedMatches < tTotalMatches && <button onClick={() => tScorinate(-1, -1, -1)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
+                <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
 
             {/* Draw log */}
-            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
+            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
 
             {/* Standings — each table copies as TSV so it pastes into a spreadsheet as columns. */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "#a3be8c" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "#a3be8c66" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid #d0877044", borderRadius: 3, color: "#d08770", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
+                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid var(--ui-attack-44)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
 
@@ -7815,21 +8029,21 @@ export default function App() {
               if (pool.length === 0) return null;
               const form = Object.assign({}, ...allGroupForms);
               return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bestZone?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "#4a7ab5") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: bestZone?.color || "#4a7ab5" }} /><span style={{ fontSize: 10, color: "#8892a6" }}>Top {bestCount} qualify</span></div></div>}
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bestZone?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "var(--ui-qual-pool)") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: bestZone?.color || "var(--ui-qual-pool)" }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>Top {bestCount} qualify</span></div></div>}
               </div>);
             })()}
 
             {/* Fixtures - collapsible per round, sticky current-round action bar */}
             {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 560, overflowY: "auto", position: "relative" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 560, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <PanelTitle accent="#81a1c1">{groupFirstOpen >= 0 ? `Round ${groupFirstOpen + 1}` : "Fixtures"}</PanelTitle>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Sim Round</button>}
+                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ Sim Round</button>}
                   <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
                   <button onClick={() => setExpandedRounds(new Set())} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
@@ -7847,9 +8061,9 @@ export default function App() {
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
                         {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {m.bye ? <span style={{ color: "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
-                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "#8fbf8f" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
+                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-form-w)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
-                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "#8fbf8f" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "#ebcb8b") : "var(--chrome-muted)" }}>{abbr(m.away?.name, m.away?.code)}</span>
+                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-form-w)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.away?.name, m.away?.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
@@ -7859,13 +8073,13 @@ export default function App() {
                   {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid var(--chrome-border)" }}>
                   {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
-                    {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid #121a12", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
-                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "#ffffff" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
-                      <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "#bf616a" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
-                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#ffffff", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "#ffffff", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 3, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "#bf616a", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
-                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#bf616a", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#d08770", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
-                      <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "#ffffff" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "#ebcb8b") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                    {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-text)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
+                      <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "var(--ui-danger)" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
+                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "var(--ui-on-accent)", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 3, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
+                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-danger)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
+                      <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-text)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
                     </div>); })}
                   </div>))}
                   </div>}
@@ -7884,8 +8098,8 @@ export default function App() {
 
             {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (
               <div style={{ textAlign: "center", marginTop: 20 }}>
-                <div style={{ fontSize: 12, color: "#ffffff", marginBottom: 8, ...mono }}>✓ All {tConfig.numGroups === 1 ? "league " : "group "} matches complete</div>
-                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid #bf616a33", borderRadius: 10, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "#bf616a", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
+                <div style={{ fontSize: 12, color: "var(--ui-text)", marginBottom: 8, ...mono }}>✓ All {tConfig.numGroups === 1 ? "league " : "group "} matches complete</div>
+                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--ui-danger-33)", borderRadius: 10, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "var(--ui-danger)", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
                   : (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-33)", borderRadius: 10, padding: 20 }}>
                     <div style={{ fontSize: 10, letterSpacing: 4, color: "var(--chrome-brand)", marginBottom: 8, textShadow: "0 0 8px var(--chrome-brand-66)" }}>{tConfig.numGroups === 1 ? "🏆 CHAMPION" : "🏆 TOURNAMENT COMPLETE"}</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "var(--chrome-brand)", textShadow: "0 0 12px var(--chrome-brand-44)" }}>{tGroups[0]?.standings[0]?.name}</div>
@@ -7900,26 +8114,26 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <PanelTitle>Knockout Stage</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "#ffffff", borderColor: "#2a3a20" }}>▶ Sim All</button>}
-                <button onClick={resetTournament} style={{ ...addBtn, color: "#bf616a", borderColor: "#3a2020" }}>Reset</button>
+                {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
+                <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
             {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px #00000018" }}>
-                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "#a3be8c" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "#a3be8c66" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "#8892a6", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "#26402a" : f.r === "D" ? "#3a3520" : "#43282a", color: f.r === "W" ? "#8fbf8f" : f.r === "D" ? "#ebcb8b" : "#e08a8a" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "#8892a6" }}>{z.label}</span></div>))}</div>}
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
+                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
               </div>); })}
             </div>
             {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginTop: 10 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bz?.color || "#4a7ab5", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
-                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"#4a7ab5") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"#4a7ab5") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "#ffffff" : r.gf - r.ga < 0 ? "#bf616a" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bz?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
+                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"var(--ui-qual-pool)") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
               </div>); })()}
             </details>)}
-            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
+            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
             {tPhase === "complete" && tKO.champion && (
               <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
@@ -7929,9 +8143,9 @@ export default function App() {
             )}
             {/* Bracket/Stacked toggle */}
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-              <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: koBracketView ? "#ffffff" : "var(--chrome-muted)", border: "1px solid " + (koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Bracket</button>
-              <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: !koBracketView ? "#ffffff" : "var(--chrome-muted)", border: "1px solid " + (!koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Stacked</button>
-              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "var(--chrome-panel)", color: "#81a1c1", border: "1px solid #81a1c133", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
+              <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: koBracketView ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "1px solid " + (koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Bracket</button>
+              <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: !koBracketView ? "var(--ui-text)" : "var(--chrome-muted)", border: "1px solid " + (!koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Stacked</button>
+              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "var(--chrome-panel)", color: "var(--ui-info)", border: "1px solid var(--ui-info-33)", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
             </div>
 
             {koBracketView && !tKO.losers && (() => {
@@ -7971,23 +8185,23 @@ export default function App() {
                 const nameWt = (team) => w === team ? 600 : 400;
                 const sClr = (team) => w === team ? "#ffffff" : "var(--chrome-muted)";
                 return (
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid #d0877044" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid var(--ui-attack-44)" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
-                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{koHAVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && winner === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
-                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
                     </div>
 
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                        {isPartial ? <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi, 2)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-info)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
                           : <button onClick={() => tScorinateKO(ri, ri === -2 ? -2 : mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
-                        <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
+                        <button onClick={() => tPlayLive(ri === -2 ? {type:"ko",ri:0,mi:0,tp:true,leg:isPartial?2:1} : {type:"ko",ri,mi,leg:isPartial?2:1})} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
                         <button onClick={() => tToggleHA(koHAKey)} style={{ background: "none", border: "none", color: koHAVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
@@ -8092,7 +8306,7 @@ export default function App() {
                           <div style={{ position: "absolute", top: fTop - 14, left: 0, right: 0, fontSize: 8, color: "var(--chrome-muted)", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>FINAL</div>
                           <div style={{ position: "absolute", top: fTop, left: 0, right: 0 }}>{miniCard(tKO.rounds[nR-1].matches[0], nR-1, 0, 0)}</div>
                           {tKO.thirdPlace && <>
-                            <div style={{ position: "absolute", top: tpTop - 14, left: 0, right: 0, fontSize: 8, color: "#d08770", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>3RD PLACE</div>
+                            <div style={{ position: "absolute", top: tpTop - 14, left: 0, right: 0, fontSize: 8, color: "var(--ui-attack)", textAlign: "center", letterSpacing: 1, fontWeight: 600 }}>3RD PLACE</div>
                             <div style={{ position: "absolute", top: tpTop, left: 0, right: 0 }}>{miniCard(tKO.thirdPlace, -2, 0, 0)}</div>
                           </>}
                         </div>
@@ -8158,19 +8372,19 @@ export default function App() {
                   <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: borderStyle, width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.home), fontWeight: nameWt(m.home), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.home?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.home && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
-                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1H}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2H}</span><span style={{ color: sClr(m.home), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggH}</span>{has2LPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.home})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.home), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1H : sH}</span>{hasPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400 }}>({m.result.pen.home})</span>}</span>}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
                       <span style={{ color: nameClr(m.away), fontWeight: nameWt(m.away), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, position: "relative" }}>{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 6, marginRight: 1 }}>H</span>}{m.away?.name || (isBye ? "BYE" : "TBD")}{decLabel && w === m.away && <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10, color: decClr, fontWeight: 700, fontStyle: "italic", ...ui, background: "linear-gradient(90deg, transparent 0%, var(--chrome-panel) 30%)", paddingLeft: 10, paddingRight: 4 }}>{decLabel}</span>}</span>
-                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
-                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "#d08770", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
+                      {is2L && !isPartial ? <span style={scoreW}><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l1A}</span><span style={{ color: "var(--chrome-muted)", width: 16, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{l2A}</span><span style={{ color: sClr(m.away), fontWeight: 600, width: 20, flexShrink: 0, display: "inline-block", textAlign: "center" }}>{aggA}</span>{has2LPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400, flexShrink: 0 }}> ({m.result.pen.away})</span>}</span>
+                        : <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: sClr(m.away), fontWeight: 600, ...mono, fontSize: 10, whiteSpace: "nowrap" }}><span>{is2L && isPartial ? l1A : sA}</span>{hasPen && <span style={{ fontSize: 8, color: "var(--ui-attack)", fontWeight: 400 }}>({m.result.pen.away})</span>}</span>}
                     </div>
                     {m.home && m.away && (!m.result || isPartial) && !isBye && (
                       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
-                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
+                        {isPartial ? <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-info)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶ L2</button>
                           : <button onClick={onSim} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button>}
-                        <button onClick={onLive} style={{ background: "none", border: "1px solid #81a1c1", borderRadius: 3, color: "#81a1c1", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
+                        <button onClick={onLive} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 7, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }} title={isPartial?"Play L2 live":"Play live"}>{isPartial?"⚽L2":"⚽"}</button>
                         <button onClick={() => tToggleHA(haKey)} style={{ background: "none", border: "none", color: haVal ? "var(--chrome-brand)" : "var(--chrome-muted-66)", fontSize: 7, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", fontWeight: 700 }}>H</button>
                       </div>
                     )}
@@ -8285,7 +8499,7 @@ export default function App() {
                     {tKO.reset && (tKO.reset.home || tKO.reset.away) && (<Fragment>
                       {gfConn(wbH)}
                       <div style={{ flexShrink: 0 }}>
-                        <div style={{ fontSize: 8, color: "#ebcb8b", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>RESET</div>
+                        <div style={{ fontSize: 8, color: "var(--ui-warn)", textAlign: "center", marginBottom: 4, letterSpacing: 1, fontWeight: 600 }}>RESET</div>
                         {renderCol([tKO.reset], wbH, "reset", 0)}
                       </div>
                     </Fragment>)}
@@ -8311,7 +8525,7 @@ export default function App() {
                 </div>
               );
             })()}
-            {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px #00000022", maxHeight: 640, overflowY: "auto", position: "relative" }}>
+            {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 640, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <PanelTitle accent="#a3be8c">All Caught Up</PanelTitle>}
@@ -8319,17 +8533,17 @@ export default function App() {
                     <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>WB R{koActionable.wbRi + 1}</span>
                     {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
                     {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 2)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...xsBtn, color: "#81a1c1" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...xsBtn, color: "#ffffff" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
+                    <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 0)} style={{ ...xsBtn, color: "var(--ui-info)" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.wbRi, -1)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ WB Round {koActionable.wbRi + 1}</button>); })()}
                   {koActionable.lbRi >= 0 && (() => { const rd = tKO.losers[koActionable.lbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>LB R{koActionable.lbRi + 1}</span>
                     {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 1, "lb")} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
                     {rd.matches.some(m => m.result?.partial) && <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 2, "lb")} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 2nd Legs</button>}
-                    <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "#81a1c1" }}>▶ Both Legs</button>
-                  </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "#ffffff" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
-                  {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...xsBtn, color: "#ffffff" }}>▶ 3rd Place</button>}
-                  {koActionable.gfReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "gf" }, 0)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Grand Final</button>}
-                  {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...xsBtn, color: "#ffffff" }}>▶ Reset Match</button>}
+                    <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "var(--ui-info)" }}>▶ Both Legs</button>
+                  </span> : <button onClick={() => tScorinateKO(koActionable.lbRi, -1, 0, "lb")} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ LB Round {koActionable.lbRi + 1}</button>); })()}
+                  {koActionable.tpReady && <button onClick={() => koSim({ tp: true })} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ 3rd Place</button>}
+                  {koActionable.gfReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "gf" }, 0)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ Grand Final</button>}
+                  {koActionable.resetReady && <button onClick={() => koSim({ ri: 0, mi: 0, bracket: "reset" }, 0)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ Reset Match</button>}
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                   <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.add(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.add(`lb_${lr}`)); return ns; })} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
@@ -8346,9 +8560,9 @@ export default function App() {
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
                         {round.matches.map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
-                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "var(--ui-form-w)" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
-                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "var(--ui-form-w)" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
@@ -8364,7 +8578,7 @@ export default function App() {
               ); })}
               {!tKO.losers && tKO.thirdPlace && (
                 <div style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#d08770", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--ui-attack)", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
                   <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
                 </div>
               )}
@@ -8383,9 +8597,9 @@ export default function App() {
                       {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
                         {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
                           {!m.home || !m.away ? <span style={{ color: "var(--chrome-muted)" }}>{m.home ? abbr(m.home.name, m.home.code) : "TBD"} {m.bye ? "BYE" : "vs TBD"}</span> : (<>
-                            <span style={{ color: m.result && koWinner(m) === m.home ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.home ? "var(--ui-form-w)" : "var(--chrome-muted)" }}>{abbr(m.home.name, m.home.code)}</span>
                             <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? koResultText(m) : "vs"}</span>
-                            <span style={{ color: m.result && koWinner(m) === m.away ? "#8fbf8f" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
+                            <span style={{ color: m.result && koWinner(m) === m.away ? "var(--ui-form-w)" : "var(--chrome-muted)" }}>{abbr(m.away.name, m.away.code)}</span>
                           </>)}
                         </span>))}
                       </div>}
@@ -8393,7 +8607,7 @@ export default function App() {
                     {lbDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...mono }}>✓</span>}
                   </div>
                   {isOpen && <div style={{ display: "grid", gridTemplateColumns: lbRound.matches.length > 2 ? "repeat(2, 1fr)" : "1fr", gap: 8, padding: "10px 12px 14px", borderTop: "1px solid var(--chrome-border)" }}>
-                    {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid #d0877022" }}>
+                    {lbRound.matches.map((m, mi) => (!m.home && !m.away && !m.result && !m.bye) ? null : (<div key={mi} style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid var(--ui-attack-22)" }}>
                       {renderKoMatchRow(m, { ri: lr, mi, bracket: "lb" }, { cardLayout: lbRound.matches.length > 2, showByeInAction: true, initialLeg: 0 })}
                     </div>))}
                   </div>}
@@ -8406,10 +8620,10 @@ export default function App() {
                 </div>
               )}
               {tKO.losers && tKO.reset && (tKO.reset.home || tKO.reset.away) && (
-                <div style={{ marginBottom: 6, border: "1px solid #ebcb8b33", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#ebcb8b", marginBottom: 10 }}>RESET MATCH</div>
+                <div style={{ marginBottom: 6, border: "1px solid var(--ui-warn-33)", borderRadius: 6, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--ui-warn)", marginBottom: 10 }}>RESET MATCH</div>
                   <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8 }}>LB winner won the Grand Final. Deciding match.</div>
-                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid #ebcb8b33" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
+                  <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px", border: "1px solid var(--ui-warn-33)" }}>{renderKoMatchRow(tKO.reset, { ri: 0, mi: 0, bracket: "reset" }, { initialLeg: 0 })}</div>
                 </div>
               )}
               </div>
@@ -8477,19 +8691,21 @@ export default function App() {
                 // convention, this always shows the rating and re-caps the surname.
                 const exportText = () => bestXi.template.map((t, i) => {
                   const p = bestXi.players[i];
-                  if (!p) return "#" + (i + 1);
+                  // An unfilled slot exports as an empty column, not a "#12" placeholder: the
+                  // blank is positional, and parseBulk reads it back as the same empty slot.
+                  if (!p) return "";
                   const { first, last } = splitSurname(p.fullName || p.name, p.name);
                   return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
                 }).join("\t");
                 return (<>
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "#bf616a" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
+                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
                   </div>
-                  {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px #00000022", marginTop: 8 }}>
-                    <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's 16 player columns.</p>
+                  {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginTop: 8 }}>
+                    <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's {bestXi.template.length} player columns.</p>
                     <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "#ffffff", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
+                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
                     </div>
                   </div>)}
                 </>);
@@ -8506,7 +8722,7 @@ export default function App() {
             // League blue — matching it exactly while still reading as one level down.
             const H1 = ({children, id}) => <PanelTitle id={id}>{children}</PanelTitle>;
             const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="#81a1c1">{children}</PanelTitle></div>;
-            const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", marginTop: 18, marginBottom: 8 }}>{children}</div>;
+            const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
             const Stat = ({text}) => {
               const items = text.split(" \u00b7 ").map(s => {
@@ -8520,13 +8736,13 @@ export default function App() {
               });
               return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "var(--chrome-panel)", borderRadius: 6, marginTop: 6, border: "1px solid var(--chrome-border)" }}>
-                {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "#5e9c6b0a" : it.isTempo ? "#d087700a" : "#bf616a0a", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid #5e9c6b33" : it.isTempo ? "2px solid #d0877033" : "2px solid #bf616a33" }}>
+                {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "var(--ui-qual-direct-0a)" : it.isTempo ? "var(--ui-attack-0a)" : "var(--ui-danger-0a)", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid var(--ui-qual-direct-33)" : it.isTempo ? "2px solid var(--ui-attack-33)" : "2px solid var(--ui-danger-33)" }}>
                   <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>{it.name}</span>
-                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "var(--chrome-muted)" : it.positive ? "#5e9c6b" : it.isTempo ? "#d08770" : "#bf616a" }}>{it.value}</span>
+                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "var(--chrome-muted)" : it.positive ? "var(--ui-qual-direct)" : it.isTempo ? "var(--ui-attack)" : "var(--ui-danger)" }}>{it.value}</span>
                 </div>)}
               </div></details>;
             };
-            const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "#ffffff" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
+            const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "var(--ui-text)" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
             const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
@@ -8694,8 +8910,8 @@ export default function App() {
             <H2>In Possession</H2>
 
             <H3 id="doc-tac-approach">Approach Play</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Play Out</strong> — The team builds from the back with short passes, retaining the ball in deeper areas. Improves hold because the team recycles possession rather than forcing it forward. Advance drops slightly because the team waits for gaps rather than pushing into them. Lower stamina cost. Best paired with possession-heavy playstyles that want extended spells of control. Weak when the team needs to progress the ball urgently.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Into Space</strong> — The team plays direct passes into space behind the opponent's defensive line. Advance increases because the team pushes forward more aggressively. Hold drops because the team prioritizes progression over retention. Higher stamina cost. Best paired with systems that want to attack quickly and exploit space. Weak against deep-sitting opponents who leave no space behind.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Play Out</strong> — The team builds from the back with short passes, retaining the ball in deeper areas. Improves hold because the team recycles possession rather than forcing it forward. Advance drops slightly because the team waits for gaps rather than pushing into them. Lower stamina cost. Best paired with possession-heavy playstyles that want extended spells of control. Weak when the team needs to progress the ball urgently.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Into Space</strong> — The team plays direct passes into space behind the opponent's defensive line. Advance increases because the team pushes forward more aggressively. Hold drops because the team prioritizes progression over retention. Higher stamina cost. Best paired with systems that want to attack quickly and exploit space. Weak against deep-sitting opponents who leave no space behind.</P>
             <Stat text="Play Out: advance -0.01, hold +0.02 · Into Space: advance +0.02, hold -0.02" />
 
             <H3 id="doc-tac-passing">Passing Direction</H3>
@@ -8703,22 +8919,22 @@ export default function App() {
             <Stat text="Per level: advance +0.015, hold -0.02, long ball +0.015" />
 
             <H3 id="doc-tac-chances">Chance Creation</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Work Ball In</strong> — The team passes around the edge of the box looking for a clear opening rather than shooting early. Box shot probability increases because the team creates better chances through patience. Long-range shots are suppressed because the system discourages speculative efforts. Retains possession in the box more often. Best when dominating territory and wanting to convert pressure into goals. Weak when time is short.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Shoot On Sight</strong> — Players take shots from any position, including long range. Long-range shot rate increases significantly, but goal conversion per shot drops because more speculative attempts dilute quality. Good for generating volume when precision is not available. Weak against teams that clear well from distance.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Work Ball In</strong> — The team passes around the edge of the box looking for a clear opening rather than shooting early. Box shot probability increases because the team creates better chances through patience. Long-range shots are suppressed because the system discourages speculative efforts. Retains possession in the box more often. Best when dominating territory and wanting to convert pressure into goals. Weak when time is short.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Shoot On Sight</strong> — Players take shots from any position, including long range. Long-range shot rate increases significantly, but goal conversion per shot drops because more speculative attempts dilute quality. Good for generating volume when precision is not available. Weak against teams that clear well from distance.</P>
             <Stat text="Work Ball In: box shot +0.03, long-range -0.04, box retention +4% · Shoot On Sight: goal prob -0.01, long-range +0.04" />
 
             <H3 id="doc-tac-dribbling">Dribbling</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Disciplined</strong> — Players avoid taking on defenders, passing early instead of running. Advance drops marginally. The opponent's foul rate decreases because fewer tackles are attempted. Lower stamina cost. Safer and more controlled but less direct.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Run At Defence</strong> — Players dribble at defenders, drawing fouls and creating chaos. Advance increases. The opponent's foul rate rises significantly, generating more free kicks in dangerous areas and more penalties. Higher stamina cost. Best for teams that want to win set pieces and put pressure on booked defenders. The risk is that aggressive dribbling can lose the ball in dangerous positions.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Disciplined</strong> — Players avoid taking on defenders, passing early instead of running. Advance drops marginally. The opponent's foul rate decreases because fewer tackles are attempted. Lower stamina cost. Safer and more controlled but less direct.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Run At Defence</strong> — Players dribble at defenders, drawing fouls and creating chaos. Advance increases. The opponent's foul rate rises significantly, generating more free kicks in dangerous areas and more penalties. Higher stamina cost. Best for teams that want to win set pieces and put pressure on booked defenders. The risk is that aggressive dribbling can lose the ball in dangerous positions.</P>
             <Stat text="Disciplined: advance -0.01, foul rate 0.9x · Run At Defence: advance +0.02, foul rate 1.25x" />
 
             <H3 id="doc-tac-creativity">Creative Freedom</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Disciplined</strong> — Players stick to the system. Goal conversion drops marginally because predictable patterns are easier to defend. Safer and more consistent.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Expressive</strong> — Players improvise. Goal conversion rises because unexpected movements create better chances. Additionally, there is a 4% chance per minute of a "moment of magic" where a player beats the system entirely and skips straight to a shooting opportunity. The risk is inconsistency and higher stamina cost.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Disciplined</strong> — Players stick to the system. Goal conversion drops marginally because predictable patterns are easier to defend. Safer and more consistent.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Expressive</strong> — Players improvise. Goal conversion rises because unexpected movements create better chances. Additionally, there is a 4% chance per minute of a "moment of magic" where a player beats the system entirely and skips straight to a shooting opportunity. The risk is inconsistency and higher stamina cost.</P>
             <Stat text="Disciplined: goal prob -0.005 · Expressive: goal prob +0.01, 4% skip-to-shot chance" />
 
             <H3 id="doc-tac-setpieces">Set Pieces</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Play For</strong> — The team deliberately plays for corner kicks by putting crosses in and challenging the keeper. Corner multiplier increases by 1.2x. No other effects. A simple, low-cost choice for teams that want more set-piece opportunities.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Play For</strong> — The team deliberately plays for corner kicks by putting crosses in and challenging the keeper. Corner multiplier increases by 1.2x. No other effects. A simple, low-cost choice for teams that want more set-piece opportunities.</P>
             <Stat text="Play For: corners 1.2x" />
 
             <H3 id="doc-tac-timewasting">Time Wasting</H3>
@@ -8728,18 +8944,18 @@ export default function App() {
             <H2>Transition</H2>
 
             <H3 id="doc-tac-posslost">On Possession Lost</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Regroup</strong> — The team drops back into defensive shape after losing the ball. Press effectiveness drops because players retreat rather than challenging. Defensive solidity improves marginally. Low stamina cost. Best for teams that cannot afford to be caught out of position. Weak against teams that are slow to transition, since regrouping concedes territory that could have been recovered.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Counter-Press</strong> — The team immediately presses to win the ball back after losing it. Press effectiveness jumps by 1.2x, applied on top of all other pressing modifiers. High stamina cost (+0.10/min, the single most expensive individual tactic). Best for high-intensity systems that want to keep the opponent under constant pressure. Dangerous in the last 20 minutes because the stamina drain can leave the team exhausted.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Regroup</strong> — The team drops back into defensive shape after losing the ball. Press effectiveness drops because players retreat rather than challenging. Defensive solidity improves marginally. Low stamina cost. Best for teams that cannot afford to be caught out of position. Weak against teams that are slow to transition, since regrouping concedes territory that could have been recovered.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Counter-Press</strong> — The team immediately presses to win the ball back after losing it. Press effectiveness jumps by 1.2x, applied on top of all other pressing modifiers. High stamina cost (+0.10/min, the single most expensive individual tactic). Best for high-intensity systems that want to keep the opponent under constant pressure. Dangerous in the last 20 minutes because the stamina drain can leave the team exhausted.</P>
             <Stat text="Regroup: press 0.85x, defense +0.02 · Counter-Press: press 1.2x" />
 
             <H3 id="doc-tac-posswon">On Possession Won</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Hold Shape</strong> — The team keeps its defensive shape after winning the ball, building slowly. Hold increases because the team does not rush forward. Counter-attack probability is halved because the system suppresses fast transitions. Best for teams that want to control games and avoid being caught on a failed counter. Weak when the opponent is out of position and a fast break would be more effective.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Counter</strong> — The team launches forward immediately after winning the ball. Counter multiplier jumps by 1.4x, and counter shot probability gets a significant bonus. Hold drops because the team prioritizes speed over retention. Best for teams with a high counter multiplier already (the bonuses stack multiplicatively with the Counter playstyle). Weak when the team wins the ball in its own half and does not have the legs to cover the distance.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Hold Shape</strong> — The team keeps its defensive shape after winning the ball, building slowly. Hold increases because the team does not rush forward. Counter-attack probability is halved because the system suppresses fast transitions. Best for teams that want to control games and avoid being caught on a failed counter. Weak when the opponent is out of position and a fast break would be more effective.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Counter</strong> — The team launches forward immediately after winning the ball. Counter multiplier jumps by 1.4x, and counter shot probability gets a significant bonus. Hold drops because the team prioritizes speed over retention. Best for teams with a high counter multiplier already (the bonuses stack multiplicatively with the Counter playstyle). Weak when the team wins the ball in its own half and does not have the legs to cover the distance.</P>
             <Stat text="Hold Shape: hold +0.03, counter 0.5x · Counter: hold -0.02, counter 1.4x, counter shot +0.04" />
 
             <H3 id="doc-tac-gkdist">GK Distribution</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Short</strong> — After saves and goal kicks, the ball goes to the defending team's own half. The team retains possession but starts deep. Best for possession-oriented teams that build from the back.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Long</strong> — The keeper launches it. The attacking team has a 60% chance of retaining possession in midfield; 40% the ball goes to the defending team's half. Gives up possession control for territorial gain. Best for direct teams that want to skip the buildup phase.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Short</strong> — After saves and goal kicks, the ball goes to the defending team's own half. The team retains possession but starts deep. Best for possession-oriented teams that build from the back.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Long</strong> — The keeper launches it. The attacking team has a 60% chance of retaining possession in midfield; 40% the ball goes to the defending team's half. Gives up possession control for territorial gain. Best for direct teams that want to skip the buildup phase.</P>
             <Stat text="Short: ball to own half · Long: 60% retain in midfield, 40% to defending half" />
 
             <H2>Defense</H2>
@@ -8753,14 +8969,14 @@ export default function App() {
             <Stat text="Per level: defense -0.015, offside rate +20%" />
 
             <H3 id="doc-tac-dlbehavior">Defensive Line Behavior</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Drop Off</strong> — The defensive line retreats when the ball approaches. Defense improves marginally because the backline is deeper and harder to beat. Concedes territory. Low stamina cost.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Step Up</strong> — The defensive line holds its ground or pushes forward. Offside rate increases by 15%. More aggressive than Drop Off but less risky than the full trap.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Offside Trap</strong> — The defensive line pushes up sharply when the ball is played forward, attempting to catch attackers offside. Offside rate increases by 40%, which is significant. The risk: 15% of triggered offsides are beaten through, producing a 1v1 with a 1.25x attacker skill boost. When it works, it kills attacks dead. When it fails, it creates the best scoring opportunity in the game.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Drop Off</strong> — The defensive line retreats when the ball approaches. Defense improves marginally because the backline is deeper and harder to beat. Concedes territory. Low stamina cost.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Step Up</strong> — The defensive line holds its ground or pushes forward. Offside rate increases by 15%. More aggressive than Drop Off but less risky than the full trap.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Offside Trap</strong> — The defensive line pushes up sharply when the ball is played forward, attempting to catch attackers offside. Offside rate increases by 40%, which is significant. The risk: 15% of triggered offsides are beaten through, producing a 1v1 with a 1.25x attacker skill boost. When it works, it kills attacks dead. When it fails, it creates the best scoring opportunity in the game.</P>
             <Stat text="Drop Off: defense +0.015 · Step Up: offside rate +15% · Offside Trap: offside rate +40%, 15% beaten-through risk (1.25x skill boost)" />
 
             <H3 id="doc-tac-tackling">Tackling</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Stay On Feet</strong> — Players jockey rather than diving in. Press effectiveness drops marginally. Foul rate drops significantly, and card chance drops even more. Best for teams with booked players or teams that cannot afford to give away free kicks in dangerous areas. The cost is that the opponent retains the ball more easily.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Get Stuck In</strong> — Players commit to tackles aggressively. Press effectiveness increases. Foul rate rises substantially, and card chance rises even more. Generates more turnovers but also more fouls, more cards, and more penalties. Best for teams that need to disrupt the opponent's rhythm and are willing to risk the disciplinary consequences.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Stay On Feet</strong> — Players jockey rather than diving in. Press effectiveness drops marginally. Foul rate drops significantly, and card chance drops even more. Best for teams with booked players or teams that cannot afford to give away free kicks in dangerous areas. The cost is that the opponent retains the ball more easily.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Get Stuck In</strong> — Players commit to tackles aggressively. Press effectiveness increases. Foul rate rises substantially, and card chance rises even more. Generates more turnovers but also more fouls, more cards, and more penalties. Best for teams that need to disrupt the opponent's rhythm and are willing to risk the disciplinary consequences.</P>
             <Stat text="Stay On Feet: press 0.95x, foul rate 0.75x, card chance 0.65x · Get Stuck In: press 1.08x, foul rate 1.3x, card chance 1.4x" />
 
             <H2>Defensive Action Pools</H2>
@@ -8851,40 +9067,40 @@ export default function App() {
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
 
             <H3 id="doc-tourney-modes">Modes</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league. Groups Only is also used for Monte Carlo simulations where you want to run many group stages without a knockout.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones (or by the Qualify Per Group fallback if no advance zones are set). Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league. Groups Only is also used for Monte Carlo simulations where you want to run many group stages without a knockout.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones (or by the Qualify Per Group fallback if no advance zones are set). Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
             <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
 
             <H3 id="doc-tourney-zones">Qualification Zones</H3>
             <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range (e.g., 1 to 2), a label, a color, and a type.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats where there is no knockout stage.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament with Direct Qualification produces 16 teams for the knockout.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a single ranked pool table (sorted by points, then goal difference, goals for, and skill). A configurable number of the best-performing teams qualify. This is how the 2026 World Cup handles third-placed teams: 12 groups produce 12 third-placed teams, the best 8 advance.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats where there is no knockout stage.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament with Direct Qualification produces 16 teams for the knockout.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a single ranked pool table (sorted by points, then goal difference, goals for, and skill). A configurable number of the best-performing teams qualify. This is how the 2026 World Cup handles third-placed teams: 12 groups produce 12 third-placed teams, the best 8 advance.</P>
             <P>The pool ranking table updates live during the group stage as results come in. Zones are evaluated top-to-bottom in the editor, so if two zones overlap, the first one takes priority. Zones integrate with the knockout bracket builder and handle byes automatically for non-power-of-2 team counts.</P>
 
             <H3 id="doc-tourney-tiebreakers">Tiebreakers</H3>
             <P>When two teams have equal points, the tiebreaker priority determines their order. The priority is configurable and the order matters. Points are always checked first; skill is always the final fallback.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Goal Difference</strong> compares total goals scored minus goals conceded.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Goals For</strong> rewards attacking teams. A team with 15 scored and 10 conceded ranks above one with 8 scored and 3 conceded despite the latter having a better goal difference.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Head-to-Head</strong> extracts the results between the two tied teams specifically: their H2H points, then H2H goal difference, then H2H goals for. This is the primary tiebreaker in UEFA competitions.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Wins</strong> counts total wins regardless of goal difference. Some South American leagues prioritize this.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Median-Buchholz</strong> (Swiss only) sums each team's opponents' final points, removes the highest and lowest, and compares. Rewards teams that faced stronger opposition. Standard in chess-style Swiss systems.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Manual</strong> (Double Stage only) stops automated tiebreaking at its position in the priority list. When two teams are tied at a qualification zone boundary after all criteria above Manual are exhausted, a swap button appears in the standings table. The user resolves the tie by swapping team positions. Advancement to the knockout stage is blocked until all zone-boundary ties are resolved.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Goal Difference</strong> compares total goals scored minus goals conceded.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Goals For</strong> rewards attacking teams. A team with 15 scored and 10 conceded ranks above one with 8 scored and 3 conceded despite the latter having a better goal difference.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Head-to-Head</strong> extracts the results between the two tied teams specifically: their H2H points, then H2H goal difference, then H2H goals for. This is the primary tiebreaker in UEFA competitions.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Wins</strong> counts total wins regardless of goal difference. Some South American leagues prioritize this.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Median-Buchholz</strong> (Swiss only) sums each team's opponents' final points, removes the highest and lowest, and compares. Rewards teams that faced stronger opposition. Standard in chess-style Swiss systems.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Manual</strong> (Double Stage only) stops automated tiebreaking at its position in the priority list. When two teams are tied at a qualification zone boundary after all criteria above Manual are exhausted, a swap button appears in the standings table. The user resolves the tie by swapping team positions. Advancement to the knockout stage is blocked until all zone-boundary ties are resolved.</P>
 
             <H3 id="doc-tourney-presets">Presets</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>League</strong> — Single stage, 1 group, double round-robin, first-listed home advantage. Champion (gold, cosmetic) and Relegation (red, cosmetic) zones. Tiebreakers: GD, GF, H2H, Wins.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Old World Cup</strong> — Double stage, 8 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout with third-place match.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>New World Cup</strong> — Double stage, 12 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct) plus best 8 third-placed teams (pool). 32-team seeded knockout with third-place match.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Old UCL</strong> — Double stage, 8 groups of 4, double round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout, two-legged ties with away goals.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>New UCL</strong> — Double stage, 1 group of 36, Swiss format (8 rounds). Top 8 advance directly, 9th to 24th advance to playoff round. Seeded knockout, two-legged ties, no away goals. Tiebreakers: GD, GF, Buchholz, H2H, Wins.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Cup</strong> — Single stage knockout. Seeded bracket, single-leg, weaker team gets home advantage.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>League</strong> — Single stage, 1 group, double round-robin, first-listed home advantage. Champion (gold, cosmetic) and Relegation (red, cosmetic) zones. Tiebreakers: GD, GF, H2H, Wins.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Old World Cup</strong> — Double stage, 8 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout with third-place match.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>New World Cup</strong> — Double stage, 12 groups of 4, single round-robin, pot-based draw. Top 2 advance (direct) plus best 8 third-placed teams (pool). 32-team seeded knockout with third-place match.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Old UCL</strong> — Double stage, 8 groups of 4, double round-robin, pot-based draw. Top 2 advance (direct). 16-team seeded knockout, two-legged ties with away goals.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>New UCL</strong> — Double stage, 1 group of 36, Swiss format (8 rounds). Top 8 advance directly, 9th to 24th advance to playoff round. Seeded knockout, two-legged ties, no away goals. Tiebreakers: GD, GF, Buchholz, H2H, Wins.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cup</strong> — Single stage knockout. Seeded bracket, single-leg, weaker team gets home advantage.</P>
 
             </details>
 
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
             <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
             <div style={{ background: "var(--chrome-panel)", borderRadius: 10, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+              <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
                 <thead><tr style={{ borderBottom: "1px solid var(--chrome-border)" }}>
                   <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em" }}>PARAMETER</th>
                   <th style={{ padding: "8px 10px", textAlign: "center", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em", width: 50 }}>TYPE</th>
@@ -8905,9 +9121,9 @@ export default function App() {
                   ["Corners", "×", "Corner frequency from crosses in attacking territory"],
                   ["Tactic clamp", "⌐", "Restricts the automatic tempo range (maxT/minT)"],
                 ].map(([name, type, desc], i) => (
-                  <tr key={i} style={{ borderBottom: i < 11 ? "1px solid #0f1612" : "none" }}>
-                    <td style={{ padding: "7px 12px", color: "#ffffff", fontWeight: 600, fontSize: 11 }}>{name}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "var(--chrome-muted-22)" : type === "+" ? "#4a7ab522" : "#d0877022", color: type === "×" ? "#5e9c6b" : type === "+" ? "#4a7ab5" : "#d08770", border: "1px solid " + (type === "×" ? "#5e9c6b33" : type === "+" ? "#4a7ab533" : "#d0877033") }}>{type}</span></td>
+                  <tr key={i} style={{ borderBottom: i < 11 ? "1px solid var(--ui-pitch-rule)" : "none" }}>
+                    <td style={{ padding: "7px 12px", color: "var(--ui-text)", fontWeight: 600, fontSize: 11 }}>{name}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "var(--chrome-muted-22)" : type === "+" ? "var(--ui-qual-pool-22)" : "var(--ui-attack-22)", color: type === "×" ? "var(--ui-qual-direct)" : type === "+" ? "var(--ui-qual-pool)" : "var(--ui-attack)", border: "1px solid " + (type === "×" ? "var(--ui-qual-direct-33)" : type === "+" ? "var(--ui-qual-pool-33)" : "var(--ui-attack-33)") }}>{type}</span></td>
                     <td style={{ padding: "7px 12px", color: "#888" }}>{desc}</td>
                   </tr>
                 ))}
@@ -8928,22 +9144,22 @@ export default function App() {
             <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
 
             <H3 id="doc-tourney-modes">Modes</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones. Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones. Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
             <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
 
             <H3 id="doc-tourney-zones">Qualification Zones</H3>
             <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range, a label, a color, and a type.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament produces 16 teams for the knockout.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a ranked pool table (sorted by points, goal difference, goals for, skill). A configurable number of the best-performing teams qualify. The pool ranking updates live during the group stage.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament produces 16 teams for the knockout.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a ranked pool table (sorted by points, goal difference, goals for, skill). A configurable number of the best-performing teams qualify. The pool ranking updates live during the group stage.</P>
 
             <H3 id="doc-tourney-tiebreakers">Tiebreakers</H3>
             <P>When two teams have equal points, the configurable tiebreaker priority determines their order. Points are always first; skill is always the final fallback.</P>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>Goal Difference</strong> — total goals scored minus conceded. <strong style={{color:"#ffffff",fontSize:10}}>Goals For</strong> — rewards attacking play. <strong style={{color:"#ffffff",fontSize:10}}>Head-to-Head</strong> — results between the two tied teams (pts, GD, GF). <strong style={{color:"#ffffff",fontSize:10}}>Wins</strong> — total wins. <strong style={{color:"#ffffff",fontSize:10}}>Median-Buchholz</strong> (Swiss only) — opponents' points minus best and worst. <strong style={{color:"#ffffff",fontSize:10}}>Manual</strong> (Double Stage only) — stops automated tiebreaking; swap buttons appear on tied teams at zone boundaries.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Goal Difference</strong> — total goals scored minus conceded. <strong style={{color:"var(--ui-text)",fontSize:10}}>Goals For</strong> — rewards attacking play. <strong style={{color:"var(--ui-text)",fontSize:10}}>Head-to-Head</strong> — results between the two tied teams (pts, GD, GF). <strong style={{color:"var(--ui-text)",fontSize:10}}>Wins</strong> — total wins. <strong style={{color:"var(--ui-text)",fontSize:10}}>Median-Buchholz</strong> (Swiss only) — opponents' points minus best and worst. <strong style={{color:"var(--ui-text)",fontSize:10}}>Manual</strong> (Double Stage only) — stops automated tiebreaking; swap buttons appear on tied teams at zone boundaries.</P>
 
             <H3 id="doc-tourney-presets">Presets</H3>
-            <P><strong style={{color:"#ffffff",fontSize:10}}>League</strong> — 1 group, double round-robin, home and away, champion + relegation zones. <strong style={{color:"#ffffff",fontSize:10}}>Old World Cup</strong> — 8 groups of 4, top 2 advance, 16-team knockout. <strong style={{color:"#ffffff",fontSize:10}}>New World Cup</strong> — 12 groups of 4, top 2 advance + best 8 thirds, 32-team knockout. <strong style={{color:"#ffffff",fontSize:10}}>Old UCL</strong> — 8 groups of 4, double round-robin, two-legged knockout. <strong style={{color:"#ffffff",fontSize:10}}>New UCL</strong> — 36-team Swiss, top 8 advance + 9th-24th playoff, Median-Buchholz tiebreaker. <strong style={{color:"#ffffff",fontSize:10}}>Cup</strong> — single-elimination bracket.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>League</strong> — 1 group, double round-robin, home and away, champion + relegation zones. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old World Cup</strong> — 8 groups of 4, top 2 advance, 16-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New World Cup</strong> — 12 groups of 4, top 2 advance + best 8 thirds, 32-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old UCL</strong> — 8 groups of 4, double round-robin, two-legged knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New UCL</strong> — 36-team Swiss, top 8 advance + 9th-24th playoff, Median-Buchholz tiebreaker. <strong style={{color:"var(--ui-text)",fontSize:10}}>Cup</strong> — single-elimination bracket.</P>
 
             </details>
             </>);
