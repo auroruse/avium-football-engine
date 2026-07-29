@@ -4,6 +4,7 @@ import wc1933HeaderImg from "./1933-wc-banner.png";
 import nl1HeaderImg from "./nl1-banner.png";
 import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
+import nl2TSV from "./presets/nl2.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import kplTSV from "./presets/kar-prem.tsv?raw";
 import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
@@ -3089,6 +3090,7 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, has
 }
 const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
+const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
@@ -3099,7 +3101,7 @@ const PRESET_VIC = parsePresetTSV(vicTSV, null, 0, false, false);
 const PRESET_ELV = parsePresetTSV(elvTSV, null, 0, false, false);
 const PRESET_RUD = parsePresetTSV(rudTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
-const LEAGUE_NAT = {"Nichirin League One":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
 const CONFERENCES = {
@@ -3111,13 +3113,16 @@ const CONFERENCES = {
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Nichirin League One", "Elvesterian Premier League", "Championnat Arvernois", "Alemannischer Oberliga", "Prima Divisione Viciliana", "Karjanian Premier League", "Rudanian First League", "Verdanois Grande Série", "Verdanois 2ème Série", "Varahmehri Liga-ye Mellī",
+  "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Verdanois 2ème Série",
+  // Empty presets — kept so they sort correctly once they have teams. groupByLeague skips them.
+  "Championnat Arvernois", "Prima Divisione Viciliana", "Rudanian First League",
   null,
   "Custom",
 ];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({...t, league: "Avium International"})),
   ...PRESET_NCH_L1.map(t => ({...t, league: "Nichirin League One"})),
+  ...PRESET_NCH_L2.map(t => ({...t, league: "Nichirin League Two"})),
   ...PRESET_ELV.map(t => ({...t, league: "Elvesterian Premier League"})),
   ...PRESET_ARV.map(t => ({...t, league: "Championnat Arvernois"})),
   ...PRESET_ALE.map(t => ({...t, league: "Alemannischer Oberliga"})),
@@ -3753,6 +3758,13 @@ export default function App() {
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
   const [showBulk, setShowBulk] = useState(false);
   const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
+  const [teamSearch, setTeamSearch] = useState("");
+  // One filter, read by both the header count and the list — they used to derive it separately.
+  const visibleTeams = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase();
+    return teams.filter(t => (!teamLeagueFilter || (t.league || "Custom") === teamLeagueFilter)
+      && (!q || t.name.toLowerCase().includes(q) || (t.code || "").toLowerCase().includes(q)));
+  }, [teams, teamLeagueFilter, teamSearch]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
       // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
@@ -6241,11 +6253,12 @@ export default function App() {
         {tab === "teams" && (<>
         {/* TEAMS */}
         <div className="panel-head-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-          <PanelTitle sub={teamLeagueFilter ? `${teams.filter(t => (t.league || "Custom") === teamLeagueFilter).length} / ${teams.length}` : `${teams.length}`}>Teams</PanelTitle>
+          <PanelTitle sub={visibleTeams.length === teams.length ? `${teams.length}` : `${visibleTeams.length} / ${teams.length}`}>Teams</PanelTitle>
           {/* Export/import/add used to be gated on the filter reading "Custom". They stay visible
               regardless now — hiding the only route to adding a team behind a filter state was a trap. */}
           <div style={{ display: "flex", gap: 6 }}>
             <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...smBtn, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
+            <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
             <button onClick={exportState} style={{ ...smBtn, color: showExport ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>
             <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Bulk import">{showBulk ? "✕ Close" : "📂"}</button>
             <button onClick={addTeam} style={addBtn}>+ Add</button>
@@ -6254,7 +6267,7 @@ export default function App() {
         {showExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
         {showBulk && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
         <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
-          {(() => { const visibleTeams = teamLeagueFilter ? teams.filter(t => (t.league || "Custom") === teamLeagueFilter) : teams;
+          {(() => {
             // Filtering to a league means you want to see that league — a domestic division is
             // 16-20 clubs and reads better whole. The cap stays for the unfiltered list and for
             // Avium International, which is 65 nations and would run off the page.
@@ -6481,6 +6494,7 @@ export default function App() {
                 </div>
               </div>)}
               </div>); })}
+            {visibleTeams.length === 0 && <div style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
           </div>
           ); })()}
           {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "6px 12px", borderTop: "1px solid var(--chrome-border)" }}>Skill values must be between 25 and 100.</div>}
