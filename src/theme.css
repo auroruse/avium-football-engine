@@ -97,7 +97,6 @@
   --ui-info-33: #81a1c133;
   --ui-info-44: #81a1c144;
   --ui-injury: #c07070;
-  --ui-lift: rgba(0,0,0,0.75);
   --ui-nat-override: #9a7ab5;
   --ui-ok: #a3be8c;
   --ui-ok-22: #a3be8c22;
@@ -291,6 +290,5 @@
   --ui-shadow-2: #00000014;
   --ui-shadow-3: #0000001f;
   --ui-shadow-4: #00000029;
-  --ui-lift: rgba(0,0,0,0.18);
   --ui-scrim: rgba(20,24,31,0.45);
 }

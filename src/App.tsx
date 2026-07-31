@@ -82,7 +82,14 @@ const drainChain = (s, side, chain, amt) => {
 // rather than a multiplier, since ovr feeds ovrN's team-relative gap rather than a flat
 // scale. Capped at 8 points off at 0 stamina — noticeable without being able to flip a
 // team's best player into a net liability on its own.
-const fatigueOvr = (ovr, stamina) => { const st = Math.max(0, Math.min(100, stamina ?? 100)); return st >= 75 ? (ovr ?? 65) : (ovr ?? 65) - Math.pow((75 - st) / 75, 1.5) * 8; };
+// These two set how much squad fatigue is worth against squad depth. FATIGUE_MAX_DROP has to be
+// large enough to compete with the OVR gap between a starter and their backup, or resting a tired
+// player is always the worse move and the rotation logic correctly never fires.
+// These three set how much squad fatigue is worth against squad depth. The exponent matters as
+// much as the cap: at 1.5 the curve is almost flat just under the threshold, so a player at 65
+// stamina loses well under an OVR point however large FATIGUE_MAX_DROP is.
+const FATIGUE_FRESH_ABOVE = 75, FATIGUE_MAX_DROP = 8, FATIGUE_CURVE = 1.5;
+const fatigueOvr = (ovr, stamina) => { const st = Math.max(0, Math.min(100, stamina ?? 100)); return st >= FATIGUE_FRESH_ABOVE ? (ovr ?? 65) : (ovr ?? 65) - Math.pow((FATIGUE_FRESH_ABOVE - st) / FATIGUE_FRESH_ABOVE, FATIGUE_CURVE) * FATIGUE_MAX_DROP; };
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 // ═══ MATCH COMMENTARY ════════════════════════════════════════════════════════
@@ -552,6 +559,27 @@ const FORM_MOM = {
   "5-3-2":     { mult: 0.8, decay: 0.7 },
 };
 const TEST_SKILL = 65;
+// Test mode pins every team to TEST_SKILL so a result reflects tactics rather than a skill gap.
+// Player OVRs are SHIFTED by the squad's own mean, not flattened. ovrN reads the absolute gap
+// between a player and their team skill, so flattening everyone to TEST_SKILL made every gap zero:
+// no player differed from any other and position and tactic weighting stopped biting at all.
+// Shifting by the MEAN rather than by t.skill is deliberate. A squad's mean is not its rating —
+// across the catalog it sits anywhere from 7.6 below to 4.7 above. Shifting by t.skill would keep
+// each player's real gap but hand a whole squad a uniform edge over the pinned 65 baseline, which
+// is the team-strength difference test mode exists to remove. Shifting by the mean puts every
+// squad's average gap at zero while leaving each player's deviation from their own squad intact.
+// Returns a mapper so the starters and bench of one team share a single shift; computing it per
+// list would move a substitute relative to the player they come on for.
+// A null OVR keeps its "as good as the team rating" meaning and shifts along with everyone else.
+function testOvrShift(players, teamSkill) {
+  const at = (p) => p.ovr ?? teamSkill ?? TEST_SKILL;
+  const vals = (players || []).map(at);
+  if (!vals.length) return (p) => at(p);
+  const shift = TEST_SKILL - vals.reduce((a, b) => a + b, 0) / vals.length;
+  // Deliberately unclamped: ovrN caps the gap it cares about, and clamping here would pull the
+  // mean off TEST_SKILL and distort the very gaps this is preserving.
+  return (p) => Math.round(at(p) + shift);
+}
 // A fraction of the gap to full fitness, not a flat number — a player who ends a match
 // completely gassed recovers more in absolute terms than one who barely broke a sweat, so a
 // drain gap that opens between two playstyles shrinks on its own over a season instead of
@@ -1160,6 +1188,8 @@ function lmSimMinute(s, rng, home, away) {
   const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
   let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
   if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
+  // Momentum across the season, alongside the in-match momentum already folded into hE/aE above.
+  hE *= 1 + (s.teamForm?.home || 0) * FORM_SWING; aE *= 1 + (s.teamForm?.away || 0) * FORM_SWING;
   ["home","away"].forEach(_ds => { if (s.momentum[_ds] > 0) { const _dr = s.momProfile?.[_ds]?.decay ?? (STYLE_MOM[s.styles?.[_ds]]?.decay ?? 1.0); if (_dr >= 1) { s.momentum[_ds]--; if (s.momentum[_ds] > 0 && rng.u() < _dr - 1) s.momentum[_ds]--; } else if (rng.u() < _dr) s.momentum[_ds]--; } });
   const nm = {home:home.name,away:away.name};
 
@@ -1345,7 +1375,7 @@ function lmSimMinute(s, rng, home, away) {
 }
 
 function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, teamForm:{home:0,away:0}, injuriesEnabled:true };
 }
 
 function cloneState(p) {
@@ -1556,13 +1586,16 @@ function lmBtnLabel(s) {
 
 
 // ═══ INSTANT SIM ═════════════════════════════════════════════════════════════
-function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad, matchUrg) {
+// teamForm is {home, away} in [-1, +1]. Named apart from homeForm/awayForm above, which are
+// FORMATIONS — an unfortunate collision that predates this.
+function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad, matchUrg, teamForm) {
   const home={name:"H",skill:homeSkill},away={name:"A",skill:awaySkill};
   let s=createMatchState();s.forceResult=!!forceResult;s.teamSkill={home:homeSkill,away:awaySkill};
   s.styles={home:homeStyle||"balanced",away:awayStyle||"balanced"};
   s.formations={home:homeForm||"4-3-3",away:awayForm||"4-3-3"};
   s.homeAdv=homeAdv||null;
   if (matchUrg) s.matchUrg = matchUrg;
+  if (teamForm) s.teamForm = teamForm;
   s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
   const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
   const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,benchSize:p.benchSize});
@@ -1686,19 +1719,31 @@ function capAtEleven(starters, bench) {
   const excess = starters.splice(11);
   return { starters, bench: [...bench, ...excess] };
 }
+// Moving a player between these two arrays has to move the `bench` flag with him. Every consumer
+// rebuilds the XI with squad.filter(p => !p.bench) — createMatchState and splitAvailSquad both —
+// so a swap that only reorders the arrays is silently undone at kickoff, and the side that takes
+// the field is the one selection was trying to change.
+const asStarter = (p) => { const q = { ...p }; delete q.bench; return q; };
+const asBench = (p) => ({ ...p, bench: true });
 function managerSelect(starters, bench, kf, staminaData, context) {
   const dataOf = p => staminaData[kf(p.name)];
   starters = starters.map(p => ({ ...p, stamina: dataOf(p)?.stamina ?? 100 }));
-  bench = bench.map(p => ({ ...p, stamina: 100 }));
+  // Bench players carry their real fatigue too. Pinning them to 100 here did not just skew the
+  // rotation comparison below — this stamina is what the match itself reads (mapB's p.stamina),
+  // so every substitute came on fresh no matter how many minutes they had in their legs.
+  bench = bench.map(p => ({ ...p, stamina: dataOf(p)?.stamina ?? 100 }));
   if (!context?.stakes) return { ...capAtEleven(starters, bench), matchIntensity: 0 };
-  const { stakes, ourSkill, oppSkill, nextOppSkill, isFinal, isKnockout, isThirdPlace, isLastGroupGame, remainingGames } = context;
+  const { stakes, ourSkill, oppSkill, nextOppSkill, horizon, totalGames, isFinal, isKnockout, isThirdPlace, isLastGroupGame, remainingGames } = context;
   const sk = (ourSkill ?? 65) - (oppSkill ?? 65);
-  // Node 1: classify
+  // Node 1: classify. A side that only needs a point is not in the same match as one that has to
+  // win, even on identical urgency — so the result required overrides the scalar where it is known.
   let matchClass;
   if (stakes.eliminated || (stakes.safe && (remainingGames ?? 0) > 0))
     matchClass = "dead";
-  else if (isFinal || (isKnockout && !isThirdPlace) || (stakes.urgency >= 0.6 && isLastGroupGame))
+  else if (isFinal || (isKnockout && !isThirdPlace) || (stakes.urgency >= 0.6 && isLastGroupGame) || stakes.mustWin)
     matchClass = "must_win";
+  else if (stakes.drawEnough && !isLastGroupGame)
+    matchClass = "comfortable";
   else if (stakes.urgency >= 0.3 || isThirdPlace || (!stakes.safe && !stakes.eliminated))
     matchClass = "important";
   else
@@ -1707,6 +1752,30 @@ function managerSelect(starters, bench, kf, staminaData, context) {
   let maxRot = matchClass === "dead" ? 99 : matchClass === "must_win" ? 1 : matchClass === "important" ? 2 : 3;
   if (sk > 20) maxRot += 1;
   if (sk < -15 && maxRot > 0) maxRot -= 1;
+  // Node 5b: planning across the run, not just the next game. A single fixture of lookahead can
+  // only ask "is the next one hard"; a block asks the real question — is this the match to spend,
+  // or the one to save for. Skipped in a must-win, where there is no later to plan for.
+  const horizonAvg = horizon?.length ? horizon.reduce((a, h) => a + (h.skill ?? 65), 0) / horizon.length : null;
+  if (horizonAvg != null && matchClass !== "must_win") {
+    if (horizonAvg > (oppSkill ?? 65) + 6 && sk > 3) maxRot += 1;            // easier now, harder ahead
+    else if (horizonAvg < (oppSkill ?? 65) - 6 && maxRot > 0) maxRot -= 1;   // today is the hard one
+  }
+  // Node 5c: where we are in the campaign. Nothing is settled in the opening weeks, so minutes can
+  // be spread; in a run-in with the objective still live, every match is the last chance at it.
+  const phase = totalGames > 0 ? 1 - (remainingGames ?? 0) / totalGames : null;
+  if (phase != null && matchClass !== "dead") {
+    if (phase < 0.25) maxRot += 1;
+    else if (phase > 0.75 && !stakes.safe && !stakes.eliminated && maxRot > 0) maxRot -= 1;
+  }
+  // Node 5d: what the squad can actually absorb. A bench within touching distance of the XI can
+  // take more changes than one that falls off a cliff — this was a flat constant regardless of
+  // whether the 12th man was a peer or a reserve.
+  const meanOvr = (arr) => arr.length ? arr.reduce((a, p) => a + (p.ovr ?? 65), 0) / arr.length : null;
+  const xiQ = meanOvr(starters), benchQ = meanOvr(bench);
+  if (xiQ != null && benchQ != null && matchClass !== "dead") {
+    if (benchQ >= xiQ - 2) maxRot += 1;
+    else if (benchQ < xiQ - 8 && maxRot > 0) maxRot -= 1;
+  }
   // Node 3: build rotation candidates per policy
   const candidates = [];
   for (let i = 0; i < starters.length; i++) {
@@ -1719,15 +1788,31 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     const st = p.stamina ?? 100;
     const cs = dataOf(p)?.consecutiveStarts ?? 0;
     const prot = POS_PROTECTION[p.pos] ?? 4;
+    // Both sides of this comparison are fatigue-adjusted, because fatigueOvr is what the match will
+    // actually run on. Judging the swap on raw OVR meant a gassed starter looked as good as he does
+    // fresh, so the thresholds below were being applied to a number the simulator never sees.
+    // Form counts toward the comparison at roughly a point of OVR per point of rating above or
+    // below par, which is what actually decides real selections — a in-form squad player displaces
+    // a misfiring starter of similar quality, and stops being picked when the run ends.
+    const formOf = (q) => (dataOf(q)?.form || 0) * FORM_SELECT_WEIGHT;
     const bestBench = bench.reduce((best, b, bi) => {
       if (b.pos !== p.pos) return best;
-      return (!best || b.ovr > best.ovr) ? { idx: bi, ovr: b.ovr } : best;
+      const eff = fatigueOvr(b.ovr ?? 65, b.stamina) + formOf(b);
+      return (!best || eff > best.eff) ? { idx: bi, ovr: b.ovr, eff } : best;
     }, null);
     if (!bestBench) continue;
-    const gap = (p.ovr ?? 65) - bestBench.ovr;
+    const gap = fatigueOvr(p.ovr ?? 65, st) + formOf(p) - bestBench.eff;
     let shouldRotate = false;
     let priority = 0;
-    if (matchClass === "dead") {
+    // Everything below this is workload management — it fires off stamina and consecutive starts,
+    // so it can only ever sharpen a swap the fitness numbers already wanted. This branch is the
+    // other kind of team selection: the bench player is simply the better option today once form
+    // and fitness are counted, so play him. Without it a fresh starter in dreadful form was
+    // undroppable, and form could never change a side on its own.
+    if (gap < -FORM_ROTATE_GAP) {
+      shouldRotate = true;
+      priority = 150 - gap * 10;
+    } else if (matchClass === "dead") {
       shouldRotate = true;
       priority = 100 - prot;
     } else if (matchClass === "must_win") {
@@ -1765,22 +1850,26 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     }
     const out = starters[c.idx];
     const inP = bench[c.benchIdx];
-    starters[c.idx] = inP;
-    bench[c.benchIdx] = out;
+    starters[c.idx] = asStarter(inP);
+    bench[c.benchIdx] = asBench(out);
     usedBench.add(c.benchIdx);
     rotations++;
   }
   // Node 6: consecutive starts hard cap — exempts GK for the same reason as Node 3's
   // candidate filter: an ever-present #1 keeper is normal, not a workload risk.
+  // Bounded by whatever is left of the rotation budget, and by a threshold a real ever-present
+  // actually reaches. It used to fire at six straight starts with no cap at all, which is an
+  // ordinary run for a first-choice player — and because the swaps never survived to kickoff
+  // (the `bench` flag bug above) nobody noticed it was emptying the XI every week.
   if (matchClass !== "must_win") {
-    for (let i = 0; i < starters.length; i++) {
+    for (let i = 0; i < starters.length && rotations < maxRot; i++) {
       if (starters[i].pos === "GK") continue;
       const cs = dataOf(starters[i])?.consecutiveStarts ?? 0;
-      if (cs < 6) continue;
+      if (cs < CONSEC_START_CAP) continue;
       const bi = bench.findIndex(b => b.pos === starters[i].pos && !usedBench.has(bench.indexOf(b)));
       if (bi === -1) continue;
-      const out = starters[i]; starters[i] = bench[bi]; bench[bi] = out;
-      usedBench.add(bi);
+      const out = starters[i]; starters[i] = asStarter(bench[bi]); bench[bi] = asBench(out);
+      usedBench.add(bi); rotations++;
     }
   }
   const matchIntensity = matchClass === "dead" ? -0.3
@@ -2113,6 +2202,53 @@ function computeForm(group) {
   }));
   return form;
 }
+// Recent results as a swing in [-1, +1], most recent weighted heaviest. computeForm already builds
+// the per-team result list for the table's W/D/L chips; until now nothing read it back, so a side
+// on five straight wins played exactly like one on five straight defeats and a 38-match season was
+// 38 independent draws from the same distribution.
+const FORM_WINDOW = 5;
+function formScore(results) {
+  const recent = (results || []).slice(-FORM_WINDOW);
+  if (!recent.length) return 0;
+  let num = 0, den = 0;
+  recent.forEach((x, i) => { const w = i + 1; num += w * (x.r === "W" ? 1 : x.r === "L" ? -1 : 0); den += w; });
+  return den ? num / den : 0;
+}
+// Applied to effective strength like home advantage, which is 1.03 — so a side at the top of its
+// run is worth about two thirds of home soil, and the gap between a team on a tear and one in
+// freefall is 4%. Form feeds back into itself (winning improves form improves the chance of
+// winning), so this was measured over 40 NL1 seasons per value rather than guessed:
+//
+//   swing    champion    spread    longest unbeaten
+//   off      76.4±1.5    47.3±1.8      14.8±0.8
+//   0.020    77.3±1.8    48.3±2.7      16.8±1.1
+//   0.035    79.8±1.7    51.9±2.1      16.4±1.2
+//
+// 0.020 is the largest value where the champion's total and the table's spread are both still
+// statistically indistinguishable from form being off, while the longest unbeaten run does move.
+// At 0.035 the champion gained 3.4 points and the spread 4.6, which is a real distortion of a
+// table shape that was already believable. Form did NOT make the league more predictable at any
+// setting — upset (mean |finish - skill rank|) held at 3.5 throughout — so the cost is the
+// stretch, not a loss of surprise.
+const FORM_SWING = 0.020;
+// Player form is an EMA of match ratings around the 6.5 baseline, so a player with no history
+// reads as neutral rather than as bad. One float per player instead of a rolling window: decay is
+// built in, nothing to migrate, and an absent value is simply 0.
+const FORM_EMA = 0.35, RATING_BASE = 6.5;
+// How many OVR points a point of form is worth when picking a side. A sustained run of 8s converges
+// the EMA near +1.5 and a run of 5s near -1.5, so this is the most form can ever swing a comparison
+// — about 6 OVR between the in-form and the misfiring. Enough to drop a starter for a squad player
+// three or four points below him, which is what real form does; nowhere near enough to put a 76
+// ahead of a 91. Measured against club squads, whose benches sit 3-8 points off the XI: at 1.0
+// nothing ever flipped, so form was decorative.
+const FORM_SELECT_WEIGHT = 2.0;
+// How far ahead a bench player has to be, in effective OVR, before he is picked on merit rather
+// than as a rest. A threshold rather than zero so a side is not reshuffled over rounding noise.
+const FORM_ROTATE_GAP = 0.5;
+// Straight starts before a player is forced a rest. A first-choice player routinely goes a couple
+// of months without missing one, so this is a workload backstop, not a rotation policy.
+const CONSEC_START_CAP = 14;
+const playerFormFrom = (prev, rating) => (prev || 0) * (1 - FORM_EMA) + ((rating ?? RATING_BASE) - RATING_BASE) * FORM_EMA;
 // Qualification zone for a standings row. ri 0-indexed, N total teams.
 function zoneFor(ri, N, zones) {
   if (!zones) return null;
@@ -2130,7 +2266,27 @@ function zoneFor(ri, N, zones) {
 // urgency on their own, but they call for opposite lineup behavior — rest a safe team, but
 // play a hopelessly-eliminated team's stars anyway since there's nothing left to save them
 // for — so rotation logic needs the explicit flags, not just the blended scalar.
+// Urgency collapses a league position into one number, which is enough to decide how hard to go
+// but not enough to decide what result you are playing for. These two say that: whether a point
+// still does the job, and whether only three will. Wrapped rather than folded into the dozen
+// return paths below, so the scoring itself is untouched.
 function computeGroupUrg(standings, teamName, qualCount, remainingAfter) {
+  const base = groupUrgCore(standings, teamName, qualCount, remainingAfter);
+  const idx = standings.findIndex(s => s.name === teamName);
+  if (idx === -1 || qualCount <= 0 || qualCount >= standings.length)
+    return { ...base, margin: 0, drawEnough: false, mustWin: false };
+  const team = standings[idx], inside = idx <= qualCount - 1;
+  // The team on the other side of the qualification line: who we are holding off, or chasing.
+  const rival = standings[inside ? Math.min(qualCount, standings.length - 1) : qualCount - 1];
+  const margin = team.pts - rival.pts;
+  // A draw does the job while the cushion outruns the games left to lose it in; only a win does
+  // when the deficit is bigger than the points a draw a week could ever recover.
+  return { ...base,
+    margin,
+    drawEnough: inside && !base.eliminated && margin > remainingAfter,
+    mustWin: !inside && !base.eliminated && margin < -remainingAfter };
+}
+function groupUrgCore(standings, teamName, qualCount, remainingAfter) {
   const idx = standings.findIndex(s => s.name === teamName);
   if (idx === -1 || qualCount <= 0 || qualCount >= standings.length) return { urgency: 0, safe: false, eliminated: false };
   const team = standings[idx];
@@ -2194,14 +2350,22 @@ function computeKOStakes({ isFinal, isThirdPlace, isTwoLeg, leg, aggFor, aggAgai
 // today cares about what's coming, not just today's opponent. Only meaningful in the group
 // stage, where the whole round-robin is known in advance; a knockout bracket's next opponent
 // is usually still undetermined, so callers there simply don't pass one.
-function nextOpponentSkill(schedule, ri, teamName) {
-  for (let r = ri + 1; r < schedule.length; r++) {
+// The next K opponents this team still has to face, nearest first. One fixture of lookahead can
+// only answer "is the next one hard"; a run answers "is this the game to spend, or the one to save
+// for" — which is the actual decision a manager makes when planning a block of fixtures.
+function fixtureHorizon(schedule, ri, teamName, k = 3) {
+  const out = [];
+  for (let r = ri + 1; r < schedule.length && out.length < k; r++) {
     const rd = schedule[r];
     if (!rd) continue;
     const m = rd.find(x => x.home?.name === teamName || x.away?.name === teamName);
-    if (m) return m.home.name === teamName ? m.away.skill : m.home.skill;
+    if (m && m.home && m.away) out.push({ skill: m.home.name === teamName ? m.away.skill : m.home.skill, home: m.home.name === teamName });
   }
-  return null;
+  return out;
+}
+function nextOpponentSkill(schedule, ri, teamName) {
+  const h = fixtureHorizon(schedule, ri, teamName, 1);
+  return h.length ? h[0].skill : null;
 }
 function koWinner(m) { if (!m.result || !m.home) return null; if (m.result.twoLeg) { if (m.result.partial) return null; if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const ah=m.result.agg.home, aa=m.result.agg.away; if (ah!==aa) return ah>aa?m.home:m.away; if (m.result.awayGoalsRule) return m.result.awayGoals.home>m.result.awayGoals.away?m.home:m.away; return m.home; } if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const h = m.result.ftHome + (m.result.et?.home || 0), a = m.result.ftAway + (m.result.et?.away || 0); return h > a ? m.home : h < a ? m.away : m.home; }
 function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.home; }
@@ -2715,7 +2879,7 @@ const colorsClash = (hex1, hex2) => {
 // background, not merely "dark" colors (plenty of real team colors, like black or navy
 // kits, are dark but still clearly visible against the app's dark UI).
 const lightenUntil = (hex, refHex, factor) => {
-  const c = hexToRgb(hex); if (!c) return "#ffffff";
+  const c = hexToRgb(hex); if (!c) return "var(--ui-text)";
   let r = c.r, g = c.g, b = c.b, cur = hex;
   for (let i = 0; i < 10 && colorsClash(cur, refHex); i++) {
     r = Math.min(255, Math.round(r + (255 - r) * factor));
@@ -2726,7 +2890,7 @@ const lightenUntil = (hex, refHex, factor) => {
   return cur;
 };
 const readableClr = (hex, altHex, bgHex) => {
-  if (!hex) return altHex || "#ffffff";
+  if (!hex) return altHex || "var(--ui-text)";
   if (!colorsClash(hex, bgHex)) return hex;
   if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
   return lightenUntil(hex, bgHex, 0.3);
@@ -2755,7 +2919,7 @@ const clampTeamClr = (hex) => ensureMaxLum(hex);
 // saturation survive — blending toward white instead turned a deep red into pink. Only a colour
 // with no channel to scale (black and its neighbours) has to be blended, having no hue to lose.
 const ensureMinLum = (hex) => {
-  const c = hexToRgb(hex); if (!c) return "#ffffff";
+  const c = hexToRgb(hex); if (!c) return "var(--ui-text)";
   let r = c.r, g = c.g, b = c.b;
   for (let i = 0; i < 24 && percLum(r, g, b) < TEAM_LUM_MIN; i++) {
     if (Math.max(r, g, b) < 8) { r += 12; g += 12; b += 12; continue; }
@@ -2970,6 +3134,7 @@ function sposFor(fm) {
 // Natural-position model: [line, side] — line GK→DEF→WB→DM→MID→AM→FWD, side left/centre/right.
 // Side mismatches cost slightly more than line ones: a left back at right back is a worse ask
 // than a left back pushed to left midfield.
+const POS_SPECIFIC = ["GK","LB","CB","RB","LWB","RWB","DM","CM","AM","LM","RM","LW","RW","ST"];
 const POS_ROLE = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
 function posFitCost(a, b) {
   if ((a === "GK") !== (b === "GK")) return 1000;
@@ -3101,6 +3266,75 @@ const PRESET_VIC = parsePresetTSV(vicTSV, null, 0, false, false);
 const PRESET_ELV = parsePresetTSV(elvTSV, null, 0, false, false);
 const PRESET_RUD = parsePresetTSV(rudTSV, null, 0, false, false);
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
+// League badges in public/leagues, keyed by league name. Only some divisions have art; the rest
+// fall back to the shipped placeholder rather than to nothing, so the rail keeps a single column
+// of icons and the rows do not jump around as art is added.
+const LEAGUE_LOGO = {
+  "Avium International": "avium",
+  "Nichirin League One": "nl1", "Nichirin League Two": "nl2",
+  "Karjanian Premier League": "kar-prem", "Verdanois Grande Série": "grande-serie",
+  "Varahmehri Liga-ye Mellī": "liga-ye-melli",
+};
+const leagueLogoSrc = (lg) => `${import.meta.env.BASE_URL}leagues/${LEAGUE_LOGO[lg] || "placeholder"}.png`;
+// Shared by both roster headers so they line up. The right-hand one stacks a label over a value in
+// its stat blocks, which is what sets the floor.
+const ROSTER_HEAD_H = 56;
+// The live match's two columns, measured off the right one — venue bar 56 + event feed panel 316 +
+// stats panel 284. That side is the stable one; the left is a scoreboard whose height depends on
+// the phase. The live grid takes this as a FLOOR, since a pre-match scoreboard with two pitch
+// diagrams is taller than it on its own and must not be clipped.
+//
+// Do NOT raise this to fit the pre-match scoreboard: it is shared by the roster tabs, and stretching
+// it to the tallest thing in the live tab blew both of those out with it.
+const PANEL_H = 660;
+// The auto / continue / sim-to-end row that sits above that grid: a 12px-font button at 10px
+// vertical padding, plus the 12px margin under it. The roster tabs have no equivalent row, so they
+// span this as well — otherwise their panels stop short and every tab switch shifts the page.
+const LM_CONTROLS_H = 47;
+// What actually goes on the elements. The px figure is the target; the vh term is a ceiling, so on
+// a window shorter than that the panels stop at the bottom of the screen instead of running off it.
+// The live grid sits lower on the page than the roster tabs — the match-control row is above it —
+// so each gets its own offset, and both land on the same line.
+// The saves list is a header, the open tournament and a Show N button. Past this it is just a long
+// list crowding out the participant grid it shares a column with, so it scrolls instead.
+const SAVES_MAX_H = 250;
+// Six collapsed rounds — each a one-line strip of scoreline chips — plus the sticky header above
+// them. Fixed so the fixtures panel is the same size in a six-round group as in a thirty-eight-round
+// league; otherwise the panel below it moves every time the format changes.
+const ROUND_ROW_H = 47, ROUNDS_VISIBLE = 6;
+// Standings form guide: the last five results. Width is 15px chips with a 2px gap between them,
+// plus the cell's 6px of left padding.
+// Groups stack downward first. A second column only opens past this many groups, where one column
+// would be a very long scroll. ponytail: a count threshold, not a measured fit — cards are uniform.
+const GROUP_STACK_MAX = 6;
+const FORM_N = 5;
+const FORM_COL_W = FORM_N * 15 + (FORM_N - 1) * 2 + 8;
+const ROSTER_PANEL_H = `min(${PANEL_H + LM_CONTROLS_H}px, calc(100vh - 116px))`;
+// Phases that carry a header or a footer the roster tabs have no equivalent of do NOT subtract a
+// measured height for it — that was guesswork and it was wrong twice. They wrap the whole phase in
+// a ROSTER_PANEL_H flex column instead, and the grid takes flex:1 of whatever is left, so the total
+// is the roster tabs' height by construction whatever the extra row turns out to measure.
+const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "column", minHeight: 0 };
+const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh - 163px))`;
+// Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
+// stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
+const WIDE_TABS = new Set(["teams", "players", "live", "tournament"]);
+// Fewest clubs a league needs before it counts as complete in the roster rail.
+const LEAGUE_COMPLETE_MIN = 8;
+// Club tile crest size, and the share of the badge canvas that is transparent above and below the
+// artwork. Measured off the PNGs: 500px square, crest inset 50px top and bottom.
+const TILE_CREST = 52, CREST_PAD_RATIO = 0.10;
+// Tile column spacing: TILE_GAP between the crest and the name, TILE_NAME_GAP between the name and
+// the code/skill line. The second is set on the row itself rather than by widening the flex gap,
+// which would push the crest down too.
+const TILE_GAP = 9, TILE_NAME_GAP = 3;
+function LeagueCrest({ league, size = 20, style }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [league]);
+  const src = failed ? `${import.meta.env.BASE_URL}leagues/placeholder.png` : leagueLogoSrc(league);
+  return <img src={src} alt="" width={size} height={size} onError={() => setFailed(true)}
+    style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, ...style }} />;
+}
 const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
@@ -3144,7 +3378,7 @@ const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome
 const sel = { ...inp, cursor: "pointer" };
 const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
 const delBtn = { background: "transparent", border: "none", color: "var(--ui-danger)", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
-const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "#ffffff", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
+const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "var(--ui-text)", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
 const chk = { fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
 const POS_CLR = {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)",CB:"var(--ui-info)",LB:"var(--ui-info)",RB:"var(--ui-info)",LWB:"var(--ui-info)",RWB:"var(--ui-info)",DM:"var(--ui-ok)",CM:"var(--ui-ok)",AM:"var(--ui-ok)",LM:"var(--ui-ok)",RM:"var(--ui-ok)",LW:"var(--ui-attack)",RW:"var(--ui-attack)",ST:"var(--ui-attack)"};
 
@@ -3155,6 +3389,36 @@ const panelBox = { background: "var(--chrome-panel)", border: "1px solid var(--c
 const panelHead = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14, minWidth: 0 };
 // A PanelTitle's rail + gap occupy 12px before the text. When the header lives inside the same box
 // as the body it labels, pull its left padding back by that much so the two share a left edge.
+// Stadiums with a backdrop image in /public/stadiums. Listed here because files under public/ are
+// copied verbatim and cannot be enumerated at build time — drop a new .jpg in that folder and add
+// its name to this array. Names must match a team's `stadium` field exactly for the city and owner
+// to resolve; one that matches nothing still works, it just shows without them.
+const STADIUM_IMAGES = [
+  "1st of October Arena", "Arena Tsukumo", "Bankoku Concourse", "Chūkyō Metropolitano", "Fudō Stadium",
+  "Hikari Heliodrome @ TIU", "IzuArena", "Kamabuchi Power Park", "Komorebi Evergreen Park",
+  "Kyōwa Stadium", "Makinohara Green", "Mugen-dai Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium",
+  "Sekiringaku Community Stadium", "Spartak Coliseum", "Tadamune Kuronami National Stadium",
+  "Tenshukaku Stadium Kōgai", "The Cauldron", "Uguisu Park"];
+// Four candidates layered as one background: CSS paints the first that loads and silently skips the
+// rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
+// (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
+// server matches on bytes. Both extensions because the folder holds a mix.
+// Stadiums whose file is stored under a different name from the one they display. "Hikari
+// Heliodrome @ TIU" was the only one: the file was correct, the encoding was correct and the server
+// answered 200 for the URL, but neither the picker thumbnail nor the match backdrop would load it —
+// so the "@" is off the wire entirely rather than debugged further. Display name keeps the "@".
+const STADIUM_FILE = { "Hikari Heliodrome @ TIU": "Hikari Heliodrome TIU" };
+const stadiumFile = (name) => STADIUM_FILE[name] || name;
+const stadiumBg = (name) => [stadiumFile(name).normalize("NFC"), stadiumFile(name).normalize("NFD")]
+  // Percent-encoded AND raw. encodeURIComponent escapes "@" to %40, which is correct but is a
+  // different request path from the literal "@" — anything in front of the files that matches on
+  // the raw path (a proxy, a CDN, a host that does not decode) sees the two as different names, and
+  // only "Hikari Heliodrome @ TIU" has an "@" to trip on. The raw form is legal inside url("...");
+  // the browser encodes the spaces itself and leaves the "@" alone.
+  .flatMap(n => [encodeURIComponent(n), n])
+  .flatMap(n => [".jpg", ".jpeg"].map(ext => `url("${import.meta.env.BASE_URL}stadiums/${n}${ext}")`))
+  .join(", ");
+
 const PANEL_HEAD_INSET = 12;
 // ─── DESIGN SCALE ────────────────────────────────────────────────────────────
 // Before this the file carried 13 corner radii and 17 letter-spacings, so the same kind of
@@ -3406,7 +3670,7 @@ function gvGoalMouth(gv, delay) {
   const wPos = [[gL,gT],[gL+85,gT],[gR,gT],[gL,gB],[gL+85,gB],[gR,gB]];
   const dX = [(gL+gR)/2-44,(gL+gR)/2,(gL+gR)/2+44], dY = (gT+gB)/2+4;
   const pos = result === "miss" ? mPos[zone] : result === "woodwork" ? wPos[zone] : zPos[zone];
-  const col = result === "goal" ? "#a3be8c" : "#bf616a";
+  const col = result === "goal" ? "var(--ui-ok)" : "var(--ui-danger)";
   const bx = (gL+gR)/2, by = gB+13;
   const saved = result === "save";
   const d = Math.max(0, delay || 0);
@@ -3447,7 +3711,7 @@ function gvPitch(gv, clr, staticAssist) {
   const t2 = (A && !staticAssist) ? 0.9 : 0.1;
   const lx = (x, lim) => Math.max(26, Math.min(lim, x));
   const ly = (y) => y < 16 ? y+13 : y-8;
-  const dotClr = clr || "#ffffff";
+  const dotClr = clr || "var(--ui-text)";
   return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
     <rect x="1" y="1" width="198" height="128" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="2" />
     <line x1="100" y1="1" x2="100" y2="129" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
@@ -3494,7 +3758,7 @@ function gvPitch(gv, clr, staticAssist) {
 // time, each new segment mounting fresh (real React mount, not a key-remount trick) so its
 // CSS line-draw animation plays on every Next/Back the same way it would the first time.
 function gvChancePitch(chain, clr, step, shotGv, replay) {
-  const dotClr = clr || "#ffffff";
+  const dotClr = clr || "var(--ui-text)";
   const pts = chain.map(h => [h.pos.x*2, h.pos.y*2]);
   const s = Math.max(0, Math.min(step, pts.length - 1));
   const FS = 5.5, LH = FS + 3;
@@ -3569,11 +3833,34 @@ function gvChanceGoalPreview() {
     <text x={dX} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" opacity="0.35">🧤</text>
   </svg>);
 }
+// Narrowest window the app will render in. Below it the app is not shown at all — a layout built
+// for width degrades into something misleading rather than merely cramped, and a wrong-looking
+// table is worse than an honest refusal.
+//
+// 1440 is derived, not picked. Every wide tab is two columns of (W - 36 root padding - 16 gap)/2,
+// and the live tab's left column splits again into two team cards, each of which splits AGAIN into
+// two name columns — so a name cell gets roughly (W - 52)/8 minus the position chip and stamina
+// badge. At the old 1000 that left ~47px and every name past eight characters was an ellipsis
+// ("K. Higashiy…", "T. Hargre…"). 1440 gives ~95px, which clears the longest names in the roster.
+// The page itself caps at 1600, so this is deliberately close to the size the layout was drawn at.
+// The gate is a floor AND a shape: every screen here splits into two side-by-side columns, so a
+// tall window clears 1000px and still has nowhere to put the second one. orientation:portrait is
+// exactly width < height, which is the condition, and the browser re-evaluates it on rotate.
+const MIN_APP_WIDTH = 1440;
 const APP_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
 @import url('https://fonts.googleapis.com/css2?family=Aoboshi+One&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Width gate. Pure CSS on purpose: no resize listener, no state, nothing to re-render — it flips
+   the instant the window crosses the threshold, including on rotate. The <style> tag lives inside
+   .app-root but style elements apply document-wide regardless of an ancestor's display, so hiding
+   the body cannot take these rules down with it. */
+.width-gate{display:none;}
+@media(max-width:${MIN_APP_WIDTH - 1}px),(orientation:portrait){
+  .app-body{display:none;}
+  .width-gate{display:flex;}
+}
 td,th{vertical-align:middle;}
 html{overflow-y:scroll;}
 body{font-family:'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;}
@@ -3585,6 +3872,10 @@ body{font-family:'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-s
 input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;}
 /* Roster rows open a full team panel on click, so they need to read as buttons, not as table
    rows: a brand rail slides in from the left and the chevron lights up under the cursor. */
+.cell-link:hover{color:var(--chrome-brand) !important;text-decoration:underline;}
+.team-tile{transition:transform 0.12s,border-color 0.12s,box-shadow 0.12s;}
+.team-tile:hover{transform:translateY(-2px);border-color:var(--chrome-muted-66) !important;box-shadow:0 4px 14px var(--ui-shadow-2);}
+.team-tile:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
 .teamrow{position:relative;transition:background 0.13s,padding-left 0.13s;}
 .teamrow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--chrome-brand);transform:scaleX(0);transform-origin:left;transition:transform 0.13s;}
 .teamrow:hover{background:var(--chrome-muted-22);padding-left:16px;}
@@ -3629,9 +3920,6 @@ details[open]>summary .dta{transform:rotate(90deg);}
 .panel{background:var(--chrome-panel);border:1px solid var(--chrome-border);border-radius:10px;}
 select{cursor:pointer;}
 input::placeholder{color:var(--chrome-muted);}
-.warn-badge{position:relative;}
-.warn-badge::after{content:attr(data-tip);position:absolute;top:100%;left:0;margin-top:6px;background:var(--chrome-bg);border:1px solid var(--chrome-border);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.6;white-space:pre-line;color:var(--ui-text);z-index:1000;width:max-content;max-width:360px;box-shadow:0 4px 16px var(--ui-shadow-4);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.1s ease;}
-.warn-badge:hover::after{opacity:1;visibility:visible;}
 table{border-spacing:0;}
 @keyframes goalFlash{0%{text-shadow:0 0 24px var(--ui-text),0 0 48px var(--chrome-brand-44);}50%{text-shadow:0 0 36px var(--ui-text),0 0 72px var(--chrome-brand-44);}100%{text-shadow:none;}}
 @keyframes cardPop{0%{opacity:0;transform:translateY(8px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
@@ -3654,60 +3942,6 @@ table{border-spacing:0;}
 @keyframes subSlideOff{0%{opacity:0;transform:translateX(32px);}100%{opacity:1;transform:translateX(0);}}
 .sub-on-line{animation:subSlideOn 0.55s cubic-bezier(0.22,1,0.36,1) both;}
 .sub-off-line{animation:subSlideOff 0.55s cubic-bezier(0.22,1,0.36,1) 0.35s both;}
-/* ── Narrow viewports ──────────────────────────────────────────────────────────
-   Layout only. Deliberately NOT a theme: data-theme carries the colour palette, so a
-   phone keeps whichever palette is selected and just gets a layout that fits.
-
-   Two breakpoints, because the failures happen at different widths. The dense
-   two-team panels (player stats, pre-match cards) need roughly 380px per side for
-   their POS/OVR/PLAYER/G/A/C/D/S/RTG columns, so they break well before a phone —
-   they stack at 900px. Everything else holds until a genuine phone width. */
-@media(max-width:1000px){
-  /* One team's stats above the other, never side by side: each side needs ~380px for its
-     POS/OVR/PLAYER/G/A/C/D/S/RTG columns, so two of them stop fitting well before phone width. */
-  .grid-2col{grid-template-columns:1fr !important;gap:14px 0 !important;}
-  .grid-2col>.divider-col{display:none !important;}
-  .pre-match-grid{grid-template-columns:1fr !important;}
-  /* A head row must break onto a second line rather than letting its title and its controls
-     shrink past their own content and overlap. */
-  .panel-head-row{flex-wrap:wrap !important;gap:8px !important;}
-  .panel-head-row>*{min-width:0 !important;}
-  .squad-grid{grid-template-columns:1fr 1fr !important;}
-  .wide-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
-  .player-row{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-}
-@media(max-width:600px){
-  .app-root{padding:10px 8px !important;}
-  .grid-4col,.grid-stack{grid-template-columns:1fr !important;}
-  .squad-grid{grid-template-columns:1fr !important;}
-
-  /* Dialogs go effectively full-screen rather than sitting in a 900-1000px box. */
-  .modal-shell{max-width:100% !important;width:100% !important;max-height:100dvh !important;
-    border-radius:0 !important;padding-left:12px !important;padding-right:12px !important;}
-
-  /* Scoreboard. Five logical columns (crest, minutes, names, score, names, minutes, crest)
-     cannot survive a phone, so the full team names go and the code+skill line beneath them
-     carries the identity instead — it says the same thing in a third of the width, and
-     MarqueeName only clips to nonsense ("gawa") when squeezed. */
-  .sb-grid{column-gap:8px !important;grid-template-columns:auto auto auto !important;
-    justify-content:center !important;}
-  .sb-col{min-width:0 !important;}
-  .sb-name{display:none !important;}
-  .sb-rows{column-gap:6px !important;}
-  .sb-crest{width:34px !important;height:34px !important;}
-  .sb-crest img,.sb-crest svg{width:34px !important;height:auto !important;}
-  .sb-crest>div{position:static !important;transform:none !important;}
-  .sb-score{font-size:24px !important;letter-spacing:0 !important;}
-
-  /* Touch targets and wrapping. */
-  button,select{min-height:32px;}
-  input,select,textarea{font-size:16px;}   /* iOS zooms the page below 16px */
-}
-@media(max-width:380px){
-  .sb-crest,.sb-crest img,.sb-crest svg{width:26px !important;}
-  .sb-crest{height:26px !important;}
-  .sb-score{font-size:20px !important;}
-}
 details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
   .ev-enter,.goal-flash,.tick-btn,.live-dot,.card-slam,.sparkle-pop,.injury-shake,.sub-on-line,.sub-off-line{animation:none !important;}
@@ -3757,8 +3991,47 @@ export default function App() {
   }), [teams, natOvrMap]);
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
   const [showBulk, setShowBulk] = useState(false);
-  const [teamLeagueFilter, setTeamLeagueFilter] = useState("");
+  // Always a real league — the rail has no "all" row, so there is no empty state to represent.
+  const [teamLeagueFilter, setTeamLeagueFilter] = useState("Avium International");
   const [teamSearch, setTeamSearch] = useState("");
+  // Session-only: which presets are unlocked for editing, and which have actually been changed.
+  // Unlocking on its own is not an edit, so the two are tracked separately.
+  const [unlockedTeams, setUnlockedTeams] = useState(() => new Set());
+  const [editedTeams, setEditedTeams] = useState(() => new Set());
+  // Marks a scoreboard name as no longer matching the TSV it came from. `.sb-name` is hidden on
+  // mobile, so the abbreviation carries it there — both get the same style or the signal disappears.
+  const editedStyle = (id) => editedTeams.has(id) ? { fontStyle: "italic" } : null;
+  // Bulk import only ever creates Custom teams, so save/load belongs to that tab. The open panels
+  // are gated on it too — otherwise switching leagues leaves an orphaned editor above the list.
+  const customTab = teamLeagueFilter === "Custom";
+  // Leagues that actually have teams, in LEAGUE_ORDER. Drives the roster's left rail.
+  const rosterLeagues = useMemo(() => groupByLeague(teams).filter(Boolean), [teams]);
+  // Rail sections. Complete vs incomplete is a team count because nothing records a league's
+  // intended size — the real divisions run 12-20 and the placeholder ones hold 2, so 8 sits in a
+  // wide empty gap rather than near any real value. Custom is bucketed by the same rule as
+  // everything else rather than getting a section of its own.
+  const rosterSections = useMemo(() => {
+    const intl = [], full = [], stub = [];
+    for (const entry of rosterLeagues)
+      (entry[0] === "Avium International" ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+    return [["Avium International", intl], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
+      .filter(([, xs]) => xs.length);
+  }, [rosterLeagues]);
+  // The rail only lists leagues that have teams, so a filter pointing at one that does not exist
+  // leaves nothing selected and an empty grid with no way back. Snap to the first real league —
+  // covers a roster with no international pool, and any league that empties out.
+  useEffect(() => {
+    if (!rosterLeagues.length) return;
+    if (!rosterLeagues.some(([lg]) => lg === teamLeagueFilter)) setTeamLeagueFilter(rosterLeagues[0][0]);
+  }, [rosterLeagues, teamLeagueFilter]);
+  // A league's nation, as the national team itself — it carries both the display name and a crest,
+  // so there is no separate flag asset to keep in sync. Null for the international pool (it IS the
+  // nations) and for Custom.
+  const leagueNation = (lg) => {
+    const code = LEAGUE_NAT[lg];
+    return code ? (teams.find(t => t.league === "Avium International" && t.code === code) || null) : null;
+  };
+  const leagueAvgSkill = (ts) => ts?.length ? Math.round(ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length) : 0;
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
     const q = teamSearch.trim().toLowerCase();
@@ -3767,6 +4040,9 @@ export default function App() {
   }, [teams, teamLeagueFilter, teamSearch]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
+  // The team the right pane has drilled into. Read from `teams`, not effTeams, so the panel edits
+  // the same objects updateTeam writes to.
+  const detailTeam = useMemo(() => expandedTeam ? (teams.find(t => t.id === expandedTeam) || null) : null, [expandedTeam, teams]);
       // Player table windowing. ~2,300 rows x 6 cells is ~14k DOM nodes, of which only the ~50
   // inside the 1350px scroll box are ever visible — mounting the rest is what made opening the
   // Roster tab lag. Render the visible slice plus overscan, and pad with spacer rows so the
@@ -3777,9 +4053,8 @@ export default function App() {
   const [plScroll, setPlScroll] = useState(0);
   const [plRowH, setPlRowH] = useState(26);
   const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
-  const [playerNatFilter, setPlayerNatFilter] = useState("");
+  const [playerNatFilter, setPlayerNatFilter] = useState("");   // "" = all players
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
-  const [playerClubFilter, setPlayerClubFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   // Measure the real row height rather than hardcoding it — line-height differs between themes,
   // and a wrong constant makes the spacer rows drift out of sync with the scrollbar.
@@ -3791,7 +4066,7 @@ export default function App() {
   useEffect(() => {
     if (plScrollRef.current) plScrollRef.current.scrollTop = 0;
     setPlScroll(0);
-  }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerClubFilter, playerSearch]);
+  }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerSearch]);
   const [dupCodeId, setDupCodeId] = useState(null);
   const [bestXiNat, setBestXiNat] = useState("");
   const [showBestXiExport, setShowBestXiExport] = useState(false);
@@ -3807,6 +4082,9 @@ export default function App() {
   const [lmNeutralVenueLoc, setLmNeutralVenueLoc] = useState("");
   const [lm2ndLeg, setLm2ndLeg] = useState(false);
   const [lmMatch, setLmMatch] = useState(null);
+  // "subs" | "tactics" | null. Both are overlays rather than panels: the live tab has to fit one
+  // viewport with nothing scrolling, and these two are the only blocks whose height is unbounded.
+  const [lmPanel, setLmPanel] = useState(null);
   const [lmStartScore, setLmStartScore] = useState([0, 0]);
   const lmRng = useRef(null);
   const lmFeedRef = useRef(null);
@@ -3815,7 +4093,6 @@ export default function App() {
   const [gvReplayKeys, setGvReplayKeys] = useState({});
   const [chanceStep, setChanceStep] = useState({});
   const [goalFlash, setGoalFlash] = useState(null);
-  const [lmTab, setLmTab] = useState("stats");
   const [autoPlay, setAutoPlay] = useState(false);
   const [autoSpeed, setAutoSpeed] = useState(1500);
   const [lmAutoSubs, setLmAutoSubs] = useState(true);
@@ -3849,7 +4126,7 @@ export default function App() {
     const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const W = (m) => koWinner(m);
     let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:var(--chrome-panel)">';
-    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}</style>';
+    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:var(--ui-text);font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:var(--ui-attack);font-size:8px}</style>';
     s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--chrome-panel)" stop-opacity="0"/><stop offset="55%" stop-color="var(--chrome-panel)" stop-opacity="1"/><stop offset="100%" stop-color="var(--chrome-panel)" stop-opacity="1"/></linearGradient></defs>';
     const card = (m, x, y, fin) => {
       const w = W(m), brd = fin ? "var(--chrome-brand)" : "var(--chrome-muted)", bw = fin ? 2 : 1;
@@ -3883,7 +4160,7 @@ export default function App() {
         const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
         const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:var(--chrome-muted)">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
-        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
+        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:var(--ui-attack)">('+val+')</text>'; };
         legText(l1h, l1End, y+19);
         legText(l2h, l2End, y+19);
         aggText(ah, aggEnd, y+19, hCls);
@@ -3893,7 +4170,7 @@ export default function App() {
         aggText(aa, aggEnd, y+37, aCls);
         penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
-        const lblClr = m.result.pen ? "#d08770" : "var(--chrome-muted)";
+        const lblClr = m.result.pen ? "var(--ui-attack)" : "var(--chrome-muted)";
         addLabel(lbl, lblClr, l1End-legColW-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
@@ -3905,7 +4182,7 @@ export default function App() {
         let asc = String(as2); if(m.result?.pen) asc += ' ('+m.result.pen.away+')';
         s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
-        const lblClr = m.result?.pen ? "#d08770" : "var(--chrome-muted)";
+        const lblClr = m.result?.pen ? "var(--ui-attack)" : "var(--chrome-muted)";
         const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
         addLabel(lbl, lblClr, x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
       }
@@ -3946,7 +4223,7 @@ export default function App() {
     const fY=pd+hd+tH/2-cH/2;
     s+='<text x="'+(cx+cW/2)+'" y="'+(fY-6)+'" style="fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">FINAL</text>';
     card(ko.rounds[nR-1].matches[0],cx,fY,true);
-    if(ko.thirdPlace){const tpY=fY+cH+24; s+='<text x="'+(cx+cW/2)+'" y="'+(tpY-6)+'" style="fill:#d08770;font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">3RD PLACE</text>'; card(ko.thirdPlace,cx,tpY,false);}
+    if(ko.thirdPlace){const tpY=fY+cH+24; s+='<text x="'+(cx+cW/2)+'" y="'+(tpY-6)+'" style="fill:var(--ui-attack);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600">3RD PLACE</text>'; card(ko.thirdPlace,cx,tpY,false);}
     cx+=cW;
     const rev=[...rightR].reverse();
     // Right side: calculate all x positions first, render outer→inner
@@ -4001,7 +4278,7 @@ export default function App() {
     const esc = (str) => String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const W = (m) => koWinner(m);
     let s = '<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="background:var(--chrome-panel)">';
-    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:#ffffff;font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:#d08770;font-size:8px}.sec{fill:var(--chrome-muted);font-size:9px;font-weight:700;letter-spacing:2px}.gfsec{fill:var(--chrome-brand);font-size:9px;font-weight:700;letter-spacing:2px}</style>';
+    s += '<style>text{font-family:'+fontStack+';fill:var(--chrome-muted);font-size:10px}.w{fill:var(--ui-text);font-weight:600}.h{fill:var(--chrome-muted);font-size:8px;text-anchor:middle;letter-spacing:1px;font-weight:600}.p{fill:var(--ui-attack);font-size:8px}.sec{fill:var(--chrome-muted);font-size:9px;font-weight:700;letter-spacing:2px}.gfsec{fill:var(--chrome-brand);font-size:9px;font-weight:700;letter-spacing:2px}</style>';
     s += '<defs><linearGradient id="nameFade" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--chrome-panel)" stop-opacity="0"/><stop offset="55%" stop-color="var(--chrome-panel)" stop-opacity="1"/><stop offset="100%" stop-color="var(--chrome-panel)" stop-opacity="1"/></linearGradient></defs>';
     const card = (m, x, y, brd, bw) => {
       const w = W(m);
@@ -4028,11 +4305,11 @@ export default function App() {
         const rightEdge = x+cW-6, aggEnd = rightEdge-penColW, l2End = aggEnd-aggColW, l1End = l2End-legColW;
         const legText = (val, xEnd, yy) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;fill:var(--chrome-muted)">'+val+'</text>'; };
         const aggText = (val, xEnd, yy, cls) => { s += '<text x="'+xEnd+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+cls+'>'+val+'</text>'; };
-        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:#d08770">('+val+')</text>'; };
+        const penText = (val, yy) => { if (!m.result.pen) return; s += '<text x="'+rightEdge+'" y="'+yy+'" text-anchor="end" style="font-family:JetBrains Mono,monospace;font-size:8px;fill:var(--ui-attack)">('+val+')</text>'; };
         legText(l1h, l1End, y+19); legText(l2h, l2End, y+19); aggText(ah, aggEnd, y+19, hCls); penText(m.result.pen?.home, y+19);
         legText(l1a, l1End, y+37); legText(l2a, l2End, y+37); aggText(aa, aggEnd, y+37, aCls); penText(m.result.pen?.away, y+37);
         const lbl = m.result.pen ? "PENS" : m.result.et ? "AET" : (m.result.awayGoalsRule && ah===aa) ? "AG" : null;
-        addLabel(lbl, m.result.pen ? "#d08770" : "var(--chrome-muted)", l1End-legColW-4, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, m.result.pen ? "var(--ui-attack)" : "var(--chrome-muted)", l1End-legColW-4, winnerIsHome ? y+19 : y+37);
       } else {
         const hs = m.result?(isPart?m.result.leg1.home:m.result.ftHome+(m.result.et?.home||0)):"";
         const as2 = m.result?(isPart?m.result.leg1.away:m.result.ftAway+(m.result.et?.away||0)):"";
@@ -4044,7 +4321,7 @@ export default function App() {
         s += '<text x="'+(x+cW-6)+'" y="'+(y+37)+'" text-anchor="end" style="font-family:JetBrains Mono,monospace"'+(w===m.away?' class="w"':'')+'>'+asc+'</text>';
         const lbl = m.result && !isPart ? (m.result.pen ? "PENS" : m.result.et ? "AET" : null) : null;
         const scoreW2 = String(m.result?.pen ? asc : hsc).length * 6 + 16;
-        addLabel(lbl, m.result?.pen ? "#d08770" : "var(--chrome-muted)", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
+        addLabel(lbl, m.result?.pen ? "var(--ui-attack)" : "var(--chrome-muted)", x+cW-6-scoreW2, winnerIsHome ? y+19 : y+37);
       }
     };
     const _sk = (m) => m.bye;
@@ -4128,8 +4405,8 @@ export default function App() {
     if (ko.reset && (ko.reset.home || ko.reset.away)) {
       s += '<line x1="'+wbEndX+'" y1="'+gfMidY+'" x2="'+(wbEndX+cn)+'" y2="'+gfMidY+'" stroke="var(--chrome-muted)"/>';
       wbEndX += cn;
-      s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:#ebcb8b">RESET</text>';
-      card(ko.reset, wbEndX, gfMidY - cH/2, "#ebcb8b", 1);
+      s += '<text x="'+(wbEndX+cW/2)+'" y="'+(wbBaseY+8+12)+'" class="h" style="fill:var(--ui-warn)">RESET</text>';
+      card(ko.reset, wbEndX, gfMidY - cH/2, "var(--ui-warn)", 1);
       wbEndX += cW;
     }
     // LB section
@@ -4154,16 +4431,14 @@ export default function App() {
   const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
+  const [tUnavailOpen, setTUnavailOpen] = useState(false);
+  const [tChampOpen, setTChampOpen] = useState(false);
   const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
-  const [tDrawLog, setTDrawLog] = useState([]);
-  const [tKODrawLog, setTKODrawLog] = useState([]);
   const [tManual, setTManual] = useState(null); // manual allocation state
   const [tKOManual, setTKOManual] = useState(null);
   const [tByeManual, setTByeManual] = useState(null);
-  const [tDrawAnim, setTDrawAnim] = useState(null);
-  const tDrawTimerRef = useRef(null);
   const tModeClickRef = useRef({ n: 0, t: 0 });
   const [tPoolData, setTPoolData] = useState(null);
   const [tEdit, setTEdit] = useState(null); // {gi, ri, mi, h:"", a:""} for manual score entry
@@ -4180,6 +4455,7 @@ export default function App() {
   const [tSlots, setTSlots] = useState([]);          // metadata only — payloads live under their own keys
   const [tActiveSlot, setTActiveSlot] = useState(null);
   const [showSaves, setShowSaves] = useState(false);
+  const [tSavesOpen, setTSavesOpen] = useState(false);
   const [slotMsg, setSlotMsg] = useState("");
   const [slotRenaming, setSlotRenaming] = useState(null); // {id, name}
   const [slotConfirmDelete, setSlotConfirmDelete] = useState(null);
@@ -4202,6 +4478,11 @@ export default function App() {
     return -1;
   }, [tGroups]);
   const allGroupForms = useMemo(() => tGroups.map(g => computeForm(g)), [tGroups]);
+  // Two-per-row leaves the name column no room once the form guide is in it, so form drops out there.
+  const groupCols = tGroups.length > GROUP_STACK_MAX ? 2 : 1;
+  const showForm = groupCols === 1;
+  // Standings rows carry only name/code, so the crest's colour fallback needs the real team object.
+  const groupTeamByName = useMemo(() => new Map(tGroups.flatMap(g => (g.teams || []).map(t => [t.name, t]))), [tGroups]);
   const [copiedGroup, setCopiedGroup] = useState(null);
   // Tab-separated so it pastes into a spreadsheet as real columns rather than one text blob.
   // Form is the full run (not the last-5 the table shows) — it's an export, not a glance.
@@ -4282,7 +4563,10 @@ export default function App() {
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
   const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
-  const updateTeam = (id, f, v) => setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; }));
+  // Every team and player field in the panel routes through here, so this is the one place that has
+  // to notice an edit. Custom teams are excluded: they are meant to be edited and they persist.
+  const updateTeam = (id, f, v) => { if (!id.startsWith("Custom::")) setEditedTeams(s => s.has(id) ? s : new Set(s).add(id));
+    return setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; })); };
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
@@ -4401,6 +4685,7 @@ export default function App() {
           next[k].matches += d.matches;
           next[k].subApp = (next[k].subApp||0) + d.subApp;
           next[k].totalRating += d.totalRating;
+          if (d.matches || d.subApp) next[k].form = playerFormFrom(next[k].form, d.totalRating / Math.max(1, d.matches + d.subApp));
           const prevYc = next[k].yellows||0;
           next[k].yellows += d.yellows;
           next[k].chances = (next[k].chances||0) + d.chances;
@@ -4521,7 +4806,7 @@ export default function App() {
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
     // Same stakes math as the bulk instasim paths (tScorinate/tSimKOMatch), just scoped to
     // this one fixture instead of a whole round — see computeGroupUrg/computeKOStakes.
-    let homeStakes, awayStakes, homeNextOpp = null, awayNextOpp = null;
+    let homeStakes, awayStakes, homeNextOpp = null, awayNextOpp = null, homeHor = null, awayHor = null, liveTotal = 0;
     let liveIsKO = false, liveIsFinal = false, liveIsTP = false, liveRemH = 0, liveRemA = 0;
     if (target.type === "group") {
       const g = tGroups[target.gi];
@@ -4530,8 +4815,11 @@ export default function App() {
       liveRemA = g.schedule.slice(target.ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === awayTeam.name || x.away.name === awayTeam.name)).length, 0) - 1;
       homeStakes = computeGroupUrg(g.standings, homeTeam.name, qc, liveRemH);
       awayStakes = computeGroupUrg(g.standings, awayTeam.name, qc, liveRemA);
-      homeNextOpp = nextOpponentSkill(g.schedule, target.ri, homeTeam.name);
-      awayNextOpp = nextOpponentSkill(g.schedule, target.ri, awayTeam.name);
+      homeHor = fixtureHorizon(g.schedule, target.ri, homeTeam.name);
+      awayHor = fixtureHorizon(g.schedule, target.ri, awayTeam.name);
+      homeNextOpp = homeHor[0]?.skill ?? null;
+      awayNextOpp = awayHor[0]?.skill ?? null;
+      liveTotal = g.schedule.length;
     } else {
       liveIsKO = true;
       const bk = target.bracket || (target.tp ? "tp" : "wb");
@@ -4552,13 +4840,18 @@ export default function App() {
     };
 
     const hSkill = teamById(liveHId)?.skill, aSkill = teamById(liveAId)?.skill;
-    const hCtx = { stakes: isL2 ? awayStakes : homeStakes, ourSkill: hSkill, oppSkill: aSkill, nextOppSkill: isL2 ? awayNextOpp : homeNextOpp, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemA === 0 : liveRemH === 0, remainingGames: isL2 ? liveRemA : liveRemH };
-    const aCtx = { stakes: isL2 ? homeStakes : awayStakes, ourSkill: aSkill, oppSkill: hSkill, nextOppSkill: isL2 ? homeNextOpp : awayNextOpp, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemH === 0 : liveRemA === 0, remainingGames: isL2 ? liveRemH : liveRemA };
+    const hCtx = { stakes: isL2 ? awayStakes : homeStakes, ourSkill: hSkill, oppSkill: aSkill, nextOppSkill: isL2 ? awayNextOpp : homeNextOpp, horizon: isL2 ? awayHor : homeHor, totalGames: liveTotal, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemA === 0 : liveRemH === 0, remainingGames: isL2 ? liveRemA : liveRemH };
+    const aCtx = { stakes: isL2 ? homeStakes : awayStakes, ourSkill: aSkill, oppSkill: hSkill, nextOppSkill: isL2 ? homeNextOpp : awayNextOpp, horizon: isL2 ? homeHor : awayHor, totalGames: liveTotal, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemH === 0 : liveRemA === 0, remainingGames: isL2 ? liveRemH : liveRemA };
     const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId, hCtx);
     const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId, aCtx);
     const _tsk = tConfig.testMode ? TEST_SKILL : null;
-    const mapP = (p) => ({name:p.name,pos:p.pos,ovr:_tsk??p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-    const mapB = (p) => ({name:p.name,pos:p.pos,ovr:_tsk??p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    // One shift per team, over starters and bench together, so a substitute keeps their standing
+    // relative to the player they come on for. Passed in rather than closed over: mapP/mapB serve
+    // both sides, and each side has its own mean.
+    const shiftFor = (sq, id) => tConfig.testMode ? testOvrShift([...sq.starters, ...sq.bench], teamById(id).skill) : (p) => p.ovr;
+    const hOvr = shiftFor(hSquad, liveHId), aOvr = shiftFor(aSquad, liveAId);
+    const mapP = (ovrOf) => (p) => ({name:p.name,pos:p.pos,ovr:ovrOf(p),rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
+    const mapB = (ovrOf) => (p) => ({name:p.name,pos:p.pos,ovr:ovrOf(p),rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
 
     lmRng.current = new RNG(Date.now());
     const init = createMatchState();
@@ -4576,8 +4869,8 @@ export default function App() {
     init.score = [0, 0];
     init.startScore = startScore;
     init.isSecondLeg = isL2;
-    init.players = { home: hSquad.starters.map(mapP), away: aSquad.starters.map(mapP) };
-    init.bench = { home: hSquad.bench.map(mapB), away: aSquad.bench.map(mapB) };
+    init.players = { home: hSquad.starters.map(mapP(hOvr)), away: aSquad.starters.map(mapP(aOvr)) };
+    init.bench = { home: hSquad.bench.map(mapB(hOvr)), away: aSquad.bench.map(mapB(aOvr)) };
     init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
     init.matchUrg = { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 };
     ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
@@ -4624,9 +4917,8 @@ export default function App() {
     setTVenueOverrides(ss.tVenueOverrides || {});
     _rc.clear(); if (ss.tReplayCounts) _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1);
     setTEdit(null); setTKoEdit(null); setTScoreError(""); setTManual(null); setTKOManual(null);
-    setTDrawLog([]); setTKODrawLog([]); setTPoolData(null); setTDrawAnim(null);
+    setTPoolData(null);
     setTPendingPlayLive(null); setTLiveTarget(null); setExpandedRounds(new Set());
-    if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; }
   };
   const commitSlots = (slots, activeId) => { setTSlots(slots); writeSlotIndex(slots, activeId); };
 
@@ -4939,7 +5231,24 @@ export default function App() {
   const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
   const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
   const lmIsSetup = !lmMatch;
-
+  // Which slot the next click in the setup team list fills. Two slots, one active, and it flips
+  // after every pick — so the common case (choose a fixture) is two clicks with no mode-setting.
+  const [lmPick, setLmPick] = useState("home");
+  const [lmLeague, setLmLeague] = useState("Avium International");
+  // Same guard the roster rail has: a league that no longer exists leaves nothing selected and an
+  // empty grid with no way back.
+  useEffect(() => {
+    if (!rosterLeagues.length) return;
+    if (!rosterLeagues.some(([lg]) => lg === lmLeague)) setLmLeague(rosterLeagues[0][0]);
+  }, [rosterLeagues, lmLeague]);
+  const lmPickTeam = (id) => {
+    // A side cannot play itself; the tile is already disabled, this is the guard behind it.
+    if (id === (lmPick === "home" ? lmA : lmH)) return;
+    (lmPick === "home" ? setLmH : setLmA)(id);
+    // The active slot deliberately does NOT flip: clicking twice should correct the slot you are
+    // filling, not silently move to the other one.
+    setLmMatch(null);
+  };
   // ─── TOURNAMENT ───
   const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;
   const tPerGroupMax = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(tournamentTeams.length / tConfig.numGroups) : 0;
@@ -4967,7 +5276,7 @@ export default function App() {
     // Snapshot the selected participants' current squads/config at generation time —
     // roster edits afterward must not retroactively affect this tournament.
     const genTeams = tournamentTeams.map(t => ({...t, squad: t.squad ? t.squad.map(p => ({...p})) : null, strategy: {...t.strategy}}));
-    if (tConfig.testMode) genTeams.forEach(t => { t.skill = TEST_SKILL; if (t.squad) t.squad.forEach(p => { p.ovr = TEST_SKILL; }); });
+    if (tConfig.testMode) genTeams.forEach(t => { const sh = testOvrShift(t.squad, t.skill); if (t.squad) t.squad.forEach(p => { p.ovr = sh(p); }); t.skill = TEST_SKILL; });
     // Single knockout — skip groups entirely
     if (tConfig.mode === "single" && tConfig.singleType === "knockout") {
       const isDE = tConfig.koFormat === "double_elim";
@@ -4982,16 +5291,16 @@ export default function App() {
       const applyDE = (ko) => { if (isDE) convertToDoubleElim(ko, false); };
       if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(genTeams, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
+      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko } = buildKnockoutDraw(genTeams, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "manual") { let n2=1; while(n2<genTeams.length)n2*=2; setTKOManual({ pool: [...genTeams], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-genTeams.length }); setTPhase("ko_manual"); }
-      setTGroups([]); setTDrawLog([]); setLoading(false); return;
+      setTGroups([]); setLoading(false); return;
     }
     const ng = tConfig.numGroups;
     const fmt = tConfig.matchFormat;
     const m = ng === 1 ? "seed" : (mode || tConfig.allocMode);
-    if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
-    else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); setTDrawLog([]); }
-    else if (m === "draw") { const rng = new RNG(Date.now()); const { grps, log } = allocDraw(genTeams, ng, tConfig.numPots, rng, fmt, tConfig.rrLegs); setTDrawAnim({ log, grps, index: 0, pending: false, auto: false }); setTDrawLog(log); setTPhase("drawing"); }
+    if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    else if (m === "draw") { const rng = new RNG(Date.now()); const { grps } = allocDraw(genTeams, ng, tConfig.numPots, rng, fmt, tConfig.rrLegs); setTGroups(grps); setTPhase("groups"); }
     else if (m === "manual") { const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] })); setTManual({ pool: [...genTeams], grps }); setTPhase("manual"); }
     setLoading(false);
     }, 40);
@@ -5017,35 +5326,8 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawLog([]); setTKODrawLog([]); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setTDrawAnim(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
+  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); };
 
-  useEffect(() => {
-    if (tDrawAnim?.auto && !(tDrawAnim.index >= tDrawAnim.log.length && !tDrawAnim.pending)) {
-      tDrawTimerRef.current = setInterval(() => {
-        setTDrawAnim(prev => {
-          if (!prev) return prev;
-          if (prev.pending) {
-            const next = { ...prev, pending: false, index: prev.index + 1 };
-            if (next.index >= next.log.length) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; next.auto = false; }
-            return next;
-          } else if (prev.index < prev.log.length) {
-            return { ...prev, pending: true };
-          } else { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; return { ...prev, auto: false }; }
-        });
-      }, 1200);
-      return () => { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; };
-    }
-  }, [tDrawAnim?.auto, tDrawAnim?.pending, tDrawAnim?.index]);
-  const tDrawAdvance = () => {
-    setTDrawAnim(prev => {
-      if (!prev) return prev;
-      if (prev.pending) return { ...prev, pending: false, index: prev.index + 1 };
-      if (prev.index < prev.log.length) return { ...prev, pending: true };
-      return prev;
-    });
-  };
-  const tDrawSkip = () => { setTDrawAnim(prev => prev ? { ...prev, index: prev.log.length, pending: false, auto: false } : prev); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } };
-  const tDrawConfirm = () => { if (!tDrawAnim) return; setTGroups(tDrawAnim.grps); setTPhase("groups"); setTDrawAnim(null); };
 
   const tGenNextSwissRound = () => {
     const ng = JSON.parse(JSON.stringify(tGroups));
@@ -5101,6 +5383,10 @@ export default function App() {
           next[k].goals = (next[k].goals||0) + d.goals;
           next[k].assists = (next[k].assists||0) + d.assists;
           next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
+          // totalRating is a season sum, which says nothing about the last month. This EMA is the
+          // recent-form half of it, and only moves for a player who actually featured — sitting on
+          // the bench neither improves your form nor damages it.
+          if (d.matches || d.subApp) next[k].form = playerFormFrom(next[k].form, d.totalRating / Math.max(1, d.matches + d.subApp));
           const prevYc = next[k].yellows||0;
           next[k].yellows = prevYc + d.yellows;
           // Mutate d.suspended itself, not a separate addend — d is the object returned
@@ -5179,12 +5465,15 @@ export default function App() {
     if (hg < 0 || ag < 0) { setTScoreError("Scores can't be negative"); return; }
     const ng = JSON.parse(JSON.stringify(tGroups));
     const gm = ng[gi].schedule[ri][mi];
+    // Read form BEFORE the result lands, or the scoreline just entered counts toward the form it
+    // is supposed to have been produced by.
+    const _mForm = (() => { const f = computeForm(ng[gi]); return { home: formScore(f[gm.home.name]), away: formScore(f[gm.away.name]) }; })();
     gm.result = { ftHome: hg, ftAway: ag };
     decrementBans(new Set([gm.home.name, gm.away.name]));
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
     const _stamD = tConfig.staminaCarry ? tPlayerStats : null;
     const _hSq = filterSquad(gm.home.squad, gm.home.name, mUnavail, _stamD), _aSq = filterSquad(gm.away.squad, gm.away.name, mUnavail, _stamD);
-    const _sr = simInstantMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq);
+    const _sr = simInstantMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm);
     const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
     const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
@@ -5301,14 +5590,18 @@ export default function App() {
       const unavailSet = buildUnavail();
       const urgCache = {};
       ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const qc = tConfig.advPerGroup || 1; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.home.name || x.away.name === m.home.name)).length, 0) - 1; const remA = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.away.name || x.away.name === m.away.name)).length, 0) - 1; urgCache[`${gi}_${mi}`] = { home: computeGroupUrg(g.standings, m.home.name, qc, remH), away: computeGroupUrg(g.standings, m.away.name, qc, remA), remH, remA }; }); });
-      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; rd.forEach((m, mi) => {
+      // Form as it stood before this round, computed once per group: a matchday's fixtures are
+      // simultaneous, so the first result of the round must not feed the last one's form.
+      ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const _gForms = computeForm(g); rd.forEach((m, mi) => {
         if (m.result) return;
         if (targetMi !== -1 && targetMi !== mi) return;
         const _ug = urgCache[`${gi}_${mi}`];
-        const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: nextOpponentSkill(g.schedule, ri, m.home.name), isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
-        const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: nextOpponentSkill(g.schedule, ri, m.away.name), isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
+        const _hHor = fixtureHorizon(g.schedule, ri, m.home.name), _aHor = fixtureHorizon(g.schedule, ri, m.away.name);
+        const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: _hHor[0]?.skill ?? null, horizon: _hHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
+        const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
-        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 });
+        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
+          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) });
         const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
         const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
         applyBan(rH); applyBan(rA);
@@ -5347,7 +5640,7 @@ export default function App() {
       applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout");
     } else {
       if (km === "random") { const ko=buildKnockoutRandom(qualified, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
-      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko, log } = buildKnockoutDraw(qualified, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTKODrawLog(log); setTPhase("knockout"); }
+      else if (km === "draw") { const rng = new RNG(Date.now()); const { ko } = buildKnockoutDraw(qualified, hasTP, rng); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "manual") { let n2=1; while(n2<qualified.length)n2*=2; setTKOManual({ pool: [...qualified], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-qualified.length }); setTPhase("ko_manual"); }
     }
   };
@@ -5649,9 +5942,9 @@ export default function App() {
   // "away"), not which team — a team in the away slot can still be the host. A neutral
   // fixture (no host) defaults both sides to home colors unless they clash, in which
   // case the away-slot side switches as a tie-break.
-  const hHomeClr = teamById(lmH)?.primaryColor || "#81a1c1";
+  const hHomeClr = teamById(lmH)?.primaryColor || "var(--ui-info)";
   const hAwayClr = teamById(lmH)?.secondaryColor || hHomeClr;
-  const aHomeClr = teamById(lmA)?.primaryColor || "#bf616a";
+  const aHomeClr = teamById(lmA)?.primaryColor || "var(--ui-danger)";
   const aAwayClr = teamById(lmA)?.secondaryColor || aHomeClr;
   const clash = colorsClash(hHomeClr, aHomeClr);
   const hClrPre = lmHomeAdv === "away" ? hAwayClr : hHomeClr;
@@ -5682,7 +5975,353 @@ export default function App() {
     else aClr2 = clampTeamClr(lightenUntil(aClr2, hClr2, 0.35));
   }
 
-  const renderScoreboard = () => {
+  // Venue only reflects a real team's stadium when that team was actually assigned home advantage
+  // — a fixture with no HA (or a set-piece neutral venue name) shows that instead, rather than
+  // defaulting to whichever team happens to sit in the "home" slot. Lifted out of the scoreboard
+  // so the overview's meta block reads the identical chain and the two can never disagree.
+  const lmVenue = () => {
+    const host = lmMatch?.homeAdv === "away" ? teamById(lmA) : lmMatch?.homeAdv === "home" ? teamById(lmH) : null;
+    // Either the explicit venue or the host's ground, never a field-by-field mix of the two.
+    const src = (lmMatch?.venue?.city || lmMatch?.venue?.stadium) ? lmMatch.venue : host;
+    const stadium = src?.stadium || "", city = src?.city || "";
+    return { stadium, city, text: [stadium, city].filter(Boolean).join(", ") || "Neutral Venue" };
+  };
+
+  // Save slots. `extra` merges into the panel box so a caller can drop the bottom margin when it
+  // sits in a grid cell rather than in the page flow.
+  // Scorers, assists and ratings, plus the dialog a column header drills into. Rendered beside
+  // the fixtures once a tournament is running and on its own in every other phase, so it stops
+  // being an inline block. The guard replaces the conditional that used to wrap it.
+  const renderLeaderboards = () => {
+    const played = Object.keys(tPlayerStats).length > 0;
+    return (<>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", flex: "1 1 auto", minHeight: 0, overflowY: "auto", boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
+                <div style={{ ...panelHead, marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid var(--chrome-border-33)" }}><PanelTitle accent="var(--ui-warn)">Tournament Leaders</PanelTitle></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
+                  {/* Top Scorers */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
+                      </tr>
+                    ))}
+                    </tbody></table>
+                  </div>
+                  {/* Top Assisters */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
+                      </tr>
+                    ))}
+                    </tbody></table>
+                  </div>
+                  {/* Top Rated */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {(() => { const _all = Object.values(tPlayerStats); const _ap = p => p.matches+(p.subApp||0); const _min = Math.ceil(Math.max(1,..._all.map(_ap))/6); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=_ap(a)>=_min?1:0,bq=_ap(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
+                      const avg = (p.totalRating/(p.matches+(p.subApp||0)));
+                      return (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
+                      </tr>);
+                    })}
+                    </tbody></table>
+                  </div>
+                  {/* Chances Created */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
+                      </tr>
+                    ))}
+                    </tbody></table>
+                  </div>
+                  {/* Defensive Actions */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
+                      </tr>
+                    ))}
+                    </tbody></table>
+                  </div>
+                  {/* Saves */}
+                  <div style={{ minWidth: 0 }}>
+                    <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                    {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                      <tr key={i} style={{ fontSize: 10 }}>
+                        <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
+                        <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
+                        <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
+                        <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
+                      </tr>
+                    ))}
+                    </tbody></table>
+                  </div>
+                </div>
+                  {!played && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center", padding: "18px 0 6px" }}>Fills in as matches are played.</div>}
+                {(() => {
+                  const unavail = Object.values(tPlayerStats).filter(p => (p.suspended||0) > 0 || (p.injOut||0) > 0)
+                    .flatMap(p => {
+                      const rows = [];
+                      // suspended doesn't record WHY each remaining game was added (a red-card
+                      // ban and a yellow-accumulation ban share the same counter so they can
+                      // share the same one-game-per-match decrement/undo path) — reds>0 is a
+                      // cheap, good-enough proxy rather than a fully attributed second counter;
+                      // the one edge case it misses is a fully-served old red plus a fresh,
+                      // independent yellow-only ban still reading as "red card".
+                      if ((p.suspended||0) > 0) rows.push({...p, reason: (p.reds||0) > 0 ? "red" : "yellows", out: p.suspended});
+                      if ((p.injOut||0) > 0) rows.push({...p, reason: "inj", out: p.injOut});
+                      return rows;
+                    }).sort((a,b) => b.out - a.out);
+                  if (!unavail.length) return null;
+                  return (<>
+                  <div style={{ marginTop: 12, borderTop: "1px solid var(--chrome-panel)", paddingTop: 10 }}>
+                    <button onClick={() => setTUnavailOpen(true)} style={{ ...smBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-66)" }}>
+                      &#9888; {unavail.length} unavailable
+                    </button>
+                  </div>
+                  {tUnavailOpen && (
+                    <div onClick={() => setTUnavailOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                      <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 620, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-danger)", ...ui }}>Unavailable</span>
+                          <span onClick={() => setTUnavailOpen(false)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                        </div>
+                        <div style={{ overflowY: "auto", minHeight: 0 }}>
+                      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
+                        {unavail.map((p,i) => {
+                          const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
+                          return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
+                            <span style={{ flex: 1, color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
+                            <span style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
+                            <span style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
+                            <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
+                              {p.reason === "red"
+                                ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1}} />
+                                : p.reason === "yellows"
+                                ? <span title="Suspended (accumulated yellows)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1}} />
+                                : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="var(--ui-injury)"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="var(--ui-injury)"/></svg>}
+                              <span style={{ color: p.reason === "red" ? "var(--ui-danger)" : p.reason === "yellows" ? "var(--ui-warn)" : "var(--ui-injury)", fontSize: 8, ...mono }}>{p.out}</span>
+                            </span>
+                          </div>
+                        );})}
+                      </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  </>);
+                })()}
+              </div>
+            {tLeaderboard && (() => {
+              const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
+              const all = Object.values(tPlayerStats);
+              const tApp = p => p.matches + (p.subApp||0);
+              // Stats recorded before fullName was kept fall back to the team's own squad. Matching
+              // inside the team means an abbreviated name cannot pick up a different player's full
+              // name from elsewhere in the roster.
+              const fullNameOf = (p) => p.fullName
+                || teams.find(t => (p.code && (t.code || abbr(t.name, t.code)) === p.code) || t.name === p.team)
+                     ?.squad?.find(q => q.name === p.name)?.fullName
+                || p.name;
+              const sorted = tLeaderboard === "goals"
+                ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
+                : tLeaderboard === "assists"
+                ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
+                : tLeaderboard === "chances"
+                ? all.filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||(tApp(a)-tApp(b)))
+                : tLeaderboard === "defActs"
+                ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
+                : tLeaderboard === "saves"
+                ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tApp(a)-tApp(b)))
+                : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
+              return (
+                <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-panel)" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "var(--ui-text)" }}>{title}</span>
+                      <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
+                    </div>
+                    <div style={{ overflowY: "auto", flex: 1 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
+                      {sorted.map((p, i) => {
+                        const ap = p.matches + (p.subApp||0);
+                        const avg = ap ? (p.totalRating/ap) : 0;
+                        const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "chances" ? p.chances : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
+                        return (
+                          <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
+                            <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
+                            <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{boldSurname(fullNameOf(p), p.name)}</td>
+                            <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
+                            <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
+                            <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
+                            <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "var(--ui-text)", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
+                          </tr>
+                        );
+                      })}
+                      </tbody></table>
+                      {sorted.length === 0 && <div style={{ color: "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+    </>);
+  };
+
+  const renderSavesPanel = (extra) => {
+    const active = tSlots.find(s => s.id === tActiveSlot) || null;
+    const others = tSlots.filter(s => s.id !== tActiveSlot).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const renameField = (s) => (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1, minWidth: 0 }}>
+        <input autoFocus value={slotRenaming.name} onChange={e => setSlotRenaming({ id: s.id, name: e.target.value })}
+          onKeyDown={e => { if (e.key === "Enter") slotRename(s.id, slotRenaming.name); if (e.key === "Escape") setSlotRenaming(null); }}
+          style={{ ...inp, padding: "4px 9px", fontSize: 12, flex: 1, minWidth: 0, maxWidth: 260 }} />
+        <button onClick={() => slotRename(s.id, slotRenaming.name)} style={smBtn}>Save</button>
+        <button onClick={() => setSlotRenaming(null)} style={smBtn}>Cancel</button>
+      </div>
+    );
+    const rowActions = (s, isActive) => (
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: "auto" }}>
+        {!isActive && <button onClick={() => slotSwitch(s.id)} style={{ ...smBtn, color: "var(--ui-text)", borderColor: "var(--chrome-border-88)" }}>Open</button>}
+        <button onClick={() => setSlotRenaming({ id: s.id, name: s.name })} style={smBtn}>Rename</button>
+        <button onClick={() => slotDuplicate(s.id)} style={smBtn}>Copy</button>
+        <button onClick={() => slotExport(s.id)} style={smBtn}>Export</button>
+        <button onClick={() => setSlotConfirmDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)" }}>Delete</button>
+      </div>
+    );
+    return (
+    <div style={{ ...panelBox, ...extra }}>
+      <div style={panelHead}>
+        <PanelTitle sub={tSlots.length ? `${tSlots.length} saved` : ""}>Saved Tournaments</PanelTitle>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button onClick={slotNew} style={smBtn}>+ New</button>
+          <button onClick={() => importInputRef.current?.click()} style={smBtn}>Import</button>
+          <button onClick={() => tActiveSlot && slotExport(tActiveSlot)} disabled={!tActiveSlot}
+            style={{ ...smBtn, opacity: tActiveSlot ? 1 : 0.35, cursor: tActiveSlot ? "pointer" : "default" }}>Export</button>
+        </div>
+      </div>
+
+      {/* The tournament currently open — name, phase, progress and its headline figures. */}
+      <div style={{ border: "1px solid var(--chrome-brand-44)", borderRadius: 10, background: "var(--chrome-brand-11)", padding: "13px 15px" }}>
+        {active ? (<>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 11 }}>
+            {slotRenaming?.id === active.id ? renameField(active) : (<>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ui-text)" }}>{active.name}</span>
+              <PhaseBadge phase={active.phase} />
+              {rowActions(active, true)}
+            </>)}
+          </div>
+          <ProgressBar played={active.played} total={active.total} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(78px,1fr))", gap: 14, marginTop: 12 }}>
+            <StatCell label="TEAMS" value={active.nTeams || "—"} />
+            <StatCell label="PLAYED" value={active.total ? `${active.played}/${active.total}` : "—"} />
+            <StatCell label="LEFT" value={active.total ? active.total - active.played : "—"} color={active.total && active.played === active.total ? "var(--ui-ok)" : undefined} />
+            <StatCell label="DONE" value={active.total ? Math.round((active.played / active.total) * 100) + "%" : "—"} />
+            <StatCell label="SAVED" value={fmtAgo(active.ts)} color="var(--chrome-muted)" />
+          </div>
+        </>) : (
+          <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>
+            No tournament open yet. Set one up below — it saves itself as you go, and you can come back to it any day.
+          </div>
+        )}
+      </div>
+
+      {others.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "16px 0 0" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", color: "var(--chrome-muted)" }}>OTHER SAVES</span>
+          <button onClick={() => { setShowSaves(true); setSlotConfirmDelete(null); }} style={smBtn}>Show {others.length}</button>
+        </div>
+      )}
+
+      {showSaves && others.length > 0 && (
+        <div onClick={() => setShowSaves(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 720, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", ...ui }}>Other Saves</span>
+              <span onClick={() => setShowSaves(false)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+            </div>
+            <div style={{ overflowY: "auto", minHeight: 0 }}>
+        {others.map(s => (
+          <div key={s.id} style={rowBox}>
+            <div style={{ ...rowHead, flexWrap: "wrap" }}>
+              {slotRenaming?.id === s.id ? renameField(s) : (<>
+                <button onClick={() => slotSwitch(s.id)} title="Open this tournament"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "left" }}>{s.name}</button>
+                <PhaseBadge phase={s.phase} />
+                <span style={metaTxt}>{s.total ? `${s.played}/${s.total}` : "not started"}{s.nTeams ? ` · ${s.nTeams} teams` : ""} · {fmtAgo(s.ts)}</span>
+                {rowActions(s, false)}
+              </>)}
+            </div>
+          </div>
+        ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deleting a tournament is unrecoverable, so it gets a real dialog rather than an
+          inline second button that is easy to hit by accident. */}
+      {slotConfirmDelete && (() => {
+        const s = tSlots.find(x => x.id === slotConfirmDelete);
+        if (!s) return null;
+        return (<div onClick={() => setSlotConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ ...panelBox, marginBottom: 0, maxWidth: 440, width: "100%" }}>
+            <div style={panelHead}><PanelTitle accent="var(--ui-danger)">Delete Tournament</PanelTitle></div>
+            <div style={{ fontSize: 12, color: "var(--chrome-muted)", lineHeight: 1.65, marginBottom: 18 }}>
+              Permanently delete <span style={{ color: "var(--ui-text)", fontWeight: 700 }}>{s.name}</span>?
+              {s.total ? <> It has <span style={{ color: "var(--ui-text)" }}>{s.played} of {s.total}</span> matches played.</> : null}
+              <br />This cannot be undone. Export it first if you want to keep a copy.
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button onClick={() => setSlotConfirmDelete(null)} style={smBtn}>Cancel</button>
+              <button onClick={() => slotExport(s.id)} style={smBtn}>Export first</button>
+              <button onClick={() => slotDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-66)", background: "var(--ui-danger-1a)" }}>Delete</button>
+            </div>
+          </div>
+        </div>);
+      })()}
+      {slotMsg && <div style={{ marginTop: 12, fontSize: 10, color: /fail|full|could not/i.test(slotMsg) ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{slotMsg}</div>}
+      <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+        onChange={e => { slotImportFile(e.target.files?.[0]); e.target.value = ""; }} />
+    </div>);
+  };
+
+  const renderScoreboard = (extra) => {
     // Stadium photo is a faint backdrop, not a skin — team-color gradient stays
     // ~70% opaque on top so colors still read as the dominant signal. Not theme-gated
     // and not host-mode-gated: any match where a stadium name resolves (explicit
@@ -5706,18 +6345,19 @@ export default function App() {
     // /avium-football-engine/, not domain root — an absolute "/stadiums/..." resolves
     // against the wrong root there even though it works fine locally, same as how the
     // crest badges above already do it.
-    const stadiumUrlNFC = venueStadium ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(venueStadium.normalize("NFC"))}` : null;
-    const stadiumUrlNFD = venueStadium ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(venueStadium.normalize("NFD"))}` : null;
+    const stadiumFileName = venueStadium ? stadiumFile(venueStadium) : null;
+    const stadiumUrlNFC = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFC"))}` : null;
+    const stadiumUrlNFD = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFD"))}` : null;
     const scoreboardBg = venueStadium
       ? `linear-gradient(90deg, ${hClr2}b3 0%, ${hClr2}b3 40%, ${aClr2}b3 60%, ${aClr2}b3 100%), url("${stadiumUrlNFC}.jpg"), url("${stadiumUrlNFC}.jpeg"), url("${stadiumUrlNFD}.jpg"), url("${stadiumUrlNFD}.jpeg")`
       : `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`;
     return (
-    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px var(--ui-shadow-3)", textShadow: SCOREBOARD_SHADOW }}>
+    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px var(--ui-shadow-3)", textShadow: SCOREBOARD_SHADOW, ...extra }}>
       {/* Venue + POTM sticker */}
       {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
-        const SC = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
+        const SC = {balanced:"#888",gegenpress:"var(--ui-danger)",tikitaka:"var(--ui-warn)",counterattack:"var(--ui-info)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-attack)"};
         const sn = shortName;
         const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
         const PitchSVG = ({starters, formation}) => {
@@ -5814,32 +6454,14 @@ export default function App() {
       {/* Score */}
       {lmMatch.phase !== "pre_match" && <>
       {(() => {
-        // Venue only reflects a real team's stadium when that team was actually assigned
-        // home advantage — a fixture with no HA (or a set-piece neutral venue name/pool
-        // entry) shows that instead, rather than defaulting to whichever team sits in
-        // the "home" slot.
-        let venueText;
-        if (lmMatch.venue?.city || lmMatch.venue?.stadium) venueText = [lmMatch.venue.stadium, lmMatch.venue.city].filter(Boolean).join(", ");
-        else {
-          venueText = hostTeam?.stadium || hostTeam?.city ? [hostTeam.stadium, hostTeam.city].filter(Boolean).join(", ") : "Neutral Venue";
-        }
-        let potmEl = null;
-        if (lmMatch.phase === "finished") {
-          const allP = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[]),...(lmMatch.players?.away||[]),...(lmMatch.subbedOff?.away||[])];
-          if (allP.length > 0) {
-            const potm = allP.reduce((a,b) => (b.rating||0)>(a.rating||0)?b:a, allP[0]);
-            if (potm && potm.rating >= 6.5) {
-              const isHome = [...(lmMatch.players?.home||[]),...(lmMatch.subbedOff?.home||[])].some(p=>p.name===potm.name);
-              const tCode = isHome ? abbr(teamById(lmH)?.name, teamById(lmH)?.code) : abbr(teamById(lmA)?.name, teamById(lmA)?.code);
-              const tClr = isHome ? hClr : aClr;
-              potmEl = <><span style={{ margin: "0 8px", color: "var(--ui-text-33)" }}>|</span><span style={{ fontSize: 11 }}>⭐</span> <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 10, color: "var(--ui-text)", fontWeight: 600, ...ui }}>{potm.name}</span> <span style={{ fontSize: 10, color: tClr, fontWeight: 600, ...mono }}>{tCode}</span> <span style={{ fontSize: 10, color: ratingColor(potm.rating||6.5), fontWeight: 700, ...mono }}>{potm.rating.toFixed(1)}</span></span></>;
-            }
-          }
-        }
-        return <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8, textShadow: "none" }}>
-          <span style={{ fontSize: 10 }}>📍</span>
-          <span style={{ fontSize: 10, color: "var(--ui-text-cc)", fontWeight: 500, ...ui }}>{venueText}</span>
-          {potmEl}
+        // tLiveTarget, not the save slot: a slot is adopted on first load whether or not a
+        // tournament is running, so it says nothing about this match. lmKickOff clears the target
+        // precisely because a match started from the setup screen belongs to no competition.
+        const cup = !!tLiveTarget;
+        const save = tSlots.find(x => x.id === tActiveSlot)?.name;
+        return <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8, textShadow: "none" }}>
+          <span style={{ fontSize: 10 }}>{cup ? "🏆" : "⚽"}</span>
+          <span style={{ fontSize: 10, color: "var(--ui-text-cc)", fontWeight: 500, ...ui }}>{cup ? (save || "Tournament") : "Live Match"}</span>
         </div>;
       })()}
       {(() => {
@@ -5954,8 +6576,8 @@ export default function App() {
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
               <div className="sb-rows" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
                 <div style={{ textAlign: "right", minWidth: 0 }}>
-                  <div className="sb-name"><MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)" }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)" }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
+                  <div className="sb-name"><MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmH) }} /></div>
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmH) }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
                 </div>
                 <div className="sb-score" style={{ fontSize: 40, fontWeight: 700, color: "var(--ui-on-accent)", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
                   <span className={goalFlash==="home"?"goal-flash":""}>{dispScore[0]}</span>
@@ -5963,8 +6585,8 @@ export default function App() {
                   <span className={goalFlash==="away"?"goal-flash":""}>{dispScore[1]}</span>
                 </div>
                 <div style={{ textAlign: "left", minWidth: 0 }}>
-                  <div className="sb-name"><MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)" }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)" }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
+                  <div className="sb-name"><MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmA) }} /></div>
+                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmA) }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
                 </div>
                 {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
                     name/score above — ball icons share the score column, names share the name columns.
@@ -6004,134 +6626,16 @@ export default function App() {
   );
   };
 
-  const renderStatsReport = () => {
-    const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph+pa||1;
-    const hp = Math.round(ph/pt*100), ap = 100-hp;
-    const st = lmMatch.stats;
-    const hXG = (lmMatch.xG?.home||0).toFixed(2), aXG = (lmMatch.xG?.away||0).toFixed(2);
-    const statRows = [["Possession",hp+"%",ap+"%"],["Shots",st.home.shots,st.away.shots],["On Target",st.home.onTarget,st.away.onTarget],["xG",hXG,aXG],["Corners",st.home.corners,st.away.corners],["Fouls",st.home.fouls,st.away.fouls],["Yellows",st.home.yellows,st.away.yellows],["Reds",st.home.reds,st.away.reds]];
-    return (
-      <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-        {/* Match Stats */}
-        <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--chrome-border)" }}>
-          {statRows.map(([label, h, a], i) => { const hv = typeof h === "string" ? parseFloat(h) : h; const av = typeof a === "string" ? parseFloat(a) : a; const mx = Math.max(hv, av, 1); return (
-            <div key={i} style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-              <span style={{ width: 32, textAlign: "right", color: hv >= av ? hStatClr : "var(--chrome-muted)", fontWeight: hv >= av ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{h}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-end" }}><div style={{ width: `${Math.round(hv/mx*100)}%`, height: 4, background: hv >= av ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3 }} /></div>
-              <span style={{ width: 60, textAlign: "center", color: "var(--chrome-muted)", fontSize: 9, flexShrink: 0 }}>{label}</span>
-              <div style={{ flex: 1, margin: "0 4px", display: "flex", justifyContent: "flex-start" }}><div style={{ width: `${Math.round(av/mx*100)}%`, height: 4, background: av >= hv ? aClr + "88" : "var(--chrome-muted)", borderRadius: 3 }} /></div>
-              <span style={{ width: 32, textAlign: "left", color: av >= hv ? aStatClr : "var(--chrome-muted)", fontWeight: av >= hv ? 600 : 400, ...mono, fontSize: 10, flexShrink: 0 }}>{a}</span>
-            </div>
-          ); })}
-        </div>
-        {/* Player Ratings */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }}>
-        {["home","away"].map((side,si) => {
-          const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-          const onPitch = lmMatch.players[side] || [];
-          const bench = lmMatch.bench?.[side] || [];
-          // A player currently on the pitch or bench is authoritative. subbedOff can carry a
-          // stale/duplicate record for a name that's since reappeared elsewhere (e.g. the same
-          // name logged twice across a card + injury event) — deduped so a starter can never
-          // be double-counted as both "still out there" and "already left."
-          const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
-          const seenOff = new Set();
-          const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
-          // Reflect the ACTUAL match squad (post-rotation via managerSelect), not the raw squad
-          // definition's default starters/bench. Split by WHO STARTED WHERE, not current array
-          // membership — a bench player who's since been subbed on has left the bench array
-          // entirely, so keying off membership alone would silently fold them into "starters"
-          // with no trace they came off the bench, and vice versa for a subbed-off starter.
-          const squadDef = tm?.squad || buildSquad(tm?.formation, null);
-          const defByName = new Map(squadDef.map(p => [p.name, p]));
-          const kf = n => playerKey(tm?.name, n);
-          const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
-          const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
-          const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
-          const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
-          // startedBench (stamped once, at the moment a bench player first comes on, and
-          // preserved through any later departure) is what decides the bucket — NOT current
-          // location. A player who started on the bench, came on, and was later subbed off/
-          // injured/carded is still a bench starter, not a starting-XI departure: .sub gets
-          // overwritten to 'off' by every removal site, so it can no longer tell the two apart.
-          const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
-          const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
-          // Masks the pending scorer's/assister's tally and every affected rating (scorer,
-          // assist, conceding side's dip) — otherwise any of them would spoil who's about to
-          // score before the card reveals it.
-          const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
-          const lookup = (name) => {
-            const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-            if (!found) return found;
-            let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
-            for (const pg of hiddenGoals) {
-              rating = lmAdjRating(pg, side, { name: found.name, rating });
-              if (pg.team === side) {
-                if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
-                if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
-              }
-            }
-            if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
-            return { ...found, goals, assists, rating };
-          };
-          return (<>
-          {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
-          <div>
-            <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-            <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
-              <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
-              <span></span>
-              {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:6.0,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                <span key={"p"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
-              </>); })}
-              <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
-              {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                <span key={"b"+pi} style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
-              </>); })}
-            </div>
-          </div>
-          </>);
-        })}
-        </div>
-        {tLiveTarget && <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)", textAlign: "center" }}>
-          <CanvasText text={`Replays: ${Math.max(0, _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget?.leg === 2 ? "_L2" : "")) - 1)}`} title="Tracked per fixture, persists across abandons and page reloads" />
-        </div>}
-      </div>
-    );
-  };
 
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
   const TEAM_COLW = { num: 22, crest: 26, code: 42, skill: 42, go: 18, del: 28 };
   // Preset teams are owned by the TSV files — the app renders them, the spreadsheet edits them.
-  // Only Custom teams stay editable in-app, so everything else renders as coloured read-only text.
-  const isEditableTeam = (t) => t.league === "Custom";
+  // A preset can be unlocked for the session from its own panel, but the roster autosave only ever
+  // writes Custom teams and the loader always rebuilds presets from PRESET_CATALOG, so a tweak here
+  // dies with the tab. Both sets are plain state for that reason: never persist them.
+  const isEditableTeam = (t) => t.league === "Custom" || unlockedTeams.has(t.id);
+  const toggleUnlocked = (id) => setUnlockedTeams(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   // Plain text, not a disabled input: no border or fill, and no horizontal padding, so every value
   // sits flush under its own label instead of being inset by an input's inner padding.
   const RO = ({ children, style, mono: m }) => (
@@ -6172,6 +6676,75 @@ export default function App() {
     // Tiebreak equal ratings by club skill, then national team skill.
     return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
   }, [teams]);
+  // ── Players tab ──────────────────────────────────────────────────────────
+  // Nations rail, built the same shape as the league rail: an entry per nation with its player
+  // count and average OVR. Sorted by squad size rather than alphabetically — the search box covers
+  // findability, and the footballing nations you actually browse are the big ones.
+  const playerNations = useMemo(() => {
+    const by = new Map();
+    for (const p of playerIndex) {
+      const key = p.nationality || "Unaffiliated";
+      if (!by.has(key)) by.set(key, { name: key, code: p.natCode || null, players: [] });
+      by.get(key).players.push(p);
+    }
+    // Two different numbers, both about the national team rather than the whole player pool:
+    // natSkill is the side's rating (what the rail sorts and shows), ntAvg is the mean OVR of the
+    // squad it actually picks. A nation with no national team sorts last.
+    const natTeams = new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t]));
+    return [...by.values()]
+      .map(n => {
+        const nt = n.code ? natTeams.get(n.code) : null;
+        const sq = (nt?.squad || []).filter(x => x.ovr != null);
+        return { ...n, natSkill: nt?.skill ?? null,
+                 ntAvg: sq.length ? Math.round(sq.reduce((a, x) => a + x.ovr, 0) / sq.length) : 0 };
+      })
+      .sort((a, b) => (b.natSkill ?? -1) - (a.natSkill ?? -1) || b.players.length - a.players.length || a.name.localeCompare(b.name));
+  }, [playerIndex, teams]);
+  // Same guard as the league rail: a filter naming a nation with no row leaves an empty table and
+  // no way back, which happens as soon as the roster changes under it.
+  useEffect(() => {
+    if (!playerNations.length) return;
+    // "" is the All Players row, which is always valid. Anything else must name a real nation.
+    if (playerNatFilter && !playerNations.some(n => n.name === playerNatFilter)) setPlayerNatFilter("");
+  }, [playerNations, playerNatFilter]);
+  // Jumping to a team has to select its league too, or the Teams rail and pane disagree about
+  // what is showing.
+  const openTeam = (t) => { if (!t) return; setTeamLeagueFilter(t.league || "Custom"); setExpandedTeam(t.id); setTab("teams"); };
+  const natTeamByCode = useMemo(() => new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t])), [teams]);
+  const teamByName = useMemo(() => new Map(teams.map(t => [t.name, t])), [teams]);
+  // Roster faults, not per-nationality: a name in two squads, or one that parses as neither
+  // "K. Fujise" nor a full name. Shown in the rail so they are visible whichever nationality is up.
+  const playerWarnings = useMemo(() => {
+    const dups = playerIndex.filter(p => p.clubs.length > 1);
+    const badSyntax = [];
+    // A player carrying a different rating in his national squad than at his club. The panel already
+    // flags these one at a time in the squad row; this counts them across the whole roster so they
+    // can be found without opening every team.
+    const mismatch = [];
+    teams.forEach(t => {
+      if (t.league === "Avium International" || !t.squad) return;
+      t.squad.forEach(p => {
+        if (!p.name || p.name.startsWith("#")) return;
+        const nat = natOvrMap.get(p.fullName || p.name);
+        const club = p.ovr ?? t.skill;
+        if (nat != null && club != null && nat !== club)
+          mismatch.push(`${t.code || t.name}: ${p.fullName || p.name} — club ${club}, national ${nat}`);
+      });
+    });
+    teams.forEach(t => { if (!t.squad) return; t.squad.forEach(p => {
+      if (!p.name || p.name.startsWith("#")) return;
+      if (!/^[A-Z]\. /.test(p.name) && !p.fullName) badSyntax.push(`${t.code || t.name}: ${p.name}`);
+    }); });
+    return { dups, badSyntax, mismatch };
+  }, [playerIndex, teams, natOvrMap]);
+  // Keyed on the full name, not the "S. Jackson" abbreviation: 21 abbreviations are shared by two
+  // or three different players (Joar and Johann Berglund, three Nagys), and every one of them was
+  // resolving to whichever squad the index happened to see first — so the club/nationality link on
+  // those rows pointed at the wrong man. playerIndex is keyed by fullName throughout; this map was
+  // the one place that disagreed.
+  const playerByName = useMemo(() => new Map(playerIndex.map(p => [p.fullName || p.name, p])), [playerIndex]);
+  const allPlayersAvg = useMemo(() => playerIndex.length
+    ? Math.round(playerIndex.reduce((a, p) => a + (p.ovr || 0), 0) / playerIndex.length) : 0, [playerIndex]);
 
   const natOptions = useMemo(() => [...playerIndex.reduce((m, p) => {
     if (!p.natCode) return m;
@@ -6234,95 +6807,67 @@ export default function App() {
     return { template, players, formation, reqs: slots, skill: natTeam?.skill };
   }, [playerIndex, teams, bestXiNat]);
 
-  return (
-    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: "24px 18px" }}>
-      <style>{APP_CSS}</style>
-      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ marginBottom: 20, paddingBottom: 12 }}>
-          <div style={{ marginBottom: 12, textAlign: "center" }}>
-            <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {[["teams", "Roster"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
-            ))}
-          </div>
-        </div>
+  // An 11-man bench mirrors the XI slot for slot, so buildSquad hands every substitute the
+  // position of the starter he is behind: a natural right back sitting behind a centre back is
+  // labelled CB. The formation is only entitled to decide HOW MANY defenders, midfielders and
+  // forwards sit there — the specific role is the player's own, read off wherever he actually
+  // plays at his club. With no club to read, the broad band is all that is honestly known, so it
+  // shows DEF/MID/FWD rather than inventing a slot.
+  const benchSpos = (p, pe) => (pe?.pos || "").split("/")[0] || p.pos || p.spos;
 
-        {tab === "teams" && (<>
-        {/* TEAMS */}
-        <div className="panel-head-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-          <PanelTitle sub={visibleTeams.length === teams.length ? `${teams.length}` : `${visibleTeams.length} / ${teams.length}`}>Teams</PanelTitle>
-          {/* Export/import/add used to be gated on the filter reading "Custom". They stay visible
-              regardless now — hiding the only route to adding a team behind a filter state was a trap. */}
-          <div style={{ display: "flex", gap: 6 }}>
-            <select value={teamLeagueFilter} onChange={e => setTeamLeagueFilter(e.target.value)} style={{ ...smBtn, color: teamLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">☰ All Leagues</option><option disabled>──────</option>{groupByLeague(teams).map((entry, gi) => entry === null ? <option key={"div"+gi} disabled>──────</option> : <option key={entry[0]} value={entry[0]}>{entry[0]}</option>)}{!teams.some(t => t.league === "Custom") && <><option disabled>──────</option><option value="Custom">Custom</option></>}</select>
-            <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
-            <button onClick={exportState} style={{ ...smBtn, color: showExport ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕ Export" : "💾"}</button>
-            <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Bulk import">{showBulk ? "✕ Close" : "📂"}</button>
-            <button onClick={addTeam} style={addBtn}>+ Add</button>
-          </div>
-        </div>
-        {showExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
-        {showBulk && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ APPROACH ⇥ PASSING ⇥ CHANCES ⇥ DRIBBLING ⇥ CREATIVITY ⇥ SET PIECES ⇥ TIME WASTING ⇥ POS. LOST ⇥ POS. WON ⇥ GK PASSING ⇥ PRESSING ⇥ DEF. LINE ⇥ DL BEHAVIOR ⇥ TACKLING ⇥ #1 ⇥ #2 ⇥ #3 ⇥ #4 ⇥ #5 ⇥ #6 ⇥ #7 ⇥ #8 ⇥ #9 ⇥ #10 ⇥ #11 ⇥ #12 ⇥ #13 ⇥ #14 ⇥ #15 ⇥ #16 ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"ARV\tArverne\t87\tBalanced\t4-2-3-1\tInto Space\tMore Direct\nNichirin\t86\tWing Play\t4-4-2\nPON\tPonurvia\t74"} rows={10} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
-        <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 24, overflow: "hidden" }}>
-          {(() => {
-            // Filtering to a league means you want to see that league — a domestic division is
-            // 16-20 clubs and reads better whole. The cap stays for the unfiltered list and for
-            // Avium International, which is 65 nations and would run off the page.
-            const capped = !teamLeagueFilter || teamLeagueFilter === "Avium International";
-            return (
-          <div style={{ maxHeight: capped && visibleTeams.length > 12 ? 520 : "none", overflowY: capped && visibleTeams.length > 12 ? "auto" : "visible", ...(lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished' ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
-            {visibleTeams.map((t, i) => { const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100; const exp = expandedTeam === t.id; const strat = t.strategy || STRAT_DEF; const ed = isEditableTeam(t); return (
-              <div key={t.id}>
-              {/* Custom rows carry their own input and delete button, so they can't also be a
-                  button — only the read-only rows take the role and keyboard handler. */}
-              <div className="teamrow" title={"Open " + t.name} {...(ed ? {} : { role: "button", tabIndex: 0, onKeyDown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } } })} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: exp ? "var(--chrome-panel)" : i % 2 === 0 ? "transparent" : "var(--chrome-panel-08)", cursor: "pointer" }} onClick={() => { if (lmMatch && lmMatch.phase !== 'pre_match' && lmMatch.phase !== 'finished') return; setExpandedTeam(exp ? null : t.id); }}>
-                <span style={{ color: "var(--chrome-muted)", fontSize: 10, width: TEAM_COLW.num, textAlign: "right", flexShrink: 0, ...mono }}>{i + 1}</span>
-                <TeamCrest team={t} size={18} style={{ marginLeft: 8 }} />
-                {ed
-                  ? <input value={t.code ?? abbr(t.name, t.code)} onClick={e => e.stopPropagation()} onChange={e => {
-                      const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
-                      if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) {
-                        setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return;
-                      }
-                      updateTeam(t.id, "code", v);
-                    }} style={{ ...inp, ...mono, width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", border: "1px solid transparent", background: "transparent", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "transparent" }} placeholder={abbr(t.name, t.code)} title={dupCodeId === t.id ? "Code already in use" : undefined} onFocus={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (dupCodeId !== t.id) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                  : <span style={{ width: TEAM_COLW.code, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>}
-                {ed
-                  ? <input value={t.name} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, flex: 1, minWidth: 0, padding: "5px 8px", marginLeft: -8, border: "1px solid transparent", background: "transparent", fontSize: 13 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                  : <span style={{ flex: 1, minWidth: 0, padding: "5px 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</span>}
-                {ed
-                  ? <input type="number" value={t.skill} onClick={e => e.stopPropagation()} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, ...mono, width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, border: "1px solid transparent", background: "transparent", borderColor: badSkill ? "var(--ui-danger)" : "transparent" }} onFocus={e => { if (!badSkill) { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; } }} onBlur={e => { if (!badSkill) { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; } }} />
-                  : <span style={{ width: TEAM_COLW.skill, textAlign: "center", padding: "5px 4px", fontSize: 11, letterSpacing: "0.08em", flexShrink: 0, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>}
-                <span className="teamrow-go" style={{ width: TEAM_COLW.go, textAlign: "center", flexShrink: 0, fontSize: 13, lineHeight: 1, color: exp ? "var(--chrome-brand)" : "var(--chrome-muted-66)" }}>{exp ? "▾" : "›"}</span>
-                {t.league === "Custom" && <button onClick={e => { e.stopPropagation(); removeTeam(t.id); }} style={{ ...delBtn, width: TEAM_COLW.del, opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>×</button>}
-              </div>
-              {exp && !(lmMatch && lmMatch.phase && lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished") && (
-              <div onClick={() => setExpandedTeam(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-lift)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ ...panelBox, marginBottom: 0, padding: 0, width: "100%", maxWidth: 1000, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `13px 20px 13px ${20 - PANEL_HEAD_INSET}px`, borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+  // The team panel used to be a full-screen modal, which is a pattern that exists only because
+  // there was nowhere else to put it. It is a pure function of the team — `ed` and `strat` are
+  // both derived — so it lifts straight out of the row map and into the roster's right pane.
+  const renderTeamDetail = (t) => { const ed = isEditableTeam(t); const strat = t.strategy || STRAT_DEF;
+    const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100;
+    const isIntlTeam = t.league === "Avium International"; return (<>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, borderBottom: "1px solid var(--chrome-border)", flexShrink: 0, display: "flex", alignItems: "center" }}>
                     <PanelTitle sub={t.league === "Custom" ? "Custom" : t.league}>{t.code || abbr(t.name, t.code)}</PanelTitle>
-                    <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {/* Custom teams are always editable, so the unlock only makes sense on presets.
+                          The warning is the whole point of the button: these edits are not saved. */}
+                      {t.league !== "Custom" && <button onClick={() => toggleUnlocked(t.id)} style={{ ...smBtn, color: unlockedTeams.has(t.id) ? "var(--ui-warn)" : "var(--chrome-muted)" }}
+                        title={unlockedTeams.has(t.id) ? "Lock — edits are session-only and revert on refresh" : "Edit for this session only (not saved)"}>{unlockedTeams.has(t.id) ? "🔓 Editing" : "✎ Edit"}</button>}
+                      <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                    </div>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
-                    {/* Identity: crest on one half, editable name/colours/venue on the other. */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 22, alignItems: "center", marginBottom: 4 }}>
-                      {/* No inner padding: the badge art already carries its own margin, so anything
-                          here just shrinks the crest. size= is a px fallback for the SVG crest; the
-                          style below overrides it so the image scales to the column. */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-33)", borderRadius: 10, padding: 0, overflow: "hidden" }}>
-                        <TeamCrest team={t} size={320} style={{ width: "100%", height: "auto", maxHeight: "56vh" }} />
+                    {/* Crest, then the name over a single strip of labelled fields. They share a
+                        baseline and one label style so the row reads as a header rather than a form —
+                        the previous version wrapped four differently-sized blocks against a 26px name
+                        and came apart at most widths. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, flexShrink: 0,
+                                    background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-33)", borderRadius: 10 }}>
+                        <TeamCrest team={t} size={64} style={{ width: 64, height: 64, objectFit: "contain" }} />
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-                        {ed
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+{ed
                           ? <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, padding: "6px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
                           : <div style={{ fontSize: 26, fontWeight: 700, padding: "6px 0", lineHeight: 1.15 }}>{t.name}</div>}
-                        <div>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Colours</div>
-                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            {[["primaryColor", "Home", "#81a1c1"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 26 }}>
+                        <div style={{ width: 66, flexShrink: 0, minWidth: 0 }}>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Code</div>
+{ed
+                              ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
+                              : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>}
+                        </div>
+                        <div style={{ width: 54, flexShrink: 0, minWidth: 0 }}>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Skill</div>
+{ed
+                              ? <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "var(--ui-danger)" : "var(--chrome-border)" }} />
+                              : <RO mono style={{ color: ovrColor(t.skill), fontWeight: 600 }}>{t.skill}</RO>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Location</div>
+{ed
+                            ? <input value={formatLocation(t)} onChange={e => setTeamLocation(t, e.target.value)} placeholder="Stadium, City" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
+                            : <RO>{formatLocation(t)}</RO>}
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Colours</div>
+<div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            {[["primaryColor", "Home", "var(--ui-info)"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
                               <label key={f} style={{ display: "flex", gap: 6, alignItems: "center", cursor: ed ? "pointer" : "default" }}>
                                 {ed
                                   ? <input type="color" value={t[f] || fallback} onChange={e => updateTeam(t.id, f, e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
@@ -6332,30 +6877,11 @@ export default function App() {
                             ))}
                           </div>
                         </div>
-                        <div>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Location</div>
-                          {ed
-                            ? <input value={formatLocation(t)} onChange={e => setTeamLocation(t, e.target.value)} placeholder="Stadium, City" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
-                            : <RO>{formatLocation(t)}</RO>}
-                        </div>
-                        <div className="grid-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <div>
-                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Code</div>
-                            {ed
-                              ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
-                              : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>}
-                          </div>
-                          <div>
-                            <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>Skill</div>
-                            {ed
-                              ? <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "var(--ui-danger)" : "var(--chrome-border)" }} />
-                              : <RO mono style={{ color: ovrColor(t.skill), fontWeight: 600 }}>{t.skill}</RO>}
-                          </div>
                         </div>
                       </div>
                     </div>
                     <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
-                    <div style={{ marginBottom: 12 }}><PanelTitle accent="#81a1c1">Squad</PanelTitle></div>
+                    <div style={{ marginBottom: 12 }}><PanelTitle accent="var(--ui-info)">Squad</PanelTitle></div>
                     {(() => {
                 const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
                 const starters = sq.filter(p => !p.bench);
@@ -6383,82 +6909,125 @@ export default function App() {
                   return pts;
                 })();
                 const pitchPos = pitchPosRaw.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
-                const lpos = pitchPos.map(p => ({ x: 6 + (1 - (p.y - 2) / 101) * 138, y: 6 + (p.x / 100) * 48 }));
+                const lpos = pitchPos.map(p => ({ x: 4 + (p.x / 100) * 52, y: 5 + (p.y / 100) * 86 }));
                 return (<>
-                    <svg viewBox="0 0 150 60" style={{ width: "100%", height: "auto", marginBottom: 16 }}>
-                      <rect x="2" y="2" width="146" height="56" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="1.5" />
-                      <line x1="75" y1="2" x2="75" y2="58" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-                      <circle cx="75" cy="30" r="7" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-                      <circle cx="75" cy="30" r="0.5" fill="var(--chrome-muted-44)" />
-                      <rect x="2" y="12" width="16" height="36" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-                      <rect x="2" y="19" width="7" height="22" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.4" />
-                      <rect x="132" y="12" width="16" height="36" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-                      <rect x="141" y="19" width="7" height="22" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.4" />
+                    <div style={{ display: "grid", gridTemplateColumns: "300px minmax(0,1fr)", gap: 18, alignItems: "stretch" }}>
+                    <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                    <svg viewBox="0 0 60 96" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", flex: 1, minHeight: 0, display: "block" }}>
+                      <rect x="2" y="2" width="56" height="92" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.5" rx="1.5" />
+                      <line x1="2" y1="48" x2="58" y2="48" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
+                      <circle cx="30" cy="48" r="7" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
+                      <circle cx="30" cy="48" r="0.5" fill="var(--chrome-muted-44)" />
+                      {/* Own goal at the bottom, attacking upward — the way a formation is read. */}
+                      <rect x="13" y="82" width="34" height="12" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
+                      <rect x="21" y="89" width="18" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.3" />
+                      <rect x="13" y="2" width="34" height="12" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
+                      <rect x="21" y="2" width="18" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.3" />
                       {starters.map((p, pi2) => {
                         const pos = lpos[pi2];
                         if (!pos) return null;
                         return (<g key={pi2}>
-                          <circle cx={pos.x} cy={pos.y} r="2.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.4" />
-                          <text x={pos.x} y={pos.y - 3.6} textAnchor="middle" fill="var(--ui-text)" fontSize="2.1" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
+                          <circle cx={pos.x} cy={pos.y} r="1.7" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.35" />
+                          <text x={pos.x} y={pos.y - 2.7} textAnchor="middle" fill="var(--ui-text)" fontSize="1.6" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
                         </g>);
                       })}
                     </svg>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>STARTING XI</div>
-                    <div className="squad-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px", marginBottom: 10 }}>
-                    {starters.map((p, pi) => (
-                      <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
-                        <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 1, marginBottom: 12 }}>
+                    {starters.map((p, li) => { const idx = li;
+                      // A national side lists each player's club; a club lists their nationality.
+                      // Either way it is a three-letter code linking to that team.
+                      const pe = playerByName.get(p.fullName || p.name);
+                      const oc = isIntlTeam ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
+                      const ct = isIntlTeam ? (oc ? teamByName.get(oc.name) : null)
+                                            : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
+                      const sideCode = isIntlTeam ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || "");
+                      const sideName = isIntlTeam ? oc?.name : pe?.nationality;
+                      return (
+                      <div key={li} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: "1px solid var(--chrome-border-33)", overflow: "hidden" }}>
                         {ed
                           ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                              const ns = [...sq]; ns[pi] = {...ns[pi], name: e.target.value, fullName: undefined};
+                              const ns = [...sq]; ns[idx] = {...ns[idx], name: e.target.value, fullName: undefined};
                               updateTeam(t.id, "squad", ns);
-                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent" }}
+                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
                             onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                             onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.fullName || p.name}</span>}
+                          : <span style={{ flex: 1, minWidth: 0, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(p.fullName || p.name, p.name)}</span>}
+                        {/* spos is the specific slot (LB, DM, ST); pos is only the broad band. */}
+                        <span style={{ fontSize: 9, color: POS_CLR[p.pos] || "var(--chrome-muted)", fontWeight: 700, width: 30, flexShrink: 0, textAlign: "center", ...mono }}>{p.spos || p.pos}</span>
                         {ed
-                          ? <input type="number" min="1" max="99"
-                              value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                              onChange={e => { const ns = [...sq]; ns[pi] = {...ns[pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                          ? <input type="number" min="1" max="99" value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                              onChange={e => { const ns = [...sq]; ns[idx] = {...ns[idx], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
                               onClick={e => e.stopPropagation()}
-                              style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                              style={{ width: 26, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 11, textAlign: "center", flexShrink: 0, ...mono }}
                               onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                               onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ width: 18, fontSize: 10, textAlign: "center", flexShrink: 0, marginLeft: -6, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "var(--ui-nat-override)", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
-                      </div>
-                    ))}
+                          : <span style={{ width: 26, fontSize: 11, textAlign: "center", flexShrink: 0, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill))
+                          ? <span title={"National team rating override: " + nOvr} style={{ fontSize: 9, color: "var(--ui-nat-override)", flexShrink: 0, ...mono }}>{nOvr}</span>
+                          : <span style={{ width: 0 }} />; })()}
+                        {/* Only ever populated for a national side — for a club team this is the
+                            team you are already looking at. */}
+                        <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
+                          title={ct ? `Open ${sideName}` : (sideName || undefined)}
+                          style={{ display: "flex", alignItems: "center", gap: 4, width: 38, flexShrink: 0, justifyContent: "flex-end", overflow: "hidden", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
+                          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sideCode}</span>
+                          {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
+                        </span>
+                      </div>); })}
                     </div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingTop: 6 }}>BENCH</div>
-                    <div className="squad-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px 10px" }}>
-                    {bench.map((p, pi) => (
-                      <div key={pi} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 0" }}>
-                        <span style={{ fontSize: 7, color: POS_CLR[p.pos], fontWeight: 700, width: 20, ...mono }}>{p.pos}</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 1 }}>
+                    {bench.map((p, li) => { const idx = 11 + li;
+                      // A national side lists each player's club; a club lists their nationality.
+                      // Either way it is a three-letter code linking to that team.
+                      const pe = playerByName.get(p.fullName || p.name);
+                      const oc = isIntlTeam ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
+                      const ct = isIntlTeam ? (oc ? teamByName.get(oc.name) : null)
+                                            : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
+                      const sideCode = isIntlTeam ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || "");
+                      const sideName = isIntlTeam ? oc?.name : pe?.nationality;
+                      return (
+                      <div key={li} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: "1px solid var(--chrome-border-33)", overflow: "hidden" }}>
                         {ed
                           ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                              const ns = [...sq]; ns[11 + pi] = {...ns[11+pi], name: e.target.value, fullName: undefined};
+                              const ns = [...sq]; ns[idx] = {...ns[idx], name: e.target.value, fullName: undefined};
                               updateTeam(t.id, "squad", ns);
-                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, border: "1px solid transparent", background: "transparent", color: "var(--chrome-muted)" }}
+                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
                             onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                             onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 10, color: "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.fullName || p.name}</span>}
+                          : <span style={{ flex: 1, minWidth: 0, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(p.fullName || p.name, p.name)}</span>}
+                        {/* The XI shows its formation slot; a substitute shows his own role. */}
+                        <span style={{ fontSize: 9, color: POS_CLR[p.pos] || "var(--chrome-muted)", fontWeight: 700, width: 30, flexShrink: 0, textAlign: "center", ...mono }}>{benchSpos(p, pe)}</span>
                         {ed
-                          ? <input type="number" min="1" max="99"
-                              value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                              onChange={e => { const ns = [...sq]; ns[11+pi] = {...ns[11+pi], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
+                          ? <input type="number" min="1" max="99" value={p.ovr != null ? p.ovr : (t.skill || 65)}
+                              onChange={e => { const ns = [...sq]; ns[idx] = {...ns[idx], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
                               onClick={e => e.stopPropagation()}
-                              style={{ width: 18, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 0, flexShrink: 0, marginLeft: -6 }}
+                              style={{ width: 26, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 11, textAlign: "center", flexShrink: 0, ...mono }}
                               onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
                               onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ width: 18, fontSize: 10, textAlign: "center", flexShrink: 0, marginLeft: -6, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill)) ? <span title={"National team rating overrides this club number in matches: " + nOvr} style={{ fontSize: 7, color: "var(--ui-nat-override)", fontWeight: 700, marginLeft: 2, flexShrink: 0, cursor: "help", ...mono }}>▲{nOvr}</span> : null; })()}
-                      </div>
-                    ))}
+                          : <span style={{ width: 26, fontSize: 11, textAlign: "center", flexShrink: 0, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
+                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill))
+                          ? <span title={"National team rating override: " + nOvr} style={{ fontSize: 9, color: "var(--ui-nat-override)", flexShrink: 0, ...mono }}>{nOvr}</span>
+                          : <span style={{ width: 0 }} />; })()}
+                        {/* Only ever populated for a national side — for a club team this is the
+                            team you are already looking at. */}
+                        <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
+                          title={ct ? `Open ${sideName}` : (sideName || undefined)}
+                          style={{ display: "flex", alignItems: "center", gap: 4, width: 38, flexShrink: 0, justifyContent: "flex-end", overflow: "hidden", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
+                          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sideCode}</span>
+                          {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
+                        </span>
+                      </div>); })}
+                    </div>
+                    </div>
                     </div>
                 </>);
               })()}
                     <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
-                    <div style={{ marginBottom: 12 }}><PanelTitle accent="#ebcb8b">Tactics</PanelTitle></div>
+                    <div style={{ marginBottom: 12 }}><PanelTitle accent="var(--ui-warn)">Tactics</PanelTitle></div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 4 }}>STYLE</div>
@@ -6473,80 +7042,280 @@ export default function App() {
                       : <RO mono style={{ color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)", fontWeight: 600 }}>{t.formation || "4-3-3"}</RO>}
                   </div>
                 </div>
-                {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
-                  const hdr = grp !== lastGrp; lastGrp = grp;
-                  return (<div key={key}>{hdr && <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 10, marginBottom: 4 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
+                {(() => {
+                  const GRPS = [["possession", "In Possession"], ["transition", "In Transition"], ["defense", "Out of Possession"]];
+                  return (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 20, alignItems: "start" }}>
+                  {GRPS.map(([g, label]) => (
+                  <div key={g}>
+                    <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+                    {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === g).map(([key, {name, vals}]) => (
+                      <div key={key}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
                     {(() => {
                       const v = strat[key] ?? 0;
                       // Same three-way colouring in both modes: neutral muted, aggressive warm, cautious cool.
-                      const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "#d08770" : "#81a1c1";
+                      const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
                       return ed
                         ? <select value={v} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: clr }}>
                             {vals.map(([vv, l]) => <option key={vv} value={vv}>{l}</option>)}
                           </select>
                         : <RO style={{ flex: 1, minWidth: 0, fontSize: 11, padding: "3px 0", color: clr }}>{vals.find(([vv]) => vv === v)?.[1] || "No Instruction"}</RO>;
                     })()}
-                  </div></div>);
-                }); })()}
+                      </div></div>
+                    ))}
+                  </div>))}
+                  </div>); })()}
                   </div>
-                </div>
-              </div>)}
-              </div>); })}
-            {visibleTeams.length === 0 && <div style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
+  </>); };
+
+  return (
+    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: "24px 18px" }}>
+      <style>{APP_CSS}</style>
+      <div className="width-gate" style={{ minHeight: "calc(100vh - 48px)", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center", padding: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Avium Football Engine</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "var(--ui-text)", maxWidth: 440, lineHeight: 1.35 }}>This window is the wrong shape</div>
+        <div style={{ fontSize: 13, color: "var(--chrome-muted)", maxWidth: 440, lineHeight: 1.6 }}>
+          The engine needs a landscape window at least <span style={{ color: "var(--chrome-brand)", ...mono }}>{MIN_APP_WIDTH}px</span> wide — wider than it is tall. Widen the window, rotate the device, or open it on a desktop.
+        </div>
+      </div>
+      <div className="app-body">
+      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
+      {/* Width is per tab, not one global cap. A tab built as a single column reads badly stretched
+          to 1600 — the same failure as a ten-column table across a 2000px panel — so each tab widens
+          only once it has a layout that fills it. 1600 rather than full-bleed: past that, side-by-side
+          panels sit far enough apart that the eye has to travel between them. */}
+      <div style={{ maxWidth: WIDE_TABS.has(tab) ? 1600 : 900, margin: "0 auto" }}>
+        <div style={{ marginBottom: 20, paddingBottom: 12 }}>
+          <div style={{ marginBottom: 12, textAlign: "center" }}>
+            <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
           </div>
-          ); })()}
-          {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "6px 12px", borderTop: "1px solid var(--chrome-border)" }}>Skill values must be between 25 and 100.</div>}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
+              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
+            ))}
+          </div>
         </div>
 
+        {tab === "teams" && (<>
+        {/* Two panes: the league list drives teamLeagueFilter, so `visibleTeams` and `customTab`
+            keep working untouched and the right pane is just their rendering. Clicking a club
+            drills this pane into that team instead of opening an overlay. */}
+        {/* One fixed height on the grid with stretched items, so the two panes are exactly equal
+            whatever their headers contain and each scrolls inside itself. Matching two independent
+            maxHeights by hand only holds until one header grows a line. */}
+        <div style={{ display: "grid", gridTemplateColumns: "268px minmax(0,1fr)", gap: 16, alignItems: "stretch", height: ROSTER_PANEL_H }}>
 
-        <div style={{ marginTop: 24 }}>
-          <div className="panel-head-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 32 }}>
-            <PanelTitle sub={`${playerIndex.length}`}>Players</PanelTitle>
-            <div style={{ display: "flex", gap: 6 }}>
-              <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...smBtn, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="ALL">Positions</option><optgroup label="Broad">{["GK","DEF","MID","FWD"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup><optgroup label="Specific">{["LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"].map(p=><option key={p} value={p}>{p}</option>)}</optgroup></select>
-              <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...smBtn, color: playerNatFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Nationalities</option>{[...playerIndex.reduce((m, p) => { if (p.natCode) m.set(p.natCode, Math.max(m.get(p.natCode) || 0, p.natSkill || 0)); return m; }, new Map())].sort((a, b) => b[1] - a[1]).map(([c]) => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...smBtn, color: playerLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Leagues</option>{(()=>{ const leagues=new Set(); playerIndex.forEach(p=>p.clubs.forEach(c=>leagues.add(c.league||"Custom"))); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(leagues.has(l)){ordered.push(l);seen.add(l);}} for(const l of leagues){if(!seen.has(l))ordered.push(l);} return ordered.map(l=><option key={l} value={l}>{l}</option>); })()}</select>
-              <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...smBtn, color: playerClubFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}><option value="">Clubs</option>{(()=>{ const byL={}; playerIndex.forEach(p=>p.clubs.forEach(c=>{ const l=c.league||"Custom"; if(!byL[l])byL[l]=new Map(); byL[l].set(c.name,c.code); })); const ordered=[]; const seen=new Set(); for(const l of LEAGUE_ORDER){if(l===null)continue;if(byL[l]){ordered.push([l,byL[l]]);seen.add(l);}} for(const l of Object.keys(byL)){if(!seen.has(l))ordered.push([l,byL[l]]);} return ordered.map(([l,clubs])=><optgroup key={l} label={l}>{[...clubs.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([name,code])=><option key={name} value={name}>{code}</option>)}</optgroup>); })()}</select>
-              <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search" style={{ ...addBtn, width: 110, background: "transparent", color: playerSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+          {/* ── Leagues ── */}
+          <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+            {/* Same height as the right-hand header. That side carries two stacked stat blocks, so
+                the height is set explicitly rather than left to whichever side has more in it. */}
+            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+              <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
+            </div>
+            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+              <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="🔍 Search"
+                style={{ ...addBtn, width: "100%", background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+              {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
+              <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 12px 5px",
+                            borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
+              {entries.map(([val, ts]) => {
+                const on = teamLeagueFilter === val;
+                return (
+                <div key={val} onClick={() => { setTeamLeagueFilter(val); setExpandedTeam(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
+                           borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
+                           background: on ? "var(--chrome-panel-66)" : "transparent" }}>
+                  <LeagueCrest league={val} size={19} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
+                  </div>
+                  {val !== "Avium International" && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{leagueAvgSkill(ts)}</span>}
+                </div>); })}</Fragment>))}
             </div>
           </div>
-          {(() => { const dups = playerIndex.filter(p => p.clubs.length > 1); const badSyntax = []; teams.forEach(t => { if (!t.squad) return; t.squad.forEach(p => { if (!p.name || p.name.startsWith("#")) return; const n = p.fullName || p.name; if (/[\[\]{}()]/.test(n)) badSyntax.push(n + " (" + (t.code || abbr(t.name, t.code)) + ")"); }); }); if (dups.length === 0 && badSyntax.length === 0) return null; return (
-            <div style={{ display: "flex", gap: 14, marginBottom: 8 }}>
-              {dups.length > 0 && <span className="warn-badge" data-tip={dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")).join("\n")} style={{ fontSize: 10, color: "var(--ui-danger)", cursor: "help" }}>&#x26A0; {dups.length} duplicate{dups.length > 1 ? "s" : ""}</span>}
-              {badSyntax.length > 0 && <span className="warn-badge" data-tip={badSyntax.join("\n")} style={{ fontSize: 10, color: "var(--ui-warn)", cursor: "help" }}>&#x26A0; {badSyntax.length} syntax</span>}
+
+          {/* ── Clubs, or the drilled-into team ── */}
+          <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+            {detailTeam ? renderTeamDetail(detailTeam) : (<>
+              {(() => {
+                const lgLabel = teamLeagueFilter;
+                const nat = leagueNation(teamLeagueFilter);
+                const avg = leagueAvgSkill(visibleTeams);
+                return (
+                <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                    <LeagueCrest league={teamLeagueFilter} size={26} />
+                    <PanelTitle>{lgLabel}</PanelTitle>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
+                    {teamLeagueFilter !== "Avium International" && <>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Nation</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)" }}>{nat ? nat.name : "—"}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(avg), ...mono }}>{avg || "–"}</div>
+                    </div></>}
+                    {/* Bulk import only ever creates Custom teams, so save/load lives on that league. */}
+                    {customTab && <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={exportState} style={{ ...smBtn, color: showExport ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕" : "💾"}</button>
+                      <button onClick={() => setShowBulk(!showBulk)} style={{ ...smBtn, color: showBulk ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Bulk import">{showBulk ? "✕" : "📂"}</button>
+                      <button onClick={addTeam} style={addBtn}>+ Add</button>
+                    </div>}
+                  </div>
+                </div>); })()}
+              <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {showExport && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
+                {showBulk && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ … ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(196px, 1fr))", gap: 12 }}>
+                  {visibleTeams.map(t => {
+                    // The kit colour is clamped the same way the scoreboard clamps it — a near-white
+                    // strip would otherwise wash the tile out into the panel behind it.
+                    const kit = clampTeamClr(t.primaryColor || "#2a3a50");
+                    // The badge art is a 500px square with the crest inset 50px top and bottom, so
+                    // a tenth of the rendered box is empty above and below it and the whole content
+                    // group reads low. Cancelling that pulls the crest and everything under it up.
+                    // Proportional rather than a flat pixel figure so it stays right at any size.
+                    const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
+                    return (
+                    <div key={t.id} role="button" tabIndex={0} title={`Open ${t.name}`}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                      onClick={() => setExpandedTeam(t.id)} className="team-tile"
+                      style={{ position: "relative", borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer",
+                               padding: "18px 10px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                               background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
+                      <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: TILE_NAME_GAP - TILE_GAP }}>
+                        <span style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>
+                      </div>
+                    </div>); })}
+                </div>
+                {visibleTeams.length === 0 && <div style={{ padding: 28, fontSize: 11, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
+                {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "10px 2px 0" }}>Skill values must be between 25 and 100.</div>}
+              </div>
+            </>)}
+          </div>
+        </div>
+        </>)}
+
+        {tab === "players" && (<>
+        {/* Same two-pane shape as Teams: the nations rail drives playerNatFilter, the right pane is
+            its table, and a row drills that pane into the player. */}
+        <div style={{ display: "grid", gridTemplateColumns: "268px minmax(0,1fr)", gap: 16, alignItems: "stretch", height: ROSTER_PANEL_H }}>
+
+          {/* ── Nationalities ── */}
+          <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+              <PanelTitle sub={`${playerNations.length}`}>Nationalities</PanelTitle>
             </div>
-          ); })()}
-          {(() => {
-            const q = playerSearch.toLowerCase();
-            const filtered = playerIndex.filter(p => {
-              if (playerPosFilter !== "ALL") { const pl = p.pos.split("/"); const posMatch = ["DEF","MID","FWD"].includes(playerPosFilter) ? pl.some(x => POS_GROUP[x] === playerPosFilter) : pl.includes(playerPosFilter); if (!posMatch) return false; }
-              if (playerNatFilter && p.natCode !== playerNatFilter) return false;
-              if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
-              if (playerClubFilter && !p.clubs.some(c => c.name === playerClubFilter)) return false;
-              if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
-              return true;
-            });
-            // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
-            const PL_VIEW_H = 1350, PL_OVER = 12;
-            const plTotal = filtered.length;
-            // Clamp: when a filter shrinks the list, plScroll stays stale for one frame before the
-            // reset effect fires, and an unclamped value would window past the end and blank the view.
-            const plY = Math.max(0, Math.min(plScroll, Math.max(0, plTotal * plRowH - PL_VIEW_H)));
-            const plStart = Math.max(0, Math.min(plTotal, Math.floor(plY / plRowH) - PL_OVER));
-            const plEnd = Math.min(plTotal, Math.ceil((plY + PL_VIEW_H) / plRowH) + PL_OVER);
-            const plWin = { top: plStart * plRowH, bottom: Math.max(0, (plTotal - plEnd) * plRowH) };
-            const plRows = filtered.slice(plStart, plEnd);
-            const PLR_COLW = { num: 32, player: 220, ovr: 44, pos: 70, nat: 130, club: 180 };
-            const thStyle = thCellSticky;
-            const tdStyle = tdCell;
-            return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
-                <div ref={plScrollRef} onScroll={() => { if (plRafRef.current) return; plRafRef.current = requestAnimationFrame(() => { plRafRef.current = 0; setPlScroll(plScrollRef.current?.scrollTop || 0); }); }} style={{ maxHeight: 1350, overflowY: "auto", overflowX: "auto" }}>
+            {(playerWarnings.dups.length > 0 || playerWarnings.badSyntax.length > 0 || playerWarnings.mismatch.length > 0) && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+              {playerWarnings.dups.length > 0 && <span title={playerWarnings.dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")).join("\n")}
+                style={{ fontSize: 9, color: "var(--ui-danger)", border: "1px solid var(--ui-danger)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.dups.length} duplicate</span>}
+              {playerWarnings.badSyntax.length > 0 && <span title={playerWarnings.badSyntax.join("\n")}
+                style={{ fontSize: 9, color: "var(--ui-warn)", border: "1px solid var(--ui-warn)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.badSyntax.length} syntax</span>}
+              {/* Same colour as the per-player override marker in the squad panel. */}
+              {playerWarnings.mismatch.length > 0 && <span title={playerWarnings.mismatch.join("\n")}
+                style={{ fontSize: 9, color: "var(--ui-nat-override)", border: "1px solid var(--ui-nat-override)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.mismatch.length} rating</span>}
+            </div>)}
+            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+              <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search"
+                style={{ ...addBtn, width: "100%", background: "transparent", color: playerSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+              {[{ name: "", label: "All Players", code: null, players: playerIndex, avg: allPlayersAvg, divider: true }, ...playerNations].map(n => {
+                const on = playerNatFilter === n.name;
+                const natTeam = n.code ? teams.find(t => t.league === "Avium International" && t.code === n.code) : null;
+                return (
+                <div key={n.name} onClick={() => { setPlayerNatFilter(n.name); }}
+                  style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
+                           borderBottom: n.divider ? "1px solid var(--chrome-border)" : "none",
+                           marginBottom: n.divider ? 4 : 0,
+                           borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
+                           background: on ? "var(--chrome-panel-66)" : "transparent" }}>
+                  {natTeam ? <TeamCrest team={natTeam} size={19} /> : <span style={{ width: 19, flexShrink: 0 }} />}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label || n.name}</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{n.players.length} {n.players.length === 1 ? "player" : "players"}</div>
+                  </div>
+                  {!n.label && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(n.natSkill), ...mono }}>{n.natSkill || "–"}</span>}
+                </div>); })}
+            </div>
+          </div>
+
+          {/* ── Players, or the drilled-into player ── */}
+          <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+              {(() => {
+                const nat = playerNatFilter ? playerNations.find(n => n.name === playerNatFilter) : null;
+                const natTeam = nat?.code ? teams.find(t => t.league === "Avium International" && t.code === nat.code) : null;
+                const headCount = nat ? nat.players.length : playerIndex.length;
+                const headAvg = nat ? nat.ntAvg : allPlayersAvg;
+                return (
+                <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                    {natTeam && <TeamCrest team={natTeam} size={26} />}
+                    <PanelTitle>{playerNatFilter || "All Players"}</PanelTitle>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <select value={playerPosFilter} onChange={e => setPlayerPosFilter(e.target.value)} style={{ ...smBtn, color: playerPosFilter !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}>
+                        <option value="ALL">Positions</option>
+                        <optgroup label="Broad">{["GK","DEF","MID","FWD"].map(g => <option key={g} value={g}>{g}</option>)}</optgroup>
+                        {/* Front-to-back rather than alphabetical, so the list reads like a pitch. */}
+                        <optgroup label="Specific">{POS_SPECIFIC.map(g => <option key={g} value={g}>{g}</option>)}</optgroup>
+                      </select>
+                      <select value={playerLeagueFilter} onChange={e => setPlayerLeagueFilter(e.target.value)} style={{ ...smBtn, color: playerLeagueFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}>
+                        <option value="">Leagues</option>
+                        {rosterLeagues.map(([lg]) => <option key={lg} value={lg}>{lg}</option>)}
+                      </select>
+                    </div>
+                    {nat && <>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Players</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...mono }}>{headCount}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Nat Team OVR</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(headAvg), ...mono }}>{headAvg || "–"}</div>
+                    </div></>}
+                  </div>
+                </div>); })()}
+              {(() => {
+                const q = playerSearch.toLowerCase();
+                const filtered = playerIndex.filter(p => {
+                  if (playerPosFilter !== "ALL") { const pl = p.pos.split("/"); const posMatch = ["DEF","MID","FWD"].includes(playerPosFilter) ? pl.some(x => POS_GROUP[x] === playerPosFilter) : pl.includes(playerPosFilter); if (!posMatch) return false; }
+                  // The rail selects by display name, which is what the nations list is keyed on —
+                  // natCode is absent for anyone whose league has no nation mapping.
+                  if (playerNatFilter && (p.nationality || "Unaffiliated") !== playerNatFilter) return false;
+                  if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
+                  if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
+                  return true;
+                });
+                // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
+                const PL_VIEW_H = 1350, PL_OVER = 12;
+                const plTotal = filtered.length;
+                const plY = Math.max(0, Math.min(plScroll, Math.max(0, plTotal * plRowH - PL_VIEW_H)));
+                const plStart = Math.max(0, Math.min(plTotal, Math.floor(plY / plRowH) - PL_OVER));
+                const plEnd = Math.min(plTotal, Math.ceil((plY + PL_VIEW_H) / plRowH) + PL_OVER);
+                const plWin = { top: plStart * plRowH, bottom: Math.max(0, (plTotal - plEnd) * plRowH) };
+                const plRows = filtered.slice(plStart, plEnd);
+                const thStyle = thCellSticky, tdStyle = tdCell;
+                return (
+                <div ref={plScrollRef} onScroll={() => { if (plRafRef.current) return; plRafRef.current = requestAnimationFrame(() => { plRafRef.current = 0; setPlScroll(plScrollRef.current?.scrollTop || 0); }); }}
+                  style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                    {/* Nationality is gone: the rail already fixes it, so the column read the same
+                        value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: PLR_COLW.num }} /><col style={{ width: PLR_COLW.player }} /><col style={{ width: PLR_COLW.ovr }} /><col style={{ width: PLR_COLW.pos }} /><col style={{ width: PLR_COLW.nat }} /><col style={{ width: PLR_COLW.club }} />
+                      <col style={{ width: 44 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 82 }} /><col style={{ width: "28%" }} /><col style={{ width: "38%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -6561,22 +7330,38 @@ export default function App() {
                     <tbody>
                       {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
                       {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
-                      {plRows.map((p, wi) => { const i = plStart + wi; return (
-                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                          <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
-                          <td style={tdStyle}>{boldSurname(p.fullName || p.name, p.name)}</td>
+                      {plRows.map((p, wi) => { const i = plStart + wi;
+                        const natT = p.natCode ? natTeamByCode.get(p.natCode) : null, clubT = teamByName.get(p.clubs[0]?.name);
+                        const capped = p.capped && !!playerNatFilter;
+                        return (
+                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null}
+                          style={{ background: capped ? "var(--chrome-brand-11)" : i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                          <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono,
+                                       borderLeft: `2px solid ${capped ? "var(--chrome-brand)" : "transparent"}` }}>{i + 1}</td>
+                          <td style={{ ...tdStyle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                              title={capped ? `${p.fullName || p.name} — in the ${p.nationality} squad` : undefined}>{boldSurname(p.fullName || p.name, p.name)}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
-                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{p.pos}</td>
-                          <td style={{ ...tdStyle, paddingLeft: 8, color: "var(--chrome-muted)", fontWeight: p.capped ? 700 : 400, fontSize: 10 }}>{p.nationality}</td>
-                          <td style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "var(--ui-danger)" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10 }} title={p.clubs.length > 1 ? "Duplicated across clubs — fix roster: " + p.clubs.map(c => c.name).join(" / ") : undefined}>{p.clubs.length > 1 ? p.clubs.map(c => c.code).join(" / ") : (p.clubs[0]?.name || "–")}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
+                          <td className={natT ? "cell-link" : undefined} onClick={() => openTeam(natT)}
+                            title={natT ? `Open ${natT.name}` : undefined}
+                            style={{ ...tdStyle, paddingLeft: 8, color: capped ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: capped ? 700 : 400, fontSize: 10, cursor: natT ? "pointer" : "default" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              {natT ? <TeamCrest team={natT} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nationality || "—"}</span>
+                            </span></td>
+                          <td className={clubT ? "cell-link" : undefined} onClick={() => openTeam(clubT)}
+                            title={p.clubs.length > 1 ? "Duplicate: " + p.clubs.map(c => c.code).join(", ") : (clubT ? `Open ${clubT.name}` : p.clubs[0]?.name)}
+                            style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "var(--ui-danger)" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, cursor: clubT ? "pointer" : "default" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              {clubT ? <TeamCrest team={clubT} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.clubs.map(c => c.name).join(", ")}</span>
+                            </span></td>
                         </tr>); })}
                       {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            );
-          })()}
+                </div>); })()}
+          </div>
         </div>
         </>)}
 
@@ -6662,15 +7447,147 @@ export default function App() {
               </div>) : null;
             })()}
           </div>}
-          {lmIsSetup && !tPendingPlayLive && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
-                <select value={lmH} onChange={e => { setLmH(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
-                <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.18em", fontWeight: 700, ...ui }}>VS</span>
-                <select value={lmA} onChange={e => { setLmA(e.target.value); setLmMatch(null); }} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>{groupByLeague(teams).map((entry, gi) => entry === null ? <optgroup key={"div"+gi} label="───" /> : <optgroup key={entry[0]} label={entry[0]}>{entry[1].map(t => <option key={t.id} value={t.id}>{t.name} ({t.skill})</option>)}</optgroup>)}</select>
+          {lmIsSetup && !tPendingPlayLive && (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", height: LIVE_PANEL_H }}>
+
+            {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
+                A flat list of every team in the game is a scroll with no landmarks; leagues are the
+                landmarks, and the tiles carry the crest and skill you actually choose on. */}
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {/* The two slots sit above both panes rather than in either header: at half the page
+                  width neither header has room for a team name beside its own title. */}
+              <div style={{ ...panelBox, marginBottom: 0, padding: "10px 12px", flexShrink: 0, display: "flex", gap: 8 }}>
+                {["home","away"].map(side => { const t = teamById(side === "home" ? lmH : lmA); const on = lmPick === side;
+                  return (<div key={side} onClick={() => setLmPick(side)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: "5px 10px", borderRadius: 7,
+                      background: on ? "var(--chrome-panel-66)" : "transparent", border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)") }}>
+                    <div style={{ fontSize: 7, letterSpacing: "0.16em", color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 700 }}>{side === "home" ? "TEAM 1" : "TEAM 2"}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      {t && <TeamCrest team={t} size={14} />}
+                      <span style={{ fontSize: 11, color: "var(--ui-text)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name || "—"}</span>
+                    </div>
+                  </div>);
+                })}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch" }}>
+
+                {/* ── Leagues ── */}
+                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+                    <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
+                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
+                                  borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
+                    {entries.map(([val, ts]) => { const on = lmLeague === val;
+                      return (
+                      <div key={val} onClick={() => setLmLeague(val)}
+                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
+                                 borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
+                                 background: on ? "var(--chrome-panel-66)" : "transparent" }}>
+                        <LeagueCrest league={val} size={17} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 11, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
+                          <div style={{ fontSize: 8, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
+                        </div>
+                      </div>); })}</Fragment>))}
+                  </div>
+                </div>
+
+                {/* ── Clubs of that league ── */}
+                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <LeagueCrest league={lmLeague} size={24} />
+                      <PanelTitle>{lmLeague}</PanelTitle>
+                    </div>
+                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...ui }}>Picking {lmPick === "home" ? "Team 1" : "Team 2"}</span>
+                  </div>
+                  <div style={{ padding: 14, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
+                      {(rosterLeagues.find(([lg]) => lg === lmLeague)?.[1] || []).map(t => {
+                        const isH = t.id === lmH, isA = t.id === lmA, taken = lmPick === "home" ? isA : isH;
+                        // Same clamp the scoreboard uses — a near-white strip would wash the tile
+                        // out into the panel behind it.
+                        const kit = clampTeamClr(t.primaryColor || "#2a3a50");
+                        // The badge art is a 500px square with the crest inset a tenth top and
+                        // bottom, so cancelling that pulls the whole content group up.
+                        const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
+                        const ring = isH ? hClr : isA ? aClr : null;
+                        return (
+                        <div key={t.id} role="button" tabIndex={taken ? -1 : 0} title={taken ? "Already the other side" : `Pick ${t.name}`}
+                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                          onClick={() => !taken && lmPickTeam(t.id)} className="team-tile"
+                          style={{ position: "relative", borderRadius: 10, border: "1px solid " + (ring || "var(--chrome-border)"), cursor: taken ? "not-allowed" : "pointer", opacity: taken ? 0.3 : 1,
+                                   boxShadow: ring ? `0 0 0 1px ${ring}` : "none",
+                                   padding: "16px 8px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                                   background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
+                          {ring && <span style={{ position: "absolute", top: 4, left: 5, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: ring, ...mono }}>{isH ? "1" : "2"}</span>}
+                          <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
+                            <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>
+                          </div>
+                        </div>); })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+
+            {/* Right: where it is played on top, how it is played underneath. Home advantage used
+                to be its own three-way toggle; it is the venue choice now, because picking a side's
+                own ground and giving that side the advantage were always the same decision. */}
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+
+              <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+                  <PanelTitle>Venue</PanelTitle>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {(() => {
+                  const hT = teamById(lmH), aT = teamById(lmA);
+                  const named = lmNeutralVenueName.trim();
+                  // Every stadium that has a picture, with the owning team's city where one matches.
+                  const byStadium = new Map();
+                  for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !byStadium.has(st)) byStadium.set(st, t); }
+                  const place = (t) => [t?.city, t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name].filter(Boolean).join(", ");
+                  const ownGrounds = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
+                  const row = (key, sel, onPick, name, sub, img) => (
+                    <div key={key} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer",
+                        borderLeft: `2px solid ${sel ? "var(--chrome-brand)" : "transparent"}`, background: sel ? "var(--chrome-panel-66)" : "transparent" }}>
+                      <div style={{ width: 52, height: 30, flexShrink: 0, borderRadius: 4, border: "1px solid var(--chrome-border)",
+                                    backgroundColor: "var(--chrome-bg)", backgroundSize: "cover", backgroundPosition: "center",
+                                    backgroundImage: img ? stadiumBg(img) : "none" }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: sel ? 600 : 500, color: sel ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
+                        {sub && <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
+                      </div>
+                    </div>);
+                  const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
+                  const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
+                  const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
+                  return (<>
+                    {row("neutral", lmHomeAdv === null && !named, pickNeutral, "Neutral Venue", null, null)}
+                    {/* Both sides' grounds are offered whether or not a picture exists for them —
+                        the advantage is the point, the backdrop is a bonus. */}
+                    {[["home", hT], ["away", aT]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
+                      return row(side, lmHomeAdv === side, () => pickHost(side), st || `${t.name} (no ground listed)`,
+                        [side === "home" ? "Team 1" : "Team 2", place(t)].filter(Boolean).join(" · "),
+                        STADIUM_IMAGES.includes(st) ? st : null); })}
+                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 14px 5px", borderTop: "1px solid var(--chrome-border)", marginTop: 4 }}>Other Grounds</div>
+                    {STADIUM_IMAGES.filter(st => !ownGrounds.has(st)).map(st => { const owner = byStadium.get(st);
+                      return row(st, lmHomeAdv === null && named === st, () => pickGround(st), st,
+                        place(owner), st); })}
+                  </>);
+                })()}
+                </div>
+              </div>
+
+              <div style={{ ...panelBox, marginBottom: 0, flexShrink: 0 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
                 {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs"], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds"]].map(([checked, onChange, label, sub], i) => (
                   <label key={i} onClick={() => onChange(!checked)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
@@ -6685,19 +7602,6 @@ export default function App() {
                 ))}
               </div>
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
-                <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
-                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
-                  {[["home", teamById(lmH)?.name || "Home"], [null, "Neutral"], ["away", teamById(lmA)?.name || "Away"]].map(([val, label]) => (
-                    <button key={label} onClick={() => setLmHomeAdv(val)} className={lmHomeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lmHomeAdv === val ? "var(--chrome-brand)" : "transparent", color: lmHomeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lmHomeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
-                  ))}
-                </div>
-                <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{lmHomeAdv ? "+3% skill bonus" : "No advantage"}</div>
-                {lmHomeAdv === null && <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <input value={lmNeutralVenueName} onChange={e => setLmNeutralVenueName(e.target.value)} placeholder="Neutral Venue Name (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
-                  <input value={lmNeutralVenueLoc} onChange={e => setLmNeutralVenueLoc(e.target.value)} placeholder="Neutral Location (Optional)" style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 11 }} />
-                </div>}
-              </div>
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
@@ -6705,7 +7609,6 @@ export default function App() {
                   ))}
                 </div>
                 {lm2ndLeg && <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>1st leg result</div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px" }}>
                     <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teamById(lmH)?.name}</span>
                     <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
@@ -6714,12 +7617,13 @@ export default function App() {
                     <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teamById(lmA)?.name}</span>
                   </div>
                 </div>}
-                {!lm2ndLeg && <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>Single match</div>}
               </div>
-            </div>
             {teams.length < 2 && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
             {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
-          </div>)}
+              </div>
+            </div>
+            </div>
+          )}
           {tPendingPlayLive && (() => {
             const vc = tResolveVenueContext(tPendingPlayLive);
             if (!vc) return null;
@@ -6768,8 +7672,18 @@ export default function App() {
             );
           })()}
           {lmMatch && !tPendingPlayLive && (<>
-            {renderScoreboard()}
-            {lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
+            {/* Two columns, the shape of a post-match report: the match and the people who played
+                it on the left, everything derived from it on the right.
+                One fixed height on the grid with stretched items, each column scrolling inside
+                itself — the same shape the roster tabs use. The two sides hold wildly different
+                amounts (a pre-match scoreboard is tall and the event feed is empty; by full time
+                that has inverted), so letting the page scroll left them ending hundreds of pixels
+                apart. Height on the container rather than a maxHeight on each: matching two
+                independent heights by hand only holds until one side grows a panel. */}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", minHeight: LIVE_PANEL_H }}>
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+            {renderScoreboard(lmMatch.phase === "pre_match" ? { flex: "1 1 auto", marginBottom: 0 } : null)}
+            {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", boxSizing: "border-box" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: hClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
@@ -6786,10 +7700,127 @@ export default function App() {
                 </div>
               </div>
             )}
-            {lmMatch.phase === "finished" && renderStatsReport()}
+            {lmMatch.phase !== "pre_match" && (<>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 0, boxShadow: "0 2px 12px var(--ui-shadow-2)", flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, flexShrink: 0, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px", flex: "1 1 auto", minHeight: 0, overflowY: "auto", alignContent: "stretch" }} className="grid-2col">
+              {["home","away"].map((side,si) => {
+                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
+                const onPitch = lmMatch.players[side] || [];
+                const bench = lmMatch.bench?.[side] || [];
+                // A player currently on the pitch or bench is authoritative. subbedOff can carry
+                // a stale/duplicate record for a name that's since reappeared elsewhere (e.g. the
+                // same name logged twice across a card + injury event) — deduped so a starter can
+                // never be double-counted as both "still out there" and "already left."
+                const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
+                const seenOff = new Set();
+                const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
+                // Starters/bench must reflect the ACTUAL match squad (post-rotation via
+                // managerSelect), not the raw squad definition — a player rested for stamina
+                // or rotation reasons is a normal bench player this match, not still "starting."
+                // Split by WHO STARTED WHERE, not current array membership — a bench player
+                // who's since been subbed on has left the bench array entirely, so keying off
+                // membership alone would silently fold them into "starters" with no trace they
+                // came off the bench, and vice versa for a subbed-off starter.
+                const squadDef = tm?.squad || buildSquad(tm?.formation, null);
+                const defByName = new Map(squadDef.map(p => [p.name, p]));
+                const kf = n => playerKey(tm?.name, n);
+                const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
+                const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
+                const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
+                const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
+                // startedBench (stamped once, at the moment a bench player first comes on, and
+                // preserved through any later departure) is what decides the bucket — NOT
+                // current location. A player who started on the bench, came on, and was later
+                // subbed off/injured/carded is still a bench starter, not a starting-XI
+                // departure: .sub gets overwritten to 'off' by every removal site, so it can no
+                // longer tell the two apart.
+                const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
+                const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
+                // Masks the pending scorer's/assister's tally and every affected rating (scorer,
+                // assist, conceding side's dip) — otherwise any of them would spoil who's about
+                // to score before the card reveals it.
+                const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
+                const lookup = (name) => {
+                  const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
+                  if (!found) return found;
+                  let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
+                  for (const pg of hiddenGoals) {
+                    rating = lmAdjRating(pg, side, { name: found.name, rating });
+                    if (pg.team === side) {
+                      if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
+                      if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
+                    }
+                  }
+                  if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
+                  return { ...found, goals, assists, rating };
+                };
+                return (<>
+                {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
+                <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
+                  <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, lineHeight: 1.2, alignItems: "center", flex: "1 1 auto", gridTemplateRows: `auto repeat(${starters.length}, minmax(min-content, 1fr)) auto repeat(${benchSq.length}, minmax(min-content, 1fr))` }}>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
+                    <span></span>
+                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
+                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
+                      <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                      <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
+                    </>); })}
+                    <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
+                    {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
+                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
+                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
+                      <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
+                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
+                      <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
+                      <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
+                    </>); })}
+                  </div>
+                </div>
+                </>);
+              })}
+              </div>
+            </div>
+            </>)}
+            </div>
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+              {/* Overview meta. Referee, attendance and weather have no data behind them in this
+                  engine, so the block is venue only rather than a row of blanks. */}
+              {(() => { const v = lmVenue(); return (
+                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: 11 }}>📍</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", ...ui }}>{v.stadium || v.text}</span>
+                    {v.stadium && v.city && <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...ui }}>{v.city}</span>}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  {!["pre_match","finished","penalties"].includes(lmMatch.phase) && <button onClick={() => setLmPanel("subs")} style={{ ...smBtn, fontSize: 9 }}>&#8644; Substitutions</button>}
+                  <button onClick={() => setLmPanel("tactics")} style={{ ...smBtn, fontSize: 9 }}>&#9881; Tactics</button>
+                  <button onClick={() => setLmPanel("mods")} style={{ ...smBtn, fontSize: 9 }}>&#8721; Modifiers</button>
+                </div>); })()}
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
-              <div ref={lmFeedRef} style={{ padding: "10px 0", maxHeight: lmMatch.events.some(e => e.goalViz || e.chanceViz) ? 270 : 220, overflowY: "auto" }}>
+              <div ref={lmFeedRef} style={{ padding: "10px 0", height: 270, overflowY: "auto" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 6, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.08em", ...mono }}>{isH ? hC : aC}</div>
@@ -6908,8 +7939,8 @@ export default function App() {
                 const T2 = new Set(["yellow","injury"]);
                 if (T2.has(e.type)) {
                   let icon, txt, clr;
-                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-warn)", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "#ebcb8b"); clr = "var(--chrome-muted)"; }
-                  else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "#ffffff"); clr = "#c07070"; }
+                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-warn)", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "var(--ui-warn)"); clr = "var(--chrome-muted)"; }
+                  else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "var(--ui-text)"); clr = "var(--ui-injury)"; }
                   return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
                     {mC(e.min)}
                     {iC(icon, 12)}
@@ -6926,14 +7957,7 @@ export default function App() {
               {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--chrome-muted)", fontSize: 11 }}>Awaiting kick off...</div>}
               </div>
             </div>
-            {lmMatch.phase !== "finished" && (<>
-            <div style={{ display: "flex", gap: 0, marginBottom: 6, background: "var(--chrome-panel)", borderRadius: 6, padding: 2, border: "1px solid var(--chrome-border)" }}>
-              {[["stats","Stats"],["players","Players"],["tactics","Tactics"]].map(([id,label]) => (
-                <button key={id} onClick={() => setLmTab(id)} className={lmTab === id ? "gbtn" : ""} style={{ flex: 1, background: lmTab === id ? "var(--chrome-brand)" : "transparent", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", color: lmTab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>{label}</button>
-              ))}
-            </div>
-            {lmTab === "stats" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 0, boxShadow: "0 2px 12px var(--ui-shadow-2)", flex: "1 1 auto" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
               {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
@@ -6948,7 +7972,7 @@ export default function App() {
                   <div style={{ width: `${ap}%`, background: aClr, borderRadius: 3, transition: "width 0.3s" }} />
                 </div>
               </div>); })()}
-              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
+              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
                 <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "var(--chrome-muted)", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
                 <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
                 <span style={{ width: 70, textAlign: "center", color: "var(--ui-text)", fontSize: 9, flexShrink: 0 }}>{label}</span>
@@ -6985,109 +8009,24 @@ export default function App() {
                 })()}
               </div>
             </div>
-            </>}
-            {lmTab === "players" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
-              {["home","away"].map((side,si) => {
-                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-                const onPitch = lmMatch.players[side] || [];
-                const bench = lmMatch.bench?.[side] || [];
-                // A player currently on the pitch or bench is authoritative. subbedOff can carry
-                // a stale/duplicate record for a name that's since reappeared elsewhere (e.g. the
-                // same name logged twice across a card + injury event) — deduped so a starter can
-                // never be double-counted as both "still out there" and "already left."
-                const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
-                const seenOff = new Set();
-                const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
-                // Starters/bench must reflect the ACTUAL match squad (post-rotation via
-                // managerSelect), not the raw squad definition — a player rested for stamina
-                // or rotation reasons is a normal bench player this match, not still "starting."
-                // Split by WHO STARTED WHERE, not current array membership — a bench player
-                // who's since been subbed on has left the bench array entirely, so keying off
-                // membership alone would silently fold them into "starters" with no trace they
-                // came off the bench, and vice versa for a subbed-off starter.
-                const squadDef = tm?.squad || buildSquad(tm?.formation, null);
-                const defByName = new Map(squadDef.map(p => [p.name, p]));
-                const kf = n => playerKey(tm?.name, n);
-                const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
-                const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
-                const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
-                const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
-                // startedBench (stamped once, at the moment a bench player first comes on, and
-                // preserved through any later departure) is what decides the bucket — NOT
-                // current location. A player who started on the bench, came on, and was later
-                // subbed off/injured/carded is still a bench starter, not a starting-XI
-                // departure: .sub gets overwritten to 'off' by every removal site, so it can no
-                // longer tell the two apart.
-                const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
-                const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
-                // Masks the pending scorer's/assister's tally and every affected rating (scorer,
-                // assist, conceding side's dip) — otherwise any of them would spoil who's about
-                // to score before the card reveals it.
-                const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
-                const lookup = (name) => {
-                  const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-                  if (!found) return found;
-                  let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
-                  for (const pg of hiddenGoals) {
-                    rating = lmAdjRating(pg, side, { name: found.name, rating });
-                    if (pg.team === side) {
-                      if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
-                      if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
-                    }
-                  }
-                  if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
-                  return { ...found, goals, assists, rating };
-                };
-                return (<>
-                {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
-                <div>
-                  <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                  <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, alignItems: "center" }}>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
-                    <span></span>
-                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                      <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
-                    </>); })}
-                    <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                      <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
-                    </>); })}
-                  </div>
-                </div>
-                </>);
-              })}
-              </div>
             </div>
-
+            </div>
+            {/* One overlay, one panel — which one is whatever the button set. All three are
+                blocks whose height has no ceiling (an eleven-man bench, fourteen dropdowns a side,
+                eleven modifier rows), which is exactly why none of them can live in a column that
+                has to fit the viewport. Widths differ because the contents do. */}
+            {lmPanel && (() => {
+              const [title, wide] = { subs: ["Substitutions", 780], tactics: ["Tactics", 880], mods: ["Live Modifiers", 460] }[lmPanel];
+              return (<div onClick={() => setLmPanel(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: wide, maxHeight: "86vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", ...ui }}>{title}</span>
+                    <span onClick={() => setLmPanel(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                  </div>
+                  {/* The overlay is the only thing in this tab allowed to scroll: these panels
+                      genuinely do not fit, and they are opened deliberately. */}
+                  <div style={{ overflowY: "auto", minHeight: 0 }}>
+                  {lmPanel === "subs" && <>
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && <>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
@@ -7163,15 +8102,15 @@ export default function App() {
               </div>
             </div>
             </>}
-            </>}
-            {lmTab === "tactics" && <>
+                  </>}
+                  {lmPanel === "tactics" && <>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Tactics</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
                 const isBreak = ["pre_match","half_time","full_time","extra_half_time"].includes(lmMatch.phase);
-                const SC2 = {balanced:"#888",gegenpress:"#bf616a",tikitaka:"#ebcb8b",counterattack:"#81a1c1",wingplay:"#a3be8c",parkthebus:"#d08770"};
+                const SC2 = {balanced:"#888",gegenpress:"var(--ui-danger)",tikitaka:"var(--ui-warn)",counterattack:"var(--ui-info)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-attack)"};
                 const strat = lmMatch.strategy?.[side] || {};
                 return (<>
                   {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
@@ -7211,7 +8150,8 @@ export default function App() {
               })}
               </div>
             </div>
-            {/* Player Stats */}
+                  </>}
+                  {lmPanel === "mods" && <>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
@@ -7224,7 +8164,7 @@ export default function App() {
                   {k:"lr",l:"Long-range",m:false},{k:"corn",l:"Corners",m:true}
                 ];
                 const fmt = (v, mult) => mult ? v.toFixed(2)+"x" : (v >= 0 ? "+" : "")+v.toFixed(3);
-                const clr = (v, mult) => { const b = mult ? 1.0 : 0; if (Math.abs(v-b) < 0.001) return "var(--chrome-muted)"; return v > b ? "#a3be8c" : "#bf616a"; };
+                const clr = (v, mult) => { const b = mult ? 1.0 : 0; if (Math.abs(v-b) < 0.001) return "var(--chrome-muted)"; return v > b ? "var(--ui-ok)" : "var(--ui-danger)"; };
                 const wt = (v, mult) => Math.abs(v - (mult ? 1 : 0)) > 0.001 ? 600 : 400;
                 return (
                   <div style={{ ...mono }}>
@@ -7244,712 +8184,335 @@ export default function App() {
                 );
               })()}
             </div>
-</>}
-            </>)}
-
+                  </>}
+                  </div>
+                </div>
+              </div>);
+            })()}
           </>)}
         </div>)}
 
         {/* ═══ TOURNAMENT TAB ═══ */}
         {tab === "tournament" && (<div>
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
-          {/* Save slots — several tournaments in flight, one open at a time */}
-          {(() => {
-            const active = tSlots.find(s => s.id === tActiveSlot) || null;
-            const others = tSlots.filter(s => s.id !== tActiveSlot).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-            const renameField = (s) => (
-              <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1, minWidth: 0 }}>
-                <input autoFocus value={slotRenaming.name} onChange={e => setSlotRenaming({ id: s.id, name: e.target.value })}
-                  onKeyDown={e => { if (e.key === "Enter") slotRename(s.id, slotRenaming.name); if (e.key === "Escape") setSlotRenaming(null); }}
-                  style={{ ...inp, padding: "4px 9px", fontSize: 12, flex: 1, minWidth: 0, maxWidth: 260 }} />
-                <button onClick={() => slotRename(s.id, slotRenaming.name)} style={smBtn}>Save</button>
-                <button onClick={() => setSlotRenaming(null)} style={smBtn}>Cancel</button>
+          {/* Save slots — several tournaments in flight, one open at a time. Only the setup phase
+              shows the panel outright; a running tournament reaches it from the header button. */}
+          {tSavesOpen && (
+            <div onClick={() => setTSavesOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9998, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
+              <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ width: "100%", maxWidth: 720 }}>
+                {renderSavesPanel({ marginBottom: 0 })}
               </div>
-            );
-            const rowActions = (s, isActive) => (
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: "auto" }}>
-                {!isActive && <button onClick={() => slotSwitch(s.id)} style={{ ...smBtn, color: "var(--ui-text)", borderColor: "var(--chrome-border-88)" }}>Open</button>}
-                <button onClick={() => setSlotRenaming({ id: s.id, name: s.name })} style={smBtn}>Rename</button>
-                <button onClick={() => slotDuplicate(s.id)} style={smBtn}>Copy</button>
-                <button onClick={() => slotExport(s.id)} style={smBtn}>Export</button>
-                <button onClick={() => setSlotConfirmDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)" }}>Delete</button>
-              </div>
-            );
-            return (
-            <div style={panelBox}>
-              <div style={panelHead}>
-                <PanelTitle sub={tSlots.length ? `${tSlots.length} saved` : ""}>Saved Tournaments</PanelTitle>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button onClick={slotNew} style={smBtn}>+ New</button>
-                  <button onClick={() => importInputRef.current?.click()} style={smBtn}>Import</button>
-                  <button onClick={() => tActiveSlot && slotExport(tActiveSlot)} disabled={!tActiveSlot}
-                    style={{ ...smBtn, opacity: tActiveSlot ? 1 : 0.35, cursor: tActiveSlot ? "pointer" : "default" }}>Export</button>
-                </div>
-              </div>
-
-              {/* The tournament currently open — name, phase, progress and its headline figures. */}
-              <div style={{ border: "1px solid var(--chrome-brand-44)", borderRadius: 10, background: "var(--chrome-brand-11)", padding: "13px 15px" }}>
-                {active ? (<>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 11 }}>
-                    {slotRenaming?.id === active.id ? renameField(active) : (<>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ui-text)" }}>{active.name}</span>
-                      <PhaseBadge phase={active.phase} />
-                      {rowActions(active, true)}
-                    </>)}
-                  </div>
-                  <ProgressBar played={active.played} total={active.total} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(78px,1fr))", gap: 14, marginTop: 12 }}>
-                    <StatCell label="TEAMS" value={active.nTeams || "—"} />
-                    <StatCell label="PLAYED" value={active.total ? `${active.played}/${active.total}` : "—"} />
-                    <StatCell label="LEFT" value={active.total ? active.total - active.played : "—"} color={active.total && active.played === active.total ? "#a3be8c" : undefined} />
-                    <StatCell label="DONE" value={active.total ? Math.round((active.played / active.total) * 100) + "%" : "—"} />
-                    <StatCell label="SAVED" value={fmtAgo(active.ts)} color="var(--chrome-muted)" />
-                  </div>
-                </>) : (
-                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>
-                    No tournament open yet. Set one up below — it saves itself as you go, and you can come back to it any day.
-                  </div>
-                )}
-              </div>
-
-              {others.length > 0 && (<>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "16px 0 8px" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", color: "var(--chrome-muted)" }}>OTHER SAVES</span>
-                  <button onClick={() => { setShowSaves(v => !v); setSlotConfirmDelete(null); }} style={smBtn}>{showSaves ? "Hide" : `Show ${others.length}`}</button>
-                </div>
-                {showSaves && others.map(s => (
-                  <div key={s.id} style={rowBox}>
-                    <div style={{ ...rowHead, flexWrap: "wrap" }}>
-                      {slotRenaming?.id === s.id ? renameField(s) : (<>
-                        <button onClick={() => slotSwitch(s.id)} title="Open this tournament"
-                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "left" }}>{s.name}</button>
-                        <PhaseBadge phase={s.phase} />
-                        <span style={metaTxt}>{s.total ? `${s.played}/${s.total}` : "not started"}{s.nTeams ? ` · ${s.nTeams} teams` : ""} · {fmtAgo(s.ts)}</span>
-                        {rowActions(s, false)}
-                      </>)}
-                    </div>
-                  </div>
-                ))}
-              </>)}
-
-              {/* Deleting a tournament is unrecoverable, so it gets a real dialog rather than an
-                  inline second button that is easy to hit by accident. */}
-              {slotConfirmDelete && (() => {
-                const s = tSlots.find(x => x.id === slotConfirmDelete);
-                if (!s) return null;
-                return (<div onClick={() => setSlotConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                  <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ ...panelBox, marginBottom: 0, maxWidth: 440, width: "100%" }}>
-                    <div style={panelHead}><PanelTitle accent="#bf616a">Delete Tournament</PanelTitle></div>
-                    <div style={{ fontSize: 12, color: "var(--chrome-muted)", lineHeight: 1.65, marginBottom: 18 }}>
-                      Permanently delete <span style={{ color: "var(--ui-text)", fontWeight: 700 }}>{s.name}</span>?
-                      {s.total ? <> It has <span style={{ color: "var(--ui-text)" }}>{s.played} of {s.total}</span> matches played.</> : null}
-                      <br />This cannot be undone. Export it first if you want to keep a copy.
-                    </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                      <button onClick={() => setSlotConfirmDelete(null)} style={smBtn}>Cancel</button>
-                      <button onClick={() => slotExport(s.id)} style={smBtn}>Export first</button>
-                      <button onClick={() => slotDelete(s.id)} style={{ ...smBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-66)", background: "var(--ui-danger-1a)" }}>Delete</button>
-                    </div>
-                  </div>
-                </div>);
-              })()}
-              {slotMsg && <div style={{ marginTop: 12, fontSize: 10, color: /fail|full|could not/i.test(slotMsg) ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{slotMsg}</div>}
-              <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                onChange={e => { slotImportFile(e.target.files?.[0]); e.target.value = ""; }} />
-            </div>);
-          })()}
-          {/* Tournament Leaderboards */}
-          {Object.keys(tPlayerStats).length > 0 && (
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 18px", marginTop: 14, marginBottom: 16, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={{ ...panelHead, marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid var(--chrome-border-33)" }}><PanelTitle accent="#ebcb8b">Tournament Leaders</PanelTitle></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "18px 18px" }} className="grid-4col">
-                {/* Top Scorers */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.goals}</td>
-                    </tr>
-                  ))}
-                  </tbody></table>
-                </div>
-                {/* Top Assisters */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.assists}</td>
-                    </tr>
-                  ))}
-                  </tbody></table>
-                </div>
-                {/* Top Rated */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {(() => { const _all = Object.values(tPlayerStats); const _ap = p => p.matches+(p.subApp||0); const _min = Math.ceil(Math.max(1,..._all.map(_ap))/6); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=_ap(a)>=_min?1:0,bq=_ap(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
-                    const avg = (p.totalRating/(p.matches+(p.subApp||0)));
-                    return (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: ratingColor(avg), fontWeight: 700, width: 24, textAlign: "right", padding: "2px 0", ...mono }}>{avg.toFixed(1)}</td>
-                    </tr>);
-                  })}
-                  </tbody></table>
-                </div>
-                {/* Chances Created */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
-                    </tr>
-                  ))}
-                  </tbody></table>
-                </div>
-                {/* Defensive Actions */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.defActs}</td>
-                    </tr>
-                  ))}
-                  </tbody></table>
-                </div>
-                {/* Saves */}
-                <div style={{ minWidth: 0 }}>
-                  <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                  {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
-                    <tr key={i} style={{ fontSize: 10 }}>
-                      <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
-                      <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
-                      <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
-                      <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                      <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.saves}</td>
-                    </tr>
-                  ))}
-                  </tbody></table>
-                </div>
-              </div>
-              {(() => {
-                const unavail = Object.values(tPlayerStats).filter(p => (p.suspended||0) > 0 || (p.injOut||0) > 0)
-                  .flatMap(p => {
-                    const rows = [];
-                    // suspended doesn't record WHY each remaining game was added (a red-card
-                    // ban and a yellow-accumulation ban share the same counter so they can
-                    // share the same one-game-per-match decrement/undo path) — reds>0 is a
-                    // cheap, good-enough proxy rather than a fully attributed second counter;
-                    // the one edge case it misses is a fully-served old red plus a fresh,
-                    // independent yellow-only ban still reading as "red card".
-                    if ((p.suspended||0) > 0) rows.push({...p, reason: (p.reds||0) > 0 ? "red" : "yellows", out: p.suspended});
-                    if ((p.injOut||0) > 0) rows.push({...p, reason: "inj", out: p.injOut});
-                    return rows;
-                  }).sort((a,b) => b.out - a.out);
-                if (!unavail.length) return null;
-                return (
-                  <details style={{ marginTop: 12, borderTop: "1px solid var(--chrome-panel)", paddingTop: 10 }}>
-                    <summary style={{ fontSize: 9, color: "var(--ui-danger)", letterSpacing: "0.12em", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>UNAVAILABLE ({unavail.length})</summary>
-                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
-                      {unavail.map((p,i) => {
-                        const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
-                        return (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                          <span style={{ flex: 1, color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
-                          <span style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.pos}</span>
-                          <span style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", flexShrink: 0, ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</span>
-                          <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
-                            {p.reason === "red"
-                              ? <span title="Suspended (red card)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1}} />
-                              : p.reason === "yellows"
-                              ? <span title="Suspended (accumulated yellows)" style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1}} />
-                              : <svg width="8" height="8" viewBox="0 0 8 8" style={{display:"block"}}><rect x="1" y="3" width="6" height="2" rx="0.5" fill="var(--ui-injury)"/><rect x="3" y="1" width="2" height="6" rx="0.5" fill="var(--ui-injury)"/></svg>}
-                            <span style={{ color: p.reason === "red" ? "var(--ui-danger)" : p.reason === "yellows" ? "var(--ui-warn)" : "var(--ui-injury)", fontSize: 8, ...mono }}>{p.out}</span>
-                          </span>
-                        </div>
-                      );})}
-                    </div>
-                  </details>
-                );
-              })()}
             </div>
           )}
-          {tLeaderboard && (() => {
-            const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
-            const all = Object.values(tPlayerStats);
-            const tApp = p => p.matches + (p.subApp||0);
-            // Stats recorded before fullName was kept fall back to the team's own squad. Matching
-            // inside the team means an abbreviated name cannot pick up a different player's full
-            // name from elsewhere in the roster.
-            const fullNameOf = (p) => p.fullName
-              || teams.find(t => (p.code && (t.code || abbr(t.name, t.code)) === p.code) || t.name === p.team)
-                   ?.squad?.find(q => q.name === p.name)?.fullName
-              || p.name;
-            const sorted = tLeaderboard === "goals"
-              ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
-              : tLeaderboard === "assists"
-              ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
-              : tLeaderboard === "chances"
-              ? all.filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||(tApp(a)-tApp(b)))
-              : tLeaderboard === "defActs"
-              ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
-              : tLeaderboard === "saves"
-              ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tApp(a)-tApp(b)))
-              : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
-            return (
-              <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--chrome-panel)" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "var(--ui-text)" }}>{title}</span>
-                    <span onClick={() => setTLeaderboard(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>✕</span>
-                  </div>
-                  <div style={{ overflowY: "auto", flex: 1 }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {sorted.map((p, i) => {
-                      const ap = p.matches + (p.subApp||0);
-                      const avg = ap ? (p.totalRating/ap) : 0;
-                      const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "chances" ? p.chances : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
-                      return (
-                        <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
-                          <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
-                          <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{boldSurname(fullNameOf(p), p.name)}</td>
-                          <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
-                          <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                          <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
-                          <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "var(--ui-text)", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
-                        </tr>
-                      );
-                    })}
-                    </tbody></table>
-                    {sorted.length === 0 && <div style={{ color: "var(--chrome-muted)", fontSize: 10, textAlign: "center", padding: 20 }}>No data yet</div>}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+          {/* Player stats sit in the running tournament's right column; every other phase
+              shows them on their own. */}
+          {!["groups", "setup"].includes(tPhase) && <div style={{ margin: "14px 0 16px" }}>{renderLeaderboards()}</div>}
           {/* SETUP */}
-          {tPhase === "setup" && (<div>
-            <div style={panelBox}>
-              <div style={panelHead}>
-                <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <select onChange={e => {
-                    const v = e.target.value; e.target.value = "";
-                    const codes = CONFERENCES[v];
-                    if (!codes) return;
-                    const codeSet = new Set(codes);
-                    setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
-                    setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
-                  }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
-                    <option value="" hidden>☰ Presets</option>
-                    {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
-                  <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
-                </div>
-              </div>
-              {groupByLeague(teams).map((entry, gi) => {
-                if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid var(--chrome-border-33)", margin: "8px 0" }} />;
-                const [league, ts] = entry;
-                const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
-                const allSel = selCount === ts.length, noneSel = selCount === 0;
-                const expanded = expandedParticipantLeagues.has(league);
-                return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
-                    <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--ui-on-accent)", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--ui-text)" }}>{league}</span>
-                    <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{selCount}/{ts.length}</span>
-                  </div>
-                  {expanded && <div style={{ padding: "8px 10px" }}>
-                    {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                      <span style={{ fontSize: 9, color: "var(--ui-info)", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.08em" }}>TRIM:</span>
-                      {TRIM_SIZES.filter(n => ts.length > n).map(n => (
-                        <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid var(--ui-info-44)", background: "var(--ui-info-1a)", color: "var(--ui-info)", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
-                      ))}
-                    </div>}
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
-                      <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
-                    ); })}
-                    </div>
-                  </div>}
-                </div>);
-              })}
-            </div>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={panelHead}><PanelTitle>Tournament Setup</PanelTitle></div>
-              {/* Presets */}
-              <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" }}>Preset</div>
-                <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
-                  <option value="" hidden>☰ Select</option>
-                  {Object.entries(T_PRESETS).map(([id, p]) => p.divider ? <option key={id} disabled>{p.label}</option> : <option key={id} value={id}>{p.label}</option>)}
-                </select>
-              </div>
-              {/* Mode */}
-              <div style={{ marginBottom: 20 }}>
-                <div onClick={() => {
-                  const now = Date.now();
-                  const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
-                  tModeClickRef.current = { n: clicks, t: now };
-                  if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
-                }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: tConfig.testMode ? "var(--ui-warn)" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                  {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
-                    <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
-                  ))}
-                </div>
-                {tConfig.mode === "single" && (
+          {tPhase === "setup" && (<div style={PHASE_COL}>
+            {/* Saves and the setup form share a row: one is what you already have, the other is
+                what you are about to make, and neither needs the full width. The participant list
+                does — it is a grid of every team in the game. */}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 420px) minmax(0, 1fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0, marginBottom: 16 }}>
+              {/* Saves and participants stack on the left: saves capped so a long list can never
+                  crowd out the participant grid, participants taking whatever height is left. */}
+              <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
+                {renderSavesPanel({ marginBottom: 0, flexShrink: 0, maxHeight: SAVES_MAX_H, overflowY: "auto" })}
+                <div style={{ ...panelBox, marginBottom: 0, padding: 0, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, padding: "18px 20px 0", marginBottom: 0, flexShrink: 0 }}>
+                  <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
                   <div style={{ display: "flex", gap: 6 }}>
-                    {[["knockout", "Knockout Only"], ["groups", "Groups Only"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "var(--chrome-muted-80)" : "var(--chrome-panel)", color: tConfig.singleType === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tConfig.singleType === id ? "1px solid var(--chrome-border)" : "1px solid var(--chrome-border)" }}>{l}</button>
-                    ))}
+                    <select onChange={e => {
+                      const v = e.target.value; e.target.value = "";
+                      const codes = CONFERENCES[v];
+                      if (!codes) return;
+                      const codeSet = new Set(codes);
+                      setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
+                      setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
+                    }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
+                      <option value="" hidden>☰ Presets</option>
+                      {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
+                    <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                   </div>
-                )}
+                </div>
+                  <div style={{ padding: "14px 20px 18px", flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {groupByLeague(teams).map((entry, gi) => {
+                  if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid var(--chrome-border-33)", margin: "8px 0" }} />;
+                  const [league, ts] = entry;
+                  const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
+                  const allSel = selCount === ts.length, noneSel = selCount === 0;
+                  const expanded = expandedParticipantLeagues.has(league);
+                  return (<div key={league} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--chrome-bg)", cursor: "pointer" }} onClick={() => setExpandedParticipantLeagues(s => { const ns = new Set(s); ns.has(league) ? ns.delete(league) : ns.add(league); return ns; })}>
+                      <span style={{ color: "var(--chrome-muted)", fontSize: 8, display: "inline-block", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
+                      <span onClick={e => { e.stopPropagation(); setTournamentTeamIds(ids => allSel ? ids.filter(id => !ts.some(t => t.id === id)) : [...new Set([...ids, ...ts.map(t => t.id)])]); }} style={{ width: 14, height: 14, borderRadius: 3, border: "1px solid " + (allSel ? "var(--chrome-brand)" : noneSel ? "var(--chrome-muted-66)" : "var(--chrome-brand-88)"), background: allSel ? "var(--chrome-brand)" : noneSel ? "transparent" : "var(--chrome-brand-33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--ui-on-accent)", flexShrink: 0 }}>{allSel ? "✓" : !noneSel ? "–" : ""}</span>
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--ui-text)" }}>{league}</span>
+                      <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{selCount}/{ts.length}</span>
+                    </div>
+                    {expanded && <div style={{ padding: "8px 10px" }}>
+                      {TRIM_SIZES.some(n => ts.length > n) && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid var(--chrome-border-33)" }}>
+                        <span style={{ fontSize: 9, color: "var(--ui-info)", alignSelf: "center", marginRight: 2, fontWeight: 700, letterSpacing: "0.08em" }}>TRIM:</span>
+                        {TRIM_SIZES.filter(n => ts.length > n).map(n => (
+                          <button key={n} onClick={() => { const top = new Set([...ts].sort((a, b) => (b.skill||0) - (a.skill||0)).slice(0, n).map(t => t.id)); setTournamentTeamIds(ids => [...ids.filter(id => !ts.some(t => t.id === id)), ...ts.filter(t => top.has(t.id)).map(t => t.id)]); }} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 10, border: "1px solid var(--ui-info-44)", background: "var(--ui-info-1a)", color: "var(--ui-info)", cursor: "pointer", fontFamily: "inherit" }} title={`Keep only the top ${n} by skill in this league`}>{n}</button>
+                        ))}
+                      </div>}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {ts.map(t => { const sel = tournamentTeamIds.includes(t.id); return (
+                        <button key={t.id} onClick={() => setTournamentTeamIds(ids => sel ? ids.filter(id => id !== t.id) : [...ids, t.id])} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                      ); })}
+                      </div>
+                    </div>}
+                  </div>);
+                })}
+                  </div>
+                </div>
               </div>
-              {/* Group Stage / League Format */}
-              {tHasGroups && (
-                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Group Stage</div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "start", marginBottom: 16 }}>
-                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} /></div>
-                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
-                      ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
-                      : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: "var(--chrome-muted)" }} />
-                    }</div>
-                    <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
-                      {[["roundRobin", "Round Robin"], ["swiss", "Swiss"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.matchFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
-                      ))}
-                    </div></div>
-                  </div>
-                  {tConfig.numGroups > 1 && (<>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 12 : 0 }}>
-                      {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 12px var(--ui-shadow-2)", height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ ...panelHead, padding: "20px 22px 0", marginBottom: 0, flexShrink: 0 }}><PanelTitle>Tournament Setup</PanelTitle></div>
+                <div style={{ padding: "14px 22px 22px", flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {/* Two per row, and the divider belongs to the ROW: on a section it only reaches across
+                    its own column and reads as a half-drawn line. */}
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", columnGap: 24, alignItems: "start" }}>
+                  <div>
+                    {/* Presets */}
+                    <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" }}>Preset</div>
+                      <select onChange={e => { const v = e.target.value; e.target.value = ""; if (v && T_PRESETS[v]) setTConfig(c => ({ ...c, ...T_PRESETS[v].config })); }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
+                        <option value="" hidden>☰ Select</option>
+                        {Object.entries(T_PRESETS).map(([id, p]) => p.divider ? <option key={id} disabled>{p.label}</option> : <option key={id} value={id}>{p.label}</option>)}
+                      </select>
+                    </div>
+                  {/* Mode */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div onClick={() => {
+                      const now = Date.now();
+                      const clicks = (now - tModeClickRef.current.t < 2000) ? tModeClickRef.current.n + 1 : 1;
+                      tModeClickRef.current = { n: clicks, t: now };
+                      if (clicks >= 5) { tModeClickRef.current = { n: 0, t: 0 }; setTConfig(c => ({ ...c, testMode: !c.testMode })); }
+                    }} style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: tConfig.testMode ? "var(--ui-warn)" : "var(--chrome-muted)", marginBottom: 12, cursor: "default", userSelect: "none" }}>Tournament Mode</div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                      {[["single", "Single Stage"], ["double", "Double Stage"]].map(([id, l]) => (
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, mode: id }))} className={tConfig.mode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.mode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.mode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
-                    {tConfig.allocMode === "draw" && (
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Pots</div>
-                        <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />
-                        {!tPotsOk && <span style={{ fontSize: 10, color: "var(--ui-danger)" }}>Must be 2–{tConfig.numGroups}</span>}
+                    {tConfig.mode === "single" && (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {[["knockout", "Knockout Only"], ["groups", "Groups Only"]].map(([id, l]) => (
+                          <button key={id} onClick={() => setTConfig(c => ({ ...c, singleType: id }))} style={{ ...chip, fontSize: 10, background: tConfig.singleType === id ? "var(--chrome-muted-80)" : "var(--chrome-panel)", color: tConfig.singleType === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tConfig.singleType === id ? "1px solid var(--chrome-border)" : "1px solid var(--chrome-border)" }}>{l}</button>
+                        ))}
                       </div>
                     )}
-                  </>)}
+                  </div>
+                  </div>
+                {/* Match Rules */}
+                <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                  <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+                    {[["injuries","Injuries"],["suspensions","Suspensions"],["staminaCarry","Stamina"]].map(([key,label]) => { const checked = tConfig[key] !== false; return (
+                      <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div onClick={() => setTConfig(c => ({ ...c, [key]: !checked }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
+                          <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                          <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>{label}</div>
+                        </div>
+                      </div>); })}
+                  </div>
                 </div>
-              )}
-              {/* Tiebreakers */}
-              {tHasGroups && (() => {
-                const TBL = {"gd":"Goal Difference","gf":"Goals For","h2h":"Head-to-Head","wins":"Wins","buchholz":"Median-Buchholz","manual":"Manual"};
-                const TBSH = {"gd":"GD","gf":"GF","h2h":"H2H","wins":"W","buchholz":"Buch","manual":"Man"};
-                const tbs = tConfig.tiebreakers || ["gd", "gf", "h2h", "wins"];
-                const isSwiss = tConfig.matchFormat === "swiss";
-                const allTBs = isSwiss ? ["gd", "gf", "h2h", "wins", "buchholz", ...(tHasKO ? ["manual"] : [])] : ["gd", "gf", "h2h", "wins", ...(tHasKO ? ["manual"] : [])];
-                const setTBs = fn => setTConfig(c => ({ ...c, tiebreakers: fn(c.tiebreakers || ["gd", "gf", "h2h", "wins", "manual"]) }));
-                const activeTBs = tbs.filter(tb => allTBs.includes(tb));
-                return (
-                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                    {activeTBs.map((tb, ti) => (
-                      <Fragment key={tb}>
-                        {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
-                        <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
-                          <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
-                          <span style={{ fontSize: 11, color: "var(--ui-text)" }}>{TBSH[tb]}</span>
-                          <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
-                        </div>
-                      </Fragment>
-                    ))}
-                    {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
-                      <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
-                    ))}
-                  </div>
-                </div>); })()}
-              {/* Qualification Zones */}
-              {tHasGroups && (() => {
-                const ZC = [["#5e9c6b","Green"],["var(--chrome-muted)","Slate"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
-                const setZones = fn => setTConfig(c => ({ ...c, qualZones: fn(c.qualZones || []) }));
-                return (
-                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Qualification Zones</div>
-                    <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "var(--chrome-muted)" }}>+ Zone</button>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {qz.map((z, zi) => (
-                      <div key={zi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 10px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: z.color, flexShrink: 0 }} />
-                          <input value={z.label} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, label: e.target.value } : x))} placeholder="Label" style={{ ...inp, flex: 1, minWidth: 0, padding: "4px 8px", fontSize: 12, fontWeight: 500 }} />
-                          <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-                            {zi > 0 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi-1], n[zi]] = [n[zi], n[zi-1]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▲</button>}
-                            {zi < (tConfig.qualZones||[]).length - 1 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi], n[zi+1]] = [n[zi+1], n[zi]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▼</button>}
-                          </div>
-                          <button onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 13, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          <select value={z.color} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, color: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}>{ZC.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
-                          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
-                            {[["top", "Top"], ["bottom", "Bot"]].map(([id, l]) => (
-                              <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
-                            ))}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <input type="number" min={1} value={z.from} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, from: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
-                            <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>–</span>
-                            <input type="number" min={1} value={z.to} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, to: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
-                          </div>
-                          <select value={z.type || "cosmetic"} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, type: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}><option value="cosmetic">Cosmetic</option>{tHasKO && <option value="advance">Direct Qualification</option>}{tHasKO && <option value="best">Pool Qualification</option>}</select>
-                          {z.type === "best" && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Top</span><input type="number" min={1} max={tConfig.numGroups} value={z.bestCount || ""} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, bestCount: e.target.value === "" ? "" : Math.min(tConfig.numGroups, Math.max(1, +e.target.value)) } : x))} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>qualify</span></div>}
-                        </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", columnGap: 24, alignItems: "start", borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                  <div>
+                  {/* Group Stage / League Format */}
+                  {tHasGroups && (
+                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Group Stage</div>
+                      <div style={{ display: "flex", gap: 12, alignItems: "start", marginBottom: 16 }}>
+                        <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Groups</div><input type="number" value={tConfig.numGroups} onChange={e => setTConfig(c => ({ ...c, numGroups: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tGroupsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} /></div>
+                        <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tConfig.matchFormat === "swiss" ? "Rounds" : "Legs"}</div>{tConfig.matchFormat === "swiss"
+                          ? <><input type="number" value={tConfig.swissRounds} onChange={e => setTConfig(c => ({ ...c, swissRounds: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tSwissOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />{tPerGroup > 1 && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 4 }}>max {tPerGroup - 1}</span>}</>
+                          : <input type="number" value={tConfig.rrLegs} onChange={e => setTConfig(c => ({ ...c, rrLegs: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: "var(--chrome-muted)" }} />
+                        }</div>
+                        <div><div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Format</div><div style={{ display: "flex", gap: 6 }}>
+                          {[["roundRobin", "Round Robin"], ["swiss", "Swiss"]].map(([id, l]) => (
+                            <button key={id} onClick={() => setTConfig(c => ({ ...c, matchFormat: id }))} className={tConfig.matchFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.matchFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.matchFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                          ))}
+                        </div></div>
                       </div>
-                    ))}
-                    {qz.length === 0 && <div style={{ fontSize: 10, color: "var(--chrome-muted)", padding: "4px 2px" }}>No zones configured</div>}
+                      {tConfig.numGroups > 1 && (<>
+                        <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 12 : 0 }}>
+                          {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
+                            <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                          ))}
+                        </div>
+                        {tConfig.allocMode === "draw" && (
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Pots</div>
+                            <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />
+                            {!tPotsOk && <span style={{ fontSize: 10, color: "var(--ui-danger)" }}>Must be 2–{tConfig.numGroups}</span>}
+                          </div>
+                        )}
+                      </>)}
+                    </div>
+                  )}
+                  {/* Tiebreakers */}
+                  {tHasGroups && (() => {
+                    const TBL = {"gd":"Goal Difference","gf":"Goals For","h2h":"Head-to-Head","wins":"Wins","buchholz":"Median-Buchholz","manual":"Manual"};
+                    const TBSH = {"gd":"GD","gf":"GF","h2h":"H2H","wins":"W","buchholz":"Buch","manual":"Man"};
+                    const tbs = tConfig.tiebreakers || ["gd", "gf", "h2h", "wins"];
+                    const isSwiss = tConfig.matchFormat === "swiss";
+                    const allTBs = isSwiss ? ["gd", "gf", "h2h", "wins", "buchholz", ...(tHasKO ? ["manual"] : [])] : ["gd", "gf", "h2h", "wins", ...(tHasKO ? ["manual"] : [])];
+                    const setTBs = fn => setTConfig(c => ({ ...c, tiebreakers: fn(c.tiebreakers || ["gd", "gf", "h2h", "wins", "manual"]) }));
+                    const activeTBs = tbs.filter(tb => allTBs.includes(tb));
+                    return (
+                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                        {activeTBs.map((tb, ti) => (
+                          <Fragment key={tb}>
+                            {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
+                            <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
+                              <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
+                              <span style={{ fontSize: 11, color: "var(--ui-text)" }}>{TBSH[tb]}</span>
+                              <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
+                            </div>
+                          </Fragment>
+                        ))}
+                        {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
+                          <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
+                        ))}
+                      </div>
+                    </div>); })()}
+                    {/* Home Advantage */}
+                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
+                        {tHasGroups && <div>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
+                          <select value={tConfig.homeAdvGroup} onChange={e => setTConfig(c => ({ ...c, homeAdvGroup: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvKO !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
+                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option><option value="host">Host Team</option>
+                          </select>
+                        </div>}
+                        {tHasKO && tConfig.koLegs !== 2 && <div>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Knockout Stage</div>
+                          <select value={tConfig.homeAdvKO} onChange={e => setTConfig(c => ({ ...c, homeAdvKO: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvGroup !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
+                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option>{tHasGroups && <option value="weak_group">Weaker (Group)</option>}<option value="host">Host Team</option>
+                          </select>
+                        </div>}
+                      </div>
+                      {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
+                        <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
+                            <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                          ); })}
+                        </div>
+                        {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
+                        {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
+                          <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
+                          {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
+                        </div>}
+                      </div>)}
+                    </div>
                   </div>
-                </div>); })()}
-              {/* Knockout options */}
-              {tHasKO && (
-                <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Knockout Stage</div>
-                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Format</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                    {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
-                    ))}
-                  </div>
-                  {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
-                    <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>3rd Place Match</div></div>
-                    </div>); })()}
-                  {(() => { const checked = tConfig.koLegs === 2; return (
-                    <div onClick={() => setTConfig(c => ({ ...c, koLegs: c.koLegs === 2 ? 1 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>2-Legged Ties</div></div>
-                    </div>); })()}
-                  {tConfig.koLegs === 2 && (() => { const checked = tConfig.koAwayGoals; return (
-                    <div onClick={() => setTConfig(c => ({ ...c, koAwayGoals: !c.koAwayGoals }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8, paddingLeft: 16 }}>
-                      <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                      <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Away Goals Rule</div></div>
-                    </div>); })()}
-                  {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {[["auto", "By Ranking"], ["manual", "Manual"]].map(([id, l]) => (
-                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koByeMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                {/* Knockout options */}
+                {tHasKO && (
+                  <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Knockout Stage</div>
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Format</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                      {[["single","Single Elim"],["double_elim","Double Elim"]].map(([id,l]) => (
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koFormat: id, ...(id === "double_elim" ? { thirdPlace: false } : {}) }))} className={tConfig.koFormat === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koFormat === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koFormat === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
-                  </div>}
-                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                      <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Match Rules */}
-              <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
-                  {[["injuries","Injuries"],["suspensions","Suspensions"],["staminaCarry","Stamina"]].map(([key,label]) => { const checked = tConfig[key] !== false; return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div onClick={() => setTConfig(c => ({ ...c, [key]: !checked }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
+                    {tConfig.koFormat !== "double_elim" && (tConfig.mode === "single" ? tournamentTeams.length >= 4 : tKoTeams >= 4) && (() => { const checked = tConfig.thirdPlace; return (
+                      <div onClick={() => setTConfig(c => ({ ...c, thirdPlace: !c.thirdPlace }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
                         <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
-                        <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>{label}</div>
+                        <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>3rd Place Match</div></div>
+                      </div>); })()}
+                    {(() => { const checked = tConfig.koLegs === 2; return (
+                      <div onClick={() => setTConfig(c => ({ ...c, koLegs: c.koLegs === 2 ? 1 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8 }}>
+                        <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                        <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>2-Legged Ties</div></div>
+                      </div>); })()}
+                    {tConfig.koLegs === 2 && (() => { const checked = tConfig.koAwayGoals; return (
+                      <div onClick={() => setTConfig(c => ({ ...c, koAwayGoals: !c.koAwayGoals }))} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0", marginBottom: 8, paddingLeft: 16 }}>
+                        <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} /></div>
+                        <div><div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500 }}>Away Goals Rule</div></div>
+                      </div>); })()}
+                    {tNumByes > 0 && <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Bye Allocation <span style={{ ...mono, fontSize: 10 }}>({tNumByes} bye{tNumByes!==1?"s":""})</span></div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[["auto", "By Ranking"], ["manual", "Manual"]].map(([id, l]) => (
+                          <button key={id} onClick={() => setTConfig(c => ({ ...c, koByeMode: id }))} className={tConfig.koByeMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koByeMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koByeMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                        ))}
                       </div>
-                    </div>); })}
+                    </div>}
+                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
+                        <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 </div>
-              </div>
-              {/* Home Advantage */}
-              <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
-                  {tHasGroups && <div>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
-                    <select value={tConfig.homeAdvGroup} onChange={e => setTConfig(c => ({ ...c, homeAdvGroup: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvKO !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
-                      <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option><option value="host">Host Team</option>
-                    </select>
-                  </div>}
-                  {tHasKO && tConfig.koLegs !== 2 && <div>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Knockout Stage</div>
-                    <select value={tConfig.homeAdvKO} onChange={e => setTConfig(c => ({ ...c, homeAdvKO: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvGroup !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
-                      <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option>{tHasGroups && <option value="weak_group">Weaker (Group)</option>}<option value="host">Host Team</option>
-                    </select>
-                  </div>}
+                {/* Qualification Zones */}
+                {tHasGroups && (() => {
+                  const ZC = [["#5e9c6b","Green"],["var(--chrome-muted)","Slate"],["#4a7ab5","Blue"],["#81a1c1","Light Blue"],["#88c0d0","Cyan"],["#d08770","Orange"],["#ebcb8b","Yellow"],["#bf616a","Red"],["#9a7ab5","Purple"],["#b48ead","Pink"],["#a3be8c","Lime"]];
+                  const setZones = fn => setTConfig(c => ({ ...c, qualZones: fn(c.qualZones || []) }));
+                  return (
+                  <div style={{ borderTop: "1px solid var(--chrome-border)", paddingTop: 16, marginBottom: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Qualification Zones</div>
+                      <button onClick={() => setZones(z => [...z, { anchor: "top", from: z.length + 1, to: z.length + 1, label: "Zone", color: ZC[z.length % ZC.length][0], type: "cosmetic" }])} style={{ ...addBtn, fontSize: 10, color: "var(--chrome-muted)" }}>+ Zone</button>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {qz.map((z, zi) => (
+                        <div key={zi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 10px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: 3, background: z.color, flexShrink: 0 }} />
+                            <input value={z.label} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, label: e.target.value } : x))} placeholder="Label" style={{ ...inp, flex: 1, minWidth: 0, padding: "4px 8px", fontSize: 12, fontWeight: 500 }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
+                              {zi > 0 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi-1], n[zi]] = [n[zi], n[zi-1]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▲</button>}
+                              {zi < (tConfig.qualZones||[]).length - 1 && <button onClick={() => setZones(zs => { const n = [...zs]; [n[zi], n[zi+1]] = [n[zi+1], n[zi]]; return n; })} style={{ background: "none", border: "none", color: "var(--chrome-muted)", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1 }}>▼</button>}
+                            </div>
+                            <button onClick={() => setZones(zs => zs.filter((_, i) => i !== zi))} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 13, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <select value={z.color} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, color: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}>{ZC.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
+                            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+                              {[["top", "Top"], ["bottom", "Bot"]].map(([id, l]) => (
+                                <button key={id} onClick={() => setZones(zs => zs.map((x, i) => i === zi ? { ...x, anchor: id } : x))} style={{ fontSize: 9, padding: "3px 8px", background: z.anchor === id ? "var(--chrome-muted)" : "transparent", color: z.anchor === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
+                              ))}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <input type="number" min={1} value={z.from} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, from: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
+                              <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>–</span>
+                              <input type="number" min={1} value={z.to} onChange={e => { const v = e.target.value === "" ? "" : Math.max(1, +e.target.value); setZones(zs => zs.map((x, i) => i === zi ? { ...x, to: v } : x)); }} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} />
+                            </div>
+                            <select value={z.type || "cosmetic"} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, type: e.target.value } : x))} style={{ ...inp, padding: "3px 6px", fontSize: 10, cursor: "pointer", width: "auto" }}><option value="cosmetic">Cosmetic</option>{tHasKO && <option value="advance">Direct Qualification</option>}{tHasKO && <option value="best">Pool Qualification</option>}</select>
+                            {z.type === "best" && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Top</span><input type="number" min={1} max={tConfig.numGroups} value={z.bestCount || ""} onChange={e => setZones(zs => zs.map((x, i) => i === zi ? { ...x, bestCount: e.target.value === "" ? "" : Math.min(tConfig.numGroups, Math.max(1, +e.target.value)) } : x))} style={{ ...inp, width: 36, padding: "3px 4px", fontSize: 11, textAlign: "center", ...mono }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>qualify</span></div>}
+                          </div>
+                        </div>
+                      ))}
+                      {qz.length === 0 && <div style={{ fontSize: 10, color: "var(--chrome-muted)", padding: "4px 2px" }}>No zones configured</div>}
+                    </div>
+                  </div>); })()}
                 </div>
-                {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
-                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
-                      <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
-                    ); })}
-                  </div>
-                  {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
-                  {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
-                    <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
-                    {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
-                  </div>}
-                </div>)}
-              </div>
-              {/* Summary */}
-              <div style={{ background: "var(--chrome-panel)", borderRadius: 10, padding: "14px 18px", marginBottom: 18, border: "1px solid var(--chrome-border)" }}>
-                {tConfig.mode === "single" && tConfig.singleType === "knockout" ? (<>
-                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "var(--ui-text)" }}>{tournamentTeams.length}</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
-                    <span style={{ color: "var(--ui-text)" }}>Single-Elimination Bracket</span>
-                    {!isPow2(tournamentTeams.length) && tournamentTeams.length >= 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>BYES</span><span style={{ color: "var(--ui-warn)" }}>{(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n - tournamentTeams.length; })()} byes → {(() => { let n = 1; while (n < tournamentTeams.length) n *= 2; return n; })()} bracket</span></>}
-                    {tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>LEGS</span><span style={{ color: "var(--ui-text)" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tConfig.thirdPlace && tournamentTeams.length >= 4 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "var(--ui-text)" }}>3rd Place Match</span></>}
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span>
-                    <span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span>
-                    {(tConfig.homeAdvKO !== "off" || tConfig.homeAdvGroup !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "var(--ui-text)" }}>{({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "Off"}</span></>}
-                  </div>
-                  {tournamentTeamIds.length < 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Select at least 2 teams</div>}
-                  {tParticipantErrors && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
-                  {tValid && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
-                </>) : (()=>{ const swissOk = tSwissOk; const rrRounds = (tPerGroup - 1) * tConfig.rrLegs; const rrMatchesPerGroup = tPerGroup * (tPerGroup - 1) / 2 * tConfig.rrLegs; const totalMatches = tConfig.matchFormat === "swiss" ? Math.floor(tPerGroup / 2) * tConfig.swissRounds * tConfig.numGroups : tConfig.numGroups * rrMatchesPerGroup; return (<>
-                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 12, alignItems: "baseline" }}>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>TEAMS</span>
-                    <span style={{ color: "var(--ui-text)" }}>{tournamentTeams.length}{tGroupsOk && tUneven ? <span style={{ color: "var(--ui-warn)", fontSize: 10, marginLeft: 6 }}>(uneven groups)</span> : ""}</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>GROUPS</span>
-                    <span style={{ color: "var(--ui-text)" }}>{tGroupsOk ? tConfig.numGroups : "?"} × {tGroupsOk && tPerGroup >= 2 ? (tDivisible ? tPerGroup : tPerGroup+"–"+tPerGroupMax) : "?"} teams</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>FORMAT</span>
-                    <span style={{ color: "var(--ui-text)" }}>{tConfig.matchFormat === "swiss" ? "Swiss" : "Round Robin"}{tConfig.matchFormat === "roundRobin" && tConfig.rrLegs > 1 ? " ("+tConfig.rrLegs+" legs)" : ""}</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>MATCHES</span>
-                    <span style={{ color: "var(--ui-text)" }}>{tConfig.matchFormat === "swiss" ? tConfig.swissRounds+" rounds" : rrRounds+" rounds"}{tValid && swissOk ? ", "+totalMatches+" total" : ""}</span>
-                    {tConfig.numGroups > 1 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>DRAW</span><span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.allocMode]}{tConfig.allocMode === "draw" ? " ("+tConfig.numPots+" pots)" : ""}</span></>}
-                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>ADVANCE</span><span style={{ color: "var(--ui-text)" }}>{tUseZones ? tKoTeams + " teams via zones" : "Top " + tConfig.advPerGroup + " per group → " + tKoTeams + " teams"}{!isPow2(tKoTeams) ? " (+byes)" : ""}</span></>}
-                    {tHasKO && tConfig.koLegs === 2 && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO LEGS</span><span style={{ color: "var(--ui-text)" }}>2-Legged{tConfig.koAwayGoals ? " (Away Goals)" : ""}</span></>}
-                    {tHasKO && tConfig.thirdPlace && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>EXTRA</span><span style={{ color: "var(--ui-text)" }}>3rd Place Match</span></>}
-                    {tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>KO DRAW</span><span style={{ color: "var(--ui-text)" }}>{({seed:"Seeded",random:"Random",manual:"Manual",draw:"Draw"})[tConfig.koAllocMode]}</span></>}
-                    {!tHasKO && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>STAGE</span><span style={{ color: "var(--ui-text)" }}>{tConfig.numGroups === 1 ? "League — no knockout" : "Groups only — no knockout"}</span></>}
-                    {(tConfig.homeAdvGroup !== "off" || tConfig.homeAdvKO !== "off") && <><span style={{ color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600 }}>HOME ADV</span><span style={{ color: "var(--ui-text)" }}>{tHasGroups ? ({off:"Off",first:"First Listed",weak_skill:"Weaker (Skill)",host:"Host Team"})[tConfig.homeAdvGroup] || "Off" : ""}{tHasGroups && tHasKO && tConfig.homeAdvGroup !== "off" && tConfig.homeAdvKO !== "off" ? " / " : ""}{tHasKO && tConfig.koLegs !== 2 ? ({off:"",first:"First Listed",weak_skill:"Weaker (Skill)",weak_group:"Weaker (Group)",host:"Host Team"})[tConfig.homeAdvKO] || "" : ""}</span></>}
-                  </div>
-                  {!tGroupsOk && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Groups must be 1–26</div>}
-                  {tGroupsOk && tPerGroup < 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Need ≥2 teams per group</div>}
-                  {!swissOk && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Swiss rounds must be 1–{tPerGroup - 1}</div>}
-                  {tHasKO && !tAdvOk && tDivisible && tPerGroup >= 2 && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Advance must be 1–{tPerGroup}</div>}
-                  {tParticipantErrors && <div style={{ color: "var(--ui-danger)", fontSize: 11, marginTop: 8 }}>⚠ Fix skill values (25–100)</div>}
-                  {tValid && swissOk && <div style={{ color: "var(--chrome-muted)", fontSize: 11, marginTop: 8, fontWeight: 600 }}>✓ Ready</div>}
-                </>); })()}
               </div>
             </div>
-            <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
+            <div style={{ flexShrink: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <button onClick={() => createTournament()} disabled={!tValid} style={{ ...scBtn, opacity: tValid ? 1 : 0.4, cursor: tValid ? "pointer" : "default", flex: "0 0 auto" }}>▶ {tHasGroups && tConfig.allocMode === "manual" && tConfig.numGroups > 1 ? "Begin Allocation" : "Create Tournament"}</button>
               </div>
             </div>
           </div>)}
 
-          {/* DRAW CEREMONY */}
-          {tPhase === "drawing" && tDrawAnim && (() => {
-            const { log, index, pending } = tDrawAnim;
-            const revealed = log.slice(0, index);
-            const activePot = pending ? log[index].pot : (index < log.length ? log[index].pot : null);
-            const pots = {};
-            log.forEach(e => { if (!pots[e.pot]) pots[e.pot] = []; pots[e.pot].push(e); });
-            const groups = {};
-            revealed.forEach(e => { if (!groups[e.group]) groups[e.group] = []; groups[e.group].push(e); });
-            const allGroups = [...new Set(log.map(e => e.group))].sort();
-            const done = index >= log.length && !pending;
-            const pendingEntry = pending ? log[index] : null;
-            const justPlaced = !pending && index > 0 ? log[index - 1] : null;
-            return (<div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <PanelTitle accent="#ebcb8b">Draw Ceremony</PanelTitle>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{index}/{log.length}</span>
-                  <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
-                </div>
-              </div>
-              {pendingEntry && <div key={"p"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-44)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
-                <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {pendingEntry.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.08em" }}>{pendingEntry.team}</div>
-                <div style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)", marginTop: 4 }}>{pendingEntry.skill}</div>
-                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>awaiting group…</div>
-              </div>}
-              {!pending && justPlaced && <div key={"g"+index} style={{ textAlign: "center", marginBottom: 16, padding: "16px 16px", background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand)", borderRadius: 10, animation: "fadeIn 0.3s" }}>
-                <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: 2, marginBottom: 6 }}>POT {justPlaced.pot}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.08em" }}>{justPlaced.team}</div>
-                <div style={{ fontSize: 14, color: "var(--chrome-muted)", marginTop: 8, fontWeight: 700 }}>→ GROUP {justPlaced.group}</div>
-              </div>}
-              {Object.keys(pots).map(p => {
-                const pot = pots[p];
-                return (<div key={p} style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: activePot === +p ? "var(--ui-text)" : "var(--chrome-muted)", marginBottom: 4 }}>POT {p}</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {pot.map((e, ei) => {
-                      const globalIdx = log.indexOf(e);
-                      const isPlaced = globalIdx < index;
-                      const isPending = pending && globalIdx === index;
-                      return <span key={ei} style={{ ...mono, fontSize: 10, padding: "3px 8px", borderRadius: 6, background: isPending ? "var(--chrome-brand-22)" : "var(--chrome-panel)", border: isPending ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-muted-33)", color: isPending ? "var(--ui-on-accent)" : "var(--chrome-muted)", textDecoration: isPlaced ? "line-through" : "none", fontWeight: isPending ? 700 : 400, transition: "all 0.3s" }}>{e.team}</span>;
-                    })}
-                  </div>
-                </div>);
-              })}
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(allGroups.length, 4)}, 1fr)`, gap: 8, marginTop: 16, marginBottom: 16 }}>
-                {allGroups.map(gl => {
-                  const gt = groups[gl] || [];
-                  const maxPerGroup = Math.ceil(log.length / allGroups.length);
-                  const isTarget = justPlaced && justPlaced.group === gl;
-                  return (<div key={gl} style={{ background: "var(--chrome-panel)", border: isTarget ? "1px solid var(--chrome-brand-66)" : "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 8px", transition: "border 0.3s" }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 6 }}>GROUP {gl}</div>
-                    {Array.from({ length: maxPerGroup }, (_, si) => {
-                      const t = gt[si];
-                      const isLatest = t && justPlaced && t.team === justPlaced.team;
-                      return <div key={si} style={{ fontSize: 11, padding: "4px 6px", borderBottom: si < maxPerGroup - 1 ? "1px solid var(--chrome-muted-22)" : "none", color: t ? (isLatest ? "var(--ui-text)" : "var(--chrome-muted)") : "var(--chrome-muted-33)", fontWeight: isLatest ? 700 : 400, transition: "all 0.3s", display: "flex", justifyContent: "space-between" }}>
-                        <span>{t ? t.team : "—"}</span>
-                        {t && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{t.skill}</span>}
-                      </div>;
-                    })}
-                  </div>);
-                })}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {!done && <button onClick={tDrawAdvance} style={{ ...scBtn, flex: 1 }}>{pending ? "Reveal Group" : "Draw Next"}</button>}
-                {!done && !tDrawAnim.auto && <button onClick={() => setTDrawAnim(p => p ? { ...p, auto: true } : p)} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>▶ Auto</button>}
-                {!done && tDrawAnim.auto && <button onClick={() => { setTDrawAnim(p => p ? { ...p, auto: false } : p); if (tDrawTimerRef.current) { clearInterval(tDrawTimerRef.current); tDrawTimerRef.current = null; } }} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--ui-danger)" }}>⏸ Pause</button>}
-                {!done && <button onClick={tDrawSkip} style={{ ...addBtn, flex: 0, padding: "14px 20px", color: "var(--chrome-muted)" }}>Skip</button>}
-                {done && <button onClick={tDrawConfirm} style={scBtn}>▶ Continue to Group Stage</button>}
-              </div>
-            </div>);
-          })()}
 
           {/* MANUAL ALLOCATION */}
           {tPhase === "manual" && tManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <PanelTitle accent="#ebcb8b" >Manual Allocation</PanelTitle>
+              <PanelTitle accent="var(--ui-warn)" >Manual Allocation</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
@@ -7965,7 +8528,7 @@ export default function App() {
           {/* KO MANUAL ALLOCATION */}
           {tPhase === "ko_byes" && tByeManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <PanelTitle accent="#ebcb8b" >Select Bye Teams</PanelTitle>
+              <PanelTitle accent="var(--ui-warn)" >Select Bye Teams</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}><span style={{ ...mono, fontSize: 10, color: "var(--ui-warn)" }}>{tByeManual.selected.length} / {tByeManual.numByes} selected</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 6, marginBottom: 16 }}>
@@ -7980,7 +8543,7 @@ export default function App() {
           </div>)}
           {tPhase === "ko_manual" && tKOManual && (<div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <PanelTitle accent="#ebcb8b" >Knockout Bracket Allocation</PanelTitle>
+              <PanelTitle accent="var(--ui-warn)" >Knockout Bracket Allocation</PanelTitle>
               <div style={{ display: "flex", gap: 8 }}>{tKOManual.numByes > 0 && <span style={{ ...mono, fontSize: 10, color: "var(--ui-warn)" }}>{tKOManual.numByes} bye{tKOManual.numByes !== 1 ? "s" : ""} needed</span>}<span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tKOManual.pool.length} remaining</span><button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)" }}>Reset</button></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tKOManual.matches.length, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
@@ -8005,125 +8568,135 @@ export default function App() {
           </div>)}
 
           {/* GROUPS */}
-          {tPhase === "groups" && (<div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <PanelTitle accent="#81a1c1">{tConfig.numGroups === 1 ? "League" : "Group Stage"}</PanelTitle>
+          {tPhase === "groups" && (<div style={PHASE_COL}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexShrink: 0 }}>
+              <PanelTitle accent="var(--ui-info)">{tConfig.numGroups === 1 ? "League" : "Group Stage"}</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tPlayedMatches}/{tTotalMatches}</span>
                 {tPlayedMatches < tTotalMatches && <button onClick={() => tScorinate(-1, -1, -1)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
+                {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (tHasKO && tHasUnresolved
+                  ? <button disabled title="Teams are tied at a qualification boundary. Resolve them with the swap buttons (⇅) in the standings." style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)", cursor: "default" }}>⚠ Tiebreaker required</button>
+                  : <button onClick={tHasKO ? tProceedKO : () => setTChampOpen(true)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>{tHasKO ? "▶ Proceed to Knockout Stage" : "🏆 End Tournament"}</button>)}
+                <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
 
-            {/* Draw log */}
-            {tDrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>DRAW LOG ({tDrawLog.length} placements)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Pot</th><th style={{ padding: "2px 4px", textAlign: "left" }}>Team</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Skill</th><th style={{ padding: "2px 4px", textAlign: "center" }}>Group</th></tr></thead><tbody>{tDrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.pot}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.team}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>{e.skill}</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", fontWeight: 700, textAlign: "center" }}>{e.group}</td></tr>))}</tbody></table></div></details>)}
 
-            {/* Standings — each table copies as TSV so it pastes into a spreadsheet as columns. */}
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
-                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
-                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid var(--ui-attack-44)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
-              </div>); })}
-            </div>
-
-            {/* Live Pool Ranking — best-of zones */}
-            {(() => {
-              const bestZones = qz.filter(z => z.type === "best");
-              if (bestZones.length === 0 || tGroups.length === 0) return null;
-              const pool = [];
-              tGroups.forEach(g => {
-                const N = g.standings.length;
-                g.standings.forEach((r, ri) => {
-                  for (const z of bestZones) {
-                    const pos = z.anchor === "top" ? ri + 1 : N - ri;
-                    if (pos >= z.from && pos <= z.to) { pool.push({ ...r, groupLabel: g.label, groupPos: ri + 1 }); return; }
-                  }
-                });
-              });
-              pool.sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || b.skill - a.skill);
-              const bestCount = bestZones.reduce((s, z) => s + (z.bestCount || 0), 0);
-              const bestZone = bestZones[0];
-              if (pool.length === 0) return null;
-              const form = Object.assign({}, ...allGroupForms);
-              return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bestZone?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
-                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "var(--ui-qual-pool)") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: bestZone?.color || "var(--ui-qual-pool)" }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>Top {bestCount} qualify</span></div></div>}
-              </div>);
-            })()}
-
-            {/* Fixtures - collapsible per round, sticky current-round action bar */}
-            {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 560, overflowY: "auto", position: "relative" }}>
-              <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <PanelTitle accent="#81a1c1">{groupFirstOpen >= 0 ? `Round ${groupFirstOpen + 1}` : "Fixtures"}</PanelTitle>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                  {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ Sim Round</button>}
-                  <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
-                  <button onClick={() => setExpandedRounds(new Set())} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
-                </div>
-              </div>
-              <div style={{ padding: "10px 16px 16px" }}>
-              {Array.from({length: groupMaxRds},(_,ri)=>ri).map(ri => {
-                const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result));
-                const key = `group_${ri}`;
-                const isOpen = expandedRounds.has(key);
-                return (<div key={ri} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
-                  <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
-                      <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
-                      {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
-                        {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {m.bye ? <span style={{ color: "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
-                            <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-form-w)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
-                            <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
-                            <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-form-w)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.away?.name, m.away?.code)}</span>
-                          </>)}
-                        </span>))}
-                      </div>}
-                    </div>
-                    {rdDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>✓</span>}
-                  </div>
-                  {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid var(--chrome-border)" }}>
-                  {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
-                    {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
-                      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-text)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
-                      <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "var(--ui-danger)" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
-                      {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "var(--ui-on-accent)", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 3, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
-                        : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-danger)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
-                        : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
-                      <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-text)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
-                    </div>); })}
-                  </div>))}
-                  </div>}
+            {/* The table on the left, everything that changes it on the right. Both columns scroll
+                inside one bounded height so the header and the two panes stay put. */}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0 }}>
+              <div style={{ minWidth: 0, minHeight: 0, overflowX: "hidden", overflowY: "auto", scrollbarGutter: "stable", display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Standings — each table copies as TSV so it pastes into a spreadsheet as columns. */}
+              <div style={{ display: "grid", gridAutoFlow: "column", gridTemplateColumns: `repeat(${groupCols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${Math.ceil(tGroups.length / groupCols) || 1}, minmax(min-content, 1fr))`, gap: 10, flex: "1 1 auto", alignContent: "stretch" }}>
+                {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)", display: "flex", flexDirection: "column" }}>
+                  <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
+                  <table className="wide-table" style={{ width: "100%", height: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: 10, flex: "1 1 auto" }}><colgroup><col style={{ width: 20 }} /><col style={{ width: "auto" }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 21 }} /><col style={{ width: 21 }} /><col style={{ width: 26 }} /><col style={{ width: 26 }} />{showForm && <col style={{ width: FORM_COL_W }} />}</colgroup><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th>{showForm && <th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", whiteSpace: "nowrap" }}>Form</th>}</tr></thead>
+                    <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", maskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", WebkitMaskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}><TeamCrest team={groupTeamByName.get(r.name) || r} size={12} style={{ verticalAlign: -2, marginRight: 4 }} />{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid var(--ui-attack-44)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td>{showForm && <td style={{ padding: "2px 0 2px 6px", whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-FORM_N).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td>}</tr>); })}</tbody></table>
+                  {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
                 </div>); })}
               </div>
-            </div>
-            ); })()}
-
-            {/* Swiss: generate next round */}
-            {tConfig.matchFormat === "swiss" && tSwissCurrentDone && tSwissRoundsPlayed < tConfig.swissRounds && (
-              <div style={{ textAlign: "center", marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 8, ...mono }}>Round {tSwissRoundsPlayed} complete — {tConfig.swissRounds - tSwissRoundsPlayed} remaining</div>
-                <button onClick={tGenNextSwissRound} style={scBtn}>▶ Generate Round {tSwissRoundsPlayed + 1}</button>
+              {/* Live Pool Ranking — best-of zones */}
+              {(() => {
+                const bestZones = qz.filter(z => z.type === "best");
+                if (bestZones.length === 0 || tGroups.length === 0) return null;
+                const pool = [];
+                tGroups.forEach(g => {
+                  const N = g.standings.length;
+                  g.standings.forEach((r, ri) => {
+                    for (const z of bestZones) {
+                      const pos = z.anchor === "top" ? ri + 1 : N - ri;
+                      if (pos >= z.from && pos <= z.to) { pool.push({ ...r, groupLabel: g.label, groupPos: ri + 1 }); return; }
+                    }
+                  });
+                });
+                pool.sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || b.skill - a.skill);
+                const bestCount = bestZones.reduce((s, z) => s + (z.bestCount || 0), 0);
+                const bestZone = bestZones[0];
+                if (pool.length === 0) return null;
+                const form = Object.assign({}, ...allGroupForms);
+                return (
+                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginBottom: 20, boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bestZone?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bestZone?.label?.toUpperCase() || "POOL QUALIFICATION"} — POOL RANKING</div>
+                  <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{pool.map((r, ri) => { const qual = ri < bestCount; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bestZone?.color || "var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid " + (bestZone?.color || "var(--ui-qual-pool)") : "2px solid transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><TeamCrest team={groupTeamByName.get(r.name) || r} size={12} style={{ verticalAlign: -2, marginRight: 4 }} />{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                  {bestCount > 0 && <div style={{ display: "flex", gap: 14, marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--chrome-panel)" }}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: bestZone?.color || "var(--ui-qual-pool)" }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>Top {bestCount} qualify</span></div></div>}
+                </div>);
+              })()}
               </div>
-            )}
+              <div style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Fixtures - collapsible per round, sticky current-round action bar */}
+              {(() => { const groupMaxRds = Math.max(0, ...tGroups.map(g => g.schedule.length)); return (
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, flexShrink: 0, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 560, overflowY: "auto", position: "relative" }}>
+                <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <PanelTitle accent="var(--ui-info)">{groupFirstOpen >= 0 ? `Round ${groupFirstOpen + 1}` : "Fixtures"}</PanelTitle>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                    {groupFirstOpen >= 0 && <button onClick={() => tScorinate(-1, groupFirstOpen, -1)} style={{ ...xsBtn, color: "var(--ui-text)" }}>▶ Sim Round</button>}
+                    <button onClick={() => setExpandedRounds(new Set(Array.from({length: groupMaxRds}, (_,ri)=>`group_${ri}`)))} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Expand All</button>
+                    <button onClick={() => setExpandedRounds(new Set())} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
+                  </div>
+                </div>
+                <div style={{ padding: "10px 16px 16px", height: ROUNDS_VISIBLE * ROUND_ROW_H, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {Array.from({length: groupMaxRds},(_,ri)=>ri).map(ri => {
+                  const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result));
+                  const key = `group_${ri}`;
+                  const isOpen = expandedRounds.has(key);
+                  return (<div key={ri} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
+                    <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                        <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                        <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 600, letterSpacing: 1, flexShrink: 0, ...mono }}>R{ri + 1}</span>
+                        {!isOpen && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", overflow: "hidden" }}>
+                          {tGroups.flatMap(g => g.schedule[ri] || []).map((m, mi) => (<span key={mi} style={{ ...mono, fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "var(--chrome-bg3)", border: "1px solid var(--chrome-border)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                            {m.bye ? <span style={{ color: "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)} BYE</span> : (<>
+                              <span style={{ color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-form-w)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.home?.name, m.home?.code)}</span>
+                              <span style={{ color: "var(--chrome-muted)", margin: "0 3px" }}>{m.result ? `${m.result.ftHome}-${m.result.ftAway}` : "vs"}</span>
+                              <span style={{ color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-form-w)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "var(--chrome-muted)" }}>{abbr(m.away?.name, m.away?.code)}</span>
+                            </>)}
+                          </span>))}
+                        </div>}
+                      </div>
+                      {rdDone && <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>✓</span>}
+                    </div>
+                    {isOpen && <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 6, padding: "8px 10px 12px", borderTop: "1px solid var(--chrome-border)" }}>
+                    {tGroups.map((g, gi) => (<div key={gi} style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 2, letterSpacing: 1, ...mono }}>{g.label}</div>
+                      {(g.schedule[ri] || []).map((m, mi) => { if (m.bye) return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0, color: "var(--chrome-muted)" }}><span style={{ flex: 1 }}>{m.home?.name}</span><span style={{ ...mono, fontSize: 9 }}>BYE</span></div>); const editing = tEdit && tEdit.gi===gi && tEdit.ri===ri && tEdit.mi===mi; const haKey = `g_${gi}_${ri}_${mi}`; const haVal = tHomeAdvOverrides[haKey] || null; return (<div key={mi} style={{ fontSize: 10, padding: "2px 0", borderBottom: "1px solid var(--ui-pitch-line)", display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftHome > m.result.ftAway ? "var(--ui-text)" : m.result.ftHome < m.result.ftAway ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{haVal === "home" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginRight: 2 }}>H</span>}{m.home?.name}</span>
+                        <button onClick={() => tToggleHA(haKey)} title={haVal === null ? "Auto" : haVal === "home" ? "Home advantage: Home" : haVal === "away" ? "Home advantage: Away" : "Home advantage: Off"} style={{ background: "none", border: "none", color: haVal === null ? "var(--chrome-muted)" : haVal === "off" ? "var(--ui-danger)" : "var(--chrome-muted)", fontSize: 8, cursor: "pointer", padding: "1px 3px", fontFamily: "inherit", fontWeight: 700, flexShrink: 0, opacity: haVal ? 1 : 0.4 }}>H</button>
+                        {editing ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><input type="number" min={0} value={tEdit.h} onChange={e => setTEdit(p => ({...p, h: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><span style={{ color: "var(--chrome-muted)", fontSize: 8 }}>–</span><input type="number" min={0} value={tEdit.a} onChange={e => setTEdit(p => ({...p, a: e.target.value}))} style={{ width: 30, padding: "0 2px", fontSize: 10, textAlign: "center", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-text)", fontFamily: "inherit", lineHeight: "16px" }} /><button onClick={tSetManualScore} style={{ background: "var(--chrome-brand)", border: "none", color: "var(--ui-on-accent)", fontSize: 8, cursor: "pointer", padding: "1px 5px", fontFamily: "inherit", borderRadius: 3, lineHeight: "14px" }}>OK</button><button onClick={() => { setTEdit(null); setTScoreError(""); }} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 12, cursor: "pointer", padding: "0 2px", fontFamily: "inherit", lineHeight: "14px" }}>✗</button></span>
+                          : m.result ? <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}><span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{m.result.ftHome}-{m.result.ftAway}</span><button onClick={() => setTEdit({ gi, ri, mi, h: String(m.result.ftHome), a: String(m.result.ftAway) })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>✎</button><button onClick={() => tDeleteGroupResult(gi, ri, mi)} title="Delete result and re-sim" style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-danger)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit", opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.4"; }}>🗑</button></span>
+                          : ri === groupFirstOpen ? <span style={{ display: "flex", gap: 2, flexShrink: 0 }}><button onClick={() => tScorinate(gi, ri, mi)} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--chrome-muted)", fontSize: 8, padding: "0 4px", cursor: "pointer", fontFamily: "inherit" }}>▶</button><button onClick={() => setTEdit({ gi, ri, mi, h: "", a: "" })} style={{ background: "none", border: "1px solid var(--chrome-border)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }}>✎</button><button onClick={() => tPlayLive({type:"group",gi,ri,mi})} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 3, color: "var(--ui-info)", fontSize: 8, padding: "0 3px", cursor: "pointer", fontFamily: "inherit" }} title="Play live">⚽</button></span> : <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>–</span>}
+                        <span style={{ flex: 1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: m.result ? (m.result.ftAway > m.result.ftHome ? "var(--ui-text)" : m.result.ftAway < m.result.ftHome ? "var(--chrome-muted)" : "var(--ui-warn)") : "#888", fontSize: 10 }}>{m.away?.name}{haVal === "away" && <span style={{ color: "var(--chrome-muted)", fontSize: 7, marginLeft: 2 }}>H</span>}</span>
+                      </div>); })}
+                    </div>))}
+                    </div>}
+                  </div>); })}
+                </div>
+              </div>
+              ); })()}
+              {/* Swiss: generate next round */}
+              {tConfig.matchFormat === "swiss" && tSwissCurrentDone && tSwissRoundsPlayed < tConfig.swissRounds && (
+                <div style={{ textAlign: "center", marginTop: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 8, ...mono }}>Round {tSwissRoundsPlayed} complete — {tConfig.swissRounds - tSwissRoundsPlayed} remaining</div>
+                  <button onClick={tGenNextSwissRound} style={scBtn}>▶ Generate Round {tSwissRoundsPlayed + 1}</button>
+                </div>
+              )}
 
-            {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (
-              <div style={{ textAlign: "center", marginTop: 20 }}>
-                <div style={{ fontSize: 12, color: "var(--ui-text)", marginBottom: 8, ...mono }}>✓ All {tConfig.numGroups === 1 ? "league " : "group "} matches complete</div>
-                {tHasKO ? (tHasUnresolved ? <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--ui-danger-33)", borderRadius: 10, padding: 16, textAlign: "center" }}><div style={{ fontSize: 11, color: "var(--ui-danger)", marginBottom: 8 }}>Tiebreaker required</div><div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Teams are tied at a qualification boundary. Use the swap buttons (⇅) in the standings to resolve.</div></div> : <button onClick={tProceedKO} style={scBtn}>▶ Proceed to Knockout Stage</button>)
-                  : (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-brand-33)", borderRadius: 10, padding: 20 }}>
-                    <div style={{ fontSize: 10, letterSpacing: 4, color: "var(--chrome-brand)", marginBottom: 8, textShadow: "0 0 8px var(--chrome-brand-66)" }}>{tConfig.numGroups === 1 ? "🏆 CHAMPION" : "🏆 TOURNAMENT COMPLETE"}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--chrome-brand)", textShadow: "0 0 12px var(--chrome-brand-44)" }}>{tGroups[0]?.standings[0]?.name}</div>
-                    <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>Champion — {tGroups[0]?.standings[0]?.pts} pts</div>
-                  </div>)}
+                {renderLeaderboards()}
+              </div>
+            </div>
+            {tChampOpen && (
+              <div onClick={() => setTChampOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                <div onClick={e => e.stopPropagation()} style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 32, width: "100%", maxWidth: 460, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
+                  <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tGroups[0]?.standings[0]?.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 6, ...mono }}>{tGroups[0]?.standings[0]?.pts} pts</div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+                    <button onClick={() => setTChampOpen(false)} style={{ ...addBtn, flex: 1 }}>Close</button>
+                    <button onClick={() => { setTChampOpen(false); resetTournament(); }} style={{ ...addBtn, flex: 1, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>New Tournament</button>
+                  </div>
+                </div>
               </div>
             )}
           </div>)}
@@ -8134,6 +8707,7 @@ export default function App() {
               <PanelTitle>Knockout Stage</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
+                <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
@@ -8152,7 +8726,6 @@ export default function App() {
                 <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"var(--ui-qual-pool)") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
               </div>); })()}
             </details>)}
-            {tKODrawLog.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", ...mono, letterSpacing: 2 }}><span className="dta">▶</span>BRACKET DRAW LOG ({tKODrawLog.length} pairings)</summary><div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: 10, marginTop: 8, maxHeight: 200, overflowY: "auto" }}><table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px 4px", textAlign: "left" }}>Home</th><th style={{ padding: "2px 4px", textAlign: "center" }}>vs</th><th style={{ padding: "2px 4px", textAlign: "right" }}>Away</th></tr></thead><tbody>{tKODrawLog.map((e, i) => (<tr key={i} style={{ borderTop: "1px solid var(--chrome-panel)" }}><td style={{ padding: "2px 4px", color: "var(--chrome-muted)" }}>{e.home} <span style={{ color: "var(--chrome-muted)" }}>({e.homeSkill})</span></td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "center" }}>vs</td><td style={{ padding: "2px 4px", color: "var(--chrome-muted)", textAlign: "right" }}>{e.away} <span style={{ color: "var(--chrome-muted)" }}>({e.awaySkill})</span></td></tr>))}</tbody></table></div></details>)}
             {tPhase === "complete" && tKO.champion && (
               <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
@@ -8197,12 +8770,12 @@ export default function App() {
                 const has2LPen = is2L && !isPartial && m.result.pen;
                 const has2LAG = is2L && !isPartial && !m.result.et && !m.result.pen && m.result.awayGoalsRule && m.result.agg?.home === m.result.agg?.away;
                 const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
-                const decClr = hasPen || has2LPen ? "#d08770" : "var(--chrome-muted)";
+                const decClr = hasPen || has2LPen ? "var(--ui-attack)" : "var(--chrome-muted)";
                 const winner = w;
                 const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
-                const nameClr = (team) => w === team ? "#ffffff" : isBye && !team ? "var(--chrome-muted)" : "#888";
+                const nameClr = (team) => w === team ? "var(--ui-text)" : isBye && !team ? "var(--chrome-muted)" : "#888";
                 const nameWt = (team) => w === team ? 600 : 400;
-                const sClr = (team) => w === team ? "#ffffff" : "var(--chrome-muted)";
+                const sClr = (team) => w === team ? "var(--ui-text)" : "var(--chrome-muted)";
                 return (
                   <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "4px 6px", border: ri === nR - 1 ? "2px solid var(--chrome-brand-66)" : ri === -2 ? "1px solid var(--ui-attack-44)" : "1px solid var(--chrome-border)", width: colW, height: cardH - gap, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
@@ -8379,11 +8952,11 @@ export default function App() {
                 const has2LPen = is2L && !isPartial && m.result.pen;
                 const has2LAG = is2L && !isPartial && !m.result.et && !m.result.pen && m.result.awayGoalsRule && m.result.agg?.home === m.result.agg?.away;
                 const decLabel = m.result && !isPartial && (hasET || hasPen || has2LET || has2LPen || has2LAG) ? (hasPen || has2LPen ? "PENS" : has2LAG ? "AG" : "AET") : null;
-                const decClr = hasPen || has2LPen ? "#d08770" : "var(--chrome-muted)";
+                const decClr = hasPen || has2LPen ? "var(--ui-attack)" : "var(--chrome-muted)";
                 const scoreW = is2L && !isPartial ? { display: "flex", alignItems: "baseline", gap: 0, textAlign: "right", ...mono, fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 } : { textAlign: "right", ...mono, fontSize: 10, whiteSpace: "nowrap", flexShrink: 0 };
-                const nameClr = (t) => w === t ? "#ffffff" : isBye && !t ? "var(--chrome-muted)" : "#888";
+                const nameClr = (t) => w === t ? "var(--ui-text)" : isBye && !t ? "var(--chrome-muted)" : "#888";
                 const nameWt = (t) => w === t ? 600 : 400;
-                const sClr = (t) => w === t ? "#ffffff" : "var(--chrome-muted)";
+                const sClr = (t) => w === t ? "var(--ui-text)" : "var(--chrome-muted)";
                 const borderStyle = bk === "gf" ? "2px solid var(--chrome-brand-66)" : bk === "reset" ? "1px solid #ebcb8b44" : "1px solid var(--chrome-border)";
                 const onSim = () => { if (bk === "wb") tScorinateKO(ri, mi, isPartial ? 2 : 0); else if (bk === "lb") tScorinateKO(ri, mi, isPartial ? 2 : 0, "lb"); else tScorinateKO(0, 0, 0, bk); };
                 const onLive = () => { if (bk === "wb") tPlayLive({type:"ko",ri,mi,leg:isPartial?2:1}); else if (bk === "lb") tPlayLive({type:"ko",ri,mi,bracket:"lb",leg:isPartial?2:1}); else tPlayLive({type:"ko",ri:0,mi:0,bracket:bk,leg:isPartial?2:1}); };
@@ -8547,7 +9120,7 @@ export default function App() {
             {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 640, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <PanelTitle accent="#a3be8c">All Caught Up</PanelTitle>}
+                  {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <PanelTitle accent="var(--ui-ok)">All Caught Up</PanelTitle>}
                   {koActionable.wbRi >= 0 && (() => { const rd = tKO.rounds[koActionable.wbRi]; return (tConfig.koLegs === 2 ? <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <span style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>WB R{koActionable.wbRi + 1}</span>
                     {rd.matches.some(m => m.home && m.away && !m.result) && <button onClick={() => tScorinateKO(koActionable.wbRi, -1, 1)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>▶ 1st Legs</button>}
@@ -8740,7 +9313,7 @@ export default function App() {
             // the app rather than as a separate document. H1 keeps the brand accent, H2 takes the
             // League blue — matching it exactly while still reading as one level down.
             const H1 = ({children, id}) => <PanelTitle id={id}>{children}</PanelTitle>;
-            const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="#81a1c1">{children}</PanelTitle></div>;
+            const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="var(--ui-info)">{children}</PanelTitle></div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
             const Stat = ({text}) => {
@@ -9185,6 +9758,7 @@ export default function App() {
           })()}
         </div>)}
 
+      </div>
       </div>
     </div>
   );
