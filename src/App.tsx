@@ -3302,13 +3302,13 @@ const ROUND_ROW_H = 47, ROUNDS_VISIBLE = 6;
 const GROUP_STACK_MAX = 6;
 const FORM_N = 5;
 const FORM_COL_W = FORM_N * 15 + (FORM_N - 1) * 2 + 8;
-const ROSTER_PANEL_H = `min(${PANEL_H + LM_CONTROLS_H}px, calc(100vh - 116px))`;
+const ROSTER_PANEL_H = `min(${PANEL_H + LM_CONTROLS_H}px, calc(100vh / var(--app-zoom) - 116px))`;
 // Phases that carry a header or a footer the roster tabs have no equivalent of do NOT subtract a
 // measured height for it — that was guesswork and it was wrong twice. They wrap the whole phase in
 // a ROSTER_PANEL_H flex column instead, and the grid takes flex:1 of whatever is left, so the total
 // is the roster tabs' height by construction whatever the extra row turns out to measure.
 const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "column", minHeight: 0 };
-const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh - 163px))`;
+const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh / var(--app-zoom) - 163px))`;
 // Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
 // stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
 // Themes are off for now: the banner is one image again and the alternates are cut to fit it.
@@ -3835,21 +3835,30 @@ function gvChanceGoalPreview() {
 // badge. At the old 1000 that left ~47px and every name past eight characters was an ellipsis
 // ("K. Higashiy…", "T. Hargre…"). 1440 gives ~95px, which clears the longest names in the roster.
 // The page itself caps at 1600, so this is deliberately close to the size the layout was drawn at.
-// The gate is a floor AND a shape: every screen here splits into two side-by-side columns, so a
-// tall window clears 1000px and still has nowhere to put the second one. orientation:portrait is
-// exactly width < height, which is the condition, and the browser re-evaluates it on rotate.
+// The layout is built at MIN_APP_WIDTH and scaled to whatever the window gives it, rather than
+// refusing anything narrower. MIN_ZOOM is where that stops being a kindness: the smallest labels
+// in the app are 8-9px, so 0.75 already renders them at 6-7px and less is past reading.
+// Landscape stays a hard requirement — every screen is two side-by-side columns, and a portrait
+// window has nowhere to put the second one however far it scales.
 const MIN_APP_WIDTH = 1440;
+const APP_PAD_X = 18;
+const MIN_ZOOM = 0.75;
+const MIN_WINDOW_W = Math.ceil(MIN_APP_WIDTH * MIN_ZOOM) + APP_PAD_X * 2;
 const APP_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
 @import url('https://fonts.googleapis.com/css2?family=Aoboshi+One&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-/* Width gate. Pure CSS on purpose: no resize listener, no state, nothing to re-render — it flips
-   the instant the window crosses the threshold, including on rotate. The <style> tag lives inside
-   .app-root but style elements apply document-wide regardless of an ancestor's display, so hiding
-   the body cannot take these rules down with it. */
+/* The window fits the app, not the other way round: .app-body is drawn at MIN_APP_WIDTH and zoomed
+   to the window. zoom rather than transform:scale, because it reflows — text stays crisp and
+   nothing needs a wrapper sized to undo the transform. --app-zoom is set from the resize handler;
+   the 1 here is what first paint uses before it runs. Below MIN_ZOOM this query takes over: the
+   <style> tag lives inside .app-root, but style elements apply document-wide regardless of an
+   ancestor's display, so hiding the body cannot take these rules down with it. */
+:root{--app-zoom:1;}
+.app-body{zoom:var(--app-zoom);}
 .width-gate{display:none;}
-@media(max-width:${MIN_APP_WIDTH - 1}px),(orientation:portrait){
+@media(max-width:${MIN_WINDOW_W - 1}px),(orientation:portrait){
   .app-body{display:none;}
   .width-gate{display:flex;}
 }
@@ -5221,6 +5230,15 @@ export default function App() {
   };
   const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
   const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
+  // One property, no state: re-rendering the whole tree on every drag frame is what a resize
+  // listener usually costs, and setting a custom property on the root avoids all of it.
+  useEffect(() => {
+    const fit = () => document.documentElement.style.setProperty("--app-zoom",
+      String(Math.max(MIN_ZOOM, Math.min(1, (window.innerWidth - APP_PAD_X * 2) / MIN_APP_WIDTH))));
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
   const lmIsSetup = !lmMatch;
   // A tournament fixture uses the same setup screen, with everything the tournament decides read-only.
   const lmLocked = !!tPendingPlayLive;
@@ -7063,13 +7081,13 @@ export default function App() {
   </>); };
 
   return (
-    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: "24px 18px" }}>
+    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: `24px ${APP_PAD_X}px` }}>
       <style>{APP_CSS}</style>
       <div className="width-gate" style={{ minHeight: "calc(100vh - 48px)", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center", padding: 24 }}>
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Avium Football Engine</div>
         <div style={{ fontSize: 20, fontWeight: 600, color: "var(--ui-text)", maxWidth: 440, lineHeight: 1.35 }}>This window is the wrong shape</div>
         <div style={{ fontSize: 13, color: "var(--chrome-muted)", maxWidth: 440, lineHeight: 1.6 }}>
-          The engine needs a landscape window at least <span style={{ color: "var(--chrome-brand)", ...mono }}>{MIN_APP_WIDTH}px</span> wide — wider than it is tall. Widen the window, rotate the device, or open it on a desktop.
+          The engine needs a landscape window at least <span style={{ color: "var(--chrome-brand)", ...mono }}>{MIN_WINDOW_W}px</span> wide — wider than it is tall. Widen the window, rotate the device, or open it on a desktop.
         </div>
       </div>
       <div className="app-body">
