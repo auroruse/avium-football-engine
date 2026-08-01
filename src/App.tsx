@@ -2630,6 +2630,15 @@ function buildKnockoutDraw(teams, hasTP, rng) {
 // a find/replace pass over the finished SVG string right before each Blob is created.
 const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["nl1", "Nichirin League One"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
+// A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
+// fill falls back to black — which is exactly how the winner names and TBD exported black while
+// the four colours the old hand-kept substitution list happened to cover came out right. Resolving
+// against the live element covers every var the SVG uses, including any added later.
+const inlineVars = (svg) => {
+  const cs = getComputedStyle(document.querySelector(".app-root") || document.documentElement);
+  return svg.replace(/var\(--[\w-]+\)/g, (m) => cs.getPropertyValue(m.slice(4, -1)).trim() || m);
+};
+
 function chromeExportColors(uiTheme) {
   if (uiTheme === "wc1933") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
   if (uiTheme === "nl1") return { panel: "#ffffff", border: "#dfe3e8", muted: "#666d79", brand: "#dd0a1a" };
@@ -4232,7 +4241,7 @@ export default function App() {
     }
     if (prevR) lines(prevR, cx, prevRN, "right");
     s+='</svg>';
-    { const cc = chromeExportColors(uiTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
+    s = inlineVars(s);
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -4404,7 +4413,7 @@ export default function App() {
     s += '<text x="'+pd+'" y="'+(lbTopY + 8)+'" class="sec">LOWER BRACKET</text>';
     renderSection(lbRounds, lbTopY + 16, lbH, "var(--chrome-border)", 1, "var(--chrome-muted)", lbConnTypes, (m, ri) => ri === 0 ? _xd(m) : m.bye, true);
     s += '</svg>';
-    { const cc = chromeExportColors(uiTheme); s = s.replaceAll("var(--chrome-panel)", cc.panel).replaceAll("var(--chrome-border)", cc.border).replaceAll("var(--chrome-muted)", cc.muted).replaceAll("var(--chrome-brand)", cc.brand); }
+    s = inlineVars(s);
     const blob = new Blob([s], {type: "image/svg+xml"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
