@@ -8007,6 +8007,14 @@ export default function App() {
                   </div>);
                 })()}
               </div>
+              {/* How many times this fixture has been kicked off live. _rc survives reload and
+                  slot switches, so a re-run is visible rather than something you have to remember;
+                  reading it in render is enough because _rcV bumps alongside every inc. */}
+              {tLiveTarget && (() => { const n = _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget.flipped ? "_L2" : ""));
+                return (<div title="Live kickoffs recorded for this fixture, across reloads" style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)" }}>PLAYED LIVE</span>
+                  <span style={{ ...mono, fontSize: 10, fontWeight: 600, color: n > 1 ? "var(--ui-warn)" : "var(--chrome-muted)" }}>&#215;{n}</span>
+                </div>); })()}
             </div>
             </div>
             </div>
