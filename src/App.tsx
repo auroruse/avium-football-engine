@@ -305,9 +305,10 @@ function fixDescCoords(txt, gv) {
 // system as genGoalViz's shotFrom (x 0-100 toward the attacking goal, y 0-65). "solo" is a
 // lone dribble (chance_magic) — same player at every hop. "passed" is a short passing move
 // (trap_beaten / enter_box) — one synthesized teammate feeding the player who gets the chance.
+// Chance visuals are drawn in a 5..60 band of the pitch's short axis; both generators clamp to it.
+const clampY = (y) => Math.max(5, Math.min(60, y));
 function genChanceViz(rng, chanceType, playerName, teamPlayers, cp) {
   const R = (lo, hi) => lo + rng.u() * (hi - lo);
-  const clampY = (y) => Math.max(5, Math.min(60, y));
   const fx = R(78, 92), fy = R(18, 47);
   if (chanceType === "solo") {
     const h1x = fx - R(15, 22), h1y = clampY(fy + R(-8, 8));
@@ -368,7 +369,6 @@ const CHANCE_MAX_HOPS = 7;
 const DRIBBLE_P = 0.25;
 function genChanceExtension(rng, chain, teamPlayers, dm, dribbleP) {
   const R = (lo, hi) => lo + rng.u() * (hi - lo);
-  const clampY = (y) => Math.max(5, Math.min(60, y));
   const prev = chain[chain.length - 1];
   const dribble = rng.u() < (dribbleP ?? DRIBBLE_P);
   const next = dribble ? prev : pickPlayer(rng, teamPlayers.filter(p => p.pos !== "GK" && p.name !== prev.name), "any");
@@ -1406,7 +1406,6 @@ function resolvePendingPenalty(s, rng, home, away) {
   const zCol2=zone2%3;
   const isMiss2=rng.u()<missP2;
   const isSave2=!isMiss2&&dive2===zCol2;
-  const result2=isMiss2?"miss":isSave2?"save":"goal";
   if(isMiss2){
     s.stats[po].shots++;
     ratePlayer(s.players[po],taker.name,-0.5);momBump(s,op,3);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.fullName||taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"miss"}});
@@ -2363,10 +2362,6 @@ function fixtureHorizon(schedule, ri, teamName, k = 3) {
   }
   return out;
 }
-function nextOpponentSkill(schedule, ri, teamName) {
-  const h = fixtureHorizon(schedule, ri, teamName, 1);
-  return h.length ? h[0].skill : null;
-}
 function koWinner(m) { if (!m.result || !m.home) return null; if (m.result.twoLeg) { if (m.result.partial) return null; if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const ah=m.result.agg.home, aa=m.result.agg.away; if (ah!==aa) return ah>aa?m.home:m.away; if (m.result.awayGoalsRule) return m.result.awayGoals.home>m.result.awayGoals.away?m.home:m.away; return m.home; } if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const h = m.result.ftHome + (m.result.et?.home || 0), a = m.result.ftAway + (m.result.et?.away || 0); return h > a ? m.home : h < a ? m.away : m.home; }
 function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.home; }
 function koRoundName(total, ri) { const r = total / Math.pow(2, ri); return r === 2 ? "Final" : r === 4 ? "Semi-finals" : r === 8 ? "Quarter-finals" : `Round of ${r}`; }
@@ -2914,7 +2909,6 @@ const ensureMaxLum = (hex) => {
 // Every team colour shown on the scoreboard passes through here. Ceiling only: a kit that is not
 // too light must come out exactly as the team set it, so the floor is NOT applied here — it would
 // wash out any deep colour (the NL1 red sits just under it) for no reason.
-const clampTeamClr = (hex) => ensureMaxLum(hex);
 // Lifts a colour to the readable floor. Scaling the channels keeps their ratios, so the hue and
 // saturation survive — blending toward white instead turned a deep red into pink. Only a colour
 // with no channel to scale (black and its neighbours) has to be blended, having no hue to lose.
@@ -3070,7 +3064,6 @@ function assistPlayer(rng, players, scorer, delta, teamSkill, overridePosW) {
 }
 function parseOvr(raw) { if (!raw) return {name:raw,ovr:null,nat:null}; let s=raw.trimEnd().replace(/\s*\[[*+]\]$/, ""); let nat=null; const nm=s.match(/\s*\[([A-Za-z]{2,4})\]$/); if(nm){nat=nm[1].toUpperCase();s=s.slice(0,nm.index).trim();} const pre=s.match(/^\((\d{1,2})\)\s*/); if(pre) return {name:s.slice(pre[0].length).trim(),ovr:Math.max(1,Math.min(99,+pre[1])),nat}; const suf=s.match(/\((\d{1,2})\)$/); if(suf) return {name:s.slice(0,suf.index).trim(),ovr:Math.max(1,Math.min(99,+suf[1])),nat}; return {name:s,ovr:null,nat}; }
 const ovrSuffix = (ovr, teamSkill) => ovr != null && ovr !== teamSkill ? "(" + ovr + ") " : "";
-const natSuffix = (nat) => nat ? " [" + nat + "]" : "";
 // Known Gaelic clan surnames where "Mac" is followed by its own capitalized
 // root (MacDonald, MacKenzie) — NOT a general rule, since real surnames like
 // Machado/Machida/Macaraeg also start with "Mac" and must stay plain title-case.
@@ -3322,7 +3315,6 @@ const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh - 163px))`;
 const THEMES_ENABLED = false;
 // Banner height. The image keeps its own aspect and the tab row stretches to match it.
 const HEADER_H = 48;
-const WIDE_TABS = new Set(["teams", "players", "live", "tournament", "utilities", "docs"]);
 // Fewest clubs a league needs before it counts as complete in the roster rail.
 const LEAGUE_COMPLETE_MIN = 8;
 // Club tile crest size, and the share of the badge canvas that is transparent above and below the
@@ -3371,7 +3363,6 @@ const PRESET_CATALOG = [
   ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
-function isPow2(n) { return n > 0 && (n & (n - 1)) === 0; }
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
@@ -3381,9 +3372,7 @@ const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, paddin
 const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--ui-text)", outline: "none", fontFamily: "inherit" };
 const sel = { ...inp, cursor: "pointer" };
 const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
-const delBtn = { background: "transparent", border: "none", color: "var(--ui-danger)", fontSize: 16, cursor: "pointer", padding: "0 4px", fontFamily: "inherit" };
 const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "var(--ui-text)", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
-const chk = { fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" };
 const POS_CLR = {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)",CB:"var(--ui-info)",LB:"var(--ui-info)",RB:"var(--ui-info)",LWB:"var(--ui-info)",RWB:"var(--ui-info)",DM:"var(--ui-ok)",CM:"var(--ui-ok)",AM:"var(--ui-ok)",LM:"var(--ui-ok)",RM:"var(--ui-ok)",LW:"var(--ui-attack)",RW:"var(--ui-attack)",ST:"var(--ui-attack)"};
 
 // ─── SHARED PANEL CHROME ─────────────────────────────────────────────────────
@@ -3430,7 +3419,6 @@ const PANEL_HEAD_INSET = 12;
 // allowed values; reach for a token rather than a new number.
 const R = { sm: 3, md: 6, lg: 10, pill: 999 };            // chips/inputs · buttons/rows · panels
 const LS = { tight: "0.08em", label: "0.12em", head: "0.16em", caps: "0.18em" };
-const SP = { xs: 4, sm: 6, md: 8, lg: 12, xl: 16, xxl: 24 };
 // Button sizes. Three, and they are the only three — most call sites used to re-specify
 // padding and fontSize inline, which is where the drift came from.
 const xsBtn = { ...addBtn, padding: "2px 8px", fontSize: 9 };
@@ -3522,7 +3510,7 @@ function unpackPayload(p) {
   // Clone per occurrence: a JSON round-trip always gave each fixture its own team object, and some
   // paths write to it, so handing every fixture the same instance would alias them together.
   const deref = (v) => (v && typeof v === "object" && v[TEAM_REF] !== undefined)
-    ? (table[v[TEAM_REF]] ? JSON.parse(JSON.stringify(table[v[TEAM_REF]])) : null) : v;
+    ? (table[v[TEAM_REF]] ? structuredClone(table[v[TEAM_REF]]) : null) : v;
   const unMs = (ms) => (ms || []).map(m => (m && (m.home || m.away)) ? { ...m, home: deref(m.home), away: deref(m.away) } : m);
   const unM = (m) => (m && (m.home || m.away)) ? { ...m, home: deref(m.home), away: deref(m.away) } : m;
   const tGroups = (p.tGroups || []).map(g => ({ ...g, teams: (g.teams || []).map(deref), schedule: (g.schedule || []).map(unMs) }));
@@ -3880,12 +3868,6 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
 .team-tile{transition:transform 0.12s,border-color 0.12s,box-shadow 0.12s;}
 .team-tile:hover{transform:translateY(-2px);border-color:var(--chrome-muted-66) !important;box-shadow:0 4px 14px var(--ui-shadow-2);}
 .team-tile:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
-.teamrow{position:relative;transition:background 0.13s,padding-left 0.13s;}
-.teamrow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--chrome-brand);transform:scaleX(0);transform-origin:left;transition:transform 0.13s;}
-.teamrow:hover{background:var(--chrome-muted-22);padding-left:16px;}
-.teamrow:hover::before{transform:scaleX(1);}
-.teamrow:hover .teamrow-go{color:var(--chrome-brand);transform:translateX(2px);}
-.teamrow-go{transition:color 0.13s,transform 0.13s;}
 input[type=number]{-moz-appearance:textfield;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[type=color]{-webkit-appearance:none;appearance:none;padding:0;}
@@ -3917,10 +3899,6 @@ details>summary .dta{display:inline-block;margin-right:6px;transition:transform 
 details[id^="doc-"]>summary+p{margin-top:12px;}
 details[id^="doc-"]>summary+div{margin-top:12px;}
 details[open]>summary .dta{transform:rotate(90deg);}
-.team-row{transition:background 0.15s;}
-.team-row:hover{background:var(--chrome-panel) !important;}
-.ko-match{transition:border-color 0.15s, box-shadow 0.15s;}
-.ko-match:hover{border-color:var(--chrome-muted) !important;}
 .panel{background:var(--chrome-panel);border:1px solid var(--chrome-border);border-radius:10px;}
 select{cursor:pointer;}
 input::placeholder{color:var(--chrome-muted);}
@@ -3965,7 +3943,6 @@ const T_PRESETS = {
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
-const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"var(--ui-captain)",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("teams");
   const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
@@ -4473,7 +4450,7 @@ export default function App() {
   // Earliest round with an unplayed match, across every group at once (one round-robin/Swiss
   // round spans all groups simultaneously) — memoized because every mutating handler
   // (tScorinate, tSetManualScore, tDeleteGroupResult, ...) replaces tGroups wholesale via
-  // JSON.parse(JSON.stringify(...)) + setTGroups, so reference equality is a correct proxy
+  // structuredClone(...) + setTGroups, so reference equality is a correct proxy
   // for "did the schedule actually change," letting this skip the O(rounds×groups×matches)
   // scan on every unrelated re-render (a live match tick, typing elsewhere, etc).
   const groupFirstOpen = useMemo(() => {
@@ -4521,7 +4498,11 @@ export default function App() {
     const resetReady = isDE && !!tKO.reset?.home && !!tKO.reset?.away && !tKO.reset.result;
     return { wbRi, lbRi, tpReady, gfReady, resetReady };
   }, [tKO]);
-  useEffect(() => { if (lmFeedRef.current) lmFeedRef.current.scrollTop = lmFeedRef.current.scrollHeight; }, [lmMatch?.events.length]);
+  // Every advance pins the feed to the bottom. Not events.length alone: stepping through a chance
+  // grows the last card instead of adding an event, and a minute that produces nothing still moves
+  // the clock — both left the newest content below the fold.
+  useEffect(() => { if (lmFeedRef.current) lmFeedRef.current.scrollTop = lmFeedRef.current.scrollHeight; },
+    [lmMatch?.events.length, lmMatch?.minute, lmMatch?.phase, chanceStep]);
   useEffect(() => {
     if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
       const delay = lmMatch.phase === "pre_match" ? 2000 : autoSpeed;
@@ -4566,7 +4547,6 @@ export default function App() {
 
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
-  const removeTeam = (id) => setTeams(t => t.filter(tm => tm.id !== id));
   // Every team and player field in the panel routes through here, so this is the one place that has
   // to notice an edit. Custom teams are excluded: they are meant to be edited and they persist.
   const updateTeam = (id, f, v) => { if (!id.startsWith("Custom::")) setEditedTeams(s => s.has(id) ? s : new Set(s).add(id));
@@ -4591,7 +4571,7 @@ export default function App() {
         homeName: teamById(lmH)?.name, awayName: teamById(lmA)?.name,
         homeCode: teamById(lmH)?.code, awayCode: teamById(lmA)?.code,
         homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
-        goalscorers: JSON.parse(JSON.stringify(lmMatch.goalscorers || {home:[],away:[]})),
+        goalscorers: structuredClone(lmMatch.goalscorers || {home:[],away:[]}),
         homePlayers: allPlayers("home").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
         awayPlayers: allPlayers("away").map(p => ({name:p.name,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
         penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
@@ -4624,7 +4604,7 @@ export default function App() {
     let homeTeamObj = null, awayTeamObj = null;
 
     if (target.type === "group") {
-      const ng = JSON.parse(JSON.stringify(tGroups));
+      const ng = structuredClone(tGroups);
       const gm = ng[target.gi].schedule[target.ri][target.mi];
       gm.result = { ftHome: hg, ftAway: ag };
       if (penData) { gm.result.penHome = penData.homeScore; gm.result.penAway = penData.awayScore; }
@@ -4633,7 +4613,7 @@ export default function App() {
       ng[target.gi].standings = recalcStandings(ng[target.gi], tConfig.tiebreakers);
       setTGroups(ng);
     } else if (target.type === "ko") {
-      const nk = JSON.parse(JSON.stringify(tKO));
+      const nk = structuredClone(tKO);
       const bk = target.bracket || (target.tp ? "tp" : "wb");
       const m = bk === "lb" ? nk.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? nk.grandFinal : bk === "reset" ? nk.reset : bk === "tp" ? nk.thirdPlace : nk.rounds[target.ri]?.matches[target.mi];
       if (!m) return;
@@ -4720,10 +4700,10 @@ export default function App() {
         else { resultObj.statDiffs = { home: homeDiffs, away: awayDiffs }; }
       };
       if (target.type === "group") {
-        setTGroups(prev => { const ng = JSON.parse(JSON.stringify(prev)); storeDiffs(ng[target.gi].schedule[target.ri][target.mi].result); return ng; });
+        setTGroups(prev => { const ng = structuredClone(prev); storeDiffs(ng[target.gi].schedule[target.ri][target.mi].result); return ng; });
       } else {
         setTKO(prev => {
-          const nk = JSON.parse(JSON.stringify(prev));
+          const nk = structuredClone(prev);
           const bk = target.bracket || (target.tp ? "tp" : "wb");
           const mt = bk === "lb" ? nk.losers?.[target.ri]?.matches[target.mi] : bk === "gf" ? nk.grandFinal : bk === "reset" ? nk.reset : bk === "tp" ? nk.thirdPlace : nk.rounds[target.ri]?.matches[target.mi];
           if (mt?.result) storeDiffs(mt.result);
@@ -4779,9 +4759,19 @@ export default function App() {
   // renderers, group fixtures, the post-match Replay button) already calls tPlayLive —
   // repointing it at the setup gate here means none of those call sites need touching.
   // The setup screen's Confirm button is what actually kicks off via tConfirmPlayLive.
+  // Force result and the first-leg carry-over are the tournament's call, not the user's. Defined
+  // once: the setup screen shows them locked and tConfirmPlayLive applies them at kickoff.
+  const tForceResult = (target) => target.type === "ko" && !(tConfig.koLegs === 2 && target.leg === 1);
+  const tStartScore = (vc) => (vc.isL2 && vc.matchObj.result?.leg1) ? [vc.matchObj.result.leg1.away, vc.matchObj.result.leg1.home] : [0, 0];
+
   const tPlayLive = (target) => {
     const vc = tResolveVenueContext(target);
     if (!vc) return;
+    // The setup screen is the standalone one with the tournament's choices locked, so it reads the
+    // same lm* state. Seeded here only so those locked panels show the fixture while it is up.
+    setLmH(vc.isL2 ? teams[vc.ai].id : teams[vc.hi].id);
+    setLmA(vc.isL2 ? teams[vc.hi].id : teams[vc.ai].id);
+    setLmForce(tForceResult(target)); setLm2ndLeg(vc.isL2); setLmStartScore(tStartScore(vc));
     setTPendingPlayLive(target);
     setTab("live");
   };
@@ -4798,11 +4788,8 @@ export default function App() {
       if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail.add(k);
     }
 
-    const forceResult = target.type === "ko" && !(tConfig.koLegs === 2 && target.leg === 1);
-    let startScore = [0, 0];
-    if (isL2 && matchObj.result?.leg1) {
-      startScore = [matchObj.result.leg1.away, matchObj.result.leg1.home];
-    }
+    const forceResult = tForceResult(target);
+    const startScore = tStartScore(vc);
 
     const replayKey = venueKey + (isL2 ? "_L2" : "");
     _rc.inc(replayKey); _setRcV(v => v + 1);
@@ -5235,6 +5222,9 @@ export default function App() {
   const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
   const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
   const lmIsSetup = !lmMatch;
+  // A tournament fixture uses the same setup screen, with everything the tournament decides read-only.
+  const lmLocked = !!tPendingPlayLive;
+  const lmVc = tPendingPlayLive ? tResolveVenueContext(tPendingPlayLive) : null;
   // Which slot the next click in the setup team list fills. Two slots, one active, and it flips
   // after every pick — so the common case (choose a fixture) is two clicks with no mode-setting.
   const [lmPick, setLmPick] = useState("home");
@@ -5257,7 +5247,6 @@ export default function App() {
   const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;
   const tPerGroupMax = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(tournamentTeams.length / tConfig.numGroups) : 0;
   const tDivisible = tournamentTeams.length > 0 && tConfig.numGroups > 0 && tournamentTeams.length % tConfig.numGroups === 0;
-  const tUneven = !tDivisible && tPerGroup >= 2;
   const tHasGroups = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "groups");
   const tHasKO = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "knockout");
   const qz = tConfig.qualZones || [];
@@ -5311,7 +5300,7 @@ export default function App() {
   };
   const tManualAssign = (teamIdx, groupIdx) => {
     if (!tManual) return;
-    const nm = JSON.parse(JSON.stringify(tManual));
+    const nm = structuredClone(tManual);
     const t = nm.pool.splice(teamIdx, 1)[0];
     nm.grps[groupIdx].teams.push(t);
     setTManual(nm);
@@ -5322,7 +5311,7 @@ export default function App() {
     setTGroups(grps); setTPhase("groups"); setTManual(null);
   };
   const tSwapStandings = (gi, ri) => {
-    const ng = JSON.parse(JSON.stringify(tGroups));
+    const ng = structuredClone(tGroups);
     const st = ng[gi].standings;
     if (ri >= 0 && ri < st.length - 1) {
       [st[ri], st[ri + 1]] = [st[ri + 1], st[ri]];
@@ -5334,7 +5323,7 @@ export default function App() {
 
 
   const tGenNextSwissRound = () => {
-    const ng = JSON.parse(JSON.stringify(tGroups));
+    const ng = structuredClone(tGroups);
     ng.forEach(g => {
       g.standings = recalcStandings(g, tConfig.tiebreakers);
       const nextRd = genSwissRound(g, g.schedule.length);
@@ -5467,7 +5456,7 @@ export default function App() {
     const hg = parseInt(h, 10), ag = parseInt(a, 10);
     if (isNaN(hg) || isNaN(ag)) { setTScoreError("Enter both scores"); return; }
     if (hg < 0 || ag < 0) { setTScoreError("Scores can't be negative"); return; }
-    const ng = JSON.parse(JSON.stringify(tGroups));
+    const ng = structuredClone(tGroups);
     const gm = ng[gi].schedule[ri][mi];
     // Read form BEFORE the result lands, or the scoreline just entered counts toward the form it
     // is supposed to have been produced by.
@@ -5485,7 +5474,7 @@ export default function App() {
     setTGroups(ng); setTEdit(null); setTScoreError("");
   };
   const tDeleteGroupResult = (gi, ri, mi) => {
-    const ng = JSON.parse(JSON.stringify(tGroups));
+    const ng = structuredClone(tGroups);
     const gm = ng[gi]?.schedule[ri]?.[mi];
     if (!gm) return;
     const sd = gm.result?.statDiffs;
@@ -5514,7 +5503,7 @@ export default function App() {
       ko.champion = null; propagateKO(ko);
     };
     if (isTL && step === "l2" && String(h).trim() === "" && String(a).trim() === "") {
-      const submitSkip = (result) => { const ko = JSON.parse(JSON.stringify(tKO)); const target = getTarget(ko); target.result = result; cascade(ko); setTKO(ko); setTKoEdit(null); setTScoreError(""); if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout"); };
+      const submitSkip = (result) => { const ko = structuredClone(tKO); const target = getTarget(ko); target.result = result; cascade(ko); setTKO(ko); setTKoEdit(null); setTScoreError(""); if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout"); };
       if (l1h === l1a) { setTKoEdit({ ...tKoEdit, twoLeg: false, step: "et", ftH: l1h, ftA: l1a, h: "", a: "" }); setTScoreError(""); }
       else submitSkip({ ftHome: l1h, ftAway: l1a });
       return;
@@ -5522,7 +5511,7 @@ export default function App() {
     if (isNaN(hg) || isNaN(ag)) { setTScoreError("Enter both scores"); return; }
     if (hg < 0 || ag < 0) { setTScoreError("Scores can't be negative"); return; }
     const submit = (result) => {
-      const ko = JSON.parse(JSON.stringify(tKO));
+      const ko = structuredClone(tKO);
       const target = getTarget(ko);
       target.result = result; cascade(ko);
       setTKO(ko); setTKoEdit(null); setTScoreError("");
@@ -5574,7 +5563,7 @@ export default function App() {
     const bulk = targetGi === -1 || targetRi === -1 || targetMi === -1;
     const run = () => {
     const rng = new RNG(Date.now());
-    const ng = JSON.parse(JSON.stringify(tGroups));
+    const ng = structuredClone(tGroups);
     const maxRds = Math.max(...ng.map(g => g.schedule.length));
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
     const localBans = {};
@@ -5680,14 +5669,14 @@ export default function App() {
   };
   const tKOManualAssign = (teamIdx, matchIdx, slot) => {
     if (!tKOManual) return;
-    const nm = JSON.parse(JSON.stringify(tKOManual));
+    const nm = structuredClone(tKOManual);
     const t = nm.pool.splice(teamIdx, 1)[0];
     nm.matches[matchIdx][slot] = t;
     setTKOManual(nm);
   };
   const tKOManualRemove = (matchIdx, slot) => {
     if (!tKOManual) return;
-    const nm = JSON.parse(JSON.stringify(tKOManual));
+    const nm = structuredClone(tKOManual);
     const t = nm.matches[matchIdx][slot];
     if (!t) return;
     nm.matches[matchIdx][slot] = null;
@@ -5757,7 +5746,7 @@ export default function App() {
     const bulk = targetRi === -1 || targetMi === -1;
     const run = () => {
     const rng = new RNG(Date.now());
-    const ko = JSON.parse(JSON.stringify(tKO));
+    const ko = structuredClone(tKO);
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
@@ -5805,7 +5794,7 @@ export default function App() {
   const tDeleteKoResult = (ri, mi, bracket) => {
     if (bracket === true) bracket = "tp";
     if (bracket === false) bracket = "wb";
-    const ko = JSON.parse(JSON.stringify(tKO));
+    const ko = structuredClone(tKO);
     const isDE = !!ko.losers;
     let target;
     if (bracket === "lb") target = ko.losers?.[ri]?.matches[mi];
@@ -5956,27 +5945,27 @@ export default function App() {
   // Team-picked colors can be too dark to read against the app's near-black panels.
   // Fall back to the team's other kit color first, then lighten as a last resort.
   const sbPanel = chromeExportColors(uiTheme).panel;
-  const hClr = clampTeamClr(readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, sbPanel));
-  let aClr = clampTeamClr(readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, sbPanel));
+  const hClr = ensureMaxLum(readableClr(hClrPre, hClrPre === hHomeClr ? hAwayClr : hHomeClr, sbPanel));
+  let aClr = ensureMaxLum(readableClr(aClrPre, aClrPre === aHomeClr ? aAwayClr : aHomeClr, sbPanel));
   // The away-kit switch above is a no-op when a team has no away color set (it just
   // falls back to its home color), so a clash can survive it. Guarantee the two final
   // colors are distinguishable no matter what caused the collision: try the away side's
   // other kit color once more, then nudge it toward white until it's clearly distinct.
   if (colorsClash(hClr, aClr)) {
-    const aOtherReadable = clampTeamClr(readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, sbPanel));
+    const aOtherReadable = ensureMaxLum(readableClr(aClr === aHomeClr ? aAwayClr : aHomeClr, aClr, sbPanel));
     if (!colorsClash(hClr, aOtherReadable)) aClr = aOtherReadable;
-    else { aClr = clampTeamClr(lightenUntil(aClr, hClr, 0.35)); }
+    else { aClr = ensureMaxLum(lightenUntil(aClr, hClr, 0.35)); }
   }
-  const hStatClr = clampTeamClr(ensureMinLum(hClr)), aStatClr = clampTeamClr(ensureMinLum(aClr));
+  const hStatClr = ensureMaxLum(ensureMinLum(hClr)), aStatClr = ensureMaxLum(ensureMinLum(aClr));
   // The card background gradient below IS the panel, not text drawn on top of it, so
   // it doesn't need the panel-contrast swap readableClr applies — a dark home kit should
   // stay dark there. Start from the pre-swap colors and only resolve a clash between the
   // two halves themselves (same pattern as hClr/aClr above, just against each other).
-  let hClr2 = clampTeamClr(hClrPre), aClr2 = clampTeamClr(aClrPre);
+  let hClr2 = ensureMaxLum(hClrPre), aClr2 = ensureMaxLum(aClrPre);
   if (colorsClash(hClr2, aClr2)) {
     const aOther2 = aClr2 === aHomeClr ? aAwayClr : aHomeClr;
     if (!colorsClash(hClr2, aOther2)) aClr2 = aOther2;
-    else aClr2 = clampTeamClr(lightenUntil(aClr2, hClr2, 0.35));
+    else aClr2 = ensureMaxLum(lightenUntil(aClr2, hClr2, 0.35));
   }
 
   // Venue only reflects a real team's stadium when that team was actually assigned home advantage
@@ -6633,7 +6622,6 @@ export default function App() {
 
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
-  const TEAM_COLW = { num: 22, crest: 26, code: 42, skill: 42, go: 18, del: 28 };
   // Preset teams are owned by the TSV files — the app renders them, the spreadsheet edits them.
   // A preset can be unlocked for the session from its own panel, but the roster autosave only ever
   // writes Custom teams and the loader always rebuilds presets from PRESET_CATALOG, so a tweak here
@@ -7086,11 +7074,7 @@ export default function App() {
       </div>
       <div className="app-body">
       {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
-      {/* Width is per tab, not one global cap. A tab built as a single column reads badly stretched
-          to 1600 — the same failure as a ten-column table across a 2000px panel — so each tab widens
-          only once it has a layout that fills it. 1600 rather than full-bleed: past that, side-by-side
-          panels sit far enough apart that the eye has to travel between them. */}
-      <div style={{ maxWidth: WIDE_TABS.has(tab) ? 1600 : 900, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
           <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
@@ -7179,7 +7163,7 @@ export default function App() {
                   {visibleTeams.map(t => {
                     // The kit colour is clamped the same way the scoreboard clamps it — a near-white
                     // strip would otherwise wash the tile out into the panel behind it.
-                    const kit = clampTeamClr(t.primaryColor || "#2a3a50");
+                    const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
                     // The badge art is a 500px square with the crest inset 50px top and bottom, so
                     // a tenth of the rendered box is empty above and below it and the whole content
                     // group reads low. Cancelling that pulls the crest and everything under it up.
@@ -7449,13 +7433,17 @@ export default function App() {
               </div>) : null;
             })()}
           </div>}
-          {lmIsSetup && !tPendingPlayLive && (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", height: LIVE_PANEL_H }}>
+          {tPendingPlayLive && <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
+            <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 3 }}>&#9917; Kick Off</button>
+          </div>}
+          {(lmIsSetup || tPendingPlayLive) && (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", height: LIVE_PANEL_H }}>
 
             {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
                 A flat list of every team in the game is a scroll with no landmarks; leagues are the
                 landmarks, and the tiles carry the crest and skill you actually choose on. */}
-            <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12, pointerEvents: lmLocked ? "none" : undefined }}>
 
               {/* The two slots sit above both panes rather than in either header: at half the page
                   width neither header has room for a team name beside its own title. */}
@@ -7472,7 +7460,7 @@ export default function App() {
                 })}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch", opacity: lmLocked ? 0.5 : 1 }}>
 
                 {/* ── Leagues ── */}
                 <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -7513,7 +7501,7 @@ export default function App() {
                         const isH = t.id === lmH, isA = t.id === lmA, taken = lmPick === "home" ? isA : isH;
                         // Same clamp the scoreboard uses — a near-white strip would wash the tile
                         // out into the panel behind it.
-                        const kit = clampTeamClr(t.primaryColor || "#2a3a50");
+                        const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
                         // The badge art is a 500px square with the crest inset a tenth top and
                         // bottom, so cancelling that pulls the whole content group up.
                         const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
@@ -7572,6 +7560,44 @@ export default function App() {
                   const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
                   const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
                   const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
+                  // A tournament fixture picks from what the tournament allows and writes to its
+                  // overrides — the rows are the standalone ones so the panel looks no different.
+                  if (lmLocked && lmVc) {
+                    // A fixture picks from what the tournament allows and writes to its overrides —
+                    // same rows as the standalone list, and every other ground stays on offer.
+                    const vc = lmVc, cat = (t) => teams.find(x => x.name === t?.name) || t;
+                    const setHA = (val) => setTHomeAdvOverrides(pv => ({ ...pv, [vc.venueKey]: val === null ? "off" : val }));
+                    const clearVenue = () => setTVenueOverrides(pv => { const nm = { ...pv }; delete nm[vc.overrideKey]; return nm; });
+                    const chosen = tVenueOverrides[vc.overrideKey] || "";
+                    // Two-legged ties do not host anywhere: either each side hosts a leg, or neither does.
+                    const twoLeg = tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset";
+                    const head = vc.hostModeActive ? (<>
+                      {tHostVenuePool.length === 0 && <div style={{ padding: "10px 14px", fontSize: 10, color: "var(--ui-danger)" }}>No host venues configured</div>}
+                      {tHostVenuePool.map((v, i2) => row("host" + i2, (vc.venue?.stadium || "") === v.stadium,
+                        () => setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: v.stadium })), v.stadium,
+                        [v.city, chosen === v.stadium ? "Manually chosen" : "Automatic"].filter(Boolean).join(" · "),
+                        STADIUM_IMAGES.includes(v.stadium) ? v.stadium : null))}
+                    </>) : twoLeg ? (<>
+                      {row("neutral", !vc.homeAdv && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
+                      {row("alt", !!vc.homeAdv && !chosen, () => { setTHomeAdvOverrides(pv => { const nm = { ...pv }; delete nm[vc.venueKey]; return nm; }); clearVenue(); },
+                        "Alternating", "Each team hosts one leg", null)}
+                    </>) : (<>
+                      {row("neutral", vc.homeAdv === null && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
+                      {[["home", cat(vc.homeTeam)], ["away", cat(vc.awayTeam)]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
+                        return row(side, vc.homeAdv === side && !chosen, () => { setHA(side); clearVenue(); }, st || `${t.name} (no ground listed)`,
+                          [t.name, place(t)].filter(Boolean).join(" · "), STADIUM_IMAGES.includes(st) ? st : null); })}
+                    </>);
+                    // Any other ground can host the fixture, in every mode — picking one is a neutral
+                    // venue by definition, so it clears whatever advantage was set.
+                    const shown = new Set([...ownGrounds, ...(vc.hostModeActive ? tHostVenuePool.map(v => v.stadium) : [])]);
+                    return (<>
+                      {head}
+                      <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 14px 5px", borderTop: "1px solid var(--chrome-border)", marginTop: 4 }}>Other Grounds</div>
+                      {STADIUM_IMAGES.filter(st => !shown.has(st)).map(st => { const owner = byStadium.get(st);
+                        return row("o" + st, chosen === st, () => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: st })); setHA(null); }, st,
+                          place(owner), st); })}
+                    </>);
+                  }
                   return (<>
                     {row("neutral", lmHomeAdv === null && !named, pickNeutral, "Neutral Venue", null, null)}
                     {/* Both sides' grounds are offered whether or not a picture exists for them —
@@ -7591,8 +7617,8 @@ export default function App() {
 
               <div style={{ ...panelBox, marginBottom: 0, flexShrink: 0 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties"], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo"], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs"], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds"]].map(([checked, onChange, label, sub], i) => (
-                  <label key={i} onClick={() => onChange(!checked)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 0" }}>
+                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties", true], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo", false], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs", false], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds", false]].map(([checked, onChange, label, sub, tOwned], i) => (
+                  <label key={i} onClick={() => { if (!(lmLocked && tOwned)) onChange(!checked); }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: lmLocked && tOwned ? "default" : "pointer", padding: "6px 0", opacity: lmLocked && tOwned ? 0.5 : 1 }}>
                     <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
                       <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
                     </div>
@@ -7603,7 +7629,7 @@ export default function App() {
                   </label>
                 ))}
               </div>
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)" }}>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)", ...(lmLocked ? { pointerEvents: "none", opacity: 0.5 } : null) }}>
                 <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
                 <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
                   {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
@@ -7626,53 +7652,6 @@ export default function App() {
             </div>
             </div>
           )}
-          {tPendingPlayLive && (() => {
-            const vc = tResolveVenueContext(tPendingPlayLive);
-            if (!vc) return null;
-            return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 22, marginBottom: 24, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", textAlign: "right" }}>{vc.homeTeam.name}</div>
-                  <span style={{ fontSize: 12, color: "var(--chrome-muted)", letterSpacing: "0.18em", fontWeight: 700, ...ui }}>{vc.isL2 ? "L2" : "VS"}</span>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)" }}>{vc.awayTeam.name}</div>
-                </div>
-                {vc.hostModeActive ? (
-                  <div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>STADIUM</div>
-                    <select value={vc.venue?.stadium || ""} onChange={e => setTVenueOverrides(p => ({ ...p, [vc.overrideKey]: e.target.value }))} style={{ ...inp, width: "100%", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
-                      {tHostVenuePool.length === 0 && <option value="">No host venues configured</option>}
-                      {tHostVenuePool.map((v, i) => <option key={i} value={v.stadium}>{[v.stadium, v.city].filter(Boolean).join(", ")}</option>)}
-                    </select>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{tVenueOverrides[vc.overrideKey] ? "Manually chosen" : "Automatic pick — change to lock this fixture to a specific stadium"}</div>
-                  </div>
-                ) : tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset" ? (
-                  <div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
-                    <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
-                      {[["home", "Alternating"], [null, "Neutral"]].map(([val, label]) => (
-                        <button key={label} onClick={() => setTHomeAdvOverrides(p => { const nm = { ...p }; if (val === null) nm[vc.venueKey] = "off"; else delete nm[vc.venueKey]; return nm; })} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== null ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "Each team hosts one leg" : "No advantage"}</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>HOME ADVANTAGE</div>
-                    <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
-                      {[["home", vc.homeTeam.name], [null, "Neutral"], ["away", vc.awayTeam.name]].map(([val, label]) => (
-                        <button key={label} onClick={() => setTHomeAdvOverrides(p => ({ ...p, [vc.venueKey]: val === null ? "off" : val }))} className={vc.homeAdv === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: vc.homeAdv === val ? "var(--chrome-brand)" : "transparent", color: vc.homeAdv === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: vc.homeAdv === val ? 600 : 400, transition: "all 0.15s", borderRight: val !== "away" ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", textAlign: "center", marginTop: 4 }}>{vc.homeAdv ? "+3% skill bonus" : "No advantage"}</div>
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-                  <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
-                  <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 2 }}>⚽ Kick Off</button>
-                </div>
-              </div>
-            );
-          })()}
           {lmMatch && !tPendingPlayLive && (<>
             {/* Two columns, the shape of a post-match report: the match and the people who played
                 it on the left, everything derived from it on the right.
@@ -7682,7 +7661,7 @@ export default function App() {
                 that has inverted), so letting the page scroll left them ending hundreds of pixels
                 apart. Height on the container rather than a maxHeight on each: matching two
                 independent heights by hand only holds until one side grows a panel. */}
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", minHeight: LIVE_PANEL_H }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", minHeight: LIVE_PANEL_H }}>
             <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {renderScoreboard(lmMatch.phase === "pre_match" ? { flex: "1 1 auto", marginBottom: 0 } : null)}
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
@@ -8862,7 +8841,7 @@ export default function App() {
               const actualH = Math.max(dispHalf, 2) * (cardH + gap);
 
               return (
-                <div id="bracket-export" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
+                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {/* Left half */}
                     {leftRounds.map((lr, i) => (<>
