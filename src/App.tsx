@@ -3318,7 +3318,11 @@ const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "col
 const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh - 163px))`;
 // Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
 // stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
-const WIDE_TABS = new Set(["teams", "players", "live", "tournament"]);
+// Themes are off for now: the banner is one image again and the alternates are cut to fit it.
+const THEMES_ENABLED = false;
+// Banner height. The image keeps its own aspect and the tab row stretches to match it.
+const HEADER_H = 48;
+const WIDE_TABS = new Set(["teams", "players", "live", "tournament", "utilities", "docs"]);
 // Fewest clubs a league needs before it counts as complete in the roster rail.
 const LEAGUE_COMPLETE_MIN = 8;
 // Club tile crest size, and the share of the badge canvas that is transparent above and below the
@@ -3964,8 +3968,8 @@ const T_PRESETS = {
 const TB = (t) => t===2?<span style={{color:"var(--chrome-brand)",fontSize:"0.9em",marginLeft:2}}>★</span>:t===1?<span style={{color:"var(--ui-captain)",fontSize:"0.85em",marginLeft:2,fontWeight:700,verticalAlign:"0.1em"}}>+</span>:null;
 export default function App() {
   const [tab, setTab] = useState("teams");
-  const [uiTheme, setUiTheme] = useState(() => { try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
-  useEffect(() => { try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
+  const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
+  useEffect(() => { if (!THEMES_ENABLED) return; try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [expandedRounds, setExpandedRounds] = useState(() => new Set());
@@ -4100,7 +4104,6 @@ export default function App() {
   const autoRef = useRef(null);
   const lmMatchRef = useRef(null); lmMatchRef.current = lmMatch;
   const chanceStepRef = useRef({}); chanceStepRef.current = chanceStep;
-  const [koBracketView, setKoBracketView] = useState(true);
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
@@ -4433,6 +4436,7 @@ export default function App() {
   const [tLeaderboard, setTLeaderboard] = useState(null);
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
   const [tChampOpen, setTChampOpen] = useState(false);
+  const [tKoGroupsOpen, setTKoGroupsOpen] = useState(false);
   const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
@@ -7087,13 +7091,11 @@ export default function App() {
           only once it has a layout that fills it. 1600 rather than full-bleed: past that, side-by-side
           panels sit far enough apart that the eye has to travel between them. */}
       <div style={{ maxWidth: WIDE_TABS.has(tab) ? 1600 : 900, margin: "0 auto" }}>
-        <div style={{ marginBottom: 20, paddingBottom: 12 }}>
-          <div style={{ marginBottom: 12, textAlign: "center" }}>
-            <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ width: "100%", height: "auto" }} />
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Docs"]].map(([id, l]) => (
-              <button key={id} onClick={() => setTab(id)} style={{ ...chip, background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
+        <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
+          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
+          <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
+            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
+              <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
         </div>
@@ -8206,7 +8208,7 @@ export default function App() {
           )}
           {/* Player stats sit in the running tournament's right column; every other phase
               shows them on their own. */}
-          {!["groups", "setup"].includes(tPhase) && <div style={{ margin: "14px 0 16px" }}>{renderLeaderboards()}</div>}
+          {!["groups", "setup", "knockout", "complete"].includes(tPhase) && <div style={{ margin: "14px 0 16px" }}>{renderLeaderboards()}</div>}
           {/* SETUP */}
           {tPhase === "setup" && (<div style={PHASE_COL}>
             {/* Saves and the setup form share a row: one is what you already have, the other is
@@ -8702,45 +8704,30 @@ export default function App() {
           </div>)}
 
           {/* KNOCKOUT */}
-          {(tPhase === "knockout" || tPhase === "complete") && tKO && (<div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          {(tPhase === "knockout" || tPhase === "complete") && tKO && (<div style={PHASE_COL}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexShrink: 0 }}>
               <PanelTitle>Knockout Stage</PanelTitle>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
+                {tGroups.length > 0 && <button onClick={() => setTKoGroupsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128202; Group Results</button>}
+                <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...addBtn, color: "var(--ui-info)", borderColor: "var(--ui-info-33)" }}>&#128247; Export</button>
                 <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
-            {tGroups.length > 0 && (<details style={{ marginBottom: 16 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer", letterSpacing: 2 }}><span className="dta">▶</span>GROUP STAGE RESULTS</summary><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
-              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
-                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
-                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
-                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
-                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
-              </div>); })}
-            </div>
-            {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginTop: 10 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bz?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
-                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
-                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"var(--ui-qual-pool)") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
-              </div>); })()}
-            </details>)}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0 }}>
+              {/* The bracket is the shape of the draw; the stacked list is what you act on. Both at
+                  once, mirroring the group phase's table-left, fixtures-right split. Block flow, not
+                  flex: these panels were written with their own margins and would shrink in a column. */}
+              <div style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
             {tPhase === "complete" && tKO.champion && (
-              <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, marginBottom: 20, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
+              <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, flexShrink: 0, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tKO.champion.name}</div>
                 <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 6, ...mono }}>{tKO.champion.skill}</div>
               </div>
             )}
-            {/* Bracket/Stacked toggle */}
-            <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-              <button onClick={() => setKoBracketView(true)} className={koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: koBracketView ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "1px solid " + (koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Bracket</button>
-              <button onClick={() => setKoBracketView(false)} className={!koBracketView ? "gbtn" : ""} style={{ ...chip, fontSize: 9, background: !koBracketView ? "var(--chrome-brand)" : "var(--chrome-panel)", color: !koBracketView ? "var(--ui-text)" : "var(--chrome-muted)", border: "1px solid " + (!koBracketView ? "var(--chrome-brand)" : "var(--chrome-muted-33)") }}>Stacked</button>
-              {koBracketView && <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...chip, fontSize: 9, background: "var(--chrome-panel)", color: "var(--ui-info)", border: "1px solid var(--ui-info-33)", marginLeft: 4, cursor: "pointer" }}>📷 Export</button>}
-            </div>
-
-            {koBracketView && !tKO.losers && (() => {
+            {!tKO.losers && (() => {
               const nR = tKO.rounds.length;
               const firstRd = tKO.rounds[0];
               const half = firstRd.matches.length / 2;
@@ -8875,7 +8862,7 @@ export default function App() {
               const actualH = Math.max(dispHalf, 2) * (cardH + gap);
 
               return (
-                <div id="bracket-export" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
+                <div id="bracket-export" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content" }}>
                     {/* Left half */}
                     {leftRounds.map((lr, i) => (<>
@@ -8919,7 +8906,7 @@ export default function App() {
               );
             })()}
             {/* ═══ DE BRACKET VIEW ═══ */}
-            {koBracketView && tKO.losers && (() => {
+            {tKO.losers && (() => {
               const nR = tKO.rounds.length;
               const cardH = 52, gap = 6, colW = 170, connW = 20, hdrH = 15;
               let wbFirst = 0;
@@ -9072,7 +9059,7 @@ export default function App() {
               };
 
               return (
-                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, marginBottom: 12, overflowX: "auto" }}>
+                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
                   {/* WB + GF + Reset in one row */}
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "var(--chrome-muted)", marginBottom: 10 }}>UPPER BRACKET</div>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: "fit-content", marginBottom: 8 }}>
@@ -9117,7 +9104,9 @@ export default function App() {
                 </div>
               );
             })()}
-            {!koBracketView && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", maxHeight: 640, overflowY: "auto", position: "relative" }}>
+              </div>
+              <div style={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            {(<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, boxShadow: "0 2px 10px var(--ui-shadow-2)", flexShrink: 0, maxHeight: 560, overflowY: "auto", position: "relative" }}>
               <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--chrome-panel)", padding: "16px 16px 10px", borderBottom: "1px solid var(--chrome-border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   {koActionable.wbRi < 0 && koActionable.lbRi < 0 && !koActionable.tpReady && !koActionable.gfReady && !koActionable.resetReady && <PanelTitle accent="var(--ui-ok)">All Caught Up</PanelTitle>}
@@ -9142,7 +9131,7 @@ export default function App() {
                   <button onClick={() => setExpandedRounds(s => { const ns = new Set(s); tKO.rounds.forEach((_, ri) => ns.delete(`wb_${ri}`)); (tKO.losers || []).forEach((_, lr) => ns.delete(`lb_${lr}`)); return ns; })} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>Collapse All</button>
                 </div>
               </div>
-              <div style={{ padding: "10px 16px 16px" }}>
+              <div style={{ padding: "10px 16px 16px", height: ROUNDS_VISIBLE * ROUND_ROW_H, overflowY: "auto", scrollbarGutter: "stable" }}>
               {tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = wbRoundDone(round); const key = `wb_${ri}`; const isOpen = expandedRounds.has(key); return (
                 <div key={ri} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "var(--chrome-brand-33)" : "var(--chrome-border)"), borderRadius: 6, overflow: "hidden" }}>
                   <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
@@ -9170,7 +9159,7 @@ export default function App() {
               ); })}
               {!tKO.losers && tKO.thirdPlace && (
                 <div style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--ui-attack)", marginBottom: 10, ...mono }}>3RD PLACE MATCH</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--ui-attack)", marginBottom: 10 }}>3RD PLACE MATCH</div>
                   <div style={{ background: "var(--chrome-panel)", borderRadius: 6, padding: "8px 10px" }}>{renderKoMatchRow(tKO.thirdPlace, { tp: true })}</div>
                 </div>
               )}
@@ -9220,17 +9209,41 @@ export default function App() {
               )}
               </div>
             </div>)}
+                {renderLeaderboards()}
+              </div>
+            </div>
+            {tKoGroupsOpen && tGroups.length > 0 && (<div onClick={() => setTKoGroupsOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
+              <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 900 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", ...ui }}>Group Stage Results</span>
+                  <span onClick={() => setTKoGroupsOpen(false)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                </div><div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 2)}, 1fr)`, gap: 10, marginTop: 10 }}>
+              {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
+                <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th><th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", width: 1, whiteSpace: "nowrap" }}>Form</th></tr></thead>
+                  <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td><td style={{ padding: "2px 0 2px 6px", width: 1, whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-5).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td></tr>); })}</tbody></table>
+                {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
+              </div>); })}
+            </div>
+            {tPoolData && tPoolData.pool.length > 0 && (() => { const bz = qz.find(z=>z.type==="best"); return (
+              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", marginTop: 10 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: bz?.color || "var(--ui-qual-pool)", textAlign: "center", marginBottom: 8 }}>{bz?.label?.toUpperCase() || "POOL QUALIFICATION"}</div>
+                <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400, width: 20 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>Grp</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th></tr></thead>
+                <tbody>{tPoolData.pool.map((r, ri) => { const qual = ri < tPoolData.poolQualified.length; return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "right", width: 20 }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: qual ? (bz?.color||"var(--ui-qual-pool)") : "var(--chrome-muted)", fontWeight: qual ? 600 : 400, borderLeft: qual ? "2px solid "+(bz?.color||"var(--ui-qual-pool)") : "2px solid transparent" }}>{r.name}</td><td style={{ padding: "2px", ...mono, fontSize: 9, color: "var(--chrome-muted)", textAlign: "center" }}>{r.groupLabel}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf-r.ga>0?"+":""}{r.gf-r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td></tr>); })}</tbody></table>
+              </div>); })()}
+            </div>
+            </div>)}
           </div>)}
         </div>)}
 
         {/* ═══ UTILITIES TAB ═══ */}
         {tab === "utilities" && (<div>
-          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
+          {THEMES_ENABLED && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
               {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
-          </div>
+          </div></>)}
           <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -9335,19 +9348,19 @@ export default function App() {
               </div></details>;
             };
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "var(--ui-text)" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
-            const tocLink = (id, label) => <span key={id} onClick={() => { const el=document.getElementById(id); if(el){const d=el.closest("details");if(d)d.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);} }} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
-            return (<>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+            const tocLink = (id, label) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
+            return (<div style={{ height: ROSTER_PANEL_H, display: "grid", gridTemplateColumns: "minmax(0, 250px) minmax(0, 1fr)", gap: 16, minHeight: 0 }}>
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 16px", minWidth: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Contents</PanelTitle></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {tocLink("doc-overview", "Overview")}
                 {tocLink("doc-engine", "How Matches Play Out")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-dynamics", "Match Dynamics")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-modifiers", "Modifiers")}
                 {tocLink("doc-skill", "Skill")}
@@ -9356,31 +9369,32 @@ export default function App() {
                 {tocLink("doc-tactics", "Tactics")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
                   <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 8, marginBottom: 2 }}>IN POSSESSION</span>
-                  {[["doc-tac-approach","Approach Play"],["doc-tac-passing","Passing Direction"],["doc-tac-chances","Chance Creation"],["doc-tac-dribbling","Dribbling"],["doc-tac-creativity","Creative Freedom"],["doc-tac-setpieces","Set Pieces"],["doc-tac-timewasting","Time Wasting"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tac-approach","Approach Play"],["doc-tac-passing","Passing Direction"],["doc-tac-chances","Chance Creation"],["doc-tac-dribbling","Dribbling"],["doc-tac-creativity","Creative Freedom"],["doc-tac-setpieces","Set Pieces"],["doc-tac-timewasting","Time Wasting"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                   <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>TRANSITION</span>
-                  {[["doc-tac-posslost","On Possession Lost"],["doc-tac-posswon","On Possession Won"],["doc-tac-gkdist","GK Distribution"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tac-posslost","On Possession Lost"],["doc-tac-posswon","On Possession Won"],["doc-tac-gkdist","GK Distribution"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                   <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>DEFENSE</span>
-                  {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => (()=>{const el=document.getElementById(id);if(el){const d=el.closest("details");if(d)d.open=true;const p=d?.parentElement?.closest("details");if(p)p.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),10);}})()} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-bulkimport", "Bulk Import")}
               </div>
             </div>
+            <div style={{ minWidth: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", paddingRight: 4 }}>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-overview"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Overview</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-overview"><H1>Overview</H1>
             <P>Match outcomes are determined by three layers. Skill sets the baseline: a higher-skilled team wins more often, creates more chances, presses more effectively, and converts at a higher rate. Tactical setup (playstyle, formation, and tactics) modifies the probabilities that govern each minute of play, trading strength in one area for weakness in another. The engine then simulates minute by minute, resolving possession, movement, shots, fouls, and set pieces through those modified probabilities.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-skill"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Skill</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-skill"><H1>Skill</H1>
             <P>A number from 25 to 100 representing overall team quality. Skill feeds into every probability calculation in the engine: pressing effectiveness, advance rate, shot conversion, save probability, counter-attack success, and penalty conversion. Most formulas use the ratio between the two teams' effective skill, so a 90 vs 70 matchup produces the same relative advantage as 60 vs 47. Effective skill is the base number modified at runtime by red cards (each reduces it by 15%, compounding), momentum (up to +12%, from goals, cards, penalty misses, and big chances), stamina (up to -25% when exhausted), home advantage (+3% when enabled), and extra-time fatigue (-0.4% per minute past 90').</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-playstyles"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Playstyles</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-playstyles"><H1>Playstyles</H1>
 
             <H2>Offensive</H2>
 
@@ -9423,9 +9437,9 @@ export default function App() {
             <P>When the engine assigns a defensive action (a block, interception, clearance, or tackle) to a specific player, it draws from position-weighted pools that reflect where each position group realistically operates. A box clearance is overwhelmingly a defender's job; a turnover recovery in midfield is where pressing forwards contribute. Playstyles provide the first layer of shifts; formations and tactics add further adjustments on top (see those sections for details).</P>
             <P>Gegenpress pushes forwards into turnover recoveries (DEF -10, FWD +6) and slightly into box defending (DEF -3, FWD +1), reflecting how a high press commits attackers to defensive work. Park the Bus does the opposite: defenders dominate box defending (DEF +8), clearances (DEF +5), and turnovers (DEF +5), with midfielders and forwards contributing less across the board. Counter-Attack reinforces box defending with extra defender weight (DEF +5). Wing Play shifts corner defending toward defenders (DEF +3). Tiki-Taka nudges turnover recoveries slightly toward midfielders (DEF -5, MID +3). Balanced applies no shifts.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-formations"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Formations</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-formations"><H1>Formations</H1>
 
             <H2>Offensive</H2>
 
@@ -9494,9 +9508,9 @@ export default function App() {
             <P>A 4-2-4 pushes forwards heavily into turnovers (DEF -4, MID -2, FWD +6) and slightly into box defending (DEF -3, FWD +2) — four attackers press high and engage. A 3-5-2 shifts midfielders into turnovers (DEF -3, MID +5), long ball defending (DEF -2, MID +4), and clearances (MID +3) — five midfielders dominate the middle third. A 5-3-2 does the opposite: defenders dominate box defending (DEF +5), clearances (DEF +4), and turnovers (DEF +3). Baseline formations (4-3-3) apply no shifts.</P>
             <Stat text="4-2-4: turnover DEF -4/FWD +6, box DEF -3/FWD +2 · 3-4-3: turnover DEF -2/FWD +4 · 3-5-2: turnover MID +5, long ball MID +4, clear MID +3 · 5-3-2: box DEF +5, clear DEF +4, turnover DEF +3 · 4-1-4-1: turnover MID +4/FWD -4" />
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tactics"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tactics</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tactics"><H1>Tactics</H1>
             <P>Fourteen individual instructions that fine-tune behavior on top of playstyle and formation. Grouped into three categories. All default to "No Instruction" (zero effect). Each instruction also affects stamina drain; aggressive settings tire the team faster, conservative settings preserve energy.</P>
 
             <H2>In Possession</H2>
@@ -9579,9 +9593,9 @@ export default function App() {
             <P>Two tactical settings adjust momentum, multiplied on top of playstyle and formation values. Time Wasting dampens momentum because the team is slowing the game down rather than building intensity — Sometimes reduces bumps to 0.9x with 0.85 decay; Constantly reduces bumps to 0.75x with 0.7 decay. Counter-Press amplifies momentum (1.1x bump, 1.1 decay) because aggressive ball recovery creates emotional swings; Regroup dampens it (0.9x bump, 0.9 decay) because the team absorbs pressure calmly.</P>
             <Stat text="Time Wasting (Sometimes): 0.9× bump, 0.85 decay · Time Wasting (Constantly): 0.75× bump, 0.7 decay · Counter-Press: 1.1× bump, 1.1 decay · Regroup: 0.9× bump, 0.9 decay" />
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-engine"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>How Matches Play Out</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-engine"><H1>How Matches Play Out</H1>
 
             <H2 id="doc-pitch">The pitch</H2>
             <P>The engine models the pitch as five zones numbered 0 through 4. Zone 0 is the home team's box, zone 4 is the away team's box, zone 2 is midfield. The ball starts in midfield at kickoff. Each minute, the engine resolves one cycle of play based on the ball's current zone.</P>
@@ -9616,9 +9630,9 @@ export default function App() {
             <P>Offsides trigger at a 6% base rate when advancing into the final third or box, modified by the opponent's defensive line and defensive line behavior settings.</P>
             <P>Penalties convert at a base 78% rate, scaled by the skill ratio (floored at 55%, capped at 90%). 7% miss entirely. The rest are saved, with a 30% chance of producing a corner from the rebound.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-dynamics"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Match Dynamics</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-dynamics"><H1>Match Dynamics</H1>
 
             <H2 id="doc-tempo">Tempo</H2>
             <P>The automatic tempo system adjusts based on scoreline, time remaining, and playstyle. Transitions are probabilistic with random jitter and hysteresis (resistance to flip-flopping), so two identical game states won't always produce the same response. The range: Ultra Defensive, Defensive, Balanced, Offensive, Ultra Offensive.</P>
@@ -9654,9 +9668,9 @@ export default function App() {
             <H2 id="doc-extra">Extra time and penalties</H2>
             <P>Knockout matches drawn at full time proceed to extra time: two 15-minute halves. Effective skill degrades by 0.4% per minute past the 90th (capped at -12% by minute 120). If still level, a penalty shootout: five kicks per side, then sudden death. Each kick resolves individually. A winner is declared the moment the outcome is mathematically decided.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tournaments"><H1>Tournaments</H1>
 
             <H3 id="doc-tourney-modes">Modes</H3>
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league. Groups Only is also used for Monte Carlo simulations where you want to run many group stages without a knockout.</P>
@@ -9687,9 +9701,9 @@ export default function App() {
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>New UCL</strong> — Double stage, 1 group of 36, Swiss format (8 rounds). Top 8 advance directly, 9th to 24th advance to playoff round. Seeded knockout, two-legged ties, no away goals. Tiebreakers: GD, GF, Buchholz, H2H, Wins.</P>
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cup</strong> — Single stage knockout. Seeded bracket, single-leg, weaker team gets home advantage.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-modifiers"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Modifiers</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-modifiers"><H1>Modifiers</H1>
             <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
             <div style={{ background: "var(--chrome-panel)", borderRadius: 10, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
               <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
@@ -9724,16 +9738,16 @@ export default function App() {
             </div>
             <P>Multiplier parameters (×) scale the base value. A press of 1.5× means 50% more effective pressing. Additive parameters (+) shift the probability directly. A box shot of +0.04 adds 4 percentage points to the chance of generating a shot in the box each minute.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-bulkimport"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Bulk Import</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-bulkimport"><H1>Bulk Import</H1>
             <P>Tab-separated, one team per line. Columns in order:</P>
             <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 6, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
             <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
 
-            </details>
+            </div>
 
-            <details style={{ marginTop: 16, marginBottom: 8, borderBottom: "none" }} id="doc-tournaments"><summary style={{ cursor:"pointer", userSelect:"none", display:"flex", alignItems:"center", gap:6 }}><span className="dta">▶</span><H1>Tournaments</H1></summary>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tournaments"><H1>Tournaments</H1>
 
             <H3 id="doc-tourney-modes">Modes</H3>
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league.</P>
@@ -9753,8 +9767,9 @@ export default function App() {
             <H3 id="doc-tourney-presets">Presets</H3>
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>League</strong> — 1 group, double round-robin, home and away, champion + relegation zones. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old World Cup</strong> — 8 groups of 4, top 2 advance, 16-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New World Cup</strong> — 12 groups of 4, top 2 advance + best 8 thirds, 32-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old UCL</strong> — 8 groups of 4, double round-robin, two-legged knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New UCL</strong> — 36-team Swiss, top 8 advance + 9th-24th playoff, Median-Buchholz tiebreaker. <strong style={{color:"var(--ui-text)",fontSize:10}}>Cup</strong> — single-elimination bracket.</P>
 
-            </details>
-            </>);
+            </div>
+            </div>
+            </div>);
           })()}
         </div>)}
 
