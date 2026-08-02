@@ -3283,12 +3283,6 @@ const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_BALANDE = parsePresetTSV(balandeTSV, null, 0, false, false);
 
-// Read off the catalog rather than kept beside it: the TSV's conference column is the only place a
-// national team's confederation is stated, and a second copy here drifted the moment one moved.
-const CONFERENCES = PRESET_AVIUM.reduce((m, t) => {
-  if (t.conference && t.code) (m[t.conference] ||= []).push(t.code);
-  return m;
-}, {});
 // Which continent each confederation covers, and the order the rail lists them in: strongest first.
 // Averaged off the catalog rather than the live roster, so the rail does not reshuffle under you
 // while you edit a team's skill.
@@ -3297,7 +3291,7 @@ const confAvgSkill = (c) => {
   const ts = PRESET_AVIUM.filter(t => t.conference === c);
   return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0;
 };
-const CONFERENCE_NAMES = Object.keys(CONFERENCES).sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
+const CONFERENCE_NAMES = [...new Set(PRESET_AVIUM.map(t => t.conference).filter(Boolean))].sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
 const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 
 // A roster saved before the conference column existed comes back out of localStorage without one,
@@ -8286,17 +8280,6 @@ export default function App() {
                   <div style={{ ...panelHead, padding: "18px 20px 0", marginBottom: 0, flexShrink: 0 }}>
                   <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <select onChange={e => {
-                      const v = e.target.value; e.target.value = "";
-                      const codes = CONFERENCES[v];
-                      if (!codes) return;
-                      const codeSet = new Set(codes);
-                      setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
-                      setExpandedParticipantLeagues(s => new Set(s).add(v));
-                    }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
-                      <option value="" hidden>☰ Presets</option>
-                      {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
                     <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
                     <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                   </div>
