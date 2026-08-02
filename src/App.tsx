@@ -1661,9 +1661,12 @@ function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, 
 const playerKey = (team, name) => team + "|" + name;
 // Groups an array of teams by their `league` field, ordered by LEAGUE_ORDER.
 // Returns [league, teams][] entries, with `null` entries as section dividers.
+// The rail splits the national teams by confederation while `league` stays "Avium International"
+// for all of them — every eligibility, best-XI and nationality check keys off that, and there are
+// two dozen of them. This is the display grouping only.
 function groupByLeague(list) {
   const groups = {};
-  for (const t of list) { const l = t.league || "Custom"; if (!groups[l]) groups[l] = []; groups[l].push(t); }
+  for (const t of list) { const l = railLeague(t); if (!groups[l]) groups[l] = []; groups[l].push(t); }
   const raw = [];
   const seen = new Set();
   for (const l of LEAGUE_ORDER) {
@@ -2740,18 +2743,25 @@ function parseBulk(text) {
       else { playerNames.push(abbrevName(v)); playerFullNames.push(fullDisplayName(v)); playerNats.push(parseOvr(v).nat); }
     }
     const meta = [];
-    for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) { const v = p[i]?.trim(); if (v) meta.push(v); }
+    // Positional, not compacted: an empty cell here is a field a team does not have, and dropping it
+    // shifts every later field up one. That is how a nation with no stadium listed ended up with its
+    // confederation parsed as its ground. The colour reads below are shape-checked, so a leading
+    // blank simply fails isHexColor rather than needing the gap closed.
+    for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) meta.push(p[i]?.trim() ?? "");
     let primaryColor = null, secondaryColor = null;
     if (meta.length > 0 && isHexColor(meta[0])) primaryColor = meta.shift();
     if (meta.length > 0 && isHexColor(meta[0])) secondaryColor = meta.shift();
     let city = null, stadium = null;
     if (meta.length > 0) city = stripVenue(meta.shift());
     if (meta.length > 0) stadium = stripVenue(meta.shift());
+    // National teams carry their confederation in the last column. Clubs have no such column,
+    // so meta is already empty for them and this is a no-op.
+    const conference = meta.length > 0 ? meta.shift().trim() : null;
     const squad = buildSquad(formation, playerNames.some(Boolean) ? playerNames : null, PLAYER_SLOTS === 22 ? 11 : 5);
     // Key off p.slot, not the array index: buildSquad drops unfilled bench slots, so a row with a
     // gap has a shorter squad than its column list and the two no longer line up positionally.
     squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
-    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}) };
+    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(conference ? {conference} : {}) };
   }).filter(Boolean);
 }
 const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
@@ -3272,6 +3282,30 @@ const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
 const PRESET_BALANDE = parsePresetTSV(balandeTSV, null, 0, false, false);
+
+// Read off the catalog rather than kept beside it: the TSV's conference column is the only place a
+// national team's confederation is stated, and a second copy here drifted the moment one moved.
+const CONFERENCES = PRESET_AVIUM.reduce((m, t) => {
+  if (t.conference && t.code) (m[t.conference] ||= []).push(t.code);
+  return m;
+}, {});
+// Which continent each confederation covers, and the order the rail lists them in: strongest first.
+// Averaged off the catalog rather than the live roster, so the rail does not reshuffle under you
+// while you edit a team's skill.
+const CONFERENCE_CONTINENT = { CONSEAF: "Elysia", EUFA: "Evria", PFA: "Pelagonia", VAFC: "Valtheria" };
+const confAvgSkill = (c) => {
+  const ts = PRESET_AVIUM.filter(t => t.conference === c);
+  return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0;
+};
+const CONFERENCE_NAMES = Object.keys(CONFERENCES).sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
+const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
+
+// A roster saved before the conference column existed comes back out of localStorage without one,
+// which put all 62 nations back under a single row. Fall back to the catalog by code rather than
+// migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
+const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
+const railLeague = (t) =>
+  (t.league === "Avium International" && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
 const PRESET_2EME_SERIE = parsePresetTSV(serie2TSV, null, 0, false, false);
@@ -3285,7 +3319,7 @@ const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 // fall back to the shipped placeholder rather than to nothing, so the rail keeps a single column
 // of icons and the rows do not jump around as art is added.
 const LEAGUE_LOGO = {
-  "Avium International": "avium",
+  ...Object.fromEntries(CONFERENCE_NAMES.map(c => [c, c])),
   "Nichirin League One": "nl1", "Nichirin League Two": "nl2",
   "Karjanian Premier League": "kar-prem", "Verdanois Grande Série": "grande-serie",
   "Varahmehri Liga-ye Mellī": "liga-ye-melli",
@@ -3356,14 +3390,8 @@ function LeagueCrest({ league, size = 20, style }) {
 const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR","Varahmehri Liga-ye Bālande":"VAR"};
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
-const CONFERENCES = {
-  CONSEAF: ["ESU","HOL","AUR","CAL","PON","VER","SAL","ABB","NMZ","MOR","RAN","AED","RCO","ACS","SSA","KKM","VAN"],
-  EUFA: ["ALE","ARV","REI","VIC","KAR","SKJ","ELV","RUD","GEN","AST","SID","LEC","THO","POL","LVO","NIT","AEK"],
-  PFA: ["SEL","NKI","VAR","VKT","NHO","SHI","ASP","ADV","ENR","AWB","ANH","ARU","AKG","GUP","NRG","ASG"],
-  VAFC: ["NCH","CAH","ATK","GIA","SGD","FUR","GUA","PER","AKN","AXE","ANB","ENC","AGN","KFK","AAD"],
-};
 const LEAGUE_ORDER = [
-  "Avium International",
+  ...CONFERENCE_NAMES,
   null,
   "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Verdanois 2ème Série", "Varahmehri Liga-ye Bālande",
   // Empty presets — kept so they sort correctly once they have teams. groupByLeague skips them.
@@ -3385,7 +3413,13 @@ const PRESET_CATALOG = [
   ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
   ...PRESET_BALANDE.map(t => ({...t, league: "Varahmehri Liga-ye Bālande"})),
-].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
+].map(({ conference, ...t }) => ({
+  ...t,
+  // A confederation belongs to a national team. Club presets have no such column, so a value landing
+  // there is a stray cell — and an unrecognised one becomes its own row in the rail.
+  ...(t.league === "Avium International" && conference ? { conference } : null),
+  id: t.league + "::" + (t.code || t.name),
+}));
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
@@ -4003,7 +4037,7 @@ export default function App() {
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
   const [showBulk, setShowBulk] = useState(false);
   // Always a real league — the rail has no "all" row, so there is no empty state to represent.
-  const [teamLeagueFilter, setTeamLeagueFilter] = useState("Avium International");
+  const [teamLeagueFilter, setTeamLeagueFilter] = useState(CONFERENCE_NAMES[0]);
   const [teamSearch, setTeamSearch] = useState("");
   // Session-only: which presets are unlocked for editing, and which have actually been changed.
   // Unlocking on its own is not an edit, so the two are tracked separately.
@@ -4024,7 +4058,7 @@ export default function App() {
   const rosterSections = useMemo(() => {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
-      (entry[0] === "Avium International" ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+      (IS_CONFERENCE.has(entry[0]) ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
     return [["Avium International", intl], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
   }, [rosterLeagues]);
@@ -4046,7 +4080,7 @@ export default function App() {
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
     const q = teamSearch.trim().toLowerCase();
-    return teams.filter(t => (!teamLeagueFilter || (t.league || "Custom") === teamLeagueFilter)
+    return teams.filter(t => (!teamLeagueFilter || railLeague(t) === teamLeagueFilter)
       && (!q || t.name.toLowerCase().includes(q) || (t.code || "").toLowerCase().includes(q)));
   }, [teams, teamLeagueFilter, teamSearch]);
   const [bulkText, setBulkText] = useState("");
@@ -5267,7 +5301,7 @@ export default function App() {
   // Which slot the next click in the setup team list fills. Two slots, one active, and it flips
   // after every pick — so the common case (choose a fixture) is two clicks with no mode-setting.
   const [lmPick, setLmPick] = useState("home");
-  const [lmLeague, setLmLeague] = useState("Avium International");
+  const [lmLeague, setLmLeague] = useState(CONFERENCE_NAMES[0]);
   // Same guard the roster rail has: a league that no longer exists leaves nothing selected and an
   // empty grid with no way back.
   useEffect(() => {
@@ -7159,7 +7193,7 @@ export default function App() {
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
                   </div>
-                  {val !== "Avium International" && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{leagueAvgSkill(ts)}</span>}
+                  <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{leagueAvgSkill(ts)}</span>
                 </div>); })}</Fragment>))}
             </div>
           </div>
@@ -7171,6 +7205,7 @@ export default function App() {
                 const lgLabel = teamLeagueFilter;
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
+                const isConf = IS_CONFERENCE.has(teamLeagueFilter);
                 return (
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
@@ -7178,15 +7213,14 @@ export default function App() {
                     <PanelTitle>{lgLabel}</PanelTitle>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
-                    {teamLeagueFilter !== "Avium International" && <>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Nation</div>
-                      <div style={{ fontSize: 12, color: "var(--ui-text)" }}>{nat ? nat.name : "—"}</div>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isConf ? "Continent" : "Nation"}</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)" }}>{isConf ? (CONFERENCE_CONTINENT[teamLeagueFilter] || "—") : (nat ? nat.name : "—")}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(avg), ...mono }}>{avg || "–"}</div>
-                    </div></>}
+                    </div>
                     {/* Bulk import only ever creates Custom teams, so save/load lives on that league. */}
                     {customTab && <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={exportState} style={{ ...smBtn, color: showExport ? "var(--ui-danger)" : "var(--chrome-muted)" }} title="Export teams">{showExport ? "✕" : "💾"}</button>
@@ -8258,7 +8292,7 @@ export default function App() {
                       if (!codes) return;
                       const codeSet = new Set(codes);
                       setTournamentTeamIds(teams.filter(t => t.league === "Avium International" && codeSet.has(t.code)).map(t => t.id));
-                      setExpandedParticipantLeagues(s => new Set(s).add("Avium International"));
+                      setExpandedParticipantLeagues(s => new Set(s).add(v));
                     }} style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
                       <option value="" hidden>☰ Presets</option>
                       {Object.keys(CONFERENCES).map(c => <option key={c} value={c}>{c}</option>)}
