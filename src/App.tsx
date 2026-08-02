@@ -6,6 +6,7 @@ import aviumTSV from "./presets/avium.tsv?raw";
 import nl1TSV from "./presets/nl1.tsv?raw";
 import nl2TSV from "./presets/nl2.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
+import balandeTSV from "./presets/liga-ye-balande.tsv?raw";
 import kplTSV from "./presets/kar-prem.tsv?raw";
 import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
 import serie2TSV from "./presets/2eme-serie.tsv?raw";
@@ -3048,6 +3049,17 @@ const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#
 const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "var(--chrome-muted)";
 // City and stadium are one "Location" field in the UI, written "Stadium, City". Split on the FIRST
 // comma so a stadium whose own name contains one keeps it and only the tail becomes the city.
+// Cities link out to the map app. Unconditional on purpose: no copy of the map's city list lives
+// here, so there is nothing to drift — the map resolves the name itself (exact, then normalised)
+// and simply opens unselected if it does not know it. stopPropagation because most of these sit
+// inside rows that are themselves click targets.
+const AVIUM_MAP_URL = "https://auroruse.github.io/avium-map/";
+const CityLink = ({ name, style }) => name ? (
+  <a href={`${AVIUM_MAP_URL}#city=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer"
+     onClick={e => e.stopPropagation()} title={`${name} on the Avium map`}
+     style={{ color: "inherit", textDecoration: "none", borderBottom: "1px dotted var(--chrome-muted-66)", ...style }}>{name}</a>
+) : null;
+
 const formatLocation = (t) => [t.stadium, t.city].filter(Boolean).join(", ");
 function parseLocation(v) {
   const i = (v || "").indexOf(",");
@@ -3259,6 +3271,7 @@ const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 0, false, false);
 const PRESET_NCH_L1 = parsePresetTSV(nl1TSV, null, 0, false, false);
 const PRESET_NCH_L2 = parsePresetTSV(nl2TSV, null, 0, false, false);
 const PRESET_LIGA = parsePresetTSV(ligaTSV, null, 0, false, false);
+const PRESET_BALANDE = parsePresetTSV(balandeTSV, null, 0, false, false);
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
 const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
 const PRESET_2EME_SERIE = parsePresetTSV(serie2TSV, null, 0, false, false);
@@ -3340,7 +3353,7 @@ function LeagueCrest({ league, size = 20, style }) {
   return <img src={src} alt="" width={size} height={size} onError={() => setFailed(true)}
     style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, ...style }} />;
 }
-const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR"};
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR","Varahmehri Liga-ye Bālande":"VAR"};
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
 const CONFERENCES = {
@@ -3352,7 +3365,7 @@ const CONFERENCES = {
 const LEAGUE_ORDER = [
   "Avium International",
   null,
-  "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Verdanois 2ème Série",
+  "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Verdanois 2ème Série", "Varahmehri Liga-ye Bālande",
   // Empty presets — kept so they sort correctly once they have teams. groupByLeague skips them.
   "Championnat Arvernois", "Prima Divisione Viciliana", "Rudanian First League",
   null,
@@ -3371,6 +3384,7 @@ const PRESET_CATALOG = [
   ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
   ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
+  ...PRESET_BALANDE.map(t => ({...t, league: "Varahmehri Liga-ye Bālande"})),
 ].map(t => ({...t, id: t.league + "::" + (t.code || t.name)}));
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
@@ -3397,10 +3411,10 @@ const panelHead = { display: "flex", alignItems: "center", justifyContent: "spac
 // to resolve; one that matches nothing still works, it just shows without them.
 const STADIUM_IMAGES = [
   "1st of October Arena", "Arena Tsukumo", "Bankoku Concourse", "Chūkyō Metropolitano", "Fudō Stadium",
-  "Hikari Heliodrome @ TIU", "IzuArena", "Kamabuchi Power Park", "Komorebi Evergreen Park",
-  "Kyōwa Stadium", "Makinohara Green", "Mugen-dai Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium",
+  "Fūchumachi Power Park", "Hatsudako Stadium", "Hikari Heliodrome @ TIU", "IzuArena", "Kyōwa Stadium",
+  "Kōraku Stadium", "Mugen-dai Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium",
   "Sekiringaku Community Stadium", "Spartak Coliseum", "Tadamune Kuronami National Stadium",
-  "Tenshukaku Stadium Kōgai", "The Cauldron", "Uguisu Park"];
+  "Tenshukaku Stadium Kōgai", "The Cauldron", "Uguisu Park", "Yanagihara Stadium"];
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
 // rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
 // (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
@@ -3409,9 +3423,7 @@ const STADIUM_IMAGES = [
 // Heliodrome @ TIU" was the only one: the file was correct, the encoding was correct and the server
 // answered 200 for the URL, but neither the picker thumbnail nor the match backdrop would load it —
 // so the "@" is off the wire entirely rather than debugged further. Display name keeps the "@".
-const STADIUM_FILE = { "Hikari Heliodrome @ TIU": "Hikari Heliodrome TIU" };
-const stadiumFile = (name) => STADIUM_FILE[name] || name;
-const stadiumBg = (name) => [stadiumFile(name).normalize("NFC"), stadiumFile(name).normalize("NFD")]
+const stadiumBg = (name) => [name.normalize("NFC"), name.normalize("NFD")]
   // Percent-encoded AND raw. encodeURIComponent escapes "@" to %40, which is correct but is a
   // different request path from the literal "@" — anything in front of the files that matches on
   // the raw path (a proxy, a CDN, a host that does not decode) sees the two as different names, and
@@ -6365,7 +6377,7 @@ export default function App() {
     // /avium-football-engine/, not domain root — an absolute "/stadiums/..." resolves
     // against the wrong root there even though it works fine locally, same as how the
     // crest badges above already do it.
-    const stadiumFileName = venueStadium ? stadiumFile(venueStadium) : null;
+    const stadiumFileName = venueStadium || null;
     const stadiumUrlNFC = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFC"))}` : null;
     const stadiumUrlNFD = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFD"))}` : null;
     const scoreboardBg = venueStadium
@@ -6881,7 +6893,7 @@ export default function App() {
                           <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Location</div>
 {ed
                             ? <input value={formatLocation(t)} onChange={e => setTeamLocation(t, e.target.value)} placeholder="Stadium, City" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
-                            : <RO>{formatLocation(t)}</RO>}
+                            : <RO>{t.stadium}{t.stadium && t.city ? ", " : ""}<CityLink name={t.city} /></RO>}
                         </div>
                         <div style={{ flexShrink: 0 }}>
                           <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Colours</div>
@@ -7571,7 +7583,10 @@ export default function App() {
                   // Every stadium that has a picture, with the owning team's city where one matches.
                   const byStadium = new Map();
                   for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !byStadium.has(st)) byStadium.set(st, t); }
-                  const place = (t) => [t?.city, t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name].filter(Boolean).join(", ");
+                  const place = (t) => { const nat = t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name;
+                    if (!t?.city && !nat) return null;
+                    return <>{t?.city && <CityLink name={t.city} />}{t?.city && nat ? ", " : ""}{nat || ""}</>; };
+                  const withPlace = (lead, t) => { const pl = place(t); return pl ? <>{lead} &middot; {pl}</> : lead; };
                   const ownGrounds = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
                   const row = (key, sel, onPick, name, sub, img) => (
                     <div key={key} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer",
@@ -7602,7 +7617,7 @@ export default function App() {
                       {tHostVenuePool.length === 0 && <div style={{ padding: "10px 14px", fontSize: 10, color: "var(--ui-danger)" }}>No host venues configured</div>}
                       {tHostVenuePool.map((v, i2) => row("host" + i2, (vc.venue?.stadium || "") === v.stadium,
                         () => setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: v.stadium })), v.stadium,
-                        [v.city, chosen === v.stadium ? "Manually chosen" : "Automatic"].filter(Boolean).join(" · "),
+                        <>{v.city && <><CityLink name={v.city} /> &middot; </>}{chosen === v.stadium ? "Manually chosen" : "Automatic"}</>,
                         STADIUM_IMAGES.includes(v.stadium) ? v.stadium : null))}
                     </>) : twoLeg ? (<>
                       {row("neutral", !vc.homeAdv && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
@@ -7612,7 +7627,7 @@ export default function App() {
                       {row("neutral", vc.homeAdv === null && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
                       {[["home", cat(vc.homeTeam)], ["away", cat(vc.awayTeam)]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
                         return row(side, vc.homeAdv === side && !chosen, () => { setHA(side); clearVenue(); }, st || `${t.name} (no ground listed)`,
-                          [t.name, place(t)].filter(Boolean).join(" · "), STADIUM_IMAGES.includes(st) ? st : null); })}
+                          withPlace(t.name, t), STADIUM_IMAGES.includes(st) ? st : null); })}
                     </>);
                     // Any other ground can host the fixture, in every mode — picking one is a neutral
                     // venue by definition, so it clears whatever advantage was set.
@@ -7631,7 +7646,7 @@ export default function App() {
                         the advantage is the point, the backdrop is a bonus. */}
                     {[["home", hT], ["away", aT]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
                       return row(side, lmHomeAdv === side, () => pickHost(side), st || `${t.name} (no ground listed)`,
-                        [side === "home" ? "Team 1" : "Team 2", place(t)].filter(Boolean).join(" · "),
+                        withPlace(side === "home" ? "Team 1" : "Team 2", t),
                         STADIUM_IMAGES.includes(st) ? st : null); })}
                     <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 14px 5px", borderTop: "1px solid var(--chrome-border)", marginTop: 4 }}>Other Grounds</div>
                     {STADIUM_IMAGES.filter(st => !ownGrounds.has(st)).map(st => { const owner = byStadium.get(st);
@@ -7818,8 +7833,8 @@ export default function App() {
                 <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
                     <span style={{ fontSize: 11 }}>📍</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", ...ui }}>{v.stadium || v.text}</span>
-                    {v.stadium && v.city && <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...ui }}>{v.city}</span>}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", ...ui }}>{v.stadium || (v.city ? <CityLink name={v.city} /> : v.text)}</span>
+                    {v.stadium && v.city && <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...ui }}><CityLink name={v.city} /></span>}
                   </span>
                   <span style={{ flex: 1 }} />
                   {!["pre_match","finished","penalties"].includes(lmMatch.phase) && <button onClick={() => setLmPanel("subs")} style={{ ...smBtn, fontSize: 9 }}>&#8644; Substitutions</button>}
