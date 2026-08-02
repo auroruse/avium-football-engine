@@ -3352,13 +3352,13 @@ const ROUND_ROW_H = 47, ROUNDS_VISIBLE = 6;
 const GROUP_STACK_MAX = 6;
 const FORM_N = 5;
 const FORM_COL_W = FORM_N * 15 + (FORM_N - 1) * 2 + 8;
-const ROSTER_PANEL_H = `min(${PANEL_H + LM_CONTROLS_H}px, calc(100vh / var(--app-zoom) - 116px))`;
+const ROSTER_PANEL_H = `${PANEL_H + LM_CONTROLS_H}px`;
 // Phases that carry a header or a footer the roster tabs have no equivalent of do NOT subtract a
 // measured height for it — that was guesswork and it was wrong twice. They wrap the whole phase in
 // a ROSTER_PANEL_H flex column instead, and the grid takes flex:1 of whatever is left, so the total
 // is the roster tabs' height by construction whatever the extra row turns out to measure.
 const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "column", minHeight: 0 };
-const LIVE_PANEL_H = `min(${PANEL_H}px, calc(100vh / var(--app-zoom) - 163px))`;
+const LIVE_PANEL_H = `${PANEL_H}px`;
 // Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
 // stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
 // Themes are off for now: the banner is one image again and the alternates are cut to fit it.
@@ -3890,8 +3890,14 @@ function gvChanceGoalPreview() {
 // Landscape stays a hard requirement — every screen is two side-by-side columns, and a portrait
 // window has nowhere to put the second one however far it scales.
 const MIN_APP_WIDTH = 1440;
-const APP_PAD_X = 18;
-const MIN_ZOOM = 0.75;
+const APP_PAD_X = 18, APP_PAD_Y = 24;
+// The design box the layout is drawn in: the header row plus the tallest a tab's panels can be.
+// Scaling on BOTH axes is what keeps the aspect fixed — width alone let a short window clip the
+// bottom off, which is what the viewport-height panel heights used to paper over by reflowing.
+const APP_H = HEADER_H + 32 + PANEL_H + LM_CONTROLS_H;
+// Low enough for an iPad Air in landscape (1180 wide gives 0.79) with room to spare. Under this the
+// 8-9px labels stop being readable at all, so the gate takes over rather than pretending.
+const MIN_ZOOM = 0.5;
 const MIN_WINDOW_W = Math.ceil(MIN_APP_WIDTH * MIN_ZOOM) + APP_PAD_X * 2;
 const APP_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
@@ -3912,7 +3918,7 @@ const APP_CSS = `
   .width-gate{display:flex;}
 }
 td,th{vertical-align:middle;}
-html{overflow-y:scroll;}
+html,body{overflow:hidden;}
 body{font-family:'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;}
 ::selection{background:var(--chrome-brand-44);color:var(--ui-text);}
 ::-webkit-scrollbar{width:6px;height:6px;}
@@ -5283,7 +5289,9 @@ export default function App() {
   // listener usually costs, and setting a custom property on the root avoids all of it.
   useEffect(() => {
     const fit = () => document.documentElement.style.setProperty("--app-zoom",
-      String(Math.max(MIN_ZOOM, Math.min(1, (window.innerWidth - APP_PAD_X * 2) / MIN_APP_WIDTH))));
+      String(Math.max(MIN_ZOOM, Math.min(1,
+        (window.innerWidth - APP_PAD_X * 2) / MIN_APP_WIDTH,
+        (window.innerHeight - APP_PAD_Y * 2) / APP_H))));
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
@@ -7031,8 +7039,8 @@ export default function App() {
                             team you are already looking at. */}
                         <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
                           title={ct ? `Open ${sideName}` : (sideName || undefined)}
-                          style={{ display: "flex", alignItems: "center", gap: 4, width: 38, flexShrink: 0, justifyContent: "flex-end", overflow: "hidden", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
-                          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sideCode}</span>
+                          style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 38, flexShrink: 0, justifyContent: "flex-end", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
+                          <span style={{ whiteSpace: "nowrap" }}>{sideCode}</span>
                           {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
                         </span>
                       </div>); })}
@@ -7075,8 +7083,8 @@ export default function App() {
                             team you are already looking at. */}
                         <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
                           title={ct ? `Open ${sideName}` : (sideName || undefined)}
-                          style={{ display: "flex", alignItems: "center", gap: 4, width: 38, flexShrink: 0, justifyContent: "flex-end", overflow: "hidden", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
-                          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sideCode}</span>
+                          style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 38, flexShrink: 0, justifyContent: "flex-end", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
+                          <span style={{ whiteSpace: "nowrap" }}>{sideCode}</span>
                           {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
                         </span>
                       </div>); })}
@@ -7130,7 +7138,7 @@ export default function App() {
   </>); };
 
   return (
-    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", minHeight: "100vh", padding: `24px ${APP_PAD_X}px` }}>
+    <div data-theme={uiTheme} className="app-root" style={{ ...ui, background: "var(--chrome-bg)", color: "var(--ui-text)", height: "100vh", padding: `${APP_PAD_Y}px ${APP_PAD_X}px` }}>
       <style>{APP_CSS}</style>
       <div className="width-gate" style={{ minHeight: "calc(100vh - 48px)", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center", padding: 24 }}>
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Avium Football Engine</div>
