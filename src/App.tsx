@@ -2101,30 +2101,133 @@ function allocRandom(teams, ng, format, legs) {
   grps.forEach(g => initGroup(g, format, legs));
   return grps;
 }
-function allocDraw(teams, ng, numPots, rng, format, legs) {
-  const sorted = [...teams].sort((a, b) => b.skill - a.skill);
+// ─── DRAW ───
+// What a team can clash with in a group. A club separates on its nation, so both Nichirin
+// divisions are one NCH — that is the point of keying off LEAGUE_NAT rather than the league.
+// A national team separates on its confederation. A team with neither key can never conflict,
+// and every group stays open to it.
+const drawNationKey = (t) => t.league === "Avium International" ? null : (LEAGUE_NAT[t.league] || t.league || null);
+const drawConfKey = (t) => t.conference || CONF_BY_CODE.get(t.code) || null;
+// Frozen: this is spread as the default for every rule set, so its pins object is shared by every
+// config that never set one. Freezing turns an in-place edit into a throw instead of a leak.
+const DRAW_RULES = Object.freeze({ maxPerNation: 0, maxPerConf: 0, pins: Object.freeze({}), potMode: "skill", pots: Object.freeze({}) });
+// How the pots are formed. Rating is the seeded draw everyone knows. The two key modes make each
+// pot a nation or a confederation instead, which is how a group ends up holding one club from each
+// country rather than one from each strength band. Manual is an explicit per-team assignment.
+const POT_MODES = [["skill", "Rating"], ["nation", "Nation"], ["conference", "Confederation"], ["manual", "Manual"]];
+const POT_MODE_KEY = { nation: drawNationKey, conference: drawConfKey };
+// Pot count is chosen for rating and manual, and falls out of the data for the key modes.
+const POT_MODE_DERIVED = new Set(["nation", "conference"]);
+const POT_UNAFFILIATED = "Unaffiliated";
+// How many teams carry each key. A cap of n is impossible when some key has more than n·groups
+// teams behind it, and that arithmetic is what the setup screen quotes back instead of just
+// saying the draw failed.
+function drawKeyCounts(teams) {
+  const nation = new Map(), conf = new Map();
+  for (const t of teams) {
+    const n = drawNationKey(t); if (n) nation.set(n, (nation.get(n) || 0) + 1);
+    const c = drawConfKey(t); if (c) conf.set(c, (conf.get(c) || 0) + 1);
+  }
+  return { nation, conf };
+}
+const shuffleRng = (arr, rng) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng.u() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// The pots, as [{ label, teams }] strongest-first. Shared with the setup screen, so the pots it
+// previews are the pots the balls actually come out of. `label` is null when the pots are just
+// numbered bands; the key modes name each one after the nation or confederation it holds.
+function drawPots(teams, numPots, mode, manual) {
+  const byRating = (ts) => [...ts].sort((a, b) => b.skill - a.skill);
+  const n = Math.max(1, numPots || 1);
+  const keyOf = POT_MODE_KEY[mode];
+  if (keyOf) {
+    const by = new Map();
+    for (const t of teams) { const k = keyOf(t) || POT_UNAFFILIATED; if (!by.has(k)) by.set(k, []); by.get(k).push(t); }
+    const avg = (ts) => ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length;
+    // Strongest pot first, matching how the rail orders confederations. Whatever carries no key at
+    // all sorts last however strong it is: it is a leftovers bucket, not a pot anyone chose.
+    return [...by.entries()]
+      .sort((a, b) => a[0] === POT_UNAFFILIATED ? 1 : b[0] === POT_UNAFFILIATED ? -1 : avg(b[1]) - avg(a[1]))
+      .map(([label, ts]) => ({ label, teams: byRating(ts) }));
+  }
+  const sorted = byRating(teams);
+  const size = Math.floor(sorted.length / n);
+  const bands = Array.from({ length: n }, (_, i) => sorted.slice(i * size, i === n - 1 ? sorted.length : (i + 1) * size));
+  if (mode !== "manual") return bands.map(ts => ({ label: null, teams: ts }));
+  // An unassigned team falls into the pot its rating would have given it, so switching to manual
+  // starts from the seeded split rather than tipping the whole field into pot 1.
+  const seedOf = new Map(bands.flatMap((p, i) => p.map(t => [t.name, i])));
+  const pots = Array.from({ length: n }, () => []);
+  for (const t of sorted) pots[Math.min(n - 1, Math.max(0, (manual || {})[t.name] ?? seedOf.get(t.name) ?? 0))].push(t);
+  return pots.map(ts => ({ label: null, teams: ts }));
+}
+const DRAW_ATTEMPTS = 400;
+// One auto-play step. Long enough for a whole mix-and-lift (0.62s) plus the card arriving (0.6s),
+// or auto-play would stamp the group on a ball still in the air.
+const DRAW_TICK_MS = 1300;
+const DRAW_PREVIEW_SEED = 1;
+// ponytail: 26 groups of 4 would put a hundred separately-animated balls in the bowl. Past this
+// many the rest are a counter; nobody is reading individual crests in there anyway.
+const DRAW_BOWL_MAX = 24;
+// Returns { grps, log, attempts }, or null when no draw satisfying the rules was found.
+//
+// ponytail: rejection sampling, not backtracking. A tight-but-feasible rule set can exhaust the
+// attempts. The setup screen runs this same solver before the ceremony starts, so a failure is
+// always reported up front and never mid-draw. Upgrade path if it ever bites: forward-check each
+// placement against a completion search (what UEFA actually does), which keeps ball order random.
+// An MRV ordering would be cheaper and would not — and the random ball order IS the ceremony.
+function allocDraw(teams, ng, numPots, rng, format, legs, rules) {
+  const r = { ...DRAW_RULES, ...(rules || {}) };
   const base = Math.floor(teams.length / ng), extra = teams.length % ng;
   const cap = (gi) => gi < extra ? base + 1 : base;
-  const pots = []; const potSize = Math.floor(sorted.length / numPots);
-  for (let i = 0; i < numPots; i++) pots.push(sorted.slice(i * potSize, i === numPots - 1 ? sorted.length : (i + 1) * potSize));
-  const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] }));
-  const log = [];
-  pots.forEach((pot, pi) => {
-    const potNames = new Set(pot.map(t => t.name));
-    const rem = [...pot].sort(() => rng.u() - 0.5);
-    rem.forEach(t => {
-      const valid = [];
-      for (let g = 0; g < ng; g++) {
-        if (grps[g].teams.length < cap(g) && !grps[g].teams.some(e => potNames.has(e.name))) valid.push(g);
-      }
-      if (!valid.length) for (let g = 0; g < ng; g++) { if (grps[g].teams.length < cap(g)) valid.push(g); }
-      const gi = valid[Math.floor(rng.u() * valid.length)];
+  const pots = drawPots(teams, numPots, r.potMode, r.pots);
+  const potOf = new Map(); pots.forEach((p, pi) => p.teams.forEach(t => potOf.set(t.name, pi)));
+  // Spread each pot as thinly as it will go: a pot of P over G groups cannot put fewer than
+  // ceil(P/G) in some group, and there is no reason to allow more. This is per pot rather than one
+  // number for all of them, because a pot is not necessarily a quarter of the field — 8 groups of 4
+  // drawn from 2 pots needs 2 from each, and a confederation pot can be any size at all. The old
+  // code had no such allowance and fell back to "any group with space" whenever it painted itself
+  // into a corner, quietly producing draws that broke the very rule the pots exist to enforce.
+  const potCap = pots.map(p => Math.ceil(p.teams.length / ng));
+  const countKey = (g, key, keyOf) => g.teams.reduce((n, e) => n + (keyOf(e) === key ? 1 : 0), 0);
+  const canPlace = (g, gi, t) => {
+    if (g.teams.length >= cap(gi)) return false;
+    const pi = potOf.get(t.name);
+    if (countKey(g, pi, (e) => potOf.get(e.name)) >= potCap[pi]) return false;
+    if (r.maxPerNation > 0) { const k = drawNationKey(t); if (k && countKey(g, k, drawNationKey) >= r.maxPerNation) return false; }
+    if (r.maxPerConf > 0) { const k = drawConfKey(t); if (k && countKey(g, k, drawConfKey) >= r.maxPerConf) return false; }
+    return true;
+  };
+  const pins = Object.entries(r.pins || {}).filter(([name]) => teams.some(t => t.name === name));
+  const pinned = new Set(pins.map(([name]) => name));
+  for (let attempt = 0; attempt < DRAW_ATTEMPTS; attempt++) {
+    const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] }));
+    const log = [];
+    // Pinned teams go on the board before the first ball, so the draw works around a fixed host
+    // instead of being re-rolled until it happens to agree with one. They are logged too, so the
+    // ceremony has one list to read and can show them already placed.
+    let bad = false;
+    for (const [name, gi] of pins) {
+      const t = teams.find(x => x.name === name);
+      if (!(gi >= 0 && gi < ng) || grps[gi].teams.length >= cap(gi)) { bad = true; break; }
       grps[gi].teams.push(t);
-      log.push({ pot: pi + 1, team: t.name, skill: t.skill, group: GL[gi] });
-    });
-  });
-  grps.forEach(g => initGroup(g, format, legs));
-  return { grps, log };
+      const pi = potOf.get(t.name) ?? 0;
+      log.push({ pot: pi + 1, potLabel: pots[pi]?.label || null, name: t.name, code: t.code, skill: t.skill, group: GL[gi], gi, pinned: true });
+    }
+    if (bad) return null; // a pin that cannot be honoured is broken config, not bad luck
+    for (let pi = 0; pi < pots.length && !bad; pi++) {
+      for (const t of shuffleRng(pots[pi].teams.filter(x => !pinned.has(x.name)), rng)) {
+        const valid = [];
+        for (let g = 0; g < ng; g++) if (canPlace(grps[g], g, t)) valid.push(g);
+        if (!valid.length) { bad = true; break; }
+        const gi = valid[Math.floor(rng.u() * valid.length)];
+        grps[gi].teams.push(t);
+        log.push({ pot: pi + 1, potLabel: pots[pi].label, name: t.name, code: t.code, skill: t.skill, group: GL[gi], gi });
+      }
+    }
+    if (bad) continue;
+    grps.forEach(g => initGroup(g, format, legs));
+    return { grps, log, attempts: attempt + 1 };
+  }
+  return null;
 }
 function recalcStandings(group, tiebreakers) {
   const st = group.teams.map(t => ({ name: t.name, code: t.code, skill: t.skill, style: t.style, formation: t.formation, strategy: t.strategy, squad: t.squad, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }));
@@ -3352,6 +3455,25 @@ const ROUND_ROW_H = 47, ROUNDS_VISIBLE = 6;
 const GROUP_STACK_MAX = 6;
 const FORM_N = 5;
 const FORM_COL_W = FORM_N * 15 + (FORM_N - 1) * 2 + 8;
+// Standings columns, measured against the numbers they actually have to hold. Nothing bounds those:
+// a season is as long as its fixture list, and a Monte Carlo run aggregates into five and six
+// digits. Hardcoding widths that fit a two-digit league left the values printing over each other.
+// The table stays table-layout:fixed — these are still deliberate pixel widths, just derived ones —
+// and Team is the only `auto` column, so whatever the numbers need is taken out of the name.
+const NUM_DIGIT_W = 6.1;   // one tabular digit of the table's 10px mono
+const NUM_CELL_PAD = 4;    // the cells' own padding: "2px" a side
+// The minimums are the widths these columns have always had, so an ordinary two-digit league renders
+// exactly as it did and only a table that needs more takes more.
+const numColW = (widest, min) => Math.max(min, Math.ceil(String(widest).length * NUM_DIGIT_W) + NUM_CELL_PAD);
+function standingsColW(standings) {
+  const mx = (f) => Math.max(0, ...standings.map(f));
+  return {
+    pwdl: numColW(mx(r => Math.max(r.p, r.w, r.d, r.l)), 17),
+    goals: numColW(mx(r => Math.max(r.gf, r.ga)), 21),
+    gd: numColW("+" + mx(r => Math.abs(r.gf - r.ga)), 26),   // the sign is a character too
+    pts: numColW(mx(r => r.pts), 26),
+  };
+}
 const ROSTER_PANEL_H = `${PANEL_H + LM_CONTROLS_H}px`;
 // Phases that carry a header or a footer the roster tabs have no equivalent of do NOT subtract a
 // measured height for it — that was guesswork and it was wrong twice. They wrap the whole phase in
@@ -3505,6 +3627,9 @@ const cardLabel = { fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textT
 // Left-aligned heading for a section inside a panel — white, so it outranks the data beneath it.
 const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" };
 const PHASE_CLR = { setup: "var(--chrome-muted)", drawing: "var(--ui-warn)", groups: "var(--ui-info)", league: "var(--ui-info)", knockout: "var(--chrome-brand)", done: "var(--ui-ok)" };
+// The two phases whose whole state is transient. Persisting one saves a screen that cannot be
+// rebuilt on load, so they are coerced back to setup instead.
+const T_DRAW_PHASES = new Set(["draw_setup", "drawing"]);
 function PhaseBadge({ phase }) {
   const c = PHASE_CLR[phase] || "var(--chrome-muted)";
   return <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: c, border: "1px solid " + c + "55", background: c + "1a", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>{SLOT_PHASE_LBL[phase] || phase || "Setup"}</span>;
@@ -3988,8 +4113,34 @@ table{border-spacing:0;}
 @keyframes subSlideOff{0%{opacity:0;transform:translateX(32px);}100%{opacity:1;transform:translateX(0);}}
 .sub-on-line{animation:subSlideOn 0.55s cubic-bezier(0.22,1,0.36,1) both;}
 .sub-off-line{animation:subSlideOff 0.55s cubic-bezier(0.22,1,0.36,1) 0.35s both;}
+/* The draw. Balls settle in the bowl on a loop, each offset by a hash of its team name so a pot
+   never looks like a metronome; the bowl rocks while a ball is in hand; the ball arrives big and
+   the group letter lands on it. All transforms, so none of it moves the layout underneath. */
+/* One draw runs on a shared clock: the pot is mixed for DRAW_MIX_MS, the ball being drawn rises out
+   of it on that same beat, and only then does the card carrying the team arrive. The waits are
+   animation delays rather than timers, so nothing has to be scheduled in JavaScript and no state
+   exists for the half-second between the click and the reveal. */
+@keyframes drawBallet{0%,100%{transform:translate(0,0) rotate(0deg);}25%{transform:translate(1.5px,-2px) rotate(7deg);}50%{transform:translate(-1px,1.5px) rotate(-5deg);}75%{transform:translate(-2px,-1px) rotate(4deg);}}
+@keyframes drawShuffle{0%,100%{transform:translate(0,0) rotate(0deg);}12%{transform:translate(7px,-6px) rotate(48deg);}26%{transform:translate(-8px,5px) rotate(-62deg);}40%{transform:translate(6px,7px) rotate(35deg);}54%{transform:translate(-5px,-7px) rotate(-28deg);}68%{transform:translate(8px,3px) rotate(52deg);}84%{transform:translate(-4px,6px) rotate(-18deg);}}
+@keyframes drawBowlShake{0%,100%{transform:translateX(0) rotate(0deg);}10%{transform:translateX(-5px) rotate(-1.9deg);}24%{transform:translateX(5px) rotate(1.9deg);}38%{transform:translateX(-4px) rotate(-1.4deg);}52%{transform:translateX(4px) rotate(1.2deg);}68%{transform:translateX(-2px) rotate(-0.6deg);}84%{transform:translateX(1px) rotate(0.2deg);}}
+/* The ball that gets picked: it mixes with the rest, then lifts clear and is gone by the time the
+   card lands, so the team appears to come out of the pot rather than beside it. */
+@keyframes drawPicked{0%,55%{opacity:1;transform:translate(0,0) scale(1);}70%{opacity:1;transform:translate(0,-6px) scale(1.35);}100%{opacity:0;transform:translate(0,-30px) scale(0.35);}}
+@keyframes drawBallOut{0%{opacity:0;transform:translateY(46px) scale(0.28);}55%{opacity:1;transform:translateY(-6px) scale(1.12);}75%{transform:translateY(2px) scale(0.97);}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes drawStamp{0%{opacity:0;transform:scale(2.1) rotate(-8deg);}55%{opacity:1;transform:scale(0.9) rotate(2deg);}100%{opacity:1;transform:scale(1) rotate(0deg);}}
+.draw-bowl{position:relative;width:94%;height:78px;flex-shrink:0;overflow:hidden;background:var(--chrome-panel-66);border:1px solid var(--chrome-border);border-top-color:var(--chrome-muted-33);border-radius:0 0 90px 90px / 0 0 46px 46px;}
+.draw-ballet{animation:drawBallet 2.6s ease-in-out infinite;}
+.draw-shuffle{animation:drawShuffle 0.62s ease-in-out;}
+.draw-picked{animation:drawPicked 0.78s ease-in both;}
+.draw-bowl-shake{animation:drawBowlShake 0.62s ease-in-out;}
+.draw-ball-out{animation:drawBallOut 0.6s cubic-bezier(0.22,1,0.36,1) 0.62s both;}
+.draw-stamp{animation:drawStamp 0.4s cubic-bezier(0.22,1,0.36,1) both;}
+/* Held hidden through the mix, then it fades in and picks up the pulse. */
+.draw-await{animation:fadeIn 0.3s ease 0.95s both, pulse 1.4s ease-in-out 1.25s infinite;}
+.draw-land{animation:slideIn 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s both;}
 details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
+  .draw-ballet,.draw-shuffle,.draw-picked,.draw-bowl-shake,.draw-ball-out,.draw-stamp,.draw-await,.draw-land{animation:none !important;}
   .ev-enter,.goal-flash,.tick-btn,.live-dot,.card-slam,.sparkle-pop,.injury-shake,.sub-on-line,.sub-off-line{animation:none !important;}
   .gv-anim{animation-duration:0.01ms !important;animation-delay:0ms !important;}
   *{transition-duration:0.01ms !important;}
@@ -4478,13 +4629,17 @@ export default function App() {
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
   const [tChampOpen, setTChampOpen] = useState(false);
   const [tKoGroupsOpen, setTKoGroupsOpen] = useState(false);
-  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', injuries: true, suspensions: true, testMode: false, staminaCarry: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
+  const [tConfig, setTConfig] = useState({ mode: "double", singleType: "knockout", numGroups: 8, advPerGroup: 2, thirdPlace: true, allocMode: "seed", koAllocMode: "seed", numPots: 4, matchFormat: "roundRobin", rrLegs: 1, swissRounds: 5, homeAdvGroup: "off", homeAdvKO: "off", homeAdvTeams: [], koLegs: 1, koAwayGoals: true, koByeMode: 'auto', koFormat: 'single', injuries: true, suspensions: true, testMode: false, staminaCarry: true, drawRules: { ...DRAW_RULES }, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualify", color: "#5e9c6b", type: "advance" }] });
   const [tGroups, setTGroups] = useState([]);
   const [tKO, setTKO] = useState(null);
   const [tManual, setTManual] = useState(null); // manual allocation state
   const [tKOManual, setTKOManual] = useState(null);
   const [tByeManual, setTByeManual] = useState(null);
   const tModeClickRef = useRef({ n: 0, t: 0 });
+  // { teams }: only the participants are snapshotted, because only they can change behind the draw.
+  // Groups, pots and rules are read live from tConfig, so the setup screen can edit them.
+  const [tDrawSetup, setTDrawSetup] = useState(null);
+  const [tDrawAnim, setTDrawAnim] = useState(null);   // { log, grps, index, pending, auto }
   const [tPoolData, setTPoolData] = useState(null);
   const [tEdit, setTEdit] = useState(null); // {gi, ri, mi, h:"", a:""} for manual score entry
   const [tKoEdit, setTKoEdit] = useState(null); // {ri, mi, h:"", a:""} for knockout manual score
@@ -4953,7 +5108,9 @@ export default function App() {
 
   // Tournament/live-match session — resets independently of the roster.
   const sessionSaveTimeoutRef = useRef(null);
-  const buildSlotPayload = () => ({ v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() });
+  // A draw in progress saves as setup, because that is where it will reopen — the badge in the
+  // saves list would otherwise promise a ceremony the slot cannot restore.
+  const buildSlotPayload = () => ({ v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase: T_DRAW_PHASES.has(tPhase) ? "setup" : tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() });
   const hasTournamentState = () => !!tPhase || tournamentTeamIds.length > 0;
   // Restores a saved tournament. Transient UI state is cleared rather than restored — an open
   // score editor or half-finished draw belongs to the tournament you were looking at, not this one.
@@ -4964,7 +5121,10 @@ export default function App() {
     setTGroups(ss.tGroups || []);
     setTKO(ss.tKO || null);
     setTPlayerStats(ss.tPlayerStats || {});
-    setTPhase(ss.tPhase || "setup");
+    // The draw phases live entirely in state that is never written to a slot, so restoring one
+    // would land on a screen with nothing to draw. Send them back to setup — the participants and
+    // the rules survive, so it is one button to start the draw again.
+    setTPhase(T_DRAW_PHASES.has(ss.tPhase) ? "setup" : (ss.tPhase || "setup"));
     if (ss.lmH !== undefined) setLmH(ss.lmH);
     if (ss.lmA !== undefined) setLmA(ss.lmA);
     setTHostVenueText(ss.tHostVenueText || "");
@@ -4972,6 +5132,7 @@ export default function App() {
     setTVenueOverrides(ss.tVenueOverrides || {});
     _rc.clear(); if (ss.tReplayCounts) _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1);
     setTEdit(null); setTKoEdit(null); setTScoreError(""); setTManual(null); setTKOManual(null);
+    setTDrawSetup(null); setTDrawAnim(null);
     setTPoolData(null);
     setTPendingPlayLive(null); setTLiveTarget(null); setExpandedRounds(new Set());
   };
@@ -5330,11 +5491,13 @@ export default function App() {
   const tAdvOk = tConfig.mode === "single" || tKoTeams >= 2;
   const tKoValid = tKoTeams >= 2;
   const tGroupsOk = tConfig.numGroups >= 1 && tConfig.numGroups <= 26;
-  const tPotsOk = tConfig.allocMode !== "draw" || (tConfig.numPots >= 2 && tConfig.numPots <= tConfig.numGroups);
+  // Pots are configured on the draw screen now, and validated there by running the solver. A number
+  // in range is no longer a proxy for a workable draw: a confederation pot can be any size, and a
+  // pot count above the group count is a perfectly good format (six nations into four groups of six).
   const tSwissOk = tConfig.matchFormat !== "swiss" || (tConfig.swissRounds >= 1 && tConfig.swissRounds <= Math.max(1, tPerGroup - 1));
   const tNumByes = (()=>{ let n2=1; const nt = tHasKO ? (tConfig.mode === "double" ? tKoTeams : tournamentTeams.length) : 0; while(n2<nt)n2*=2; return n2-nt; })();
   const tParticipantErrors = tournamentTeams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
-  const tValid = !tParticipantErrors && tournamentTeamIds.length >= 2 && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tPotsOk && tSwissOk && tAdvOk && (!tHasKO || tKoValid)));
+  const tValid = !tParticipantErrors && tournamentTeamIds.length >= 2 && (tConfig.mode === "single" && tConfig.singleType === "knockout" ? tournamentTeams.length >= 2 : (tPerGroup >= 2 && tGroupsOk && tSwissOk && tAdvOk && (!tHasKO || tKoValid)));
   const tTotalMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.length, 0), 0);
   const tPlayedMatches = tGroups.reduce((s, g) => s + g.schedule.reduce((s2, r) => s2 + r.filter(m => m.result).length, 0), 0);
 
@@ -5368,7 +5531,16 @@ export default function App() {
     const m = ng === 1 ? "seed" : (mode || tConfig.allocMode);
     if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
     else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
-    else if (m === "draw") { const rng = new RNG(Date.now()); const { grps } = allocDraw(genTeams, ng, tConfig.numPots, rng, fmt, tConfig.rrLegs); setTGroups(grps); setTPhase("groups"); }
+    // The draw gets its own screen for the rules before any ball comes out — the teams are
+    // snapshotted here so editing the roster behind the draw cannot change who is in the pots.
+    else if (m === "draw") {
+      setTDrawSetup({ teams: genTeams });
+      // A pot mode carried in from another field may not split this one at all — a club-only
+      // tournament has no confederations. Drop back to rating rather than opening on a dead chip.
+      const pm = (tConfig.drawRules || DRAW_RULES).potMode || "skill";
+      if (drawPots(genTeams, tConfig.numPots, pm, null).length < 2) tSetDrawRule("potMode", "skill");
+      setTPhase("draw_setup");
+    }
     else if (m === "manual") { const grps = Array.from({ length: ng }, (_, i) => ({ label: GL[i], teams: [], schedule: [], standings: [] })); setTManual({ pool: [...genTeams], grps }); setTPhase("manual"); }
     setLoading(false);
     }, 40);
@@ -5385,6 +5557,62 @@ export default function App() {
     const grps = tManual.grps.map(g => { const ng = { ...g }; initGroup(ng, tConfig.matchFormat, tConfig.rrLegs); return ng; });
     setTGroups(grps); setTPhase("groups"); setTManual(null);
   };
+  // ─── DRAW ───
+  const tSetDrawRule = (k, v) => setTConfig(c => ({ ...c, drawRules: { ...DRAW_RULES, ...c.drawRules, [k]: v } }));
+  const tPinTeam = (name, gi) => setTConfig(c => {
+    const pins = { ...DRAW_RULES, ...c.drawRules }.pins || {};
+    const next = { ...pins };
+    if (gi === null || gi === "") delete next[name]; else next[name] = +gi;
+    return { ...c, drawRules: { ...DRAW_RULES, ...c.drawRules, pins: next } };
+  });
+  // The rules are checked by running the real solver rather than a stand-in for it — a preview that
+  // approves a draw the solver then cannot find would be worse than no preview. Fixed seed, so the
+  // verdict does not flicker between renders while the rules are being edited.
+  const tDrawRun = (seed) => tDrawSetup && allocDraw(tDrawSetup.teams, tConfig.numGroups, tConfig.numPots,
+    new RNG(seed), tConfig.matchFormat, tConfig.rrLegs, tConfig.drawRules);
+  const tDrawPreview = useMemo(() => {
+    if (!tDrawSetup) return null;
+    const res = tDrawRun(DRAW_PREVIEW_SEED);
+    return { ok: !!res, attempts: res ? res.attempts : DRAW_ATTEMPTS };
+  }, [tDrawSetup, tConfig.drawRules, tConfig.numGroups, tConfig.numPots, tConfig.matchFormat, tConfig.rrLegs]);
+  const tDrawPots = useMemo(() => tDrawSetup ? drawPots(tDrawSetup.teams, tConfig.numPots, (tConfig.drawRules || DRAW_RULES).potMode, (tConfig.drawRules || DRAW_RULES).pots) : [],
+    [tDrawSetup, tConfig.numPots, tConfig.drawRules]);
+  // How many pots each mode would actually produce, so a mode that cannot split this field is
+  // offered as what it is rather than selected and then silently doing nothing.
+  const tPotModeCounts = useMemo(() => Object.fromEntries(POT_MODES.map(([id]) =>
+    [id, tDrawSetup ? drawPots(tDrawSetup.teams, tConfig.numPots, id, null).length : 0])), [tDrawSetup, tConfig.numPots]);
+  // Manual assignment is stored per team, so a team keeps its pot when the count changes and the
+  // ones never touched stay wherever their rating puts them.
+  const tMovePot = (name, pi) => setTConfig(c => {
+    const r = { ...DRAW_RULES, ...c.drawRules };
+    return { ...c, drawRules: { ...r, pots: { ...r.pots, [name]: pi } } };
+  });
+  const tDrawCounts = useMemo(() => tDrawSetup ? drawKeyCounts(tDrawSetup.teams) : { nation: new Map(), conf: new Map() }, [tDrawSetup]);
+  const tDrawBegin = () => {
+    const res = tDrawRun(Date.now());
+    if (!res) return;
+    // Pins are already on the board, so the ceremony opens past them rather than "drawing" a ball
+    // whose group everyone can already see.
+    setTDrawAnim({ ...res, index: res.log.filter(e => e.pinned).length, pending: false, auto: false });
+    setTPhase("drawing");
+  };
+  // Two clicks per team: the ball comes out and shows who it is, then its group is revealed.
+  const tDrawStep = (p) => {
+    if (!p) return p;
+    if (p.pending) return { ...p, pending: false, index: p.index + 1 };
+    if (p.index < p.log.length) return { ...p, pending: true };
+    return { ...p, auto: false };
+  };
+  const tDrawAdvance = () => setTDrawAnim(tDrawStep);
+  const tDrawSkip = () => setTDrawAnim(p => p ? { ...p, index: p.log.length, pending: false, auto: false } : p);
+  const tDrawConfirm = () => { if (!tDrawAnim) return; setTGroups(tDrawAnim.grps); setTPhase("groups"); setTDrawAnim(null); setTDrawSetup(null); };
+  // Keyed on auto alone: the last step turns auto off itself, which re-runs this and clears the
+  // interval. Keying on index as well would tear down and rebuild the timer on every single ball.
+  useEffect(() => {
+    if (!tDrawAnim?.auto) return;
+    const id = setInterval(() => setTDrawAnim(tDrawStep), DRAW_TICK_MS);
+    return () => clearInterval(id);
+  }, [tDrawAnim?.auto]);
   const tSwapStandings = (gi, ri) => {
     const ng = structuredClone(tGroups);
     const st = ng[gi].standings;
@@ -5394,7 +5622,7 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); };
+  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawSetup(null); setTDrawAnim(null); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); };
 
 
   const tGenNextSwissRound = () => {
@@ -8271,9 +8499,14 @@ export default function App() {
               </div>
             </div>
           )}
-          {/* Player stats sit in the running tournament's right column; every other phase
-              shows them on their own. */}
-          {!["groups", "setup", "knockout", "complete"].includes(tPhase) && <div style={{ margin: "14px 0 16px" }}>{renderLeaderboards()}</div>}
+          {/* Player stats belong to a tournament that has been played: the group and knockout
+              phases render them inside their own column. What used to be here was the same panel
+              on a deny-list, which left it showing on exactly the phases it is useless on — the
+              allocation screens, where no match has been played and it is always empty. Worse,
+              it sat above a fixed-height phase box on a page that does not scroll, so it pushed
+              the bottom of that box (Begin Draw, and the whole draw ceremony's controls) off
+              the screen. Do not reintroduce a block here: anything above the phase box costs it
+              the same height. */}
           {/* SETUP */}
           {tPhase === "setup" && (<div style={PHASE_COL}>
             {/* Saves and the setup form share a row: one is what you already have, the other is
@@ -8394,18 +8627,12 @@ export default function App() {
                       </div>
                       {tConfig.numGroups > 1 && (<>
                         <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 12 : 0 }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 8 : 0 }}>
                           {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
                             <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                           ))}
                         </div>
-                        {tConfig.allocMode === "draw" && (
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Pots</div>
-                            <input type="number" value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : +e.target.value }))} style={{ ...inp, width: 60, textAlign: "center", borderColor: !tPotsOk ? "var(--ui-danger)" : "var(--chrome-muted)" }} />
-                            {!tPotsOk && <span style={{ fontSize: 10, color: "var(--ui-danger)" }}>Must be 2–{tConfig.numGroups}</span>}
-                          </div>
-                        )}
+                        {tConfig.allocMode === "draw" && <div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Pots and separation rules come next, on the draw screen.</div>}
                       </>)}
                     </div>
                   )}
@@ -8559,11 +8786,258 @@ export default function App() {
             </div>
             <div style={{ flexShrink: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, zIndex: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button onClick={() => createTournament()} disabled={!tValid} style={{ ...scBtn, opacity: tValid ? 1 : 0.4, cursor: tValid ? "pointer" : "default", flex: "0 0 auto" }}>▶ {tHasGroups && tConfig.allocMode === "manual" && tConfig.numGroups > 1 ? "Begin Allocation" : "Create Tournament"}</button>
+                <button onClick={() => createTournament()} disabled={!tValid} style={{ ...scBtn, opacity: tValid ? 1 : 0.4, cursor: tValid ? "pointer" : "default", flex: "0 0 auto" }}>▶ {tHasGroups && tConfig.numGroups > 1 && tConfig.allocMode === "manual" ? "Begin Allocation" : tHasGroups && tConfig.numGroups > 1 && tConfig.allocMode === "draw" ? "Set Up Draw" : "Create Tournament"}</button>
               </div>
             </div>
           </div>)}
 
+
+          {/* DRAW SETUP — the rules, before any ball comes out */}
+          {tPhase === "draw_setup" && tDrawSetup && (() => {
+            const rules = { ...DRAW_RULES, ...tConfig.drawRules };
+            const pins = rules.pins || {};
+            const potMode = rules.potMode || "skill";
+            const ng = tConfig.numGroups;
+            const nTeams = tDrawSetup.teams.length;
+            const lo = Math.floor(nTeams / ng), hi = Math.ceil(nTeams / ng);
+            const sizeStr = (n, parts) => { const a = Math.floor(n / parts), b = Math.ceil(n / parts); return a === b ? `${a}` : `${a}–${b}`; };
+            // One cap row. A cap below the pigeonhole minimum cannot be satisfied by any draw, so
+            // those chips are shown disabled with the arithmetic that rules them out rather than
+            // being selectable and then failing.
+            const capRow = ({ label, ruleKey, counts, blurb, empty }) => {
+              const worst = counts.size ? Math.max(...counts.values()) : 0;
+              const worstKey = counts.size ? [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] : null;
+              const minCap = Math.ceil(worst / ng);
+              const val = rules[ruleKey] || 0;
+              return (<div style={{ marginBottom: 16 }}>
+                <div style={{ ...sectionLabel, marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 7 }}>{counts.size ? blurb : empty}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[[0, "No limit"], [1, "Max 1 per group"], [2, "Max 2 per group"], [3, "Max 3 per group"]].map(([n, l]) => {
+                    const impossible = n > 0 && n < minCap;
+                    const off = !counts.size;
+                    return (<button key={n} disabled={impossible || off} onClick={() => tSetDrawRule(ruleKey, n)}
+                      className={val === n && !off ? "gbtn" : ""}
+                      title={impossible ? `${worstKey} has ${worst} teams; ${n} per group leaves room for only ${n * ng}` : undefined}
+                      style={{ ...chip, fontSize: 11, padding: "5px 12px", cursor: impossible || off ? "default" : "pointer",
+                        opacity: impossible || off ? 0.3 : 1,
+                        background: val === n && !off ? "var(--chrome-brand)" : "var(--chrome-panel)",
+                        color: val === n && !off ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>);
+                  })}
+                </div>
+                {counts.size > 0 && minCap > 1 && <div style={{ fontSize: 10, color: "var(--ui-warn)", marginTop: 6 }}>{worstKey} brings {worst} of the {nTeams} teams, so {ng} groups cannot hold fewer than {minCap} each.</div>}
+              </div>);
+            };
+            const unpinned = tDrawSetup.teams.filter(t => pins[t.name] === undefined);
+            return (<div style={PHASE_COL}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexShrink: 0 }}>
+                <PanelTitle accent="var(--ui-warn)">Draw Setup</PanelTitle>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{nTeams} teams · {ng} groups of {sizeStr(nTeams, ng)} · {tDrawPots.length} pot{tDrawPots.length === 1 ? "" : "s"}</span>
+                  <button onClick={() => { setTDrawSetup(null); setTPhase("setup"); }} style={{ ...addBtn, color: "var(--chrome-muted)" }}>Back</button>
+                  <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0 }}>
+                <div style={{ ...panelBox, marginBottom: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  {capRow({ label: "Clubs from the same nation", ruleKey: "maxPerNation", counts: tDrawCounts.nation,
+                    blurb: "How many clubs of one nation a group may hold. A club's nation is the nation of its league, so both Nichirin divisions count as Nichirin.",
+                    empty: "Every team here is a national side, so there are no club nations to limit." })}
+                  {capRow({ label: "Teams from the same confederation", ruleKey: "maxPerConf", counts: tDrawCounts.conf,
+                    blurb: "How many national teams of one confederation a group may hold. Two is the usual allowance for the largest confederation.",
+                    empty: "Every team here is a club, and clubs carry no confederation." })}
+                  <div style={{ ...sectionLabel, marginBottom: 4 }}>Pinned teams</div>
+                  <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 7 }}>Placed before the first ball — hosts, or anyone whose group is already decided.</div>
+                  {Object.entries(pins).map(([name, gi]) => {
+                    const t = tDrawSetup.teams.find(x => x.name === name);
+                    return (<div key={name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                      {t && <TeamCrest team={t} size={14} />}
+                      <span style={{ fontSize: 11, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: t ? "var(--ui-text)" : "var(--ui-danger)" }}>{name}{!t && " (not in this tournament)"}</span>
+                      <select value={gi} onChange={e => tPinTeam(name, e.target.value)} style={{ ...sel, fontSize: 10, padding: "3px 6px" }}>
+                        {Array.from({ length: ng }, (_, i) => <option key={i} value={i}>Group {GL[i]}</option>)}
+                      </select>
+                      <button onClick={() => tPinTeam(name, null)} style={{ background: "none", border: "none", color: "var(--ui-danger)", fontSize: 14, cursor: "pointer", padding: "0 2px" }}>×</button>
+                    </div>);
+                  })}
+                  {Object.keys(pins).length < ng && (
+                    <select value="" onChange={e => { if (e.target.value) tPinTeam(e.target.value, 0); }} style={{ ...sel, width: "100%", fontSize: 10, marginTop: 6 }}>
+                      <option value="">+ Pin a team…</option>
+                      {unpinned.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                    </select>
+                  )}
+                </div>
+                <div style={{ ...panelBox, marginBottom: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  <div style={{ ...sectionLabel, marginBottom: 7 }}>Pots</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+                    {POT_MODES.map(([id, l]) => {
+                      // A key every team shares — or none of them carries — collapses the whole
+                      // field into a single pot, which is the same as having no pots at all.
+                      const dead = tPotModeCounts[id] < 2;
+                      return (<button key={id} disabled={dead} onClick={() => tSetDrawRule("potMode", id)} className={potMode === id && !dead ? "gbtn" : ""}
+                        title={dead ? `Every team here would land in the same pot` : undefined}
+                        style={{ ...chip, fontSize: 11, padding: "5px 12px", cursor: dead ? "default" : "pointer", opacity: dead ? 0.3 : 1,
+                          background: potMode === id && !dead ? "var(--chrome-brand)" : "var(--chrome-panel)", color: potMode === id && !dead ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>);
+                    })}
+                    {/* Chosen for the numbered modes, counted for the key modes. */}
+                    {POT_MODE_DERIVED.has(potMode)
+                      ? <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{tDrawPots.length} pots</span>
+                      : <input type="number" min={1} value={tConfig.numPots} onChange={e => setTConfig(c => ({ ...c, numPots: e.target.value === "" ? "" : Math.max(1, +e.target.value) }))} style={{ ...inp, width: 52, padding: "5px 8px", fontSize: 11, textAlign: "center" }} />}
+                  </div>
+                  {tDrawPots.map((pot, pi) => (<div key={pi} style={{ marginBottom: 12 }}>
+                    <div style={{ ...cardLabel, textAlign: "left", marginBottom: 5, color: "var(--ui-warn)" }}>Pot {pi + 1}{pot.label ? ` · ${pot.label}` : ""} <span style={{ ...mono, color: "var(--chrome-muted)" }}>{pot.teams.length}</span></div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {pot.teams.map(t => {
+                        const movable = potMode === "manual" && tDrawPots.length > 1;
+                        return (<span key={t.name} onClick={movable ? () => tMovePot(t.name, (pi + 1) % tDrawPots.length) : undefined}
+                          title={movable ? `${t.name} · ${t.skill} — click to move to pot ${(pi + 1) % tDrawPots.length + 1}` : `${t.name} · ${t.skill}`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, background: "var(--chrome-panel-66)", border: "1px solid var(--chrome-border)", maxWidth: "100%", cursor: movable ? "pointer" : "default" }}>
+                          <TeamCrest team={t} size={12} />
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.code || abbr(t.name)}</span>
+                          <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{t.skill}</span>
+                        </span>);
+                      })}
+                      {!pot.teams.length && <span style={{ fontSize: 10, color: "var(--chrome-muted-33)" }}>empty</span>}
+                    </div>
+                  </div>))}
+                </div>
+              </div>
+              <div style={{ flexShrink: 0, background: "linear-gradient(transparent, var(--chrome-bg) 8px)", paddingTop: 12, paddingBottom: 4, display: "flex", alignItems: "center", gap: 14 }}>
+                <button onClick={tDrawBegin} disabled={!tDrawPreview?.ok} style={{ ...scBtn, width: "auto", flex: "0 0 auto", opacity: tDrawPreview?.ok ? 1 : 0.4, cursor: tDrawPreview?.ok ? "pointer" : "default" }}>▶ Begin Draw</button>
+                <span style={{ fontSize: 11, color: tDrawPreview?.ok ? "var(--ui-ok)" : "var(--ui-danger)" }}>
+                  {tDrawPreview?.ok
+                    ? `These rules are satisfiable — a draw was found in ${tDrawPreview.attempts} attempt${tDrawPreview.attempts === 1 ? "" : "s"}.`
+                    : `No draw satisfies these rules. Loosen a cap, or move a pin.`}
+                </span>
+              </div>
+            </div>);
+          })()}
+
+          {/* DRAW CEREMONY — the groups filling on the left, the bowl and the pots on the right */}
+          {tPhase === "drawing" && tDrawAnim && (() => {
+            const { log, grps, index, pending } = tDrawAnim;
+            const done = index >= log.length && !pending;
+            // The log carries names; the crests and colours live on the teams the draw produced.
+            const teamOf = new Map(grps.flatMap(g => g.teams.map(t => [t.name, t])));
+            const idxOf = new Map(log.map((e, i) => [e.name, i]));
+            const revealed = log.slice(0, index);
+            const cur = pending ? log[index] : null;                      // out of the bowl, group still hidden
+            // A pin was never drawn, so it must not open the ceremony sitting in the ball card under
+            // a group stamp as though it had just come out of the bowl.
+            const prev = !pending && index > 0 ? log[index - 1] : null;
+            const justPlaced = prev && !prev.pinned ? prev : null;
+            const next = index < log.length ? log[index] : null;
+            const activePot = (cur || next || log[log.length - 1]).pot;
+            const placedIn = grps.map(() => []);
+            revealed.forEach(e => placedIn[e.gi].push(e));
+            // A ball counts as out once it has been drawn or is the one in hand. It stays rendered
+            // in the bowl through the mix, though, because being lifted out of it is the animation.
+            const drawnUpTo = index + (pending ? 1 : 0);
+            const potEntries = log.filter(e => e.pot === activePot);
+            const inBowl = potEntries.filter(e => idxOf.get(e.name) >= index).slice(0, DRAW_BOWL_MAX);
+            const stillIn = potEntries.filter(e => idxOf.get(e.name) >= drawnUpTo);
+            const ballCard = cur || justPlaced;
+            const ballTeam = ballCard ? teamOf.get(ballCard.name) : null;
+            return (<div style={PHASE_COL}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexShrink: 0 }}>
+                <PanelTitle accent="var(--ui-warn)">Draw Ceremony</PanelTitle>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{index}/{log.length}</span>
+                  {!done && <button onClick={() => setTDrawAnim(p => p ? { ...p, auto: !p.auto } : p)} style={{ ...addBtn, color: tDrawAnim.auto ? "var(--ui-warn)" : "var(--chrome-muted)" }}>{tDrawAnim.auto ? "⏸ Pause" : "▶ Auto"}</button>}
+                  {!done && <button onClick={tDrawSkip} style={{ ...addBtn, color: "var(--chrome-muted)" }}>Skip</button>}
+                  <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0 }}>
+                {/* GROUPS — every slot is drawn from the start, so nothing reflows as they fill */}
+                <div style={{ ...panelBox, marginBottom: 0, padding: 14, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${grps.length > 12 ? 130 : 165}px, 1fr))`, gap: 8 }}>
+                    {grps.map((g, gi) => {
+                      const isTarget = justPlaced && justPlaced.gi === gi;
+                      return (<div key={gi} style={{ background: "var(--chrome-panel-66)", border: `1px solid ${isTarget ? "var(--ui-warn)" : "var(--chrome-border)"}`, borderRadius: 6, padding: "8px 8px 6px", transition: "border-color 0.35s" }}>
+                        <div style={{ ...cardLabel, marginBottom: 5 }}>Group {g.label}</div>
+                        {g.teams.map((_, si) => {
+                          const e = placedIn[gi][si];
+                          const t = e ? teamOf.get(e.name) : null;
+                          const isLatest = e && justPlaced && e.name === justPlaced.name;
+                          return (<div key={si} className={isLatest ? "draw-land" : undefined} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 2px", borderTop: si ? "1px solid var(--chrome-border)" : "none", minHeight: 21 }}>
+                            {t ? <TeamCrest team={t} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
+                            <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: e ? (isLatest ? "var(--ui-warn)" : "var(--ui-text)") : "var(--chrome-muted-33)", fontWeight: isLatest ? 700 : 400 }}>{e ? e.name : "—"}</span>
+                            {e && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>{e.pinned ? "PIN" : e.skill}</span>}
+                          </div>);
+                        })}
+                      </div>);
+                    })}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
+                  {/* THE BOWL */}
+                  <div style={{ ...panelBox, marginBottom: 0, padding: 14, flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div style={{ ...cardLabel, textAlign: "left", color: "var(--ui-warn)", flexShrink: 0 }}>{done ? "Draw complete" : `Pot ${activePot} · ${stillIn.length} left`}</div>
+                    <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>
+                      <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        {ballCard ? (<>
+                          <div key={ballCard.name} className="draw-ball-out" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                            {ballTeam && <TeamCrest team={ballTeam} size={38} />}
+                            <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>{ballCard.name}</div>
+                            <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>POT {ballCard.pot} · {ballCard.skill}</div>
+                          </div>
+                          {cur
+                            ? <div className="draw-await" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginTop: 4 }}>AWAITING GROUP</div>
+                            : <div key={"g" + index} className="draw-stamp" style={{ fontSize: 18, fontWeight: 700, color: "var(--ui-warn)", letterSpacing: "0.1em", marginTop: 4 }}>GROUP {justPlaced.group}</div>}
+                        </>) : (
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{done ? "Every team is placed." : "Ready to draw."}</div>
+                        )}
+                      </div>
+                      {/* the pot itself — the balls still to come out */}
+                      <div className={pending ? "draw-bowl draw-bowl-shake" : "draw-bowl"}>
+                        {inBowl.map(e => {
+                          const h = hashStr(e.name);
+                          const picked = cur && e.name === cur.name;
+                          return (<span key={e.name} className={picked ? "draw-picked" : pending ? "draw-shuffle" : "draw-ballet"}
+                            style={{ position: "absolute", left: `${6 + (h % 82)}%`, top: `${10 + ((h >> 5) % 52)}%`, zIndex: picked ? 2 : 1,
+                              // Only the idle loop is offset; during a mix every ball moves at once.
+                              animationDelay: picked || pending ? undefined : `${(h % 17) / 10}s`, width: 17, height: 17, borderRadius: "50%", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                            <TeamCrest team={teamOf.get(e.name) || e} size={11} />
+                          </span>);
+                        })}
+                        {stillIn.length > inBowl.length && <span style={{ ...mono, position: "absolute", right: 8, bottom: 6, fontSize: 9, color: "var(--chrome-muted)" }}>+{stillIn.length - inBowl.length}</span>}
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, paddingTop: 10 }}>
+                      {done
+                        ? <button onClick={tDrawConfirm} style={scBtn}>▶ Continue to Group Stage</button>
+                        : <button onClick={tDrawAdvance} style={scBtn}>{pending ? "Reveal Group" : "Draw Next"}</button>}
+                    </div>
+                  </div>
+                  {/* POTS */}
+                  <div style={{ ...panelBox, marginBottom: 0, padding: 14, flex: "1 1 0", minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    {/* Pot numbers come from the draw that was made, not from the live config —
+                        editing the pot count behind an open ceremony must not renumber it. */}
+                    {[...new Set(log.map(e => e.pot))].sort((a, b) => a - b).map(p => {
+                      const entries = log.filter(e => e.pot === p);
+                      const left = entries.filter(e => idxOf.get(e.name) >= drawnUpTo).length;
+                      return (<div key={p} style={{ marginBottom: 10 }}>
+                        <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4, color: activePot === p ? "var(--ui-warn)" : "var(--chrome-muted)" }}>Pot {p}{entries[0].potLabel ? ` · ${entries[0].potLabel}` : ""} · {left} left</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {entries.map(e => {
+                            const li = idxOf.get(e.name);
+                            const isOut = li < index, isHand = pending && li === index;
+                            return (<span key={e.name} title={`${e.name} · ${e.skill}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, transition: "all 0.3s",
+                              background: isHand ? "var(--ui-warn-33)" : "var(--chrome-panel-66)", border: `1px solid ${isHand ? "var(--ui-warn)" : "var(--chrome-border)"}`,
+                              color: isHand ? "var(--ui-warn)" : isOut ? "var(--chrome-muted-33)" : "var(--ui-text)", opacity: isOut ? 0.45 : 1 }}>
+                              <TeamCrest team={teamOf.get(e.name) || e} size={12} />
+                              <span style={{ whiteSpace: "nowrap" }}>{e.code || abbr(e.name)}</span>
+                              {isOut && <span style={{ ...mono, fontSize: 9 }}>{e.group}</span>}
+                            </span>);
+                          })}
+                        </div>
+                      </div>);
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>);
+          })()}
 
           {/* MANUAL ALLOCATION */}
           {tPhase === "manual" && tManual && (<div>
@@ -8645,9 +9119,9 @@ export default function App() {
               <div style={{ minWidth: 0, minHeight: 0, overflowX: "hidden", overflowY: "auto", scrollbarGutter: "stable", display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Standings — each table copies as TSV so it pastes into a spreadsheet as columns. */}
               <div style={{ display: "grid", gridAutoFlow: "column", gridTemplateColumns: `repeat(${groupCols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${Math.ceil(tGroups.length / groupCols) || 1}, minmax(min-content, 1fr))`, gap: 10, flex: "1 1 auto", alignContent: "stretch" }}>
-                {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)", display: "flex", flexDirection: "column" }}>
+                {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; const cw = standingsColW(g.standings); return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)", display: "flex", flexDirection: "column" }}>
                   <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
-                  <table className="wide-table" style={{ width: "100%", height: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: 10, flex: "1 1 auto" }}><colgroup><col style={{ width: 20 }} /><col style={{ width: "auto" }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 17 }} /><col style={{ width: 21 }} /><col style={{ width: 21 }} /><col style={{ width: 26 }} /><col style={{ width: 26 }} />{showForm && <col style={{ width: FORM_COL_W }} />}</colgroup><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th>{showForm && <th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", whiteSpace: "nowrap" }}>Form</th>}</tr></thead>
+                  <table className="wide-table" style={{ width: "100%", height: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: 10, flex: "1 1 auto" }}><colgroup><col style={{ width: 20 }} /><col style={{ width: "auto" }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.goals }} /><col style={{ width: cw.goals }} /><col style={{ width: cw.gd }} /><col style={{ width: cw.pts }} />{showForm && <col style={{ width: FORM_COL_W }} />}</colgroup><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th>{showForm && <th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", whiteSpace: "nowrap" }}>Form</th>}</tr></thead>
                     <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", maskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", WebkitMaskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}><TeamCrest team={groupTeamByName.get(r.name) || r} size={12} style={{ verticalAlign: -2, marginRight: 4 }} />{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid var(--ui-attack-44)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td>{showForm && <td style={{ padding: "2px 0 2px 6px", whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-FORM_N).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td>}</tr>); })}</tbody></table>
                   {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
                 </div>); })}
@@ -9410,7 +9884,7 @@ export default function App() {
                 {tocLink("doc-overview", "Overview")}
                 {tocLink("doc-engine", "How Matches Play Out")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-xg","Expected Goals"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-dynamics", "Match Dynamics")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
@@ -9431,7 +9905,7 @@ export default function App() {
                 </div>
                 {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tourney-modes","Modes"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tourney-modes","Modes"],["doc-tourney-draw","The Draw"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-bulkimport", "Bulk Import")}
               </div>
@@ -9731,6 +10205,13 @@ export default function App() {
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones (or by the Qualify Per Group fallback if no advance zones are set). Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
             <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
 
+            <H3 id="doc-tourney-draw">The Draw</H3>
+            <P>Setting group allocation to Draw opens a rules screen before any ball comes out. Every pot is spread as thinly across the groups as it will go: a pot of eight drawn into eight groups puts one in each, and a pot of sixteen puts two. That is per pot, so pots need not be the same size.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>By rating</strong> is the seeded draw: strongest first, split into as many equal bands as you ask for, so every group draws across the tiers. <strong style={{color:"var(--ui-text)",fontSize:10}}>By nation</strong> and <strong style={{color:"var(--ui-text)",fontSize:10}}>By confederation</strong> make each pot a nation or a confederation instead, which is how a group ends up holding one club from each country rather than one from each strength band; the pot count is whatever the field contains, and anything carrying no key at all shares a leftovers pot that sorts last. <strong style={{color:"var(--ui-text)",fontSize:10}}>Manual</strong> starts from the rating split and lets you click a team to send it to the next pot.</P>
+            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Clubs from the same nation</strong> caps how many clubs of one nation a group may hold. A club's nation is the nation of its league, so both Nichirin divisions count as Nichirin. <strong style={{color:"var(--ui-text)",fontSize:10}}>Teams from the same confederation</strong> does the same for national teams. Max 1 per group keeps them fully separated; max 2 is the usual allowance for a confederation too large to spread one per group. <strong style={{color:"var(--ui-text)",fontSize:10}}>Pinned teams</strong> are placed before the draw begins, for hosts or anyone whose group is already decided.</P>
+            <P>A cap that cannot be satisfied is refused rather than quietly ignored: if one confederation brings twenty teams to eight groups, no draw can hold fewer than three of them in a group, and the screen says so instead of producing an allocation that breaks the rule. The whole draw is solved before the ceremony starts, so it can never deadlock halfway through — the ceremony is replaying a result, one ball at a time.</P>
+            <P>The draw itself is not saved. Reloading mid-ceremony returns to the setup screen with the participants and rules intact, and the draw runs again from the start.</P>
+
             <H3 id="doc-tourney-zones">Qualification Zones</H3>
             <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range (e.g., 1 to 2), a label, a color, and a type.</P>
             <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats where there is no knockout stage.</P>
@@ -9798,28 +10279,6 @@ export default function App() {
             <P>Tab-separated, one team per line. Columns in order:</P>
             <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 6, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
             <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
-
-            </div>
-
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tournaments"><H1>Tournaments</H1>
-
-            <H3 id="doc-tourney-modes">Modes</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Single Stage</strong> runs one phase only. Choose Knockout Only (single-elimination bracket) or Groups Only (round-robin or Swiss league). Groups Only with one group functions as a league.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Double Stage</strong> runs groups followed by a knockout. Teams qualifying from groups advance to a bracket. The number of qualifiers is determined by qualification zones. Group format can be round-robin or Swiss. Knockout can be seeded, random, drawn, or manually allocated.</P>
-            <P>Groups use a round-robin fixture generator that handles odd team counts with byes (awarded as 3-0 wins). Swiss format pairs teams by score group each round, prioritizing teams with fewer games played and allowing rematches when all opponents are exhausted.</P>
-
-            <H3 id="doc-tourney-zones">Qualification Zones</H3>
-            <P>Zones mark positions in the standings table with colored strips and control advancement to the knockout stage. Each zone has an anchor (Top or Bottom), a position range, a label, a color, and a type.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Cosmetic</strong> zones are visual only. Use them for labels like Champion or Relegation in league formats.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Direct Qualification</strong> zones advance all teams in those positions from every group. Top 2 in an 8-group tournament produces 16 teams for the knockout.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Pool Qualification</strong> zones collect teams from those positions across all groups into a ranked pool table (sorted by points, goal difference, goals for, skill). A configurable number of the best-performing teams qualify. The pool ranking updates live during the group stage.</P>
-
-            <H3 id="doc-tourney-tiebreakers">Tiebreakers</H3>
-            <P>When two teams have equal points, the configurable tiebreaker priority determines their order. Points are always first; skill is always the final fallback.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Goal Difference</strong> — total goals scored minus conceded. <strong style={{color:"var(--ui-text)",fontSize:10}}>Goals For</strong> — rewards attacking play. <strong style={{color:"var(--ui-text)",fontSize:10}}>Head-to-Head</strong> — results between the two tied teams (pts, GD, GF). <strong style={{color:"var(--ui-text)",fontSize:10}}>Wins</strong> — total wins. <strong style={{color:"var(--ui-text)",fontSize:10}}>Median-Buchholz</strong> (Swiss only) — opponents' points minus best and worst. <strong style={{color:"var(--ui-text)",fontSize:10}}>Manual</strong> (Double Stage only) — stops automated tiebreaking; swap buttons appear on tied teams at zone boundaries.</P>
-
-            <H3 id="doc-tourney-presets">Presets</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>League</strong> — 1 group, double round-robin, home and away, champion + relegation zones. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old World Cup</strong> — 8 groups of 4, top 2 advance, 16-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New World Cup</strong> — 12 groups of 4, top 2 advance + best 8 thirds, 32-team knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>Old UCL</strong> — 8 groups of 4, double round-robin, two-legged knockout. <strong style={{color:"var(--ui-text)",fontSize:10}}>New UCL</strong> — 36-team Swiss, top 8 advance + 9th-24th playoff, Median-Buchholz tiebreaker. <strong style={{color:"var(--ui-text)",fontSize:10}}>Cup</strong> — single-elimination bracket.</P>
 
             </div>
             </div>
