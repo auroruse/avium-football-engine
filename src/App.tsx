@@ -3401,6 +3401,10 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
+// The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
+// called "All Clubs" would otherwise silently take the view over.
+const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
+const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clubs" };
 const railLeague = (t) =>
   (t.league === "Avium International" && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
@@ -3735,29 +3739,59 @@ function uniqueSlotName(slots, base) {
   return `${base} ${i}`;
 }
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
-// How willing a national-team slot is to take a player whose natural position is not exactly it.
-// posFitCost's two terms are treated differently here, because they mean different things:
-//   line  — moving up or down the pitch. Easy within your own group (a striker dropping into the
-//           wide forward slot), so discounted by XI_SAME_LINE there and charged in full otherwise.
-//   side  — moving left/centre/right. This is the one that makes a centre-back at full-back a
-//           compromise rather than a like-for-like, so it is NEVER discounted. Discounting it was
-//           what handed 38% of full-back slots to players with no wide-defensive position at all.
-// A slot takes anything within XI_FIT_MAX, at a rating penalty of XI_OOP_PENALTY per unit, so a
-// natural beats an equal-rated stand-in and only a clearly better player displaces him.
-const XI_FIT_MAX = 1.8, XI_OOP_PENALTY = 6, XI_SAME_LINE = 0.6, XI_SIDE = 1.2;
-// Sets of roles that are one job under different names — free in both directions, and free within
-// a set rather than by chaining, so overlapping sets stay independent. Wing-back, wide midfielder
-// and winger are three heights of the same flank; a wide attacking midfielder is that same flank
-// player again, but he is NOT a wing-back, so AM shares a set with the wide roles and not with
-// LWB/RWB. The geometry below would price LWB→LW at 2.5 and AM→LM at 1.2 and refuse the first
-// outright, which is why this runs ahead of it.
-const XI_SAME_ROLE = [["LWB", "LM", "LW"], ["RWB", "RM", "RW"], ["AM", "LM", "LW"], ["AM", "RM", "RW"]];
-function xiFit(natural, slot) {
-  if ((natural === "GK") !== (slot === "GK")) return 1000;
-  if (XI_SAME_ROLE.some(c => c.includes(natural) && c.includes(slot))) return 0;
-  const A = POS_ROLE[natural] || POS_ROLE.CM, B = POS_ROLE[slot] || POS_ROLE.CM;
-  return Math.abs(A[0] - B[0]) * (POS_GROUP[natural] === POS_GROUP[slot] ? XI_SAME_LINE : 1) + XI_SIDE * Math.abs(A[1] - B[1]);
-}
+// Which positions a national-team slot will take from a player who is not a natural there — as a
+// graph of adjacent jobs rather than a distance between coordinates.
+//
+// It used to measure the 2-D gap in POS_ROLE, which put AM one step from ST because they sit on
+// consecutive lines. That is a fact about the table, not about football: a 91 attacking midfielder
+// came out priced at exactly the 85 striker he displaced, and which of them started was decided by
+// the order they happened to sit in the pool. Adjacency is now stated, not derived.
+//
+// ST and GK are islands on purpose. Nobody converts into leading the line, and nobody converts
+// into goal. Everything else is a chain — inward through the middle, and up the flank on each side,
+// with the full-backs meeting at centre-back.
+// AM–LM and AM–RM are the joins between the middle and the flanks. Without them four nations that
+// have one flank stocked and the other bare left a wide slot empty (Selmira, East Astriya, Seignid,
+// Hōrai) — an attacking midfielder is the one player who reasonably shifts out to either side.
+// They also make LM↔RM a two-step move through AM, which is as far as switching flanks should go:
+// LW↔RW comes out at four steps and stays refused.
+// The third number is what the move costs. Everything is one step except stepping ACROSS the pitch
+// rather than along it: a full-back covering centre-back changes which side of the game he plays,
+// and the model this replaced charged that at nearly double and never discounted it. Flattening it
+// to one had Auritania start a 73 right-back because their 85 centre-back could take left-back
+// cheaply, displacing a 79 natural who then could not reach the other flank.
+const XI_EDGES = [["DM", "CM", 1], ["CM", "AM", 1],
+                  ["LB", "LWB", 1], ["LWB", "LM", 1], ["LM", "LW", 1],
+                  ["RB", "RWB", 1], ["RWB", "RM", 1], ["RM", "RW", 1],
+                  ["LB", "CB", 2], ["RB", "CB", 2],
+                  ["AM", "LM", 1], ["AM", "RM", 1]];
+// Cheapest path, precomputed once. Fourteen nodes, so the search does not need to be clever.
+// Unreachable is absent, which reads as Infinity below.
+const XI_STEPS = (() => {
+  const adj = {};
+  for (const [a, b, w] of XI_EDGES) { (adj[a] = adj[a] || []).push([b, w]); (adj[b] = adj[b] || []).push([a, w]); }
+  const out = {};
+  for (const start of Object.keys(POS_ROLE)) {
+    const d = out[start] = { [start]: 0 };
+    const queue = [[0, start]];
+    while (queue.length) {
+      queue.sort((x, y) => x[0] - y[0]);
+      const [cost, at] = queue.shift();
+      if (cost > d[at]) continue;
+      for (const [to, w] of adj[at] || []) if (d[to] === undefined || cost + w < d[to]) { d[to] = cost + w; queue.push([cost + w, to]); }
+    }
+  }
+  return out;
+})();
+// What a stand-in pays, per step, and how far he may be asked to move.
+//
+// The penalty was 6 under the old model, but that was 6 per unit of a FRACTIONAL fit: a move within
+// your own line — the commonest one, a central midfielder playing as an attacking midfielder —
+// scored 0.6 and cost 3.6. Every move is a whole step here, so carrying 6 across quietly raised the
+// price of that conversion by two thirds, and Alemannia benched two 84-rated central midfielders
+// behind a 79 and a 79 who happened to be exact. Four puts it back where it was.
+const XI_STEP_MAX = 2, XI_OOP_PENALTY = 4;
+const xiSteps = (natural, slot) => XI_STEPS[natural]?.[slot] ?? Infinity;
 const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
 // Bolds the given player name(s) wherever they appear in an already-filled commentary string.
 function boldNames(txt, names, clr) {
@@ -4200,6 +4234,30 @@ export default function App() {
   // Bulk import only ever creates Custom teams, so save/load belongs to that tab. The open panels
   // are gated on it too — otherwise switching leagues leaves an orphaned editor above the list.
   const customTab = teamLeagueFilter === "Custom";
+  // Two whole-roster views sitting above the league list, the way All Players sits above the
+  // nations. The sentinels cannot collide with a league name, and everything that keys off
+  // teamLeagueFilter treats them as "not a league" rather than needing a separate mode flag.
+  const isIntlView = teamLeagueFilter === ALL_INTL, isClubView = teamLeagueFilter === ALL_CLUBS;
+  const isAllView = isIntlView || isClubView;
+  const allIntlTeams = useMemo(() => teams.filter(t => t.league === "Avium International"), [teams]);
+  const allClubTeams = useMemo(() => teams.filter(t => t.league !== "Avium International"), [teams]);
+  // The whole squad split by line, starters and backups alike, left unrounded — a column of
+  // integers hides the difference between two squads a third of a point apart, which at this scale
+  // is most of them. The keeper sits outside all three: POS_GROUP has no entry for GK and every
+  // position filter in the app treats it separately, so folding it into DEF would make this column
+  // mean something different from DEF everywhere else. `avg` skips a line nobody carries rather
+  // than counting it as zero, which would rank a side with no forward below one with a bad forward.
+  const teamLines = (t) => {
+    const sq = (t.squad || []).filter(p => p.ovr != null);
+    const line = (g) => {
+      const ps = sq.filter(p => POS_GROUP[(p.spos || p.pos || "").split("/")[0]] === g);
+      return ps.length ? ps.reduce((a, p) => a + p.ovr, 0) / ps.length : 0;
+    };
+    const att = line("FWD"), mid = line("MID"), def = line("DEF");
+    const have = [att, mid, def].filter(Boolean);
+    return { att, mid, def, avg: have.length ? have.reduce((a, x) => a + x, 0) / have.length : 0 };
+  };
+  const teamLinesById = useMemo(() => new Map(teams.map(t => [t.id, teamLines(t)])), [teams]);
   // Leagues that actually have teams, in LEAGUE_ORDER. Drives the roster's left rail.
   const rosterLeagues = useMemo(() => groupByLeague(teams).filter(Boolean), [teams]);
   // Rail sections. Complete vs incomplete is a team count because nothing records a league's
@@ -4210,16 +4268,22 @@ export default function App() {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
       (IS_CONFERENCE.has(entry[0]) ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
-    return [["Avium International", intl], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
+    const out = [["Avium International", intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
+    // Each whole-roster view heads the section it summarises. The clubs one takes whichever club
+    // section actually exists — normally Club Leagues, but a roster of nothing but placeholder
+    // divisions only has Miscellaneous, and the view would otherwise have nowhere to sit.
+    const firstClub = out.find(s => s[0] !== "Avium International");
+    if (firstClub) firstClub[2] = ALL_CLUBS;
+    return out;
   }, [rosterLeagues]);
   // The rail only lists leagues that have teams, so a filter pointing at one that does not exist
   // leaves nothing selected and an empty grid with no way back. Snap to the first real league —
   // covers a roster with no international pool, and any league that empties out.
   useEffect(() => {
-    if (!rosterLeagues.length) return;
+    if (!rosterLeagues.length || isAllView) return;
     if (!rosterLeagues.some(([lg]) => lg === teamLeagueFilter)) setTeamLeagueFilter(rosterLeagues[0][0]);
-  }, [rosterLeagues, teamLeagueFilter]);
+  }, [rosterLeagues, teamLeagueFilter, isAllView]);
   // A league's nation, as the national team itself — it carries both the display name and a crest,
   // so there is no separate flag asset to keep in sync. Null for the international pool (it IS the
   // nations) and for Custom.
@@ -4231,9 +4295,18 @@ export default function App() {
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
     const q = teamSearch.trim().toLowerCase();
-    return teams.filter(t => (!teamLeagueFilter || railLeague(t) === teamLeagueFilter)
+    const inView = (t) => teamLeagueFilter === ALL_INTL ? t.league === "Avium International"
+      : teamLeagueFilter === ALL_CLUBS ? t.league !== "Avium International"
+      : !teamLeagueFilter || railLeague(t) === teamLeagueFilter;
+    const out = teams.filter(t => inView(t)
       && (!q || t.name.toLowerCase().includes(q) || (t.code || "").toLowerCase().includes(q)));
-  }, [teams, teamLeagueFilter, teamSearch]);
+    // The whole-roster views are a ranking, so the # column has to mean something. Team OVR first,
+    // then the squad behind it: two sides on the same rating are separated by the mean of their
+    // three lines. A league keeps its own order, which is the order its teams were entered in.
+    const lineAvg = (t) => teamLinesById.get(t.id)?.avg || 0;
+    return isAllView ? out.sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0)
+      || lineAvg(b) - lineAvg(a) || a.name.localeCompare(b.name)) : out;
+  }, [teams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   // The team the right pane has drilled into. Read from `teams`, not effTeams, so the panel edits
@@ -6954,9 +7027,7 @@ export default function App() {
         const eff = p.ovr ?? t.skill;
         if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, clubPos: new Set(), natPos: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
         const e = byName.get(key);
-        // Club and national slots are kept apart. A national squad is picked for a shape, so its
-        // slot says where the manager put the player, not what he is; the club slot is the better
-        // evidence and wins outright wherever it exists.
+        // Club and national slots are kept apart so the union below can be built from both.
         const sp = p.spos || p.pos;
         if (sp) (isIntl ? e.natPos : e.clubPos).add(sp);
         if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
@@ -6965,9 +7036,11 @@ export default function App() {
     });
     const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
     const arr = [...byName.values()];
-    // Uncapped players and anyone with no club listed still need a position, so the national slot
-    // remains the fallback — it is only ignored when there is club evidence to prefer.
-    arr.forEach(p => { const src = p.clubPos.size ? p.clubPos : p.natPos; p.pos = [...src].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).join("/"); delete p.clubPos; delete p.natPos; });
+    // Both slots count. A man his country plays at left-back and his club plays at centre-back has
+    // shown he plays both, and taking only the club row threw the other half away: Skjarnland's own
+    // sheet opens with Haugland 85 at left-back, and preferring his club's CB left an unrelated 75
+    // as the only man the index believed could play there.
+    arr.forEach(p => { p.pos = [...p.clubPos, ...p.natPos].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).filter((x, i, a2) => a2.indexOf(x) === i).join("/"); delete p.clubPos; delete p.natPos; });
     // Tiebreak equal ratings by club skill, then national team skill.
     return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
   }, [teams]);
@@ -7060,10 +7133,10 @@ export default function App() {
     // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
     const template = buildSquad(formation, [], 11);
     const broadOf = (sp) => sp === "GK" ? "GK" : POS_GROUP[sp];
-    // Club positions are exact, so matching starters exactly leaves slots empty and benches better
-    // players. Each slot takes the nearest role it can live with instead — see xiFit.
-    const fitOf = (p, sp) => Math.min(...p.elig.map(e => xiFit(e, sp)));
-    const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * fitOf(p, sp);
+    // How far a player is from a slot, in steps along XI_EDGES. Zero means he plays there.
+    const stepsOf = (p, sp) => Math.min(...p.elig.map(e => xiSteps(e, sp)));
+    const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * stepsOf(p, sp);
+    const byOvr = (p) => p.ovr || 0;
     // Starters must match their exact slot position; bench slots only need the broad
     // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
     // That group is the slot's own `pos`, which buildSquad derives from the formation's bands.
@@ -7074,31 +7147,64 @@ export default function App() {
     const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.map(broadOf)) }; });
     const used = new Set();
     const players = new Array(slots.length).fill(null);
-    // Fill the XI to completion before touching the bench — otherwise a bench slot's
-    // broader (group-only) match can look scarcer mid-loop and claim a strong
-    // multi-position player who should have started instead.
-    const fillPhase = (indices, isBench) => {
-      const remaining = [...indices];
-      while (remaining.length) {
-        let bestIdx = remaining[0], bestList = [], bestScore = Infinity;
-        for (const si of remaining) {
-          const cands = pool.filter(p => !used.has(p.fullName) && (isBench ? p.groups.has(slots[si]) : fitOf(p, slots[si]) <= XI_FIT_MAX));
-          if (cands.length < bestScore) { bestScore = cands.length; bestList = cands; bestIdx = si; if (bestScore === 0) break; }
+    // Picking eleven players for eleven slots is an assignment problem, and it is solved exactly
+    // rather than approximated. "Fill the scarcest slot first" was the heuristic here before, and
+    // it was quietly wrong: it put Arverne's two best central midfielders in the two holding roles,
+    // which left the third attacking slot to a 77 while an 85 sat behind them. Across the field it
+    // gave up points on nine of sixty-two nations, so this was not a rounding error.
+    //
+    // Subset DP over the slots: each player is either left out or placed in one open slot he can
+    // fill. Eleven slots is 2048 states, and only one nation is ever being picked, so exactness is
+    // free. `value` returns -Infinity where a player cannot take a slot at all.
+    const bits = (m) => { let n = 0; while (m) { n += m & 1; m >>= 1; } return n; };
+    const assign = (indices, value) => {
+      const cands = pool.filter(p => !used.has(p.fullName));
+      const S = indices.length, FULL = 1 << S;
+      let dp = new Float64Array(FULL).fill(-Infinity); dp[0] = 0;
+      const took = [];
+      for (const p of cands) {
+        const next = Float64Array.from(dp), mine = new Int8Array(FULL).fill(-1);
+        for (let m = 0; m < FULL; m++) {
+          if (dp[m] === -Infinity) continue;
+          for (let s = 0; s < S; s++) {
+            if (m & (1 << s)) continue;
+            const w = value(p, slots[indices[s]]);
+            if (w === -Infinity) continue;
+            const to = m | (1 << s);
+            if (dp[m] + w > next[to]) { next[to] = dp[m] + w; mine[to] = s; }
+          }
         }
-        if (bestList.length) {
-          const target = slots[bestIdx];
-          const pick = isBench
-            ? bestList.reduce((a, b) => (b.ovr || 0) > (a.ovr || 0) ? b : a)
-            : bestList.reduce((a, b) => scoreFor(b, target) > scoreFor(a, target) ? b : a);
-          used.add(pick.fullName);
-          players[bestIdx] = pick;
-        }
-        remaining.splice(remaining.indexOf(bestIdx), 1);
+        took.push(mine); dp = next;
+      }
+      // Fill as many slots as can be filled first, and take the best assignment among those.
+      let best = 0;
+      for (let m = 1; m < FULL; m++) {
+        if (dp[m] === -Infinity) continue;
+        const a = bits(m), b = bits(best);
+        if (a > b || (a === b && dp[m] > dp[best])) best = m;
+      }
+      let m = best;
+      for (let i = cands.length - 1; i >= 0; i--) {
+        const s = took[i][m];
+        if (s < 0) continue;                       // this player was left out
+        players[indices[s]] = cands[i];
+        used.add(cands[i].fullName);
+        m &= ~(1 << s);
       }
     };
     const allIdx = slots.map((_, i) => i);
-    fillPhase(allIdx.filter(i => !template[i].bench), false);
-    fillPhase(allIdx.filter(i => template[i].bench), true);
+    const xiIdx = allIdx.filter(i => !template[i].bench);
+    // Giving naturals absolute priority was tried and was worse: a 4-2-3-1 has no CM slot, so it
+    // benched an 88-rated central midfielder behind a 79 defensive midfielder and a 77 attacking
+    // midfielder purely because those two were exact. The graph is what fixes the bug this
+    // replaced — AM cannot reach ST at any price now — and the penalty can go back to doing what it
+    // is for, which is making a stand-in pay for the move without pretending he cannot make it.
+    // The step term breaks a tie toward whoever is closer to the slot.
+    assign(xiIdx, (p, s) => stepsOf(p, s) <= XI_STEP_MAX ? scoreFor(p, s) - stepsOf(p, s) / 1000 : -Infinity);
+    // The XI is settled before the bench is looked at, or a bench slot's broader group match would
+    // claim a player who should have started. The bench covers an area rather than a slot, so it
+    // matches on the broad group and takes the best rating available for it.
+    assign(allIdx.filter(i => template[i].bench), (p, s) => p.groups.has(s) ? byOvr(p) : -Infinity);
     return { template, players, formation, reqs: slots, skill: natTeam?.skill };
   }, [playerIndex, teams, bestXiNat]);
 
@@ -7408,9 +7514,26 @@ export default function App() {
                 style={{ ...addBtn, width: "100%", background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-              {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
+              {rosterSections.map(([section, entries, allView], si) => (<Fragment key={section}>
               <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 12px 5px",
                             borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
+              {/* The section's own whole-roster view, at the head of what it summarises. No rating:
+                  the leagues below carry one each, and a mean across all of them is not a league's
+                  strength — it is an average of averages nobody asked for. */}
+              {allView && (() => {
+                const on = teamLeagueFilter === allView;
+                const ts = allView === ALL_INTL ? allIntlTeams : allClubTeams;
+                return (
+                <div onClick={() => { setTeamLeagueFilter(allView); setExpandedTeam(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
+                           borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
+                           background: on ? "var(--chrome-panel-66)" : "transparent" }}>
+                  <span style={{ width: 19, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ALL_VIEW_LABEL[allView]}</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
+                  </div>
+                </div>); })()}
               {entries.map(([val, ts]) => {
                 const on = teamLeagueFilter === val;
                 return (
@@ -7432,20 +7555,20 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {detailTeam ? renderTeamDetail(detailTeam) : (<>
               {(() => {
-                const lgLabel = teamLeagueFilter;
+                const lgLabel = ALL_VIEW_LABEL[teamLeagueFilter] || teamLeagueFilter;
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
                 const isConf = IS_CONFERENCE.has(teamLeagueFilter);
                 return (
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
-                    <LeagueCrest league={teamLeagueFilter} size={26} />
+                    {!isAllView && <LeagueCrest league={teamLeagueFilter} size={26} />}
                     <PanelTitle>{lgLabel}</PanelTitle>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isConf ? "Continent" : "Nation"}</div>
-                      <div style={{ fontSize: 12, color: "var(--ui-text)" }}>{isConf ? (CONFERENCE_CONTINENT[teamLeagueFilter] || "—") : (nat ? nat.name : "—")}</div>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isAllView ? "Teams" : isConf ? "Continent" : "Nation"}</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView ? visibleTeams.length : isConf ? (CONFERENCE_CONTINENT[teamLeagueFilter] || "—") : (nat ? nat.name : "—")}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
@@ -7459,6 +7582,59 @@ export default function App() {
                     </div>}
                   </div>
                 </div>); })()}
+              {isAllView ? (
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: 40 }} /><col style={{ width: "28%" }} /><col style={{ width: 46 }} /><col style={{ width: 46 }} /><col style={{ width: 46 }} /><col style={{ width: 46 }} /><col style={{ width: "22%" }} /><col style={{ width: "26%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th style={thCellSticky}>#</th>
+                      <th style={thCellSticky}>Team</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>OVR</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>ATT</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>MID</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>DEF</th>
+                      {/* A national side IS its nation, and its rail row IS its confederation, so
+                          both of these would otherwise repeat something already on the row. Same
+                          switch the tournament setup header makes. */}
+                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Continent" : "Nationality"}</th>
+                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Confederation" : "League"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleTeams.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</td></tr>}
+                    {visibleTeams.map((t, i) => {
+                      const lg = railLeague(t);                       // the confederation for a nation, the league for a club
+                      const home = isIntlView ? (CONFERENCE_CONTINENT[lg] || "—") : (leagueNation(t.league)?.name || "—");
+                      const ln = teamLinesById.get(t.id) || { att: 0, mid: 0, def: 0 };
+                      return (
+                      <tr key={t.id} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                        <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
+                        <td className="cell-link" onClick={() => setExpandedTeam(t.id)} title={`Open ${t.name}`}
+                          style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", ...editedStyle(t.id) }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                            <TeamCrest team={t} size={15} />
+                            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</span>
+                            <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", flexShrink: 0, ...mono }}>{t.code || abbr(t.name, t.code)}</span>
+                          </span>
+                        </td>
+                        <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600, color: ovrColor(t.skill), ...mono }}>{t.skill}</td>
+                        {["att", "mid", "def"].map(k => (
+                        <td key={k} style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", color: ln[k] ? ovrColor(ln[k]) : "var(--chrome-muted-66)", ...mono }}>{ln[k] ? ln[k].toFixed(1) : "–"}</td>))}
+                        <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{home}</td>
+                        <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                            <LeagueCrest league={lg} size={14} />
+                            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{lg}</span>
+                          </span>
+                        </td>
+                      </tr>); })}
+                  </tbody>
+                </table>
+              </div>
+              ) : (
               <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 {showExport && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
                 {showBulk && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ … ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
@@ -7489,7 +7665,7 @@ export default function App() {
                 </div>
                 {visibleTeams.length === 0 && <div style={{ padding: 28, fontSize: 11, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
                 {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "10px 2px 0" }}>Skill values must be between 25 and 100.</div>}
-              </div>
+              </div>)}
             </>)}
           </div>
         </div>
@@ -9765,7 +9941,10 @@ export default function App() {
         </div>)}
 
         {/* ═══ UTILITIES TAB ═══ */}
-        {tab === "utilities" && (<div>
+        {/* Bounded and scrolled inside itself, like every other tab. It used to be a plain div that
+            grew to its content, which on a page that cannot scroll meant a long enough squad pushed
+            the export control off the bottom of the screen with no way to reach it. */}
+        {tab === "utilities" && (<div style={{ height: ROSTER_PANEL_H, overflowY: "auto", scrollbarGutter: "stable", paddingRight: 4 }}>
           {THEMES_ENABLED && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -9787,6 +9966,17 @@ export default function App() {
             const starters = rows.filter(x => !x.bench);
             const bench = rows.filter(x => x.bench);
             const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr || 0), 0) / starters.length;
+            // Preset rows always give every player an explicit "(NN)" and store the surname/mononym
+            // in caps — unlike exportTeamsText's suppress-if-default convention, this always shows
+            // the rating and re-caps the surname. An unfilled slot exports as an empty column, not
+            // a "#12" placeholder: the blank is positional, and parseBulk reads it back as the same
+            // empty slot.
+            const exportText = () => bestXi.template.map((t, i) => {
+              const p = bestXi.players[i];
+              if (!p) return "";
+              const { first, last } = splitSurname(p.fullName || p.name, p.name);
+              return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
+            }).join("\t");
             const XI_COLW = { pos: 60, player: 220, ovr: 50, club: 200 };
             const thS = thCell;
             const tdS = tdCell;
@@ -9800,10 +9990,23 @@ export default function App() {
               </tr>
             );
             return (<>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              {/* Export sits in the header with the thing it exports, not below two tables where a
+                  long squad puts it past the fold. Same placement the Teams tab gives its own
+                  export and bulk-import panels. */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
                 <PanelTitle accent="var(--chrome-muted)" sub={bestXi.formation}>Starting XI</PanelTitle>
-                <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
+                  <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
+                </div>
               </div>
+              {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}>
+                <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's {bestXi.template.length} player columns.</p>
+                <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
+                </div>
+              </div>)}
               <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <ColGroup />
@@ -9818,31 +10021,6 @@ export default function App() {
                   <tbody>{bench.map((x, i) => Row(x, i))}</tbody>
                 </table>
               </div>
-              {(() => {
-                // Preset rows always give every player an explicit "(NN)" and store the
-                // surname/mononym in caps — unlike exportTeamsText's suppress-if-default
-                // convention, this always shows the rating and re-caps the surname.
-                const exportText = () => bestXi.template.map((t, i) => {
-                  const p = bestXi.players[i];
-                  // An unfilled slot exports as an empty column, not a "#12" placeholder: the
-                  // blank is positional, and parseBulk reads it back as the same empty slot.
-                  if (!p) return "";
-                  const { first, last } = splitSurname(p.fullName || p.name, p.name);
-                  return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
-                }).join("\t");
-                return (<>
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
-                  </div>
-                  {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginTop: 8 }}>
-                    <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's {bestXi.template.length} player columns.</p>
-                    <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
-                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
-                    </div>
-                  </div>)}
-                </>);
-              })()}
             </>);
           })()}
         </div>)}
