@@ -8,8 +8,6 @@ import nl2TSV from "./presets/nl2.tsv?raw";
 import ligaTSV from "./presets/liga-ye-melli.tsv?raw";
 import balandeTSV from "./presets/liga-ye-balande.tsv?raw";
 import kplTSV from "./presets/kar-prem.tsv?raw";
-import grandeSerieTSV from "./presets/grande-serie.tsv?raw";
-import serie2TSV from "./presets/2eme-serie.tsv?raw";
 import aleTSV from "./presets/ale-oberliga.tsv?raw";
 import arvTSV from "./presets/champ-arv.tsv?raw";
 import vicTSV from "./presets/div-prima-vic.tsv?raw";
@@ -3408,8 +3406,6 @@ const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clu
 const railLeague = (t) =>
   (t.league === "Avium International" && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const PRESET_KPL = parsePresetTSV(kplTSV, null, 0, false, false);
-const PRESET_GRANDE_SERIE = parsePresetTSV(grandeSerieTSV, null, 0, false, false);
-const PRESET_2EME_SERIE = parsePresetTSV(serie2TSV, null, 0, false, false);
 const PRESET_ALE = parsePresetTSV(aleTSV, null, 0, false, false);
 const PRESET_ARV = parsePresetTSV(arvTSV, null, 0, false, false);
 const PRESET_VIC = parsePresetTSV(vicTSV, null, 0, false, false);
@@ -3422,7 +3418,7 @@ const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 const LEAGUE_LOGO = {
   ...Object.fromEntries(CONFERENCE_NAMES.map(c => [c, c])),
   "Nichirin League One": "nl1", "Nichirin League Two": "nl2",
-  "Karjanian Premier League": "kar-prem", "Verdanois Grande Série": "grande-serie",
+  "Karjanian Premier League": "kar-prem",
   "Varahmehri Liga-ye Mellī": "liga-ye-melli",
 };
 const leagueLogoSrc = (lg) => `${import.meta.env.BASE_URL}leagues/${LEAGUE_LOGO[lg] || "placeholder"}.png`;
@@ -3507,13 +3503,13 @@ function LeagueCrest({ league, size = 20, style }) {
   return <img src={src} alt="" width={size} height={size} onError={() => setFailed(true)}
     style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, ...style }} />;
 }
-const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Verdanois Grande Série":"VER","Verdanois 2ème Série":"VER","Varahmehri Liga-ye Mellī":"VAR","Varahmehri Liga-ye Bālande":"VAR"};
+const LEAGUE_NAT = {"Nichirin League One":"NCH","Nichirin League Two":"NCH","Elvesterian Premier League":"ELV","Championnat Arvernois":"ARV","Alemannischer Oberliga":"ALE","Prima Divisione Viciliana":"VIC","Karjanian Premier League":"KAR","Rudanian First League":"RUD","Varahmehri Liga-ye Mellī":"VAR","Varahmehri Liga-ye Bālande":"VAR"};
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
 const LEAGUE_ORDER = [
   ...CONFERENCE_NAMES,
   null,
-  "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Verdanois Grande Série", "Varahmehri Liga-ye Mellī", "Verdanois 2ème Série", "Varahmehri Liga-ye Bālande",
+  "Elvesterian Premier League", "Nichirin League One", "Alemannischer Oberliga", "Karjanian Premier League", "Nichirin League Two", "Varahmehri Liga-ye Mellī", "Varahmehri Liga-ye Bālande",
   // Empty presets — kept so they sort correctly once they have teams. groupByLeague skips them.
   "Championnat Arvernois", "Prima Divisione Viciliana", "Rudanian First League",
   null,
@@ -3529,8 +3525,6 @@ const PRESET_CATALOG = [
   ...PRESET_VIC.map(t => ({...t, league: "Prima Divisione Viciliana"})),
   ...PRESET_KPL.map(t => ({...t, league: "Karjanian Premier League"})),
   ...PRESET_RUD.map(t => ({...t, league: "Rudanian First League"})),
-  ...PRESET_GRANDE_SERIE.map(t => ({...t, league: "Verdanois Grande Série"})),
-  ...PRESET_2EME_SERIE.map(t => ({...t, league: "Verdanois 2ème Série"})),
   ...PRESET_LIGA.map(t => ({...t, league: "Varahmehri Liga-ye Mellī"})),
   ...PRESET_BALANDE.map(t => ({...t, league: "Varahmehri Liga-ye Bālande"})),
 ].map(({ conference, ...t }) => ({
@@ -4325,6 +4319,10 @@ export default function App() {
   const [playerNatFilter, setPlayerNatFilter] = useState("");   // "" = all players
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
+  // Which roster warning has its list open. These were native title tooltips, which never appear
+  // inside .app-body — zoom breaks hover hit-testing on descendants — so the counts were readable
+  // and the offending players were not. Click opens them instead.
+  const [warnOpen, setWarnOpen] = useState(null);
   // Measure the real row height rather than hardcoding it — line-height differs between themes,
   // and a wrong constant makes the spacer rows drift out of sync with the scrollbar.
   useEffect(() => {
@@ -7105,6 +7103,16 @@ export default function App() {
     }); });
     return { dups, badSyntax, mismatch };
   }, [playerIndex, teams, natOvrMap]);
+  // One source for the chip and for the list it opens, so a chip can never count something the
+  // list does not show. Same colour on the rating chip as the per-player override marker.
+  const warnChips = useMemo(() => [
+    { key: "dups", label: "duplicate", title: "Players registered at more than one club", color: "var(--ui-danger)",
+      lines: playerWarnings.dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")) },
+    { key: "syntax", label: "syntax", title: "Names that are neither an initialled form nor a full name", color: "var(--ui-warn)",
+      lines: playerWarnings.badSyntax },
+    { key: "rating", label: "rating", title: "Players rated differently by club and country", color: "var(--ui-nat-override)",
+      lines: playerWarnings.mismatch },
+  ].filter(c => c.lines.length > 0), [playerWarnings]);
   // Keyed on the full name, not the "S. Jackson" abbreviation: 21 abbreviations are shared by two
   // or three different players (Joar and Johann Berglund, three Nagys), and every one of them was
   // resolving to whichever squad the index happened to see first — so the club/nationality link on
@@ -7483,6 +7491,27 @@ export default function App() {
       </div>
       <div className="app-body">
       {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
+      {/* The roster warning lists. Rendered out here rather than inside the Nationalities panel so
+          the panel's own overflow:hidden has nothing to say about them. Gated on the tab, so
+          leaving the Players tab with one open does not strand it over another. */}
+      {(() => {
+        const c = tab === "players" && warnOpen ? warnChips.find(x => x.key === warnOpen) : null;
+        if (!c) return null;
+        return (<div onClick={() => setWarnOpen(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 620, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: c.color, ...ui }}>&#x26A0; {c.lines.length} {c.label}</span>
+              <span onClick={() => setWarnOpen(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+            </div>
+            <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 10, flexShrink: 0 }}>{c.title}</div>
+            <div style={{ overflowY: "auto", minHeight: 0 }}>
+              {c.lines.map((l, i) => (
+                <div key={i} style={{ fontSize: 10, color: "var(--ui-text)", padding: "3px 0", borderTop: i ? "1px solid var(--chrome-border)" : "none", ...mono }}>{l}</div>
+              ))}
+            </div>
+          </div>
+        </div>);
+      })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
           <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
@@ -7681,15 +7710,14 @@ export default function App() {
             <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
               <PanelTitle sub={`${playerNations.length}`}>Nationalities</PanelTitle>
             </div>
-            {(playerWarnings.dups.length > 0 || playerWarnings.badSyntax.length > 0 || playerWarnings.mismatch.length > 0) && (
+            {warnChips.length > 0 && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
-              {playerWarnings.dups.length > 0 && <span title={playerWarnings.dups.map(p => (p.fullName || p.name) + " — " + p.clubs.map(c => c.code).join(", ")).join("\n")}
-                style={{ fontSize: 9, color: "var(--ui-danger)", border: "1px solid var(--ui-danger)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.dups.length} duplicate</span>}
-              {playerWarnings.badSyntax.length > 0 && <span title={playerWarnings.badSyntax.join("\n")}
-                style={{ fontSize: 9, color: "var(--ui-warn)", border: "1px solid var(--ui-warn)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.badSyntax.length} syntax</span>}
-              {/* Same colour as the per-player override marker in the squad panel. */}
-              {playerWarnings.mismatch.length > 0 && <span title={playerWarnings.mismatch.join("\n")}
-                style={{ fontSize: 9, color: "var(--ui-nat-override)", border: "1px solid var(--ui-nat-override)", borderRadius: 5, padding: "2px 7px", cursor: "help", ...mono }}>&#x26A0; {playerWarnings.mismatch.length} rating</span>}
+              {warnChips.map(c => (
+                <button key={c.key} onClick={() => setWarnOpen(w => w === c.key ? null : c.key)}
+                  style={{ fontSize: 9, color: c.color, background: warnOpen === c.key ? "var(--chrome-panel-66)" : "transparent",
+                    border: "1px solid " + c.color, borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontFamily: "inherit", ...mono }}>
+                  &#x26A0; {c.lines.length} {c.label}</button>
+              ))}
             </div>)}
             <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
               <input value={playerSearch} onChange={e => setPlayerSearch(e.target.value)} placeholder="🔍 Search"
