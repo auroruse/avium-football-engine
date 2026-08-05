@@ -3480,7 +3480,6 @@ const ROSTER_PANEL_H = `${PANEL_H + LM_CONTROLS_H}px`;
 // a ROSTER_PANEL_H flex column instead, and the grid takes flex:1 of whatever is left, so the total
 // is the roster tabs' height by construction whatever the extra row turns out to measure.
 const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "column", minHeight: 0 };
-const LIVE_PANEL_H = `${PANEL_H}px`;
 // Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
 // stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
 // Themes are off for now: the banner is one image again and the alternates are cut to fit it.
@@ -7859,13 +7858,13 @@ export default function App() {
         </>)}
 
         {/* ═══ LIVE MATCH TAB ═══ */}
-        {tab === "live" && (<div>
+        {tab === "live" && (<div style={PHASE_COL}>
           {/* Unified match controls — always at top, except while the tournament
               pre-match setup screen is up: lmIsSetup (=!lmMatch) doesn't know about
               tPendingPlayLive, so left ungated this renders "Start Match"/"Sim to End"
               wired to the standalone flow's lmKickOff/lmSimAll — the wrong match
               entirely — concurrently with the setup screen's own Kick Off button. */}
-          {!tPendingPlayLive && <div style={{ marginBottom: 12 }}>
+          {!tPendingPlayLive && <div style={{ marginBottom: 12, flexShrink: 0 }}>
             {(() => {
               const finished = lmMatch?.phase === "finished";
               // If the most recent chance hasn't finished revealing, the "next minute" button
@@ -7940,12 +7939,12 @@ export default function App() {
               </div>) : null;
             })()}
           </div>}
-          {tPendingPlayLive && <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {tPendingPlayLive && <div style={{ display: "flex", gap: 8, marginBottom: 12, flexShrink: 0 }}>
             <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
             <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 3 }}>&#9917; Kick Off</button>
           </div>}
           {(lmIsSetup || tPendingPlayLive) && (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", height: LIVE_PANEL_H }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
 
             {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
                 A flat list of every team in the game is a scroll with no landmarks; leagues are the
@@ -8171,7 +8170,7 @@ export default function App() {
                 that has inverted), so letting the page scroll left them ending hundreds of pixels
                 apart. Height on the container rather than a maxHeight on each: matching two
                 independent heights by hand only holds until one side grows a panel. */}
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", minHeight: LIVE_PANEL_H }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
             <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {renderScoreboard(lmMatch.phase === "pre_match" ? { flex: "1 1 auto", marginBottom: 0 } : null)}
             {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
