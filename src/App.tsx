@@ -4726,6 +4726,7 @@ export default function App() {
   const [tActiveSlot, setTActiveSlot] = useState(null);
   const [showSaves, setShowSaves] = useState(false);
   const [tSavesOpen, setTSavesOpen] = useState(false);
+  const [tSettingsOpen, setTSettingsOpen] = useState(false);
   const [slotMsg, setSlotMsg] = useState("");
   const [slotRenaming, setSlotRenaming] = useState(null); // {id, name}
   const [slotConfirmDelete, setSlotConfirmDelete] = useState(null);
@@ -7226,6 +7227,90 @@ export default function App() {
   // The team panel used to be a full-screen modal, which is a pattern that exists only because
   // there was nowhere else to put it. It is a pure function of the team — `ed` and `strat` are
   // both derived — so it lifts straight out of the row map and into the roster's right pane.
+  // Tiebreakers and home advantage, shared by the setup screen and the in-tournament settings popup.
+  // Both are safe to change with a tournament already in progress: standings are recomputed from the
+  // fixtures, and home advantage is read when a match is simulated rather than when the bracket is
+  // built. Extracted rather than copied so the two cannot drift apart.
+  // Tiebreakers are editable with the tournament running now, but standings live on tGroups and are
+  // only recomputed when a result changes — so a reordering rule would not show until the next goal
+  // went in. Recompute on the rule itself. Returning the same array when nothing moved matters:
+  // without that check this effect writes state on every run and feeds itself.
+  useEffect(() => {
+    if (!tGroups.length) return;
+    setTGroups(gs => {
+      let moved = false;
+      const next = gs.map(g => {
+        const st = recalcStandings(g, tConfig.tiebreakers);
+        const before = (g.standings || []).map(r => r.name).join("|");
+        if (st.map(r => r.name).join("|") === before) return g;
+        moved = true; return { ...g, standings: st };
+      });
+      return moved ? next : gs;
+    });
+  }, [tConfig.tiebreakers]);
+
+  const renderTuneables = () => (<>
+                  {/* Tiebreakers */}
+                  {tHasGroups && (() => {
+                    const TBL = {"gd":"Goal Difference","gf":"Goals For","h2h":"Head-to-Head","wins":"Wins","buchholz":"Median-Buchholz","manual":"Manual"};
+                    const TBSH = {"gd":"GD","gf":"GF","h2h":"H2H","wins":"W","buchholz":"Buch","manual":"Man"};
+                    const tbs = tConfig.tiebreakers || ["gd", "gf", "h2h", "wins"];
+                    const isSwiss = tConfig.matchFormat === "swiss";
+                    const allTBs = isSwiss ? ["gd", "gf", "h2h", "wins", "buchholz", ...(tHasKO ? ["manual"] : [])] : ["gd", "gf", "h2h", "wins", ...(tHasKO ? ["manual"] : [])];
+                    const setTBs = fn => setTConfig(c => ({ ...c, tiebreakers: fn(c.tiebreakers || ["gd", "gf", "h2h", "wins", "manual"]) }));
+                    const activeTBs = tbs.filter(tb => allTBs.includes(tb));
+                    return (
+                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                        {activeTBs.map((tb, ti) => (
+                          <Fragment key={tb}>
+                            {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
+                            <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
+                              <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
+                              <span style={{ fontSize: 11, color: "var(--ui-text)" }}>{TBSH[tb]}</span>
+                              <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
+                            </div>
+                          </Fragment>
+                        ))}
+                        {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
+                          <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
+                        ))}
+                      </div>
+                    </div>); })()}
+                    {/* Home Advantage */}
+                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
+                        {tHasGroups && <div>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
+                          <select value={tConfig.homeAdvGroup} onChange={e => setTConfig(c => ({ ...c, homeAdvGroup: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvKO !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
+                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option><option value="host">Host Team</option>
+                          </select>
+                        </div>}
+                        {tHasKO && tConfig.koLegs !== 2 && <div>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Knockout Stage</div>
+                          <select value={tConfig.homeAdvKO} onChange={e => setTConfig(c => ({ ...c, homeAdvKO: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvGroup !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
+                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option>{tHasGroups && <option value="weak_group">Weaker (Group)</option>}<option value="host">Host Team</option>
+                          </select>
+                        </div>}
+                      </div>
+                      {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
+                        <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
+                            <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
+                          ); })}
+                        </div>
+                        {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
+                        {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
+                          <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
+                          {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
+                        </div>}
+                      </div>)}
+                    </div>
+  </>);
   const renderTeamDetail = (t) => { const ed = isEditableTeam(t); const strat = t.strategy || STRAT_DEF;
     const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100;
     const isIntlTeam = t.league === "Avium International"; return (<>
@@ -8695,6 +8780,20 @@ export default function App() {
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
           {/* Save slots — several tournaments in flight, one open at a time. Only the setup phase
               shows the panel outright; a running tournament reaches it from the header button. */}
+            {tSettingsOpen && (
+            <div onClick={() => setTSettingsOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
+              <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 640, maxHeight: "84vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)", ...ui }}>Tournament Settings</span>
+                  <span onClick={() => setTSettingsOpen(false)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                </div>
+                {/* Only what is safe to move once the fixtures exist. Format, group count, legs and
+                    allocation are all baked into the bracket that is already drawn, so they stay on
+                    the setup screen — changing them here would describe a tournament nobody played. */}
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, flexShrink: 0 }}>Applies from the next match simulated. Structure is fixed once the draw is made.</div>
+                <div style={{ overflowY: "auto", minHeight: 0 }}>{renderTuneables()}</div>
+              </div>
+            </div>)}
           {tSavesOpen && (
             <div onClick={() => setTSavesOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9998, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
               <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ width: "100%", maxWidth: 720 }}>
@@ -8839,66 +8938,7 @@ export default function App() {
                       </>)}
                     </div>
                   )}
-                  {/* Tiebreakers */}
-                  {tHasGroups && (() => {
-                    const TBL = {"gd":"Goal Difference","gf":"Goals For","h2h":"Head-to-Head","wins":"Wins","buchholz":"Median-Buchholz","manual":"Manual"};
-                    const TBSH = {"gd":"GD","gf":"GF","h2h":"H2H","wins":"W","buchholz":"Buch","manual":"Man"};
-                    const tbs = tConfig.tiebreakers || ["gd", "gf", "h2h", "wins"];
-                    const isSwiss = tConfig.matchFormat === "swiss";
-                    const allTBs = isSwiss ? ["gd", "gf", "h2h", "wins", "buchholz", ...(tHasKO ? ["manual"] : [])] : ["gd", "gf", "h2h", "wins", ...(tHasKO ? ["manual"] : [])];
-                    const setTBs = fn => setTConfig(c => ({ ...c, tiebreakers: fn(c.tiebreakers || ["gd", "gf", "h2h", "wins", "manual"]) }));
-                    const activeTBs = tbs.filter(tb => allTBs.includes(tb));
-                    return (
-                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Tiebreakers</div>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                        {activeTBs.map((tb, ti) => (
-                          <Fragment key={tb}>
-                            {ti > 0 && <span style={{ color: "var(--chrome-muted-44)", fontSize: 10, userSelect: "none" }}>→</span>}
-                            <div draggable onDragStart={e => { e.dataTransfer.setData("text/plain", String(ti)); e.dataTransfer.effectAllowed = "move"; }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={e => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); if (from !== ti) setTBs(t => { const f = t.filter(x => allTBs.includes(x)); const item = f.splice(from, 1)[0]; f.splice(ti, 0, item); return [...f, ...t.filter(x => !allTBs.includes(x))]; }); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "4px 8px", cursor: "grab", userSelect: "none" }} title={TBL[tb]}>
-                              <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{ti + 1}</span>
-                              <span style={{ fontSize: 11, color: "var(--ui-text)" }}>{TBSH[tb]}</span>
-                              <button onClick={e => { e.stopPropagation(); setTBs(t => t.filter(x => x !== tb)); }} style={{ background: "none", border: "none", color: "var(--chrome-muted-66)", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit", lineHeight: 1, marginLeft: 2 }}>✕</button>
-                            </div>
-                          </Fragment>
-                        ))}
-                        {allTBs.filter(tb => !tbs.includes(tb)).map(tb => (
-                          <button key={tb} onClick={() => setTBs(t => [...t, tb])} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px dashed var(--chrome-muted-44)", background: "transparent", color: "var(--chrome-muted-66)", cursor: "pointer", fontFamily: "inherit" }} title={TBL[tb]}>+ {TBSH[tb]}</button>
-                        ))}
-                      </div>
-                    </div>); })()}
-                    {/* Home Advantage */}
-                    <div style={{ paddingTop: 16, marginBottom: 20 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 12, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Home Advantage</div>
-                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: (tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) ? 12 : 0 }}>
-                        {tHasGroups && <div>
-                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>{tHasKO ? "Group Stage" : "Home Advantage"}</div>
-                          <select value={tConfig.homeAdvGroup} onChange={e => setTConfig(c => ({ ...c, homeAdvGroup: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvKO !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
-                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option><option value="host">Host Team</option>
-                          </select>
-                        </div>}
-                        {tHasKO && tConfig.koLegs !== 2 && <div>
-                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 4 }}>Knockout Stage</div>
-                          <select value={tConfig.homeAdvKO} onChange={e => setTConfig(c => ({ ...c, homeAdvKO: e.target.value, homeAdvTeams: e.target.value !== "host" && c.homeAdvGroup !== "host" ? [] : c.homeAdvTeams }))} style={{ ...inp, padding: "5px 8px", fontSize: 11, cursor: "pointer", width: "auto" }}>
-                            <option value="off">Off</option><option value="first">First Listed</option><option value="weak_skill">Weaker (Skill)</option>{tHasGroups && <option value="weak_group">Weaker (Group)</option>}<option value="host">Host Team</option>
-                          </select>
-                        </div>}
-                      </div>
-                      {(tConfig.homeAdvGroup === "host" || (tConfig.homeAdvKO === "host" && tConfig.koLegs !== 2)) && (<div>
-                        <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Team</div>
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                          {tournamentTeams.map((t) => { const sel = tConfig.homeAdvTeams.includes(t.name); return (
-                            <button key={t.id} onClick={() => setTConfig(c => ({ ...c, homeAdvTeams: sel ? c.homeAdvTeams.filter(n => n !== t.name) : [...c.homeAdvTeams, t.name] }))} style={{ fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand-33)" : "transparent", color: sel ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{abbr(t.name, t.code)}</button>
-                          ); })}
-                        </div>
-                        {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
-                        {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
-                          <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
-                          {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
-                        </div>}
-                      </div>)}
-                    </div>
+                  {renderTuneables()}
                   </div>
                 {/* Knockout options */}
                 {tHasKO && (
@@ -9310,6 +9350,7 @@ export default function App() {
                 {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (tHasKO && tHasUnresolved
                   ? <button disabled title="Teams are tied at a qualification boundary. Resolve them with the swap buttons (⇅) in the standings." style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)", cursor: "default" }}>⚠ Tiebreaker required</button>
                   : <button onClick={tHasKO ? tProceedKO : () => setTChampOpen(true)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>{tHasKO ? "▶ Proceed to Knockout Stage" : "🏆 End Tournament"}</button>)}
+                <button onClick={() => setTSettingsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#9881; Settings</button>
                 <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
@@ -9442,6 +9483,7 @@ export default function App() {
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
                 {tGroups.length > 0 && <button onClick={() => setTKoGroupsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128202; Group Results</button>}
                 <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...addBtn, color: "var(--ui-info)", borderColor: "var(--ui-info-33)" }}>&#128247; Export</button>
+                <button onClick={() => setTSettingsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#9881; Settings</button>
                 <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
