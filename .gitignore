@@ -3,3 +3,5 @@ dist
 .vite
 .claude
 .DS_Store
+.headless/
+.*.mjs
