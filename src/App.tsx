@@ -3183,10 +3183,24 @@ const lightenUntil = (hex, refHex, factor) => {
   }
   return cur;
 };
+// Readable as TEXT on bgHex, which is a different question from whether two kits clash. colorsClash
+// measures perceptual difference, and by that measure pure black sits a comfortable 97 from the
+// near-black panel (threshold 60) — so a team playing in black got black text on #141c2b and the
+// away kit was never tried. What decides legibility is luminance contrast, so that is tested too.
+// 0.32 measured over all 199 teams against all three panels: 202 colours improve, 154 of them by
+// falling through to the team's other kit, and nothing gets worse. At 0.35 a legible orange away
+// shirt (luminance gap 0.348) is thrown out for a lightened smear of the navy home one.
+const TEXT_LUM_GAP = 0.32;
+const lumOf = (hex) => { const c = hexToRgb(hex); return c ? percLum(c.r, c.g, c.b) : null; };
+const unreadableOn = (hex, bgHex) => {
+  const a = lumOf(hex), b = lumOf(bgHex);
+  if (a === null || b === null) return false;
+  return Math.abs(a - b) < TEXT_LUM_GAP || colorsClash(hex, bgHex);
+};
 const readableClr = (hex, altHex, bgHex) => {
   if (!hex) return altHex || "var(--ui-text)";
-  if (!colorsClash(hex, bgHex)) return hex;
-  if (altHex && altHex !== hex && !colorsClash(altHex, bgHex)) return altHex;
+  if (!unreadableOn(hex, bgHex)) return hex;
+  if (altHex && altHex !== hex && !unreadableOn(altHex, bgHex)) return altHex;
   return lightenUntil(hex, bgHex, 0.3);
 };
 // Perceived brightness, 0..1 — the same 0.299/0.587/0.114 weighting the floor below has always
@@ -4038,14 +4052,34 @@ function boldNames(txt, names, clr) {
 // by Y (POS)." structure directly, rather than boldNames' single-name-lookup — a goal is the
 // one event type where two different players' names both need their own bold span. Falls back
 // to boldNames (scorer only) if the text doesn't match the expected shape.
+// The commentary prints the abbreviated name ("T. Hawthorne") while the event stores the full one
+// ("Trent Hawthorne"), so the scorer cannot be found by a literal lookup on playerFull alone. Both
+// forms are tried, because finding the name is the only reliable way to bold it: the old approach
+// took everything between the first full stop and the position tag, and a team whose name contains
+// full stops broke it outright — "E.S.U. 1, Guandong 0. T. Hawthorne (FWD)" bolded from "S.U."
+// onward, scoreline and all.
+const nameForms = (full) => {
+  const { first, last } = splitFullName(full);
+  const initial = first.trim().charAt(0);
+  return [full, initial ? initial + ". " + last : null].filter(Boolean);
+};
 function styledGoalText(txt, playerFull, clr) {
   const parts = []; let rest = txt;
-  const scorerMatch = rest.match(/^(.+?\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/);
+  const printed = nameForms(playerFull).find(f => txt.includes(f));
+  if (printed) {
+    const at = txt.indexOf(printed);
+    parts.push(txt.slice(0, at));
+    parts.push(<span key="s" style={{ fontWeight: 700, color: clr }}>{printed}</span>);
+    rest = txt.slice(at + printed.length);
+  } else {
+  // Greedy, so the prefix runs to the LAST full stop before the position tag rather than the first.
+  const scorerMatch = rest.match(/^(.+\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/);
   if (!scorerMatch) return boldNames(txt, playerFull, clr);
   parts.push(scorerMatch[1]);
   parts.push(<span key="s" style={{ fontWeight: 700, color: clr }}>{scorerMatch[2]}</span>);
   parts.push(scorerMatch[3]);
   rest = rest.slice(scorerMatch[0].length);
+  }
   const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/);
   if (astMatch) {
     parts.push(astMatch[1]);
@@ -5124,14 +5158,27 @@ export default function App() {
   // so the object identity changes on every click and this fires for all of them.
   // Layout effect, and again on the next frame: the row that was just added is measured before the
   // browser paints, and the frame after catches anything that reflows late (a crest, a pitch graphic).
+  // Pinning on a state change is not enough on its own, and this is the third go at it. The feed's
+  // tallest content is a chance card carrying an inline pitch diagram and a goal preview, and it
+  // does not reach its final height in the commit that adds it — measure then and scrollHeight is
+  // short, so the pin lands mid-card and the card finishes growing underneath it. A single
+  // requestAnimationFrame afterwards catches some of that and not all of it.
+  // So the height itself is the trigger: a ResizeObserver on the content re-pins whenever the
+  // scrollable area changes size, whatever caused it — a card growing, an image arriving, a font
+  // swapping in. The state effect stays for the case where the height happens not to change.
+  const lmPinFeed = useCallback(() => {
+    const el = lmFeedRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
   useLayoutEffect(() => {
     const el = lmFeedRef.current;
     if (!el) return;
-    const pin = () => { el.scrollTop = el.scrollHeight; };
-    pin();
-    const id = requestAnimationFrame(pin);
-    return () => cancelAnimationFrame(id);
-  }, [lmMatch, chanceStep]);
+    lmPinFeed();
+    const ro = new ResizeObserver(lmPinFeed);
+    // The scroller's own box never changes; what grows is the content inside it.
+    for (const child of el.children) ro.observe(child);
+    return () => ro.disconnect();
+  }, [lmMatch, chanceStep, lmPinFeed]);
   useEffect(() => {
     if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
       const delay = lmMatch.phase === "pre_match" ? 2000 : autoSpeed;
@@ -9055,12 +9102,20 @@ export default function App() {
                   <button onClick={() => setLmPanel("tactics")} style={{ ...smBtn, fontSize: 9 }}>&#9881; Tactics</button>
                   <button onClick={() => setLmPanel("mods")} style={{ ...smBtn, fontSize: 9 }}>&#8721; Modifiers</button>
                 </div>); })()}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
+            {/* Takes the height that is left, rather than claiming a fixed 270. The tab is a fixed
+                PHASE_COL sized as PANEL_H + LM_CONTROLS_H, and LM_CONTROLS_H is a GUESS at the
+                controls row above — 47px, which is the three-button standalone row. A tournament
+                fixture's row is taller: a bordered box whose buttons wrap. The row does not shrink
+                and these columns do not scroll, so every pixel it costs came out of the bottom of
+                this panel and simply left the box. The feed reached its own last event the whole
+                time; that last event was off-screen. Growth inside is still absorbed by the
+                scroller, so a revealed chance cannot shove anything either way. */}
+            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)", display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0 }}>
+              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center", flexShrink: 0 }}>Match Events</div>
               {/* Padding only at the top. A scroll container's own bottom padding is not reliably part
                   of its scroll range, so the last event sat behind it and could not be reached by
                   the wheel or by scrollTop — the breathing room is a trailing spacer instead. */}
-              <div ref={lmFeedRef} style={{ padding: "10px 0 0", height: 270, overflowY: "auto", overscrollBehavior: "contain" }}>
+              <div ref={lmFeedRef} style={{ padding: "10px 0 0", flex: "1 1 auto", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 6, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.08em", ...mono }}>{isH ? hC : aC}</div>
