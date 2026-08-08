@@ -23,6 +23,37 @@
   font-display: swap;
 }
 
+/* Agrandir — the 1934 World Cup's own face, used by that theme alone. Two weights is the whole set
+   the UI needs: 400 and 700 are declared, and CSS font matching snaps the 500s and 600s the styles
+   ask for onto the nearer real face rather than synthesising anything.
+   Regular is the display cut and TextBold is the text cut — not a matched pair, but the family ships
+   no Bold beside Regular and no Regular beside TextBold, and at 9-11px the width difference does not
+   read. A matched pair would want Agrandir Bold, or Agrandir Text Regular.
+   Covers 74 of the 76 accented characters the presets use — every macron, caron and ogonek. The two
+   it lacks are eth (Ð/ð), which fall back per glyph to Neue Montreal: Arnold Bjarnfreðsson and
+   Roððo Duongi, and nothing else in the game. */
+/* Aoboshi One, the 1933 theme's face. Bundled rather than pulled from Google: one fewer thing the
+   app needs the network for, and it renders the same whether or not fonts.googleapis.com answers.
+   Single weight, as the family ships — the 700s the UI asks for synthesise, which they always did. */
+@font-face {
+  font-family: 'Aoboshi One';
+  src: url('./fonts/AoboshiOne-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Agrandir';
+  src: url('./fonts/Agrandir-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Agrandir';
+  src: url('./fonts/Agrandir-TextBold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   --chrome-font: 'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;
   --chrome-bg: #0a0e17;
@@ -185,110 +216,45 @@
   --chrome-champion-glow: #2e2410;
 }
 
-/* Nichirin League One — light. A cool off-white page with white cards, hairline dividers
-   and near-black slate text, the shape mainstream sports apps use, carrying NL1's red as
-   the accent. Semantic colours keep their dark-theme hues but are re-picked dark enough to
-   read on white. Every value below is an override of a token defined in :root. */
-[data-theme="nl1"] {
-  --chrome-bg: #f1f3f6;
-  --chrome-bg-08: #f1f3f608;
-  --chrome-bg-dd: #f1f3f6dd;
-  --chrome-bg2: #e8ebf0;
-  --chrome-bg3: #f7f8fa;
-  --chrome-panel: #ffffff;
-  --chrome-panel-08: #ffffff08;
-  --chrome-panel-66: #ffffff66;
-  --chrome-border: #dfe3e8;
-  --chrome-border-33: #dfe3e833;
-  --chrome-border-66: #dfe3e866;
-  --chrome-border-88: #dfe3e888;
-  --chrome-muted: #666d79;
-  --chrome-muted-22: #666d7922;
-  --chrome-muted-33: #666d7933;
-  --chrome-muted-44: #666d7944;
-  --chrome-muted-66: #666d7966;
-  --chrome-muted-80: #666d7980;
-  --chrome-muted-88: #666d7988;
-  --chrome-brand: #dd0a1a;
-  --chrome-brand-11: #dd0a1a11;
-  --chrome-brand-14: #dd0a1a14;
-  --chrome-brand-1a: #dd0a1a1a;
-  --chrome-brand-20: #dd0a1a20;
-  --chrome-brand-22: #dd0a1a22;
-  --chrome-brand-33: #dd0a1a33;
-  --chrome-brand-44: #dd0a1a44;
-  --chrome-brand-66: #dd0a1a66;
-  --chrome-brand-88: #dd0a1a88;
-  --chrome-gold: #8f660d;
-  --chrome-gold-11: #8f660d11;
-  --chrome-gold-22: #8f660d22;
-  --chrome-gold-44: #8f660d44;
-  --chrome-gold-66: #8f660d66;
-  --chrome-champion-glow: #fdf3d6;
-
-  --ui-text: #12151a;
-  --ui-text-cc: #12151acc;
-  --ui-text-66: #12151a66;
-  --ui-text-33: #12151a33;
-  --ui-text-08: #12151a08;
-  --ui-danger: #c0392f;
-  --ui-danger-08: #c0392f08;
-  --ui-danger-0a: #c0392f0a;
-  --ui-danger-1a: #c0392f1a;
-  --ui-danger-22: #c0392f22;
-  --ui-danger-33: #c0392f33;
-  --ui-danger-44: #c0392f44;
-  --ui-danger-66: #c0392f66;
-  --ui-danger-deep: #c0392fdeep;
-  --ui-danger-edge: #c0392fedge;
-  --ui-warn: #8a6410;
-  --ui-warn-08: #8a641008;
-  --ui-warn-33: #8a641033;
-  --ui-ok: #3f7d3a;
-  --ui-ok-22: #3f7d3a22;
-  --ui-ok-66: #3f7d3a66;
-  --ui-ok-edge: #3f7d3aedge;
-  --ui-info: #3a6ea5;
-  --ui-info-08: #3a6ea508;
-  --ui-info-1a: #3a6ea51a;
-  --ui-info-22: #3a6ea522;
-  --ui-info-33: #3a6ea533;
-  --ui-info-44: #3a6ea544;
-  --ui-attack: #b8532f;
-  --ui-attack-0a: #b8532f0a;
-  --ui-attack-22: #b8532f22;
-  --ui-attack-33: #b8532f33;
-  --ui-attack-44: #b8532f44;
-  --ui-qual-direct: #357a4a;
-  --ui-qual-direct-0a: #357a4a0a;
-  --ui-qual-direct-33: #357a4a33;
-  --ui-qual-pool: #2f5f96;
-  --ui-qual-pool-22: #2f5f9622;
-  --ui-qual-pool-33: #2f5f9633;
-  --ui-nat-override: #7a52a8;
-  --ui-injury: #b04a4a;
-  --ui-sub: #5c6b7d;
-  --ui-zone-none: #767f8d;
-  --ui-goal-frame: #8a95a3;
-  --ui-form-defensive: #2f62b8;
-  --ui-style-tikitaka: #a4568a;
-  --ui-style-counter: #1f7f86;
-  --ui-style-parkbus: #6b5232;
-  --ui-captain: #2f6f8c;
-  --ui-form-w: #2f7a3a;
-  --ui-form-w-bg: #2f7a3abg;
-  --ui-form-l: #b23b3b;
-  --ui-form-l-bg: #b23b3bbg;
-  --ui-form-w-bg: #e3f2e5;
-  --ui-form-d-bg: #f6efd8;
-  --ui-form-l-bg: #fbe4e4;
-  --ui-danger-edge: #f2d0d0;
-  --ui-ok-edge: #d6e8d2;
-  --ui-danger-deep: #8f2320;
-  --ui-scrollbar: #c8ced6;
-  --ui-shadow-1: #00000010;
-  --ui-shadow-2: #00000014;
-  --ui-shadow-3: #0000001f;
-  --ui-shadow-4: #00000029;
-  --ui-scrim: rgba(20,24,31,0.45);
+/* 1934 World Cup — the host's flag. Black field, the deep navy of the cross, white. Sampled from
+   the banner itself (#000000 61%, #0f0f43 19%, #ffffff 13%) so the chrome and the masthead are the
+   same three colours rather than an approximation of them. The navy is too dark to carry a button,
+   so the brand steps up to the flag's own blue while the panels keep the banner's value. */
+[data-theme="wc1934"] {
+  --chrome-font: 'AviumNumerals','Agrandir','Neue Montreal','Inter','Helvetica Neue',sans-serif;
+  --chrome-bg: #05050f;
+  --chrome-bg-08: #05050f08;
+  --chrome-bg-dd: #05050fdd;
+  --chrome-bg2: #03030a;
+  --chrome-bg3: #080816;
+  --chrome-panel: #0f0f43;
+  --chrome-panel-08: #0f0f4308;
+  --chrome-panel-66: #0f0f4366;
+  --chrome-border: #23237a;
+  --chrome-border-33: #23237a33;
+  --chrome-border-66: #23237a66;
+  --chrome-border-88: #23237a88;
+  --chrome-muted: #8f95c9;
+  --chrome-muted-22: #8f95c922;
+  --chrome-muted-33: #8f95c933;
+  --chrome-muted-44: #8f95c944;
+  --chrome-muted-66: #8f95c966;
+  --chrome-muted-80: #8f95c980;
+  --chrome-muted-88: #8f95c988;
+  --chrome-brand: #1d3fd1;
+  --chrome-brand-11: #1d3fd111;
+  --chrome-brand-14: #1d3fd114;
+  --chrome-brand-1a: #1d3fd11a;
+  --chrome-brand-20: #1d3fd120;
+  --chrome-brand-22: #1d3fd122;
+  --chrome-brand-33: #1d3fd133;
+  --chrome-brand-44: #1d3fd144;
+  --chrome-brand-66: #1d3fd166;
+  --chrome-brand-88: #1d3fd188;
+  --chrome-gold: #c8cdf0;
+  --chrome-gold-11: #c8cdf011;
+  --chrome-gold-22: #c8cdf022;
+  --chrome-gold-44: #c8cdf044;
+  --chrome-gold-66: #c8cdf066;
+  --chrome-champion-glow: #131347;
 }

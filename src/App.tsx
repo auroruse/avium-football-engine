@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, useEffect, useMemo, Fragment } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
 import wc1933HeaderImg from "./1933-wc-banner.png";
-import nl1HeaderImg from "./nl1-banner.png";
+import wc1934HeaderImg from "./1934-wc-banner.png";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
@@ -13,6 +13,8 @@ import nchTSV from "./presets/NCH.tsv?raw";
 import rudTSV from "./presets/RUD.tsv?raw";
 import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
+import stadiumsTSV from "./stadiums.tsv?raw";
+import participantsTSV from "./participants.tsv?raw";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -2847,7 +2849,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["nl1", "Nichirin League One"]];
+const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
@@ -2860,7 +2862,7 @@ const inlineVars = (svg) => {
 
 function chromeExportColors(uiTheme) {
   if (uiTheme === "wc1933") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
-  if (uiTheme === "nl1") return { panel: "#ffffff", border: "#dfe3e8", muted: "#666d79", brand: "#dd0a1a" };
+  if (uiTheme === "wc1934") return { panel: "#0f0f43", border: "#23237a", muted: "#8f95c9", brand: "#1d3fd1" };
   return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
@@ -2989,6 +2991,64 @@ const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").repl
 function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 // Stable per-fixture identity, shared by home-advantage overrides, the host-venue pool,
 // and the replay counter — a group match, or a KO bracket slot (both legs share one tie).
+// Deal grounds to fixtures. Kept out of the component so it can be tested directly: the balance is
+// the whole point and it is not visible from the outside once it is inside an effect.
+// `prev` is honoured wherever it still names a ground in the pool — a match that has been played
+// must not move — and everything else is dealt from whichever grounds are carrying the fewest, ties
+// broken by `rand`. Result: every ground in the pool is used, within one match of every other.
+function dealVenues(keys, pool, prev, rand = Math.random) {
+  const inPool = new Set(pool), next = {};
+  for (const k of keys) if (prev[k] && inPool.has(prev[k])) next[k] = prev[k];
+  const need = keys.filter(k => !next[k]);
+  if (!need.length && Object.keys(next).length === Object.keys(prev).length) return prev;
+  const load = new Map(pool.map(st => [st, 0]));
+  for (const k in next) load.set(next[k], load.get(next[k]) + 1);
+  for (const k of need) {
+    const min = Math.min(...load.values());
+    const cands = pool.filter(st => load.get(st) === min);
+    const pick = cands[Math.floor(rand() * cands.length)];
+    next[k] = pick; load.set(pick, load.get(pick) + 1);
+  }
+  return next;
+}
+// Named participant sets — the field for a given tournament, so a World Cup is one pick rather than
+// thirty-two. PRESET, TEAM: one row per team, so adding a preset is appending rows and nothing
+// nests. The confederation each team belongs to is already on the team, which is why the file does
+// not carry it: a second copy of that is exactly what drifted when a nation last changed group.
+// A preset may also carry the groups it was drawn into. GROUP is optional: leave it blank and the
+// preset is a field only, fill it in and the allocation is fixed too — the draw already happened
+// somewhere else and re-running it here would produce a different tournament from the one on paper.
+const PARTICIPANT_PRESETS = (() => {
+  const m = new Map();
+  for (const line of participantsTSV.split("\n").slice(1)) {
+    const [preset, team, group] = line.split("\t").map(c => (c || "").trim());
+    if (!preset || !team) continue;
+    if (!m.has(preset)) m.set(preset, { teams: [], groups: {} });
+    const p = m.get(preset);
+    p.teams.push(team);
+    if (group) (p.groups[group] ||= []).push(team);
+  }
+  // Half a plan is not a plan: a preset either allocates everyone or allocates nobody.
+  for (const p of m.values()) {
+    const placed = Object.values(p.groups).reduce((n, g) => n + g.length, 0);
+    if (placed !== p.teams.length) p.groups = null;
+  }
+  return m;
+})();
+// Groups exactly as drawn. Anything in the field the plan does not name joins the smallest group, so
+// a team added by hand afterwards lands somewhere sane instead of disappearing.
+function allocPreset(teams, plan, format, legs) {
+  const labels = Object.keys(plan);
+  const grps = labels.map(l => ({ label: l, teams: [], schedule: [], standings: [] }));
+  const where = new Map();
+  labels.forEach((l, i) => plan[l].forEach(n => where.set(n.normalize("NFC"), i)));
+  const spare = [];
+  for (const t of teams) { const i = where.get((t.name || "").normalize("NFC")); if (i === undefined) spare.push(t); else grps[i].teams.push(t); }
+  for (const t of spare) grps.reduce((a, b) => a.teams.length <= b.teams.length ? a : b).teams.push(t);
+  grps.forEach(g => initGroup(g, format, legs));
+  return grps;
+}
+
 function fixtureKey(t) { if (!t) return null; if (t.type === "group") return `g_${t.gi}_${t.ri}_${t.mi}`; if (t.tp) return "tp"; if (t.bracket === "gf") return "gf"; if (t.bracket === "reset") return "reset"; if (t.bracket === "lb") return `lb_${t.ri}_${t.mi}`; return `ko_${t.ri}_${t.mi}`; }
 // City\tStadium, one per line — parses the host-nation venue pool pasted in tournament setup.
 function parseVenuePool(text) {
@@ -3642,7 +3702,7 @@ const PHASE_COL = { height: ROSTER_PANEL_H, display: "flex", flexDirection: "col
 // Tabs that have a two-pane layout to fill. The rest stay in a reading column until redesigned —
 // stretching a single stack to 1600 is the same failure as a ten-column table across 2000px.
 // Themes are off for now: the banner is one image again and the alternates are cut to fit it.
-const THEMES_ENABLED = false;
+const THEMES_ENABLED = true;
 // Banner height. The image keeps its own aspect and the tab row stretches to match it.
 const HEADER_H = 48;
 // Fewest clubs a league needs before it counts as complete in the roster rail.
@@ -3722,12 +3782,22 @@ const panelHead = { display: "flex", alignItems: "center", justifyContent: "spac
 // copied verbatim and cannot be enumerated at build time — drop a new .jpg in that folder and add
 // its name to this array. Names must match a team's `stadium` field exactly for the city and owner
 // to resolve; one that matches nothing still works, it just shows without them.
+// Venues that exist without anyone playing there. A ground normally enters the picker by being
+// photographed, but Elysia hosts a World Cup and has no league, so nothing in the game would ever
+// name its grounds — there is no tenant to carry them and no photo yet either. This file is the
+// deliberate record: STADIUM, NATION, CITY. It is authoritative where it speaks, because it was
+// written by hand for exactly this, and a tenant fills in whatever it leaves out.
+const STADIUM_ROWS = stadiumsTSV.split("\n").slice(1).map(l => l.split("\t").map(c => (c || "").trim()))
+  .filter(c => c[0]).map(([stadium, nation, city]) => ({ stadium, nation: nation || "", city: city || "" }));
+const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), r]));
 const STADIUM_IMAGES = [
-  "1st of October Arena", "Arena Tsukumo", "Bankoku Concourse", "Chūkyō Metropolitano", "Fudō Stadium",
+  "1st of October Arena", "Arena Tsukumo", "Baker Stadium", "Bankoku Concourse", "Bay Field",
+  "Chūkyō Metropolitano", "Cromsine Bowl", "Foundry Municipal Stadium", "Fudō Stadium",
   "Fūchumachi Power Park", "Hatsudako Stadium", "Hikari Heliodrome @ TIU", "IzuArena", "Kyōwa Stadium",
-  "Kōraku Stadium", "Mugen-dai Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium",
-  "Sekiringaku Community Stadium", "Spartak Coliseum", "Tadamune Kuronami National Stadium",
-  "Tenshukaku Stadium Kōgai", "The Cauldron", "Uguisu Park", "Yanagihara Stadium"];
+  "Kōraku Stadium", "Legionnaire Stadium", "Mugen-dai Stadium", "Muscovite Stadium", "Nagisa Stadium",
+  "Oshima-Nakayama Stadium", "Sahara Stadium", "Sekiringaku Community Stadium", "Skandario Field",
+  "Spartak Coliseum", "Starfield", "Tadamune Kuronami National Stadium", "Tenshukaku Stadium Kōgai",
+  "The Cauldron", "Trekker Stadium", "Uguisu Park", "Yanagihara Stadium"];
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
 // rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
 // (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
@@ -4222,9 +4292,11 @@ const APP_H = HEADER_H + 32 + PANEL_H + LM_CONTROLS_H;
 const MIN_ZOOM = 0.5;
 const MIN_WINDOW_W = Math.ceil(MIN_APP_WIDTH * MIN_ZOOM) + APP_PAD_X * 2;
 const APP_CSS = `
+/* Aoboshi One and Agrandir are bundled — see the @font-face blocks in theme.css. These two are not:
+   neither ships a file in the repo, so they still come off a CDN and the app falls back to Inter or
+   Helvetica Neue wherever it cannot reach one. Drop their files into src/fonts to close that. */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.cdnfonts.com/css/neue-montreal');
-@import url('https://fonts.googleapis.com/css2?family=Aoboshi+One&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 /* The window fits the app, not the other way round: .app-body is drawn at MIN_APP_WIDTH and zoomed
    to the window. zoom rather than transform:scale, because it reflows — text stays crisp and
@@ -4361,6 +4433,29 @@ export default function App() {
   useEffect(() => { if (!THEMES_ENABLED) return; try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
+  const [presetMsg, setPresetMsg] = useState("");
+  const [tPresetName, setTPresetName] = useState("");
+  // Replaces the field rather than adding to it: a preset is the whole entry list, and merging it
+  // into whatever was already ticked gives you a tournament nobody described.
+  const applyParticipantPreset = (name) => {
+    const p = PARTICIPANT_PRESETS.get(name);
+    if (!p) return;
+    const byName = new Map(teams.map(t => [t.name.normalize("NFC"), t]));
+    const found = p.teams.map(n => byName.get(n.normalize("NFC"))).filter(Boolean);
+    setTournamentTeamIds(found.map(t => t.id));
+    // Open the rails the field came from, so it is visible rather than merely counted.
+    setExpandedParticipantLeagues(sv => new Set([...sv,
+      ...found.map(t => t.league === "Avium International" ? t.conference : t.league).filter(Boolean)]));
+    // A name that no longer matches a team is dropped by the filter above, which would quietly load
+    // a 31-team World Cup. Say so instead — renaming a nation is the likely cause and it is easy to
+    // miss against a count nobody was checking.
+    const missing = p.teams.filter(n => !byName.has(n.normalize("NFC")));
+    setPresetMsg(missing.length ? `${missing.length} not in the roster: ${missing.join(", ")}` : "");
+    setTPresetName(name);
+    // A preset that names its groups fixes the allocation as well as the field.
+    if (p.groups && !missing.length) setTConfig(c => ({ ...c, numGroups: Object.keys(p.groups).length, allocMode: "preset" }));
+    else if (tConfig.allocMode === "preset") setTConfig(c => ({ ...c, allocMode: "seed" }));
+  };
   const [expandedRounds, setExpandedRounds] = useState(() => new Set());
   const toggleRound = (key) => setExpandedRounds(s => { const ns = new Set(s); ns.has(key) ? ns.delete(key) : ns.add(key); return ns; });
   const [teams, setTeams] = useState(() => PRESET_CATALOG.map(t => ({...t, strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p => ({...p})) : null})));
@@ -4454,6 +4549,38 @@ export default function App() {
     const code = LEAGUE_NAT[lg];
     return code ? (teams.find(t => t.league === "Avium International" && t.code === code) || null) : null;
   };
+  // The grounds the picker offers, grouped by the nation they stand in. A ground is in the picker
+  // when it has been CURATED: either there is a photo of it, or stadiums.tsv names it. What is NOT
+  // in the picker is the 146 grounds teams list in their own rows — 125 of those have no picture,
+  // and offering them all filled the list with empty grey rectangles nobody had chosen to add.
+  // Nation and city come from stadiums.tsv first, because that file was written to say exactly
+  // this, and from whoever plays there otherwise. A ground with neither lands in the trailing
+  // unaffiliated group, which is where a truly neutral venue belongs.
+  const venueIndex = useMemo(() => {
+    const owner = new Map();
+    for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !owner.has(st)) owner.set(st, t); }
+    const natOf = (t) => !t ? null : t.league === "Avium International" ? t : leagueNation(t.league);
+    const byCode = new Map(teams.filter(t => t.league === "Avium International" && t.code).map(t => [t.code, t]));
+    const groups = new Map();
+    for (const st of [...new Set([...STADIUM_IMAGES, ...STADIUM_ROWS.map(r => r.stadium)])]) {
+      const t = owner.get(st) || null;
+      const meta = STADIUM_META.get(st.normalize("NFC"));
+      const nat = (meta?.nation && byCode.get(meta.nation)) || natOf(t) || null;
+      const key = nat?.code || "";
+      if (!groups.has(key)) groups.set(key, { code: key, name: nat?.name || "Unaffiliated", nation: nat, venues: [] });
+      groups.get(key).venues.push({ stadium: st, city: meta?.city || t?.city || "", owner: t,
+        img: STADIUM_IMAGES.includes(st) ? st : null });
+    }
+    const out = [...groups.values()];
+    out.forEach(g => g.venues.sort((a, b) => a.stadium.localeCompare(b.stadium)));
+    // Named nations alphabetically, the unaffiliated bucket last.
+    return out.sort((a, b) => (a.code ? 0 : 1) - (b.code ? 0 : 1) || a.name.localeCompare(b.name));
+  }, [teams]);
+  const venueByName = useMemo(() => new Map(venueIndex.flatMap(g => g.venues.map(v => [v.stadium, v]))), [venueIndex]);
+  // Collapsed to begin with, and shared by both pickers so a nation opened on one screen is open on
+  // the other. Same Set-of-keys pattern as the participants rail.
+  const [openVenueNations, setOpenVenueNations] = useState(() => new Set());
+  const toggleVenueNation = (code) => setOpenVenueNations(sv => { const n = new Set(sv); n.has(code) ? n.delete(code) : n.add(code); return n; });
   const leagueAvgSkill = (ts) => ts?.length ? Math.round(ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length) : 0;
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
@@ -4554,7 +4681,7 @@ export default function App() {
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
-    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "wc1934" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -4703,7 +4830,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
-    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "wc1934" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -4907,7 +5034,10 @@ export default function App() {
   const [tScoreError, setTScoreError] = useState("");
   const [tHomeAdvOverrides, setTHomeAdvOverrides] = useState({});
   const [tVenueOverrides, setTVenueOverrides] = useState({}); // {[fixtureKey]: stadium name} — manual pick from the pre-match setup screen, host-team HA tournaments only
+  const [tVenueAuto, setTVenueAuto] = useState({});           // {[fixtureKey]: stadium name} — the dealt ground, kept so a played match never moves
   const [tHostVenueText, setTHostVenueText] = useState("");
+  // Typing a venue by hand is still allowed; it is just no longer the only way in.
+  const [hostVenueTextMode, setHostVenueText] = useState(false);
   const [_rcV, _setRcV] = useState(0);
   const tHostVenuePool = parseVenuePool(tHostVenueText);
   const [tLiveTarget, setTLiveTarget] = useState(null);
@@ -4942,6 +5072,12 @@ export default function App() {
   const allGroupForms = useMemo(() => tGroups.map(g => computeForm(g)), [tGroups]);
   // Two-per-row leaves the name column no room once the form guide is in it, so form drops out there.
   const groupCols = tGroups.length > GROUP_STACK_MAX ? 2 : 1;
+  // Rows stretch to fill the pane, which is right for three or four groups and wrong for eight: a
+  // 4-team table needs about 150px and was being blown out to 350, so half the groups sat below the
+  // fold. Past the stacking threshold the boxes take their own height instead. A third column is not
+  // the answer — the numeric columns have hard minimums that already put a box near 180px, and the
+  // standings share the pane with the fixtures.
+  const groupsCompact = tGroups.length > GROUP_STACK_MAX;
   const showForm = groupCols === 1;
   // Standings rows carry only name/code, so the crest's colour fallback needs the real team object.
   const groupTeamByName = useMemo(() => new Map(tGroups.flatMap(g => (g.teams || []).map(t => [t.name, t]))), [tGroups]);
@@ -4982,8 +5118,20 @@ export default function App() {
   // Every advance pins the feed to the bottom. Not events.length alone: stepping through a chance
   // grows the last card instead of adding an event, and a minute that produces nothing still moves
   // the clock — both left the newest content below the fold.
-  useEffect(() => { if (lmFeedRef.current) lmFeedRef.current.scrollTop = lmFeedRef.current.scrollHeight; },
-    [lmMatch?.events.length, lmMatch?.minute, lmMatch?.phase, chanceStep]);
+  // Keyed on the match itself. Naming the four things that were known to change — event count,
+  // minute, phase, chance step — meant anything else that redrew the feed left it where it was:
+  // a substitution, a card, a score, a replayed chance. lmAdvance clones the state on every step,
+  // so the object identity changes on every click and this fires for all of them.
+  // Layout effect, and again on the next frame: the row that was just added is measured before the
+  // browser paints, and the frame after catches anything that reflows late (a crest, a pitch graphic).
+  useLayoutEffect(() => {
+    const el = lmFeedRef.current;
+    if (!el) return;
+    const pin = () => { el.scrollTop = el.scrollHeight; };
+    pin();
+    const id = requestAnimationFrame(pin);
+    return () => cancelAnimationFrame(id);
+  }, [lmMatch, chanceStep]);
   useEffect(() => {
     if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
       const delay = lmMatch.phase === "pre_match" ? 2000 : autoSpeed;
@@ -5195,6 +5343,49 @@ export default function App() {
 
   };
 
+  // Every fixture that needs a ground, in fixture order. A two-legged tie is played at two, so each
+  // leg draws its own; a bye is not a match and an empty loser-bracket slot is not either.
+  const tAllVenueKeys = useMemo(() => {
+    const keys = [];
+    const add = (target) => {
+      const k = fixtureKey(target);
+      if (!k) return;
+      keys.push(k);
+      if (target.type === "ko" && tConfig.koLegs === 2 && !target.tp && target.bracket !== "gf" && target.bracket !== "reset") keys.push(k + "_L2");
+    };
+    tGroups.forEach((g, gi) => (g.schedule || []).forEach((rd, ri) => rd.forEach((_, mi) => add({ type: "group", gi, ri, mi }))));
+    if (tKO) {
+      (tKO.rounds || []).forEach((r, ri) => r.matches.forEach((m, mi) => { if (!m.bye) add({ type: "ko", ri, mi }); }));
+      (tKO.losers || []).forEach((r, ri) => r.matches.forEach((m, mi) => { if (m.home || m.away) add({ type: "ko", ri, mi, bracket: "lb" }); }));
+      if (tKO.thirdPlace) add({ type: "ko", tp: true });
+      if (tKO.grandFinal) add({ type: "ko", bracket: "gf" });
+      if (tKO.reset) add({ type: "ko", bracket: "reset" });
+    }
+    return keys;
+  }, [tGroups, tKO, tConfig.koLegs]);
+  // Grounds are DEALT, not hashed. hashStr(key) % pool.length was never random — it is a function of
+  // the fixture numbering, so it produced the same board every time and an uneven one: over a
+  // 48-match group stage with twelve grounds it gave six matches to four of them and NONE AT ALL to
+  // one. Salting the hash does not fix that; it still left a ground unused in 11 of 200 tournaments.
+  // dealVenues does the balancing; this only decides when to run it. Once dealt a ground is kept —
+  // re-rolling on a later render would move a match that has already been played.
+  useEffect(() => {
+    const pool = tHostVenuePool.map(v => v.stadium);
+    if (!(tConfig.homeAdvGroup === "host" || tConfig.homeAdvKO === "host") || !pool.length || !tAllVenueKeys.length) return;
+    setTVenueAuto(prev => dealVenues(tAllVenueKeys, pool, prev));
+  }, [tAllVenueKeys, tHostVenueText, tConfig.homeAdvGroup, tConfig.homeAdvKO]);
+
+  // The drawn groups only apply while the field is still exactly the preset's. Edit the entry list
+  // and the plan no longer describes it, so the chip goes away rather than allocating a tournament
+  // to a table that has a hole in it.
+  const tActivePreset = useMemo(() => {
+    const p = tPresetName ? PARTICIPANT_PRESETS.get(tPresetName) : null;
+    if (!p?.groups) return null;
+    const have = new Set(tournamentTeams.map(t => (t.name || "").normalize("NFC")));
+    const want = p.teams.map(n => n.normalize("NFC"));
+    return have.size === want.length && want.every(n => have.has(n)) ? p : null;
+  }, [tPresetName, tournamentTeams]);
+
   // Pure lookup, no side effects — shared by the pre-match setup screen (just needs to
   // display/offer choices) and tPlayLive's actual commit (needs the same resolution to
   // act on). tVenueOverrides wins over the automatic hash pick; hostModeActive/venueKey
@@ -5226,11 +5417,11 @@ export default function App() {
       else { homeAdv = tGetHA(venueKey, resolveKOHomeAdv(matchObj, tConfig)); }
       hostModeActive = tConfig.homeAdvKO === "host";
     }
-    // Host-nation tournaments assign a venue from the pasted pool to EVERY match, not just
-    // fixtures where the host team itself gets the home-advantage bonus — mirrors how a
-    // World Cup plays every game across the host country's stadiums.
-    const venueHash = isL2 ? hashStr(venueKey + "_L2") : hashStr(venueKey);
-    const autoVenue = hostModeActive && tHostVenuePool.length > 0 ? tHostVenuePool[venueHash % tHostVenuePool.length] : null;
+    // Host-nation tournaments give EVERY match a ground from the pool, not just the fixtures where
+    // the host team itself gets the home-advantage bonus — a World Cup plays every game across the
+    // host country. The ground was dealt by the effect above; this only reads it.
+    const dealt = hostModeActive ? tVenueAuto[overrideKey] : null;
+    const autoVenue = dealt ? (tHostVenuePool.find(v => v.stadium === dealt) || { stadium: dealt, city: "" }) : null;
     const overrideStadium = tVenueOverrides[overrideKey];
     const venue = overrideStadium ? { stadium: overrideStadium, city: tHostVenuePool.find(v => v.stadium === overrideStadium)?.city || "" } : autoVenue;
     return { matchObj, homeTeam, awayTeam, hi, ai, isL2, venueKey, overrideKey, homeAdv, hostModeActive, autoVenue, venue };
@@ -5372,7 +5563,24 @@ export default function App() {
   const sessionSaveTimeoutRef = useRef(null);
   // A draw in progress saves as the stage it was drawing for, because that is where it will reopen
   // — the badge in the saves list would otherwise promise a ceremony the slot cannot restore.
-  const buildSlotPayload = () => ({ v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase: settledPhase(tPhase, tGroups, tKO), lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tReplayCounts: _rc.all(), ts: Date.now() });
+  // The host-venue list is still stored as the text it always was, so a slot written before this
+  // screen existed still loads and a line typed by hand still survives: the pool is EDITED here,
+  // never rebuilt, so anything the picker does not know about is carried through untouched.
+  const hostVenueSet = useMemo(() => new Set(tHostVenuePool.map(v => v.stadium)), [tHostVenueText]);
+  const writeHostVenues = (pool) => setTHostVenueText(pool.map(v => [v.city || "", v.stadium || ""].join("\t")).join("\n"));
+  const toggleHostVenue = (st) => writeHostVenues(hostVenueSet.has(st)
+    ? tHostVenuePool.filter(v => v.stadium !== st)
+    : [...tHostVenuePool, { city: venueByName.get(st)?.city || "", stadium: st }]);
+  // A nation is on only when every one of its grounds is; clicking it half-on fills the rest in
+  // rather than clearing what is already there, which is the way round you want when you are adding
+  // a country and have already picked its final.
+  const toggleHostNation = (g) => {
+    const names = new Set(g.venues.map(v => v.stadium));
+    writeHostVenues(g.venues.every(v => hostVenueSet.has(v.stadium))
+      ? tHostVenuePool.filter(v => !names.has(v.stadium))
+      : [...tHostVenuePool, ...g.venues.filter(v => !hostVenueSet.has(v.stadium)).map(v => ({ city: v.city, stadium: v.stadium }))]);
+  };
+  const buildSlotPayload = () => ({ v: 1, tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase: settledPhase(tPhase, tGroups, tKO), lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tVenueAuto, tPresetName, tReplayCounts: _rc.all(), ts: Date.now() });
   const hasTournamentState = () => !!tPhase || tournamentTeamIds.length > 0;
   // Restores a saved tournament. Transient UI state is cleared rather than restored — an open
   // score editor or half-finished draw belongs to the tournament you were looking at, not this one.
@@ -5393,6 +5601,8 @@ export default function App() {
     setTHostVenueText(ss.tHostVenueText || "");
     setTHomeAdvOverrides(ss.tHomeAdvOverrides || {});
     setTVenueOverrides(ss.tVenueOverrides || {});
+    setTVenueAuto(ss.tVenueAuto || {});
+    setTPresetName(ss.tPresetName || "");
     _rc.clear(); if (ss.tReplayCounts) _rc.seed(ss.tReplayCounts); _setRcV(v => v + 1);
     setTEdit(null); setTKoEdit(null); setTScoreError(""); setTManual(null); setTKOManual(null);
     setTDrawSetup(null); setTDrawAnim(null); setTKoDrawSetup(null); setTKoDrawAnim(null); setTKoDrawFail("");
@@ -5424,7 +5634,7 @@ export default function App() {
       });
       if (!tActiveSlot) setTActiveSlot(id);
     }, 1500);
-  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, _rcV, tActiveSlot]);
+  }, [tournamentTeamIds, tConfig, tGroups, tKO, tPlayerStats, tPhase, lmH, lmA, tHostVenueText, tHomeAdvOverrides, tVenueOverrides, tVenueAuto, tPresetName, _rcV, tActiveSlot]);
   // Declared after the autosave effect so it clears the guard only once that effect has skipped.
   useEffect(() => { slotBusyRef.current = false; });
 
@@ -5455,7 +5665,7 @@ export default function App() {
     const name = uniqueSlotName(after, "Tournament");
     // Write the blank payload up front: the busy guard suppresses the autosave for this render,
     // so without this the new slot would have an index entry but no save behind it.
-    const blank = { v: 1, tournamentTeamIds: [], tConfig, tGroups: [], tKO: null, tPlayerStats: {}, tPhase: "setup", lmH, lmA, tHostVenueText: "", tHomeAdvOverrides: {}, tVenueOverrides: {}, tReplayCounts: {}, ts: Date.now() };
+    const blank = { v: 1, tournamentTeamIds: [], tConfig, tGroups: [], tKO: null, tPlayerStats: {}, tPhase: "setup", lmH, lmA, tHostVenueText: "", tHomeAdvOverrides: {}, tVenueOverrides: {}, tVenueAuto: {}, tPresetName: "", tReplayCounts: {}, ts: Date.now() };
     if (!writeSlot(id, blank)) { setSlotMsg("Could not start a new tournament — browser storage is full."); return; }
     slotBusyRef.current = true;
     resetTournament();
@@ -5789,7 +5999,7 @@ export default function App() {
       // the confederation and nation rules carry the draw. Byes fall to the best by rating, since the
       // qualifier sort has no points to work with, or are picked by hand above.
       let koSize = 1; while (koSize < genTeams.length) koSize *= 2;
-      if (koFirstIsDrawn(koSize)) {
+      if (koFirstIsDrawn()) {
         // Straight to the draw's own setup screen, the way a group draw goes to its rules before any
         // ball comes out. The bracket is not built until Begin Draw.
         setTGroups([]); setTKoDrawSetup({ teams: genTeams, hasTP, bracket: koSize, source: "cup" });
@@ -5802,8 +6012,12 @@ export default function App() {
     }
     const ng = tConfig.numGroups;
     const fmt = tConfig.matchFormat;
-    const m = ng === 1 ? "seed" : (mode || tConfig.allocMode);
-    if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    let m = ng === 1 ? "seed" : (mode || tConfig.allocMode);
+    // The chip is hidden once the field stops matching, but the setting can outlive it — an edit
+    // between choosing the preset and pressing Create would otherwise allocate to a stale plan.
+    if (m === "preset" && !tActivePreset) m = "seed";
+    if (m === "preset") { setTGroups(allocPreset(genTeams, tActivePreset.groups, fmt, tConfig.rrLegs)); setTPhase("groups"); }
+    else if (m === "seed") { setTGroups(allocSeed(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
     else if (m === "random") { setTGroups(allocRandom(genTeams, ng, fmt, tConfig.rrLegs)); setTPhase("groups"); }
     // The draw gets its own screen for the rules before any ball comes out — the teams are
     // snapshotted here so editing the roster behind the draw cannot change who is in the pots.
@@ -5966,7 +6180,9 @@ export default function App() {
     setTGroups(ng);
   };
   const tHasUnresolved = tGroups.length > 0 && tPhase === "groups" && hasUnresolvedTies(tGroups, tConfig.qualZones, tConfig.tiebreakers);
-  const resetTournament = () => { setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawSetup(null); setTDrawAnim(null); setTKoDrawAnim(null); setTKoDrawSetup(null); setTKoDrawFail(""); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTPendingPlayLive(null); setTPoolData(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); };
+  // koDrawRounds describes the tournament being reset, not a preference to carry into the next one:
+  // left standing it re-pairs a later round of a bracket nobody asked to be drawn.
+  const resetTournament = () => { setTConfig(c => ({ ...c, koDrawRounds: [] })); setTPhase("setup"); setTGroups([]); setTKO(null); setTPlayerStats({}); setTManual(null); setTKOManual(null); setTDrawSetup(null); setTDrawAnim(null); setTKoDrawAnim(null); setTKoDrawSetup(null); setTKoDrawFail(""); setTEdit(null); setTScoreError(""); setTHomeAdvOverrides({}); setTVenueOverrides({}); setTVenueAuto({}); setTPendingPlayLive(null); setTPoolData(null); setExpandedRounds(new Set()); _rc.clear(); _setRcV(v => v + 1); };
 
 
   const tGenNextSwissRound = () => {
@@ -6257,13 +6473,12 @@ export default function App() {
   // Which knockout rounds the user asked to be drawn, keyed by how many teams contest the round so
   // the setting means the same thing whatever size the bracket turns out to be.
   const koDrawsAt = (size) => (tConfig.koDrawRounds || []).includes(size);
-  // Allocation "Draw" has always meant "the bracket is drawn", and it is about the first round — that
-  // is the only one an allocation mode ever touches. It used to run a stub that paired the field and
-  // threw its log away, so picking it produced a finished bracket and no ceremony at all, which read
-  // as the draw simply not working. It now routes to the same drawn first round, with the same rules
-  // and the same reveal. Ticking the first round under Draw Rounds does the same thing; either is
-  // enough, so setting one and not the other cannot leave you with a silent bracket.
-  const koFirstIsDrawn = (size) => koDrawsAt(size) || tConfig.koAllocMode === "draw";
+  // The allocation mode decides the first round, and nothing else does. It used to be `koDrawsAt(size)
+  // || koAllocMode === "draw"`, which let Rounds to Draw override Seed, Random and Manual: those
+  // entries are keyed by round SIZE, so ticking "Round of 16" for one cup meant every later
+  // tournament whose first round happened to hold 16 teams was drawn too, whatever Allocation said.
+  // Rounds to Draw governs the rounds AFTER the first — which is what tMaybeDrawNextKO reads it for.
+  const koFirstIsDrawn = () => tConfig.koAllocMode === "draw";
   // Build the first-round matches from a drawn pairing rather than from the bracket. Byes are taken
   // out first and keep their seeded slots, so the draw only ever pairs the teams that actually play:
   // a bye is not a tie and putting one in the bowl would produce a ball nobody could be drawn against.
@@ -6381,7 +6596,7 @@ export default function App() {
     // A draw configured for this round size wins over the allocation mode: the mode says how the
     // bracket is built when there is no draw, and there is one.
     let firstSize = 1; while (firstSize < qualified.length) firstSize *= 2;
-    if (koFirstIsDrawn(firstSize)) {
+    if (koFirstIsDrawn()) {
       setTKoDrawSetup({ teams: qualified, hasTP, bracket: firstSize, source: "groups" });
       setTPhase("ko_draw_setup"); return;
     }
@@ -6405,7 +6620,7 @@ export default function App() {
     // set to draw its first round never reached the draw at all — the same way Allocation: Draw
     // used to run a silent stub. A configured draw wins here for the same reason it wins on the
     // routes without byes; the picks are carried through so the draw only pairs who actually plays.
-    if (koFirstIsDrawn(n2)) {
+    if (koFirstIsDrawn()) {
       setTKoDrawSetup({ teams: tByeManual.pool, hasTP, bracket: n2, byes: byeTeams.map(t => t.name),
                         source: tByeManual.onConfirm === "single" ? "cup" : "groups" });
       setTPhase("ko_draw_setup"); setTByeManual(null); return;
@@ -7697,9 +7912,41 @@ export default function App() {
                         </div>
                         {tConfig.homeAdvTeams.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4, ...mono }}>{tConfig.homeAdvTeams.join(", ")}</div>}
                         {tConfig.homeAdvTeams.length > 0 && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Host Venues (Optional)</div>
-                          <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
-                          {tHostVenuePool.length > 0 && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>{tHostVenuePool.length} venue{tHostVenuePool.length === 1 ? "" : "s"} loaded</div>}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, color: "var(--chrome-muted)" }}>Host Venues (Optional)</span>
+                            <button onClick={() => setHostVenueText(v => !v)} style={{ ...xsBtn, color: "var(--chrome-muted)" }}>{hostVenueTextMode ? "Pick" : "Type"}</button>
+                          </div>
+                          {hostVenueTextMode
+                            ? <textarea value={tHostVenueText} onChange={e => setTHostVenueText(e.target.value)} placeholder={"City\tStadium\nMizuhara\tTadamune Kuronami National Stadium\nAxiom\tTrekker Stadium"} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.6, fontSize: 10 }} />
+                            : <div style={{ maxHeight: 210, overflowY: "auto", scrollbarGutter: "stable", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "2px 0" }}>
+                              {venueIndex.map(g => {
+                                const on = g.venues.filter(v => hostVenueSet.has(v.stadium)).length;
+                                return (<Fragment key={g.code || "_"}>
+                                  {/* The whole nation in one click — the header is the control, and it
+                                      reports how much of itself is already in. */}
+                                  {/* Two controls in one row, because there are two things you want to
+                                      do to a country: the row opens it, the count takes all of it. */}
+                                  <div onClick={() => toggleVenueNation(g.code)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", cursor: "pointer", background: "var(--chrome-panel-66)" }}>
+                                    {g.nation ? <TeamCrest team={g.nation} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                                    <span style={{ fontSize: 10, fontWeight: 600, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: on ? "var(--ui-text)" : "var(--chrome-muted)" }}>{g.name}</span>
+                                    <span onClick={e => { e.stopPropagation(); toggleHostNation(g); }} title={`All ${g.venues.length} in ${g.name}`}
+                                        style={{ ...mono, fontSize: 9, padding: "1px 6px", borderRadius: 4, border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), color: on ? "var(--chrome-brand)" : "var(--chrome-muted-66)" }}>{on}/{g.venues.length}</span>
+                                    <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", width: 8 }}>{openVenueNations.has(g.code) ? "\u25BE" : "\u25B8"}</span>
+                                  </div>
+                                  {openVenueNations.has(g.code) && g.venues.map(v => { const sel = hostVenueSet.has(v.stadium); return (
+                                    <div key={v.stadium} onClick={() => toggleHostVenue(v.stadium)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 8px 3px 22px", cursor: "pointer", fontSize: 10, color: sel ? "var(--ui-text)" : "var(--chrome-muted)" }}>
+                                      <span style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, border: "1px solid " + (sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), background: sel ? "var(--chrome-brand)" : "transparent" }} />
+                                      <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.stadium}</span>
+                                      {v.city && <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)", flexShrink: 0 }}>{v.city}</span>}
+                                    </div>); })}
+                                </Fragment>);
+                              })}
+                            </div>}
+                          <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 4 }}>
+                            {tHostVenuePool.length
+                              ? `${tHostVenuePool.length} venue${tHostVenuePool.length === 1 ? "" : "s"} — the host plays every tie at one of these`
+                              : "None picked — the host plays at its own ground"}
+                          </div>
                         </div>}
                       </div>)}
                     </div>
@@ -7991,7 +8238,7 @@ export default function App() {
       })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
-          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
+          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
             {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
@@ -8547,6 +8794,30 @@ export default function App() {
                         {sub && <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
                       </div>
                     </div>);
+                  // Grounds by nation, in the same row format — the nation's badge sits in the slot
+                  // a stadium photo would use, so the header reads as one of the rows rather than as
+                  // a separate control. The flat list underneath it was every PICTURE, which quietly
+                  // hid every ground that has no photo.
+                  const natRow = (g, n, open) => (
+                    <div key={"nat" + (g.code || "_")} onClick={() => toggleVenueNation(g.code)}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer",
+                                 borderTop: "1px solid var(--chrome-border)", marginTop: 4, background: open ? "var(--chrome-panel-66)" : "transparent" }}>
+                      <div style={{ width: 52, height: 30, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {g.nation ? <TeamCrest team={g.nation} size={23} /> : null}
+                      </div>
+                      <div style={{ ...sectionLabel, fontSize: 9, color: open ? "var(--ui-text)" : "var(--chrome-muted)", flex: 1, minWidth: 0 }}>{g.name}</div>
+                      <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted-66)" }}>{n}</span>
+                      <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", width: 8 }}>{open ? "\u25BE" : "\u25B8"}</span>
+                    </div>);
+                  const groundSub = (v) => v.owner || v.city
+                    ? <>{v.city && <CityLink name={v.city} />}{v.city && v.owner ? " · " : ""}{v.owner ? v.owner.name : ""}</> : null;
+                  const grounds = (skip, isSel, onPick) => venueIndex.flatMap(g => {
+                    const vs = g.venues.filter(v => !skip.has(v.stadium));
+                    if (!vs.length) return [];
+                    const open = openVenueNations.has(g.code);
+                    return [natRow(g, vs.length, open),
+                      ...(open ? vs.map(v => row("o" + v.stadium, isSel(v.stadium), () => onPick(v.stadium), v.stadium, groundSub(v), v.img)) : [])];
+                  });
                   const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
                   const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
                   const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
@@ -8582,10 +8853,8 @@ export default function App() {
                     const shown = new Set([...ownGrounds, ...(vc.hostModeActive ? tHostVenuePool.map(v => v.stadium) : [])]);
                     return (<>
                       {head}
-                      <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 14px 5px", borderTop: "1px solid var(--chrome-border)", marginTop: 4 }}>Other Grounds</div>
-                      {STADIUM_IMAGES.filter(st => !shown.has(st)).map(st => { const owner = byStadium.get(st);
-                        return row("o" + st, chosen === st, () => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: st })); setHA(null); }, st,
-                          place(owner), st); })}
+                      {grounds(shown, st => chosen === st,
+                        st => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: st })); setHA(null); })}
                     </>);
                   }
                   return (<>
@@ -8596,10 +8865,7 @@ export default function App() {
                       return row(side, lmHomeAdv === side, () => pickHost(side), st || `${t.name} (no ground listed)`,
                         withPlace(side === "home" ? "Team 1" : "Team 2", t),
                         STADIUM_IMAGES.includes(st) ? st : null); })}
-                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 14px 5px", borderTop: "1px solid var(--chrome-border)", marginTop: 4 }}>Other Grounds</div>
-                    {STADIUM_IMAGES.filter(st => !ownGrounds.has(st)).map(st => { const owner = byStadium.get(st);
-                      return row(st, lmHomeAdv === null && named === st, () => pickGround(st), st,
-                        place(owner), st); })}
+                    {grounds(ownGrounds, st => lmHomeAdv === null && named === st, pickGround)}
                   </>);
                 })()}
                 </div>
@@ -8791,7 +9057,10 @@ export default function App() {
                 </div>); })()}
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" }}>Match Events</div>
-              <div ref={lmFeedRef} style={{ padding: "10px 0", height: 270, overflowY: "auto" }}>
+              {/* Padding only at the top. A scroll container's own bottom padding is not reliably part
+                  of its scroll range, so the last event sat behind it and could not be reached by
+                  the wheel or by scrollTop — the breathing room is a trailing spacer instead. */}
+              <div ref={lmFeedRef} style={{ padding: "10px 0 0", height: 270, overflowY: "auto", overscrollBehavior: "contain" }}>
               {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
                 const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <div style={{ padding: "2px 6px", borderRadius: 6, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.08em", ...mono }}>{isH ? hC : aC}</div>
@@ -8926,6 +9195,7 @@ export default function App() {
                 </div>);
               }); })()}
               {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--chrome-muted)", fontSize: 11 }}>Awaiting kick off...</div>}
+              <div style={{ height: 10, flexShrink: 0 }} />
               </div>
             </div>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 0, boxShadow: "0 2px 12px var(--ui-shadow-2)", flex: "1 1 auto" }}>
@@ -9220,10 +9490,17 @@ export default function App() {
                   <div style={{ ...panelHead, padding: "18px 20px 0", marginBottom: 0, flexShrink: 0 }}>
                   <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
                   <div style={{ display: "flex", gap: 6 }}>
+                    {PARTICIPANT_PRESETS.size > 0 && (
+                      <select value="" onChange={e => { applyParticipantPreset(e.target.value); e.target.value = ""; }}
+                          style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
+                        <option value="" hidden>&#9776; Presets</option>
+                        {[...PARTICIPANT_PRESETS].map(([name, p]) => <option key={name} value={name}>{name} ({p.teams.length}{p.groups ? ", drawn" : ""})</option>)}
+                      </select>)}
                     <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
-                    <button onClick={() => setTournamentTeamIds([])} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
+                    <button onClick={() => { setTournamentTeamIds([]); setPresetMsg(""); }} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                   </div>
                 </div>
+                {presetMsg && <div onClick={() => setPresetMsg("")} style={{ margin: "0 20px", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 10, color: "var(--ui-warn)", background: "var(--ui-warn-33)", border: "1px solid var(--ui-warn)" }}>{presetMsg}</div>}
                   <div style={{ padding: "14px 20px 18px", flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 {groupByLeague(teams).map((entry, gi) => {
                   if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid var(--chrome-border-33)", margin: "8px 0" }} />;
@@ -9326,12 +9603,19 @@ export default function App() {
                       </div>
                       {tConfig.numGroups > 1 && (<>
                         <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 8 : 0 }}>
-                          {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
-                            <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
-                          ))}
-                        </div>
-                        {tConfig.allocMode === "draw" && <div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Pots and separation rules come next, on the draw screen.</div>}
+                        {/* A preset that carries its groups has already been drawn, so there is no
+                            allocation left to choose. Editing the field unlocks it, because the plan
+                            stops describing the entry list and tActivePreset goes null. */}
+                        {tActivePreset && tConfig.allocMode === "preset" ? (
+                          <div style={{ ...chip, display: "inline-block", cursor: "default", background: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Locked</div>
+                        ) : (<>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: tConfig.allocMode === "draw" ? 8 : 0 }}>
+                            {[...(tActivePreset ? [["preset", "As Drawn"]] : []), ["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
+                              <button key={id} onClick={() => setTConfig(c => ({ ...c, allocMode: id }))} className={tConfig.allocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.allocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.allocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
+                            ))}
+                          </div>
+                          {tConfig.allocMode === "draw" && <div style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Pots and separation rules come next, on the draw screen.</div>}
+                        </>)}
                       </>)}
                     </div>
                   )}
@@ -9923,14 +10207,17 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", flex: "1 1 auto", minHeight: 0 }}>
               <div style={{ minWidth: 0, minHeight: 0, overflowX: "hidden", overflowY: "auto", scrollbarGutter: "stable", display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Standings — each table copies as TSV so it pastes into a spreadsheet as columns. */}
-              <div style={{ display: "grid", gridAutoFlow: "column", gridTemplateColumns: `repeat(${groupCols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${Math.ceil(tGroups.length / groupCols) || 1}, minmax(min-content, 1fr))`, gap: 10, flex: "1 1 auto", alignContent: "stretch" }}>
-                {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; const cw = standingsColW(g.standings); return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "grid", gridAutoFlow: "column", gridTemplateColumns: `repeat(${groupCols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${Math.ceil(tGroups.length / groupCols) || 1}, ${groupsCompact ? "min-content" : "minmax(min-content, 1fr)"})`, gap: 10, flex: "1 1 auto", alignContent: groupsCompact ? "start" : "stretch" }}>
+                {tGroups.map((g, gi) => { const form = allGroupForms[gi]; const N = g.standings.length; const cw = standingsColW(g.standings); return (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: groupsCompact ? "8px 10px 6px" : "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)", display: "flex", flexDirection: "column" }}>
                   <div style={{ position: "relative", marginBottom: 8 }}><div style={{ ...cardLabel, marginBottom: 0 }}>{tConfig.numGroups === 1 ? "LEAGUE TABLE" : "GROUP " + g.label}</div><button onClick={() => copyStandings(g, gi)} title="Copy this table as spreadsheet columns" style={{ ...xsBtn, position: "absolute", right: 0, top: -3, padding: "1px 7px", fontSize: 8, color: copiedGroup === gi ? "var(--ui-ok)" : "var(--chrome-muted)", borderColor: copiedGroup === gi ? "var(--ui-ok-66)" : "var(--chrome-muted-33)" }}>{copiedGroup === gi ? "Copied" : "Copy"}</button></div>
                   <table className="wide-table" style={{ width: "100%", height: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: 10, flex: "1 1 auto" }}><colgroup><col style={{ width: 20 }} /><col style={{ width: "auto" }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.pwdl }} /><col style={{ width: cw.goals }} /><col style={{ width: cw.goals }} /><col style={{ width: cw.gd }} /><col style={{ width: cw.pts }} />{showForm && <col style={{ width: FORM_COL_W }} />}</colgroup><thead><tr style={{ color: "var(--chrome-muted)" }}><th style={{ padding: "2px", fontWeight: 400 }}>#</th><th style={{ padding: "2px 3px", textAlign: "left", fontWeight: 400 }}>Team</th><th style={{ padding: "2px", fontWeight: 400 }}>P</th><th style={{ padding: "2px", fontWeight: 400 }}>W</th><th style={{ padding: "2px", fontWeight: 400 }}>D</th><th style={{ padding: "2px", fontWeight: 400 }}>L</th><th style={{ padding: "2px", fontWeight: 400 }}>GF</th><th style={{ padding: "2px", fontWeight: 400 }}>GA</th><th style={{ padding: "2px", fontWeight: 400 }}>GD</th><th style={{ padding: "2px", fontWeight: 400 }}>Pts</th>{showForm && <th style={{ padding: "2px 2px 2px 6px", fontWeight: 400, textAlign: "right", whiteSpace: "nowrap" }}>Form</th>}</tr></thead>
                     <tbody>{g.standings.map((r, ri) => { const zone = zoneFor(ri, N, tConfig.qualZones); return (<tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--chrome-panel-66)" }}><td style={{ padding: "2px 4px 2px 2px", textAlign: "right", ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ri + 1}</td><td style={{ padding: "3px 3px 3px 4px", color: zone ? zone.color : "var(--ui-zone-none)", fontWeight: zone ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", maskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", WebkitMaskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%)", borderLeft: zone ? "2px solid " + zone.color : "2px solid transparent" }}><TeamCrest team={groupTeamByName.get(r.name) || r} size={12} style={{ verticalAlign: -2, marginRight: 4 }} />{r.name}{ri < N - 1 && areTied(r, g.standings[ri+1], tConfig.tiebreakers, g.schedule) && <button onClick={e => { e.stopPropagation(); tSwapStandings(gi, ri); }} title="Swap with team below (manual tiebreak)" style={{ background: "none", border: "1px solid var(--ui-attack-44)", borderRadius: 3, color: "var(--ui-attack)", fontSize: 8, cursor: "pointer", padding: "0 4px", fontFamily: "inherit", marginLeft: 6 }}>⇅</button>}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.p}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.w}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.d}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.l}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.gf}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", textAlign: "center", ...mono }}>{r.ga}</td><td style={{ padding: "2px", textAlign: "center", ...mono, color: r.gf - r.ga > 0 ? "var(--ui-text)" : r.gf - r.ga < 0 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td><td style={{ padding: "2px", color: "var(--chrome-muted)", fontWeight: 600, textAlign: "center", ...mono }}>{r.pts}</td>{showForm && <td style={{ padding: "2px 0 2px 6px", whiteSpace: "nowrap" }}><div style={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>{(form[r.name] || []).slice(-FORM_N).map((f, fi) => (<span key={fi} title={f.bye ? "Bye" : (f.home ? "vs " : "@ ") + f.opp + " " + f.gf + "–" + f.ga} style={{ width: 15, height: 15, borderRadius: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, ...mono, flexShrink: 0, background: f.r === "W" ? "var(--ui-form-w-bg)" : f.r === "D" ? "var(--ui-form-d-bg)" : "var(--ui-form-l-bg)", color: f.r === "W" ? "var(--ui-form-w)" : f.r === "D" ? "var(--ui-warn)" : "var(--ui-form-l)" }}>{f.r}</span>))}{(form[r.name] || []).length === 0 && <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}>—</span>}</div></td>}</tr>); })}</tbody></table>
-                  {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)" }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
                 </div>); })}
               </div>
+              {/* One key for the whole board. It used to be repeated inside every group card, which
+                  is the same legend eight times over and about thirty pixels of card height each —
+                  enough that the last row of groups fell below the fold. */}
+              {qz.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, flexShrink: 0 }}>{tConfig.qualZones.map((z, zi) => (<div key={zi} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: z.color }} /><span style={{ fontSize: 10, color: "var(--ui-zone-none)" }}>{z.label}</span></div>))}</div>}
               {/* Live Pool Ranking — best-of zones */}
               {(() => {
                 const bestZones = qz.filter(z => z.type === "best");
