@@ -11,6 +11,7 @@ import kfkTSV from "./presets/KFK.tsv?raw";
 import kkmTSV from "./presets/KKM.tsv?raw";
 import nchTSV from "./presets/NCH.tsv?raw";
 import rudTSV from "./presets/RUD.tsv?raw";
+import shiTSV from "./presets/SHI.tsv?raw";
 import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
@@ -3666,7 +3667,7 @@ const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false, true);
 // Column 1 holds the club badge — an image floating over the cell, so it exports blank — and both
 // it and the league column are stripped before parseBulk sees the row.
 const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
-                     KKM: kkmTSV, NCH: nchTSV, RUD: rudTSV, VAR: varTSV, VIC: vicTSV };
+                     KKM: kkmTSV, NCH: nchTSV, RUD: rudTSV, SHI: shiTSV, VAR: varTSV, VIC: vicTSV };
 // Divisions whose sheets carry no per-player ratings. Every player in them inherits his club's team
 // skill, which is a default rather than an assessment of anyone — so they all read identically, and
 // in national-team selection they displace real, individually-rated players with placeholder names.
