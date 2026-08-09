@@ -54,7 +54,30 @@ function pickRedCardVariant(rng, pos) {
 // Positive side no longer hard-clamps at the old +12-gap ceiling (1.0) — it keeps
 // climbing up to a +30 gap (2.5), so a real outlier stuck on a weak team still reads
 // as one instead of flatlining at the same bonus as a merely-decent gap.
-const ovrN = (ovr, teamSkill) => { const g = ((ovr || teamSkill || 65) - (teamSkill || 65)); return g >= 0 ? Math.min(2.5, g / 12) : Math.max(-1, g / 30); };
+// A player is what his number says he is, and every comparison is between two real ratings. There
+// is no baseline: this read the gap to the player's own club skill (so signing a good player for a
+// good club made him worse), then briefly the gap to a fixed 75 (so an 83 was the same threat
+// against a 90 defence as against a 60 one). Both were stand-ins for the thing that actually
+// decides a duel -- who is on the other side of it.
+// Asymmetric on purpose, and unchanged: quality above the man opposite lifts a side faster than
+// shortfall below him drags, because one exceptional player decides matches in a way one weak link
+// does not. Either side unknown means no adjustment rather than a guessed one.
+// How hard an edge over the man opposite bites. This used to be read against a player's own club,
+// which meant it pointed AGAINST team strength -- mean ovrN ran +0.35 for a 51-rated side against
+// -0.12 for an 86-rated one. Pointed at the opponent instead, it adds to the team-strength term
+// rather than cancelling it, and at full weight a 13-point gap became 87% wins on a 10% draw rate.
+// Measured on uniform sides at a controlled gap, +13: x1.0 = 87%/2.29 GD, x0.6 = 77%/1.72,
+// x0.4 = 71%/1.37. Applied after the caps, so the usable range is +1.5 to -0.6.
+const OVR_EDGE = 0.6;
+const ovrVs = (a, b) => { if (a == null || b == null) return 0; const g = a - b; return (g >= 0 ? Math.min(2.5, g / 12) : Math.max(-1, g / 30)) * OVR_EDGE; };
+// The unit a player is up against: the mean of the opposing band, fatigue included, because a tired
+// back four is a different back four. Null when nobody is in that band -- a side with no recognised
+// forward should not hand its opponents a bonus for it.
+const lineOvr = (players, band) => { let n = 0, t = 0; for (const p of players || []) if (p.pos === band) { t += fatigueOvr(p.ovr, p.stamina); n++; } return n ? t / n : null; };
+const gkOvr = (players) => { const g = (players || []).find(p => p.pos === "GK"); return g ? fatigueOvr(g.ovr, g.stamina) : null; };
+// For choosing BETWEEN team-mates, the comparator is the team-mates. Who takes the shot is a
+// question about this XI, not about the opposition.
+const squadMeanOvr = (players) => { let n = 0, t = 0; for (const p of players || []) if (p.ovr != null) { t += p.ovr; n++; } return n ? t / n : null; };
 const EMERGENCY_GK_SAVE_PENALTY = 0.22;
 // Momentum is a real (non-cosmetic) effective-skill modifier — see its two reads in
 // lmSimMinute/resolvePendingPenalty (+2%/point) — not the momHist graph, which is a
@@ -90,7 +113,9 @@ const drainChain = (s, side, chain, amt) => {
 // much as the cap: at 1.5 the curve is almost flat just under the threshold, so a player at 65
 // stamina loses well under an OVR point however large FATIGUE_MAX_DROP is.
 const FATIGUE_FRESH_ABOVE = 75, FATIGUE_MAX_DROP = 8, FATIGUE_CURVE = 1.5;
-const fatigueOvr = (ovr, stamina) => { const st = Math.max(0, Math.min(100, stamina ?? 100)); return st >= FATIGUE_FRESH_ABOVE ? (ovr ?? 65) : (ovr ?? 65) - Math.pow((FATIGUE_FRESH_ABOVE - st) / FATIGUE_FRESH_ABOVE, FATIGUE_CURVE) * FATIGUE_MAX_DROP; };
+// A stand-in for a rating nobody has entered, not a baseline the model measures against.
+const UNRATED_OVR = 75;
+const fatigueOvr = (ovr, stamina) => { const st = Math.max(0, Math.min(100, stamina ?? 100)); return st >= FATIGUE_FRESH_ABOVE ? (ovr ?? UNRATED_OVR) : (ovr ?? UNRATED_OVR) - Math.pow((FATIGUE_FRESH_ABOVE - st) / FATIGUE_FRESH_ABOVE, FATIGUE_CURVE) * FATIGUE_MAX_DROP; };
 
 // ═══ LIVE MATCH ENGINE ═══════════════════════════════════════════════════════
 // ═══ MATCH COMMENTARY ════════════════════════════════════════════════════════
@@ -346,7 +371,7 @@ function genChanceViz(rng, chanceType, playerName, teamPlayers, cp) {
     }
     const pool = teamPlayers.filter(p => p.pos !== "GK" && !used.has(p.name));
     if (!pool.length) break;
-    const teammate = pickPlayer(rng, pool, "any", null, cp?.formPosW);
+    const teammate = pickPlayer(rng, pool, "any", cp?.formPosW);
     used.add(teammate.name);
     const range = ROLE_X[teammate.pos] || ROLE_X.MID;
     cx = Math.max(range[0], Math.min(range[1], cx - R(15, 26)));
@@ -375,6 +400,16 @@ function genChanceExtension(rng, chain, teamPlayers, dm, dribbleP) {
   const next = dribble ? prev : pickPlayer(rng, teamPlayers.filter(p => p.pos !== "GK" && p.name !== prev.name), "any");
   return { name: next.name, pos: { x: Math.max(76, Math.min(94, prev.pos.x + R(-8, 8))), y: clampY(prev.pos.y + R(-10, 10)) }, min: dm };
 }
+// What a side is worth on the field right now: the mean rating of the eleven currently on it. The
+// squad OVR is depth and counts a bench that is not playing, so it cannot express the cost of
+// naming a weaker XI or of rotating through a match -- it does not move. Sent-off players stay in
+// the mean; lmEffSkill already charges for a red separately, and charging twice would double it.
+// The squad figure is the fallback for a side whose players carry no ratings at all.
+const xiSkill = (players, fallback) => {
+  let n = 0, t = 0;
+  for (const p of players || []) { const v = p.ovr ?? fallback; if (v != null) { t += v; n++; } }
+  return n ? t / n : fallback;
+};
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
 const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3) : variant === "abusive" ? 2 + Math.floor(r * 3) : 1;
 // Every 5th accumulated yellow this tournament adds a 1-match ban — mirrors how real
@@ -576,6 +611,9 @@ function testOvrShift(players, teamSkill) {
   const at = (p) => p.ovr ?? teamSkill ?? TEST_SKILL;
   const vals = (players || []).map(at);
   if (!vals.length) return (p) => at(p);
+  // Any common target works now that every comparison is between two real ratings: shifting both
+  // squads' means to the same number leaves no side a player-quality edge, which is the whole point
+  // of the mode. TEST_SKILL is the pin it already uses for team strength.
   const shift = TEST_SKILL - vals.reduce((a, b) => a + b, 0) / vals.length;
   // Deliberately unclamped: ovrN caps the gap it cares about, and clamping here would pull the
   // mean off TEST_SKILL and distort the very gaps this is preserving.
@@ -693,9 +731,9 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
   const cornerPl = s.players[atk].filter(p => p.pos !== "GK");
-  const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.teamSkill?.[atk], s.formPosW?.[atk]);
+  const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.formPosW?.[atk]);
   const deliverPool = cornerPl.filter(p => p.name !== scorer.name);
-  const deliverer = deliverPool.length > 0 ? pickPlayer(rng, deliverPool, "any", s.teamSkill?.[atk], s.formPosW?.[atk]) : scorer;
+  const deliverer = deliverPool.length > 0 ? pickPlayer(rng, deliverPool, "any", s.formPosW?.[atk]) : scorer;
   const _R = (lo, hi) => lo + rng.u() * (hi - lo);
   const cornerY = rng.u() < 0.5 ? _R(2, 5) : _R(60, 63);
   const headerX = _R(90, 97), headerY = _R(18, 47);
@@ -706,12 +744,12 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const _lockPos = (_g) => { _g.shotFrom = { x: headerX, y: headerY }; _g._posLocked = true; _g.assistFrom = { x: 100, y: cornerY }; if (!_g.assist) _g.assist = deliverer.name; };
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  const cGoalP = 0.04 * sm * (1 + ovrN(fatigueOvr(scorer.ovr, scorer.stamina), s.teamSkill?.[atk]) * 0.18) + cEmergency;
-  const cGkBonus = ovrN(cGk ? fatigueOvr(cGk.ovr, cGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - cEmergency;
+  const cGoalP = 0.04 * sm * (1 + ovrVs(fatigueOvr(scorer.ovr, scorer.stamina), lineOvr(s.players[def], "DEF")) * 0.18) + cEmergency;
+  const cGkBonus = ovrVs(cGk ? fatigueOvr(cGk.ovr, cGk.stamina) : null, lineOvr(s.players[atk], "FWD")) * 0.07 - cEmergency;
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
-    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.teamSkill?.[atk],s.formPosW?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
+    scorer.goals++;let _astCrn;{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;scorer.rating=Math.min(10,+(scorer.rating+goalAtkMult(scorer.atkW)*gCtx*goalPosMult(scorer.pos)).toFixed(2));_astCrn=assistPlayer(rng,s.players[atk],scorer.name,0,s.formPosW?.[atk]);if(_astCrn)_astCrn.rating=Math.max(3,Math.min(10,+(_astCrn.rating+0.6*assistAtkMult(_astCrn.atkW)*aCtx).toFixed(2)));}
     s.players[def].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(cGoalP,0.10)).toFixed(2));});
     {let _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn);const _g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);_lockPos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);const _oc={min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
     ce.chanceViz._completed=true;s.activeChance=null;
@@ -779,7 +817,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   // dangerous — a long-built chain (real buildup) or a direct free kick — so routine
   // speculative efforts don't trigger a swing every time they're comfortably dealt with.
   const isBigChance = (_linkedChance && (_linkedChance.chanceViz.chain?.length || 0) >= 3) || method === "long-range";
-  const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.teamSkill?.[atk], s.formPosW?.[atk]);
+  const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.formPosW?.[atk]);
   // The shot itself — sprint into space plus a full-power strike — costs extra regardless
   // of whether it capped off a long buildup or was spontaneous (counter/long-range/free
   // kick), which is why this lives here rather than only in the chain-drain call sites.
@@ -793,7 +831,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
       if (p) { p.assists++; p.rating=Math.max(3,Math.min(10,+(p.rating+(delta??0.6)).toFixed(2))); return p; }
     }
     if (chanceCtx && !chanceCtx.assistName) return null;
-    return assistPlayer(rng, s.players[atk], scorerName, delta, s.teamSkill?.[atk], s.formPosW?.[atk]);
+    return assistPlayer(rng, s.players[atk], scorerName, delta, s.formPosW?.[atk]);
   };
   // Always shows the connecting pass on the pitch when the chance had one, even for
   // save/miss/woodwork outcomes where genGoalViz was given assistName=null (no assist
@@ -804,9 +842,9 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrN(fatigueOvr(shooter.ovr, shooter.stamina), s.teamSkill?.[atk]) * 0.18) + sEmergency;
+  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * 0.18) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
-  const saveP = Math.max(0.02, 0.20+0.16*defE/(atkE+defE) + ovrN(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, s.teamSkill?.[def]) * 0.07 - sEmergency);
+  const saveP = Math.max(0.02, 0.20+0.16*defE/(atkE+defE) + ovrVs(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, lineOvr(s.players[atk], "FWD")) * 0.07 - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -975,7 +1013,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       if (rng.u() < twProb) {
         s.stoppageBank += poSt.timeWasting === 2 ? 25 : 15;
         s.events.push({min:dm, type:"neutral", text:comm(rng,"time_waste",{t:nm[po],o:nm[po==="home"?"away":"home"]},s)});
-        if (poSt.timeWasting === 2 && rng.u() < 0.025) { const waster = pickPlayer(rng, s.players[po], "foul", s.teamSkill?.[po]); lmHandleCard(s, rng, dm, po, waster, nm, 1.0); }
+        if (poSt.timeWasting === 2 && rng.u() < 0.025) { const waster = pickPlayer(rng, s.players[po], "foul"); lmHandleCard(s, rng, dm, po, waster, nm, 1.0); }
       }
     }
   }
@@ -984,14 +1022,15 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   const _soloP = (poSt.creativity === 1 ? 0.01 : 0) + (STYLE_CHANCE[s.styles?.[po]]?.soloBase || 0);
   if (_soloP > 0 && rng.u() < _soloP) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
+    {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
     return;
   }
 
   // Pressing
   const pressDiff=Math.max(0,(opE-poE)/(opE+poE));
   let pressMult=opM.press;
-  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[po]) * 0.03 : 0), 0);
+  const _opMidLine = lineOvr(s.players[op], "MID");
+  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrVs(fatigueOvr(p.ovr, p.stamina), _opMidLine) * 0.03 : 0), 0);
   const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
   if(pressChance>0&&rng.u()<pressChance){
     // Unlike every other possession change in this function, pressing flips s.possession
@@ -1016,14 +1055,14 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     // A foul stops the phase of play — whatever chance was building closes out here;
     // the free kick (or penalty) that follows is a new, separate situation.
     const _foulChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
-    let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);
+    let fouler=pickPlayer(rng,s.players[op],"foul");
     if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}
     s.stats[op].fouls++;
     if(dg===0&&rng.u()<0.12){
       // Penalty — award now, defer the kick to the next tick so auto-play can pause before it is taken
       {const _penEv={min:dm,type:"penalty",team:po,playerFull:fouler.fullName||fouler.name,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.fullName||fouler.name},s)};if(_foulChance){_foulChance.chanceViz.outcomeEvent=_penEv;_penEv.suppressStandalone=true;}s.events.push(_penEv);}s.stoppageBank+=90;s.stats[po].penalties++;
       ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
-      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po],s.formPosW?.[po]);
+      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.formPosW?.[po]);
       s.pendingPenalty={po,op,taker:taker.name,dm};
       return;
     }
@@ -1044,13 +1083,13 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     s.pressure++;
     if(!s.activeChance && s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
     const effDef=opM.def/(1+Math.abs(opM.def)*8);
-    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[op]) * 0.05 : 0), 0);
+    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrVs(fatigueOvr(p.ovr, p.stamina), lineOvr(s.players[po], "FWD")) * 0.05 : 0), 0);
     let shotP=0.48+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
     if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
     // Defensive contest: a named defender can end an active chance before a shot happens
     if(s.activeChance&&s.pressure>1){
       const df=pickDefActPlayer(rng,s,op,"defendBox");
-      const dfOvr=df?ovrN(fatigueOvr(df.ovr,df.stamina),s.teamSkill?.[op])*0.12:0;
+      const dfOvr=df?ovrVs(fatigueOvr(df.ovr,df.stamina),lineOvr(s.players[po],"FWD"))*0.12:0;
       const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.12:opSt.tackling===-1?-0.06:0);
       if(rng.u()<dcP&&df){
         const _lc=s.activeChance;
@@ -1067,7 +1106,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       }
       s.activeChance.chanceViz.contested=(s.activeChance.chanceViz.contested||0)+1;
     }
-    if(rng.u()<shotP){if(!s.activeChance){const _sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);_sp.chances=(_sp.chances||0)+1;const _sv=genChanceViz(rng,"passed",_sp.name,s.players[po],s.chanceProfile?.[po]);const _si=_sv.chain.length>1?(s.players[po].find(p=>p.name===_sv.chain[0].name)||_sp):_sp;const _spool=_sv.chain.length>1?"chance_created":"enter_box";const _se={min:dm,type:"chance",team:po,playerFull:_si.fullName||_si.name,chanceViz:_sv,text:comm(rng,_spool,{t:nm[po],o:nm[op],n:_si.fullName||_si.name},s)};s.events.push(_se);s.activeChance=_se;drainChain(s,po,_sv.chain,1.0);}lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(s.activeChance.chanceViz.chain));return;}
+    if(rng.u()<shotP){if(!s.activeChance){const _sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);_sp.chances=(_sp.chances||0)+1;const _sv=genChanceViz(rng,"passed",_sp.name,s.players[po],s.chanceProfile?.[po]);const _si=_sv.chain.length>1?(s.players[po].find(p=>p.name===_sv.chain[0].name)||_sp):_sp;const _spool=_sv.chain.length>1?"chance_created":"enter_box";const _se={min:dm,type:"chance",team:po,playerFull:_si.fullName||_si.name,chanceViz:_sv,text:comm(rng,_spool,{t:nm[po],o:nm[op],n:_si.fullName||_si.name},s)};s.events.push(_se);s.activeChance=_se;drainChain(s,po,_sv.chain,1.0);}lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(s.activeChance.chanceViz.chain));return;}
     // No shot — keep or lose ball
     const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
     if(rng.u()<keepP){
@@ -1083,7 +1122,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
         }
         else s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
       } else {
-        s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"assist",s.teamSkill?.[po]);return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});
+        s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"assist");return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});
       }
       return;
     }
@@ -1094,13 +1133,13 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     const _clChance = s.activeChance;
     s.possession=op;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
     const _clDf=pickDefActPlayer(rng,s,op,"defendClear");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,_clChance?xgSaveBonus(shotP,0.45):0.12);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
-    const _clOvr=_clDf?ovrN(fatigueOvr(_clDf.ovr,_clDf.stamina),s.teamSkill?.[op])*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
+    const _clOvr=_clDf?ovrVs(fatigueOvr(_clDf.ovr,_clDf.stamina),lineOvr(s.players[po],"FWD"))*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
     if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;const cnEv={min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=cnEv;cnEv.suppressStandalone=true;}s.events.push(cnEv);lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
     else if(cl<0.70-0.20*defR){s.ball=2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     else{
       const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
       else {const clEv={min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
     }
     return;
@@ -1110,10 +1149,10 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   // Long-range shot from opponent's half (dg===1, 12% chance)
   if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
     const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.teamSkill?.[po],s.formPosW?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrN(fatigueOvr(lrScorer.ovr,lrScorer.stamina),s.teamSkill?.[po])*0.18),lrSave=0.23;
+    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.formPosW?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrVs(fatigueOvr(lrScorer.ovr,lrScorer.stamina),lineOvr(s.players[op],"DEF"))*0.18),lrSave=0.23;
     if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
     const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.teamSkill?.[po],s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{let _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr);const _g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);_t=fixDescCoords(_t,_g);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
+    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{let _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr);const _g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);_t=fixDescCoords(_t,_g);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
     else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(lrGoal,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
     return;
@@ -1128,7 +1167,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   const advBase=0.42;
   const advSkill=0.28*(poE-opE)/(poE+opE);
   const advZone=dg===1?-0.06:dg>=3?0.05:0;
-  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[op]) * 0.03 : 0), 0);
+  const _poMidLine = lineOvr(s.players[po], "MID");
+  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrVs(fatigueOvr(p.ovr, p.stamina), _poMidLine) * 0.03 : 0), 0);
   let advP=advBase+advSkill+advZone+poM.adv+poMidTier-opMidTier;
   const pT=s.tactics[po],oT=s.tactics[op];
   if(pT==="ultra")advP+=0.09;else if(pT==="atk")advP+=0.05;
@@ -1154,21 +1194,21 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
       }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po],s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
-    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist",s.teamSkill?.[po]);return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
+    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist");return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
     // Hold ball
     s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.teamSkill?.[po]);ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul",s.teamSkill?.[op]);if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
+    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
     s.possession=op;const _toChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
     // Winning the ball back in open play is by far the most common defensive moment in a
     // match, and the main lever for making defActs volume track chances-created volume —
@@ -1179,7 +1219,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(rng.u()<ctrP){
       const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",null,s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
+      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
       else {const _cEv={min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}
     }else {const _nEv={min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_nEv;_nEv.suppressStandalone=true;}s.events.push(_nEv);}
   }
@@ -1187,7 +1227,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
 
 function lmSimMinute(s, rng, home, away) {
   const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
-  let hE = lmEffSkill(home.skill,s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(away.skill,s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
+  let hE = lmEffSkill(xiSkill(s.players.home, s.teamSkill?.home ?? home.skill),s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(xiSkill(s.players.away, s.teamSkill?.away ?? away.skill),s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
   if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
   // Momentum across the season, alongside the in-match momentum already folded into hE/aE above.
   hE *= 1 + (s.teamForm?.home || 0) * FORM_SWING; aE *= 1 + (s.teamForm?.away || 0) * FORM_SWING;
@@ -1263,10 +1303,11 @@ function lmSimMinute(s, rng, home, away) {
         const cands = s.players[side].filter(p => p.pos !== "GK");
         const booked = s.booked[side] || [];
         const avgR = cands.reduce((a, p) => a + (p.rating || 6.5), 0) / cands.length;
+        const _candMean = squadMeanOvr(cands);
         const subWeights = cands.map(p => {
           let sw = POS_W.subOff[p.pos] || 10;
           sw *= Math.pow(2, (avgR - (p.rating || 6.5)) * 0.5);
-          sw *= Math.max(0.1, 1 - ovrN(fatigueOvr(p.ovr, p.stamina), s.teamSkill?.[side]) * 0.75);
+          sw *= Math.max(0.1, 1 - ovrVs(fatigueOvr(p.ovr, p.stamina), _candMean) * 0.75);
           if ((p.stamina ?? 100) < 70) sw *= 1 + (70 - p.stamina) * 0.04;
           if (booked.includes(p.name)) sw *= 2.5;
           return { p, w: sw };
@@ -1396,10 +1437,10 @@ function resolvePendingPenalty(s, rng, home, away) {
   const pp = s.pendingPenalty; s.pendingPenalty = null; if(s.activeChance)s.activeChance.chanceViz._completed=true; s.activeChance = null;
   const po = pp.po, op = pp.op, dm = pp.dm;
   const nm = {home:home.name,away:away.name};
-  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.teamSkill?.[po],s.formPosW?.[po]);
-  const poE = lmEffSkill(po==="home"?home.skill:away.skill, s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(teamStam(s,po));
-  const opE = lmEffSkill(op==="home"?home.skill:away.skill, s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(teamStam(s,op));
-  const skillF2=Math.min(1,poE/85+ovrN(fatigueOvr(taker.ovr,taker.stamina),s.teamSkill?.[po])*0.12);
+  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.formPosW?.[po]);
+  const poE = lmEffSkill(xiSkill(s.players[po], s.teamSkill?.[po] ?? (po==="home"?home.skill:away.skill)), s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(teamStam(s,po));
+  const opE = lmEffSkill(xiSkill(s.players[op], s.teamSkill?.[op] ?? (op==="home"?home.skill:away.skill)), s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(teamStam(s,op));
+  const skillF2=Math.min(1,poE/85+ovrVs(fatigueOvr(taker.ovr,taker.stamina),gkOvr(s.players[op]))*0.12);
   const zW2=[18+skillF2*8,8-skillF2*3,18+skillF2*8,20+skillF2*6,10-skillF2*4,20+skillF2*6];
   const zT2=zW2.reduce((a,b)=>a+b,0);let zR2=rng.u()*zT2,zone2=0;for(let i=0;i<6;i++){zR2-=zW2[i];if(zR2<=0){zone2=i;break;}}
   const missP2=[0.14,0.04,0.14,0.07,0.02,0.07][zone2];
@@ -1444,14 +1485,14 @@ function lmAdvance(prev, rng, home, away, mutate) {
     case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
         const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
         s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
-    case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(tk==="home"?home.skill:away.skill,s.stats[tk].reds,s.minute);const gE=lmEffSkill(ok==="home"?home.skill:away.skill,s.stats[ok].reds,s.minute);
+    case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(xiSkill(s.players[tk], s.teamSkill?.[tk] ?? (tk==="home"?home.skill:away.skill)),s.stats[tk].reds,s.minute);const gE=lmEffSkill(xiSkill(s.players[ok], s.teamSkill?.[ok] ?? (ok==="home"?home.skill:away.skill)),s.stats[ok].reds,s.minute);
       // Pick taker from order
       const ordKey=tk+"Order",idxKey=tk+"Idx";
       const ordArr=p[ordKey]||[];let taker;
-      if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty",s.teamSkill?.[tk]);}
+      if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty");p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty");}
       const tName=tk==="home"?home.name:away.name;
       // Zone-based penalty: zones 0-5 = [TL,TC,TR,BL,BC,BR], dive 0-2 = [L,C,R]
-      const skillF=Math.min(1,kE/85+ovrN(fatigueOvr(taker.ovr,taker.stamina),s.teamSkill?.[tk])*0.12);
+      const skillF=Math.min(1,kE/85+ovrVs(fatigueOvr(taker.ovr,taker.stamina),gkOvr(s.players[ok]))*0.12);
       const zW=[18+skillF*8, 8-skillF*3, 18+skillF*8, 20+skillF*6, 10-skillF*4, 20+skillF*6]; // corner-heavy for good takers
       const zT=zW.reduce((a,b)=>a+b,0); let zR=rng.u()*zT, zone=0; for(let i=0;i<6;i++){zR-=zW[i];if(zR<=0){zone=i;break;}}
       const missP=[0.14,0.04,0.14,0.07,0.02,0.07][zone]; // miss chance by zone
@@ -1773,7 +1814,7 @@ function managerSelect(starters, bench, kf, staminaData, context) {
   // Node 5d: what the squad can actually absorb. A bench within touching distance of the XI can
   // take more changes than one that falls off a cliff — this was a flat constant regardless of
   // whether the 12th man was a peer or a reserve.
-  const meanOvr = (arr) => arr.length ? arr.reduce((a, p) => a + (p.ovr ?? 65), 0) / arr.length : null;
+  const meanOvr = (arr) => arr.length ? arr.reduce((a, p) => a + (p.ovr ?? UNRATED_OVR), 0) / arr.length : null;
   const xiQ = meanOvr(starters), benchQ = meanOvr(bench);
   if (xiQ != null && benchQ != null && matchClass !== "dead") {
     if (benchQ >= xiQ - 2) maxRot += 1;
@@ -1800,11 +1841,11 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     const formOf = (q) => (dataOf(q)?.form || 0) * FORM_SELECT_WEIGHT;
     const bestBench = bench.reduce((best, b, bi) => {
       if (b.pos !== p.pos) return best;
-      const eff = fatigueOvr(b.ovr ?? 65, b.stamina) + formOf(b);
+      const eff = fatigueOvr(b.ovr ?? UNRATED_OVR, b.stamina) + formOf(b);
       return (!best || eff > best.eff) ? { idx: bi, ovr: b.ovr, eff } : best;
     }, null);
     if (!bestBench) continue;
-    const gap = fatigueOvr(p.ovr ?? 65, st) + formOf(p) - bestBench.eff;
+    const gap = fatigueOvr(p.ovr ?? UNRATED_OVR, st) + formOf(p) - bestBench.eff;
     let shouldRotate = false;
     let priority = 0;
     // Everything below this is workload management — it fires off stamina and consecutive starts,
@@ -2869,6 +2910,9 @@ function chromeExportColors(uiTheme) {
 // Venue fields may carry a trailing "(number)" population/capacity for user
 // reference only — stripped here so it never leaks into stadium-image lookups etc.
 const stripVenue = (s) => (s || "").replace(/\s*\([\d,]+\)\s*$/, "").trim();
+// The other half of it. stripVenue exists so the number never reaches a filename lookup; this is
+// how it reaches the reader instead of being thrown away at both ends.
+const venueCap = (s) => (String(s || "").match(/\(([\d,]+)\)\s*$/) || [])[1] || null;
 function parseBulk(text) {
   const styleLookup = {};
   STYLES.forEach(s => { styleLookup[s] = s; });
@@ -2909,9 +2953,9 @@ function parseBulk(text) {
     const p = offset ? parts.slice(offset) : parts;
     if (p.length === 1) return { name: p[0].trim(), skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF}, squad: buildSquad("4-3-3", null), ...(code ? {code} : {}) };
     const name = p[0].trim();
-    const sk = parseInt(p[1], 10);
+    const sk = parseFloat(p[1]);
     if (!name || isNaN(sk)) return null;
-    const skill = Math.max(25, Math.min(100, sk));
+    const skill = Math.max(25, Math.min(100, Math.round(sk * 10) / 10));
     const base = { name, skill, ...(code ? {code} : {}) };
     if (p.length === 2) return { ...base, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF}, squad: buildSquad("4-3-3", null) };
     if (p.length === 3) {
@@ -2983,8 +3027,25 @@ function parseBulk(text) {
     // gap has a shorter squad than its column list and the two no longer line up positionally.
     squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
     return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(conference ? {conference} : {}) };
-  }).filter(Boolean);
+  }).filter(Boolean).map(t => { const sk = squadSkill(t.squad); return sk == null ? t : { ...t, skill: sk }; });
 }
+// A team is worth what its players are worth. This used to be an authored SKILL (T) column sitting
+// beside the player ratings, and two numbers describing one thing drift: across the catalog the
+// authored figure ran up to 5.8 BELOW what the squad actually was, and always at the weak end of
+// the table, so the sim fielded a worse side than the sheet showed. The column is still read, but
+// only as the fallback for a row with no rated squad -- a team typed into the bulk importer, or a
+// division whose players are not written yet.
+// A side is worth the mean of everyone in its squad, bench included, club and country alike. That
+// is the OVR column's own rule -- checked against all 183 rows, every one exact -- and the engine
+// matches it rather than inventing a second answer, which is the whole reason the authored rating
+// went away. It briefly averaged only the eleven for clubs, because that was the rule then.
+// One decimal, because the sheet carries one: rounding to an integer reintroduces a disagreement
+// of up to half a point on every row.
+const squadSkill = (squad) => {
+  const rated = (squad || []).filter(p => p.name && !String(p.name).startsWith("#") && p.ovr != null);
+  if (!rated.length) return null;
+  return Math.round(rated.reduce((a, p) => a + p.ovr, 0) / rated.length * 10) / 10;
+};
 const abbr = (n, code) => code ? code.toUpperCase().slice(0, 3) : (n || "").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
 // Deterministic string hash — used to pick a stable (non-random) venue per fixture, so
 // re-opening the same match always shows the same stadium instead of reshuffling.
@@ -3129,13 +3190,20 @@ function TeamCrest({ team, size = 22, style }) {
   const code = abbr(team?.name, team?.code);
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setImgFailed(false); }, [code]);
+  // size is usually a pixel count, but the pitch tokens size themselves against their container and
+  // pass a CSS length. width/height attributes take numbers only, so `size * 1.1` on a length is
+  // NaN and React drops the attribute — the crest then renders at its intrinsic size. A length goes
+  // through style instead, where calc() can do the same 1.1 the attributes were doing.
+  const num = typeof size === "number";
+  const dim = num ? null : { width: size, height: `calc(${size} * 1.1)` };
+  const wh = num ? { width: size, height: size * 1.1 } : {};
   if (code && !imgFailed) {
-    return <img src={`${import.meta.env.BASE_URL}badges/${code}.png`} alt="" width={size} height={size * 1.1} style={{ objectFit: "contain", flexShrink: 0, ...style }} onError={() => setImgFailed(true)} />;
+    return <img src={`${import.meta.env.BASE_URL}badges/${code}.png`} alt="" {...wh} style={{ objectFit: "contain", flexShrink: 0, ...dim, ...style }} onError={() => setImgFailed(true)} />;
   }
   const home = team?.primaryColor || "var(--chrome-muted)";
   const away = team?.secondaryColor || team?.primaryColor || "var(--chrome-border)";
   return (
-    <svg width={size} height={size * 1.1} viewBox="-12 -12 64 68" style={{ flexShrink: 0, ...style }}>
+    <svg {...wh} viewBox="-12 -12 64 68" style={{ flexShrink: 0, ...dim, ...style }}>
       <path d="M20 2 L35 8 L35 20 C35 30 28.5 37.5 20 41.5 C11.5 37.5 5 30 5 20 L5 8 Z" fill={home} stroke={away} strokeWidth="2.5" strokeLinejoin="round" />
     </svg>
   );
@@ -3312,15 +3380,16 @@ function initMatchEnhancements(s) {
     away: { mult: sm("away").mult * fm("away").mult * tm("away").mult, decay: sm("away").decay * fm("away").decay * tm("away").decay },
   };
 }
-function pickPlayer(rng, players, type, teamSkill, overridePosW) {
+function pickPlayer(rng, players, type, overridePosW) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
   const hasAtk = players[0]?.atkW != null;
   const pureAtk = (type === "goal" || type === "penalty") && hasAtk;
   const w = (overridePosW || POS_W)[type] || (overridePosW || POS_W).any;
   const useOvr = type === "goal" || type === "longGoal" || type === "penalty" || type === "corner" || type === "assist" || type === "foul" || type === "defend" || type.startsWith("defend");
+  const _mean = squadMeanOvr(players);
   const weighted = players.map(p => {
-    const tw = useOvr ? Math.max(0.2, 1 + ovrN(p.ovr, teamSkill) * 0.6) : 1;
+    const tw = useOvr ? Math.max(0.2, 1 + ovrVs(p.ovr, _mean) * 0.6) : 1;
     if (pureAtk) return {p, w: (p.atkW || 0) * tw};
     const posW = w[p.pos] || 10;
     if (hasAtk && (type === "any" || type === "corner" || type === "longGoal")) return {p, w: (posW + (p.atkW || 0) * 0.8) * tw};
@@ -3340,7 +3409,7 @@ function pickPlayer(rng, players, type, teamSkill, overridePosW) {
 // would actually be there, no shared-pool tradeoff between them.
 function pickDefActPlayer(rng, s, side, kind) {
   const pool = s.players[side].filter(p => p.pos !== "GK");
-  return pool.length ? pickPlayer(rng, pool, kind, s.teamSkill?.[side], s.formPosW?.[side]) : s.players[side].find(p => p.pos === "GK");
+  return pool.length ? pickPlayer(rng, pool, kind, s.formPosW?.[side]) : s.players[side].find(p => p.pos === "GK");
 }
 
 function ratePlayer(players, name, delta) {
@@ -3349,7 +3418,29 @@ function ratePlayer(players, name, delta) {
   p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
 const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
-const ovrColor = (v) => (v||0) >= 90 ? "#9a7ab5" : (v||0) >= 85 ? "#4a90d9" : (v||0) >= 80 ? "#5bbcd6" : (v||0) >= 75 ? "#4caf50" : "var(--chrome-muted)";
+// Ratings carry a decimal now, and the decimal is for ORDERING, not for reading: two sides a third
+// of a point apart sort correctly while both still read as 84. Every display of a rating goes
+// through here so none of them leak "84.5" into the UI.
+const showOvr = (v) => (v == null || v === "" || !isFinite(Number(v))) ? "–" : String(Math.round(Number(v)));
+// One scale for every rating in the app, and it IS the match-rating scale: a 7.4 performance and a
+// 74 squad are the same green. Derived from ratingColor by the factor between the two axes rather
+// than copied, so editing one can never leave the other behind. Two separate scales meant an 86 was
+// blue as text and cyan as a block, and the low end was flat grey where a bad match rating is red.
+const ovrHex = (v) => ratingColor((Number(v) || 0) / 10);
+// Solid blocks for the squad columns. A filled box reads as a grade at a glance where bare digits
+// have to be compared one column at a time. The label colour comes off each block's own luminance,
+// so it stays legible on the pale yellow as well as the dark red.
+const ovrBlock = (v, sm) => {
+  // Band the number the reader can SEE, not the one behind it. Colouring from the raw value put a
+  // 79.6 in the green band while it printed as 80, so two cells reading 80 sat side by side in two
+  // different colours. showOvr rounds the same way, so the two can no longer disagree.
+  const bg = ovrHex(Math.round(Number(v) || 0)), c = hexToRgb(bg);
+  return { display: "inline-block", minWidth: sm ? 21 : 30, padding: sm ? "2px 4px" : "3px 7px",
+           borderRadius: sm ? 4 : 5, background: bg,
+           color: c && percLum(c.r, c.g, c.b) > 0.5 ? "#101a12" : "#f4f7fa",
+           fontWeight: 700, fontSize: sm ? 10 : 11, lineHeight: 1.3, textAlign: "center" };
+};
+const ovrColor = (v) => v == null || v === "" ? "var(--chrome-muted)" : ovrHex(v);
 // City and stadium are one "Location" field in the UI, written "Stadium, City". Split on the FIRST
 // comma so a stadium whose own name contains one keeps it and only the tail becomes the city.
 // Cities link out to the map app. Unconditional on purpose: no copy of the map's city list lives
@@ -3363,11 +3454,6 @@ const CityLink = ({ name, style }) => name ? (
      style={{ color: "inherit", textDecoration: "none", borderBottom: "1px dotted var(--chrome-muted-66)", ...style }}>{name}</a>
 ) : null;
 
-const formatLocation = (t) => [t.stadium, t.city].filter(Boolean).join(", ");
-function parseLocation(v) {
-  const i = (v || "").indexOf(",");
-  return { stadium: (i === -1 ? (v || "") : v.slice(0, i)).trim() || null, city: (i === -1 ? "" : v.slice(i + 1)).trim() || null };
-}
 const goalAtkMult = (atkW) => 0.75 + 0.5 * Math.pow(1 - Math.min(atkW||0, 50)/50, 1.5);
 const goalPosMult = (pos) => pos === "GK" ? 1.5 : pos === "DEF" ? 1.3 : pos === "MID" ? 1.1 : 1.0;
 const assistAtkMult = (atkW) => 0.95 + 0.25 * Math.pow(1 - Math.min(atkW||0, 50)/50, 2);
@@ -3378,10 +3464,10 @@ const goalCtxMult = (score, ti, min) => { const us=score[ti],them=score[1-ti],d=
 // unlikely to score reflects worse on the keeper/defense than conceding a near-certain one.
 const xgSaveBonus = (xg, base) => base * Math.max(0, Math.min(1, xg));
 const xgConcedePenalty = (xg, base) => base * (1 - Math.max(0, Math.min(1, xg)));
-function assistPlayer(rng, players, scorer, delta, teamSkill, overridePosW) {
+function assistPlayer(rng, players, scorer, delta, overridePosW) {
   const others = players.filter(p => p.name !== scorer && p.pos !== "GK");
   if (others.length === 0) return null;
-  const a = pickPlayer(rng, others, "assist", teamSkill, overridePosW);
+  const a = pickPlayer(rng, others, "assist", overridePosW);
   a.assists++;
   a.rating = Math.max(3, Math.min(10, +(a.rating + (delta != null ? delta : 0.6)).toFixed(2)));
   return a;
@@ -3587,7 +3673,11 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kf
 // Switched off here rather than deleted: the TSVs stay on disk untouched, and Kolmonen shares a file
 // with two healthy Karjanian divisions, so this has to key on the league and not the file.
 // Re-enable by removing the name once the sheet has ratings.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Frederikka Cup", "Kullanmaan Cup"]);
+// Karjanian Secondary joins them for a different reason: its players ARE rated, but only four or
+// five per club, so a side's OVR is the mean of a third of a team and reads far higher than the
+// eleven that would actually take the field. Tentative — put the names in and take it off this list.
+const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Frederikka Cup", "Kullanmaan Cup",
+                             "Karjanian Secondary League"]);
 function nationLeagues(raw) {
   const out = new Map();
   for (const line of raw.split("\n").slice(1)) {
@@ -3784,6 +3874,91 @@ const sel = { ...inp, cursor: "pointer" };
 const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
 const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "var(--ui-text)", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
 const POS_CLR = {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)",CB:"var(--ui-info)",LB:"var(--ui-info)",RB:"var(--ui-info)",LWB:"var(--ui-info)",RWB:"var(--ui-info)",DM:"var(--ui-ok)",CM:"var(--ui-ok)",AM:"var(--ui-ok)",LM:"var(--ui-ok)",RM:"var(--ui-ok)",LW:"var(--ui-attack)",RW:"var(--ui-attack)",ST:"var(--ui-attack)"};
+// ── Formation pitch geometry ───────────────────────────────────────────
+// Slot positions as x/y percentages across the pitch, y=100 at your own goal line, attacking
+// upward. Hand-placed per formation so the shape reads as that formation rather than as evenly
+// spaced rows; anything not in the table falls back to the generated layout below.
+const FPOS2 = {
+  "4-4-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
+  "4-3-3":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
+  "4-2-3-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
+  "4-1-4-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
+  "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
+  "4-3-2-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
+  "4-2-4":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
+  "3-4-3":[[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
+  "3-5-2":[[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
+  "3-4-1-2":[[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
+  "5-3-2":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
+};
+const pitchSlots = (formation) => FPOS2[formation] || (() => {
+  const layers = (formation || "4-3-3").split("-").map(Number);
+  const nR = layers.length + 1, yT = 12, yB = 92, rG = (yB - yT) / (nR - 1);
+  const pts = [[50, yB]];
+  // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
+  layers.forEach((c, li) => { const y = yB - (li + 1) * rG; const hs = c <= 1 ? 0 : Math.max(38, 11 * (c - 1)); const lo = 50 - hs; const gap = c <= 1 ? 0 : (2 * hs) / (c - 1); for (let j = 0; j < c; j++) pts.push([c === 1 ? 50 : lo + j * gap, y]); });
+  return pts;
+})();
+// The pitch as seen from behind your own goal. Real one-point perspective, not a squash: at depth d
+// everything scales by s = 1/(1+K·d) and the ground plane's screen height follows the same s, so the
+// touchlines stay straight, the far half compresses the way a lens compresses it, and every line on
+// the ground can be drawn by projecting its endpoints. Tokens are placed through this map but drawn
+// at a fixed size — depth reads as position, not scale, which is the only way eleven crests stay
+// legible at the far end.
+const PITCH_H = 56;             // viewBox height for a 100-unit near goal line
+const PITCH_FAR = 0.46;         // far goal line width ÷ near goal line width
+const PITCH_K = 1 / PITCH_FAR - 1;
+const pitchProj = (x, y) => {   // x,y in 0..1, y=1 at your own goal line
+  const s = 1 / (1 + PITCH_K * (1 - y));
+  return [50 + (x - 0.5) * 100 * s, PITCH_H * (1 - (1 - s) / (1 - PITCH_FAR))];
+};
+const pitchPoly = (pts) => pts.map(([x, y]) => pitchProj(x, y).join(",")).join(" ");
+// The slot tables were authored against a flat top-down pitch, so their y is where a row should
+// LAND, not how deep the player stands. Read straight through the ground-plane projection the far
+// rows pile up: 4-1-2-1-2 put its striker 41px above its playmaker, which two-line name labels
+// overrun. Inverting the projection first stands every row at the depth that lands it exactly where
+// the table says, and the x still converges, so it keeps reading as a pitch.
+const pitchDepthAt = (v) => 1 - (1 / (1 - (1 - v) * (1 - PITCH_FAR)) - 1) / PITCH_K;
+const pitchToken = (x, v) => [pitchProj(x, pitchDepthAt(v))[0], PITCH_H * v];
+// Everything drawn on the pitch is sized against the pitch's own width, so the eleven tokens hold
+// their spacing at every panel width. The label clearances were measured once, in proportion; a
+// token fixed in pixels loses them the moment the window narrows.
+// Every break between the detail panel's sections. One constant so they cannot drift apart, and so
+// the height budget below has a single number to account for.
+const SECTION_RULE = { borderTop: "1px solid var(--chrome-border)", margin: "16px 0 10px" };
+const PITCH_MAX_W = 860;                      // the pitch's inner width once it stops growing
+const cq = (px) => `${(px / PITCH_MAX_W * 100).toFixed(3)}cqw`;
+// One number drives the token; everything hung off the circle is a proportion of it. 36 is what
+// fits. 4-1-2-1-2 stacks four central rows 14 units apart, which is 67px of pitch here, and a token
+// plus its two-line label has to sit inside that: at 38 it does not, the playmaker's name reaches
+// the striker's, and the allowance below falls off a cliff from 103px to 51.
+const PITCH_TOKEN = 36;
+const tokenPx = (d) => ({ circle: d, crest: d * 0.55, name: d * 0.227, first: d * 0.182, gap: d * 0.09,
+                          chipFont: d * 0.205, chipMin: d * 0.43, chipPadY: d * 0.034, chipPadX: d * 0.08,
+                          chipR: d * 0.09, chipTop: d * 0.55, chipOut: d * 0.23, ring: d * 0.034 });
+const TOKEN = tokenPx(PITCH_TOKEN);
+const PITCH_LABEL_H = (TOKEN.first + TOKEN.name) * 1.15 + TOKEN.gap;
+// How wide a name label may be before it can reach the label beside it. Derived from the slot
+// tables rather than picked: the narrowest horizontal gap between any two tokens whose labels share
+// a height, across every formation. Labels are clipped to it, so no roster can produce an overlap —
+// a surname's length is data, and the tail of that data (17 characters) is not something to size a
+// whole pitch around. The viewBox scales uniformly, so both axes convert the same way.
+const PITCH_NAME_W = (() => {
+  // 15% of clear air on top of the label box: a pair that only just misses is a pair that lands
+  //  back on top of its neighbour the moment a font metric moves.
+  const u2px = (u) => u / 100 * PITCH_MAX_W, vbox = (PITCH_TOKEN + PITCH_LABEL_H) * 1.15;
+  let w = Infinity;
+  for (const fm of FORMATIONS) {
+    const p = pitchSlots(fm).map(([x, y]) => pitchToken(x / 100, y / 100));
+    for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++)
+      if (u2px(Math.abs(p[i][1] - p[j][1])) < vbox) w = Math.min(w, u2px(Math.abs(p[i][0] - p[j][0])));
+  }
+  return Math.floor(w);
+})();
+// Markings in pitch fractions, off a 105×68 field: penalty area 16.5×40.3, goal area 5.5×18.32,
+// spot at 11, centre circle r=9.15 — which is why the circle needs separate x and y radii here.
+const PITCH_MARK = { boxD: 0.157, boxX: 0.204, sixD: 0.0524, sixX: 0.365, spot: 0.1048, cx: 0.1346, cy: 0.0872 };
+const PITCH_CIRCLE = Array.from({ length: 49 }, (_, i) => { const a = i / 48 * Math.PI * 2; return [0.5 + PITCH_MARK.cx * Math.cos(a), 0.5 + PITCH_MARK.cy * Math.sin(a)]; });
 
 // ─── SHARED PANEL CHROME ─────────────────────────────────────────────────────
 // The tournament screens all hand-rolled the same panel/heading/row styling. These are that
@@ -3842,7 +4017,11 @@ const LS = { tight: "0.08em", label: "0.12em", head: "0.16em", caps: "0.18em" };
 const xsBtn = { ...addBtn, padding: "2px 8px", fontSize: 9 };
 const smBtn = { ...addBtn, padding: "4px 8px", fontSize: 10 };
 // Data-table cells. Previously defined twice, verbatim, in two separate component scopes.
-const thCell = { padding: "8px 12px", borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: LS.label, textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
+// The header cells' own padding above their label. Named because the detail panel's stadium photo
+// offsets by it: the photo sits in the column beside the squad table, and lining its top edge up
+// with the table ELEMENT puts it a row's padding above the "# PLAYER OVR" line the eye reads it against.
+const TH_PAD_Y = 8;
+const thCell = { padding: `${TH_PAD_Y}px 12px`, borderBottom: "1px solid var(--chrome-border)", fontSize: 9, fontWeight: 600, letterSpacing: LS.label, textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "left", whiteSpace: "nowrap" };
 const thCellSticky = { ...thCell, position: "sticky", top: 0, background: "var(--chrome-panel)" };
 const tdCell = { padding: "5px 12px" };
 const rowBox = { border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 6 };
@@ -3870,6 +4049,11 @@ function StatCell({ label, value, color }) {
 }
 // Centred label inside a card (GROUP A, ROUND 3, qualification zones, leaderboard heads).
 // PanelTitle's accent rule reads wrong centred, so these get their own small-caps treatment.
+// What RO draws its value into: 12px text on the global 1.4 line-height (theme.css) inside 6px of
+// vertical padding. Anything sitting in the same bottom-aligned field row has to occupy this exact
+// box or its caption rides up — a rating block is ~20px tall against this 28.8px, and that 3.5px
+// was visible as the OVR/ATT/MID/DEF captions floating above CODE and LOCATION.
+const RO_BOX_H = 12 * 1.4 + 12;
 const cardLabel = { fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center" };
 // Left-aligned heading for a section inside a panel — white, so it outranks the data beneath it.
 const sectionLabel = { fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)" };
@@ -3986,6 +4170,38 @@ function uniqueSlotName(slots, base) {
   return `${base} ${i}`;
 }
 const POS_GROUP = {CB:"DEF",LB:"DEF",RB:"DEF",LWB:"DEF",RWB:"DEF",DM:"MID",CM:"MID",AM:"MID",LM:"MID",RM:"MID",LW:"FWD",RW:"FWD",ST:"FWD"};
+// POS_GROUP gives a position ONE band, and for most positions that is right. It is wrong wherever
+// a formation puts a position in a different line from the one its name implies: a 3-5-2 plays its
+// wing-backs in midfield while a 5-3-2 plays the same job at the back, and a 4-1-4-1 plays its wide
+// men in midfield where a 4-3-3 plays them up front. buildSquad bands a slot by the layer it falls
+// in, so asking POS_GROUP whether a player fits compared two different answers to two different
+// questions — no natural wing-back could ever be a 3-5-2's wing-back substitute.
+// Read off the formation table so a new formation widens this automatically. Per formation, NOT
+// unioned across all of them: a union would let a 4-3-3's winger cover a central-midfield bench
+// slot on the grounds that some other formation bands wingers as midfielders.
+const FORM_BANDS = (() => {
+  const m = {};
+  for (const [fm, sposArr] of Object.entries(FORM_SPOS)) {
+    const b = m[fm] = {};
+    const dg = fm.split("-").map(Number);
+    let i = 1;
+    const layer = (n, g) => { for (let k = 0; k < n; k++, i++) b[sposArr[i]] = g; };
+    layer(dg[0], "DEF");
+    for (let d = 1; d < dg.length - 1; d++) layer(dg[d], "MID");
+    layer(dg[dg.length - 1], "FWD");
+  }
+  return m;
+})();
+// Which bands a player can cover in THIS formation: the area his position normally means, plus the
+// line this particular shape actually fields him in. POS_GROUP stays the single-answer map that the
+// roster filters and the line averages want.
+const bandsOf = (sp, fm) => {
+  if (sp === "GK") return new Set(["GK"]);
+  const s2 = new Set([POS_GROUP[sp]]);
+  const f = FORM_BANDS[fm]?.[sp];
+  if (f) s2.add(f);
+  return s2;
+};
 // Which positions a national-team slot will take from a player who is not a natural there — as a
 // graph of adjacent jobs rather than a distance between coordinates.
 //
@@ -4549,6 +4765,31 @@ export default function App() {
     const have = [att, mid, def].filter(Boolean);
     return { att, mid, def, avg: have.length ? have.reduce((a, x) => a + x, 0) / have.length : 0 };
   };
+  // The four ratings as one strip. A single "Skill" figure said less than the row of blocks in the
+  // table right beside it, and a tile showed the same lone number with a code that is already in
+  // the table. Shared by both so they cannot drift.
+  const ratingStrip = (t, sm) => {
+    const ln = teamLinesById.get(t.id) || { att: 0, mid: 0, def: 0 };
+    return (
+      <div style={{ display: "flex", gap: sm ? 4 : 10, alignItems: "flex-end" }}>
+        {[["OVR", t.skill], ["ATT", ln.att], ["MID", ln.mid], ["DEF", ln.def]].map(([k, v]) => (
+          <div key={k} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: sm ? 2 : 0 }}>
+            {/* In the panel these sit in a row of fields, so they take the row's own label style and
+                the same 6px value box RO uses. Their own smaller label and tighter box put both the
+                caption and the number off the line every neighbouring field sits on. */}
+            <span style={sm ? { fontSize: 7, letterSpacing: "0.08em", color: "var(--chrome-muted)", ...mono }
+                            : { ...cardLabel, marginBottom: 4 }}>{k}</span>
+            {/* The panel pins the block into RO's own box so the row's flex-end alignment lands the
+                caption on the same line as its neighbours; the tile must not gain a wrapper element
+                it has no use for, and style={undefined} still renders the div. */}
+            {(() => {
+              const b = v ? <span style={{ ...ovrBlock(v, sm), ...mono }}>{showOvr(v)}</span>
+                          : <span style={{ ...ovrBlock(0, sm), ...mono, background: "var(--chrome-panel-66)", color: "var(--chrome-muted-66)" }}>{"–"}</span>;
+              return sm ? b : <div style={{ height: RO_BOX_H, display: "flex", alignItems: "center" }}>{b}</div>;
+            })()}
+          </div>))}
+      </div>);
+  };
   const teamLinesById = useMemo(() => new Map(teams.map(t => [t.id, teamLines(t)])), [teams]);
   // Leagues that actually have teams, in LEAGUE_ORDER. Drives the roster's left rail.
   const rosterLeagues = useMemo(() => groupByLeague(teams).filter(Boolean), [teams]);
@@ -4637,12 +4878,13 @@ export default function App() {
       || (name(b).startsWith(q)) - (name(a).startsWith(q))
       || (Number(b.skill) || 0) - (Number(a.skill) || 0)
       || a.name.localeCompare(b.name));
-    // The whole-roster views are a ranking, so the # column has to mean something. Team OVR first,
-    // then the squad behind it: two sides on the same rating are separated by the mean of their
-    // three lines. A league keeps its own order, which is the order its teams were entered in.
+    // Every team view is a ranking, so the # column always means something. Team OVR first, then
+    // the squad behind it: two sides on the same rating are separated by the mean of their three
+    // lines. A single league used to keep its entry order instead — which read as arbitrary next to
+    // a column of rating blocks, since the order those blocks were in matched nothing on the card.
     const lineAvg = (t) => teamLinesById.get(t.id)?.avg || 0;
-    return isAllView ? out.sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0)
-      || lineAvg(b) - lineAvg(a) || a.name.localeCompare(b.name)) : out;
+    return out.sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0)
+      || lineAvg(b) - lineAvg(a) || a.name.localeCompare(b.name));
   }, [teams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
@@ -7664,7 +7906,6 @@ export default function App() {
       {children || <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}
     </div>
   );
-  const setTeamLocation = (t, v) => { const { stadium, city } = parseLocation(v); updateTeam(t.id, "stadium", stadium); updateTeam(t.id, "city", city); };
 
   const playerIndex = useMemo(() => {
     const natNames = new Map();
@@ -7795,7 +8036,7 @@ export default function App() {
     // National teams play international rules, so the selector always picks a full 22:
     // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
     const template = buildSquad(formation, [], 11);
-    const broadOf = (sp) => sp === "GK" ? "GK" : POS_GROUP[sp];
+
     // How far a player is from a slot, in steps along XI_EDGES. Zero means he plays there.
     const stepsOf = (p, sp) => Math.min(...p.elig.map(e => xiSteps(e, sp)));
     const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * stepsOf(p, sp);
@@ -7803,11 +8044,10 @@ export default function App() {
     // Starters must match their exact slot position; bench slots only need the broad
     // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
     // That group is the slot's own `pos`, which buildSquad derives from the formation's bands.
-    // Re-deriving it from spos instead disagrees wherever a band and POS_GROUP differ — a
-    // 4-1-4-1's wide slots are midfield-band but POS_GROUP calls them forwards, so the bench
-    // demanded a forward there and left the actual striker slot empty.
+    // Re-deriving it from spos would disagree wherever a band and a position's name differ, so the
+    // player side answers with bandsOf — every band the formation table ever puts him in.
     const slots = template.map(p => p.bench ? p.pos : p.spos);
-    const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.map(broadOf)) }; });
+    const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.flatMap(e => [...bandsOf(e, formation)])) }; });
     const used = new Set();
     const players = new Array(slots.length).fill(null);
     // Picking eleven players for eleven slots is an assignment problem, and it is solved exactly
@@ -8012,201 +8252,220 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
-                    {/* Crest, then the name over a single strip of labelled fields. They share a
-                        baseline and one label style so the row reads as a header rather than a form —
-                        the previous version wrapped four differently-sized blocks against a 26px name
-                        and came apart at most widths. */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 4 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, flexShrink: 0,
+                    {/* Header band: crest and name on the left, the four ratings on the right, the
+                        way a squad screen reads. Code, location and colours drop to the strip under
+                        it — they are identity, not form, and seven labelled columns across one line
+                        was what made the old header come apart at narrow widths. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 66, height: 66, flexShrink: 0,
                                     background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-33)", borderRadius: 10 }}>
-                        <TeamCrest team={t} size={64} style={{ width: 64, height: 64, objectFit: "contain" }} />
+                        <TeamCrest team={t} size={56} style={{ width: 56, height: 56, objectFit: "contain" }} />
                       </div>
-                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
 {ed
-                          ? <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, padding: "6px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <div style={{ fontSize: 26, fontWeight: 700, padding: "6px 0", lineHeight: 1.15 }}>{t.name}</div>}
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 26 }}>
-                        <div style={{ width: 66, flexShrink: 0, minWidth: 0 }}>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Code</div>
-{ed
-                              ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
-                              : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>}
-                        </div>
-                        <div style={{ width: 54, flexShrink: 0, minWidth: 0 }}>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Skill</div>
-{ed
-                              ? <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "var(--ui-danger)" : "var(--chrome-border)" }} />
-                              : <RO mono style={{ color: ovrColor(t.skill), fontWeight: 600 }}>{t.skill}</RO>}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Location</div>
-{ed
-                            ? <input value={formatLocation(t)} onChange={e => setTeamLocation(t, e.target.value)} placeholder="Stadium, City" style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%" }} />
-                            : <RO>{t.stadium}{t.stadium && t.city ? ", " : ""}<CityLink name={t.city} /></RO>}
-                        </div>
-                        <div style={{ flexShrink: 0 }}>
-                          <div style={{ ...cardLabel, textAlign: "left", marginBottom: 4 }}>Colours</div>
-<div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            {[["primaryColor", "Home", "var(--ui-info)"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
-                              <label key={f} style={{ display: "flex", gap: 6, alignItems: "center", cursor: ed ? "pointer" : "default" }}>
-                                {ed
-                                  ? <input type="color" value={t[f] || fallback} onChange={e => updateTeam(t.id, f, e.target.value)} style={{ width: 30, height: 30, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
-                                  : <span style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--chrome-border)", background: t[f] || fallback, flexShrink: 0 }} />}
-                                <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>{lbl}</span>
-                              </label>
-                            ))}
+                          ? <input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} style={{ ...inp, fontSize: 24, fontWeight: 700, padding: "3px 10px", border: "1px solid transparent", background: "transparent", width: "calc(100% + 11px)", marginLeft: -11 }} onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-panel)"; }} onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                          : <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>}
+                        <div style={{ ...cardLabel, textAlign: "left", marginTop: 6 }}>{t.league === "Custom" ? "Custom" : t.league}</div>
+                      </div>
+                      {/* A squad-less side has nothing to read the lines off, so it keeps the one
+                          editable figure. Everything else shows all four. */}
+                      {ed && squadSkill(t.squad) == null
+                        ? <div style={{ width: 60, flexShrink: 0 }}>
+                            <div style={{ ...cardLabel, marginBottom: 4 }}>Skill</div>
+                            <input type="number" value={t.skill} onChange={e => updateTeam(t.id, "skill", e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12, width: "100%", borderColor: badSkill ? "var(--ui-danger)" : "var(--chrome-border)" }} />
                           </div>
-                        </div>
-                        </div>
-                      </div>
+                        : <div style={{ flexShrink: 0 }}>{ratingStrip(t)}</div>}
                     </div>
-                    <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
-                    <div style={{ marginBottom: 12 }}><PanelTitle accent="var(--ui-info)">Squad</PanelTitle></div>
+                    <div style={SECTION_RULE} />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <PanelTitle accent="var(--ui-info)">Squad</PanelTitle>
+                      <span style={{ ...mono, fontSize: 11, fontWeight: 600, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)" }}>{t.formation || "4-3-3"}</span>
+                    </div>
                     {(() => {
                 const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
-                const starters = sq.filter(p => !p.bench);
-                const bench = sq.filter(p => p.bench);
-                // Formation pitch positions: parse formation, distribute layers vertically
-                const FPOS2 = {
-                  "4-4-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
-                  "4-3-3":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
-                  "4-2-3-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
-                  "4-1-4-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
-                  "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
-                  "4-3-2-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
-                  "4-2-4":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
-                  "3-4-3":[[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
-                  "3-5-2":[[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
-                  "3-4-1-2":[[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
-                  "5-3-2":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
+                // Carry each man's real index in the squad, not his index within his half of it —
+                // the edit inputs write back through it, and "bench slot n is squad slot 11+n" only
+                // holds while the XI is exactly eleven long.
+                const rows = sq.map((p, i) => [p, i]);
+                const starters = rows.filter(([p]) => !p.bench);
+                const bench = rows.filter(([p]) => p.bench);
+                const slots = pitchSlots(t.formation || "4-3-3");
+                // A national side lists each player's club; a club lists their nationality. Either
+                // way it is one crest, one code and one link, resolved here rather than at each of
+                // the places that draw it.
+                const sideOf = (p) => {
+                  const pe = playerByName.get(p.fullName || p.name);
+                  const oc = isIntlTeam ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
+                  const team = isIntlTeam ? (oc ? teamByName.get(oc.name) : null)
+                                          : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
+                  return { pe, team,
+                           code: isIntlTeam ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || ""),
+                           label: (isIntlTeam ? oc?.name : pe?.nationality) || "" };
                 };
-                const pitchPosRaw = FPOS2[t.formation] || (() => {
-                  const layers = (t.formation||"4-3-3").split("-").map(Number);
-                  const nR=layers.length+1,yT=12,yB=92,rG=(yB-yT)/(nR-1);
-                  const pts=[[50,yB]];
-                  // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
-                  layers.forEach((c,li)=>{const y=yB-(li+1)*rG;const hs=c<=1?0:Math.max(38,11*(c-1));const lo=50-hs;const gap=c<=1?0:(2*hs)/(c-1);for(let j=0;j<c;j++){pts.push([c===1?50:lo+j*gap,y]);}});
-                  return pts;
-                })();
-                const pitchPos = pitchPosRaw.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
-                const lpos = pitchPos.map(p => ({ x: 4 + (p.x / 100) * 52, y: 5 + (p.y / 100) * 86 }));
+                const TOK = PITCH_TOKEN;
+                // Clipped rather than wrapped: a second line would push the label into the row above.
+                const ellip = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                const squadRow = ([p, idx], n) => {
+                  const side = sideOf(p);
+                  const shown = p.ovr ?? t.skill;
+                  const nOvr = natOvrMap.get(p.fullName || p.name);
+                  return (
+                  <tr key={idx} style={{ background: n % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                    <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, ...mono }}>{n + 1}</td>
+                    <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {ed
+                        ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => { const ns = [...sq]; ns[idx] = { ...ns[idx], name: e.target.value, fullName: undefined }; updateTeam(t.id, "squad", ns); }}
+                            style={{ ...inp, width: "100%", padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
+                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        : boldSurname(p.fullName || p.name, p.name)}
+                    </td>
+                    <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
+                      {ed
+                        ? <input type="number" min="1" max="99" value={p.ovr != null ? p.ovr : (t.skill || 65)} onClick={e => e.stopPropagation()}
+                            onChange={e => { const ns = [...sq]; ns[idx] = { ...ns[idx], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value)) }; updateTeam(t.id, "squad", ns); }}
+                            style={{ width: 30, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "var(--ui-text)" : "var(--chrome-muted)", fontSize: 11, textAlign: "center", ...mono }}
+                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
+                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
+                        : <span style={{ ...ovrBlock(shown), ...mono }}>{showOvr(shown)}</span>}
+                      {nOvr != null && nOvr !== shown &&
+                        <span title={"National team rating override: " + nOvr} style={{ marginLeft: 4, fontSize: 9, color: "var(--ui-nat-override)", ...mono }}>{nOvr}</span>}
+                    </td>
+                    {/* The XI shows its formation slot; a substitute shows his own role. */}
+                    <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", fontSize: 9, fontWeight: 700, color: POS_CLR[p.pos] || "var(--chrome-muted)", ...mono }}>{p.bench ? benchSpos(p, side.pe) : (p.spos || p.pos)}</td>
+                    <td className={side.team ? "cell-link" : undefined} onClick={() => openTeam(side.team)}
+                      title={side.team ? `Open ${side.label}` : (side.label || undefined)}
+                      style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: side.team ? "pointer" : "default" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        {side.team ? <TeamCrest team={side.team} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{side.label || side.code || "\u2014"}</span>
+                      </span>
+                    </td>
+                  </tr>); };
+                const secRow = (label, count) => (
+                  <tr><td colSpan={5} style={{ ...sectionLabel, fontSize: 9, color: "var(--chrome-muted)", padding: "14px 12px 5px" }}>{label}
+                    <span style={{ ...mono, marginLeft: 8, letterSpacing: 0, color: "var(--chrome-muted-66)" }}>{count}</span></td></tr>);
                 return (<>
-                    <div style={{ display: "grid", gridTemplateColumns: "300px minmax(0,1fr)", gap: 18, alignItems: "stretch" }}>
-                    <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-                    <svg viewBox="0 0 60 96" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", flex: 1, minHeight: 0, display: "block" }}>
-                      <rect x="2" y="2" width="56" height="92" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.5" rx="1.5" />
-                      <line x1="2" y1="48" x2="58" y2="48" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
-                      <circle cx="30" cy="48" r="7" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
-                      <circle cx="30" cy="48" r="0.5" fill="var(--chrome-muted-44)" />
-                      {/* Own goal at the bottom, attacking upward — the way a formation is read. */}
-                      <rect x="13" y="82" width="34" height="12" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
-                      <rect x="21" y="89" width="18" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.3" />
-                      <rect x="13" y="2" width="34" height="12" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.4" />
-                      <rect x="21" y="2" width="18" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.3" />
-                      {starters.map((p, pi2) => {
-                        const pos = lpos[pi2];
-                        if (!pos) return null;
-                        return (<g key={pi2}>
-                          <circle cx={pos.x} cy={pos.y} r="1.7" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.35" />
-                          <text x={pos.x} y={pos.y - 2.7} textAnchor="middle" fill="var(--ui-text)" fontSize="1.6" fontFamily="monospace" fontWeight="500">{shortName(p.name)}</text>
-                        </g>);
-                      })}
-                    </svg>
+                  {/* Badge padding is horizontal room for the OVR and position chips, which hang off
+                      the touchline tokens on both sides. */}
+                  <div style={{ maxWidth: PITCH_MAX_W + 68, margin: "0 auto", padding: "0 34px 4px" }}>
+                    {/* containerType is what makes cq() mean anything: every token size below is a
+                        share of THIS box's width. */}
+                    <div style={{ position: "relative", containerType: "inline-size" }}>
+                      <svg viewBox={`0 0 100 ${PITCH_H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%" }}>
+                        <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} fill="var(--ui-pitch-deep)" />
+                        {Array.from({ length: 10 }, (_, i) => i % 2 === 0 ? null : (
+                          <polygon key={i} points={pitchPoly([[0, i / 10], [1, i / 10], [1, (i + 1) / 10], [0, (i + 1) / 10]])} fill="var(--ui-pitch-mid)" />))}
+                        <g fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.32" strokeLinejoin="round">
+                          <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} />
+                          <polyline points={pitchPoly([[0, 0.5], [1, 0.5]])} />
+                          <polyline points={pitchPoly(PITCH_CIRCLE)} />
+                          {/* Drawn as three-sided polylines so the goal-line edge is not painted
+                              twice over the touchline it sits on. */}
+                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 1], [PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 0], [PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 0]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 1], [PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 0], [PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 0]])} />
+                        </g>
+                        {[1 - PITCH_MARK.spot, PITCH_MARK.spot, 0.5].map((y, i) => { const [cx, cy] = pitchProj(0.5, y); return <circle key={i} cx={cx} cy={cy} r="0.35" fill="var(--chrome-muted-33)" />; })}
+                      </svg>
+                      {starters.map(([p, idx], i) => {
+                        const sp = slots[i];
+                        if (!sp) return null;
+                        const [sx, sy] = pitchToken(sp[0] / 100, sp[1] / 100);
+                        const side = sideOf(p), clr = POS_CLR[p.pos] || "var(--chrome-border)";
+                        const { first, last } = splitSurname(p.fullName || p.name, p.name);
+                        const ovr = p.ovr ?? t.skill, ovrBg = ovrHex(Math.round(Number(ovr) || 0)), ovrRgb = hexToRgb(ovrBg);
+                        const chip = { position: "absolute", top: cq(TOKEN.chipTop), ...mono, fontSize: cq(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
+                                       minWidth: cq(TOKEN.chipMin), padding: `${cq(TOKEN.chipPadY)} ${cq(TOKEN.chipPadX)}`, borderRadius: cq(TOKEN.chipR), textAlign: "center" };
+                        return (
+                        <div key={idx} style={{ position: "absolute", left: `${sx}%`, top: `${sy / PITCH_H * 100}%`, width: cq(TOK), marginLeft: cq(-TOK / 2), marginTop: cq(-TOK / 2) }}>
+                          {/* Given name light over surname bold, the way a team sheet prints it. */}
+                          <div title={p.fullName || p.name} style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cq(TOKEN.gap), textAlign: "center", maxWidth: cq(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
+                            {/* Same colour as the surname: over grass, muted grey lost the given name entirely. Size and
+                                weight still carry the hierarchy. */}
+                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-text)", ...ellip }}>{first}</div>}
+                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-text)", ...ellip }}>{last}</div>
+                          </div>
+                          <div title={side.label || undefined} onClick={() => openTeam(side.team)}
+                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`,
+                                     display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`, cursor: side.team ? "pointer" : "default" }}>
+                            {side.team
+                              ? <TeamCrest team={side.team} size={cq(TOKEN.crest)} />
+                              : <span style={{ ...mono, fontSize: cq(TOKEN.chipFont), color: "var(--chrome-muted-66)" }}>{side.code || (p.spos || p.pos)}</span>}
+                          </div>
+                          <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrBg, color: ovrRgb && percLum(ovrRgb.r, ovrRgb.g, ovrRgb.b) > 0.5 ? "#101a12" : "#f4f7fa" }}>{showOvr(ovr)}</span>
+                          <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
+                        </div>); })}
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>STARTING XI</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 1, marginBottom: 12 }}>
-                    {starters.map((p, li) => { const idx = li;
-                      // A national side lists each player's club; a club lists their nationality.
-                      // Either way it is a three-letter code linking to that team.
-                      const pe = playerByName.get(p.fullName || p.name);
-                      const oc = isIntlTeam ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
-                      const ct = isIntlTeam ? (oc ? teamByName.get(oc.name) : null)
-                                            : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
-                      const sideCode = isIntlTeam ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || "");
-                      const sideName = isIntlTeam ? oc?.name : pe?.nationality;
-                      return (
-                      <div key={li} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: "1px solid var(--chrome-border-33)", overflow: "hidden" }}>
-                        {ed
-                          ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                              const ns = [...sq]; ns[idx] = {...ns[idx], name: e.target.value, fullName: undefined};
-                              updateTeam(t.id, "squad", ns);
-                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
-                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ flex: 1, minWidth: 0, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(p.fullName || p.name, p.name)}</span>}
-                        {/* spos is the specific slot (LB, DM, ST); pos is only the broad band. */}
-                        <span style={{ fontSize: 9, color: POS_CLR[p.pos] || "var(--chrome-muted)", fontWeight: 700, width: 30, flexShrink: 0, textAlign: "center", ...mono }}>{p.spos || p.pos}</span>
-                        {ed
-                          ? <input type="number" min="1" max="99" value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                              onChange={e => { const ns = [...sq]; ns[idx] = {...ns[idx], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
-                              onClick={e => e.stopPropagation()}
-                              style={{ width: 26, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 11, textAlign: "center", flexShrink: 0, ...mono }}
-                              onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                              onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ width: 26, fontSize: 11, textAlign: "center", flexShrink: 0, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill))
-                          ? <span title={"National team rating override: " + nOvr} style={{ fontSize: 9, color: "var(--ui-nat-override)", flexShrink: 0, ...mono }}>{nOvr}</span>
-                          : <span style={{ width: 0 }} />; })()}
-                        {/* Only ever populated for a national side — for a club team this is the
-                            team you are already looking at. */}
-                        <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
-                          title={ct ? `Open ${sideName}` : (sideName || undefined)}
-                          style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 38, flexShrink: 0, justifyContent: "flex-end", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
-                          <span style={{ whiteSpace: "nowrap" }}>{sideCode}</span>
-                          {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
-                        </span>
-                      </div>); })}
-                    </div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingTop: 6 }}>BENCH</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 1 }}>
-                    {bench.map((p, li) => { const idx = 11 + li;
-                      // A national side lists each player's club; a club lists their nationality.
-                      // Either way it is a three-letter code linking to that team.
-                      const pe = playerByName.get(p.fullName || p.name);
-                      const oc = isIntlTeam ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
-                      const ct = isIntlTeam ? (oc ? teamByName.get(oc.name) : null)
-                                            : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
-                      const sideCode = isIntlTeam ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || "");
-                      const sideName = isIntlTeam ? oc?.name : pe?.nationality;
-                      return (
-                      <div key={li} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: "1px solid var(--chrome-border-33)", overflow: "hidden" }}>
-                        {ed
-                          ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => {
-                              const ns = [...sq]; ns[idx] = {...ns[idx], name: e.target.value, fullName: undefined};
-                              updateTeam(t.id, "squad", ns);
-                            }} style={{ ...inp, flex: 1, minWidth: 0, padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
-                            onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ flex: 1, minWidth: 0, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(p.fullName || p.name, p.name)}</span>}
-                        {/* The XI shows its formation slot; a substitute shows his own role. */}
-                        <span style={{ fontSize: 9, color: POS_CLR[p.pos] || "var(--chrome-muted)", fontWeight: 700, width: 30, flexShrink: 0, textAlign: "center", ...mono }}>{benchSpos(p, pe)}</span>
-                        {ed
-                          ? <input type="number" min="1" max="99" value={p.ovr != null ? p.ovr : (t.skill || 65)}
-                              onChange={e => { const ns = [...sq]; ns[idx] = {...ns[idx], ovr: e.target.value === "" ? null : Math.max(1, Math.min(99, +e.target.value))}; updateTeam(t.id, "squad", ns); }}
-                              onClick={e => e.stopPropagation()}
-                              style={{ width: 26, background: "transparent", border: "1px solid transparent", color: p.ovr != null ? "#ccc" : "var(--chrome-muted)", fontSize: 11, textAlign: "center", flexShrink: 0, ...mono }}
-                              onFocus={e => { e.target.style.borderColor = "var(--chrome-muted)"; e.target.style.background = "var(--chrome-bg)"; }}
-                              onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = "transparent"; }} />
-                          : <span style={{ width: 26, fontSize: 11, textAlign: "center", flexShrink: 0, fontWeight: 600, color: ovrColor(p.ovr ?? t.skill), ...mono }}>{p.ovr ?? t.skill}</span>}
-                        {(() => { const nOvr = natOvrMap.get(p.fullName || p.name); return (nOvr != null && nOvr !== (p.ovr ?? t.skill))
-                          ? <span title={"National team rating override: " + nOvr} style={{ fontSize: 9, color: "var(--ui-nat-override)", flexShrink: 0, ...mono }}>{nOvr}</span>
-                          : <span style={{ width: 0 }} />; })()}
-                        {/* Only ever populated for a national side — for a club team this is the
-                            team you are already looking at. */}
-                        <span className={ct ? "cell-link" : undefined} onClick={() => openTeam(ct)}
-                          title={ct ? `Open ${sideName}` : (sideName || undefined)}
-                          style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 38, flexShrink: 0, justifyContent: "flex-end", fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default", ...mono }}>
-                          <span style={{ whiteSpace: "nowrap" }}>{sideCode}</span>
-                          {ct ? <TeamCrest team={ct} size={13} /> : <span style={{ width: 13, flexShrink: 0 }} />}
-                        </span>
-                      </div>); })}
-                    </div>
-                    </div>
-                    </div>
+                  </div>
+                  {/* The table never needed the full width — five short columns stretched to 1200px
+                      put the nationality a screen away from the name. The rule down the middle is
+                      what stops the short right-hand column reading as a box floating in the gap. */}
+                  <div style={SECTION_RULE} />
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: 40 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style={thCell}>#</th>
+                        <th style={thCell}>Player</th>
+                        <th style={{ ...thCell, textAlign: "center" }}>OVR</th>
+                        <th style={{ ...thCell, textAlign: "center" }}>POS</th>
+                        <th style={{ ...thCell, paddingLeft: 8 }}>{isIntlTeam ? "Club" : "Nationality"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {secRow("Starting XI", starters.length)}
+                      {starters.map((r, n) => squadRow(r, n))}
+                      {secRow("Bench", bench.length)}
+                      {bench.map((r, n) => squadRow(r, starters.length + n))}
+                    </tbody>
+                  </table>
+                  {(() => {
+                    const st = stripVenue(t.stadium || "");
+                    const row = (label, value, first) => (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, minHeight: 34, padding: "0 12px", borderTop: first ? "none" : "1px solid var(--chrome-border-33)" }}>
+                        <span style={{ ...cardLabel, textAlign: "left", flexShrink: 0 }}>{label}</span>
+                        <div style={{ minWidth: 0, textAlign: "right" }}>{value}</div>
+                      </div>);
+                    const cap = venueCap(t.stadium);
+                    // A club sits in the nation its league belongs to; a national side is that nation,
+                    // and printing its own name after the city says nothing.
+                    const nat = isIntlTeam ? null : leagueNation(t.league);
+                    return (
+                    <div style={{ borderLeft: "1px solid var(--chrome-border-33)", paddingLeft: 24 }}>
+                      {/* Only the photographed grounds get a picture; the column reads the same
+                          without one rather than holding an empty frame open. */}
+                      {STADIUM_IMAGES.includes(st) &&
+                        <div style={{ height: 132, marginTop: TH_PAD_Y, marginBottom: 4, borderRadius: 8, backgroundImage: stadiumBg(st), backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border-33)" }} />}
+                      {row("Code", ed
+                        ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "4px 8px", fontSize: 12, width: 72, textAlign: "right", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} title={dupCodeId === t.id ? "Code already in use" : undefined} />
+                        : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>, true)}
+                      {row("Stadium", ed
+                        ? <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="Stadium (capacity)" style={{ ...inp, padding: "4px 8px", fontSize: 12, width: "100%", textAlign: "right" }} />
+                        : <RO>{stripVenue(t.stadium)}{cap && <span style={{ ...mono, marginLeft: 8, fontSize: 11, color: "var(--chrome-muted)" }}>{cap}</span>}</RO>)}
+                      {row("Location", ed
+                        ? <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="City" style={{ ...inp, padding: "4px 8px", fontSize: 12, width: "100%", textAlign: "right" }} />
+                        : <RO>{t.city ? <CityLink name={t.city} /> : null}{t.city && nat ? ", " : ""}
+                            {nat && <span className="cell-link" onClick={() => openTeam(nat)} title={`Open ${nat.name}`} style={{ color: "var(--chrome-muted)" }}>{nat.name}</span>}</RO>)}
+                      {row("Colours",
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+                          {[["primaryColor", "Home", "var(--ui-info)"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
+                            <label key={f} style={{ display: "flex", gap: 6, alignItems: "center", cursor: ed ? "pointer" : "default" }}>
+                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>{lbl}</span>
+                              {ed
+                                ? <input type="color" value={t[f] || fallback} onChange={e => updateTeam(t.id, f, e.target.value)} style={{ width: 24, height: 24, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
+                                : <span style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--chrome-border)", background: t[f] || fallback, flexShrink: 0 }} />}
+                            </label>))}
+                        </div>)}
+                    </div>); })()}
+                  </div>
                 </>);
               })()}
-                    <div style={{ borderTop: "1px solid var(--chrome-border)", margin: "22px 0 14px" }} />
+                    <div style={SECTION_RULE} />
                     <div style={{ marginBottom: 12 }}><PanelTitle accent="var(--ui-warn)">Tactics</PanelTitle></div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
@@ -8226,8 +8485,8 @@ export default function App() {
                   const GRPS = [["possession", "In Possession"], ["transition", "In Transition"], ["defense", "Out of Possession"]];
                   return (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 20, alignItems: "start" }}>
-                  {GRPS.map(([g, label]) => (
-                  <div key={g}>
+                  {GRPS.map(([g, label], gi) => (
+                  <div key={g} style={{ borderLeft: gi ? "1px solid var(--chrome-border-33)" : "none", paddingLeft: gi ? 20 : 0 }}>
                     <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
                     {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === g).map(([key, {name, vals}]) => (
                       <div key={key}>
@@ -8346,7 +8605,7 @@ export default function App() {
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{leagueAvgSkill(ts)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{showOvr(leagueAvgSkill(ts))}</span>
                 </div>); })}</Fragment>))}
             </div>
           </div>
@@ -8375,7 +8634,7 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(avg), ...mono }}>{avg || "–"}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(avg), ...mono }}>{showOvr(avg)}</div>
                     </div>
                     {/* Bulk import only ever creates Custom teams, so save/load lives on that league. */}
                     {customTab && <div style={{ display: "flex", gap: 6 }}>
@@ -8395,10 +8654,10 @@ export default function App() {
                     <tr>
                       <th style={thCellSticky}>#</th>
                       <th style={thCellSticky}>Team</th>
-                      <th style={{ ...thCellSticky, textAlign: "center" }}>OVR</th>
-                      <th style={{ ...thCellSticky, textAlign: "center" }}>ATT</th>
-                      <th style={{ ...thCellSticky, textAlign: "center" }}>MID</th>
-                      <th style={{ ...thCellSticky, textAlign: "center" }}>DEF</th>
+                      <th style={{ ...thCellSticky, textAlign: "center", width: 56, minWidth: 56 }}>OVR</th>
+                      <th style={{ ...thCellSticky, textAlign: "center", width: 56, minWidth: 56 }}>ATT</th>
+                      <th style={{ ...thCellSticky, textAlign: "center", width: 56, minWidth: 56 }}>MID</th>
+                      <th style={{ ...thCellSticky, textAlign: "center", width: 56, minWidth: 56 }}>DEF</th>
                       {/* A national side IS its nation, and its rail row IS its confederation, so
                           both of these would otherwise repeat something already on the row. Same
                           switch the tournament setup header makes. */}
@@ -8423,9 +8682,12 @@ export default function App() {
                             <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", flexShrink: 0, ...mono }}>{t.code || abbr(t.name, t.code)}</span>
                           </span>
                         </td>
-                        <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600, color: ovrColor(t.skill), ...mono }}>{t.skill}</td>
+                        <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
+                          <span style={{ ...ovrBlock(t.skill), ...mono }}>{showOvr(t.skill)}</span></td>
                         {["att", "mid", "def"].map(k => (
-                        <td key={k} style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", color: ln[k] ? ovrColor(ln[k]) : "var(--chrome-muted-66)", ...mono }}>{ln[k] ? ln[k].toFixed(1) : "–"}</td>))}
+                        <td key={k} style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
+                          {ln[k] ? <span style={{ ...ovrBlock(ln[k]), ...mono }}>{showOvr(ln[k])}</span>
+                                 : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>))}
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{home}</td>
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -8456,14 +8718,14 @@ export default function App() {
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
                       onClick={() => setExpandedTeam(t.id)} className="team-tile"
                       style={{ position: "relative", borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer",
-                               padding: "18px 10px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                               /* Symmetric on purpose. The crest's negative margin cancels the badge art's
+                                  transparent inset, so padding-top IS the visible gap above the crest — 18 over
+                                  12 read as a tile sagging, and the taller rating strip made it plainer. */
+                               padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
                                background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
                       <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: TILE_NAME_GAP - TILE_GAP }}>
-                        <span style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>
-                      </div>
+                      <div style={{ marginTop: TILE_NAME_GAP - TILE_GAP }}>{ratingStrip(t, true)}</div>
                     </div>); })}
                 </div>
                 {visibleTeams.length === 0 && <div style={{ padding: 28, fontSize: 11, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
@@ -8513,7 +8775,7 @@ export default function App() {
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label || n.name}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{n.players.length} {n.players.length === 1 ? "player" : "players"}</div>
                   </div>
-                  {!n.label && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(n.natSkill), ...mono }}>{n.natSkill || "–"}</span>}
+                  {!n.label && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(n.natSkill), ...mono }}>{showOvr(n.natSkill)}</span>}
                 </div>); })}
             </div>
           </div>
@@ -8551,7 +8813,7 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Nat Team OVR</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(headAvg), ...mono }}>{headAvg || "–"}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(headAvg), ...mono }}>{showOvr(headAvg)}</div>
                     </div></>}
                   </div>
                 </div>); })()}
@@ -8607,7 +8869,9 @@ export default function App() {
                                        borderLeft: `2px solid ${capped ? "var(--chrome-brand)" : "transparent"}` }}>{i + 1}</td>
                           <td style={{ ...tdStyle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                               title={capped ? `${p.fullName || p.name} — in the ${p.nationality} squad` : undefined}>{boldSurname(p.fullName || p.name, p.name)}</td>
-                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(p.ovr) }}>{p.ovr || "–"}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
+                            {p.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
+                                   : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
                           <td className={natT ? "cell-link" : undefined} onClick={() => openTeam(natT)}
                             title={natT ? `Open ${natT.name}` : undefined}
@@ -8800,7 +9064,7 @@ export default function App() {
                           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
                             <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{t.skill}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{showOvr(t.skill)}</span>
                           </div>
                         </div>); })}
                     </div>
@@ -9969,7 +10233,7 @@ export default function App() {
                         style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, background: "var(--chrome-panel-66)", border: "1px solid var(--chrome-border)", maxWidth: "100%", cursor: movable ? "pointer" : "default" }}>
                         <TeamCrest team={t} size={12} />
                         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.code || abbr(t.name)}</span>
-                        <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{t.skill}</span>
+                        <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{showOvr(t.skill)}</span>
                       </span>);
                     })}
                     {!pot.teams.length && <span style={{ fontSize: 10, color: "var(--chrome-muted-33)" }}>empty</span>}
