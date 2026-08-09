@@ -10129,7 +10129,7 @@ export default function App() {
                     const e = c.entries[si];
                     const latest = !!e && !!justPlaced && e.name === justPlaced.name;
                     return drawSlot(si, e, e ? teamOf.get(e.name) : null, latest,
-                      e && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>{e.pinned ? "PIN" : e.skill}</span>);
+                      e && <span style={{ ...mono, fontSize: 9, color: e.pinned ? "var(--chrome-muted)" : ovrColor(e.skill), flexShrink: 0 }}>{e.pinned ? "PIN" : showOvr(e.skill)}</span>);
                   }) }))}
               </div>),
               panelA: live ? (<>
@@ -10140,7 +10140,7 @@ export default function App() {
                       <div key={ballCard.name} className="draw-ball-out" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                         {ballTeam && <TeamCrest team={ballTeam} size={38} />}
                         <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>{ballCard.name}</div>
-                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>POT {ballCard.pot} · {ballCard.skill}</div>
+                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>POT {ballCard.pot} · <span style={{ color: ovrColor(ballCard.skill) }}>{showOvr(ballCard.skill)}</span></div>
                       </div>
                       {cur
                         ? <div className="draw-await" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginTop: 4 }}>AWAITING GROUP</div>
@@ -10197,7 +10197,7 @@ export default function App() {
                     {entries.map(e => {
                       const li = idxOf.get(e.name);
                       const isOut = li < index, isHand = pending && li === index;
-                      return (<span key={e.name} title={`${e.name} · ${e.skill}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, transition: "all 0.3s",
+                      return (<span key={e.name} title={`${e.name} · ${showOvr(e.skill)}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, transition: "all 0.3s",
                         background: isHand ? "var(--ui-warn-33)" : "var(--chrome-panel-66)", border: `1px solid ${isHand ? "var(--ui-warn)" : "var(--chrome-border)"}`,
                         color: isHand ? "var(--ui-warn)" : isOut ? "var(--chrome-muted-33)" : "var(--ui-text)", opacity: isOut ? 0.45 : 1 }}>
                         <TeamCrest team={teamOf.get(e.name) || e} size={12} />
@@ -10230,7 +10230,7 @@ export default function App() {
                     {pot.teams.map(t => {
                       const movable = potMode === "manual" && tDrawPots.length > 1;
                       return (<span key={t.name} onClick={movable ? () => tMovePot(t.name, (pi + 1) % tDrawPots.length) : undefined}
-                        title={movable ? `${t.name} · ${t.skill} — click to move to pot ${(pi + 1) % tDrawPots.length + 1}` : `${t.name} · ${t.skill}`}
+                        title={movable ? `${t.name} · ${showOvr(t.skill)} — click to move to pot ${(pi + 1) % tDrawPots.length + 1}` : `${t.name} · ${showOvr(t.skill)}`}
                         style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, background: "var(--chrome-panel-66)", border: "1px solid var(--chrome-border)", maxWidth: "100%", cursor: movable ? "pointer" : "default" }}>
                         <TeamCrest team={t} size={12} />
                         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.code || abbr(t.name)}</span>
@@ -10264,8 +10264,8 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
               {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
-                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>{t.skill}</span></div>))}
-                {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}</select></div>)}
+                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: ovrColor(t.skill) }}>{showOvr(t.skill)}</span></div>))}
+                {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({showOvr(t.skill)})</option>)}</select></div>)}
               </div>))}
             </div>
             {tManual.pool.length === 0 && <button onClick={tManualConfirm} style={scBtn}>▶ Start Tournament</button>}
@@ -10281,7 +10281,7 @@ export default function App() {
               {tByeManual.pool.map((t, ti) => { const sel = tByeManual.selected.some(s => s.name === t.name); return (
                 <button key={ti} onClick={() => { if (sel) { setTByeManual(b => ({...b, selected: b.selected.filter(s => s.name !== t.name)})); } else if (tByeManual.selected.length < tByeManual.numByes) { setTByeManual(b => ({...b, selected: [...b.selected, t]})); } }}
                   className={sel ? "gbtn" : ""} style={{ ...chip, background: sel ? "var(--chrome-brand)" : "transparent", color: sel ? "var(--ui-on-accent)" : "var(--chrome-muted)", borderColor: sel ? "var(--chrome-brand)" : "var(--chrome-muted-33)", fontSize: 10, padding: "6px 10px", textAlign: "left" }}>
-                  {t.name} <span style={{ color: sel ? "var(--ui-ok)" : "var(--chrome-muted)", fontSize: 9 }}>({t.skill})</span>
+                  {t.name} <span style={{ color: sel ? "var(--ui-ok)" : "var(--chrome-muted)", fontSize: 9 }}>({showOvr(t.skill)})</span>
                 </button>
               ); })}
             </div>
@@ -10304,7 +10304,7 @@ export default function App() {
                   ) : (
                     <select onChange={e => { if (e.target.value !== "") { tKOManualAssign(+e.target.value, mi, slot); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}>
                       <option value="">+ {slot === "home" ? "Home" : "Away"}...</option>
-                      {tKOManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({t.skill})</option>)}
+                      {tKOManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({showOvr(t.skill)})</option>)}
                     </select>
                   )}
                 </div>))}
@@ -10409,7 +10409,7 @@ export default function App() {
                         </div>}
                         {drawSlot(si, e, e ? teamOf.get(e.name) : null, latest, (<>
                           {e && e.group && <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)", flexShrink: 0 }}>{e.group}</span>}
-                          {e && <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>{e.skill}</span>}
+                          {e && <span style={{ ...mono, fontSize: 9, color: ovrColor(e.skill), flexShrink: 0 }}>{showOvr(e.skill)}</span>}
                         </>))}
                       </Fragment>);
                     }) });
@@ -10423,7 +10423,7 @@ export default function App() {
                       <div key={ballCard.name} className="draw-ball-out" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                         {ballTeam && <TeamCrest team={ballTeam} size={38} />}
                         <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>{ballCard.name}</div>
-                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ballCard.group ? ballCard.group + " · " : ""}{ballCard.skill}</div>
+                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ballCard.group ? ballCard.group + " · " : ""}<span style={{ color: ovrColor(ballCard.skill) }}>{showOvr(ballCard.skill)}</span></div>
                       </div>
                       {cur
                         ? <div className="draw-await" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginTop: 4 }}>AWAITING TIE</div>
@@ -10481,7 +10481,7 @@ export default function App() {
                     const li = idxOf.has(t.name) ? idxOf.get(t.name) : -1;
                     const isOut = li >= 0 && li < index, isHand = pending && li === index;
                     const tie = isOut ? log[li].tie + 1 : null;
-                    return (<span key={t.name} title={`${t.name} · ${t.skill}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, transition: "all 0.3s",
+                    return (<span key={t.name} title={`${t.name} · ${showOvr(t.skill)}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px 2px 4px", borderRadius: 4, transition: "all 0.3s",
                         background: isHand ? "var(--ui-warn-33)" : "var(--chrome-panel-66)", border: `1px solid ${isHand ? "var(--ui-warn)" : bye ? "var(--ui-ok-edge)" : "var(--chrome-border)"}`,
                         color: isHand ? "var(--ui-warn)" : isOut ? "var(--chrome-muted-33)" : "var(--ui-text)", opacity: isOut ? 0.45 : 1 }}>
                       <TeamCrest team={t} size={12} />
@@ -10665,7 +10665,7 @@ export default function App() {
               <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, flexShrink: 0, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tKO.champion.name}</div>
-                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 6, ...mono }}>{tKO.champion.skill}</div>
+                <div style={{ fontSize: 11, color: ovrColor(tKO.champion.skill), marginTop: 6, ...mono }}>{showOvr(tKO.champion.skill)}</div>
               </div>
             )}
             {!tKO.losers && (() => {
@@ -11222,7 +11222,7 @@ export default function App() {
               <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                 <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
                 <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "var(--chrome-muted-66)" }}>—</span>}</td>
-                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(x.player?.ovr) }}>{x.player?.ovr || "–"}</td>
+                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(x.player?.ovr) }}>{showOvr(x.player?.ovr)}</td>
                 <td style={{ ...tdS, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
               </tr>
             );
