@@ -7842,7 +7842,7 @@ export default function App() {
               <div className="sb-rows" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
                 <div style={{ textAlign: "right", minWidth: 0 }}>
                   <div className="sb-name"><MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmH) }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmH) }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={String(teamById(lmH)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
+                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmH) }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={teamById(lmH) ? showOvr(teamById(lmH).skill) : ""} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
                 </div>
                 <div className="sb-score" style={{ fontSize: 40, fontWeight: 700, color: "var(--ui-on-accent)", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
                   <span className={goalFlash==="home"?"goal-flash":""}>{dispScore[0]}</span>
@@ -7851,7 +7851,7 @@ export default function App() {
                 </div>
                 <div style={{ textAlign: "left", minWidth: 0 }}>
                   <div className="sb-name"><MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmA) }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={String(teamById(lmA)?.skill ?? "")} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmA) }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
+                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={teamById(lmA) ? showOvr(teamById(lmA).skill) : ""} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmA) }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
                 </div>
                 {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
                     name/score above — ball icons share the score column, names share the name columns.
