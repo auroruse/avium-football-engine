@@ -16,6 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
+import { ME_DT, ME_TPM, meInit, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -75,6 +76,26 @@ const ovrVs = (a, b) => { if (a == null || b == null) return 0; const g = a - b;
 // back four is a different back four. Null when nobody is in that band -- a side with no recognised
 // forward should not hand its opponents a bonus for it.
 const lineOvr = (players, band) => { let n = 0, t = 0; for (const p of players || []) if (p.pos === band) { t += fatigueOvr(p.ovr, p.stamina); n++; } return n ? t / n : null; };
+// The shot ladder, resolved the way an event engine resolves one: the shooter against the defence he
+// is shooting past, then the keeper against the shooter. Both comparisons are between OPPONENTS, so a
+// rating is only ever measured against an opposing number and never against a team-mate. A keeper is
+// the same keeper whoever is in front of him.
+//
+// Team strength is not an input here at all. It decides how many chances happen (lmResolvePossession,
+// via hE/aE) and nothing else. It used to be charged three separate times -- once in chance volume,
+// again as (atkE/defE)^0.5 on conversion, and a third time inside the save rate -- and squaring the
+// same gap is what made a 29-point difference a 95%/3.31 rout while leaving individual players as a
+// garnish on a number the team ratio had already decided.
+const SHOT_EDGE = 0.12;
+// The keeper duel. Symmetric and absolute: gkEdge(v, v) is exactly zero, so applying one rating gap
+// to both sides leaves this term untouched, and a keeper only registers when he differs from the man
+// shooting at him. Priced against his own XI instead -- the shape this replaces -- an 82 behind an 86
+// side read as below par, which is not something a rating that means anything is allowed to say.
+const GK_PWR = 0.15, GK_SPREAD = 40;
+const gkEdge = (gk, sh) => (gk == null || sh == null) ? 0 : Math.max(-1, Math.min(1, (gk - sh) / GK_SPREAD));
+// The save rate for a shot the keeper duel has not moved. Was 0.20 + 0.16*defE/(atkE+defE), the third
+// charging of the team gap; on equal sides that expression sat at 0.28, so that is where it lands.
+const SAVE_BASE = 0.28;
 const gkOvr = (players) => { const g = (players || []).find(p => p.pos === "GK"); return g ? fatigueOvr(g.ovr, g.stamina) : null; };
 // For choosing BETWEEN team-mates, the comparator is the team-mates. Who takes the shot is a
 // question about this XI, not about the opposition.
@@ -729,7 +750,6 @@ function applyStrategy(mod, strat) {
 }
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if (s.activeChance) { s.activeChance.chanceViz._completed = true; }
-  const sm = Math.pow(atkE / defE, 0.3);
   const r = rng.u();
   const cornerPl = s.players[atk].filter(p => p.pos !== "GK");
   const scorer = pickPlayer(rng, cornerPl.length > 0 ? cornerPl : s.players[atk], "corner", s.formPosW?.[atk]);
@@ -745,8 +765,16 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   const _lockPos = (_g) => { _g.shotFrom = { x: headerX, y: headerY }; _g._posLocked = true; _g.assistFrom = { x: 100, y: cornerY }; if (!_g.assist) _g.assist = deliverer.name; };
   const cGk = s.players[def].find(p => p.pos === "GK");
   const cEmergency = cGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  const cGoalP = 0.04 * sm * (1 + ovrVs(fatigueOvr(scorer.ovr, scorer.stamina), lineOvr(s.players[def], "DEF")) * 0.18) + cEmergency;
-  const cGkBonus = ovrVs(cGk ? fatigueOvr(cGk.ovr, cGk.stamina) : null, lineOvr(s.players[atk], "FWD")) * 0.07 - cEmergency;
+  // A set piece runs the same ladder as open play: the header against the defence it is aimed over,
+  // then the keeper against the header. No team term -- winning the corner in the first place is
+  // where the stronger side was already paid, and charging it again here was the fourth such charge.
+  const _cSh = fatigueOvr(scorer.ovr, scorer.stamina);
+  const cGoalP0 = 0.04 * (1 + ovrVs(_cSh, lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + cEmergency;
+  // Taken OFF the goal bucket, not added to the save band. In the old shape the keeper's term lived
+  // one rung down and could only turn a header that was missing anyway into a save, which is how a
+  // better keeper ended up conceding more corners while his save count went up.
+  const cGkStop = gkEdge(cGk ? fatigueOvr(cGk.ovr, cGk.stamina) : null, _cSh) * GK_PWR * cGoalP0;
+  const cGoalP = cGoalP0 - cGkStop;
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + cGoalP;
   if (r < cGoalP) {
     s.score[atk === "home" ? 0 : 1]++; s.stats[atk].shots++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:scorer.name,min:dm,method:"header"});
@@ -755,7 +783,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     {let _t=goalText(rng,"corner_goal_desc",s,nm,scorer,_astCrn);const _g=genGoalViz(rng,"corner",scorer.name,_astCrn?_astCrn.name:null);_lockPos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);const _oc={min:dm, type:"goal", team:atk, playerFull:scorer.fullName||scorer.name, text:"\u26BD "+_t, goalViz:_g, suppressStandalone:true};ce.chanceViz.outcomeEvent=_oc;s.events.push(_oc);}
     ce.chanceViz._completed=true;s.activeChance=null;
     s.ball = 2; s.pressure = 0; s.possession = def; s.stoppageBank += 45; momBump(s, atk, 4);
-  } else if (r < (0.10 + cGkBonus) * sm) {
+  } else if (r < 0.10 + cGkStop - cEmergency) {
     s.stats[atk].shots++; s.stats[atk].onTarget++;
     if (cGk) { cGk.saves = (cGk.saves || 0) + 1; cGk.rating = Math.min(10, +(cGk.rating + xgSaveBonus(cGoalP, 1.3)).toFixed(2)); }
     momBump(s, def, 2);
@@ -843,9 +871,20 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * Math.pow(atkE/defE, 0.5) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * 0.18) + sEmergency;
+  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
-  const saveP = Math.max(0.02, 0.20+0.16*defE/(atkE+defE) + ovrVs(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, lineOvr(s.players[atk], "FWD")) * 0.07 - sEmergency);
+  // The keeper faces the shot. Must come after the chain bonuses above: those move goalP, and what
+  // he stops is a share of the goalP actually being rolled. A weak keeper has a negative edge, which
+  // moves probability the other way — goals up, saves down — so this is one term, not two.
+  // A share of goalP, so it needs no clamp of its own: GK_PWR is well under 1 and the edge is capped
+  // at +-1, so the keeper can neither drive a chance below zero nor inflate a tap-in past it.
+  const _gkE = gkEdge(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, fatigueOvr(shooter.ovr, shooter.stamina));
+  const _gkStop = _gkE * GK_PWR * goalP;
+  goalP -= _gkStop;
+  // Whatever the keeper took off the goal bucket lands here, so the shot count is conserved and a
+  // save is a shot that was going in. His edge no longer appears anywhere else: a shot going wide is
+  // not saved by anybody, however good he is.
+  const saveP = Math.max(0.02, SAVE_BASE + _gkStop - sEmergency);
   if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
   const roll = rng.u();
   if (roll < goalP) {
@@ -1225,6 +1264,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     }else {const _nEv={min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_nEv;_nEv.suppressStandalone=true;}s.events.push(_nEv);}
   }
 }
+
+
 
 function lmSimMinute(s, rng, home, away) {
   const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
@@ -4889,6 +4930,91 @@ export default function App() {
   }, [teams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
+  // ---- positional match engine lab -------------------------------------------------------
+  const [meHomeId, setMeHomeId] = useState(null), [meAwayId, setMeAwayId] = useState(null);
+  const ME_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 20];
+  const [meSpeedIx, setMeSpeedIx] = useState(2);   // index into ME_SPEEDS; 1x real time
+  const meAcc = useRef(0);
+  const [meFrame, setMeFrame] = useState(0);
+  const [meRunning, setMeRunning] = useState(false);
+  const [meBatch, setMeBatch] = useState(null);
+  const meRef = useRef(null), meTimer = useRef(null);
+  const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
+    onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
+    passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0,
+    evt: null, feed: [], min: 0 });
+  // The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
+  // players synthesised at the team's own rating so an unfilled preset is still testable.
+  const meSide = (t) => {
+    const xi = (t?.squad || []).filter(p => !p.bench).slice(0, 11);
+    const base = xi.length === 11 ? xi : buildSquad(t?.formation || "4-3-3", null).filter(p => !p.bench);
+    return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
+      stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0, defActs: 0, _att: null }));
+  };
+  const meBuild = () => {
+    const hT = teams.find(t => t.id === meHomeId) || teams[0], aT = teams.find(t => t.id === meAwayId) || teams[1];
+    if (!hT || !aT) return null;
+    const st = createMatchState();
+    st.players.home = meSide(hT); st.players.away = meSide(aT);
+    st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
+    st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
+    st.possession = "home";
+    meInit(st, pitchSlots);
+    return { s: st, out: meFreshOut(), rng: new RNG((Date.now() & 0x7ffffff) || 7), t: 0, hT, aT };
+  };
+  const meStop = () => { if (meTimer.current) clearInterval(meTimer.current); meTimer.current = null; meAcc.current = 0; setMeRunning(false); };
+  const meKick = () => { meStop(); meRef.current = meBuild(); setMeFrame(f => f + 1); };
+  const meStep = (n) => {
+    const m = meRef.current; if (!m) return;
+    for (let i = 0; i < n && m.t < 90 * ME_TPM; i++) { m.out.min = Math.floor(m.t / ME_TPM); meTick(m.s, m.rng, m.out); m.t++; }
+    if (m.t >= 90 * ME_TPM) meStop();
+    setMeFrame(f => f + 1);
+  };
+  const mePlay = () => {
+    if (!meRef.current) meRef.current = meBuild();
+    if (!meRef.current) return;
+    setMeRunning(true);
+    meAcc.current = 0;
+    meTimer.current = setInterval(() => {
+      // Carry the fraction over between frames instead of rounding it away, so 0.25x really is
+      // quarter pace rather than the fastest the frame rate happens to allow.
+      meAcc.current += ME_SPEEDS[meSpeedIx] * 0.04 / ME_DT;
+      const n = Math.floor(meAcc.current);
+      if (n > 0) { meAcc.current -= n; meStep(n); }
+      else setMeFrame(f => f + 1);
+    }, 40);
+  };
+  useEffect(() => { if (meRunning) { meStop(); mePlay(); } }, [meSpeedIx]);
+  useEffect(() => () => { if (meTimer.current) clearInterval(meTimer.current); }, []);
+  // Batch: the same numbers the calibration harness reports, run in the browser.
+  const meRunBatch = (n, gapMode) => {
+    const rows = [];
+    const one = (hOvr, aOvr) => {
+      const agg = meFreshOut(); let stamEnd = 0;
+      for (let k = 0; k < n; k++) {
+        const st = createMatchState();
+        const mk = (o) => buildSquad("4-3-3", null).filter(p => !p.bench)
+          .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, _att: null }));
+        st.players.home = mk(hOvr); st.players.away = mk(aOvr);
+        st.formations = { home: "4-3-3", away: "4-3-3" };
+        st.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
+        st.possession = "home"; meInit(st, pitchSlots);
+        const out = meFreshOut(), rng = new RNG(101 + k * 17);
+        for (let t = 0; t < 90 * ME_TPM; t++) meTick(st, rng, out);
+        for (const key of ["passes","passOk","passFail","tackles","carries","clears","inplay","blocked"]) agg[key] += out[key];
+        for (const sd of ["home","away"]) for (const key of ["poss","shots","goals","onTarget","saves","corners","fouls"]) agg[key][sd] += out[key][sd];
+        stamEnd += st.players.home.reduce((a, p) => a + p.stamina, 0) / 11;
+      }
+      const pt = agg.poss.home + agg.poss.away || 1;
+      return { poss: 100 * agg.poss.home / pt, shotsH: agg.shots.home / n, shotsA: agg.shots.away / n,
+        goalsH: agg.goals.home / n, goalsA: agg.goals.away / n, passPct: 100 * agg.passOk / (agg.passes || 1),
+        passes: agg.passes / n, corners: agg.corners.home / n, fouls: agg.fouls.home / n,
+        inplay: agg.inplay / n / ME_TPM, stam: stamEnd / n, blocked: agg.blocked / n };
+    };
+    if (gapMode) for (const g of [0, 8, 16, 29]) rows.push({ label: "+" + g, ...one(75 + g, 75) });
+    else rows.push({ label: "even 75", ...one(75, 75) });
+    setMeBatch(rows);
+  };
   // The team the right pane has drilled into. Read from `teams`, not effTeams, so the panel edits
   // the same objects updateTeam writes to.
   const detailTeam = useMemo(() => expandedTeam ? (teams.find(t => t.id === expandedTeam) || null) : null, [expandedTeam, teams]);
@@ -8547,7 +8673,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
           <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
-            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
+            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["me", "ME Lab"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
@@ -11263,6 +11389,182 @@ export default function App() {
         </div>)}
 
         {/* ═══ DOCS TAB ═══ */}
+        {tab === "me" && (() => {
+          const m = meRef.current, st = m?.s, out = m?.out;
+          const minute = m ? Math.floor(m.t / ME_TPM) : 0;
+          const pt = out ? (out.poss.home + out.poss.away) || 1 : 1;
+          // The simulation advances four times a second and the screen redraws twenty-five times, so
+          // drawing raw positions teleports everyone a quarter-second of travel at once. Draw BETWEEN
+          // slices instead, using however much of the next one has already elapsed.
+          const al = meRunning ? Math.max(0, Math.min(1, meAcc.current)) : 1;
+          const ix = (p) => (p._px ?? p.x) + (p.x - (p._px ?? p.x)) * al;
+          const iy = (p) => (p._py ?? p.y) + (p.y - (p._py ?? p.y)) * al;
+          const dot = (p, fill, key) => {
+            const x = ix(p), y = iy(p);
+            return (
+              <g key={key}>
+                <circle cx={x} cy={y} r={1.9} fill={fill} stroke="rgba(0,0,0,.6)" strokeWidth={0.35} />
+                <text x={x} y={y + 0.75} textAnchor="middle" fontSize={2.1} fontWeight={700}
+                      fill="rgba(0,0,0,.72)" style={{ pointerEvents: "none" }}>{(p.pos || "M")[0]}</text>
+              </g>
+            );
+          };
+          // The last action, held on screen for a few slices so a pass or a shot is something you
+          // can actually see rather than a ball that teleports.
+          const ev = out?.evt && out.evt.age < 10 ? out.evt : null;
+          const EVC = { pass: "#ffffff", cut: "#ffd166", shot: "#ffd166", goal: "#5ee07a",
+                        save: "#7fd4ff", miss: "#c8c8c8", block: "#ff9f43", lost: "#ff6b5a", foul: "#ff6b5a" };
+          const evFade = ev ? Math.max(0.15, 1 - ev.age / 10) : 0;
+          const stat = (label, h, a) => (
+            <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11, borderBottom: "1px solid var(--chrome-border-33)" }}>
+              <span style={{ width: 46, textAlign: "right", fontWeight: 700 }}>{h}</span>
+              <span style={{ flex: 1, textAlign: "center", color: "var(--chrome-muted)", letterSpacing: ".04em" }}>{label}</span>
+              <span style={{ width: 46, fontWeight: 700 }}>{a}</span>
+            </div>
+          );
+          return (
+            <div>
+              <div style={{ ...panelBox, padding: 14, marginBottom: 14 }}>
+                <div style={sectionLabel}>POSITIONAL MATCH ENGINE &mdash; 22 players, quarter-second slices</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                  <select value={meHomeId ?? ""} onChange={e => { setMeHomeId(e.target.value); meStop(); meRef.current = null; setMeFrame(f => f + 1); }} style={{ ...LS, minWidth: 190 }}>
+                    <option value="">Home team...</option>
+                    {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({showOvr(t.skill)})</option>)}
+                  </select>
+                  <select value={meAwayId ?? ""} onChange={e => { setMeAwayId(e.target.value); meStop(); meRef.current = null; setMeFrame(f => f + 1); }} style={{ ...LS, minWidth: 190 }}>
+                    <option value="">Away team...</option>
+                    {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({showOvr(t.skill)})</option>)}
+                  </select>
+                  <button onClick={meKick} style={addBtn}>Kick Off</button>
+                  <button onClick={() => meRunning ? meStop() : mePlay()} style={{ ...addBtn, background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none" }}>{meRunning ? "Pause" : "Play"}</button>
+                  <button onClick={() => meStep(ME_TPM)} style={addBtn}>+1 min</button>
+                  <label style={{ fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+                    speed
+                    <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
+                           onChange={e => setMeSpeedIx(+e.target.value)} style={{ width: 130 }} />
+                    <span style={{ width: 34, fontWeight: 700 }}>{ME_SPEEDS[meSpeedIx]}x</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div style={{ ...panelBox, padding: 12, flex: "1 1 620px", minWidth: 380 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{m ? m.hT.name : "\u2014"}</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: ".06em" }}>
+                      {out ? `${out.goals.home} - ${out.goals.away}` : "0 - 0"}
+                      <span style={{ fontSize: 12, color: "var(--chrome-muted)", marginLeft: 10 }}>{minute}&apos;</span>
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{m ? m.aT.name : "\u2014"}</span>
+                  </div>
+                  <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", borderRadius: 6, background: "#1d3a24" }}>
+                    <g stroke="rgba(255,255,255,.32)" strokeWidth={0.28} fill="none">
+                      <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+                      <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+                      <circle cx={52.5} cy={34} r={9.15} />
+                      <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+                      <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+                      <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+                      <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+                      <rect x={-0.9} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
+                      <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
+                    </g>
+                    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss") && (
+                      <line x1={ev.x0} y1={ev.y0} x2={ev.x1} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
+                            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.45 : 0.9}
+                            strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
+                    )}
+                    {ev && <circle cx={ev.x0} cy={ev.y0} r={2.6 + ev.age * 0.5} fill="none"
+                                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.8} strokeWidth={0.4} />}
+                    {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
+                    {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
+                    {st && (() => {
+                      const bx = (st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al;
+                      const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
+                      return <circle cx={bx} cy={by} r={1.05} fill="#fff" stroke="#111" strokeWidth={0.3} />;
+                    })()}
+                  </svg>
+                  <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 6 }}>
+                    Home attacks right. Ball in white; the fading line is the last pass or shot.
+                    1x is real time &mdash; a 90 minute match takes 90 minutes. G/D/M/F on each dot.
+                  </div>
+                </div>
+
+                <div style={{ ...panelBox, padding: 12, flex: "0 1 280px", minWidth: 240 }}>
+                  <div style={sectionLabel}>MATCH STATS</div>
+                  <div style={{ marginTop: 8 }}>
+                    {stat("Possession", out ? Math.round(100 * out.poss.home / pt) + "%" : "-", out ? Math.round(100 * out.poss.away / pt) + "%" : "-")}
+                    {stat("Shots", out ? out.shots.home : 0, out ? out.shots.away : 0)}
+                    {stat("On target", out ? out.onTarget.home : 0, out ? out.onTarget.away : 0)}
+                    {stat("Saves", out ? out.saves.home : 0, out ? out.saves.away : 0)}
+                    {stat("Corners", out ? out.corners.home : 0, out ? out.corners.away : 0)}
+                    {stat("Fouls", out ? out.fouls.home : 0, out ? out.fouls.away : 0)}
+                  </div>
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.8 }}>
+                    <div>Passes {out ? out.passes : 0} at {out && out.passes ? Math.round(100 * out.passOk / out.passes) : 0}%</div>
+                    <div>Carries {out ? out.carries : 0} &middot; tackles {out ? out.tackles : 0}</div>
+                    <div>Blocked shots {out ? out.blocked : 0} &middot; clearances {out ? out.clears : 0}</div>
+                    <div>Ball in play {out ? Math.round(out.inplay / ME_TPM) : 0} min of {minute}</div>
+                  </div>
+                  <div style={{ ...sectionLabel, marginTop: 14 }}>WHAT HAPPENED</div>
+                  <div style={{ marginTop: 6, maxHeight: 210, overflowY: "auto", fontSize: 11, lineHeight: 1.65 }}>
+                    {(out?.feed || []).length === 0 && <div style={{ color: "var(--chrome-muted)" }}>Nothing yet.</div>}
+                    {(out?.feed || []).map((f, i) => (
+                      <div key={i} style={{ display: "flex", gap: 6, color: f.k === "goal" ? "#5ee07a" : "var(--chrome-muted)", fontWeight: f.k === "goal" ? 700 : 400 }}>
+                        <span style={{ width: 22, textAlign: "right", opacity: .7 }}>{f.min}&apos;</span>
+                        <span style={{ width: 6, color: f.side === "home" ? "#4da3ff" : "#ff6b5a" }}>&#9679;</span>
+                        <span style={{ flex: 1 }}>{f.txt}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...panelBox, padding: 14, marginTop: 14 }}>
+                <div style={sectionLabel}>CALIBRATION</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button onClick={() => meRunBatch(12, false)} style={addBtn}>Run 12 even matches</button>
+                  <button onClick={() => meRunBatch(8, true)} style={addBtn}>Rating-gap test</button>
+                  <span style={{ fontSize: 10, color: "var(--chrome-muted)", alignSelf: "center" }}>
+                    Runs on uniform squads, so the only difference is the number under test. Freezes the tab for a few seconds.
+                  </span>
+                </div>
+                {meBatch && (
+                  <div style={{ overflowX: "auto", marginTop: 12 }}>
+                    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11 }}>
+                      <thead><tr>
+                        {["", "Goals H/A", "GD", "Shots H/A", "Poss", "Passes", "Pass%", "Corners", "Fouls", "In play", "End stam"].map(h =>
+                          <th key={h} style={thCell}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {meBatch.map(r => (
+                          <tr key={r.label}>
+                            <td style={{ ...tdCell, fontWeight: 700 }}>{r.label}</td>
+                            <td style={tdCell}>{r.goalsH.toFixed(2)} / {r.goalsA.toFixed(2)}</td>
+                            <td style={{ ...tdCell, fontWeight: 700 }}>{(r.goalsH - r.goalsA).toFixed(2)}</td>
+                            <td style={tdCell}>{r.shotsH.toFixed(1)} / {r.shotsA.toFixed(1)}</td>
+                            <td style={tdCell}>{r.poss.toFixed(0)}%</td>
+                            <td style={tdCell}>{r.passes.toFixed(0)}</td>
+                            <td style={tdCell}>{r.passPct.toFixed(0)}%</td>
+                            <td style={tdCell}>{r.corners.toFixed(1)}</td>
+                            <td style={tdCell}>{r.fouls.toFixed(1)}</td>
+                            <td style={tdCell}>{r.inplay.toFixed(0)}m</td>
+                            <td style={tdCell}>{r.stam.toFixed(0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8 }}>
+                      Real football, per side: 13 shots, 1.4 goals, 80% passing, 5 corners, 11 fouls, 57 min in play.
+                      Old engine goal difference for reference: +8 was 1.07, +16 was 1.98, +29 was 3.31.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {tab === "docs" && (<div style={{ lineHeight: 1.7, fontSize: 12, color: "var(--chrome-muted)" }}>
           {(()=>{
             // Same heading treatment as the League/Group Stage panels, so the docs read as part of
