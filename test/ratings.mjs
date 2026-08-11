@@ -21,7 +21,7 @@
 process.env.QUIET = "1";
 import { parMap } from "./par.mjs";
 const eng = await import("./engine.mjs");
-const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meTick, meAdded,
+const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meTick, meAdded, meFinalise,
         ME_MATCH_TICKS, ME_SIDES, STRAT_DEF } = eng;
 
 const sq = (o, f) => buildSquad(f, null).map((p, i) => ({ ...p, name: p.pos + i, ovr: o,
@@ -44,10 +44,13 @@ function run(seed) {
   const out = blank(), rng = new RNG(seed);
   for (let t = 0; t < ME_MATCH_TICKS; t++) { out.min = Math.floor(t / ME_MATCH_TICKS * 90) + 1; meTick(s, rng, out); }
   for (let t = 0, add = meAdded(s); t < add; t++) meTick(s, rng, out);
+  meFinalise(s);
   const rows = [], potm = [];
   for (const sd of ME_SIDES) {
     let best = null;
-    for (const p of s.players[sd]) {
+    // subbed-off men count: they played, they were rated, and leaving them out would hide exactly
+    // the players the minutes shrink is there to handle.
+    for (const p of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) {
       rows.push({ pos: p.pos, r: p.rating ?? 6.5, g: p.goals || 0, a: p.assists || 0, sv: p.saves || 0 });
       if (!best || (p.rating ?? 0) > (best.rating ?? 0)) best = p;
     }

@@ -618,6 +618,11 @@ Object.assign(CFG, {
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
   rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.05, rateKeyPass: 0.15,
+  // PHASE C. rateFullFrac is the share of a match a man has to play before his rating is taken at
+  // face value; below it he is pulled back toward par. ratePos is the positional par itself,
+  // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
+  rateFullFrac: 0.667,
+  ratePos: { GK: 0.10, DEF: -0.05, MID: -0.22, FWD: -0.42 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in

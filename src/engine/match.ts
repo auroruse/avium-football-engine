@@ -409,6 +409,38 @@ export const meRate = (p, d) => {
   if (p && d) p.rating = Math.max(3, Math.min(10, +(((p.rating ?? 6.5) + d).toFixed(2))));
 };
 
+// FULL TIME, for the ratings only -- nothing else in the engine needs a whistle, which is why there
+// has never been one. Two corrections that can only be made once the match is over:
+//
+// MINUTES. A substitute who came on for the last five minutes and touched nothing must not be rated
+// as confidently as a man who played ninety. His deviation from par is shrunk toward it in
+// proportion to how much of the match he was actually on for, so a cameo has to be emphatic to
+// register at all -- which is exactly how a cameo works.
+//
+// POSITION. A goal is worth 0.9 and the most a defender can do for one is 0.12, so forwards
+// finished 0.52 clear of keepers on identical squads -- and the substitution logic hooks whoever
+// sits furthest below his team's average, which means defenders were being taken off all season for
+// playing their position. The shift is deliberately NOT a scale: the gap is in the mean, and scaling
+// a deviation can only reach a mean of zero by erasing the signal with it. It is a positional par,
+// and it says the true thing -- a forward who did nothing all afternoon has failed at his job,
+// while a defender who did nothing has done his.
+//
+// The offsets are calibrated against test/ratings.mjs and have to be re-derived if the phase A or B
+// deltas move. That is a real maintenance edge and it is why the harness exists.
+export function meFinalise(s) {
+  const total = s.mePos.tick || 1;
+  for (const sd of ME_SIDES) {
+    for (const p of [...(s.players[sd] || []), ...(s.subbedOff?.[sd] || [])]) {
+      if (!p || p.rating == null) continue;
+      const on = p._onAt ?? 0, off = p._offAt ?? total;
+      const frac = Math.max(0, Math.min(1, (off - on) / total));
+      const shrink = Math.min(1, frac / CFG.rateFullFrac);
+      const dev = (p.rating - 6.5) + (CFG.ratePos[p.pos] ?? 0);
+      p.rating = Math.max(3, Math.min(10, +((6.5 + dev * shrink).toFixed(2))));
+    }
+  }
+}
+
 export const meAdded = (s) => Math.min(CFG.addedMax,
   Math.round((s.mePos.stopT || 0) * CFG.addedFrac));
 
@@ -461,6 +493,9 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   inn._track = false; inn._closing = false; inn._avgV = 0;
   inn.knock = 0; inn.off = false; inn.inj = false; inn.rc = false;
   if (inn.stamina === undefined) inn.stamina = 100;
+  // Minutes played, for the shrink in meFinalise. Without it a substitute who came on for the last
+  // five and touched nothing is rated as confidently as a man who played the whole match.
+  gone._offAt = s.mePos.tick; inn._onAt = s.mePos.tick;
   ps[outIdx] = inn; bench[benchIdx] = null;
   s.subs = s.subs || { home: 0, away: 0 }; s.subs[side]++;
   (s.subbedOff = s.subbedOff || { home: [], away: [] })[side].push(gone);
@@ -588,7 +623,7 @@ export function meTick(s, rng, out) {
           out.wasteYc = (out.wasteYc || 0) + 1;
           meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.name} booked for time-wasting`);
           if (q.yc >= 2) {
-            q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0;
+            q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0; q._offAt = mp.tick; q._offAt = mp.tick;
             (out.reds = out.reds || { home: 0, away: 0 })[wS]++;
             meEvt(out, "red", wS, wX, wY, wX, wY, `${q.name} is off, second yellow`);
           }

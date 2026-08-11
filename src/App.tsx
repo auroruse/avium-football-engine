@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meInit, meMinute, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meFinalise, meInit, meMinute, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -5008,7 +5008,10 @@ export default function App() {
     // during the match exactly as the board going up at ninety does -- it is not known in advance.
     const end = ME_MATCH_TICKS + meAdded(m.s);
     for (let i = 0; i < n && m.t < end; i++) { m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; }
-    if (m.t >= ME_MATCH_TICKS + meAdded(m.s)) meStop();
+    // Full time. meFinalise is what turns raw event deltas into a rating: it shrinks a substitute's
+    // toward par by the minutes he actually played and applies the positional par itself. Without
+    // this call the numbers are the un-normalised running total and forwards sit half a point clear.
+    if (m.t >= ME_MATCH_TICKS + meAdded(m.s)) { meFinalise(m.s); meStop(); }
     setMeFrame(f => f + 1);
   };
   const mePlay = () => {
@@ -5043,6 +5046,7 @@ export default function App() {
         const out = meFreshOut(), rng = new RNG(101 + k * 17);
         for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
         for (let t = 0, add = meAdded(st); t < add; t++) meTick(st, rng, out);   // stoppage time
+        meFinalise(st);
         for (const key of ["passes","passOk","passFail","tackles","carries","clears","inplay","blocked"]) agg[key] += out[key];
         for (const sd of ["home","away"]) for (const key of ["poss","shots","goals","onTarget","saves","corners","fouls"]) agg[key][sd] += out[key][sd];
         stamEnd += st.players.home.reduce((a, p) => a + p.stamina, 0) / 11;
