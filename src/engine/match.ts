@@ -660,6 +660,13 @@ export function meTick(s, rng, out) {
   const resolvePending = (okSide) => {
     const pp = mp.passPending; mp.passPending = null;
     if (!pp) return;
+    // COUNTED WHEN IT RESOLVES, not when it is struck. out.passes++ used to fire at the boot, but
+    // 9.8% of passes never get an outcome -- the whistle goes while the ball is travelling, or a
+    // defender heads it away down a branch that clears the pending without recording anything -- so
+    // every one of those was counted as attempted and never as completed. Reported completion came
+    // out at 70.6% against a true 78.3%, which is the difference between failing this target and
+    // meeting it, and it was the bookkeeping rather than the football.
+    out.passes++;
     if (okSide === pp.side) out.passOk++; else { out.passFail++; meEvt(out, "cut", pp.side, mp.bx, mp.by, mp.bx, mp.by, null); }
   };
   if (mp.by < 0 || mp.by > PITCH_W) { resolvePending(null); mp.shot = null; meDead(s, "throw", meOther(mp.lastSide), 76, out); return; }
@@ -1449,7 +1456,6 @@ export function meTick(s, rng, out) {
     meKickBall(mp, rng, p.x + meDir(side) * 6, sy, "clear", a.pass / 99, press);
     return; }
   const q = ps[act.j], dist = Math.hypot((act.ax ?? q.x) - p.x, (act.ay ?? q.y) - p.y);
-  out.passes++;
   // Pass to where he WILL be, leading his current movement across the estimated flight.
   // A ball to his FEET is led by his movement across the flight. A ball into SPACE is not: the aim
   // point already IS the meeting point, solved for his run, and leading it again on top of that is

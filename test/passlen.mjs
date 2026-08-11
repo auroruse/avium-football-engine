@@ -31,7 +31,7 @@ const bucket = (d) => { for (let i = 0; i < EDGES.length - 1; i++) if (d < EDGES
 
 function play(seed) {
   const ok = new Array(6).fill(0), no = new Array(6).fill(0);
-  const lofted = [0, 0];                                  // completions / attempts, high balls only
+  const sp = [0, 0];                                      // set-piece deliveries: completed / total
   const s = createMatchState();
   s.players.home = sq(75, "4-3-3"); s.players.away = sq(75, "4-3-3");
   s.formations = { home: "4-3-3", away: "4-3-3" };
@@ -44,25 +44,27 @@ function play(seed) {
     const had = mp.passPending, okB = out.passOk, noB = out.passFail;
     meTick(s, rng, out);
     // struck this slice: passPending appears carrying the distance it was hit
-    if (!had && mp.passPending && Number.isFinite(mp.passPending.d)) pend = mp.passPending.d;
+    // A set-piece delivery is a pass with no length on it -- setpiece.ts records only the side --
+    // and regress counts it in the overall completion while passlen never has. That is the whole
+    // gap between the two numbers, so measure it rather than infer it.
+    if (!had && mp.passPending) pend = Number.isFinite(mp.passPending.d) ? mp.passPending.d : -1;
     const dOk = out.passOk - okB, dNo = out.passFail - noB;
     if (pend !== null && (dOk || dNo)) {
-      const b = bucket(pend);
-      if (dOk) { ok[b]++; if (had && had.high) lofted[0]++; }
-      if (dNo) no[b]++;
-      if (had && had.high) lofted[1]++;
+      if (pend < 0) { sp[1]++; if (dOk) sp[0]++; }
+      else { const b = bucket(pend); if (dOk) ok[b]++; if (dNo) no[b]++; }
       pend = null;
     }
   }
-  return { ok, no, lofted };
+  return { ok, no, sp };
 }
 
 const res = await parMap(Array.from({ length: N }, (_, i) => i + 1), play);
 if (!res) process.exit(0);
 
 const f1 = (x) => x.toFixed(1);
-const ok = new Array(6).fill(0), no = new Array(6).fill(0);
-for (const r of res) for (let b = 0; b < 6; b++) { ok[b] += r.ok[b]; no[b] += r.no[b]; }
+const ok = new Array(6).fill(0), no = new Array(6).fill(0); let spOk = 0, spN = 0;
+for (const r of res) { for (let b = 0; b < 6; b++) { ok[b] += r.ok[b]; no[b] += r.no[b]; }
+                       spOk += r.sp[0]; spN += r.sp[1]; }
 const T = ok.reduce((a, b) => a + b, 0) + no.reduce((a, b) => a + b, 0);
 console.log(`\nOpen-play pass completion by distance. ${N} matches, 75 v 75, 4-3-3, no instructions.\n`);
 console.log(`   range        attempts   share    completed     real      gap`);
@@ -73,6 +75,10 @@ for (let b = 0; b < 6; b++) {
   console.log(`   ${LBL[b].padEnd(10)}   ${String(n).padStart(8)}   ${f1(100 * n / T).padStart(4)}%    ` +
     `${f1(pc).padStart(7)}%   ${REAL[b]}    ${(pc - real >= 0 ? "+" : "") + f1(pc - real).padStart(5)}`);
 }
+const opOk = ok.reduce((a,b)=>a+b,0), opN = opOk + no.reduce((a,b)=>a+b,0);
+console.log(`\n   open play        ${opN.toString().padStart(6)} passes   ${f1(100*opOk/(opN||1))}% complete`);
+console.log(`   set-piece        ${spN.toString().padStart(6)} deliveries ${f1(100*spOk/(spN||1))}% complete   real ~25-30 for a cross`);
+console.log(`   the two together ${(opN+spN).toString().padStart(6)}          ${f1(100*(opOk+spOk)/((opN+spN)||1))}% -- this is what regress reports`);
 console.log(`\n   A completion curve that barely falls with distance means field position is free, and any`);
 console.log(`   instruction that buys field position is a buff rather than a style. The gap column is`);
 console.log(`   the size of that free lunch at each range.`);

@@ -374,7 +374,6 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     : sp.kind === "throw" ? `${taker.name} takes the throw`
     : sp.kind === "goalkick" ? `${taker.name} goes ${high ? "long" : "short"}`
     : sp.kind === "kickoff" ? "Kick off" : `${taker.name} plays it`;
-  out.passes++;
   mp.passPending = { side };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
