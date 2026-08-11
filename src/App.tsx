@@ -3017,11 +3017,15 @@ function parseBulk(text) {
     for (let i = 0; i < stratKeys.length && i + 4 + o < p.length; i++) {
       strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4 + o]);
     }
-    // Player names occupy a fixed 16-slot block right after the 14 tactic columns
-    // (indices 18..33, shifted by o). Anything past that is optional trailing
-    // metadata, in a fixed order: up to 2 #RRGGBB colors, then city, then stadium.
+    // Player names occupy a fixed 16-slot block right after the tactic columns. This was hardcoded
+    // as 18 -- name, skill, style, formation, then fourteen tactics -- and nothing in it named
+    // either setPieces or stratKeys, so removing an instruction moved every preset's players one
+    // column without tripping any search for the thing that had been deleted. The whole team list
+    // came back as free agents. Derived from the list now, so the two cannot drift apart again.
+    // Anything past the block is optional trailing metadata, in a fixed order: up to 2 #RRGGBB
+    // colours, then city, then stadium.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
-    const PLAYER_START = 18 + o;
+    const PLAYER_START = 4 + stratKeys.length + o;
     // The player block is 16 slots (11 + a 5-man bench) or 22 (11 + the 11-man international
     // bench). Metadata always opens with a #RRGGBB colour, so the first colour terminates the
     // block; only the two legal widths are accepted, so a malformed row falls back to 16 rather

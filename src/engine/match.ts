@@ -1210,13 +1210,20 @@ export function meTick(s, rng, out) {
   // ...and the dribbling instruction, which is the same kind of thing: how long he is allowed to
   // keep running with it before he has to let go. Run At Defence buys touches, Disciplined releases
   // early, and holding on is charged for by the pressure closing in on him while he does it.
-  const natural = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress + tw * CFG.wasteHold
-                                         + (s.strategy?.[side]?.dribbling || 0) * CFG.dribHold));
+  // THE BUDGET MOVES WITH THE INSTRUCTIONS; THE TAX DOES NOT. dwellDrop compounds against a carrier
+  // from the moment he has held it longer than an ordinary player would -- but dwell was measured
+  // against `natural`, so raising the budget did not merely extend his licence to keep running, it
+  // postponed the entire cost of doing so. Measured: Run At Defence took what a side concedes from
+  // 0.83 xG to 0.45 and was the largest buff left on the board at 0.75. Buying touches now buys
+  // exactly that, and the ball gets harder to keep the whole time he has it.
+  const natBase = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress));
+  const natural = Math.max(1, natBase + tw * CFG.wasteHold
+                              + (s.strategy?.[side]?.dribbling || 0) * CFG.dribHold);
   // Carrying is not a terminal state. It used to be -- if `carry` scored best he simply never let
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
   const forced = mp.hold >= natural;
-  const act = meDecide(s, rng, side, mp.idx, mp.hold - natural + 1);
+  const act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
   if (act.k === "carry") { out.carries++; return; }              // meDribble is already running him
   if (!forced && (act.sc ?? 0) <= CFG.actNow) return;
   mp.firstTouch = mp.hold <= 1;

@@ -329,7 +329,13 @@ export const CFG = {
   // up the pitch. blkSlide is how far it shifts sideways toward the ball -- never all the way, or
   // the far side is abandoned. blkZone is how far into your patch a man has to come before you go
   // with him, and blkTight how far goal-side of him you sit once you do.
-  blkMin: 7, blkMax: 58, blkDrop: 16, blkDefLine: 6, blkLoe: 3,
+  // blkMin was 7: the block line was allowed to collapse to seven metres from its own goal line, so
+  // the deepest settings put all ten men inside the six-yard box WITH the attackers and every chance
+  // conceded was point-blank. That is why sitting deep measured as the two worst edges on the board
+  // from opposite directions -- defLine at its lowest conceded the most of any setting (0.87 xG) and
+  // pressingLOE at its lowest conceded the least of any (0.55), which cannot both be right. A real
+  // low block defends the edge of its area, not its own goalmouth.
+  blkMin: 10, blkMax: 58, blkDrop: 16, blkDefLine: 6, blkLoe: 3,
   // How deep the block is, from defending your own box to camped in their half. A real low block is
   // about thirteen metres from the last man to the first, not twenty-one: held at 21 the front band
   // sat on the edge of the area while the ball was in it, so only the back four were ever inside.
