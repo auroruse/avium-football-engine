@@ -250,6 +250,25 @@ export function meDuties(s, side) {
         if (use >= 0) us[use]._duty = "press";
       }
     }
+    // A CROWD CONTESTS. Exactly one man was sent to the ball however many were standing behind it,
+    // so a side defending its own penalty area gave the man shooting the same 2.3 m of room as a
+    // side holding the highest line in the game, blocked no more shots for it (4.5 against 4.9 a
+    // match across the whole range) and conceded 81% of its shots from inside the box against a high
+    // line's 67%. Sitting deep is supposed to buy a crowd you have to break down; it was buying
+    // scenery. Near its own goal the block now closes with everybody near enough to matter, which is
+    // the resistance a low block is for -- and it costs what it should, because every extra man at
+    // the ball is a man not marking somebody.
+    if (mp.idx >= 0 && ballDepth < CFG.swarmDepth) {
+      // Tried and rejected: restricting the swarm to men already goal-side of the ball, on the
+      // theory that they would contest without leaving the area. It read worse on every count --
+      // 10/21 on the regression against 12, and the box share stopped falling monotonically with
+      // the line at all. Whoever is nearest goes.
+      for (let k = 0; k < CFG.swarmMax; k++) {
+        const [si, sdist] = nearest(mp.bx, mp.by, free());
+        if (si < 0 || sdist > CFG.swarmR) break;
+        us[si]._duty = "press";
+      }
+    }
     // COUNTER-PRESSING is the other half of possLost: instead of dropping, swarm the man who has
     // just taken it, in the seconds when his side is least organised. One presser is the shape's
     // steady state; this is the extra body that makes it a press rather than a chase.

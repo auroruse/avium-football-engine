@@ -280,10 +280,20 @@ export function meDecide(s, rng, side, i, dwell) {
   // board at 0.65. What running at people actually is, is licence to hold on for another touch, and
   // that is set on the touch budget in match.ts. The cost comes for free from the two terms already
   // in this line: press rises while you dwell, and dwellDrop compounds against you.
-  const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + press * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7)))
+  // BOX ENTRY RESISTANCE. Carry risk was charged on the pressure at his own FEET, so driving off the
+  // edge of the box into six defenders scored exactly as safe as driving into open grass. A pass
+  // into a crowd was already priced -- recvPress reads the pressure where the receiver is standing --
+  // but a man could always simply dribble in, so a low block bought nothing at all. Measured: the
+  // deepest defensive line conceded 81% of its shots from inside the box against a high line's 67%,
+  // and blocks per match were flat at 4.5 / 4.8 / 4.8 / 4.9 across the whole range, because bodies
+  // that nobody has to go past are never in the way of anything.
+  // The harder of where he is and where he is going, so this can only ever make carrying harder --
+  // you do not dribble out of trouble by running into more of it.
+  const cdx = p.x + dir * CFG.carryAdv;
+  const carryPress = Math.max(press, mePressure(s, side, cdx, p.y) * CFG.carryAhead);
+  const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + carryPress * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7)))
             * Math.pow(CFG.dwellDrop, Math.max(0, dwell || 0));
   // Same for running with it: he loses it where he has taken it to.
-  const cdx = p.x + dir * CFG.carryAdv;
   const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72)
             - (1 - drb) * CFG.loss * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }

@@ -18,7 +18,7 @@ process.env.QUIET = "1";
 import { parMap } from "./par.mjs";
 const eng = await import("./engine.mjs");
 const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meTick, meDir,
-        ME_MATCH_TICKS, ME_DT, STRAT_DEF, PITCH_L, ME_HALF_W, meGoalX } = eng;
+        ME_MATCH_TICKS, ME_DT, STRAT_DEF, PITCH_L, ME_HALF_W, meGoalX, meOppDist } = eng;
 
 const sq = (o, f) => buildSquad(f, null).filter(p => !p.bench)
   .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, atkW: p.atkW ?? 0.5, _att: null }));
@@ -43,7 +43,7 @@ function play(v) {
               lost: [0, 0, 0], lostXg: [0, 0, 0],   // own third / middle / final third
               won: [0, 0, 0], holdT: 0, holdN: 0, sh: 0, sha: 0, offFor: 0, offAgainst: 0,
               // what the OPPONENT's shots look like: how far out, how central, how many in the box
-              cdist: 0, cbox: 0, ccen: 0, cn: 0, blk: 0, sv: 0 };
+              cdist: 0, cbox: 0, ccen: 0, cn: 0, blk: 0, sv: 0, room: 0, lane: 0 };
   for (const SIDE of ["home", "away"]) {
   for (let seed = 1; seed <= N; seed++) {
     const s = createMatchState(), OTH = SIDE === "home" ? "away" : "home";
@@ -76,6 +76,8 @@ function play(v) {
         A.cdist += Math.hypot(g - sbx, ME_HALF_W - sby); A.cn++;
         if (Math.abs(g - sbx) < 16.5 && Math.abs(sby - ME_HALF_W) < 20.2) A.cbox++;
         if (Math.abs(sby - ME_HALF_W) < 9.16) A.ccen++;
+        // how much room the man shooting AT US actually had
+        A.room += meOppDist(s, OTH, sbx, sby);
       }
       // charge whatever they created back to where we gave it to them
       const d = out.xgS[OTH] - xg0;
@@ -108,7 +110,7 @@ for (let i = 0; i < VALS.length; i++) {
     `${f2(A.xg/n).padStart(6)}  ${f2(A.xga/n).padStart(6)}   ${f1(A.sh/n).padStart(5)}  ` +
     `${f1(A.cdist/Math.max(1,A.cn)).padStart(18)} m  ${f1(100*A.cbox/Math.max(1,A.cn)).padStart(5)}%  ` +
     `${f1(100*A.ccen/Math.max(1,A.cn)).padStart(6)}%     ` +
-    `${f2(A.offFor/n).padStart(8)}  ${f2(A.offAgainst/n).padStart(13)}   blocked ${f1(A.blk/n)}  saves ${f1(A.sv/n)}`);
+    `${f2(A.offFor/n).padStart(8)}  ${f2(A.offAgainst/n).padStart(13)}   blocked ${f1(A.blk/n)}  shooter room ${f1(A.room/Math.max(1,A.cn))} m`);
 }
 console.log(`\n  WHAT IT COSTS TO LOSE IT THERE -- the opponent's xG over the ${(WIN*ME_DT).toFixed(0)}s after each turnover,`);
 console.log(`  per turnover, so a setting that simply gives it away more often does not look worse here.`);

@@ -463,6 +463,10 @@ export const CFG = {
   // it went sideways and backwards all afternoon. 0.0016 gives +2.9 m, 0.005 gives +6.6 m and 55%
   // forward, which is a side that only knows one direction. Real football is about +4 m.
   roomFull: 12, roomFwd: 0.0045,
+  // How much the pressure at the spot he is dribbling INTO counts against him, next to the pressure
+  // he is already under. This is what makes a packed penalty area something to be broken down
+  // rather than walked through.
+  carryAhead: 1.0,
 };
 export type EngineConfig = typeof CFG;
 
@@ -786,6 +790,9 @@ Object.assign(CFG, {
   // somebody was in tackling range on 15%. The line should govern how hard you go, not whether
   // anyone goes.
   engageIn: 30, engageOut: 15,
+  // How deep the ball must be before a block stops sending one man and starts swarming, how many
+  // extra go, and how close they have to be already. Same units as engageIn.
+  swarmDepth: 26, swarmMax: 1, swarmR: 11,
   // Reading a pass: how late an opponent can be and still be a threat, and over what span of
   // timing the risk runs from nothing to certain.
   riskLateMs: 160, riskSpanMs: 620, riskW: 0.92,
