@@ -350,7 +350,14 @@ export const CFG = {
   // from opposite directions -- defLine at its lowest conceded the most of any setting (0.87 xG) and
   // pressingLOE at its lowest conceded the least of any (0.55), which cannot both be right. A real
   // low block defends the edge of its area, not its own goalmouth.
-  blkMin: 10, blkMax: 58, blkDrop: 16, blkDefLine: 6, blkLoe: 3,
+  // blkDrop is how far behind the ball the block sits, and it was the whole of the offside problem.
+  // Measured: 21.8% of on-ball slices already had a man beyond the line, by 3.6 m on average, and
+  // only 1.2 offsides a match were given -- the opportunity was there and the line was too deep to
+  // punish it. Sweeping it: 16 -> 0.58 offsides a side, 12 -> 1.31, 8 -> 2.33. The passer's own
+  // judgement (offBlind) and how far a runner aims beyond the line (runBehindX) were both swept
+  // first and neither moved it: 0.58/0.75/0.92/0.90 and 0.58/0.65/0.71/0.56 respectively. It was
+  // never about who could see the line -- it was about where the line was.
+  blkMin: 10, blkMax: 58, blkDrop: 8, blkDefLine: 6, blkLoe: 3,
   // How deep the block is, from defending your own box to camped in their half. A real low block is
   // about thirteen metres from the last man to the first, not twenty-one: held at 21 the front band
   // sat on the edge of the area while the ball was in it, so only the back four were ever inside.
@@ -434,6 +441,11 @@ export const CFG = {
   // FREEDOM: men allowed on a run at once, how far off the shoulder one may start, and how much
   // less certain the grass beyond the line has to be before he goes anyway.
   creRuns: 1, creBehind: 5, creRisk: 0.18,
+  // How far beyond the offside line a man running in behind actually aims. A runner is timing a
+  // break, not sprinting to a spot; at 15 m he arrived so far offside that no passer would ever
+  // serve him, which is why 21.8% of on-ball slices had somebody beyond the line and only 1.2
+  // offsides a match were given.
+  runBehindX: 15,
   // THE BACK LINE: metres conceded by dropping off, metres held by stepping up per step, and the
   // trap -- how long the man on the ball must have had it before the line jumps, and how far.
   dlDrop: 4, dlStep: 3, trapHold: 3, trapStep: 6,

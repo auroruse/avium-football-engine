@@ -91,7 +91,7 @@ export function meRuns(s, side) {
       if (Math.abs(p.x - off) < 14 + cre * CFG.creBehind && ahead > -6
           && meCtrl(s, side, off + dir * 12, p.y) > -0.55 - cre * CFG.creRisk) {
         p._run = "behind"; p._runT = CFG.runTicks;
-        p._rx = off + dir * 15; p._ry = p.y + (ME_HALF_W - p.y) * 0.35;
+        p._rx = off + dir * CFG.runBehindX; p._ry = p.y + (ME_HALF_W - p.y) * 0.35;
         if (++active >= runCap) break; continue;
       }
     }
