@@ -964,6 +964,6 @@ Object.assign(CFG, {
 // A side with no instructions set. The engine owns this rather than importing the app's STRAT_DEF,
 // which is what keeps the dependency one-way: the UI imports the engine, never the reverse.
 export const NO_INSTRUCTIONS = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0,
-  approachPlay:0, dribbling:0, creativity:0, setPieces:0, timeWasting:0, possLost:0, gkDist:0,
+  approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0,
   dlBehavior:0, tackling:0 };
 export const DEFAULT_OVR = 60;

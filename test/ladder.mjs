@@ -30,7 +30,7 @@ const blank = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:
 
 // The ranges the UI actually offers (App.tsx:713). Anything not listed is a plain -1/0/+1.
 const RANGE = { passingDir: [-2,-1,0,1,2], pressingLOE: [-2,-1,0,1,2], defLine: [-2,-1,0,1,2],
-                timeWasting: [0,1,2], dlBehavior: [-1,0,1,2], setPieces: [0,1] };
+                timeWasting: [0,1,2], dlBehavior: [-1,0,1,2] };
 
 const KEY = process.argv[2];
 if (!KEY) { console.log("usage: node test/ladder.mjs <instruction>"); process.exit(1); }

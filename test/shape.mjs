@@ -168,7 +168,7 @@ const SHAPE = [
 // -1..2 and the missing 2 is the offside trap, which is the one setting that now has a rule behind
 // it; setPieces runs 0..1; tackling runs -1..1 and was being pushed to +-2.
 const KNOBS = [["passingDir",-2,2],["chanceCreation",-1,1],["pressingLOE",-2,2],["defLine",-2,2],
-  ["possWon",-1,1],["approachPlay",-1,1],["dribbling",-1,1],["creativity",-1,1],["setPieces",0,1],
+  ["possWon",-1,1],["approachPlay",-1,1],["dribbling",-1,1],["creativity",-1,1],
   ["timeWasting",0,2],["possLost",-1,1],["gkDist",-1,1],["dlBehavior",-1,2],["tackling",-1,1]];
 
 // Every configuration up front, so the whole sweep is one parallel map instead of 29 serial runs.

@@ -708,14 +708,13 @@ function applyStyleFit(mod, fit) {
   const BAL = STYLE_MOD.balanced;
   return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
-const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, setPieces:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
+const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
   passingDir: { name:"Passing", vals:[[-2,"Much Shorter"],[-1,"Shorter"],[0,"Standard"],[1,"More Direct"],[2,"Much More Direct"]], grp:"possession" },
   chanceCreation: { name:"Chances", vals:[[-1,"Work Ball In"],[0,"No Instruction"],[1,"Shoot On Sight"]], grp:"possession" },
   dribbling: { name:"Dribble", vals:[[-1,"Disciplined"],[0,"No Instruction"],[1,"Run At Defence"]], grp:"possession" },
   creativity: { name:"Freedom", vals:[[-1,"Disciplined"],[0,"No Instruction"],[1,"Expressive"]], grp:"possession" },
-  setPieces: { name:"Set Pcs", vals:[[0,"No Instruction"],[1,"Play For"]], grp:"possession" },
   timeWasting: { name:"Time", vals:[[0,"Never"],[1,"Sometimes"],[2,"Constantly"]], grp:"possession" },
   possLost: { name:"On Loss", vals:[[-1,"Regroup"],[0,"No Instruction"],[1,"Cntr-Press"]], grp:"transition" },
   possWon: { name:"On Win", vals:[[-1,"Hold Shape"],[0,"No Instruction"],[1,"Counter"]], grp:"transition" },
@@ -736,7 +735,7 @@ function applyStrategy(mod, strat) {
   const st = strat || STRAT_DEF;
   return {
     press: mod.press * PRESS_LOE_MULT[st.pressingLOE + 2] * (st.possLost === 1 ? 1.20 : st.possLost === -1 ? 0.85 : 1.0) * (st.tackling === 1 ? 1.04 : st.tackling === -1 ? 0.97 : 1.0) * (st.dribbling === 1 ? 0.95 : 1.0) * (st.defLine > 0 ? 1 + st.defLine * 0.05 : 1.0),
-    adv: mod.adv + st.passingDir * 0.008 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0) + (st.dribbling === 1 ? 0.012 : st.dribbling === -1 ? -0.005 : 0) + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0) + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0) + (st.setPieces === 1 ? -0.008 : 0) + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0),
+    adv: mod.adv + st.passingDir * 0.008 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0) + (st.dribbling === 1 ? 0.012 : st.dribbling === -1 ? -0.005 : 0) + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0) + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0) + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0),
     hold: mod.hold + st.passingDir * -0.02 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0) + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.01 : 0),
     lb: mod.lb + st.passingDir * 0.008,
     boxShot: mod.boxShot + (st.chanceCreation === -1 ? 0.03 : st.chanceCreation === 1 ? -0.015 : 0),
@@ -745,7 +744,7 @@ function applyStrategy(mod, strat) {
     ctrShot: mod.ctrShot + (st.possWon === 1 ? 0.04 : 0),
     def: mod.def + st.defLine * -0.012 + st.passingDir * -0.006 + (st.possLost === -1 ? 0.016 : st.possLost === 1 ? -0.008 : 0) + (st.dlBehavior === -1 ? 0.012 : st.dlBehavior === 1 ? -0.014 : st.dlBehavior === 2 ? -0.018 : 0) + (st.creativity === 1 ? -0.014 : 0) + (st.dribbling === 1 ? -0.008 : st.dribbling === -1 ? 0.005 : 0) + (st.tackling === 1 ? 0.012 : st.tackling === -1 ? -0.005 : 0),
     lr: mod.lr + (st.chanceCreation === 1 ? 0.04 : st.chanceCreation === -1 ? -0.02 : 0),
-    corn: mod.corn * (st.setPieces === 1 ? 1.2 : 1.0), maxT: mod.maxT, minT: mod.minT,
+    corn: mod.corn, maxT: mod.maxT, minT: mod.minT,
   };
 }
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
@@ -2962,11 +2961,11 @@ function parseBulk(text) {
   const resolveStyle = (str) => str ? (styleLookup[str.trim().toLowerCase()] ?? null) : null;
   const formSet = new Set(FORMATIONS);
   const resolveForm = (str) => str ? (formSet.has(str.trim()) ? str.trim() : null) : null;
-  const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","setPieces","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
+  const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
   Object.entries(STRAT_LABELS).forEach(([key, {vals}]) => { const m = {}; vals.forEach(([v, l]) => { m[l.toLowerCase()] = v; }); m["no instruction"] = 0; m["standard"] = vals.find(([v]) => v === 0) ? 0 : 0; stratLookup[key] = m; });
   // Full-label aliases (TSV uses long labels, STRAT_LABELS uses short display labels)
-  const aliases = {approachPlay:{"play out of defence":-1,"pass into space":1},chanceCreation:{"work ball into box":-1,"shoot on sight":1},dribbling:{"be more disciplined":-1,"run at defence":1},creativity:{"be more disciplined":-1,"be more expressive":1},setPieces:{"play for set pieces":1},possLost:{"counter-press":1},possWon:{"hold shape":-1},tackling:{"stay on feet":-1,"get stuck in":1},dlBehavior:{"drop off":-1,"step up":1,"offside trap":2},gkDist:{"short":-1,"long":1},passingDir:{"much shorter":-2,"much more direct":2,"more direct":1,"shorter":-1},pressingLOE:{"much lower":-2,"much higher":2,"lower":-1,"higher":1},defLine:{"much lower":-2,"much higher":2,"lower":-1,"higher":1}};
+  const aliases = {approachPlay:{"play out of defence":-1,"pass into space":1},chanceCreation:{"work ball into box":-1,"shoot on sight":1},dribbling:{"be more disciplined":-1,"run at defence":1},creativity:{"be more disciplined":-1,"be more expressive":1},possLost:{"counter-press":1},possWon:{"hold shape":-1},tackling:{"stay on feet":-1,"get stuck in":1},dlBehavior:{"drop off":-1,"step up":1,"offside trap":2},gkDist:{"short":-1,"long":1},passingDir:{"much shorter":-2,"much more direct":2,"more direct":1,"shorter":-1},pressingLOE:{"much lower":-2,"much higher":2,"lower":-1,"higher":1},defLine:{"much lower":-2,"much higher":2,"lower":-1,"higher":1}};
   Object.entries(aliases).forEach(([key, map]) => { if (stratLookup[key]) Object.assign(stratLookup[key], map); });
   const resolveStrat = (key, str) => { if (!str) return 0; const s = str.trim().toLowerCase(); return stratLookup[key]?.[s] ?? 0; };
 
@@ -6237,7 +6236,7 @@ export default function App() {
 
   const [showExport, setShowExport] = useState(false);
   const exportTeamsText = () => {
-    const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","setPieces","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
+    const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
     const valToLabel = {};
     Object.entries(STRAT_LABELS).forEach(([key, {vals}]) => { const m = {}; vals.forEach(([v, l]) => { m[v] = l; }); valToLabel[key] = m; });
     return teams.map(t => {

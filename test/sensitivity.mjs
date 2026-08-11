@@ -51,7 +51,7 @@ const base = play(75, 75, {}, {});
 console.log(`  NO INSTRUCTION       goals ${f2(base.gh)}-${f2(base.ga)}  shots ${f2(base.sh)}-${f2(base.sa)}  ` +
             `poss ${f0(base.poss)}%  cmp ${f0(base.cmp)}%  corners ${f2(base.corn)}  fouls ${f2(base.foul)}\n`);
 const KNOBS = [["passingDir",-2,2],["chanceCreation",-1,1],["pressingLOE",-2,2],["defLine",-2,2],
-  ["possWon",-1,1],["approachPlay",-1,1],["dribbling",-1,1],["creativity",-1,1],["setPieces",-1,1],
+  ["possWon",-1,1],["approachPlay",-1,1],["dribbling",-1,1],["creativity",-1,1],
   ["timeWasting",-1,1],["possLost",-1,1],["gkDist",-1,1],["dlBehavior",-1,1],["tackling",-2,2]];
 const rows = [];
 for (const [k, lo, hi] of KNOBS) {
