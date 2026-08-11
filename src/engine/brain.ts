@@ -161,6 +161,11 @@ export function meAnchor(s, side, bd, bw) {
   const building = mp.side === side && ballDepth < CFG.buildDepth;
   const apAdj = building ? (st.approachPlay || 0) * CFG.buildDrop * apW : 0;
   let ax = own + dir * (lineM + rel * span + apAdj);
+  // NOT narrowed under siege. Tried and rejected: the block stayed as wide at its own goalmouth as
+  // at the halfway line, which is wrong football, and narrowing it by up to 38% moved the share of
+  // shots conceded from inside the box by one tenth of one percent -- 81.1% to 81.0% -- while making
+  // the deepest setting concede more. Compactness is not what a low block is missing here. What it
+  // is missing is in the next comment down.
   let ay = ME_HALF_W + wideness * ME_HALF_W * (wide ? 0.94 : 0.66) * (1 + st.passingDir * 0.02);
   ay += (mp.by - ay) * (wide ? 0.10 : 0.30);
   // A side asked to keep it short needs somebody short to give it to, so the shape comes with the

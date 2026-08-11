@@ -18,7 +18,7 @@ process.env.QUIET = "1";
 import { parMap } from "./par.mjs";
 const eng = await import("./engine.mjs");
 const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meTick, meDir,
-        ME_MATCH_TICKS, ME_DT, STRAT_DEF, PITCH_L } = eng;
+        ME_MATCH_TICKS, ME_DT, STRAT_DEF, PITCH_L, ME_HALF_W, meGoalX } = eng;
 
 const sq = (o, f) => buildSquad(f, null).filter(p => !p.bench)
   .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, atkW: p.atkW ?? 0.5, _att: null }));
@@ -41,7 +41,9 @@ const WIN = +(process.env.WIN || 32);  // how long a turnover stays the turnover
 function play(v) {
   const A = { g: 0, ga: 0, xg: 0, xga: 0, cmp: 0, cmpN: 0, n: 0,
               lost: [0, 0, 0], lostXg: [0, 0, 0],   // own third / middle / final third
-              won: [0, 0, 0], holdT: 0, holdN: 0, sh: 0, sha: 0, offFor: 0, offAgainst: 0 };
+              won: [0, 0, 0], holdT: 0, holdN: 0, sh: 0, sha: 0, offFor: 0, offAgainst: 0,
+              // what the OPPONENT's shots look like: how far out, how central, how many in the box
+              cdist: 0, cbox: 0, ccen: 0, cn: 0, blk: 0, sv: 0 };
   for (const SIDE of ["home", "away"]) {
   for (let seed = 1; seed <= N; seed++) {
     const s = createMatchState(), OTH = SIDE === "home" ? "away" : "home";
@@ -59,6 +61,7 @@ function play(v) {
       const mp = s.mePos;
       const ctrl = mp.idx >= 0 ? mp.side : null;
       const xg0 = out.xgS[OTH];
+      const b4shot = mp.shot, sbx = mp.bx, sby = mp.by;
       // a turnover: the ball was ours and is now theirs, in open play
       if (ctrl && ctrl !== held) {
         if (held === SIDE && ctrl === OTH) { const b = band(ax(mp.bx)); A.lost[b]++; open.push([b, WIN]); }
@@ -67,6 +70,13 @@ function play(v) {
       }
       if (ctrl === SIDE) { A.holdT++; }
       meTick(s, rng, out);
+      // a shot AT US: where it came from, measured to our own goal
+      if (!b4shot && mp.shot && mp.shot.side === OTH) {
+        const g = meGoalX(OTH);                       // the goal they attack, which is ours
+        A.cdist += Math.hypot(g - sbx, ME_HALF_W - sby); A.cn++;
+        if (Math.abs(g - sbx) < 16.5 && Math.abs(sby - ME_HALF_W) < 20.2) A.cbox++;
+        if (Math.abs(sby - ME_HALF_W) < 9.16) A.ccen++;
+      }
       // charge whatever they created back to where we gave it to them
       const d = out.xgS[OTH] - xg0;
       if (d > 0) for (const w of open) A.lostXg[w[0]] += d;
@@ -78,6 +88,7 @@ function play(v) {
     A.cmp += out.passOk; A.cmpN += out.passOk + out.passFail;
     // offsides this side FORCED (the opponent caught) and conceded
     A.offFor += out.offside?.[OTH] || 0; A.offAgainst += out.offside?.[SIDE] || 0;
+    A.blk += out.blocked || 0; A.sv += out.saves[SIDE] || 0;
     A.n++;
   }
   }
@@ -89,14 +100,15 @@ if (!res) process.exit(0);
 
 const f2 = (x) => x.toFixed(2), f1 = (x) => x.toFixed(1);
 console.log(`\n${KEY}, every setting the UI offers. ${N} matches per setting per side, 75 v 75, 4-3-3.\n`);
-console.log(`  set   goals    conc     xG     xGa    shots  cmp%   offs won  offs conceded    possessions lost, by third`);
-console.log(`  ---  ------  ------  ------  ------   -----  ----   --------  -------------    own    mid    final`);
+console.log(`  set   goals    conc     xG     xGa   shots against: dist  in box  central     offs won  offs conceded`);
+console.log(`  ---  ------  ------  ------  ------   --------------------  ------  -------     --------  -------------`);
 for (let i = 0; i < VALS.length; i++) {
   const A = res[i], n = A.n, L = A.lost[0] + A.lost[1] + A.lost[2];
   console.log(`  ${String(VALS[i]).padStart(3)}  ${f2(A.g/n).padStart(6)}  ${f2(A.ga/n).padStart(6)}  ` +
     `${f2(A.xg/n).padStart(6)}  ${f2(A.xga/n).padStart(6)}   ${f1(A.sh/n).padStart(5)}  ` +
-    `${f1(100*A.cmp/(A.cmpN||1)).padStart(4)}   ${f2(A.offFor/n).padStart(8)}  ${f2(A.offAgainst/n).padStart(13)}    ` +
-    A.lost.map(x => f1(100*x/(L||1)).padStart(5) + "%").join("  "));
+    `${f1(A.cdist/Math.max(1,A.cn)).padStart(18)} m  ${f1(100*A.cbox/Math.max(1,A.cn)).padStart(5)}%  ` +
+    `${f1(100*A.ccen/Math.max(1,A.cn)).padStart(6)}%     ` +
+    `${f2(A.offFor/n).padStart(8)}  ${f2(A.offAgainst/n).padStart(13)}   blocked ${f1(A.blk/n)}  saves ${f1(A.sv/n)}`);
 }
 console.log(`\n  WHAT IT COSTS TO LOSE IT THERE -- the opponent's xG over the ${(WIN*ME_DT).toFixed(0)}s after each turnover,`);
 console.log(`  per turnover, so a setting that simply gives it away more often does not look worse here.`);

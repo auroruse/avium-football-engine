@@ -760,6 +760,12 @@ Object.assign(CFG, {
   trapDropBelow: 30,
   // How much the block squeezes as the ball nears our goal. A side defending its box is about 22 m
   // deep, not the 32 m it was holding while under siege.
+  // A LOW BLOCK BLOCKS NOTHING. Measured across the whole defensive-line range, shots blocked per
+  // match run 4.5 / 4.8 / 4.8 / 4.9 -- dead flat -- and the deepest line concedes 81% of its shots
+  // from inside the box against a high line's 67%. Sitting deep is supposed to buy exactly that
+  // trade: they have the ball all game and get nothing but distance and blocked efforts. Here it
+  // buys neither, which is why defLine measures as a real 0.69 buff. The fix is resistance to
+  // entering a crowded area, not more squeezing of the shape -- see the siegeWide experiment.
   siegeDepth: 28, siegeSpan: 0.58,
   // Markers when the ball is in and around our box. Four was a midfield number.
   markSiege: 5, markSiegeDepth: 26,
