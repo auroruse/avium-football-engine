@@ -1060,7 +1060,8 @@ export function meTick(s, rng, out) {
               n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
             mp.shot = null; }
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
-          meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * 8, mp.by + (rng.u() - 0.5) * 8, v2d * 0.35, 0);
+          meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * 8, mp.by + (rng.u() - 0.5) * 8,
+                  v2d * CFG.deflectKeep, 0);
           return;
         }
         // A BLOCK IS A BLOCK AT ANY SPEED. The counter above only fires on the branch for a ball

@@ -934,6 +934,11 @@ Object.assign(CFG, {
   // -- and the keeper has "parried" it into his own net. Half is the break-even for a deflection
   // being a deflection at all, so even fingertips sit just above it.
   // How long after a parry a goal is still that shot's goal rather than an own goal, in slices.
+  // How much pace a ball keeps when it comes off somebody who was not trying to control it. At 0.35
+  // and against this pitch's friction a deflection travelled about three metres and died, which is
+  // why 91% of loose balls came free more than eight metres from a touchline and there were 5.5
+  // throw-ins a match against a real 40-50 -- the ball simply never got near the line.
+  deflectKeep: 0.35,
   deflectWin: 12,
   gkParryFloor: 0.55, gkLiveV: 8,
   // A keeper at full stretch, fingertip to toe, is about 1.9 m: gkSpan is the half of that either
