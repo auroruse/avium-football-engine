@@ -30,6 +30,14 @@ export const ME_VAL_MAX = 0.26;
 
 export const meDanger = (side, x, y) => meVal(side, x, y) / ME_VAL_MAX;
 
+// What a spot is worth once you account for who is standing on it. meVal is pure geometry: it says a
+// ball ten metres from goal is worth 0.12 whether the six-yard box is empty or has five defenders in
+// it. That is why running at goal outscored striking it from every range on the pitch -- a carry was
+// credited with the full possession value of wherever it ended up, for free -- and why every chance
+// in the match was a tap-in walked into the six-yard box.
+export const meValHere = (s, side, x, y) =>
+  meVal(side, x, y) * (1 - Math.min(CFG.valPressMax, mePressure(s, side, x, y) * CFG.valPress));
+
 // ---- pitch control -------------------------------------------------------------------------
 // After Fernandez & Bornn: every player owns an area of the pitch, stretched along the way he is
 // running and widened the further he is from the ball. Sum the two sides and you have a number for
@@ -97,12 +105,15 @@ export function meSpaceGain(s, side, x, y) {
 
 // Opponents sitting in a passing lane. Perpendicular distance to the line, only counting those
 // actually between the two players -- this is what makes a direct ball into a packed box fail.
-export function meLaneBlock(s, side, x0, y0, x1, y1) {
+export function meLaneBlock(s, side, x0, y0, x1, y1, airborne) {
   const opp = s.players[meOther(side)], dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1;
   let blk = 0;
   for (const q of opp) {
     const t = ((q.x - x0) * dx + (q.y - y0) * dy) / (L * L);
     if (t <= 0.02 || t >= 0.98) continue;
+    // A lofted ball is only interceptable near its endpoints -- nobody wins a ball sailing five
+    // metres over his head (GF HighPass: only u < 0.2 or u > 0.65 count, elizacontroller.cpp:1008-1060).
+    if (airborne && t > 0.2 && t < 0.65) continue;
     const px = x0 + dx * t, py = y0 + dy * t, perp = Math.hypot(q.x - px, q.y - py);
     if (perp < 4.5) blk += (4.5 - perp) / 4.5 * (q.pos === "GK" ? 0.4 : q._duty === "intercept" ? CFG.interceptW : 1);
   }
@@ -147,6 +158,104 @@ export function meTwoClosest(ps, x, y) {
     const d = Math.hypot(ps[i].x - x, ps[i].y - y);
     if (d < da) { b = a; db = da; a = i; da = d; } else if (d < db) { b = i; db = d; } }
   return [a, b];
+}
+
+// ---- time-to-ball ------------------------------------------------------------------------
+// The two-phase growing circle (AI_GetTimeNeededForDistance_ms, AIfunctions.cpp:499-598) in closed
+// form at our slice size. A player is modelled as DRIFTING on his existing momentum for 700 ms while
+// the circle of what he can reach grows around the drift point; integrating that exactly gives a
+// drift offset of v*0.35 and a first-phase radius of 0.28 + 0.329*vmax. A sprinting player needing
+// most of a second before he is at full speed in a new direction falls out of the model -- a man
+// running away from the ball is now genuinely further from it than one standing still.
+import { CFG, ME_DT } from "./config";
+import { meAerial, meAttrs, meSpeed } from "./attributes";
+export function meTimeToBallMs(p, tx, ty, vmax) {
+  const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT;      // per-slice displacement -> m/s
+  const rawD = Math.hypot(tx - p.x, ty - p.y);
+  // Beyond 16 m the fine structure is noise; GF itself switches to a straight-line estimate.
+  if (rawD > 16) return Math.hypot(tx - (p.x + vx * 0.2), ty - (p.y + vy * 0.2)) / (vmax * 0.75) * 1000;
+  const vm = vmax * CFG.ttbVmax;
+  const d = Math.hypot(tx - (p.x + vx * CFG.ttbDrift), ty - (p.y + vy * CFG.ttbDrift));
+  const r = CFG.ttbRadius + CFG.ttbRadiusV * vm;
+  // The circle GROWS across those 700 ms -- it is not 700 ms of nothing followed by running. Adding
+  // the constant flat meant a defender standing ON the ball's path was modelled as needing 700 ms to
+  // reach a ball already at his feet, while the ball crossed him in 470. That single term is why the
+  // decision scored a lane with a man in it as risk-free and 68% of all lost passes were struck
+  // straight through somebody.
+  // READING IT. Those 700 ms of drift before he is free to go anywhere are the moment between the
+  // ball changing and the player acting on it, and how short that moment is is exactly what a high
+  // `position` rating means -- it was worth one 20% term on how good a receiver looked and nothing
+  // else. Here it reaches every query in the engine at once: intercepting, marking, chasing a loose
+  // ball, closing a carrier down. A defender who reads it commits a quarter of a second sooner than
+  // one who does not, and over a match that is the difference between getting there and watching.
+  const lag = CFG.ttbChangeMs * (1 - (meAttrs(p).position / 99 - 0.5) * CFG.ttbAnticip);
+  const over = d - r;
+  return over > 0 ? lag + over / vm * 1000
+                  : lag * (d / Math.max(r, 0.01));
+}
+
+// Ball-side query: scan the forecast for the first slot this player can actually make, and return
+// where to run and how urgent it is. `run at where the ball WILL be` lives here.
+export function meIntercept(p, mp, vmax) {
+  const pred = mp.pred;
+  if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
+  for (let i = 0; i < pred.length; i++) {
+    const [x, y, z] = pred[i];
+    // Over HIS head there -- not over a flat 1.6 m that nobody could ever reach. Without this he
+    // would never even set off for a ball he is perfectly capable of winning.
+    if (z >= meAerial(meAttrs(p), CFG)) continue;
+    const t = i * ME_DT * 1000;
+    const need = meTimeToBallMs(p, x, y, vmax);
+    if (need <= t + 60) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
+  }
+  const last = pred[pred.length - 1];
+  return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax), slotMs: (pred.length - 1) * ME_DT * 1000 };
+}
+
+// Can anybody actually get to this ball before it arrives? This is the SAME question the resolution
+// asks -- whoever reaches the path first takes it -- and asking it here is what stops a player
+// serving the ball to a defender standing in the lane. Before this the decision scored passes with a
+// lane-block heuristic while the ball's fate was settled by physical interception; the two had
+// nothing to do with each other, so "safe" passes were routinely intercepted on the spot.
+// How long a ground ball really takes to cover the first `s` metres of an `L` metre pass. Closed
+// form of the same rolling ODE meGroundSpeed inverts: with C = (arrive^2+40)e^(0.08L),
+//   t(s) = 2/(0.08*sqrt(40)) * ( atan(v0/sqrt(40)) - atan(v(s)/sqrt(40)) )
+// The ball is decelerating hard the whole way, so scoring risk off the LAUNCH speed says a 12 m pass
+// arrives in 0.90 s when it really takes 1.33 s. Four hundred milliseconds is more than half the
+// entire window over which a defender goes from no threat to a certain interception, which is why
+// 268 of every 290 passes were scored as under 0.2 risk and then completed at 56%.
+const GT_K = 0.08, GT_R = Math.sqrt(40), GT_S = 2 / (0.08 * Math.sqrt(40));
+export function meGroundT(L, s) {
+  const C = (CFG.passArrive * CFG.passArrive + 40) * Math.exp(GT_K * L);
+  const v0 = Math.sqrt(Math.max(36, C - 40)), vs = Math.sqrt(Math.max(36, C * Math.exp(-GT_K * s) - 40));
+  return GT_S * (Math.atan(v0 / GT_R) - Math.atan(vs / GT_R));
+}
+
+export function mePassRisk(s, side, x0, y0, x1, y1, speed, high) {
+  const opp = s.players[side === "home" ? "away" : "home"];
+  const dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy || 1, L = Math.sqrt(L2);
+  let risk = 0;
+  for (const q of opp) {
+    // The keeper counts. Skipping him meant a through ball slid in behind the last defender was
+    // scored as completely safe when the man it was really being played to was the goalkeeper --
+    // which is exactly what it looked like. No special case is needed: a keeper forty metres from
+    // the lane has a time-to-ball that contributes nothing, and one six metres from a ball rolling
+    // into his six-yard box beats it there. He is slower than an outfielder, so he is charged the
+    // same three-quarter pace the movement code gives him.
+    const vmaxQ = meSpeed(meAttrs(q), q.stamina) * (q.pos === "GK" ? 0.75 : 1);
+    let t = ((q.x - x0) * dx + (q.y - y0) * dy) / L2;
+    if (t <= 0.04) continue;                                   // behind the passer; he cannot cut it
+    t = Math.min(1.06, t);                                     // just past the target still counts
+    const px = x0 + dx * t, py = y0 + dy * t;
+    // A lofted ball holds its horizontal speed; a ground ball does not.
+    const tBall = high ? L * t / Math.max(1, speed) * 1000 : meGroundT(L, L * t) * 1000;
+    const tMan = meTimeToBallMs(q, px, py, vmaxQ);
+    // How comfortably he beats the ball there, in milliseconds. Arriving 400 ms late is no threat;
+    // arriving early is an interception.
+    const margin = tBall - tMan;
+    if (margin > -CFG.riskLateMs) risk = Math.max(risk, Math.min(1, (margin + CFG.riskLateMs) / CFG.riskSpanMs));
+  }
+  return risk;
 }
 
 export function meClosest(ps, x, y) {

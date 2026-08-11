@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { ME_DT, ME_TPM, meInit, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meInit, meMinute, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -4966,8 +4966,8 @@ export default function App() {
   const meKick = () => { meStop(); meRef.current = meBuild(); setMeFrame(f => f + 1); };
   const meStep = (n) => {
     const m = meRef.current; if (!m) return;
-    for (let i = 0; i < n && m.t < 90 * ME_TPM; i++) { m.out.min = Math.floor(m.t / ME_TPM); meTick(m.s, m.rng, m.out); m.t++; }
-    if (m.t >= 90 * ME_TPM) meStop();
+    for (let i = 0; i < n && m.t < ME_MATCH_TICKS; i++) { m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; }
+    if (m.t >= ME_MATCH_TICKS) meStop();
     setMeFrame(f => f + 1);
   };
   const mePlay = () => {
@@ -5000,7 +5000,7 @@ export default function App() {
         st.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
         st.possession = "home"; meInit(st, pitchSlots);
         const out = meFreshOut(), rng = new RNG(101 + k * 17);
-        for (let t = 0; t < 90 * ME_TPM; t++) meTick(st, rng, out);
+        for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
         for (const key of ["passes","passOk","passFail","tackles","carries","clears","inplay","blocked"]) agg[key] += out[key];
         for (const sd of ["home","away"]) for (const key of ["poss","shots","goals","onTarget","saves","corners","fouls"]) agg[key][sd] += out[key][sd];
         stamEnd += st.players.home.reduce((a, p) => a + p.stamina, 0) / 11;
@@ -11391,7 +11391,7 @@ export default function App() {
         {/* ═══ DOCS TAB ═══ */}
         {tab === "me" && (() => {
           const m = meRef.current, st = m?.s, out = m?.out;
-          const minute = m ? Math.floor(m.t / ME_TPM) : 0;
+          const minute = m ? meMinute(m.t) : 0;
           const pt = out ? (out.poss.home + out.poss.away) || 1 : 1;
           // The simulation advances four times a second and the screen redraws twenty-five times, so
           // drawing raw positions teleports everyone a quarter-second of travel at once. Draw BETWEEN
@@ -11399,22 +11399,37 @@ export default function App() {
           const al = meRunning ? Math.max(0, Math.min(1, meAcc.current)) : 1;
           const ix = (p) => (p._px ?? p.x) + (p.x - (p._px ?? p.x)) * al;
           const iy = (p) => (p._py ?? p.y) + (p.y - (p._py ?? p.y)) * al;
+          // Drawn at the size they actually ARE. The dot was 1.56 m across and the ball 0.68 m, so
+          // what you watched had nothing to do with the hitboxes underneath it -- a "collision" you
+          // could see was two circles overlapping long before the physics agreed, and vice versa.
+          // Both radii now come straight from the engine's own constants.
+          // Two circles, both real: the solid one is his BODY, which the ball bounces off, and the
+          // faint one is how far he gets a FOOT to it, which is the only way he takes possession.
+          // With the reach invisible the engine was interacting through a ring you could not see.
+          const R_MAN = ME_CFG.bodyR, R_BALL = ME_CFG.ballR, R_REACH = ME_CFG.reach;
+          // How high a ball has to get to be drawn at its biggest, and how much bigger that is.
+          const BALL_LIFT_H = 6, BALL_LIFT = 1.1;
           const dot = (p, fill, key) => {
             const x = ix(p), y = iy(p);
             return (
               <g key={key}>
-                <circle cx={x} cy={y} r={1.9} fill={fill} stroke="rgba(0,0,0,.6)" strokeWidth={0.35} />
-                <text x={x} y={y + 0.75} textAnchor="middle" fontSize={2.1} fontWeight={700}
-                      fill="rgba(0,0,0,.72)" style={{ pointerEvents: "none" }}>{(p.pos || "M")[0]}</text>
+                <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill} strokeOpacity={0.22} strokeWidth={0.05} />
+                <circle cx={x} cy={y} r={R_MAN} fill={fill} stroke="rgba(0,0,0,.55)" strokeWidth={0.07} />
+                <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.5}
+                      fontSize={0.8} stroke="rgba(0,0,0,.55)" strokeWidth={0.14} paintOrder="stroke"
+                      style={{ pointerEvents: "none" }}>
+                  {String(p.name || "").trim().split(/\s+/).pop()}
+                </text>
               </g>
             );
           };
           // The last action, held on screen for a few slices so a pass or a shot is something you
           // can actually see rather than a ball that teleports.
-          const ev = out?.evt && out.evt.age < 10 ? out.evt : null;
+          const ev = out?.evt && out.evt.age < 5 ? out.evt : null;
           const EVC = { pass: "#ffffff", cut: "#ffd166", shot: "#ffd166", goal: "#5ee07a",
-                        save: "#7fd4ff", miss: "#c8c8c8", block: "#ff9f43", lost: "#ff6b5a", foul: "#ff6b5a" };
-          const evFade = ev ? Math.max(0.15, 1 - ev.age / 10) : 0;
+                        save: "#7fd4ff", miss: "#c8c8c8", block: "#ff9f43", lost: "#ff6b5a", foul: "#ff6b5a",
+                        tackle: "#ff7b3d", clear: "#a8e06a" };
+          const evFade = ev ? Math.max(0.12, 1 - ev.age / 5) : 0;
           const stat = (label, h, a) => (
             <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11, borderBottom: "1px solid var(--chrome-border-33)" }}>
               <span style={{ width: 46, textAlign: "right", fontWeight: 700 }}>{h}</span>
@@ -11469,23 +11484,32 @@ export default function App() {
                       <rect x={-0.9} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
                       <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
                     </g>
-                    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss") && (
+                    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear") && (
                       <line x1={ev.x0} y1={ev.y0} x2={ev.x1} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
-                            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.45 : 0.9}
+                            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.16 : 0.34}
                             strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
                     )}
-                    {ev && <circle cx={ev.x0} cy={ev.y0} r={2.6 + ev.age * 0.5} fill="none"
-                                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.8} strokeWidth={0.4} />}
+                    {ev && ev.k !== "pass" && <circle cx={ev.x0} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
+                                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
                     {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
                     {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
                     {st && (() => {
                       const bx = (st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al;
                       const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
-                      return <circle cx={bx} cy={by} r={1.05} fill="#fff" stroke="#111" strokeWidth={0.3} />;
+                      // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc --
+                      // a flat overhead view has no other way of saying "this one is over your head".
+                      // Above about head height nobody but a keeper can touch it, and now you can see
+                      // that before it lands rather than working it out from the ball not being taken.
+                      const bz = (st.mePos._bpz ?? st.mePos.bz) + (st.mePos.bz - (st.mePos._bpz ?? st.mePos.bz)) * al;
+                      const lift = Math.min(1, Math.max(0, bz - ME_CFG.ballR) / BALL_LIFT_H);
+                      return <circle cx={bx} cy={by} r={R_BALL * (1 + lift * BALL_LIFT)} fill="#fff"
+                                     stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />;
                     })()}
                   </svg>
                   <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 6 }}>
-                    Home attacks right. Ball in white; the fading line is the last pass or shot.
+                    Home attacks right. Ball in white, drawn at its real 22 cm on the ground and
+                    swelling as it climbs; players at their real 56 cm across, so what you see is
+                    exactly what collides.
                     1x is real time &mdash; a 90 minute match takes 90 minutes. G/D/M/F on each dot.
                   </div>
                 </div>
@@ -11504,7 +11528,7 @@ export default function App() {
                     <div>Passes {out ? out.passes : 0} at {out && out.passes ? Math.round(100 * out.passOk / out.passes) : 0}%</div>
                     <div>Carries {out ? out.carries : 0} &middot; tackles {out ? out.tackles : 0}</div>
                     <div>Blocked shots {out ? out.blocked : 0} &middot; clearances {out ? out.clears : 0}</div>
-                    <div>Ball in play {out ? Math.round(out.inplay / ME_TPM) : 0} min of {minute}</div>
+                    <div>Ball in play {out ? Math.round(out.inplay / ME_TPM) : 0} of {ME_MATCH_TICKS / ME_TPM} real min &mdash; clock shows {minute}&apos;</div>
                   </div>
                   <div style={{ ...sectionLabel, marginTop: 14 }}>WHAT HAPPENED</div>
                   <div style={{ marginTop: 6, maxHeight: 210, overflowY: "auto", fontSize: 11, lineHeight: 1.65 }}>

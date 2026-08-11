@@ -1,0 +1,275 @@
+// The ball. One integrator, one prediction array, and every flight in the match comes out of it.
+//
+// Ported from GameplayFootball's ball.cpp (constants verified at ball.cpp:167-232): quadratic air
+// drag on the 3D speed, restitution with a linear brake so the bounce tail dies in finite time, and
+// rolling resistance with a linear term so the ball actually stops. The linear terms are the
+// load-bearing part -- without them everything decays asymptotically and never settles.
+//
+// The prediction IS the simulation: the ball advances each tick by integrating the same function
+// that fills the forecast, so the two can never diverge. Rebuilt on every touch, so a kick is
+// visible to every brain within one slice.
+import { CFG, ME_DT } from "./config";
+import { meAttrs } from "./attributes";
+
+import { ME_HALF_W, PITCH_L } from "./geometry";
+
+// The goal, in metres. Until this existed a ball rolling into the net was recorded as a corner: the
+// only boundary test in the engine was `bx < 0 || bx > PITCH_L`.
+export const GOAL_HALF_W = 3.66, GOAL_H = 2.44;
+
+export const BALL_SUB = 0.01;           // 10 ms substep, same as GF
+export const PRED_SLOTS = 13;           // 0..3 s at 250 ms -- slot i is i*ME_DT seconds out
+
+function stepOnce(b) {
+  // gravity, then drag on the full 3D velocity
+  b.bvz -= 9.81 * BALL_SUB;
+  const v3 = Math.hypot(b.bvx, b.bvy, b.bvz);
+  if (v3 > 0.01) {
+    const v2 = Math.max(0, v3 - CFG.ballDrag * v3 * v3 * BALL_SUB) / v3;
+    b.bvx *= v2; b.bvy *= v2; b.bvz *= v2;
+  }
+  b.bx += b.bvx * BALL_SUB; b.by += b.bvy * BALL_SUB; b.bz += b.bvz * BALL_SUB;
+  // ground: restitution minus a linear brake, never upward from nothing
+  if (b.bz < CFG.ballR) {
+    b.bz = CFG.ballR;
+    if (b.bvz < 0) {
+      // The turf grips on a real impact: a bounce costs horizontal pace as well as vertical.
+      if (b.bvz < -CFG.bounceMin) { b.bvx *= CFG.bounceGrip; b.bvy *= CFG.bounceGrip; }
+      b.bvz = Math.max(-b.bvz * CFG.ballBounce - CFG.ballBounceLin, 0);
+    }
+  }
+  // rolling through the grass
+  if (b.bz < CFG.ballR + CFG.grassH) {
+    const v = Math.hypot(b.bvx, b.bvy);
+    if (v > 0.01) {
+      const nv = Math.max(0, v - (CFG.ballFric * v * v + CFG.ballFricLin) * BALL_SUB) / v;
+      b.bvx *= nv; b.bvy *= nv;
+    }
+  }
+}
+
+/** Advance the real ball by `seconds`, stopping at the first goal-line crossing.
+ *
+ *  Crossings are detected INSIDE the substep loop and interpolated to the exact plane, because a
+ *  struck ball covers six metres in one engine slice -- sampling y and z at slice boundaries would
+ *  miss the frame and score a goal as a corner.
+ *
+ *  Returns null, or `{ kind, conceding, y, z }` with kind "goal" | "woodwork" | "behind". */
+/** Bodies. Solid, every substep: the ball is pushed back out of anyone it has entered, and it takes
+ *  an impulse from him. For anybody who is not controlling it that is a BOUNCE -- it ricochets off a
+ *  defender's shins like a real ball. For the man in control it is a TOUCH: he plays it in the
+ *  direction he is running, slightly quicker than he is going, and then runs onto it again. That is
+ *  the whole of dribbling, and it is why the ball travels in front of him. */
+function hitBodies(b, players, ctrl, skip) {
+  if (b.bz > CFG.bodyH) return;
+  const R = CFG.bodyR + CFG.ballR;
+  // IN HIS HANDS. It is not rolling, it is not being steered, and nobody can bump it off him: it is
+  // carried, out in front of his chest, and it moves exactly as he does. Left to the ordinary
+  // close-control path the keeper was being shoved the ball a stride ahead of himself at his own
+  // pace plus two and a half metres a second -- he was kicking it out of his own hands -- and it
+  // then rolled back through his body, which is the ball drawn inside the man.
+  if (ctrl && b.held) {
+    let hx = ctrl.vx || 0, hy = ctrl.vy || 0;
+    let hl = Math.hypot(hx, hy);
+    if (hl < 1e-3) { hx = b.bx - ctrl.x; hy = b.by - ctrl.y; hl = Math.hypot(hx, hy) || 1; }
+    b.bx = ctrl.x + hx / hl * CFG.gkHoldOut; b.by = ctrl.y + hy / hl * CFG.gkHoldOut;
+    b.bvx = 0; b.bvy = 0; b.bvz = 0; b.bz = CFG.ballR + 0.5;
+    return;
+  }
+  // The man in control shepherds it with both feet the whole time it is within his reach: a steer,
+  // every substep, never a jump. His position is only ever changed by the integrator.
+  // The line the man in control is taking it along. Hoisted out of the control block because the
+  // BODY loop below needs it too: a ball under his own feet has to come out in front of him.
+  let chx = 1, chy = 0;
+  if (ctrl) {
+    const rx0 = b.bx - ctrl.x, ry0 = b.by - ctrl.y, rd0 = Math.hypot(rx0, ry0);
+    const cvx0 = (ctrl.vx || 0) / ME_DT, cvy0 = (ctrl.vy || 0) / ME_DT, hs0 = Math.hypot(cvx0, cvy0);
+    if (ctrl._drbA != null) { chx = Math.cos(ctrl._drbA); chy = Math.sin(ctrl._drbA); }
+    else if (hs0 > 0.3) { chx = cvx0 / hs0; chy = cvy0 / hs0; }
+    else if (rd0 > 0.01) { chx = rx0 / rd0; chy = ry0 / rd0; }
+    if (hs0 > 0.3) {
+      const vxn = cvx0 / hs0, vyn = cvy0 / hs0;
+      const off = Math.atan2(vxn * chy - vyn * chx, vxn * chx + vyn * chy);
+      const lim = (CFG.touchOffWide - (CFG.touchOffWide - CFG.touchOffTight)
+                   * Math.min(1, hs0 / CFG.touchOffV)) * Math.PI / 180;
+      if (Math.abs(off) > lim) {
+        const a2 = Math.atan2(vyn, vxn) + (off > 0 ? lim : -lim);
+        chx = Math.cos(a2); chy = Math.sin(a2);
+      }
+    }
+  }
+  if (ctrl && b.bz < CFG.touchZ) {
+    const rx = b.bx - ctrl.x, ry = b.by - ctrl.y, rd = Math.hypot(rx, ry);
+    if (rd < CFG.reach) {
+      const cvx = (ctrl.vx || 0) / ME_DT, cvy = (ctrl.vy || 0) / ME_DT;
+      const hs = Math.hypot(cvx, cvy);
+      const hx = chx, hy = chy;
+      // Where he wants it: a stride in front, on the line he is taking it. The friction term is what
+      // stops the grass quietly dragging it back onto his heels.
+      const wx = ctrl.x + hx * CFG.dribSet, wy = ctrl.y + hy * CFG.dribSet;
+      const bspd = Math.hypot(b.bvx, b.bvy);
+      const fr = (CFG.ballFric * bspd * bspd + CFG.ballFricLin) * BALL_SUB;
+      const want = hs * CFG.touchGain + CFG.touchMin + fr;
+      const dvx = hx * want + (wx - b.bx) * CFG.ctrlPull - b.bvx;
+      const dvy = hy * want + (wy - b.by) * CFG.ctrlPull - b.bvy;
+      const dm = Math.hypot(dvx, dvy);
+      const cap = (CFG.ctrlForce + meAttrs(ctrl).pass / 99 * CFG.ctrlSkill) * BALL_SUB;
+      const k = dm > cap ? cap / dm : 1;
+      b.bvx += dvx * k; b.bvy += dvy * k;
+      if (!b.hitP) { b.hitP = ctrl; b.hitV = 0; }
+    }
+  }
+  for (const q of players) {
+    // The man who has just struck it does not then block it with his own shins. The ball leaves his
+    // foot about a metre from his centre, so any pass whose line went back across him ricocheted off
+    // the passer -- which on screen is a player passing in the wrong direction for no reason.
+    if (skip && skip.indexOf(q) >= 0) continue;
+    const dx = b.bx - q.x, dy = b.by - q.y;
+    let d = Math.hypot(dx, dy);
+    if (d >= R) continue;
+    // Dead centre on a man is a real state -- every restart puts the ball on the taker's toes -- and
+    // the contact normal is undefined there. Falling back to dx/1e-4 gave a normal of nearly zero,
+    // so the ball was never pushed out of his body and simply lived inside him: 0.12 m from his feet,
+    // three passes a side, and a match that stopped being football after the first throw-in.
+    let nx, ny;
+    if (d < 1e-3) {
+      const qs = Math.hypot(q.vx || 0, q.vy || 0);
+      if (qs > 1e-4) { nx = (q.vx || 0) / qs; ny = (q.vy || 0) / qs; } else { nx = 1; ny = 0; }
+      d = 1e-3;
+    } else { nx = dx / d; ny = dy / d; }
+    const vqx = (q.vx || 0) / ME_DT, vqy = (q.vy || 0) / ME_DT;
+    if (q === ctrl) {
+      // UNDER HIS OWN FEET. He knocks it out IN FRONT of himself, along the line he is taking it --
+      // a footballer does not carry the ball on his hip. Ejecting it along the contact normal like
+      // anybody else put it wherever he happened to have passed it, and for a man who has just
+      // overrun it that is BEHIND him. There it stayed: the control pull is aimed a stride in front,
+      // so it runs straight through his own body and can never recover the ball, while this very
+      // line re-pinned it to his back every substep. Measured, the ball was riding on a running
+      // player for 28.6% of all on-ball slices, in stretches of up to three seconds. That is the
+      // moonwalk, and this is the half of it that had nothing to do with how he was running.
+      b.bx = q.x + chx * R; b.by = q.y + chy * R;
+      continue;
+    }
+    b.bx = q.x + nx * R; b.by = q.y + ny * R;          // never inside a man
+    const vn = b.bvx * nx + b.bvy * ny, qn = vqx * nx + vqy * ny;
+    if (vn - qn >= 0) continue;                        // already moving apart
+    const inSpd = Math.hypot(b.bvx, b.bvy), qSpd = Math.hypot(vqx, vqy);
+    if (!b.hitP) { b.hitP = q; b.hitV = inSpd; }       // he got a foot to it: that is the touch
+    const nv = (1 + CFG.bodyE) * qn - CFG.bodyE * vn;
+    b.bvx += (nv - vn) * nx; b.bvy += (nv - vn) * ny;
+    // A collision cannot invent pace. Without this every one of twenty-two men converging on a loose
+    // ball added his own closing speed to it, so it stayed permanently above the speed anybody can
+    // control and the match became one long ricochet nobody could claim: measured, the ball was in
+    // play 100% of the time, nobody had possession on 93% of slices, and there were no shots.
+    const outSpd = Math.hypot(b.bvx, b.bvy), lim = inSpd + qSpd * 1.1;
+    if (outSpd > lim && outSpd > 0.01) { const k = lim / outSpd; b.bvx *= k; b.bvy *= k; }
+  }
+}
+
+export function meBallStep(mp, seconds, players, ctrl, skip) {
+  const n = Math.round(seconds / BALL_SUB);
+  mp._touched = 0;
+  mp.hitP = null; mp.hitV = 0;
+  for (let i = 0; i < n; i++) {
+    const px = mp.bx, py = mp.by, pz = mp.bz;
+    stepOnce(mp);
+    if (players) hitBodies(mp, players, ctrl, skip);
+    for (const plane of [0, PITCH_L]) {
+      if ((px - plane) * (mp.bx - plane) >= 0) continue;        // did not cross this plane
+      const t = (plane - px) / (mp.bx - px);
+      const y = py + (mp.by - py) * t, z = pz + (mp.bz - pz) * t;
+      const conceding = plane === 0 ? "home" : "away";
+      const dy = Math.abs(y - ME_HALF_W);
+      if (dy <= GOAL_HALF_W && z <= GOAL_H) return { kind: "goal", conceding, y, z };
+      if (dy <= GOAL_HALF_W + CFG.frameBand && z <= GOAL_H + CFG.frameBand) {
+        mp.bx = plane; mp.by = y; mp.bz = z;                    // sit it on the frame to bounce off
+        return { kind: "woodwork", conceding, y, z };
+      }
+      return { kind: "behind", conceding, y, z };
+    }
+  }
+  return null;
+}
+
+/** Rebuild the forecast: PRED_SLOTS entries of [x, y, z], one per engine slice. */
+export function meBallPredict(mp) {
+  const g = { bx: mp.bx, by: mp.by, bz: mp.bz, bvx: mp.bvx, bvy: mp.bvy, bvz: mp.bvz };
+  const pred = mp.pred && mp.pred.length === PRED_SLOTS ? mp.pred : (mp.pred = []);
+  pred[0] = [g.bx, g.by, g.bz];
+  const per = Math.round(ME_DT / BALL_SUB);
+  for (let s = 1; s < PRED_SLOTS; s++) {
+    for (let i = 0; i < per; i++) stepOnce(g);
+    pred[s] = [g.bx, g.by, g.bz];
+  }
+}
+
+// Initial speed for a ground pass that should ARRIVE at about CFG.passArrive m/s rather than die at
+// the receiver's feet. Closed form of the rolling ODE d(v^2)/ds = -2(0.04 v^2 + 1.6):
+//   v0^2 = (arrive^2 + 40) * e^(0.08 d) - 40
+// which also says the honest thing about ground passes: beyond ~28 m the required speed becomes
+// absurd, and the pass should be lofted instead. That emerges here rather than being a rule.
+export function meGroundSpeed(d) {
+  const a2 = CFG.passArrive * CFG.passArrive;
+  return Math.min(CFG.passMaxV, Math.sqrt(Math.max(36, (a2 + 40) * Math.exp(0.08 * d) - 40)));
+}
+
+// A lofted ball: pick a flight time from distance, split it into a launch. GF's HighPass power is
+// NormalizedClamp(dist,0,60)^1.4 * 1.15 (AIfunctions.cpp:1063-1074); this parameterisation lands in
+// the same place while staying in metres and seconds.
+export function meLoftFor(d) {
+  const T = CFG.highT0 + CFG.highTk * d;
+  return { vxy: d / T * 1.12, vz: 4.905 * T, T };
+}
+
+/** Kick the real ball at (tx, ty). `type`: "ground" | "high" | "clear". Skill and pressure turn
+ *  into execution noise -- the roll of the dice moved from the OUTCOME to the KICK, which is the
+ *  whole point: whether a pass arrives is now geometry's problem. */
+export function meKickBall(mp, rng, tx, ty, type, skill01, press) {
+  const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.5, Math.hypot(dx, dy));
+  const g2 = (r) => (r.u() + r.u() - 1);          // cheap gaussian-ish, [-1, 1], peaked at 0
+  const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress)
+              * Math.PI / 180;
+  const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
+  const pow = 1 + g2(rng) * CFG.powerNoise;
+  let vxy, vz;
+  if (type === "ground") { vxy = meGroundSpeed(d) * pow; vz = 0; }
+  else { const L = meLoftFor(type === "clear" ? Math.max(d, 30) : d); vxy = L.vxy * pow; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
+  mp.bvx = Math.cos(ang) * vxy; mp.bvy = Math.sin(ang) * vxy; mp.bvz = vz;
+  mp.bz = Math.max(mp.bz, CFG.ballR);
+  meBallPredict(mp);
+}
+
+/** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
+ *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
+ *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press) {
+  const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
+  const g2 = (r) => (r.u() + r.u() - 1);
+  const v = CFG.shotV0 + skill01 * CFG.shotVSkill;
+  // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
+  // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
+  // Traced: a 20 m shot was down to 7 m/s and still three metres outside the six-yard box when the
+  // keeper walked out and picked it up, which is why every shot from range converted at zero.
+  // 1D quadratic drag integrates exactly: x(t) = ln(1 + k*v0*t)/k, so t(d) = (e^(k d) - 1)/(k v0).
+  const T = (Math.exp(CFG.ballDrag * d) - 1) / (CFG.ballDrag * v);
+  const vz = (tz - mp.bz) / T + 4.905 * T;
+  const sigma = (CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress)
+              * Math.PI / 180;
+  const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
+  mp.bvx = Math.cos(ang) * v; mp.bvy = Math.sin(ang) * v;
+  // ...and how badly he gets under it depends on WHO KICKED IT. This never consulted skill at all
+  // while the lateral cone always did, so a 99-rated finisher ballooned a shot exactly as often as a
+  // 20-rated one -- and a penalty, struck at full power over a short flight, went over the bar about
+  // half the time. Mirrors the horizontal error: a floor everybody has, plus what he lacks in skill.
+  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
+  mp.bz = Math.max(mp.bz, CFG.ballR);
+  meBallPredict(mp);
+}
+
+/** A nudge rather than a kick: deflections, dispossessions, blocks. */
+export function meKnock(mp, rng, tx, ty, speed, vz) {
+  const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.3, Math.hypot(dx, dy));
+  mp.bvx = dx / d * speed; mp.bvy = dy / d * speed; mp.bvz = vz || 0;
+  mp.bz = Math.max(mp.bz, CFG.ballR);
+  meBallPredict(mp);
+}

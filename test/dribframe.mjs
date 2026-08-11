@@ -1,0 +1,29 @@
+// One possession, slice by slice, with the signed along-heading position of the ball. Where exactly
+// does it get behind him, and what happened on that slice?
+process.env.QUIET="1";
+const eng=await import("./engine.mjs");
+const {RNG,buildSquad,createMatchState,pitchSlots,meInit,meTick,ME_MATCH_TICKS,STRAT_DEF,CFG}=eng;
+const sq=(o)=>buildSquad("4-3-3",null).filter(p=>!p.bench).map((p,i)=>({...p,name:p.pos+i,ovr:o,stamina:100,rating:6.5,_att:null}));
+const out={poss:{home:0,away:0},shots:{home:0,away:0},goals:{home:0,away:0},onTarget:{home:0,away:0},saves:{home:0,away:0},
+  corners:{home:0,away:0},fouls:{home:0,away:0},passes:0,passOk:0,passFail:0,tackles:0,carries:0,clears:0,inplay:0,blocked:0,woodwork:0};
+const s=createMatchState(); s.players.home=sq(75); s.players.away=sq(75);
+s.formations={home:"4-3-3",away:"4-3-3"}; s.strategy={home:{...STRAT_DEF},away:{...STRAT_DEF}}; s.possession="home"; meInit(s,pitchSlots);
+const rng=new RNG(11);
+let key=null, shown=0, len=0;
+for(let t=0;t<ME_MATCH_TICKS && shown<3;t++){
+  const mp=s.mePos;
+  const k=mp.idx>=0?`${mp.side}${mp.idx}`:null;
+  if(k && k!==key){ key=k; len=0; if(t>150) { shown++; console.log(`\n--- ${k} takes it at t=${t}`); } }
+  if(k && k===key && shown>0 && len<9){
+    const p=s.players[mp.side][mp.idx];
+    const v=Math.hypot(p.vx||0,p.vy||0), vm=v/0.25;
+    const dx=mp.bx-p.x, dy=mp.by-p.y, bd=Math.hypot(dx,dy);
+    let along="  n/a";
+    if(v>0.02 && bd>0.01) along=(((dx*(p.vx/v))+(dy*(p.vy/v)))).toFixed(2).padStart(6);
+    const bv=Math.hypot(mp.bvx,mp.bvy);
+    console.log(`  t${t} man v${vm.toFixed(1)}  ball v${bv.toFixed(1)}  gap ${bd.toFixed(2)}  along ${along}  drbA ${(p._drbA??0).toFixed(2)}  hit ${mp.hitP?(mp.hitP===p?"SELF":"other"):"-"}`);
+    len++;
+  }
+  if(!k) key=null;
+  meTick(s,rng,out);
+}
