@@ -4376,8 +4376,18 @@ const splitFullName = (n) => {
 // has no manifest and cannot be globbed at runtime, so there is no way to ask in advance who has a
 // portrait: the browser asks for the name and anyone without one falls back to the shared
 // placeholder. The dataset flag is what stops a missing placeholder becoming an infinite error loop.
-const shotName = (n) => String(n || "").trim().split(/\s+/)
-  .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+// Title-casing a name is not "upper the first letter of each space-separated word". A compound
+// surname takes a capital after its hyphen -- Saint-Laurent, not Saint-laurent -- and an apostrophe
+// goes BOTH WAYS in this squad list, which is the part that has no shortcut:
+//     Seamus O'DUINNIN  ->  O'Duinnin       Jun'ichi TERAOKA   ->  Jun'ichi
+//     Attila D'AMBROSI  ->  D'Ambrosi       Shin'ya FUCHIGAMI  ->  Shin'ya
+// The discriminator is the prefix: a single letter before the apostrophe is Irish or Italian and
+// takes the capital, anything longer is a transliteration mark and does not. NFC first, because in
+// decomposed form the character before the apostrophe is a combining mark rather than a letter and
+// the apostrophe rule would never fire on an accented name like O'Duinnin.
+const shotName = (n) => String(n || "").normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase()
+  .replace(/(^|[\s\-])(\p{L})/gu, (_, sep, c) => sep + c.toUpperCase())
+  .replace(/(^|\s)(\p{L})'(\p{L})/gu, (_, sep, a, c) => sep + a + "'" + c.toUpperCase());
 // ...and one more trap on top of the casing. macOS writes filenames DECOMPOSED -- "Sho" plus a
 // combining macron -- while the preset files carry the same name precomposed, so "Sho Itoshi" is two
 // different byte strings depending on which side you ask, and every accented player silently falls
