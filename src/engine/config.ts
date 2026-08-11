@@ -608,6 +608,12 @@ Object.assign(CFG, {
   // How many touches back the assist search may look. Long enough to cross a passing move, short
   // enough that it never reaches into a previous phase of play.
   tlogMax: 8,
+  // MATCH RATING deltas, on the abstract sim's scale so the two engines agree about what a 7 means.
+  // rateGoalXgW is how much of a goal's credit is taken back for it having been an easy one;
+  // rateGoalXgDef is what a goal with no shot attached to it is assumed to have been worth.
+  rateGoal: 0.9, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
+  rateSave: 1.3, rateConcede: 0.18, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in

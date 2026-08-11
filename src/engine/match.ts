@@ -387,6 +387,26 @@ export function meScramble(s, rng) {
 // HOW LONG TO PLAY. Every slice the ball spent dead is counted, and a share of it is added back --
 // which is all stoppage time is. The caller drives the tick loop, so it asks for this rather than
 // the engine deciding when a match ends: `for (t = 0; t < ME_MATCH_TICKS + meAdded(s); t++)`.
+// MATCH RATINGS. Deliberately the abstract sim's model rather than a new one: a season table that
+// switches engines part-way must not switch scales with it, and those coefficients are already
+// balanced. Base 6.5, event deltas, clamped to [3, 10].
+// A goal at 0-0 or while behind counts for more than the fourth in a rout, and a late one counts
+// for more again.
+export const meCtxMult = (gFor, gAg, min) => {
+  const d = gFor - gAg;
+  const b = (gFor === 0 && gAg === 0) ? 1.15 : d === -1 ? 1.2 : d === 0 ? 1.15
+          : d > 0 ? Math.max(0.8, 1.1 - d * 0.1) : 0.9;
+  return b * (min >= 85 ? 1.3 : min >= 75 ? 1.15 : min >= 60 ? 1.05 : 1);
+};
+// Saving a chance that was going in is a bigger save. Conceding one that was NOT going in is a
+// worse goal to concede -- the inversion is deliberate, and it is the abstract sim's.
+const clamp01 = (x) => Math.max(0, Math.min(1, x || 0));
+export const meSaveBonus = (xg) => CFG.rateSave * clamp01(xg);
+export const meConcedePen = (xg) => CFG.rateConcede * (1 - clamp01(xg));
+export const meRate = (p, d) => {
+  if (p && d) p.rating = Math.max(3, Math.min(10, +(((p.rating ?? 6.5) + d).toFixed(2))));
+};
+
 export const meAdded = (s) => Math.min(CFG.addedMax,
   Math.round((s.mePos.stopT || 0) * CFG.addedFrac));
 
@@ -559,6 +579,7 @@ export function meTick(s, rng, out) {
         const q = s.players[wS]?.[wI];
         if (q && !q.off) {
           q.yc = (q.yc || 0) + 1;
+          meRate(q, -CFG.rateYellow);
           (out.yellows = out.yellows || { home: 0, away: 0 })[wS]++;
           // Counted, not inferred from the event text: meDead overwrites out.evt inside the same
           // tick, so anything reading it back sees whatever was written last and reports zero.
@@ -654,6 +675,20 @@ export function meTick(s, rng, out) {
           if (ast && ast !== gp) ast.assists = (ast.assists || 0) + 1;
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
             { name: gp.name, assist: ast ? ast.name : null, min: out.min ?? 0 });
+          // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
+          // winner is scored as the goal that won it rather than as the one that made it 2-1.
+          const gm = out.min ?? 0, xg = sh ? sh.xg : CFG.rateGoalXgDef;
+          const ctx = meCtxMult((out.goals[scorer] || 0) - 1, out.goals[cross.conceding] || 0, gm);
+          // A tap-in is a goal; it is not the same afternoon as one from twenty yards.
+          if (gp) meRate(gp, CFG.rateGoal * ctx * (1 - CFG.rateGoalXgW * clamp01(xg)));
+          else meRate(s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i], -CFG.rateOwnGoal);
+          if (ast) meRate(ast, CFG.rateAssist * (1 + (ctx - 1) * 0.5));
+          // The men it went past. The keeper carries most of it and the back line shares the rest.
+          for (const q of s.players[cross.conceding] || []) {
+            if (q.off) continue;
+            if (q.pos === "GK") meRate(q, -meConcedePen(xg));
+            else if (q.pos === "DEF") meRate(q, -CFG.rateConcedeDef);
+          }
         }
         meEvt(out, "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, sh ? `GOAL - ${sh.name}` : "GOAL");
         meDead(s, "kickoff", cross.conceding, 190, out);
@@ -888,6 +923,7 @@ export function meTick(s, rng, out) {
           // Too hot to hold: parried away, still live. This is where rebounds come from.
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
+            meRate(q, meSaveBonus(shp.xg));
                      meEvt(out, "save", shp.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} parries it`); }
           // Whose goal it still is, if this parry ends up in the net. One touch off the keeper is a
           // deflected shot and the goal belongs to the man who hit it; only a ball that comes off him
@@ -933,6 +969,7 @@ export function meTick(s, rng, out) {
         }
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
+          meRate(q, meSaveBonus(mp.shot.xg));
           meEvt(out, "save", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} saves`);
           mp.shot = null;
         }
@@ -1195,6 +1232,10 @@ export function meTick(s, rng, out) {
       let card = "";
       if (rng.u() < CFG.cardStraightRed * sev) card = "red";
       else if (rng.u() < CFG.cardYellow * (0.4 + sev)) card = "yellow";
+      meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
+      // Giving a penalty away is its own thing, separate from whatever card came with it, and the
+      // man who drew it gets the credit for it.
+      if (inArea0) { meRate(q, -CFG.ratePenGave); meRate(p, CFG.ratePenWon); }
       if (card === "yellow") {
         q.yc = (q.yc || 0) + 1;
         (out.yellows = out.yellows || { home: 0, away: 0 })[fSide]++;
@@ -1292,9 +1333,14 @@ export function meTick(s, rng, out) {
     if (out.shotDist) { const _g = meShotGeom(side, p.x, p.y); out.shotDist[Math.min(9, Math.floor(_g.d / 5))]++; out.xg = (out.xg || 0) + act.p; }
     if (out.xgS) out.xgS[side] += act.p;
     meEvt(out, "shot", side, p.x, p.y, gx, aimY, null);
+    // Read the shooter BEFORE the ball leaves him: mp.idx is cleared on the line above, so taking
+    // the index after it recorded -1 on every shot from open play. The goal attribution only looked
+    // right because it falls back to the touch log, which meKickedBy had already filled in correctly
+    // one line earlier -- a bug that a working answer was hiding.
+    const shooter = mp.idx;
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
-    mp.shot = { side, name: p.name, i: mp.idx, t0: mp.tick };
+    mp.shot = { side, name: p.name, i: shooter, xg: act.p, t0: mp.tick };
     // THE READ. A keeper cannot wait to see a shot. From twelve metres it is past him before his
     // reaction and his travel have both been paid for, so waiting is being beaten by geometry every
     // time -- which, with the reach ring gone, is exactly what was happening: five to seven goals a
