@@ -18,8 +18,15 @@ export async function parMap(items, job) {
   const sh = process.env.SHARD;
   if (sh) {                                     // ---- worker: my slice, one JSON line each
     const [k, n] = sh.split("/").map(Number);
-    for (let i = k; i < items.length; i += n)
-      process.stdout.write("\x01" + JSON.stringify([i, await job(items[i], i)]) + "\n");
+    for (let i = k; i < items.length; i += n) {
+      const line = "\x01" + JSON.stringify([i, await job(items[i], i)]) + "\n";
+      // AWAIT THE DRAIN. process.stdout on a pipe is asynchronous, so a worker that writes a big
+      // result and then falls off the end of the script can exit with the write still buffered --
+      // and the parent sees no error at all, just a hole in the results array. It only bites once a
+      // single line outgrows the pipe buffer, which is exactly what happened when per-match shape
+      // rows were added for the STYLE error bar: fine at N=60, silently truncated at N=240.
+      if (!process.stdout.write(line)) await new Promise(r => process.stdout.once("drain", r));
+    }
     return null;
   }
   // Performance cores only. The efficiency cores on this machine are roughly a third the speed, so

@@ -249,8 +249,6 @@ export function meDecide(s, rng, side, i, dwell) {
     // taking; the same ground into a body is not, so the two are multiplied rather than added.
     const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull);
     val += room * Math.max(0, fwd) * CFG.roomFwd;
-    if (st.approachPlay === -1 && fwd < 0) val += 0.004;
-    if (st.approachPlay === 1) val += Math.max(0, fwd) * 0.00024;
     // Losing it costs what it costs WHERE IT IS LOST, not where the passer happens to be standing.
     // Charged at his own position, every option out of a defence paid the same enormous penalty --
     // the danger of his own box -- so only completion could separate them, and the shortest backward

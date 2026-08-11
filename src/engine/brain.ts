@@ -155,7 +155,12 @@ export function meAnchor(s, side, bd, bw) {
   for (const q of sl) { if (q.bd < mn) mn = q.bd; if (q.bd > mx) mx = q.bd; }
   const rel = (bd - mn) / Math.max(1, mx - mn);
   const wideness = (bw - ME_HALF_W) / ME_HALF_W, wide = Math.abs(wideness) > 0.40;
-  let ax = own + dir * (lineM + rel * span);
+  // Weighted onto the middle band -- rel runs 0 at the deepest slot to 1 at the highest, so this
+  // peaks on the midfielders and leaves the back line and the front line where they are.
+  const apW = 4 * rel * (1 - rel);
+  const building = mp.side === side && ballDepth < CFG.buildDepth;
+  const apAdj = building ? (st.approachPlay || 0) * CFG.buildDrop * apW : 0;
+  let ax = own + dir * (lineM + rel * span + apAdj);
   let ay = ME_HALF_W + wideness * ME_HALF_W * (wide ? 0.94 : 0.66) * (1 + st.passingDir * 0.02);
   ay += (mp.by - ay) * (wide ? 0.10 : 0.30);
   // A side asked to keep it short needs somebody short to give it to, so the shape comes with the

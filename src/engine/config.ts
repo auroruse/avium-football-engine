@@ -89,6 +89,9 @@ export const CFG = {
   gkShapePush: 12,
   // How much of the usual depth gate a counter-attack is allowed to ignore. A break starts deep.
   brkDepth: 0.35,
+  // How deep the ball has to be for a side to count as building, and how far the midfield shifts
+  // for it per step of the approach instruction: back to offer a short one, or up to go beyond.
+  buildDepth: 38, buildDrop: 9,
   // How much the passing instruction squeezes the shape toward the ball. Short passing without it
   // is an order to play a ball that is not on.
   compactDir: 0.15,
