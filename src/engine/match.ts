@@ -5,7 +5,7 @@ import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, me
 import { meBlock, meDuties, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meDecide } from "./decide";
-import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meLaneBlock, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
+import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
 // Twenty-two players on a 105x68 pitch, advanced in quarter-second slices. No team rating appears
@@ -104,8 +104,13 @@ export function meMove(s, rng) {
       const a = meAttrs(p);
       // Running with the ball costs you speed. That is the only thing having it changes.
       // A keeper jogs about his box, but a keeper going for a ball dives, and a dive is quick.
+      if (p.knock > 0) p.knock--;
       const sp = meSpeed(a, p.stamina) * (p.pos === "GK" ? (p._closing ? CFG.gkScramble : 0.75) : 1)
-               * (onBall ? CFG.carrySpeed : 1);
+               * (onBall ? CFG.carrySpeed : 1) * (p.knock > 0 ? CFG.injKnockSpd : 1)
+               // Beaten. He dived in, the man went past him, and he is turning: taking him out of
+               // the pressing pool was not enough on its own, because somebody else simply stepped
+               // in. What being beaten costs is the GROUND, and only a committed defender pays it.
+               * (p._beat > 0 ? CFG.tkBeatSpd : 1);
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
       // A keeper has to arrive exactly. Stopping 1.3 m short of the spot is the difference between
       // a save and a goal, which for everyone else is just a man not jiggling on his mark.
@@ -277,7 +282,7 @@ export function meMove(s, rng) {
       p.x = Math.max(0.5, Math.min(PITCH_L - 0.5, p.x + p.vx));
       p.y = Math.max(0.5, Math.min(PITCH_W - 0.5, p.y + p.vy));
       // Running costs. Sprinting flat out for a whole half is what empties a gegenpress.
-      p.stamina = Math.max(0, (p.stamina ?? 100) - step * ME_DRAIN * (1 + (s.strategy?.[side]?.pressingLOE || 0) * 0.18));
+      p.stamina = Math.max(0, (p.stamina ?? 100) - step * CFG.drain * (1 + (s.strategy?.[side]?.pressingLOE || 0) * 0.18));
       // The ball is NOT dragged along with him. He is running near an object.
       p._avgV = (p._avgV ?? 0) * 0.9 + (step / ME_DT) * 0.1;   // ~10-tick lungs for the breath model
     }
@@ -300,7 +305,12 @@ export function meMove(s, rng) {
   }
 }
 
-export const ME_DRAIN = 0.0026;   // stamina per metre run; calibrated so a full 90 lands a busy midfielder near 70
+// Stamina per metre run. Lives on CFG so it can be swept -- as a module const it never was, and it
+// had drifted a long way out: the comment here claimed a full match left a busy midfielder near 70
+// and the measured figure was 87.6, with the most-run outfielder in the game finishing on 85. A
+// match that costs twelve stamina cannot make anybody tired, so no manager ever had a reason to use
+// his bench. Kept as an alias because it is exported and read elsewhere.
+export const ME_DRAIN = CFG.drain;
 
 // ---- the tick ---------------------------------------------------------------------------
 export function meBallTo(s, side, i, x, y) {
@@ -366,6 +376,12 @@ export function meScramble(s, rng) {
 // game the ball was DEAD for 65% of the match, and since no brain runs during a stoppage every duty
 // and every block slot froze across it: measured, 89% of duties during a siege were stale attacking
 // ones inherited from before the last throw-in.
+// HOW LONG TO PLAY. Every slice the ball spent dead is counted, and a share of it is added back --
+// which is all stoppage time is. The caller drives the tick loop, so it asks for this rather than
+// the engine deciding when a match ends: `for (t = 0; t < ME_MATCH_TICKS + meAdded(s); t++)`.
+export const meAdded = (s) => Math.min(CFG.addedMax,
+  Math.round((s.mePos.stopT || 0) * CFG.addedFrac));
+
 export function meDead(s, kind, side, ticks, out) {
   // The countdown is gone. A stoppage is now a phase with a shape: see setpiece.ts. `ticks` survives
   // only so the call sites still read as "this is a long stoppage" / "this is a quick one", and it
@@ -373,12 +389,139 @@ export function meDead(s, kind, side, ticks, out) {
   const mp = s.mePos;
   meSPBegin(s, kind, side, out);
   mp.sp.minT = Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  // TIME-WASTING, WHERE IT ACTUALLY HAPPENS. Nobody sees out a lead by dribbling the clock away in
+  // midfield; they take an age over every goal kick, throw and free kick, and get booked for it.
+  // Only restarts this side is taking, and never a kickoff -- nobody dawdles over the restart after
+  // conceding -- nor a penalty, which the referee is standing over. Dead time is added back at
+  // addedFrac, which is 0.55, so the clock burned is real but only about half of what is spent:
+  // that is the benefit. The caution is the price, and it is what makes this a choice.
+  const twSide = s.strategy?.[side]?.timeWasting || 0;
+  const twLead = (out?.goals?.[side] ?? 0) - (out?.goals?.[meOther(side)] ?? 0);
+  if (twSide > 0 && twLead > 0 && kind !== "kickoff" && kind !== "penalty") {
+    mp.sp.waste = twSide;
+    mp.sp.maxT = CFG.spMaxT + Math.round(twSide * CFG.wasteT);
+    mp.sp.minT = Math.min(mp.sp.maxT - 2, mp.sp.minT + Math.round(twSide * CFG.wasteT));
+  }
   mp.desig.home = -1; mp.desig.away = -1;      // nobody chases a dead ball
   mp.held = false;
   // ...and nobody is still committed to cutting out a pass that no longer exists. meShape does not
   // run during a stoppage, so the flag would survive the whole restart and then send him sprinting
   // at a spot the ball left thirty seconds ago.
   for (const sd of ME_SIDES) for (const q of s.players[sd]) q._cut = 0;
+}
+
+// THE SHOOTOUT. Five each, then sudden death, and it is stopped the moment it cannot be caught --
+// a shootout that plays all five when one side is three up is not a shootout. Each kick is the
+// ordinary penalty set piece driven to its conclusion, so it is settled by the same taker, keeper,
+// read and physics as one in open play rather than by a separate dice roll.
+// SUBSTITUTIONS. The swap is IN PLACE, into the same index, and that is the whole design: mp.idx,
+// mp.fj, mp.desig, _mk and every block slot are positions in s.players[side], so splicing or
+// reordering would silently repoint all of them at the wrong man. The man coming on inherits the
+// slot, the shirt and the spot on the grass; nothing else in the engine has to know it happened.
+export function meSub(s, side, outIdx, benchIdx, out) {
+  const ps = s.players[side], bench = s.bench?.[side];
+  const gone = ps[outIdx], inn = bench && bench[benchIdx];
+  if (!gone || !inn) return false;
+  // He takes over the outgoing man's place in the shape, not a fresh one off the formation.
+  for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
+    inn[k] = gone[k];
+  inn.vx = 0; inn.vy = 0; inn._att = null;          // his own attributes, recomputed on first use
+  inn._duty = "hold"; inn._mk = -1; inn._mkPrev = -1;
+  inn._runT = 0; inn._run = null; inn._cool = 0; inn._cut = 0;
+  inn._track = false; inn._closing = false; inn._avgV = 0;
+  inn.knock = 0; inn.off = false; inn.inj = false; inn.rc = false;
+  if (inn.stamina === undefined) inn.stamina = 100;
+  ps[outIdx] = inn; bench[benchIdx] = null;
+  s.subs = s.subs || { home: 0, away: 0 }; s.subs[side]++;
+  (s.subbedOff = s.subbedOff || { home: [], away: [] })[side].push(gone);
+  if (out) meEvt(out, "sub", side, inn.x, inn.y, inn.x, inn.y, `${inn.name} on for ${gone.name}`);
+  return true;
+}
+
+// WHO COMES OFF, AND WHEN. A man who cannot continue is replaced whatever the clock says; after
+// that it is the tired legs, and only once there is enough of a match left for it to be worth a
+// change. A keeper is only ever replaced by a keeper.
+export function meAutoSubs(s, side, out) {
+  const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
+  s.subs = s.subs || { home: 0, away: 0 };
+  const bench = s.bench?.[side]; if (!bench) return;
+  for (let guard = 0; guard < 3 && s.subs[side] < cap; guard++) {
+    const ps = s.players[side];
+    let pick = -1, worst = Infinity, forced = false;
+    for (let i = 0; i < ps.length; i++) {
+      const q = ps[i]; if (!q) continue;
+      if (q.off && q.inj) { pick = i; forced = true; break; }      // cannot continue
+      if (q.off) continue;                                          // sent off: nobody replaces him
+      if (s.mePos.tick < CFG.subFromTick) continue;
+      const tired = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0);
+      if (tired < CFG.subStamina && tired < worst) { worst = tired; pick = i; }
+    }
+    if (pick < 0) return;
+    const need = s.players[side][pick].pos;
+    let bi = -1, bv = -Infinity;
+    for (let j = 0; j < bench.length; j++) {
+      const b = bench[j]; if (!b) continue;
+      if (need === "GK" && b.pos !== "GK") continue;                // only a keeper goes in goal
+      if (need !== "GK" && b.pos === "GK") continue;
+      const v = (b.ovr ?? 65) + (b.pos === need ? CFG.subSamePos : 0);
+      if (v > bv) { bv = v; bi = j; }
+    }
+    if (bi < 0) return;                                             // nobody suitable on the bench
+    if (!meSub(s, side, pick, bi, out)) return;
+    if (!forced) return;                                            // one tactical change at a time
+  }
+}
+
+export function meShootout(s, rng, out, maxKicks) {
+  const mp = s.mePos;
+  const sc = { home: 0, away: 0 }, taken = { home: 0, away: 0 };
+  const order = ["home", "away"];
+  const left = (sd) => Math.max(0, 5 - taken[sd]);
+  for (let k = 0; k < (maxKicks || 40); k++) {
+    const side = order[k % 2], other = meOther(side);
+    // Decided? Neither can catch the other with the kicks they have left.
+    if (taken.home >= 5 && taken.away >= 5 && taken.home === taken.away && sc.home !== sc.away) break;
+    if (sc[side] + left(side) < sc[other] && taken[other] >= taken[side]) break;
+    if (sc[other] + left(other) < sc[side] && taken[side] > taken[other]) break;
+    const g0 = out.goals[side], s0 = out.shots[side];
+    // EVERYBODY RESETS BETWEEN KICKS. They were left standing wherever the final whistle caught
+    // them, and meSPReady gives up after spMaxT -- so a keeper sixty metres up the pitch simply did
+    // not get back before the kick was taken, and the first version of this converted 98%.
+    for (const sd of ME_SIDES) for (const q of s.players[sd]) {
+      q.vx = 0; q.vy = 0; q._cut = 0; q.knock = 0; q._runT = 0;
+      if (q.pos === "GK") { q.x = meGoalX(meOther(sd)) + meDir(sd) * 0.3; q.y = ME_HALF_W; }
+      else { q.x = PITCH_L / 2 + (meDir(sd) > 0 ? -6 : 6); q.y = 8 + (q._bw0 ?? ME_HALF_W) * 0.75; }
+    }
+    mp.bx = meGoalX(side) - meDir(side) * 11; mp.by = ME_HALF_W;
+    // The same pre-kick a penalty in open play gets. At 40 the sequence was a third as long, and a
+    // keeper who has just been placed from a standstill is still a 0.39 m disc when it is struck --
+    // his capsule only opens with speed. Shootout conversion sat at 88.8% against 74.7% for the
+    // identical kick in a match.
+    meDead(s, "penalty", side, 150, out);
+    // ONE ATTEMPT. A shootout kick is dead the moment the keeper touches it or it misses -- there is
+    // no rebound and no second bite, which is a rule and not a physical fact. Letting it play on for
+    // a dozen slices meant a parry rolled into an empty box (everyone else is on the halfway line)
+    // and trickled in unopposed: 88.8% converted against 74.7% for the identical kick in a match.
+    const sv0 = out.saves.home + out.saves.away, w0 = out.woodwork;
+    let struck = -1;
+    for (let t = 0; t < 220; t++) {
+      const wasSp = !!mp.sp;
+      meTick(s, rng, out);
+      if (wasSp && !mp.sp) struck = t;
+      if (struck < 0) continue;
+      if (out.goals[side] > g0) break;                              // scored
+      if (out.saves.home + out.saves.away > sv0) break;             // saved: dead
+      if (out.woodwork > w0) break;                                 // off the frame: dead
+      if (t - struck > 12) break;                                   // wide, or it simply ran out
+    }
+    taken[side]++;
+    // A shootout is not part of the match: neither its goals nor its kicks belong in the scoreline.
+    if (out.goals[side] > g0) sc[side]++;
+    out.goals[side] = g0; out.shots[side] = s0;
+    mp.sp = null; mp.idx = -1; mp.flight = false; mp.shot = null;
+  }
+  return { home: sc.home, away: sc.away, kicks: taken.home + taken.away,
+           winner: sc.home === sc.away ? null : (sc.home > sc.away ? "home" : "away") };
 }
 
 export function meTick(s, rng, out) {
@@ -392,10 +535,35 @@ export function meTick(s, rng, out) {
   // gives him, and it is taken when the men who matter are actually set -- so nobody freezes and
   // nobody is teleported onto the ball.
   if (mp.sp) {
+    mp.stopT = (mp.stopT || 0) + 1;      // time the ball was not in play; added back at the end
     mp.sp.t++;
+    // Changes are made at a stoppage, once, as the ball goes dead -- not mid-move.
+    if (mp.sp.t === 1) for (const sd of ME_SIDES) meAutoSubs(s, sd, out);
     meSPShape(s);
     meMove(s, rng);
-    if (meSPReady(s)) meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy);
+    if (meSPReady(s)) {
+      // Read off the restart before it is taken, because meSPTake clears it. The card is applied
+      // AFTER the ball has gone, so a second yellow can send him off without the delivery having to
+      // come off the boot of a man who is already walking.
+      const wW = mp.sp.waste || 0, wI = mp.sp.ti, wS = mp.sp.side, wX = mp.sp.x, wY = mp.sp.y;
+      meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy);
+      if (wW > 0 && rng.u() < CFG.wasteCard * wW) {
+        const q = s.players[wS]?.[wI];
+        if (q && !q.off) {
+          q.yc = (q.yc || 0) + 1;
+          (out.yellows = out.yellows || { home: 0, away: 0 })[wS]++;
+          // Counted, not inferred from the event text: meDead overwrites out.evt inside the same
+          // tick, so anything reading it back sees whatever was written last and reports zero.
+          out.wasteYc = (out.wasteYc || 0) + 1;
+          meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.name} booked for time-wasting`);
+          if (q.yc >= 2) {
+            q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0;
+            (out.reds = out.reds || { home: 0, away: 0 })[wS]++;
+            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.name} is off, second yellow`);
+          }
+        }
+      }
+    }
     return;
   }
   // ================ 1. THE BALL =============================================================
@@ -421,6 +589,7 @@ export function meTick(s, rng, out) {
   const cross = meBallStep(mp, ME_DT, s.players.home.concat(s.players.away),
                            mp.idx >= 0 ? s.players[mp.side][mp.idx] : null, justKicked);
   meBallPredict(mp);
+  let stopTick = false;                  // a whistle blown inside tryPickup ends the tick
   const resolvePending = (okSide) => {
     const pp = mp.passPending; mp.passPending = null;
     if (!pp) return;
@@ -645,9 +814,19 @@ export function meTick(s, rng, out) {
         // on target, past the line. Everything below was working off that: the parry normal pointed
         // INTO the goal, so his shove went with it, and the crossing was then adjudicated anyway, so
         // one shot was scored as a save AND a goal. The contact point is where the save happened.
-        if (isGK) {
+        // ...and this is true of EVERYBODY, not just the keeper. The contest is against the path the
+        // ball swept this slice -- at 6.7 m/s that is 1.7 m of it -- so a man who got a foot to it
+        // early on that sweep was having the ball placed wherever the slice happened to END, up to
+        // a metre and a half further on. On screen the ball snaps sideways into him, which reads as
+        // an enormous hitbox when the reach is really 0.6 m: measured, interceptions happen at a
+        // median of 0.43 m from the path and a 90th percentile of 0.57.
+        // ...but ONLY on a new touch. Applied to the man already carrying it this rewinds the ball
+        // to his contact point every single slice, which undoes the movement meBallStep just made
+        // and freezes it at his feet: measured, the match stopped dead -- 0% pass completion, no
+        // goals, no shots, nothing.
+        if (!(mp.idx === bi && mp.side === bs)) {
           mp.bx = x0 + dx * bt; mp.by = y0 + dy * bt;
-          if (mp.bx > 0.05 && mp.bx < PITCH_L - 0.05) mp._gkTouch = mp.tick;
+          if (isGK && mp.bx > 0.05 && mp.bx < PITCH_L - 0.05) mp._gkTouch = mp.tick;
         }
         // HANDS: in his own area, and only if the last man to touch it was not a team-mate. A
         // deliberate ball back from his own defender he has to play with his feet like anybody else.
@@ -715,6 +894,18 @@ export function meTick(s, rng, out) {
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meEvt(out, "save", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} saves`);
           mp.shot = null;
+        }
+        // OFFSIDE. Given when he plays it, not when it was struck: a ball rolled into an offside man
+        // that a defender cuts out first is simply a ball a defender cut out.
+        if (mp.passPending && mp.passPending.off && mp.flight
+            && bs === mp.fside && bi === mp.fj) {
+          const pp = mp.passPending; mp.passPending = null;
+          (out.offside = out.offside || { home: 0, away: 0 })[bs]++;
+          meEvt(out, "offside", bs, pp.ox, pp.oy, pp.ox, pp.oy, `${q.name} is offside`);
+          mp.bx = pp.ox; mp.by = pp.oy;             // the free kick is where he was standing
+          meDead(s, "freekick", meOther(bs), 104, out);
+          stopTick = true;                          // and the tick ends here, as a foul's does
+          return true;
         }
         // A ball quicker than your touch squirts off you. First contact still changes everything --
         // it kills most of the pace and it counts as a touch for last-man bookkeeping.
@@ -813,6 +1004,10 @@ export function meTick(s, rng, out) {
     return false;
   };
   const claimed = tryPickup();
+  // A stoppage called inside the contest ends the slice. Without this the brains and meMove still
+  // ran on top of a set piece that had just been set up, and everyone lurched once before the
+  // restart shape took over.
+  if (stopTick) return;
   // A keeper who got a hand to it got there BEFORE the line -- the ball has been moved back to where
   // he touched it, so the crossing meBallStep saw never happened. Without this the same shot was
   // recorded as a save and as a goal, which is where onTarget, saves and goals stopped adding up.
@@ -887,6 +1082,16 @@ export function meTick(s, rng, out) {
   // He keeps it while it is still HIS -- inside the range of his own touch, and with nobody nearer.
   if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.touchKeep) { mp.idx = -1; return; }
   out.poss[side]++;
+  // ...and he can only PLAY it if he can actually reach it. Possession deliberately runs out to
+  // touchKeep so a man does not lose the ball every time it gets a stride ahead of him -- but
+  // between his own reach and that he is CHASING it, not carrying it, and he certainly cannot pass
+  // it. Nothing enforced that: measured, 26% of every pass, shot and clearance in the match was
+  // struck from beyond touching distance and the furthest was from 4.59 m.
+  // It is also the whole of the trailing-ball problem. At hold 6+ the ball sits behind him on 8.5%
+  // of slices while it is inside his control radius and on 74.6% while it is outside -- because
+  // outside it nothing steers it at all, and he was free to keep "dribbling" anyway.
+  // He is already pursuing it in meMove; this just stops him kicking what he cannot touch.
+  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { out.carries++; return; }
   const a = meAttrs(p), sp = meSpeed(a, p.stamina), opp = s.players[meOther(side)];
   // A challenge is one against one: only the CLOSEST opponent in range rolls the duel. Letting every
   // body within 3.2 m roll independently meant a second presser doubled the dispossession rate and
@@ -969,6 +1174,21 @@ export function meTick(s, rng, out) {
               card === "yellow" ? `${q.name} is booked` : `Foul by ${q.name}`);
       }
       // IN THE BOX IT IS A PENALTY. Same challenge, same card, different restart.
+      // INJURY. A man who has just been gone through at pace is the one who gets hurt, so it hangs
+      // off the same closing speed that made it a foul. Most of it is a knock he runs off; a small
+      // share of it he cannot continue with. NOTE: with no substitutions in the engine yet, a man
+      // who goes off leaves his side playing on with ten, so serious injuries are deliberately rare
+      // until subs exist to answer them.
+      if (rng.u() < CFG.injP * (1 + closeV * CFG.injPace)) {
+        (out.injuries = out.injuries || { home: 0, away: 0 })[side]++;
+        if (rng.u() < CFG.injSerious) {
+          p.rc = false; p.off = true; p.inj = true; p.y = -6; p.vx = 0; p.vy = 0;
+          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.name} cannot continue`);
+        } else {
+          p.knock = CFG.injKnockT;                 // he runs it off
+          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.name} is hurt but carries on`);
+        }
+      }
       meDead(s, inArea0 ? "penalty" : "freekick", side, inArea0 ? 150 : 104, out);
       if (!inArea0) { mp.bx = p.x; mp.by = p.y; }
       return;
@@ -980,8 +1200,14 @@ export function meTick(s, rng, out) {
   // enough to look up, when what is on is good enough to take first time, or when he is being
   // closed down -- pressure SHORTENS this. The old rule had a pressed player dwelling six slices
   // against a free player's four, which is exactly backwards and is why contested men stood still.
-  const natural = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress
-                                         + (s.strategy?.[side]?.timeWasting || 0) * 2));
+  // TIME-WASTING IS FOR SEEING OUT A LEAD. In an engine with no scoreboard, holding the ball two
+  // slices longer was a pure benefit -- more time to look up, and nothing charged for it -- which is
+  // why it measured as a 0.91 goal buff at a setting called "Constantly". It only becomes football
+  // when there is something to protect, so the extra dwell is now conditional on being in front.
+  // Level or behind, running the clock down is simply worse, and the instruction does nothing.
+  const lead = (out.goals?.[side] ?? 0) - (out.goals?.[meOther(side)] ?? 0);
+  const tw = lead > 0 ? (s.strategy?.[side]?.timeWasting || 0) : 0;
+  const natural = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress + tw * CFG.wasteHold));
   // Carrying is not a terminal state. It used to be -- if `carry` scored best he simply never let
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
@@ -1007,7 +1233,12 @@ export function meTick(s, rng, out) {
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     const aimY = ME_HALF_W + away * GOAL_HALF_W * (CFG.shotAimBase + sk * CFG.shotAimSkill);
     const aimZ = 0.25 + rng.u() * (0.5 + sk * GOAL_H * 0.45);
+    // out.xg is both sides pooled, which is what the calibration harnesses want. Per side as well,
+    // because a sweep that asks "did this instruction make the side BETTER" needs a difference, and
+    // a goal is a Poisson count with a mean of 1.6 -- a whole match of it carries more noise than
+    // the effect being measured. xG is the same question answered from ~8 continuous samples.
     if (out.shotDist) { const _g = meShotGeom(side, p.x, p.y); out.shotDist[Math.min(9, Math.floor(_g.d / 5))]++; out.xg = (out.xg || 0) + act.p; }
+    if (out.xgS) out.xgS[side] += act.p;
     meEvt(out, "shot", side, p.x, p.y, gx, aimY, null);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
@@ -1073,7 +1304,15 @@ export function meTick(s, rng, out) {
   // checks against the resolution is a model that drifts: the decision scored passes with one set
   // of assumptions while physics settled them with another, and the two only have to agree because
   // somebody measured it.
-  mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced };
+  // WHERE HE WAS WHEN IT WAS PLAYED. Offside is judged at the moment of the pass and nowhere else,
+  // so it is settled here and carried with the ball rather than re-derived when it arrives -- by
+  // then he has run on and the line has moved.
+  const offL = meOffsideLine(s, side);
+  const wasOff = (q.x - offL) * meDir(side) > CFG.offTol
+    && (q.x - PITCH_L / 2) * meDir(side) > 0        // only in the opponent's half
+    && (q.x - p.x) * meDir(side) > 0;               // and ahead of the ball
+  mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced,
+                     off: wasOff, ox: q.x, oy: q.y };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
              a.pass / 99 / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
 }

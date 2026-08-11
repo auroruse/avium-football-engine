@@ -246,7 +246,7 @@ export function meSPReady(s) {
   if (sp.run) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spRunTol || sp.t > CFG.spMaxT + 14;
   // Out of patience. A struck restart still gets its run-up -- waiting on the last man to trot into
   // the box must not turn a corner into a shot from a standstill, which is what it did.
-  const capT = sp.kind === "kickoff" ? CFG.spKickoffMaxT : CFG.spMaxT;
+  const capT = sp.kind === "kickoff" ? CFG.spKickoffMaxT : (sp.maxT ?? CFG.spMaxT);
   if (sp.t > capT) { if (struck) { sp.run = 1; return false; } return true; }
   // First phase: he has to be on his mark, and so does everyone whose job is near this restart.
   if (Math.hypot(taker.x - (taker._tx ?? sp.x), taker.y - (taker._ty ?? sp.y)) > CFG.spTakerTol) return false;
@@ -314,7 +314,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     mp.shot = { side, name: taker.name, t0: mp.tick }; mp.fj = -1;
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.name} steps up`);
-    meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0);
+    meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
     return;
   }
 
@@ -329,7 +329,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // stood and watched every free kick struck at his goal.
     gkRead(away, CFG.gkReadMin, CFG.gkReadMax - CFG.gkReadMin);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.name} strikes the free kick`);
-    meShootBall(mp, rng, gx, away, 1.0 + rng.u() * 1.1, a.shoot / 99, 0);
+    meShootBall(mp, rng, gx, away, 1.0 + rng.u() * 1.1, a.shoot / 99, 0, CFG.spFkElev);
     return;
   }
   const q = ti >= 0 ? us[ti] : null;

@@ -9,8 +9,11 @@ const eng = await import("./engine.mjs");
 const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meTick, meDecide, meOffsideLine,
         meDir, meGoalX, ME_TPM, ME_MATCH_TICKS, STRAT_DEF, CFG, PITCH_L, PITCH_W, ME_HALF_W } = eng;
 
-const sq = (o) => buildSquad("4-3-3", null).filter(p => !p.bench)
+// The full eighteen, not just the XI: without a bench nobody can be substituted, so a regression
+// that filters it out is testing a match that cannot happen.
+const squad = (o) => buildSquad("4-3-3", null)
   .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, atkW: p.atkW ?? 0.5, _att: null }));
+const sq = (o) => squad(o).filter(p => !p.bench);
 const blank = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
   onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
   passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0, woodwork:0,
@@ -23,7 +26,9 @@ const push = (k, v) => ((A["_" + k] = A["_" + k] || []).push(v));
 
 for (let seed = 1; seed <= N; seed++) {
   const s = createMatchState();
-  s.players.home = sq(75); s.players.away = sq(75);
+  const hs = squad(75), as = squad(75);
+  s.players.home = hs.filter(p => !p.bench); s.bench.home = hs.filter(p => p.bench);
+  s.players.away = as.filter(p => !p.bench); s.bench.away = as.filter(p => p.bench);
   s.formations = { home: "4-3-3", away: "4-3-3" };
   s.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
   s.possession = "home"; meInit(s, pitchSlots);
@@ -113,6 +118,8 @@ for (let seed = 1; seed <= N; seed++) {
   }
 
   for (const k of ["passes", "passOk", "inplay", "tackles", "clears", "blocked"]) add(k, out[k]);
+  A.offside = (A.offside || 0) + (out.offside ? out.offside.home + out.offside.away : 0);
+  A.subs = (A.subs || 0) + (s.subs ? s.subs.home + s.subs.away : 0);
   for (const sd of ["home", "away"]) for (const k of ["shots", "goals", "onTarget", "corners", "fouls"]) add(k, out[k][sd]);
   for (let b = 0; b < 10; b++) add("d" + b, out.shotDist[b]);
 }
@@ -144,7 +151,9 @@ row("shots per side", per("shots"), 8, 18);
 row("goals per side", per("goals"), 0.8, 3.0);
 row("shot conversion", 100 * A.goals / (A.shots || 1), 8, 14, pct);
 row("corners per side", per("corners"), 1, 7);
-row("fouls per side", per("fouls"), 2, 10);
+row("fouls per side", per("fouls"), 8, 14);
+row("offsides per side", (A.offside || 0) / N / 2, 1.5, 3.5);
+row("substitutions per match", (A.subs || 0) / N, 3, 6);
 row("ball in play", 100 * A.inplay / (N * ME_MATCH_TICKS), 58, 72, (v) => v.toFixed(0) + "%");
 const dt = Array.from({ length: 10 }, (_, b) => A["d" + b] || 0).reduce((x, y) => x + y, 0) || 1;
 row("shots from outside 15 m", 100 * (A.d3 + A.d4 + A.d5 + A.d6 + A.d7 + A.d8 + A.d9) / dt, 33, 52, pct);

@@ -1,5 +1,6 @@
 // The pitch, and every spatial question asked about it.
 import { CFG } from "./config";
+import { meRollK, meRollR } from "./ball";
 
 export const PITCH_L = 105, PITCH_W = 68, ME_HALF_W = PITCH_W / 2, ME_GOAL_W = 7.32;
 
@@ -218,17 +219,19 @@ export function meIntercept(p, mp, vmax) {
 // lane-block heuristic while the ball's fate was settled by physical interception; the two had
 // nothing to do with each other, so "safe" passes were routinely intercepted on the spot.
 // How long a ground ball really takes to cover the first `s` metres of an `L` metre pass. Closed
-// form of the same rolling ODE meGroundSpeed inverts: with C = (arrive^2+40)e^(0.08L),
-//   t(s) = 2/(0.08*sqrt(40)) * ( atan(v0/sqrt(40)) - atan(v(s)/sqrt(40)) )
+// form of the same rolling ODE meGroundSpeed inverts: with C = (arrive^2 + r)e^(2kL),
+//   t(s) = 2/(2k*sqrt(r)) * ( atan(v0/sqrt(r)) - atan(v(s)/sqrt(r)) )
+// Same coefficients as the launch and as the integrator -- see meRollK in ball.ts for what happened
+// while these three each believed in a different pitch.
 // The ball is decelerating hard the whole way, so scoring risk off the LAUNCH speed says a 12 m pass
 // arrives in 0.90 s when it really takes 1.33 s. Four hundred milliseconds is more than half the
 // entire window over which a defender goes from no threat to a certain interception, which is why
 // 268 of every 290 passes were scored as under 0.2 risk and then completed at 56%.
-const GT_K = 0.08, GT_R = Math.sqrt(40), GT_S = 2 / (0.08 * Math.sqrt(40));
 export function meGroundT(L, s) {
-  const C = (CFG.passArrive * CFG.passArrive + 40) * Math.exp(GT_K * L);
-  const v0 = Math.sqrt(Math.max(36, C - 40)), vs = Math.sqrt(Math.max(36, C * Math.exp(-GT_K * s) - 40));
-  return GT_S * (Math.atan(v0 / GT_R) - Math.atan(vs / GT_R));
+  const k2 = 2 * meRollK(), r = meRollR(), rr = Math.sqrt(r), sc = 2 / (k2 * rr);
+  const C = (CFG.passArrive * CFG.passArrive + r) * Math.exp(k2 * L);
+  const v0 = Math.sqrt(Math.max(36, C - r)), vs = Math.sqrt(Math.max(36, C * Math.exp(-k2 * s) - r));
+  return sc * (Math.atan(v0 / rr) - Math.atan(vs / rr));
 }
 
 export function mePassRisk(s, side, x0, y0, x1, y1, speed, high) {

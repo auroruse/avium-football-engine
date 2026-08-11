@@ -62,7 +62,30 @@ export const CFG = {
   // going forward. Measured: 55% of all passes went backwards, teams finished a ten-second
   // possession further from goal than they started, and the ball reached the final third only by
   // turnover. Ground gained has to be worth something where the value surface is flat.
-  fwdPull: 0.0010,
+  // WHAT GROUND IS WORTH AGAINST SIMPLY KEEPING IT. The value surface is nearly flat through
+  // midfield -- twelve metres of progress reads 0.007 on it while merely still having the ball is
+  // worth keep, 0.030 -- so retention beat progression four to one before risk was even counted and
+  // these two nudges are what argue the other way. At 0.0010 and 0.0030 they could not: the average
+  // pass in this engine went 0.5 m BACKWARDS, 60% of passes were played backwards, and only 9.4% of
+  // moves starting in a side's own third ever reached the final third against a real fifth.
+  // Doubled, with room half again: measured over 40 matches a cell, progression from deep goes to
+  // 15.7%, the average pass to +4.4 m and backward passes to 44%. It is not free -- completion falls
+  // from 81.9% to 77.3%, which is the honest price of attempting the harder ball, and it is the
+  // reason this is a pair of numbers rather than one: pull alone moves direction without moving
+  // progression, and room alone moves neither far enough.
+  fwdPull: 0.0020,
+  // The pass length a side is looking for, and how far each step of the passing instruction moves
+  // it. passWantW is what a metre away from that length costs in the pass score -- the whole of the
+  // instruction's authority now, and deliberately a preference rather than a veto.
+  passWant: 16, passWantStep: 4, passWantW: 0.0006,
+  // How much the passing instruction squeezes the shape toward the ball. Short passing without it
+  // is an order to play a ball that is not on.
+  compactDir: 0.15,
+  // Slices of extra dwell per step of time-wasting, and only while in front. wasteHold is on the
+  // ball; wasteT is the one that matters -- how much longer a restart takes, per step, capped at
+  // spMaxT so a stoppage cannot hang. wasteCard is the chance per step that the referee has had
+  // enough of it, and a second yellow is a sending off like any other.
+  wasteHold: 2, wasteT: 10, wasteCard: 0.05,
   // What it costs to give the ball away here: the opponent starts a possession, and the closer to your
   // own goal the worse that is. Without this term the expected value of a pass was ok*value with no
   // downside, so a 50% ball into the box outscored a 95% square pass every time -- completion sat at
@@ -110,7 +133,10 @@ export const CFG = {
   tackleCleanBase: 0.18, tackleCleanSkill: 0.34, tackleCleanGap: 0.10, tackleLoose: 7,
   // What "get stuck in" and "stay on feet" are actually worth. Both were dead settings in this
   // engine: more challenges won, more free kicks conceded.
-  tackleAggr: 0.16, foulAggr: 0.0014,
+  // foulAggr was 0.0014 -- the tackling instruction moved the foul rate by fourteen HUNDREDTHS of a
+  // percent, which is indistinguishable from not reading it at all. A quarter either way is a real
+  // difference between a side that dives in and one that stays on its feet.
+  tackleAggr: 0.16, foulAggr: 0.25,
   // Marking distance. This is geometry, not skill, so tightening it makes the game harder for everyone
   // equally -- it lowers chance quality without touching the rating gap, which is exactly the knob to
   // reach for once the skill-dependent duels are bounded.
@@ -164,6 +190,13 @@ export const CFG = {
   // rather than standing in it, and the pace he does that at. trackBase MUST exceed blkSlew / top
   // speed (5.5 / 7.3 = 0.75) or the shape moves away from him faster than he may follow it.
   trackFrom: 3, trackBase: 0.82,
+  // A beaten man chases rather than returns to shape: the ball has to be at least recoverBehind
+  // metres goal-side of him, and inside recoverZone of his own goal for it to be worth the run.
+  recoverBehind: 2.0, recoverZone: 45,
+  // ...and only the man who was beaten, only if he is near enough to the ball to have been the one
+  // beaten by it (recoverFrom), and he runs to a point recoverAhead metres goal-side of the ball
+  // rather than trailing it.
+  recoverFrom: 16, recoverAhead: 9,
   accel: 0.42,
   turnPenalty: 0.55,
   // Line of engagement, in metres from your own goal: how far up the pitch you will go to close the
@@ -231,6 +264,25 @@ export const CFG = {
   // real 0.28 for all causes. At 0.115 the foul-derived share is about 0.21, leaving room for the
   // handball to make up the rest.
   foulBoxScale: 0.115,
+  // INJURY, off the same challenge that made the foul. injP is the base chance a foul hurts the man
+  // fouled, injPace scales it by how fast he was gone through, and injSerious is the share of those
+  // he cannot continue with. Serious ones are rare on purpose: nothing can replace him yet.
+  injP: 0.030, injPace: 0.25, injSerious: 0.16, injKnockT: 240, injKnockSpd: 0.86,
+  // SUBSTITUTIONS. subFromTick is how far into the match before a manager makes a change for tired
+  // legs -- an injury is replaced whenever it happens. subStamina is the level he goes at, and a man
+  // carrying a knock is treated as this much more tired than he reads. subSamePos favours a like-for
+  // -like change over a better player out of position.
+  subCap: 5, subFromTick: 1700, subStamina: 74, subKnockBias: 14, subSamePos: 8,
+  // Stamina per metre run. Swept in test/stamsweep.mjs against what it does to the bench, because
+  // the two are one question -- a threshold cannot fire if nobody ever gets near it:
+  //   0.0026 -> half time 93.8, full time median 87.8, 0.29 subs a match   (what shipped)
+  //   0.0050 -> 88.1 / 77.1 / 1.50
+  //   0.0075 -> 82.5 / 68.4 / 5.86
+  // 0.0065 lands half time near 85 and full time near 72, which is roughly four changes a match.
+  // Goals and pass completion barely move across that whole range, so this is a free axis.
+  drain: 0.0065,
+  // STOPPAGE TIME: the fraction of dead-ball time played back, and a ceiling on it.
+  addedFrac: 0.55, addedMax: 900,
   foulP: 0.9958,
   // Bodies in the way. About a third of real shots never reach the keeper, and this is the honest place
   // to put that: it depends on how many defenders are between the shooter and the goal, not on how
@@ -347,11 +399,31 @@ export const CFG = {
   // A run is committed movement. The old caps meant at most TWO players in the entire match could be
   // running at once, each with a twenty-seven second cooldown, so the pitch was eleven men standing
   // in a shape waiting for the ball.
+  // FREEDOM: men allowed on a run at once, how far off the shoulder one may start, and how much
+  // less certain the grass beyond the line has to be before he goes anyway.
+  creRuns: 1, creBehind: 5, creRisk: 0.18,
+  // THE BACK LINE: metres conceded by dropping off, metres held by stepping up per step, and the
+  // trap -- how long the man on the ball must have had it before the line jumps, and how far.
+  dlDrop: 4, dlStep: 3, trapHold: 3, trapStep: 6,
+  // How much closer Get Stuck In stands to the man on the ball, as a fraction of jockeyStand.
+  tkClose: 0.45,
+  // How far the ball must get past him to count as beaten, and how long he is out of the play for
+  // it, per step of Get Stuck In. Zero at Stay On Feet and at no instruction: only committing costs.
+  tkBeatGap: 1.5, tkBeatT: 10, tkBeatSpd: 0.55,
   runTicks: 14,
   runMax: 4,
   runCool: 28,
+  // How far up the pitch the ball must be before ANYBODY runs beyond it. A counter-attack starts by
+  // definition with the ball deep, so this number decides whether the engine can counter at all.
+  runMinDepth: 30,
   runThirdDepth: 52,
   offsideGrace: 2.2,
+  // How far beyond the line he can misjudge it, at the bottom of the rating scale -- a top player
+  // sees it almost exactly, a poor one is up to this many metres wrong in either direction. This is
+  // what lets offside HAPPEN: with a perfect view nobody ever plays one, and the trap wins nothing.
+  offBlind: 3.0,
+  // How far beyond the line the linesman actually gives it. Not zero -- benefit of the doubt.
+  offTol: 0.5,
   // Playing a man INTO SPACE is a different ball from playing it to his feet, and both are now
   // offered for every team-mate rather than the choice being made for the passer by whether the
   // receiver happened to be on a committed run. thruMax is the furthest ahead of a man it is ever
@@ -370,7 +442,7 @@ export const CFG = {
   // Swept against ground gained per pass. With space unpriced the side gained HALF A METRE a pass --
   // it went sideways and backwards all afternoon. 0.0016 gives +2.9 m, 0.005 gives +6.6 m and 55%
   // forward, which is a side that only knows one direction. Real football is about +4 m.
-  roomFull: 12, roomFwd: 0.003,
+  roomFull: 12, roomFwd: 0.0045,
 };
 export type EngineConfig = typeof CFG;
 
@@ -405,6 +477,9 @@ Object.assign(CFG, {
   // pitch -- what you see touching is what the engine counts as a touch.
   // A boot's length past his body: 0.28 m of him plus a leg. At 0.88 he was sweeping up anything
   // that came within nearly a metre, which reads on the pitch as a reach far bigger than the man.
+  // How much further than a controlling touch he can stretch to KICK it -- a toe-poke reaches a
+  // little past the foot that shepherds it, but not four metres past.
+  playReach: 1.10,
   reach: 0.70, cutReach: 0.60, controlV: 11, controlVSkill: 6,
   // ---- bodies -------------------------------------------------------------------------------
   // Players are SOLID. A ball cannot pass through one and two men cannot stand in the same place.
@@ -640,6 +715,21 @@ Object.assign(CFG, {
   // Possession currency (team.cpp:319-326): the contest ratio smoothed hard and slew-limited, so a
   // full swing takes seconds. This is the hysteresis the entire AI keys off.
   possEmaAlpha: 0.118, possSlew: 0.125,
+  // TRIED AND REJECTED. The idea was that losing the ball should snap the shape to the defending
+  // line instead of fading there over the EMA. It made the transition SLOWER: the losing side kept
+  // going forward until slice 5 instead of slice 3. The reason is that the "defending" line is not
+  // deeper -- lineD sits 18 m behind the ball and lineA sits 30 m behind it, so the defending shape
+  // is actually TIGHTER TO THE BALL, and forcing it on pulled them up the pitch rather than back.
+  // The block follows the BALL; right after a turnover the ball is still in the final third, so
+  // there is nothing in this blend that can bring a side home before the ball travels. That needs a
+  // transition state, not a different blend -- see possLost.
+  dropSnap: 1.0,
+  // THE TRANSITION WINDOW, in slices, and what a side does inside it. transDrop is how far the
+  // block pulls back from where the ball would otherwise put it, at the instant possession is lost,
+  // decaying to nothing by transT. possLost scales it: -1 regroups harder, +1 cancels the drop and
+  // sends a second man at the ball instead, which is a counter-press. transPush is the mirror for
+  // the side that has just WON it, driven by possWon: break now, or keep it and stay compact.
+  transT: 14, transDrop: 15, transPressW: 1.0, transPush: 12,
   // The team defensive line (teamAIcontroller.cpp:91-128): a default height moved by mentality,
   // dragged back by whichever threat is deepest, never below 6 m. The trap band compresses
   // stragglers UP onto the line so the back four holds its stagger while stepping together.
@@ -716,7 +806,10 @@ Object.assign(CFG, {
   // Where in the goal he aims, as a fraction of the half-width out from centre. At 0.55 a good
   // finisher aimed 2.99 m off centre with the post at 3.66 m -- 0.67 m of margin -- and 30% of every
   // shot struck went wide against a real 25%. He is not that brave.
-  shotAimBase: 0.35, shotAimSkill: 0.42,
+  // Back to 0.42 -> 0.55 once the elevation error was restored: aiming nearer the post is where
+  // wide misses come from, and with the height misses working again the two together land the
+  // funnel. Swept in test/convsweep.mjs.
+  shotAimBase: 0.35, shotAimSkill: 0.55,
   shotV0: 17, shotVSkill: 11, shotNoiseDeg: 3.2, shotNoiseSkill: 7, shotNoisePress: 3.2,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very
@@ -726,7 +819,17 @@ Object.assign(CFG, {
   // exist. That, not the finish and not the keeper, was the missing 11 points of off-target -- and
   // it is why widening the aim cone alone never moved conversion however far it was pushed.
   // ...scaled by the shooter: a top finisher keeps shotElevSkill of it off, a poor one gets all of it.
-  shotElevErr: 1.8, shotElevSkill: 0.72,
+  // REGRESSION, found late and worth recording: shotElevSkill was added to stop penalties flying
+  // over, and it multiplies this by (1 - skill*0.72) -- 0.36 for a good finisher. That quietly cut
+  // open-play elevation error to a third and took shots-over-the-bar from 16.1% to 4.1%, which was
+  // most of the missing off-target. 1.8 was set BEFORE that scaling existed; this is the same
+  // effective error with it. Swept against conversion: 1.8/3.5/5.0/6.5/8.0 -> 24.4/22.5/17.5/15.7/
+  // and goals 2.4/2.4/1.8/1.6.
+  shotElevErr: 8.0, shotElevSkill: 0.72,
+  // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
+  // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
+  // part that actually misses the target -- finally exists.
+  shotSigma: 0.42,
   frameBand: 0.35,                 // how near a post or the bar still counts as hitting the frame
   // The keeper as a physical claimant: he dives, and a shot struck harder than he can hold is
   // parried rather than caught -- which is where rebounds come from.
@@ -814,6 +917,13 @@ Object.assign(CFG, {
   // Note this is not "which way he dives" -- with the capsule, a correct read is very nearly a
   // certain save, so this number is really his chance of getting it right AND reaching it.
   spPenBack: 10, spPenSpread: 12, spPenAim: 0.72, spPenRead: 0.10, spPenReadSkill: 0.25,
+  // How much of open play's elevation error a SET strike carries. A penalty is a stationary kick at
+  // a known target with nobody near him and it should be the most accurate shot in the game; a free
+  // kick is struck from further out and over a wall, so it sits between the two.
+  // Swept over 500 penalties a cell: 1.00 -> 64.4% scored with 5.2% off the frame (the damage that
+  // widening open-play elevation did), 0.55 -> 73.8%, 0.30 -> 78.0%, 0.16 -> 77.8%. Real is 76%
+  // scored, 19% saved, 2% woodwork. 0.40 sits between the two cells that bracket it.
+  spPenElev: 0.40, spFkElev: 0.60,
   // HANDBALL: how high the ball has to strike him to be arm rather than body, and how often the
   // referee gives it when it does.
   // Measured by forcing handP to 1: the geometry -- a ball striking an outfielder above waist

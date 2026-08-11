@@ -203,14 +203,31 @@ export function meBallPredict(mp) {
   }
 }
 
+// THE PITCH THE BALL IS ACTUALLY PLAYED ON. stepOnce takes ballDrag off the full 3D velocity every
+// substep and then takes ballFric and ballFricLin off the horizontal velocity AGAIN while the ball
+// is down in the grass, so a rolling ball really decelerates by
+//     (ballDrag + ballFric) v^2 + ballFricLin
+// Both closed forms below -- the one that decides how hard a pass is struck, and the one that says
+// when it will arrive -- had that baked in as 0.04 and 1.6 while the integrator ran 0.070 and 2.1.
+// The passer was aiming at a faster pitch than the ball was played on, and the arithmetic of being
+// wrong by that much is brutal: a ball struck for a 15 m pass stopped at 14.9 m, one struck for 20 m
+// stopped at 17.9, and one struck for 30 m stopped at 23.6 and never reached the man at all. Every
+// ground pass beyond about twelve metres died in the lane in front of its receiver, which is where
+// 83% of all possessions ended, why the 8-22 m pass completed at 66-78% against a real 84-89%, and
+// why only 8.4% of moves starting in a side's own third ever reached the final third.
+// One derivation, read off the constants, so the two can never disagree again.
+export const meRollK = () => CFG.ballDrag + CFG.ballFric;      // the v^2 coefficient
+export const meRollR = () => CFG.ballFricLin / meRollK();      // C/k -- the "40" that was hardcoded
+
 // Initial speed for a ground pass that should ARRIVE at about CFG.passArrive m/s rather than die at
-// the receiver's feet. Closed form of the rolling ODE d(v^2)/ds = -2(0.04 v^2 + 1.6):
-//   v0^2 = (arrive^2 + 40) * e^(0.08 d) - 40
-// which also says the honest thing about ground passes: beyond ~28 m the required speed becomes
-// absurd, and the pass should be lofted instead. That emerges here rather than being a rule.
+// the receiver's feet. Closed form of the rolling ODE d(v^2)/ds = -2(k v^2 + C):
+//   v0^2 = (arrive^2 + C/k) * e^(2 k d) - C/k
+// which also says the honest thing about ground passes: past some distance the required speed
+// becomes absurd and the ball should be lofted instead. That emerges here rather than being a rule,
+// and it moves when the pitch moves, which is the point of deriving it.
 export function meGroundSpeed(d) {
-  const a2 = CFG.passArrive * CFG.passArrive;
-  return Math.min(CFG.passMaxV, Math.sqrt(Math.max(36, (a2 + 40) * Math.exp(0.08 * d) - 40)));
+  const a2 = CFG.passArrive * CFG.passArrive, k = meRollK(), r = meRollR();
+  return Math.min(CFG.passMaxV, Math.sqrt(Math.max(36, (a2 + r) * Math.exp(2 * k * d) - r)));
 }
 
 // A lofted ball: pick a flight time from distance, split it into a launch. GF's HighPass power is
@@ -242,9 +259,20 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
-  const g2 = (r) => (r.u() + r.u() - 1);
+  // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
+  // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
+  // about a third of it, so the distribution has no tail at all. From 11-16 m -- where 46% of shots
+  // are taken -- the aim point sits 2.1 m inside the post, which a triangular error cannot reach
+  // even at three times the base cone. That is why widening the cone was swept twice, across 3x on
+  // aim and 2.2x on elevation, and conversion never left 20-27%: the SHAPE was wrong, not the size.
+  // A gaussian has the tail a real strike has. Clamped at three sigma so nothing goes into orbit.
+  const g2 = (r) => {
+    const u = Math.max(1e-9, r.u());
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r.u());
+    return Math.max(-3, Math.min(3, z)) * CFG.shotSigma;
+  };
   const v = CFG.shotV0 + skill01 * CFG.shotVSkill;
   // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
   // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
@@ -261,7 +289,12 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press) {
   // while the lateral cone always did, so a 99-rated finisher ballooned a shot exactly as often as a
   // 20-rated one -- and a penalty, struck at full power over a short flight, went over the bar about
   // half the time. Mirrors the horizontal error: a floor everybody has, plus what he lacks in skill.
-  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
+  // elevMul lets a SET strike keep its own accuracy. A penalty and an open-play shot are not the
+  // same act -- one is a stationary, unpressured kick at a known spot -- and sharing one elevation
+  // error meant that widening it to fix off-target in open play took penalty conversion from 74.7%
+  // to 64.5% and put 5.5% of them off the frame.
+  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (elevMul === undefined ? 1 : elevMul)
+                        * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   meBallPredict(mp);
 }

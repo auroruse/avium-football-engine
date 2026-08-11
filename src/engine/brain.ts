@@ -56,6 +56,7 @@ export function meTactical(s) {
 }
 
 export function meRuns(s, side) {
+  const st = s.strategy?.[side] || NO_INSTRUCTIONS;
   const mp = s.mePos, us = s.players[side], dir = meDir(side), own = meGoalX(meOther(side));
   const off = meOffsideLine(s, side);
   const ballDepth = (mp.bx - own) * dir;
@@ -64,7 +65,13 @@ export function meRuns(s, side) {
     if (p._runT > 0) { p._runT--; if (p._runT === 0) { p._run = null; p._cool = CFG.runCool; } else active++; }
     else if (p._cool > 0) p._cool--;
   }
-  if (mp.idx < 0 || active >= CFG.runMax || ballDepth < 30) return;   // nothing to run onto
+  // FREEDOM is how many men are allowed to be gambling at once and how speculative a run may be.
+  // It was read nowhere at all, which is why it scored a flat zero on every shape metric. Expressive
+  // sends more of them and off a wider shoulder; disciplined keeps them in the picture. This is a
+  // trade rather than a buff -- every man on a run is a man out of the shape behind the ball.
+  const cre = st.creativity || 0;
+  const runCap = Math.max(1, CFG.runMax + cre * CFG.creRuns);
+  if (mp.idx < 0 || active >= runCap || ballDepth < CFG.runMinDepth) return;   // nothing to run onto
   const carrier = us[mp.idx];
   for (let i = 0; i < us.length; i++) {
     const p = us[i];
@@ -72,10 +79,11 @@ export function meRuns(s, side) {
     const ahead = (p.x - mp.bx) * dir;
     // IN BEHIND: he is on the shoulder and there is grass past the last man.
     if (p._duty === "runner" || p._duty === "width") {
-      if (Math.abs(p.x - off) < 14 && ahead > -6 && meCtrl(s, side, off + dir * 12, p.y) > -0.55) {
+      if (Math.abs(p.x - off) < 14 + cre * CFG.creBehind && ahead > -6
+          && meCtrl(s, side, off + dir * 12, p.y) > -0.55 - cre * CFG.creRisk) {
         p._run = "behind"; p._runT = CFG.runTicks;
         p._rx = off + dir * 15; p._ry = p.y + (ME_HALF_W - p.y) * 0.35;
-        if (++active >= CFG.runMax) break; continue;
+        if (++active >= runCap) break; continue;
       }
     }
     // OVERLAP: a full-back going outside the man on the ball, on his own flank.
@@ -83,7 +91,7 @@ export function meRuns(s, side) {
       if (Math.abs(p.y - carrier.y) < 16 && ahead < 4 && ahead > -22) {
         p._run = "overlap"; p._runT = CFG.runTicks;
         p._rx = mp.bx + dir * 13; p._ry = p._bw < ME_HALF_W ? 5 : PITCH_W - 5;
-        if (++active >= CFG.runMax) break; continue;
+        if (++active >= runCap) break; continue;
       }
     }
     // THIRD MAN: a midfielder arriving late in the box once the ball is high enough.
@@ -92,7 +100,7 @@ export function meRuns(s, side) {
         p._run = "third"; p._runT = CFG.runTicks;
         p._rx = Math.min(PITCH_L - 8, Math.max(8, meGoalX(side) - dir * 13));
         p._ry = ME_HALF_W + (p.y - ME_HALF_W) * 0.45;
-        if (++active >= CFG.runMax) break;
+        if (++active >= runCap) break;
       }
     }
   }
@@ -108,9 +116,17 @@ export function meAnchor(s, side, bd, bw) {
   const dir = meDir(side), own = meGoalX(meOther(side));
   const ballDepth = (mp.bx - own) * dir;
   const bal = Math.max(-1, Math.min(1, mp.bal[side]));
-  // Mentality tilts the possession blend (teamAIcontroller.cpp: possessionBias += (offB-0.5)*0.3).
-  const t = Math.max(0, Math.min(1, (bal + 1) / 2 + ((mp.offB?.[side] ?? 0.5) - 0.5) * 0.3));
-  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7));
+  // Mentality tilts the possession blend (teamAIcontroller.cpp: possessionBias += (offB-0.5)*0.3),
+  // and the same asymmetry as meBlock applies: eased going up, immediate coming back.
+  const tRaw = Math.max(0, Math.min(1, (bal + 1) / 2 + ((mp.offB?.[side] ?? 0.5) - 0.5) * 0.3));
+  const t = mp.side === side ? tRaw : Math.min(tRaw, CFG.dropSnap);
+  // ...and the mirror of the drop. A side that has JUST won it is at its most dangerous and the
+  // side it took it from is at its least organised, so possWon decides whether that is used --
+  // break at once, or keep it and let the shape catch up. This is why counter-attacking works at
+  // all: it is a window, not a style, and it closes in a couple of seconds.
+  const wonT = mp.side === side ? mp.possT : 1e9;
+  const push = Math.max(0, 1 - wonT / CFG.transT) * CFG.transPush * (st.possWon || 0);
+  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
   // Under siege the whole side squeezes toward its own goal: a block defending its box is ~22 m
@@ -126,7 +142,11 @@ export function meAnchor(s, side, bd, bw) {
   let ax = own + dir * (lineM + rel * span);
   let ay = ME_HALF_W + wideness * ME_HALF_W * (wide ? 0.94 : 0.66) * (1 + st.passingDir * 0.02);
   ay += (mp.by - ay) * (wide ? 0.10 : 0.30);
-  ax += (mp.bx - ax) * (t > 0.5 ? CFG.compactAtk : CFG.compactDef + Math.max(0, st.pressingLOE) * 0.03);
+  // A side asked to keep it short needs somebody short to give it to, so the shape comes with the
+  // instruction rather than leaving the passer to want a ball that is not on. Compress toward the
+  // ball when playing shorter, stretch away from it when playing direct.
+  const cmpA = CFG.compactAtk * (1 - st.passingDir * CFG.compactDir);
+  ax += (mp.bx - ax) * (t > 0.5 ? cmpA : CFG.compactDef + Math.max(0, st.pressingLOE) * 0.03);
   return [ax, ay];
 }
 
@@ -173,8 +193,12 @@ export function meDuties(s, side) {
   const defending = mp.side !== side;
   const ballDepth = (mp.bx - own) * dir;
   for (const p of us) { p._wasPress = p._duty === "press"; p._mk = -1;
+    if (p._beat > 0) p._beat--;
     p._duty = p.off ? "off" : p.pos === "GK" ? "gk" : "hold"; }
-  const free = () => us.map((p, i) => i).filter(i => us[i]._duty === "hold");
+  // A man who has just been gone past cannot be the one who presses next -- that is what being
+  // beaten MEANS, and without it a defender who dived in and lost simply closed again a quarter of
+  // a second later, which is why standing on the man's toes was free.
+  const free = () => us.map((p, i) => i).filter(i => us[i]._duty === "hold" && !(us[i]._beat > 0));
   const nearest = (x, y, pool) => { let bi = -1, bd = Infinity;
     for (const i of pool) {
       const q = us[i];
@@ -198,6 +222,33 @@ export function meDuties(s, side) {
         const pd = prev >= 0 ? Math.hypot(us[prev].x - mp.bx, us[prev].y - mp.by) : Infinity;
         const use = (prev >= 0 && pd < bd * 1.45) ? prev : bi;
         if (use >= 0) us[use]._duty = "press";
+      }
+    }
+    // COUNTER-PRESSING is the other half of possLost: instead of dropping, swarm the man who has
+    // just taken it, in the seconds when his side is least organised. One presser is the shape's
+    // steady state; this is the extra body that makes it a press rather than a chase.
+    if (mp.idx >= 0 && (st.possLost || 0) > 0 && mp.possT < CFG.transT) {
+      const [bi2, bd2] = nearest(mp.bx, mp.by, free());
+      if (bi2 >= 0 && bd2 <= CFG.engageIn) us[bi2]._duty = "press";
+    }
+    // ONE RECOVERY RUNNER: the man who was beaten. Applied to everyone upfield of the ball it
+    // emptied the box -- under siege the ball is deep, so almost the whole side is "upfield of it"
+    // and the whole side went chasing. Measured, the nearest defender to a man in the box went from
+    // 3.3 m to 4.2. Being beaten is one player's problem, so it is one player who runs.
+    // A man already inside his own area is not beaten, he is where he should be; he holds.
+    if (mp.idx >= 0 && mp.side === meOther(side)) {
+      const bDepth = (mp.bx - own) * dir;
+      if (bDepth < CFG.recoverZone) {
+        let ri = -1, rd = Infinity;
+        for (const i of free()) {
+          const q = us[i];
+          if (q.pos === "GK") continue;
+          if ((q.x - own) * dir < bDepth + CFG.recoverBehind) continue;      // not beaten
+          if (Math.abs(q.x - own) < CFG.gkBoxR && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW) continue;
+          const d = Math.hypot(q.x - mp.bx, q.y - mp.by);
+          if (d < rd) { rd = d; ri = i; }
+        }
+        if (ri >= 0 && rd < CFG.recoverFrom) us[ri]._duty = "recover";
       }
     }
     // ONE cover, goal-side of the ball.
@@ -374,8 +425,30 @@ export function meBlock(s, side) {
   const st = s.strategy?.[side] || NO_INSTRUCTIONS;
   const dir = meDir(side), own = meGoalX(meOther(side));
   const ballDepth = (mp.bx - own) * dir;
+  // THE TRANSITION. For the first few seconds after losing the ball a side is not simply
+  // "defending" -- it is GETTING BACK, and it does that before the ball has gone anywhere. Every
+  // line in this function is a function of where the ball IS, so without this nothing can bring a
+  // side home until the ball travels: measured over 2100 turnovers, a side that gave it away was
+  // still moving forward three slices later and had retreated 0.66 m after three full seconds.
+  // Snapping to the "defending" blend does not do it either -- that line sits 18 m behind the ball
+  // against the attacking line's 30, so it is TIGHTER to the ball and pulls them further up.
+  // This is the missing phase, and it is what possLost has always meant: drop, or swarm it.
+  const lostT = mp.side !== side && mp.side !== null ? mp.possT : 1e9;
+  const trans = Math.max(0, 1 - lostT / CFG.transT);        // 1 the instant it goes, 0 by transT
+  const drop = trans * CFG.transDrop * (1 - (st.possLost || 0) * CFG.transPressW);
+  // THE BACK LINE'S OWN INSTRUCTION. Offside became a real rule with a real free kick, and the one
+  // instruction named after it moved the keeper's sweeper distance by 1.2 m and nothing else -- so
+  // the setting called Offside Trap sprang no trap, and dlBehavior sat on the noise floor.
+  // Drop Off concedes depth. Step Up holds a higher line. The Trap holds a higher line AND pushes up
+  // in unison the moment the man on the ball has had it long enough to be looking to release, which
+  // is the difference between a high line and a trap. It carries its own punishment for free: a line
+  // that steps up and gets it wrong has left the whole pitch behind it, and the passer's own
+  // misjudgement of the line (offBlind) means it will sometimes be wrong.
+  const dlb = st.dlBehavior || 0;
+  let dlA = dlb < 0 ? -CFG.dlDrop : dlb * CFG.dlStep;
+  if (dlb === 2 && mp.idx >= 0 && mp.side !== side && mp.hold >= CFG.trapHold) dlA += CFG.trapStep;
   const wantLine = Math.max(CFG.blkMin, Math.min(CFG.blkMax,
-    ballDepth - CFG.blkDrop + st.defLine * CFG.blkDefLine + st.pressingLOE * CFG.blkLoe));
+    ballDepth - CFG.blkDrop + st.defLine * CFG.blkDefLine + st.pressingLOE * CFG.blkLoe - drop + dlA));
   const wantCy = ME_HALF_W + (mp.by - ME_HALF_W) * CFG.blkSlide;
   // The block slides at running pace, because it is a body of men rather than a formula.
   // Compact defending your own box, long when you are camped in their half.
@@ -501,7 +574,13 @@ export function meShape(s, side) {
   // them, and let each player's own depth decide how much he commits: a centre-half stays honest
   // when his side attacks, a striker barely tracks back when it does not.
   const bal = Math.max(-1, Math.min(1, mp.bal[side]));
-  const t = (bal + 1) / 2;
+  // LOSING IT IS NOT A FADE. Blending BOTH ways meant the shape came back at the EMA's pace, and the
+  // EMA barely moves: measured over 2100 turnovers, the side that had just given the ball away was
+  // still going FORWARD three slices later, had retreated 0.66 m after three full seconds, and its
+  // mp.bal never got past -0.22 of a possible -1. Pushing up the pitch is a decision taken over
+  // several seconds and should ease; dropping is a reaction to something that has already happened.
+  // So the blend still eases upward and snaps down.
+  const t = mp.side === side ? (bal + 1) / 2 : Math.min((bal + 1) / 2, CFG.dropSnap);
   const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
@@ -664,7 +743,7 @@ export function meShape(s, side) {
     // it. Nothing else applies -- no trap compression, no leash back to a formation slot, no
     // screening rule -- because those were all separate attempts to recover a shape the block just
     // has. A man who has picked somebody up moves at his own pace rather than easing into a mark.
-    if (!attacking && p._duty !== "press" && p._duty !== "cover") {
+    if (!attacking && p._duty !== "press" && p._duty !== "cover" && p._duty !== "recover") {
       const tx2 = Math.max(1.5, Math.min(PITCH_L - 1.5, p._bsx ?? p.x));
       const ty2 = Math.max(1.5, Math.min(PITCH_W - 1.5, p._bsy ?? p.y));
       // Picked somebody up, caught upfield, or simply out of shape: either way he is not strolling.
@@ -707,11 +786,35 @@ export function meShape(s, side) {
           //
           // On the ball-to-goal line he is between the man and the goal, which is where a defender
           // belongs and also the only place a shot can be blocked from.
+          // TACKLING is the distance he settles at. It used to scale the foul rate by 0.14% and do
+          // nothing else, which is why it measured at 0.3 against a noise floor of 1.6 -- a dead
+          // instruction wearing a live one's name. Get Stuck In stands on the man's toes: more balls
+          // won, more fouls, and far less room to recover if he goes past you. Stay On Feet holds
+          // off and keeps the shape.
+          // COMMITTED AND BEATEN. Getting tight wins the ball far more often -- measured, it took
+          // what a side concedes from 0.80 xG to 0.46 -- and that was very nearly free, because
+          // nothing in the engine modelled going PAST a man. Dive in and lose, and you are out of it
+          // for a couple of seconds; only Get Stuck In pays that, which is what makes it a trade
+          // rather than a better way to defend.
+          if ((st.tackling || 0) > 0 && (mp.bx - own) * dir < (p.x - own) * dir - CFG.tkBeatGap)
+            p._beat = Math.max(p._beat || 0, Math.round(CFG.tkBeatT * st.tackling));
+          const jk = CFG.jockeyStand * (1 - (st.tackling || 0) * CFG.tkClose);
           const gx2 = own - mp.bx, gy2 = ME_HALF_W - mp.by, gl2 = Math.hypot(gx2, gy2) || 1;
-          tx = mp.bx + gx2 / gl2 * CFG.jockeyStand;
-          ty = mp.by + gy2 / gl2 * CFG.jockeyStand;
+          tx = mp.bx + gx2 / gl2 * jk;
+          ty = mp.by + gy2 / gl2 * jk;
           p._closing = true;
         }
+        break;
+      }
+      case "recover": {
+        // He is behind the play and running at the ball from there is futile -- he will never catch
+        // it, and every stride is a stride further from his own goal. A recovery run is a run to get
+        // BACK GOAL-SIDE: he heads for the point between the ball and his own net, which is where he
+        // needed to be, and rejoins the defence there rather than trailing the man who beat him.
+        const rx = own - mp.bx, ry = ME_HALF_W - mp.by, rl = Math.hypot(rx, ry) || 1;
+        tx = mp.bx + rx / rl * CFG.recoverAhead;
+        ty = mp.by + ry / rl * CFG.recoverAhead;
+        p._track = true; p._closing = true;
         break;
       }
       case "cover":                                             // goal-side of the ball, not on it

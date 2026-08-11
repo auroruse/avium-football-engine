@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meInit, meMinute, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meInit, meMinute, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -4966,8 +4966,11 @@ export default function App() {
   const meKick = () => { meStop(); meRef.current = meBuild(); setMeFrame(f => f + 1); };
   const meStep = (n) => {
     const m = meRef.current; if (!m) return;
-    for (let i = 0; i < n && m.t < ME_MATCH_TICKS; i++) { m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; }
-    if (m.t >= ME_MATCH_TICKS) meStop();
+    // ...plus stoppage. meAdded grows as the ball spends time dead, so the finish line moves out
+    // during the match exactly as the board going up at ninety does -- it is not known in advance.
+    const end = ME_MATCH_TICKS + meAdded(m.s);
+    for (let i = 0; i < n && m.t < end; i++) { m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; }
+    if (m.t >= ME_MATCH_TICKS + meAdded(m.s)) meStop();
     setMeFrame(f => f + 1);
   };
   const mePlay = () => {
@@ -5001,6 +5004,7 @@ export default function App() {
         st.possession = "home"; meInit(st, pitchSlots);
         const out = meFreshOut(), rng = new RNG(101 + k * 17);
         for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
+        for (let t = 0, add = meAdded(st); t < add; t++) meTick(st, rng, out);   // stoppage time
         for (const key of ["passes","passOk","passFail","tackles","carries","clears","inplay","blocked"]) agg[key] += out[key];
         for (const sd of ["home","away"]) for (const key of ["poss","shots","goals","onTarget","saves","corners","fouls"]) agg[key][sd] += out[key][sd];
         stamEnd += st.players.home.reduce((a, p) => a + p.stamina, 0) / 11;

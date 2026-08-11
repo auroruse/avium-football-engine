@@ -136,10 +136,16 @@ export function meDecide(s, rng, side, i, dwell) {
     }
     const dx = aimX - p.x, dy = aimY - p.y, d = Math.hypot(dx, dy) || 0.1;
     if (d > 55) continue;
-    // Offside. A man running in behind gets the benefit of the doubt for a couple of metres, which
-    // is what makes a through ball possible at all; beyond that nobody plays it on purpose.
+    // OFFSIDE, AS HE SEES IT. A man running in behind gets the benefit of the doubt for a couple of
+    // metres, which is what makes a through ball possible at all. But where the line IS, at the
+    // moment he strikes it, is a judgement made at speed by somebody facing the other way -- he is
+    // not a linesman and he does not have the freeze-frame. He used to: the old rule vetoed every
+    // ball to a man an inch beyond the line, so offside could not happen and the trap had no payoff.
+    // His perception carries error scaled by his rating, which errs BOTH ways -- a poor player plays
+    // the one that is off and declines the one that is on, and a good one judges it well.
     const slack = thru ? CFG.offsideGrace : 0.4;
-    if ((q.x - off) * dir > slack) continue;
+    const seen = (q.x - off) * dir + (rng.u() + rng.u() - 1) * CFG.offBlind * (1 - meMind(p));
+    if (seen > slack) continue;
     const fwd = (aimX - p.x) * meDir(side);
     // Never backwards from a shooting position. Square and forward balls stay available -- a
     // team-mate better placed is a real reason to pass; turning round is not.
@@ -210,7 +216,18 @@ export function meDecide(s, rng, side, i, dwell) {
     let val = meVal(side, aimX, aimY) + CFG.keep + (fwd <= 0 ? CFG.keepBuild * shut : 0) + val0;
     // Directness: bias toward balls that gain ground. Work-ball-in does the reverse. These are the
     // only lines an instruction touches, and they move what is ATTEMPTED, never whether it lands.
-    val += fwd * (CFG.fwdPull + st.passingDir * 0.00034);
+    val += fwd * CFG.fwdPull;
+    // DIRECTNESS IS THE RANGE HE IS LOOKING IN. It used to scale fwdPull -- the worth of a metre of
+    // ground -- which meant Much Shorter instructed a side to value the right thing wrongly. Against
+    // an objective that is already about right, distorting it can only make a team worse, and that
+    // is precisely what it measured as: at the short end 0.54 xG created and 0.78 conceded, at the
+    // direct end 0.74 and 0.62, a buff of 1.08 goals wearing a tactic's name. No amount of tuning
+    // fixes that shape, because the coefficient IS the team's judgement.
+    // A preferred length is a constraint instead. Both ends play the best ball they can see; they
+    // are looking at different balls, and each pays for it -- short forgoes ground, long forgoes
+    // completion. That is a trade, which is what a tactic is supposed to be.
+    const want = CFG.passWant + st.passingDir * CFG.passWantStep;
+    val -= Math.abs(d - want) * CFG.passWantW;
     // ...and it is worth far more if the man receiving it has ROOM. meVal is pure geometry: on a
     // surface that is nearly flat through midfield it says twelve metres of progress is worth 0.007
     // against 0.030 for simply still having the ball, so a ball into twenty metres of open grass and

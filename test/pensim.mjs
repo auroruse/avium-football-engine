@@ -16,8 +16,7 @@ const blank = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:
 const TRIALS = +(process.env.TRIALS || 500);
 
 function cell({ aim, read, elev }) {
-  CFG.spPenAim = aim; CFG.spPenRead = read;
-  if (elev !== undefined) CFG.spPenElev = elev;
+  CFG.spPenAim = aim; CFG.spPenRead = read; CFG.spPenElev = elev;
   let sc = 0, sv = 0, wood = 0, other = 0;
   for (let k = 0; k < TRIALS; k++) {
     const s = createMatchState();
@@ -48,14 +47,14 @@ function cell({ aim, read, elev }) {
   return { sc: 100*sc/d, sv: 100*sv/d, wood: 100*wood/d, other: 100*other/d };
 }
 const CELLS = [];
-for (const aim of [0.72, 0.82, 0.90]) for (const read of [0.30, 0.20, 0.10]) CELLS.push({ aim, read });
+for (const elev of [1.0, 0.55, 0.30, 0.16]) CELLS.push({ aim: 0.72, read: 0.10, elev });
 const res = await parMap(CELLS, cell);
 if (!res) process.exit(0);
 const f1 = (x) => x.toFixed(1);
 console.log(`\n${TRIALS} penalties per cell (+/- ${(100*Math.sqrt(0.25/TRIALS)).toFixed(1)}% on a proportion).\n`);
-console.log(`  spPenAim  spPenRead    scored    saved   woodwork    other`);
+console.log(`  spPenElev              scored    saved   woodwork    other`);
 CELLS.forEach((c, i) => { const r = res[i];
   const ok = r.sc >= 72 && r.sc <= 80;
-  console.log(`  ${c.aim.toFixed(2).padStart(8)}  ${c.read.toFixed(2).padStart(9)}   ${f1(r.sc).padStart(6)}%` +
+  console.log(`  ${c.elev.toFixed(2).padStart(9)}            ${f1(r.sc).padStart(6)}%` +
     `  ${f1(r.sv).padStart(6)}%  ${f1(r.wood).padStart(8)}%  ${f1(r.other).padStart(6)}%${ok ? "  <==" : ""}`); });
 console.log(`\n  real:                            76%      19%         2%       3%`);
