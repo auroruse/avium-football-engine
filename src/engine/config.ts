@@ -605,6 +605,9 @@ Object.assign(CFG, {
   // by the man who struck them, one slice later, with the ball 0.6 m away. Every symptom came from
   // here -- the pass line drawn with no pass behind it, seven per cent of passes reaching a team-mate,
   // and a match in which the ball only ever neared a goal because one man walked it there.
+  // How many touches back the assist search may look. Long enough to cross a passing move, short
+  // enough that it never reaches into a previous phase of play.
+  tlogMax: 8,
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in

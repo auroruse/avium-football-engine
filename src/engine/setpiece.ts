@@ -312,7 +312,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   if (sp.kind === "penalty") {
     const away = ME_HALF_W + (rng.u() < 0.5 ? -1 : 1) * GOAL_HALF_W * CFG.spPenAim;
     out.shots[side]++;
-    mp.shot = { side, name: taker.name, t0: mp.tick }; mp.fj = -1;
+    mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
@@ -324,7 +324,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     const g = meShotGeom(side, sp.x, sp.y);
     const away = ME_HALF_W + (sp.y <= ME_HALF_W ? 1 : -1) * GOAL_HALF_W * (0.35 + a.shoot / 99 * 0.5);
     out.shots[side]++;
-    mp.shot = { side, name: taker.name, t0: mp.tick };
+    mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick };
     mp.fj = -1;
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
     // stood and watched every free kick struck at his goal.
