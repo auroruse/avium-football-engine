@@ -84,6 +84,9 @@ export const CFG = {
   dribHold: 2,
   // Metres the whole side shifts while its own keeper has the ball, per step of GK distribution.
   gkDistPush: 9,
+  // ...and metres the men who are NOT the intended receivers shift at a goal kick. Going long with
+  // the whole side still standing on the eighteen-yard line means conceding every second ball.
+  gkShapePush: 12,
   // How much of the usual depth gate a counter-attack is allowed to ignore. A break starts deep.
   brkDepth: 0.35,
   // How much the passing instruction squeezes the shape toward the ball. Short passing without it

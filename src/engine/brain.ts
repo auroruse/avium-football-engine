@@ -137,11 +137,9 @@ export function meAnchor(s, side, bd, bw) {
   const push = Math.max(0, 1 - wonT / CFG.transT) * CFG.transPush * (st.possWon || 0);
   // GK DISTRIBUTION is a decision the whole side takes, not just the keeper: Short means come and get
   // it and Long means get up the pitch for the second ball.
-  // CAVEAT, measured: this only bites while the keeper has it in OPEN play, which is rare. The case
-  // that matters is the goal kick, and a stoppage runs meSPShape instead of meShape (match.ts:542),
-  // so shape at a restart never reaches this function at all -- gkDist scored an identical 3.4 STYLE
-  // and 0.28 EDGE before and after this line existed, to two decimals, which is what a code path
-  // that does not execute looks like. Moving it needs the goal-kick branch of meSPShape.
+  // This half covers the keeper holding it in OPEN play, after a catch or a pickup. A stoppage runs
+  // meSPShape rather than meShape (match.ts:542), so the goal kick -- the case that actually matters
+  // -- is handled there instead, by gkShapePush.
   const gkHas = mp.idx >= 0 && mp.side === side && s.players[side][mp.idx]?.pos === "GK";
   const gkPush = gkHas ? (st.gkDist || 0) * CFG.gkDistPush : 0;
   const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push + gkPush));

@@ -169,7 +169,8 @@ export function meSPShape(s) {
     if (us[i]._spSet) continue;
     const p = us[i];
     const base = sp.kind === "goalkick" || sp.kind === "kickoff"
-      ? own + dir * (18 + (p._bd0 || 40) * 0.45)
+      ? own + dir * (18 + (p._bd0 || 40) * 0.45
+                     + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
       : sp.x - dir * (10 + k * 7);
     place(i, base, ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3)));
     k++;
