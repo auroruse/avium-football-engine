@@ -4369,6 +4369,38 @@ const splitFullName = (n) => {
 // abbrevName already isolated the originally-all-caps surname as everything after
 // its "X. " initial — reuse that instead of guessing the surname by word position,
 // which breaks for names like "Jens Petter KLOVNING" (bolds "Petter Klovning").
+// PLAYER PORTRAITS live in public/players as "First Last.png". Two things make the lookup less
+// obvious than it looks. Names carry an UPPERCASE surname everywhere else in the app -- parseOvr
+// strips the "(88)" and the "[SKJ]" off a preset cell and leaves "Kozo FUJISE" exactly as the file
+// printed it -- so the filename never matches until it is title-cased. And a folder under public/
+// has no manifest and cannot be globbed at runtime, so there is no way to ask in advance who has a
+// portrait: the browser asks for the name and anyone without one falls back to the shared
+// placeholder. The dataset flag is what stops a missing placeholder becoming an infinite error loop.
+const shotName = (n) => String(n || "").trim().split(/\s+/)
+  .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+const PLAYER_SHOT_MISS = "/players/placeholder.jpg";
+// ...and one more trap on top of the casing. macOS writes filenames DECOMPOSED -- "Sho" plus a
+// combining macron -- while the preset files carry the same name precomposed, so "Sho Itoshi" is two
+// different byte strings depending on which side you ask, and every accented player silently fell
+// through to the placeholder. Both forms are tried before giving up. Deduped, so the common
+// all-ASCII name still costs exactly one request.
+const shotChain = (name) => {
+  const b = shotName(name);
+  return [...new Set([b.normalize("NFC"), b.normalize("NFD")])]
+    .map((n) => `/players/${encodeURIComponent(n)}.png`)
+    .concat(PLAYER_SHOT_MISS);
+};
+const PlayerShot = ({ name, size, style }) => {
+  const chain = shotChain(name);
+  return (
+    <img src={chain[0]} alt="" draggable={false}
+         onError={(e) => { const t = e.currentTarget, i = (+t.dataset.step || 0) + 1;
+                           if (i < chain.length) { t.dataset.step = String(i); t.src = chain[i]; } }}
+         style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover",
+                  display: "block", background: "var(--chrome-bg-dd)", ...style }} />
+  );
+};
+
 const splitSurname = (n, abbrev) => {
   const full = String(n || "");
   const m = String(abbrev || "").match(/^\p{L}\.\s+(.+)$/u);
@@ -8447,6 +8479,9 @@ export default function App() {
                   return (
                   <tr key={idx} style={{ background: n % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                     <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, ...mono }}>{n + 1}</td>
+                    <td style={{ ...tdCell, paddingRight: 0 }}>
+                      <PlayerShot name={p.fullName || p.name} size={24} />
+                    </td>
                     <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {ed
                         ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => { const ns = [...sq]; ns[idx] = { ...ns[idx], name: e.target.value, fullName: undefined }; updateTeam(t.id, "squad", ns); }}
@@ -8523,11 +8558,12 @@ export default function App() {
                             <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-text)", ...ellip }}>{last}</div>
                           </div>
                           <div title={side.label || undefined} onClick={() => openTeam(side.team)}
-                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`,
+                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
                                      display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`, cursor: side.team ? "pointer" : "default" }}>
-                            {side.team
-                              ? <TeamCrest team={side.team} size={cq(TOKEN.crest)} />
-                              : <span style={{ ...mono, fontSize: cq(TOKEN.chipFont), color: "var(--chrome-muted-66)" }}>{side.code || (p.spos || p.pos)}</span>}
+                            {/* His face, not his employer's badge. The crest told you the same thing
+                                for all eleven of them; the portrait is the only thing on the token
+                                that says WHO this is rather than what he is. */}
+                            <PlayerShot name={p.fullName || p.name} size="100%" />
                           </div>
                           <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrBg, color: ovrRgb && percLum(ovrRgb.r, ovrRgb.g, ovrRgb.b) > 0.5 ? "#101a12" : "#f4f7fa" }}>{showOvr(ovr)}</span>
                           <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
@@ -8541,11 +8577,13 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                     <colgroup>
-                      <col style={{ width: 40 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
+                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
                     </colgroup>
                     <thead>
                       <tr>
                         <th style={thCell}>#</th>
+                        {/* Deliberately unlabelled: a heading over a column of faces is noise. */}
+                        <th style={thCell} />
                         <th style={thCell}>Player</th>
                         <th style={{ ...thCell, textAlign: "center" }}>OVR</th>
                         <th style={{ ...thCell, textAlign: "center" }}>POS</th>
