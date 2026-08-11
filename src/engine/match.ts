@@ -349,7 +349,9 @@ export function meBallTo(s, side, i, x, y) {
 export const meKickedBy = (mp, side, i) => {
   mp.kickBy = [{ s: side, i, t: mp.tick }];
   const g = (mp.tlog = mp.tlog || []);
-  g.push({ s: side, i, t: mp.tick });
+  // ...and where. mp.bx/mp.by at the moment of the kick IS where he played it, so an error can be
+  // located without threading a position through every call site.
+  g.push({ s: side, i, t: mp.tick, x: mp.bx, y: mp.by });
   if (g.length > CFG.tlogMax) g.shift();
 };
 export const meAlsoKicked = (mp, side, i) => { (mp.kickBy = mp.kickBy || []).push({ s: side, i, t: mp.tick }); };
@@ -683,6 +685,29 @@ export function meTick(s, rng, out) {
           if (gp) meRate(gp, CFG.rateGoal * ctx * (1 - CFG.rateGoalXgW * clamp01(xg)));
           else meRate(s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i], -CFG.rateOwnGoal);
           if (ast) meRate(ast, CFG.rateAssist * (1 + (ctx - 1) * 0.5));
+          // THE MAN WHO GAVE IT AWAY. In phase A a defender could only ever lose rating, and only
+          // collectively, when his side conceded -- so the model said nothing about whether he had
+          // anything to do with it, and defenders sat 0.42 below forwards for playing their
+          // position. This is the other half: the last man of the CONCEDING side to have touched it,
+          // if he lost it in his own third and recently enough for the goal to be his fault.
+          {
+            const cs = cross.conceding, cown = meGoalX(meOther(cs)), cdir = meDir(cs);
+            for (let k = lg.length - 1; k >= 0; k--) {
+              const e = lg[k];
+              if (e.s !== cs) continue;
+              const em = s.players[cs]?.[e.i];
+              // Not the keeper. He is already charged for the goal itself through meConcedePen, and
+              // he is the man most likely to have last touched it in his own third simply by being
+              // the goalkeeper -- so charging him twice took keepers to 6.10 against forwards on
+              // 6.92 and made the positional spread worse than phase A's, not better. He gets away
+              // with dribbling into trouble; that is the price of not punishing him for the position
+              // he plays.
+              if (em && em.pos !== "GK"
+                  && mp.tick - e.t <= CFG.rateErrWin && (e.x - cown) * cdir < PITCH_L / 3)
+                meRate(em, -CFG.rateError);
+              break;
+            }
+          }
           // The men it went past. The keeper carries most of it and the back line shares the rest.
           for (const q of s.players[cross.conceding] || []) {
             if (q.off) continue;
@@ -879,7 +904,7 @@ export function meTick(s, rng, out) {
             // like the distance a struck ball travels.
             const ax = ownA - q.x, ay = ME_HALF_W - q.y, al = Math.hypot(ax, ay) || 1;
             const tx = q.x - ax / al * 18, ty = q.y - ay / al * 18 + (rng.u() - 0.5) * 14;
-            out.clears++;
+            out.clears++; meRate(q, CFG.rateClear);
             meEvt(out, "clear", bs, q.x, q.y, tx, ty, `${q.name} heads it clear`);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
           }
@@ -990,6 +1015,7 @@ export function meTick(s, rng, out) {
         if (v2d > CFG.controlV + qa.pass / 99 * CFG.controlVSkill) {
           // A deflection. If a shot was live, that was a block.
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
+            meRate(q, CFG.rateBlock);
             meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
             // man who hit it, not the defence putting it through their own net. Only a ball that
@@ -1010,6 +1036,7 @@ export function meTick(s, rng, out) {
         // not actually broken, was drawn from a stat that was undercounting by four times.
         if (mp.shot && bs !== mp.shot.side) {
           out.blocked = (out.blocked || 0) + 1;
+          meRate(q, CFG.rateBlock);
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
@@ -1341,6 +1368,16 @@ export function meTick(s, rng, out) {
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     mp.shot = { side, name: p.name, i: shooter, xg: act.p, t0: mp.tick };
+    // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
+    // team-mate through six times and watches him miss six times did that six times. Credited on
+    // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted
+    // everywhere else.
+    { const lg = mp.tlog || [];
+      for (let k = lg.length - 1; k >= 0; k--) {
+        const e = lg[k];
+        if (e.s !== side) break;
+        if (e.i !== shooter) { meRate(s.players[side]?.[e.i], CFG.rateKeyPass); break; }
+      } }
     // THE READ. A keeper cannot wait to see a shot. From twelve metres it is past him before his
     // reaction and his travel have both been paid for, so waiting is being beaten by geometry every
     // time -- which, with the reach ring gone, is exactly what was happening: five to seven goals a
@@ -1359,7 +1396,7 @@ export function meTick(s, rng, out) {
     meShootBall(mp, rng, gx, aimY, aimZ, a.shoot / 99 / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
     return;
   }
-  if (act.k === "clear") { out.clears++;
+  if (act.k === "clear") { out.clears++; meRate(p, CFG.rateClear);
     meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.name} clears it`);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;

@@ -614,6 +614,10 @@ Object.assign(CFG, {
   rateGoal: 0.9, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
   rateSave: 1.3, rateConcede: 0.18, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
+  // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
+  // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
+  // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
+  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.05, rateKeyPass: 0.15,
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
