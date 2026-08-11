@@ -78,6 +78,14 @@ export const CFG = {
   // it. passWantW is what a metre away from that length costs in the pass score -- the whole of the
   // instruction's authority now, and deliberately a preference rather than a veto.
   passWant: 16, passWantStep: 4, passWantW: 0.0006,
+  // The range he is looking to shoot from, and how far each step of chance creation moves it.
+  shotWant: 14, shotWantStep: 5, shotWantW: 0.004,
+  // Extra touches per step of the dribbling instruction, before he has to release it.
+  dribHold: 2,
+  // Metres the whole side shifts while its own keeper has the ball, per step of GK distribution.
+  gkDistPush: 9,
+  // How much of the usual depth gate a counter-attack is allowed to ignore. A break starts deep.
+  brkDepth: 0.35,
   // How much the passing instruction squeezes the shape toward the ball. Short passing without it
   // is an order to play a ball that is not on.
   compactDir: 0.15,

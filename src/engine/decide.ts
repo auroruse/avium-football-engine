@@ -103,9 +103,21 @@ export function meDecide(s, rng, side, i, dwell) {
     // in the lane and the pressure at a point, so ask it about the spot he would dribble to.
     const spAhead = meShotP(s, side, p, p.x + dir * CFG.carryAdv, p.y);
     const nowBetter = sp > spAhead ? (sp - spAhead) / Math.max(sp, 1e-4) : 0;
-    const appetite = 1 + st.chanceCreation * 0.55 + meAtkW(p) * 0.30 + sight * CFG.shotSight
-                   + nowBetter * CFG.shotNowW;
-    const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * 0.32;   // a miss is only a goal kick
+    const appetite = 1 + meAtkW(p) * 0.30 + sight * CFG.shotSight + nowBetter * CFG.shotNowW;
+    // CHANCE CREATION IS A RANGE, the same way passing directness is. It used to multiply the value
+    // of the shot itself by up to 1.55, which is an instruction to misjudge how good a chance is --
+    // and against a shot model that is roughly right, misjudging it can only cost you. Measured, it
+    // moved mean shot distance all of 1.4 m for its trouble. A preferred range moves where the shots
+    // come from without touching what any of them is worth: work it into the box and he waits for a
+    // better one, shoot on sight and he will take it from twenty yards. Both are defensible; that is
+    // the point of a tactic.
+    // Charged RELATIVE to the neutral range, so an instruction left at zero is exactly a no-op --
+    // as an absolute penalty it moved shots from outside 15 m from 40% to 32% with nobody having
+    // asked for anything. A tactic must cost nothing until it is set.
+    const wantD = CFG.shotWant - st.chanceCreation * CFG.shotWantStep;
+    const offWant = Math.abs(gsh.d - wantD) - Math.abs(gsh.d - CFG.shotWant);
+    const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * 0.32
+             - offWant * CFG.shotWantW;   // a miss is only a goal kick
     if (ME_DBG) ME_DBG.shot = sc;
     const j = sc + jit();
     if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp }; }
@@ -265,7 +277,12 @@ export function meDecide(s, rng, side, i, dwell) {
   // taxes the carry instead of removing it, geometrically, which is also what stops him dribbling
   // in his own box for the rest of the afternoon.
   {
-  const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + press * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7) / (1 + st.dribbling * 0.20)))
+  // The dribbling instruction is NOT in here any more. It used to divide the risk -- Run At Defence
+  // made you better at keeping the ball, full stop, which is why it was the highest edge left on the
+  // board at 0.65. What running at people actually is, is licence to hold on for another touch, and
+  // that is set on the touch budget in match.ts. The cost comes for free from the two terms already
+  // in this line: press rises while you dwell, and dwellDrop compounds against you.
+  const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + press * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7)))
             * Math.pow(CFG.dwellDrop, Math.max(0, dwell || 0));
   // Same for running with it: he loses it where he has taken it to.
   const cdx = p.x + dir * CFG.carryAdv;

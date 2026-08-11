@@ -70,8 +70,17 @@ export function meRuns(s, side) {
   // sends more of them and off a wider shoulder; disciplined keeps them in the picture. This is a
   // trade rather than a buff -- every man on a run is a man out of the shape behind the ball.
   const cre = st.creativity || 0;
-  const runCap = Math.max(1, CFG.runMax + cre * CFG.creRuns);
-  if (mp.idx < 0 || active >= runCap || ballDepth < CFG.runMinDepth) return;   // nothing to run onto
+  // ON WINNING IT. possWon moved the anchor line by a few metres and measured at 2.5 against a noise
+  // floor of 1.6 -- because a counter-attack is not a line, it is men going. In the seconds after a
+  // side wins the ball the opposition is at its least organised, and Counter spends that window:
+  // an extra runner, and the depth gate lifted, because a break starts deep by definition and the
+  // gate exists to stop men running at nothing. Hold Shape spends it the other way and settles.
+  const wonT = mp.side === side ? mp.possT : 1e9;
+  const brk = wonT < CFG.transT ? (st.possWon || 0) : 0;
+  if (brk < 0) return;                                          // hold shape: nobody breaks yet
+  const runCap = Math.max(1, CFG.runMax + cre * CFG.creRuns + brk);
+  const minD = brk > 0 ? CFG.runMinDepth * CFG.brkDepth : CFG.runMinDepth;
+  if (mp.idx < 0 || active >= runCap || ballDepth < minD) return;   // nothing to run onto
   const carrier = us[mp.idx];
   for (let i = 0; i < us.length; i++) {
     const p = us[i];
@@ -126,7 +135,16 @@ export function meAnchor(s, side, bd, bw) {
   // all: it is a window, not a style, and it closes in a couple of seconds.
   const wonT = mp.side === side ? mp.possT : 1e9;
   const push = Math.max(0, 1 - wonT / CFG.transT) * CFG.transPush * (st.possWon || 0);
-  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push));
+  // GK DISTRIBUTION is a decision the whole side takes, not just the keeper: Short means come and get
+  // it and Long means get up the pitch for the second ball.
+  // CAVEAT, measured: this only bites while the keeper has it in OPEN play, which is rare. The case
+  // that matters is the goal kick, and a stoppage runs meSPShape instead of meShape (match.ts:542),
+  // so shape at a restart never reaches this function at all -- gkDist scored an identical 3.4 STYLE
+  // and 0.28 EDGE before and after this line existed, to two decimals, which is what a code path
+  // that does not execute looks like. Moving it needs the goal-kick branch of meSPShape.
+  const gkHas = mp.idx >= 0 && mp.side === side && s.players[side][mp.idx]?.pos === "GK";
+  const gkPush = gkHas ? (st.gkDist || 0) * CFG.gkDistPush : 0;
+  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push + gkPush));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
   // Under siege the whole side squeezes toward its own goal: a block defending its box is ~22 m

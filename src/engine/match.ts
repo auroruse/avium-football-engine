@@ -1207,7 +1207,11 @@ export function meTick(s, rng, out) {
   // Level or behind, running the clock down is simply worse, and the instruction does nothing.
   const lead = (out.goals?.[side] ?? 0) - (out.goals?.[meOther(side)] ?? 0);
   const tw = lead > 0 ? (s.strategy?.[side]?.timeWasting || 0) : 0;
-  const natural = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress + tw * CFG.wasteHold));
+  // ...and the dribbling instruction, which is the same kind of thing: how long he is allowed to
+  // keep running with it before he has to let go. Run At Defence buys touches, Disciplined releases
+  // early, and holding on is charged for by the pressure closing in on him while he does it.
+  const natural = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress + tw * CFG.wasteHold
+                                         + (s.strategy?.[side]?.dribbling || 0) * CFG.dribHold));
   // Carrying is not a terminal state. It used to be -- if `carry` scored best he simply never let
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
