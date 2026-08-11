@@ -108,7 +108,7 @@ const EMERGENCY_GK_SAVE_PENALTY = 0.22;
 // already riding a spell of good luck and THEN scoring stacks — capped so it can't
 // snowball indefinitely, and decay (lmSimMinute, -1/minute) keeps every swing temporary.
 const MOMENTUM_CAP = 6;
-const momBump = (s, side, amt) => { const m = s.momProfile?.[side]?.mult ?? (STYLE_MOM[s.styles?.[side]]?.mult ?? 1.0); s.momentum[side] = Math.max(0, Math.min(MOMENTUM_CAP, s.momentum[side] + Math.round(amt * m))); };
+const momBump = (s, side, amt) => { const m = s.momProfile?.[side]?.mult ?? (STYLE_MOM.balanced.mult); s.momentum[side] = Math.max(0, Math.min(MOMENTUM_CAP, s.momentum[side] + Math.round(amt * m))); };
 // A chance's starting chain (genChanceViz can seed 1-5 hops for a worked move) all
 // represent genuine attacking involvement — running, receiving, carrying — on top of the
 // blanket per-minute team drain every on-pitch player already pays. Dedup by name first: a
@@ -545,30 +545,33 @@ const _rc = (() => {
     clear() { for (const x in d) delete d[x]; this.save(); },
   };
 })();
+// A PLAYSTYLE IS A SET OF INSTRUCTIONS, and nothing else. It used to be a parallel modifier system:
+// a Gegenpress side got press x1.3 and ctr x0.50 applied on top of whatever its sliders said, so the
+// name on the team sheet was quietly worth more than the tactics underneath it. Picking a style now
+// stamps these values into the sliders and then gets out of the way -- what the team does is what
+// you can see and edit, and a style you have since tweaked stays tweaked.
+export const STYLE_PRESET = {
+  balanced:      {},
+  gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
+  tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
+                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1 },
+  counterattack: { pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1 },
+  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1 },
+  parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 1, possLost: -1, possWon: -1,
+                   creativity: -1, tackling: 1 },
+};
+
+// What is left of the old style tables: one row, the neutral one. Every style used to carry its own,
+// which is the buff this removes. Kept as a named base rather than inlined so the formation
+// modifiers it is merged with still have something to merge against.
 const STYLE_MOD = {
   balanced:     {press:1.0,adv:0,hold:0,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0,corn:1.0,maxT:null,minT:null},
-  gegenpress:   {press:1.3,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:0.50,ctrShot:0.03,def:-0.01,lr:0,corn:1.0,maxT:null,minT:null},
-  tikitaka:     {press:1.1,adv:-0.01,hold:0.10,lb:-0.02,boxShot:0.02,goalP:0.035,ctr:0.80,ctrShot:0,def:0.02,lr:-0.02,corn:1.0,maxT:"ultra",minT:null},
-  counterattack:{press:0.50,adv:-0.06,hold:-0.02,lb:0.02,boxShot:-0.03,goalP:0.02,ctr:1.5,ctrShot:0.06,def:0.05,lr:0,corn:1.0,maxT:"ultra",minT:null},
-  wingplay:     {press:1.0,adv:0.03,hold:-0.01,lb:0.04,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0.04,corn:1.4,maxT:null,minT:null},
-  parkthebus:   {press:0.20,adv:-0.08,hold:-0.03,lb:0.02,boxShot:-0.04,goalP:0,ctr:1.3,ctrShot:0.05,def:0.10,lr:-0.02,corn:0.80,maxT:null,minT:"def"},
 };
 const STYLE_CHANCE = {
   balanced:      { hopW: [15, 35, 30, 14, 6], dribbleP: 0.25, soloBase: 0 },
-  gegenpress:    { hopW: [25, 35, 25, 10, 5], dribbleP: 0.20, soloBase: 0.02 },
-  tikitaka:      { hopW: [5, 20, 35, 25, 15], dribbleP: 0.15, soloBase: 0 },
-  counterattack: { hopW: [35, 35, 20, 8, 2],  dribbleP: 0.35, soloBase: 0.03 },
-  wingplay:      { hopW: [10, 30, 35, 18, 7], dribbleP: 0.30, soloBase: 0.01 },
-  parkthebus:    { hopW: [40, 35, 18, 5, 2],  dribbleP: 0.20, soloBase: 0 },
 };
-const STYLE_DEFPOOL = {
-  balanced: {},
-  gegenpress: { defendTurnover: { DEF: -10, MID: 4, FWD: 6 }, defendBox: { DEF: -3, MID: 2, FWD: 1 } },
-  tikitaka: { defendTurnover: { DEF: -5, MID: 3, FWD: 2 } },
-  counterattack: { defendBox: { DEF: 5, MID: -3, FWD: -2 } },
-  wingplay: { defendCorner: { DEF: 3, MID: -2, FWD: -1 } },
-  parkthebus: { defendBox: { DEF: 8, MID: -5, FWD: -3 }, defendClear: { DEF: 5, MID: -3, FWD: -2 }, defendTurnover: { DEF: 5, MID: -2, FWD: -3 } },
-};
+
 const FORM_DEFPOOL = {
   "4-3-3": {},
   "4-4-2": { defendTurnover: { MID: 3, FWD: -3 } },
@@ -584,11 +587,6 @@ const FORM_DEFPOOL = {
 };
 const STYLE_MOM = {
   balanced:      { mult: 1.0, decay: 1.0 },
-  gegenpress:    { mult: 1.3, decay: 1.3 },
-  tikitaka:      { mult: 0.75, decay: 0.6 },
-  counterattack: { mult: 1.2, decay: 0.8 },
-  wingplay:      { mult: 1.1, decay: 1.0 },
-  parkthebus:    { mult: 0.7, decay: 0.5 },
 };
 const FORM_CHANCE = {
   "4-3-3":     { hopAdj: [0, 0, 0, 0, 0], dribbleAdj: 0, soloAdj: 0 },
@@ -678,10 +676,9 @@ function mergeModifiers(sm, fm) {
   return { press:sm.press*(fm.press||1), adv:sm.adv+(fm.adv||0), hold:sm.hold+(fm.hold||0), lb:sm.lb+(fm.lb||0), boxShot:sm.boxShot+(fm.boxShot||0), goalP:sm.goalP+(fm.goalP||0), ctr:sm.ctr*(fm.ctr||1), ctrShot:sm.ctrShot+(fm.ctrShot||0), def:sm.def+(fm.def||0), lr:sm.lr+(fm.lr||0), corn:sm.corn*(fm.corn||1), maxT:sm.maxT, minT:sm.minT };
 }
 // ponytail: style fit — key-position OVR determines how much of a style's bonus you actually get
+// Squad-fit scaled a style's modifiers by how well the players suited it. With no modifiers left to
+// scale it has nothing to do, and a side that wants to press now says so on the pressing slider.
 const STYLE_FIT_SPOS = {
-  wingplay:      { wide: 0.6, fb: 0.3, fwd: 0.1 },
-  gegenpress:    { cmid: 0.45, fwd: 0.30, all: 0.25 },
-  tikitaka:      { cmid: 0.50, all: 0.50 },
   counterattack: { fwd: 0.55, def: 0.30, gk: 0.15 },
 };
 const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
@@ -870,7 +867,7 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[atk]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
+  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
   // The keeper faces the shot. Must come after the chain bonuses above: those move goalP, and what
   // he stops is a share of the goalP actually being rolled. A weak keeper has a negative edge, which
@@ -1038,8 +1035,8 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   let poE=po==="home"?hE:aE, opE=op==="home"?hE:aE;
   const dir0=po==="home"?1:-1;
   const z=s.ball;
-  const poM=s.modifiers?s.modifiers[po]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[po]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[po]]), s.strategy?.[po]);
-  const opM=s.modifiers?s.modifiers[op]:applyStrategy(mergeModifiers(STYLE_MOD[s.styles?.[op]]||STYLE_MOD.balanced, FORM_MOD[s.formations?.[op]]), s.strategy?.[op]);
+  const poM=s.modifiers?s.modifiers[po]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[po]]), s.strategy?.[po]);
+  const opM=s.modifiers?s.modifiers[op]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[op]]), s.strategy?.[op]);
 
   // Time wasting (dead minute when leading) — costs stoppage time and a flavor event, but
   // doesn't stop the ball: play still falls through to pressing/shooting/buildup below, so a
@@ -1058,7 +1055,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   }
 
   // Creative freedom — brilliant chance (expressive: 1% solo chance, stacks with style soloBase)
-  const _soloP = (poSt.creativity === 1 ? 0.01 : 0) + (STYLE_CHANCE[s.styles?.[po]]?.soloBase || 0);
+  const _soloP = (poSt.creativity === 1 ? 0.01 : 0) + (STYLE_CHANCE.balanced.soloBase);
   if (_soloP > 0 && rng.u() < _soloP) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
     {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
@@ -1272,7 +1269,7 @@ function lmSimMinute(s, rng, home, away) {
   if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
   // Momentum across the season, alongside the in-match momentum already folded into hE/aE above.
   hE *= 1 + (s.teamForm?.home || 0) * FORM_SWING; aE *= 1 + (s.teamForm?.away || 0) * FORM_SWING;
-  ["home","away"].forEach(_ds => { if (s.momentum[_ds] > 0) { const _dr = s.momProfile?.[_ds]?.decay ?? (STYLE_MOM[s.styles?.[_ds]]?.decay ?? 1.0); if (_dr >= 1) { s.momentum[_ds]--; if (s.momentum[_ds] > 0 && rng.u() < _dr - 1) s.momentum[_ds]--; } else if (rng.u() < _dr) s.momentum[_ds]--; } });
+  ["home","away"].forEach(_ds => { if (s.momentum[_ds] > 0) { const _dr = s.momProfile?.[_ds]?.decay ?? (STYLE_MOM.balanced.decay); if (_dr >= 1) { s.momentum[_ds]--; if (s.momentum[_ds] > 0 && rng.u() < _dr - 1) s.momentum[_ds]--; } else if (rng.u() < _dr) s.momentum[_ds]--; } });
   const nm = {home:home.name,away:away.name};
 
   // Tactics (with style constraints + skill mismatch)
@@ -1688,7 +1685,7 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
   s.subCap={home:subCapFor(s.bench.home),away:subCapFor(s.bench.away)};
   if (homeSquad && awaySquad) { ensureStartingGK(s.players.home); ensureStartingGK(s.players.away); }
   const _hFit=computeStyleFit(s.styles.home,hSquadRaw),_aFit=computeStyleFit(s.styles.away,aSquadRaw);
-  s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.home]||STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[s.styles.away]||STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
+  s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
   s.styleFit={home:_hFit,away:_aFit};
   initMatchEnhancements(s);
   s.events={length:0,push(){this.length++;}};
@@ -3368,7 +3365,6 @@ function scalePosW(formation) {
 function computeMatchPosW(formation, style, strat) {
   const base = scalePosW(formation);
   const apply = (adj) => { for (const [pool, shifts] of Object.entries(adj)) { if (base[pool]) { const p = { ...base[pool] }; for (const [pos, d] of Object.entries(shifts)) p[pos] = Math.max(0, (p[pos]||0) + d); base[pool] = p; } } };
-  apply(STYLE_DEFPOOL[style] || {});
   apply(FORM_DEFPOOL[formation] || {});
   const st = strat || STRAT_DEF;
   const tAdj = {};
@@ -3381,7 +3377,7 @@ function computeMatchPosW(formation, style, strat) {
   return base;
 }
 function buildChanceProfile(style, formation, strat, formPosW) {
-  const base = STYLE_CHANCE[style] || STYLE_CHANCE.balanced;
+  const base = STYLE_CHANCE.balanced;
   const fc = FORM_CHANCE[formation] || FORM_CHANCE["4-3-3"];
   const st = strat || STRAT_DEF;
   // tactic hop adjustments: chanceCreation (Work Ball In / Shoot On Sight), approachPlay (Play Out / Into Space), possWon (Hold Shape / Counter)
@@ -3405,7 +3401,7 @@ function initMatchEnhancements(s) {
     home: buildChanceProfile(s.styles.home, s.formations.home, s.strategy?.home, s.formPosW.home),
     away: buildChanceProfile(s.styles.away, s.formations.away, s.strategy?.away, s.formPosW.away),
   };
-  const sm = (side) => STYLE_MOM[s.styles?.[side]] || STYLE_MOM.balanced;
+  const sm = (side) => STYLE_MOM.balanced;
   const fm = (side) => FORM_MOM[s.formations?.[side]] || FORM_MOM["4-3-3"];
   const tm = (side) => {
     const st = s.strategy?.[side] || STRAT_DEF;
@@ -5598,7 +5594,12 @@ export default function App() {
   // Every team and player field in the panel routes through here, so this is the one place that has
   // to notice an edit. Custom teams are excluded: they are meant to be edited and they persist.
   const updateTeam = (id, f, v) => { if (!id.startsWith("Custom::")) setEditedTeams(s => s.has(id) ? s : new Set(s).add(id));
-    return setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; })); };
+    return setTeams(t => t.map(tm => { if (tm.id !== id) return tm; const nt = { ...tm, [f]: f === "skill" ? (v === "" ? "" : Number(v)) : v }; // Picking a playstyle STAMPS its instructions and then stops mattering -- the sliders are the
+      // truth from that moment, so a style you have since tweaked stays tweaked and nothing about the
+      // team is hidden behind a label. Import does not come through here: a preset file's own tactic
+      // columns are already the resolved values and must not be overwritten by its style name.
+      if (f === "style") nt.strategy = { ...STRAT_DEF, ...(STYLE_PRESET[v] || {}) };
+      if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; })); };
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
   // Capture finished live match result for tournament import
@@ -9853,7 +9854,7 @@ export default function App() {
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
               {(()=>{
-                const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD[lmMatch.styles?.[side]]||STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
+                const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
                 const hM = cM("home"), aM = cM("away");
                 const ps = [
                   {k:"press",l:"Press",m:true},{k:"adv",l:"Advance",m:false},{k:"hold",l:"Hold",m:false},
