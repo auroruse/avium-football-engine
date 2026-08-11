@@ -26,6 +26,16 @@ const blank = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:
 
 // Everything is measured for HOME, in HOME's attacking frame: x runs 0 at his own goal line to
 // PITCH_L at the one he is shooting at, whichever way he happens to be kicking.
+// EVERY SHAPE METRIC IS A RATIO of two running totals -- a sum over a count, or a count over a
+// count. Recording the pair per match rather than only the pooled answer is what makes an error bar
+// possible: resample the matches, add the pairs back up, and the pooled statistic is unchanged in
+// form. Order here is the order the per-match rows are written in, and score() looks metrics up
+// through it, so the two can never drift apart.
+const MKEYS = ["passLen", "passShort", "passLong", "lofted", "through", "fwdM", "backPc",
+               "ownThird", "finThird", "wingPc", "recovX", "possSec", "possTch", "width",
+               "depth", "shotDist", "shotBox", "shotCen"];
+const BOOT = +(process.env.BOOT || 300);
+
 const N = +(process.env.N || 12);
 // NAME THE KNOBS YOU ACTUALLY NEED. The full board is 31 configurations; confirming one row is 4,
 // and at the sample size that resolves a 0.5 threshold that is three minutes against twenty-two.
@@ -48,9 +58,17 @@ function play(cfg, seed0 = 0, f = "4-3-3", ovr = 75) {
               // configurations and its error bar can only be computed from the individual matches,
               // which the old aggregate threw away -- so the noise floor was a formula rather than
               // a measurement, and five instructions were sitting under it unreadably.
-              gg: [], cc: [], xx: [], xc: [] };
+              gg: [], cc: [], xx: [], xc: [],
+              // one [numerator, denominator] pair per metric per match
+              rows: [] };
   for (const SIDE of ["home", "away"]) {
   for (let seed = seed0 + 1; seed <= seed0 + N; seed++) {
+    // where every accumulator stood before this match, so the match's own contribution is a slice
+    const mk = { pd: A.pd.length, fwd: A.fwd.length, rec: A.rec.length, runT: A.runT.length,
+                 runN: A.runN.length, wide: A.wide.length, deep: A.deep.length, sd: A.sd.length,
+                 thru: A.thru, high: A.high, np: A.np, np2: A.np2, ns: A.ns,
+                 sbox: A.sbox, scen: A.scen,
+                 t0: A.third[0], t2: A.third[2], f0: A.flank[0], f2: A.flank[2] };
     const s = createMatchState();
     s.players.home = sq(ovr, f); s.players.away = sq(ovr, f);
     s.formations = { home: f, away: f };
@@ -115,6 +133,33 @@ function play(cfg, seed0 = 0, f = "4-3-3", ovr = 75) {
         if (Math.abs(b4y - ME_HALF_W) < 9.16) A.scen++;
       }
     }
+    // the eighteen ratios this match contributed, as [num, den]
+    {
+      const sum = (a, f) => { let v = 0; for (let i = f; i < a.length; i++) v += a[i]; return v; };
+      const cnt = (a, f, p) => { let v = 0; for (let i = f; i < a.length; i++) if (p(a[i])) v++; return v; };
+      const nPd = A.pd.length - mk.pd, nFwd = A.fwd.length - mk.fwd;
+      const dNp = A.np - mk.np, dNp2 = A.np2 - mk.np2, dNs = A.ns - mk.ns;
+      A.rows.push([
+        [sum(A.pd, mk.pd), nPd],                                        // passLen
+        [cnt(A.pd, mk.pd, d => d < 12), dNp],                           // passShort
+        [cnt(A.pd, mk.pd, d => d > 25), dNp],                           // passLong
+        [A.high - mk.high, dNp],                                        // lofted
+        [A.thru - mk.thru, dNp],                                        // through
+        [sum(A.fwd, mk.fwd), nFwd],                                     // fwdM
+        [cnt(A.fwd, mk.fwd, d => d < -1), nFwd],                        // backPc
+        [A.third[0] - mk.t0, dNp2],                                     // ownThird
+        [A.third[2] - mk.t2, dNp2],                                     // finThird
+        [(A.flank[0] - mk.f0) + (A.flank[2] - mk.f2), dNp2],            // wingPc
+        [sum(A.rec, mk.rec), A.rec.length - mk.rec],                    // recovX
+        [sum(A.runT, mk.runT) * ME_DT, A.runT.length - mk.runT],        // possSec
+        [sum(A.runN, mk.runN), A.runN.length - mk.runN],                // possTch
+        [sum(A.wide, mk.wide), A.wide.length - mk.wide],                // width
+        [sum(A.deep, mk.deep), A.deep.length - mk.deep],                // depth
+        [sum(A.sd, mk.sd), A.sd.length - mk.sd],                        // shotDist
+        [A.sbox - mk.sbox, dNs],                                        // shotBox
+        [A.scen - mk.scen, dNs],                                        // shotCen
+      ]);
+    }
     const OTH = SIDE === "home" ? "away" : "home";
     A.gg.push(out.goals[SIDE]); A.cc.push(out.goals[OTH]);
     A.xx.push(out.xgS[SIDE]);   A.xc.push(out.xgS[OTH]);
@@ -145,6 +190,7 @@ function play(cfg, seed0 = 0, f = "4-3-3", ovr = 75) {
     _shots: A.sh / A.gg.length, _cmp: pc(A.cmp, A.cmpN),
     _open: A.np / A.gg.length, _setp: A.setp / A.gg.length,
     _rG: A.gg, _rC: A.cc, _rX: A.xx, _rXc: A.xc,   // per match, for the error bars
+    _rows: A.rows,
   };
 }
 
@@ -199,18 +245,60 @@ console.log(`\n${N} matches per configuration, 75 v 75, 4-3-3 both sides. Everyt
 console.log(`NEUTRAL  ` + SHAPE.map(([k, l]) => `${l} ${f1(base[k])}`).join("  "));
 console.log(`         goals ${f1(base._goals)}-${f1(base._conc)}  shots ${f1(base._shots)}  completion ${f1(base._cmp)}%` +
             `   [${f1(base._open)} open-play passes a match measured, ${f1(base._setp)} set-piece deliveries excluded]\n`);
-console.log(`${"".padEnd(16)} STYLE   EDGE  +- err   verdict      OPEN    (goals edge)`);
-console.log(`${"".padEnd(16)} -----  -----  ------   -------     -----    -----------`);
+console.log(`${"".padEnd(16)} STYLE  +- err    EDGE  +- err   verdict      OPEN`);
+console.log(`${"".padEnd(16)} -----  ------   -----  ------   -------     -----`);
 
 // One scorer, used for the real knobs and for the null, so the floor is measured the same way the
 // thing above it is. Anything else and the comparison is worthless.
+// STYLE is a mean of ABSOLUTE differences between ratios of pooled totals. There is no tidy closed
+// form for its error, and it had none at all -- every judgement about which instruction moved a team
+// more was being read off a bare number with a noise floor of 1.6 underneath it and no way to tell
+// 2.3 from 3.4. So: resample the matches with replacement, add each metric's [num, den] pairs back
+// up, and recompute the whole statistic. The pairing between the two ends of a knob is preserved by
+// resampling the INDEX once and applying it to both, exactly as the edge does.
+// A deterministic generator, because Math.random is banned here and a reproducible error bar is
+// worth more than an unpredictable one anyway.
+function bootStyle(a, b, spans) {
+  const A = a._rows, B = b._rows, n = Math.min(A.length, B.length);
+  if (!n || !A[0]) return 0;
+  const M = A[0].length, out = [];
+  let seed = 12345;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let r = 0; r < BOOT; r++) {
+    const an = new Array(M).fill(0), ad = new Array(M).fill(0);
+    const bn = new Array(M).fill(0), bd = new Array(M).fill(0);
+    for (let k = 0; k < n; k++) {
+      const i = Math.min(n - 1, Math.floor(rnd() * n));
+      for (let m = 0; m < M; m++) {
+        an[m] += A[i][m][0]; ad[m] += A[i][m][1];
+        bn[m] += B[i][m][0]; bd[m] += B[i][m][1];
+      }
+    }
+    let s = 0;
+    for (let m = 0; m < M; m++) {
+      const av = an[m] / (ad[m] || 1), bv = bn[m] / (bd[m] || 1);
+      s += Math.abs((bv - av) * (spans[m] || 1));
+    }
+    out.push(s / M * 100);
+  }
+  return stderrOf(out);
+}
+const stderrOf = (a) => {
+  if (a.length < 2) return 0;
+  const m = a.reduce((x, y) => x + y, 0) / a.length;
+  return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1));
+};
+
 function score(a, b) {
   const moves = SHAPE.map(([m, lbl, span]) => ({ m, lbl, d: (b[m] - a[m]) / span, a: a[m], b: b[m] }))
                      .sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
   const style = moves.reduce((s, x) => s + Math.abs(x.d), 0) / moves.length * 100;
+  // the spans, in the per-match row order rather than the display order
+  const spanOf = {}; for (const [m, , sp] of SHAPE) spanOf[m] = 1 / sp;
+  const styleSe = bootStyle(a, b, MKEYS.map(k => spanOf[k]));
   const dz = a._rX.map((_, i) => (b._rX[i] - b._rXc[i]) - (a._rX[i] - a._rXc[i]));
   const dg = a._rG.map((_, i) => (b._rG[i] - b._rC[i]) - (a._rG[i] - a._rC[i]));
-  return { style, moves,
+  return { style, styleSe, moves,
            edge: Math.abs(mean(dz)) * XG2G, se: stderr(dz) * XG2G,
            gEdge: Math.abs(mean(dg)), gSe: stderr(dg),
            open: (b._xg + b._xc) - (a._xg + a._xc) };
@@ -226,32 +314,35 @@ USE.forEach(([k, lo, hi], ki) => {
   // EDGE is what the manager gains. It is read from xG rather than goals and rescaled into goal
   // units: same question, slightly less noise, and measured rather than assumed -- the error bars
   // printed underneath say how much less, which turned out to be far less than hoped.
-  const { style, moves, edge, se, gEdge, gSe, open } = score(a, b);
+  const { style, styleSe, moves, edge, se, gEdge, gSe, open } = score(a, b);
   const power = edge;
   const shown = moves.filter(x => Math.abs(x.d) > 0.12).slice(0, 4)
     .map(x => `${x.lbl} ${f1(x.a)}->${f1(x.b)}`).join(", ") || "nothing";
-  rows.push({ k, style, power, edge, se, gEdge, gSe, open, shown, a, b });
+  rows.push({ k, style, styleSe, power, edge, se, gEdge, gSe, open, shown, a, b });
 });
 rows.sort((x, y) => y.style - x.style);
-console.log(`${"(noise floor)".padEnd(16)} ${f1(NULL.style).padStart(5)}  ${NULL.edge.toFixed(2).padStart(5)}  ` +
-            `+-${NULL.se.toFixed(2)}   ${"--".padEnd(12)}${(NULL.open >= 0 ? "+" : "") + NULL.open.toFixed(2)}`.padStart(5) +
-            `    ${NULL.gEdge.toFixed(2)}`);
-console.log(`${"".padEnd(16)} .....  .....  ......   .......     .....    ...........`);
+console.log(`${"(noise floor)".padEnd(16)} ${f1(NULL.style).padStart(5)}  +-${f1(NULL.styleSe)}   ` +
+            `${NULL.edge.toFixed(2).padStart(5)}  +-${NULL.se.toFixed(2)}   ${"--".padEnd(12)}` +
+            `${(NULL.open >= 0 ? "+" : "") + NULL.open.toFixed(2)}`);
+console.log(`${"".padEnd(16)} .....  ......   .....  ......   .......     .....`);
 // An instruction is only a buff if it beats the target by more than the error bar can explain.
 for (const r of rows) {
   const v = r.edge - 2 * r.se > TARGET ? "BUFF"
           : r.edge + 2 * r.se < TARGET ? "ok" : "unresolved";
-  console.log(`${r.k.padEnd(16)} ${f1(r.style).padStart(5)}  ${r.edge.toFixed(2).padStart(5)}  ` +
-    `+-${r.se.toFixed(2)}   ${v.padEnd(12)}` +
-    `${(r.open >= 0 ? "+" : "") + r.open.toFixed(2)}`.padStart(5) +
-    `    ${r.gEdge.toFixed(2)}`);
+  // A style movement only counts as real if it clears the noise floor by more than the two error
+  // bars between them can explain.
+  const real = r.style - 2 * r.styleSe > NULL.style + 2 * NULL.styleSe ? "" : "  (in the noise)";
+  console.log(`${r.k.padEnd(16)} ${f1(r.style).padStart(5)}  +-${f1(r.styleSe)}   ` +
+    `${r.edge.toFixed(2).padStart(5)}  +-${r.se.toFixed(2)}   ${v.padEnd(12)}` +
+    `${(r.open >= 0 ? "+" : "") + r.open.toFixed(2)}${real}`);
 }
 console.log(``);
 for (const r of rows) console.log(`  ${r.k.padEnd(16)} ${r.shown}`);
 
 console.log(`\nSTYLE  mean movement across 18 shape metrics, as % of each one's plausible span. Higher is more distinctive.`);
 console.log(`       The noise floor is the SAME configuration played on a different set of seeds, scored identically.`);
-console.log(`       A row within about ${(NULL.style * 1.5).toFixed(1)} of it has not been shown to change the team's shape at all.`);
+console.log(`       +- err is a ${BOOT}-resample bootstrap over matches, paired the same way the edge is. A row marked`);
+console.log(`       "(in the noise)" does not clear the floor by more than the two error bars can account for.`);
 console.log(`EDGE   how much xG DIFFERENCE the instruction bought. This is the CONTROL and the target is under ${TARGET}.`);
 console.log(`       +- err is the real standard error of that difference over ${2 * N} paired matches, not a formula.`);
 console.log(`       BUFF / ok / unresolved compares EDGE against ${TARGET} with two standard errors of room either way.`);
