@@ -13,7 +13,12 @@ export const ME_SIM_MIN = 18;
 // they have to shrink with a compressed match or the ball is dead for most of it. Scaled by match
 // length alone the ball was in play 90% of the time, which is its own kind of wrong; this is set so
 // it lands near the real 63%.
-export const ME_DEAD_SCALE = 0.55;
+// How much of a restart's nominal budget is actually spent. This is the ONLY dial that sets how
+// much of the match is dead, and it was being calibrated against the wrong yardstick: restarts were
+// timed so their DISPLAYED length looked right next to a real throw-in, but the 90-minute clock is a
+// fiction laid over 18 simulated minutes. What has to be right is the SHARE -- a real match is dead
+// for 30-40% of itself, and this one was dead for 17%, which is why ball in play read 83%.
+export const ME_DEAD_SCALE = 0.75;
 
 // ---- set pieces ------------------------------------------------------------------------------
 // A restart takes as long as it takes: play resumes when the taker is over the ball and most of the
@@ -21,11 +26,11 @@ export const ME_DEAD_SCALE = 0.55;
 // hang the match. spMinT stops a restart being instant even when everybody happens to be in place.
 export const SP = {
   spBehind: 0.9,        // how far behind the ball the taker sets himself, so he strikes through it
-  spMinT: 6, spMaxT: 32,
+  spMinT: 6, spMaxT: 68,
   // How long the referee will wait, per restart. A penalty needs the box genuinely cleared and a
   // throw-in needs nobody; one number for both meant half of all penalties were taken on the
   // referee's patience running out rather than on anyone being ready.
-  spMaxTBy: { penalty: 66, corner: 40, goalkick: 34, freekick: 32, throw: 24 },
+  spMaxTBy: { penalty: 140, corner: 86, goalkick: 74, freekick: 68, throw: 52 },
   // A free kick is played quickly when a team-mate is already this far beyond the ball with this
   // much daylight around him. Both in metres, and both deliberately generous: if it is on, take it.
   spQuickAhead: 12, spQuickRoom: 9,
@@ -33,7 +38,7 @@ export const SP = {
   // A kickoff is the one restart where the WHOLE pitch has to be set -- twenty-two men back in their
   // own halves, some of them sixty metres away. Sharing the ordinary eight-second cap meant it timed
   // out long before they arrived and was taken with half the side still walking back.
-  spKickoffMaxT: 100, spKickoffFrac: 0.95,
+  spKickoffMaxT: 210, spKickoffFrac: 0.95,
   // Only the men who MATTER to this restart have to be set. Waiting on all twenty-two meant a goal
   // kick took twelve seconds -- the far winger strolling back across the halfway line held up the
   // game. Everyone else keeps walking into position while play goes on, which is what you see.
