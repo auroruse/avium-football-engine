@@ -59,7 +59,27 @@ export function meSPBegin(s, kind, side, out) {
       if (p.pos === "GK") continue; const d = Math.hypot(p.x - x, p.y - y);
       if (d < bd) { bd = d; ti = i; } } }
   if (ti < 0) ti = 0;
-  mp.sp = { kind, side, x, y, ti, t: 0 };
+  // IS ANYTHING ON? A free kick in open play is either a set piece or a chance to catch them before
+  // they have got back, and until now it was always the first. That is not a dice roll: it is taken
+  // quickly when a team-mate is ALREADY away up the pitch with daylight around him, which is the
+  // whole reason a side plays it quickly. Never in shooting range -- nobody waves away a free header
+  // at the edge of the box to tap it sideways.
+  let quick = 0;
+  if (kind === "freekick") {
+    const dir2 = meDir(side), them2 = s.players[meOther(side)] || [];
+    if (Math.abs(meGoalX(side) - x) >= CFG.spShootRange) {
+      for (let i = 0; i < us.length; i++) {
+        const p = us[i];
+        if (i === ti || p.pos === "GK" || p.off) continue;
+        if ((p.x - x) * dir2 < CFG.spQuickAhead) continue;
+        let d = Infinity;
+        for (const q of them2) { if (q.off) continue;
+          const dd = Math.hypot(q.x - p.x, q.y - p.y); if (dd < d) d = dd; }
+        if (d > CFG.spQuickRoom) { quick = 1; break; }
+      }
+    }
+  }
+  mp.sp = { kind, side, x, y, ti, t: 0, quick };
 }
 
 /** Every player's target, for as long as the set piece lasts. */
@@ -75,7 +95,11 @@ export function meSPShape(s) {
   // then runs at it; everything else he simply stands over.
   const taker = us[sp.ti];
   if (taker) {
-    if (sp.run) { taker._tx = sp.x; taker._ty = sp.y; }        // running at it now
+    // Standing over it: mid run-up, or playing it quickly, which has no run-up at all. Without the
+    // quick case he was sent BACKWARDS for a run-up he was never going to take, so he could never
+    // satisfy a readiness check measured against the ball and the restart hung -- ball in play fell
+    // from 83% to 17% and every count in the match with it.
+    if (sp.run || sp.quick) { taker._tx = sp.x; taker._ty = sp.y; }
     else if (sp.kind === "corner" || sp.kind === "freekick" || sp.kind === "penalty") {
       // Back along the line he means to hit it, and off to the side his kicking foot wants.
       const ax = gx - sp.x, ay = ME_HALF_W - sp.y, al = Math.hypot(ax, ay) || 1;
@@ -242,12 +266,20 @@ export function meSPReady(s) {
   if (sp.t < (sp.minT ?? CFG.spMinT)) return false;
   const taker = s.players[sp.side][sp.ti];
   if (!taker) return true;
+  // Taken quickly: the only man who has to be anywhere is the one taking it. Everybody else is
+  // wherever the whistle left them, which is exactly the point of playing it before they set.
+  if (sp.quick) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spTakerTol * 2.5;
   const struck = sp.kind === "corner" || sp.kind === "freekick" || sp.kind === "penalty";
   // Second phase: he has started his run-up, and it is struck the moment he reaches the ball.
   if (sp.run) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spRunTol || sp.t > CFG.spMaxT + 14;
   // Out of patience. A struck restart still gets its run-up -- waiting on the last man to trot into
   // the box must not turn a corner into a shot from a standstill, which is what it did.
-  const capT = sp.kind === "kickoff" ? CFG.spKickoffMaxT : (sp.maxT ?? CFG.spMaxT);
+  // PER KIND. One global cap said a penalty and a throw-in deserve the same eight seconds, and
+  // measured, 53% of penalties were taken because the referee gave up rather than because twenty men
+  // had cleared the area -- while still finishing quicker than the real thing. A throw-in does not
+  // need the patience a penalty does, and a penalty cannot be rushed at a throw-in's pace.
+  const capT = sp.kind === "kickoff" ? CFG.spKickoffMaxT
+             : (sp.maxT ?? CFG.spMaxTBy[sp.kind] ?? CFG.spMaxT);
   if (sp.t > capT) { if (struck) { sp.run = 1; return false; } return true; }
   // First phase: he has to be on his mark, and so does everyone whose job is near this restart.
   if (Math.hypot(taker.x - (taker._tx ?? sp.x), taker.y - (taker._ty ?? sp.y)) > CFG.spTakerTol) return false;

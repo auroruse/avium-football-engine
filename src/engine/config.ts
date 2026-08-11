@@ -22,6 +22,13 @@ export const ME_DEAD_SCALE = 0.55;
 export const SP = {
   spBehind: 0.9,        // how far behind the ball the taker sets himself, so he strikes through it
   spMinT: 6, spMaxT: 32,
+  // How long the referee will wait, per restart. A penalty needs the box genuinely cleared and a
+  // throw-in needs nobody; one number for both meant half of all penalties were taken on the
+  // referee's patience running out rather than on anyone being ready.
+  spMaxTBy: { penalty: 66, corner: 40, goalkick: 34, freekick: 32, throw: 24 },
+  // A free kick is played quickly when a team-mate is already this far beyond the ball with this
+  // much daylight around him. Both in metres, and both deliberately generous: if it is on, take it.
+  spQuickAhead: 12, spQuickRoom: 9,
   spTol: 2.6, spTakerTol: 0.7, spReadyFrac: 0.62,
   // A kickoff is the one restart where the WHOLE pitch has to be set -- twenty-two men back in their
   // own halves, some of them sixty metres away. Sharing the ordinary eight-second cap meant it timed

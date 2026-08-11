@@ -450,7 +450,8 @@ export function meDead(s, kind, side, ticks, out) {
   // sets the MINIMUM before anyone can take it.
   const mp = s.mePos;
   meSPBegin(s, kind, side, out);
-  mp.sp.minT = Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
+  mp.sp.minT = mp.sp.quick ? CFG.spMinT
+             : Math.max(CFG.spMinT, Math.round(ticks * ME_DEAD_SCALE * ME_SIM_MIN / 90));
   // TIME-WASTING, WHERE IT ACTUALLY HAPPENS. Nobody sees out a lead by dribbling the clock away in
   // midfield; they take an age over every goal kick, throw and free kick, and get booked for it.
   // Only restarts this side is taking, and never a kickoff -- nobody dawdles over the restart after
@@ -461,7 +462,7 @@ export function meDead(s, kind, side, ticks, out) {
   const twLead = (out?.goals?.[side] ?? 0) - (out?.goals?.[meOther(side)] ?? 0);
   if (twSide > 0 && twLead > 0 && kind !== "kickoff" && kind !== "penalty") {
     mp.sp.waste = twSide;
-    mp.sp.maxT = CFG.spMaxT + Math.round(twSide * CFG.wasteT);
+    mp.sp.maxT = (CFG.spMaxTBy[kind] ?? CFG.spMaxT) + Math.round(twSide * CFG.wasteT);
     mp.sp.minT = Math.min(mp.sp.maxT - 2, mp.sp.minT + Math.round(twSide * CFG.wasteT));
   }
   mp.desig.home = -1; mp.desig.away = -1;      // nobody chases a dead ball
@@ -562,7 +563,7 @@ export function meShootout(s, rng, out, maxKicks) {
     // keeper who has just been placed from a standstill is still a 0.39 m disc when it is struck --
     // his capsule only opens with speed. Shootout conversion sat at 88.8% against 74.7% for the
     // identical kick in a match.
-    meDead(s, "penalty", side, 150, out);
+    meDead(s, "penalty", side, 470, out);
     // ONE ATTEMPT. A shootout kick is dead the moment the keeper touches it or it misses -- there is
     // no rebound and no second bite, which is a rule and not a physical fact. Letting it play on for
     // a dozen slices meant a parry rolled into an empty box (everyone else is on the halfway line)
@@ -766,8 +767,8 @@ export function meTick(s, rng, out) {
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
                 meEvt(out, "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y, `${sh.name} drags it wide`); }
-      if (cross.conceding === mp.lastSide) meDead(s, "corner", meOther(cross.conceding), 138, out);
-      else meDead(s, "goalkick", cross.conceding, 100, out);
+      if (cross.conceding === mp.lastSide) meDead(s, "corner", meOther(cross.conceding), 236, out);
+      else meDead(s, "goalkick", cross.conceding, 200, out);
       return;
   };
   // The contest for the ball, EVERY slice. This used to sit inside `if (mp.idx < 0)`, so while a man
@@ -908,7 +909,7 @@ export function meTick(s, rng, out) {
             && rng.u() < CFG.handP) {
           out.fouls[bs]++;
           meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.name}`);
-          meDead(s, "penalty", meOther(bs), 150, out);
+          meDead(s, "penalty", meOther(bs), 470, out);
           return true;
         }
         // A HEADER IS NOT A TOUCH. Above headMinZ he has no foot on it and no control -- he gets his
@@ -1333,7 +1334,7 @@ export function meTick(s, rng, out) {
           meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.name} is hurt but carries on`);
         }
       }
-      meDead(s, inArea0 ? "penalty" : "freekick", side, inArea0 ? 150 : 104, out);
+      meDead(s, inArea0 ? "penalty" : "freekick", side, inArea0 ? 470 : 104, out);
       if (!inArea0) { mp.bx = p.x; mp.by = p.y; }
       return;
     }
