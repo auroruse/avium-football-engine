@@ -4378,24 +4378,31 @@ const splitFullName = (n) => {
 // placeholder. The dataset flag is what stops a missing placeholder becoming an infinite error loop.
 const shotName = (n) => String(n || "").trim().split(/\s+/)
   .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
-const PLAYER_SHOT_MISS = "/players/placeholder.jpg";
 // ...and one more trap on top of the casing. macOS writes filenames DECOMPOSED -- "Sho" plus a
 // combining macron -- while the preset files carry the same name precomposed, so "Sho Itoshi" is two
-// different byte strings depending on which side you ask, and every accented player silently fell
-// through to the placeholder. Both forms are tried before giving up. Deduped, so the common
-// all-ASCII name still costs exactly one request.
+// different byte strings depending on which side you ask, and every accented player silently falls
+// through to the placeholder. Both forms are tried, deduped so the common all-ASCII name still costs
+// exactly one request. stadiumBg already does this dance; the same trap, the same answer.
+// BASE_URL, not a leading slash: vite.config sets base './', so an absolute path resolves against
+// the SERVER root rather than the app's, and every portrait 404s wherever the app is not at the
+// domain root. Same reason TeamCrest and the league badges are written this way.
 const shotChain = (name) => {
   const b = shotName(name);
   return [...new Set([b.normalize("NFC"), b.normalize("NFD")])]
-    .map((n) => `/players/${encodeURIComponent(n)}.png`)
-    .concat(PLAYER_SHOT_MISS);
+    .map((n) => `${import.meta.env.BASE_URL}players/${encodeURIComponent(n)}.png`)
+    .concat(`${import.meta.env.BASE_URL}players/placeholder.jpg`);
 };
 const PlayerShot = ({ name, size, style }) => {
   const chain = shotChain(name);
+  // The step is STATE, not a scribble on the DOM node. React owns src, so reassigning
+  // e.currentTarget.src is undone by the very next render -- which on a pitch that re-renders on
+  // every tick means the token sits on a 404 forever and shows the browser's broken-image glyph.
+  const [step, setStep] = useState(0);
+  useEffect(() => { setStep(0); }, [name]);
+  const i = Math.min(step, chain.length - 1);
   return (
-    <img src={chain[0]} alt="" draggable={false}
-         onError={(e) => { const t = e.currentTarget, i = (+t.dataset.step || 0) + 1;
-                           if (i < chain.length) { t.dataset.step = String(i); t.src = chain[i]; } }}
+    <img src={chain[i]} alt="" draggable={false}
+         onError={() => setStep((s) => (s < chain.length - 1 ? s + 1 : s))}
          style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover",
                   display: "block", background: "var(--chrome-bg-dd)", ...style }} />
   );
