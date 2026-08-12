@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meFinalise, meInit, meMinute, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meFinalise, meInit, meMinute, meSub, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -3931,6 +3931,18 @@ const FPOS2 = {
   "3-5-2":[[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
   "3-4-1-2":[[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
   "5-3-2":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
+  // DEFENSIVE COUNTERPARTS. Not selectable and deliberately absent from FORMATIONS -- a side is
+  // never set up in these, it DROPS into one when it loses the ball. A 3-4-3 defends as a 5-4-1 and
+  // a 4-2-3-1 as a 4-4-1-1, so the shape the engine holds out of possession is the shape the
+  // formation actually becomes rather than the one it attacks in.
+  //
+  // Authored rather than generated. pitchSlots' fallback lays out flat, evenly spaced rows: it puts
+  // a back FIVE in one line 88 units wide at y=65, nine units higher up the pitch than an authored
+  // back four sits, which is the opposite of what a back five is for. The stagger here is the one
+  // every other entry above uses -- centre-backs narrow and deep, the men outside them wider and a
+  // touch higher.
+  "5-4-1":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[14,50],[37.3,48],[62.7,48],[86,50],[50,20]],
+  "4-4-1-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[50,32],[50,14]],
 };
 const pitchSlots = (formation) => FPOS2[formation] || (() => {
   const layers = (formation || "4-3-3").split("-").map(Number);
@@ -4979,13 +4991,27 @@ export default function App() {
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   // ---- positional match engine lab -------------------------------------------------------
-  const [meHomeId, setMeHomeId] = useState(null), [meAwayId, setMeAwayId] = useState(null);
   const ME_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 20];
   const [meSpeedIx, setMeSpeedIx] = useState(2);   // index into ME_SPEEDS; 1x real time
   const meAcc = useRef(0);
   const [meFrame, setMeFrame] = useState(0);
   const [meRunning, setMeRunning] = useState(false);
-  const [meBatch, setMeBatch] = useState(null);
+  // THE LIVE VIEW. "setup" is the pre-match screen, "live" is the full-viewport match, "post" is the
+  // same match view parked on the stats panel for a screenshot. Kept separate from meRef so pausing
+  // a match does not drop you back to team selection.
+  const [meView, setMeView] = useState("setup");
+  // THE OLD ENGINE, still here. Tournament fixtures run the abstract simulation, so it cannot go
+  // until they are wired to the positional one -- but it no longer deserves a tab of its own. It
+  // opens over the top from Utilities, and from the tournament's own Play Live.
+  const [absim, setAbsim] = useState(false);
+  const [mePanel, setMePanel] = useState(null);      // null = watch the pitch; "stats" | "subs" | "tactics"
+  // QUEUED, NOT IMMEDIATE. A substitution or a tactical change is made at the next dead ball, the
+  // way a real one is -- meAutoSubs already drains at mp.sp.t === 1 and these go through the same
+  // hook. Tactics could in principle apply instantly, since meTactical and meDuties re-read
+  // s.strategy every tick, but a manager shouting mid-move and the shape changing under the ball is
+  // not what happens on a touchline.
+  const mePending = useRef({ subs: [], strategy: {} });
+  const meSubPick = useRef(null);        // the man taken off, waiting for his replacement
   const meRef = useRef(null), meTimer = useRef(null);
   const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
     onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
@@ -4999,30 +5025,435 @@ export default function App() {
     return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
       stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0, defActs: 0, _att: null }));
   };
+  // Everyone who is not in the XI, in the same shape meSide gives the starters.
+  // THE XI ON A PITCH, exactly as the expanded team view draws it -- this IS that code, lifted out
+  // rather than reimplemented, so the pre-match screen and the team view can never show a player
+  // differently. sideOf and isIntlTeam are passed in because they are the only two things it needs
+  // that depend on which screen is asking.
+  // A national side lists each player's club; a club lists their nationality. The team view builds
+  // this inside its own closure for the team it is showing; the pre-match screen needs it for two
+  // teams at once, so the same rule lives here as a factory.
+  const sideOfFor = (t) => {
+    const isIntl = t?.league === "Avium International";
+    return (p) => {
+      const pe = playerByName.get(p.fullName || p.name);
+      const oc = isIntl ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
+      const team = isIntl ? (oc ? teamByName.get(oc.name) : null)
+                          : (pe?.natCode ? natTeamByCode.get(pe.natCode) : null);
+      return { pe, team,
+               code: isIntl ? (oc ? (oc.code || abbr(oc.name, oc.code)) : "") : (pe?.natCode || ""),
+               label: (isIntl ? oc?.name : pe?.nationality) || "" };
+    };
+  };
+  // `starters` is a list of [player, squadIndex] pairs -- the shape the team view already had, and
+  // the shape the lifted body reads. It came along as a free variable when this was pulled out of
+  // that closure, so xiPitch threw on `starters.map` at every call site including the team view's
+  // own. Named as a parameter now, so it cannot silently resolve to something else again.
+  const xiPitch = (t, starters, sideOf, isIntlTeam) => {
+    const slots = pitchSlots(t?.formation || "4-3-3");
+    const TOK = PITCH_TOKEN;
+    const ellip = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+    return (
+                  <div style={{ maxWidth: PITCH_MAX_W + 68, margin: "0 auto", padding: "0 34px 4px" }}>
+                    {/* containerType is what makes cq() mean anything: every token size below is a
+                        share of THIS box's width. */}
+                    <div style={{ position: "relative", containerType: "inline-size" }}>
+                      <svg viewBox={`0 0 100 ${PITCH_H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%" }}>
+                        <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} fill="var(--ui-pitch-deep)" />
+                        {Array.from({ length: 10 }, (_, i) => i % 2 === 0 ? null : (
+                          <polygon key={i} points={pitchPoly([[0, i / 10], [1, i / 10], [1, (i + 1) / 10], [0, (i + 1) / 10]])} fill="var(--ui-pitch-mid)" />))}
+                        <g fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.32" strokeLinejoin="round">
+                          <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} />
+                          <polyline points={pitchPoly([[0, 0.5], [1, 0.5]])} />
+                          <polyline points={pitchPoly(PITCH_CIRCLE)} />
+                          {/* Drawn as three-sided polylines so the goal-line edge is not painted
+                              twice over the touchline it sits on. */}
+                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 1], [PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 0], [PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 0]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 1], [PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1]])} />
+                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 0], [PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 0]])} />
+                        </g>
+                        {[1 - PITCH_MARK.spot, PITCH_MARK.spot, 0.5].map((y, i) => { const [cx, cy] = pitchProj(0.5, y); return <circle key={i} cx={cx} cy={cy} r="0.35" fill="var(--chrome-muted-33)" />; })}
+                      </svg>
+                      {starters.map(([p, idx], i) => {
+                        const sp = slots[i];
+                        if (!sp) return null;
+                        const [sx, sy] = pitchToken(sp[0] / 100, sp[1] / 100);
+                        const side = sideOf(p), clr = POS_CLR[p.pos] || "var(--chrome-border)";
+                        const { first, last } = splitSurname(p.fullName || p.name, p.name);
+                        const ovr = p.ovr ?? t.skill, ovrBg = ovrHex(Math.round(Number(ovr) || 0)), ovrRgb = hexToRgb(ovrBg);
+                        const chip = { position: "absolute", top: cq(TOKEN.chipTop), ...mono, fontSize: cq(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
+                                       minWidth: cq(TOKEN.chipMin), padding: `${cq(TOKEN.chipPadY)} ${cq(TOKEN.chipPadX)}`, borderRadius: cq(TOKEN.chipR), textAlign: "center" };
+                        return (
+                        <div key={idx} style={{ position: "absolute", left: `${sx}%`, top: `${sy / PITCH_H * 100}%`, width: cq(TOK), marginLeft: cq(-TOK / 2), marginTop: cq(-TOK / 2) }}>
+                          {/* Given name light over surname bold, the way a team sheet prints it. */}
+                          <div title={p.fullName || p.name} style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cq(TOKEN.gap), textAlign: "center", maxWidth: cq(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
+                            {/* Same colour as the surname: over grass, muted grey lost the given name entirely. Size and
+                                weight still carry the hierarchy. */}
+                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-text)", ...ellip }}>{first}</div>}
+                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-text)", ...ellip }}>{last}</div>
+                          </div>
+                          <div title={side.label || undefined} onClick={() => openTeam(side.team)}
+                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
+                                     display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`, cursor: side.team ? "pointer" : "default" }}>
+                            {/* His face, not his employer's badge. The crest told you the same thing
+                                for all eleven of them; the portrait is the only thing on the token
+                                that says WHO this is rather than what he is. */}
+                            <PlayerShot name={p.fullName || p.name} size="100%" />
+                          </div>
+                          <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrBg, color: ovrRgb && percLum(ovrRgb.r, ovrRgb.g, ovrRgb.b) > 0.5 ? "#101a12" : "#f4f7fa" }}>{showOvr(ovr)}</span>
+                          {/* Opaque. --chrome-bg-dd is the page colour at 87% alpha, so the grass
+                              came through the position chip while the OVR chip beside it -- which
+                              takes a solid ovrBg -- did not. Two chips on the same token reading
+                              differently is the whole of it. */}
+                          <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
+                        </div>); })}
+                    </div>
+                  </div>
+    );
+  };
+
+  // THE MATCH SETUP SCREEN, shared. This is the abstract engine's own screen, lifted out unchanged
+  // -- the league rail, the team tiles, the venue and leg and score options -- because both engines
+  // pick a fixture the same way and there is no reason to have two of these drifting apart. It reads
+  // and writes lmH / lmA, so whichever engine you then kick off starts with the same two teams.
+  const matchSetupScreen = () => (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
+
+            {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
+                A flat list of every team in the game is a scroll with no landmarks; leagues are the
+                landmarks, and the tiles carry the crest and skill you actually choose on. */}
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12, pointerEvents: lmLocked ? "none" : undefined }}>
+
+              {/* The two slots sit above both panes rather than in either header: at half the page
+                  width neither header has room for a team name beside its own title. */}
+              <div style={{ ...panelBox, marginBottom: 0, padding: "10px 12px", flexShrink: 0, display: "flex", gap: 8 }}>
+                {["home","away"].map(side => { const t = teamById(side === "home" ? lmH : lmA); const on = lmPick === side;
+                  return (<div key={side} onClick={() => setLmPick(side)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: "5px 10px", borderRadius: 7,
+                      background: on ? "var(--chrome-panel-66)" : "transparent", border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)") }}>
+                    <div style={{ fontSize: 7, letterSpacing: "0.16em", color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 700 }}>{side === "home" ? "TEAM 1" : "TEAM 2"}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      {t && <TeamCrest team={t} size={14} />}
+                      <span style={{ fontSize: 11, color: "var(--ui-text)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name || "—"}</span>
+                    </div>
+                  </div>);
+                })}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch", opacity: lmLocked ? 0.5 : 1 }}>
+
+                {/* ── Leagues ── */}
+                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+                    <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
+                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
+                                  borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
+                    {entries.map(([val, ts]) => { const on = lmLeague === val;
+                      return (
+                      <div key={val} onClick={() => setLmLeague(val)}
+                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
+                                 borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
+                                 background: on ? "var(--chrome-panel-66)" : "transparent" }}>
+                        <LeagueCrest league={val} size={17} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 11, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
+                          <div style={{ fontSize: 8, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
+                        </div>
+                      </div>); })}</Fragment>))}
+                  </div>
+                </div>
+
+                {/* ── Clubs of that league ── */}
+                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <LeagueCrest league={lmLeague} size={24} />
+                      <PanelTitle>{lmLeague}</PanelTitle>
+                    </div>
+                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...ui }}>Picking {lmPick === "home" ? "Team 1" : "Team 2"}</span>
+                  </div>
+                  <div style={{ padding: 14, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
+                      {(rosterLeagues.find(([lg]) => lg === lmLeague)?.[1] || []).map(t => {
+                        const isH = t.id === lmH, isA = t.id === lmA, taken = lmPick === "home" ? isA : isH;
+                        // Same clamp the scoreboard uses — a near-white strip would wash the tile
+                        // out into the panel behind it.
+                        const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
+                        // The badge art is a 500px square with the crest inset a tenth top and
+                        // bottom, so cancelling that pulls the whole content group up.
+                        const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
+                        const ring = isH ? hClr : isA ? aClr : null;
+                        return (
+                        <div key={t.id} role="button" tabIndex={taken ? -1 : 0} title={taken ? "Already the other side" : `Pick ${t.name}`}
+                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                          onClick={() => !taken && lmPickTeam(t.id)} className="team-tile"
+                          style={{ position: "relative", borderRadius: 10, border: "1px solid " + (ring || "var(--chrome-border)"), cursor: taken ? "not-allowed" : "pointer", opacity: taken ? 0.3 : 1,
+                                   boxShadow: ring ? `0 0 0 1px ${ring}` : "none",
+                                   padding: "16px 8px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                                   background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
+                          {ring && <span style={{ position: "absolute", top: 4, left: 5, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: ring, ...mono }}>{isH ? "1" : "2"}</span>}
+                          <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
+                            <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{showOvr(t.skill)}</span>
+                          </div>
+                        </div>); })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: where it is played on top, how it is played underneath. Home advantage used
+                to be its own three-way toggle; it is the venue choice now, because picking a side's
+                own ground and giving that side the advantage were always the same decision. */}
+            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+
+              <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+                  <PanelTitle>Venue</PanelTitle>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                {(() => {
+                  const hT = teamById(lmH), aT = teamById(lmA);
+                  const named = lmNeutralVenueName.trim();
+                  // Every stadium that has a picture, with the owning team's city where one matches.
+                  const byStadium = new Map();
+                  for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !byStadium.has(st)) byStadium.set(st, t); }
+                  const place = (t) => { const nat = t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name;
+                    if (!t?.city && !nat) return null;
+                    return <>{t?.city && <CityLink name={t.city} />}{t?.city && nat ? ", " : ""}{nat || ""}</>; };
+                  const withPlace = (lead, t) => { const pl = place(t); return pl ? <>{lead} &middot; {pl}</> : lead; };
+                  const ownGrounds = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
+                  const row = (key, sel, onPick, name, sub, img) => (
+                    <div key={key} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer",
+                        borderLeft: `2px solid ${sel ? "var(--chrome-brand)" : "transparent"}`, background: sel ? "var(--chrome-panel-66)" : "transparent" }}>
+                      <div style={{ width: 52, height: 30, flexShrink: 0, borderRadius: 4, border: "1px solid var(--chrome-border)",
+                                    backgroundColor: "var(--chrome-bg)", backgroundSize: "cover", backgroundPosition: "center",
+                                    backgroundImage: img ? stadiumBg(img) : "none" }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: sel ? 600 : 500, color: sel ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
+                        {sub && <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
+                      </div>
+                    </div>);
+                  // Grounds by nation, in the same row format — the nation's badge sits in the slot
+                  // a stadium photo would use, so the header reads as one of the rows rather than as
+                  // a separate control. The flat list underneath it was every PICTURE, which quietly
+                  // hid every ground that has no photo.
+                  const natRow = (g, n, open) => (
+                    <div key={"nat" + (g.code || "_")} onClick={() => toggleVenueNation(g.code)}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer",
+                                 borderTop: "1px solid var(--chrome-border)", marginTop: 4, background: open ? "var(--chrome-panel-66)" : "transparent" }}>
+                      <div style={{ width: 52, height: 30, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {g.nation ? <TeamCrest team={g.nation} size={23} /> : null}
+                      </div>
+                      <div style={{ ...sectionLabel, fontSize: 9, color: open ? "var(--ui-text)" : "var(--chrome-muted)", flex: 1, minWidth: 0 }}>{g.name}</div>
+                      <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted-66)" }}>{n}</span>
+                      <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", width: 8 }}>{open ? "\u25BE" : "\u25B8"}</span>
+                    </div>);
+                  const groundSub = (v) => v.owner || v.city
+                    ? <>{v.city && <CityLink name={v.city} />}{v.city && v.owner ? " · " : ""}{v.owner ? v.owner.name : ""}</> : null;
+                  const grounds = (skip, isSel, onPick) => venueIndex.flatMap(g => {
+                    const vs = g.venues.filter(v => !skip.has(v.stadium));
+                    if (!vs.length) return [];
+                    const open = openVenueNations.has(g.code);
+                    return [natRow(g, vs.length, open),
+                      ...(open ? vs.map(v => row("o" + v.stadium, isSel(v.stadium), () => onPick(v.stadium), v.stadium, groundSub(v), v.img)) : [])];
+                  });
+                  const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
+                  const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
+                  const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
+                  // A tournament fixture picks from what the tournament allows and writes to its
+                  // overrides — the rows are the standalone ones so the panel looks no different.
+                  if (lmLocked && lmVc) {
+                    // A fixture picks from what the tournament allows and writes to its overrides —
+                    // same rows as the standalone list, and every other ground stays on offer.
+                    const vc = lmVc, cat = (t) => teams.find(x => x.name === t?.name) || t;
+                    const setHA = (val) => setTHomeAdvOverrides(pv => ({ ...pv, [vc.venueKey]: val === null ? "off" : val }));
+                    const clearVenue = () => setTVenueOverrides(pv => { const nm = { ...pv }; delete nm[vc.overrideKey]; return nm; });
+                    const chosen = tVenueOverrides[vc.overrideKey] || "";
+                    // Two-legged ties do not host anywhere: either each side hosts a leg, or neither does.
+                    const twoLeg = tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset";
+                    const head = vc.hostModeActive ? (<>
+                      {tHostVenuePool.length === 0 && <div style={{ padding: "10px 14px", fontSize: 10, color: "var(--ui-danger)" }}>No host venues configured</div>}
+                      {tHostVenuePool.map((v, i2) => row("host" + i2, (vc.venue?.stadium || "") === v.stadium,
+                        () => setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: v.stadium })), v.stadium,
+                        <>{v.city && <><CityLink name={v.city} /> &middot; </>}{chosen === v.stadium ? "Manually chosen" : "Automatic"}</>,
+                        STADIUM_IMAGES.includes(v.stadium) ? v.stadium : null))}
+                    </>) : twoLeg ? (<>
+                      {row("neutral", !vc.homeAdv && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
+                      {row("alt", !!vc.homeAdv && !chosen, () => { setTHomeAdvOverrides(pv => { const nm = { ...pv }; delete nm[vc.venueKey]; return nm; }); clearVenue(); },
+                        "Alternating", "Each team hosts one leg", null)}
+                    </>) : (<>
+                      {row("neutral", vc.homeAdv === null && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
+                      {[["home", cat(vc.homeTeam)], ["away", cat(vc.awayTeam)]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
+                        return row(side, vc.homeAdv === side && !chosen, () => { setHA(side); clearVenue(); }, st || `${t.name} (no ground listed)`,
+                          withPlace(t.name, t), STADIUM_IMAGES.includes(st) ? st : null); })}
+                    </>);
+                    // Any other ground can host the fixture, in every mode — picking one is a neutral
+                    // venue by definition, so it clears whatever advantage was set.
+                    const shown = new Set([...ownGrounds, ...(vc.hostModeActive ? tHostVenuePool.map(v => v.stadium) : [])]);
+                    return (<>
+                      {head}
+                      {grounds(shown, st => chosen === st,
+                        st => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: st })); setHA(null); })}
+                    </>);
+                  }
+                  return (<>
+                    {row("neutral", lmHomeAdv === null && !named, pickNeutral, "Neutral Venue", null, null)}
+                    {/* Both sides' grounds are offered whether or not a picture exists for them —
+                        the advantage is the point, the backdrop is a bonus. */}
+                    {[["home", hT], ["away", aT]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
+                      return row(side, lmHomeAdv === side, () => pickHost(side), st || `${t.name} (no ground listed)`,
+                        withPlace(side === "home" ? "Team 1" : "Team 2", t),
+                        STADIUM_IMAGES.includes(st) ? st : null); })}
+                    {grounds(ownGrounds, st => lmHomeAdv === null && named === st, pickGround)}
+                  </>);
+                })()}
+                </div>
+              </div>
+
+              <div style={{ ...panelBox, marginBottom: 0, flexShrink: 0 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
+                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties", true], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo", false], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs", false], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds", false]].map(([checked, onChange, label, sub, tOwned], i) => (
+                  <label key={i} onClick={() => { if (!(lmLocked && tOwned)) onChange(!checked); }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: lmLocked && tOwned ? "default" : "pointer", padding: "6px 0", opacity: lmLocked && tOwned ? 0.5 : 1 }}>
+                    <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+                      <div style={{ fontSize: 9, color: "var(--chrome-muted)", lineHeight: 1.2 }}>{sub}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)", ...(lmLocked ? { pointerEvents: "none", opacity: 0.5 } : null) }}>
+                <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
+                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
+                  {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
+                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
+                  ))}
+                </div>
+                {lm2ndLeg && <div style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px" }}>
+                    <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teamById(lmH)?.name}</span>
+                    <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
+                    <span style={{ color: "var(--chrome-muted)", fontSize: 14 }}>–</span>
+                    <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
+                    <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teamById(lmA)?.name}</span>
+                  </div>
+                </div>}
+              </div>
+            {teams.length < 2 && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
+            {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
+              </div>
+            </div>
+            </div>
+  );
+
+  const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
+    .map((p, i) => ({ ...p, name: p.name || (p.pos + "B" + i), ovr: p.ovr ?? t?.skill ?? 70,
+                      stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
+                      defActs: 0, _att: null }));
   const meBuild = () => {
-    const hT = teams.find(t => t.id === meHomeId) || teams[0], aT = teams.find(t => t.id === meAwayId) || teams[1];
+    const hT = teamById(lmH) || teams[0], aT = teamById(lmA) || teams[1];
     if (!hT || !aT) return null;
     const st = createMatchState();
     st.players.home = meSide(hT); st.players.away = meSide(aT);
+    // A BENCH, or meSub has nobody to bring on. meSide keeps the eleven and drops everyone else, so
+    // until now a match built here had s.bench empty and substitution was impossible -- meAutoSubs
+    // included, which is why it has never once fired in this tab.
+    st.bench = { home: meBench(hT), away: meBench(aT) };
+    // subCap is what subLimit reads, and it is set from the bench each side actually named -- an
+    // eleven-man bench is an international squad and plays to five, everything else keeps three.
+    st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
     st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
     st.possession = "home";
     meInit(st, pitchSlots);
     return { s: st, out: meFreshOut(), rng: new RNG((Date.now() & 0x7ffffff) || 7), t: 0, hT, aT };
   };
+  // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
+  // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
+  // engine: no tick is consumed, no counter moves, and every harness sees exactly the match it saw
+  // before. Ends are NOT swapped at the interval -- the engine has no half-time concept and giving
+  // it one means flipping meDir under fifty-two call sites, which is a different job entirely.
+  // Walk off, stand about, walk back on. off x step has to be enough ground to actually GET there --
+  // at 0.30 m a slice over 34 slices a man covers ten metres and turns round in the centre circle.
+  // 0.55 is a brisk walk, 2.2 m/s, and ninety slices of it crosses fifty metres of pitch.
+  const ME_BRK = { off: 90, hold: 30, on: 90, step: 0.55 };
+  const meTunnel = [52.5, 71];                       // the mouth of it, below the touchline
+  const meBreakStep = (m) => {
+    const b = m.brk; if (!b) return;
+    b.t++;
+    const st = m.s, back = b.t > ME_BRK.off + ME_BRK.hold;
+    // Where he came from, so he has somewhere to come back to.
+    for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
+      if (p.off) continue;                          // sent off or injured: already gone
+      if (p._hx === undefined) { p._hx = p.x; p._hy = p.y; }
+      const tx = back ? p._hx : meTunnel[0], ty = back ? p._hy : meTunnel[1];
+      p._px = p.x; p._py = p.y;
+      const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+      if (d > 0.02) { const k = Math.min(d, ME_BRK.step) / d; p.x += dx * k; p.y += dy * k; }
+      p.vx = 0; p.vy = 0;
+    }
+    const mp = st.mePos;
+    mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+    if (b.t >= ME_BRK.off + ME_BRK.hold + ME_BRK.on) {
+      for (const sd of ["home", "away"]) for (const p of st.players[sd]) { p._hx = undefined; p._hy = undefined; }
+      m.brk = null;
+      if (b.kind === "ft") meStop();
+    }
+  };
   const meStop = () => { if (meTimer.current) clearInterval(meTimer.current); meTimer.current = null; meAcc.current = 0; setMeRunning(false); };
-  const meKick = () => { meStop(); meRef.current = meBuild(); setMeFrame(f => f + 1); };
+  const meKick = () => { meStop(); meRef.current = meBuild();
+                         if (meRef.current) { setMeView("live"); setMePanel(null); } setMeFrame(f => f + 1); };
   const meStep = (n) => {
     const m = meRef.current; if (!m) return;
+    // Walking off, standing about, or walking back on: the match does not advance while they are.
+    if (m.brk) { for (let i = 0; i < n && m.brk; i++) meBreakStep(m); setMeFrame(f => f + 1); return; }
     // ...plus stoppage. meAdded grows as the ball spends time dead, so the finish line moves out
     // during the match exactly as the board going up at ninety does -- it is not known in advance.
     const end = ME_MATCH_TICKS + meAdded(m.s);
-    for (let i = 0; i < n && m.t < end; i++) { m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; }
+    const half = ME_MATCH_TICKS >> 1;
+    // Anything the manager asked for is applied HERE, on the first slice of a stoppage, which is
+    // where meAutoSubs already does its work. A change made while the ball is running waits.
+    const drain = () => {
+      const q = mePending.current;
+      if (!q.subs.length && !Object.keys(q.strategy).length) return;
+      const mp2 = m.s.mePos;
+      if (!mp2.sp || mp2.sp.t !== 1) return;
+      for (const [side, st2] of Object.entries(q.strategy))
+        m.s.strategy[side] = { ...m.s.strategy[side], ...st2 };
+      for (const sub of q.subs) meSub(m.s, sub.side, sub.outIdx, sub.benchIdx, m.out);
+      mePending.current = { subs: [], strategy: {} };
+      setMeFrame(f => f + 1);
+    };
+    for (let i = 0; i < n && m.t < end; i++) {
+      m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; drain();
+      // The interval, taken at the first dead ball at or after the halfway point rather than in the
+      // middle of a move -- which is how a referee does it too.
+      if (m.t >= half && !m.htDone && (m.s.mePos.sp || m.s.mePos.idx < 0)) {
+        m.htDone = true; m.brk = { t: 0, kind: "ht" }; break;
+      }
+    }
     // Full time. meFinalise is what turns raw event deltas into a rating: it shrinks a substitute's
     // toward par by the minutes he actually played and applies the positional par itself. Without
     // this call the numbers are the un-normalised running total and forwards sit half a point clear.
-    if (m.t >= ME_MATCH_TICKS + meAdded(m.s)) { meFinalise(m.s); meStop(); }
+    if (m.t >= ME_MATCH_TICKS + meAdded(m.s) && !m.ftDone) {
+      m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
+      setMeView("post"); setMePanel("stats");
+    }
     setMeFrame(f => f + 1);
+  };
+  const meSimEnd = () => {
+    meStop();
+    const m = meRef.current; if (!m) return;
+    for (let g = 0; g < 40 && !m.ftDone; g++) meStep(ME_MATCH_TICKS + 800);
   };
   const mePlay = () => {
     if (!meRef.current) meRef.current = meBuild();
@@ -5040,37 +5471,6 @@ export default function App() {
   };
   useEffect(() => { if (meRunning) { meStop(); mePlay(); } }, [meSpeedIx]);
   useEffect(() => () => { if (meTimer.current) clearInterval(meTimer.current); }, []);
-  // Batch: the same numbers the calibration harness reports, run in the browser.
-  const meRunBatch = (n, gapMode) => {
-    const rows = [];
-    const one = (hOvr, aOvr) => {
-      const agg = meFreshOut(); let stamEnd = 0;
-      for (let k = 0; k < n; k++) {
-        const st = createMatchState();
-        const mk = (o) => buildSquad("4-3-3", null).filter(p => !p.bench)
-          .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, _att: null }));
-        st.players.home = mk(hOvr); st.players.away = mk(aOvr);
-        st.formations = { home: "4-3-3", away: "4-3-3" };
-        st.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
-        st.possession = "home"; meInit(st, pitchSlots);
-        const out = meFreshOut(), rng = new RNG(101 + k * 17);
-        for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
-        for (let t = 0, add = meAdded(st); t < add; t++) meTick(st, rng, out);   // stoppage time
-        meFinalise(st);
-        for (const key of ["passes","passOk","passFail","tackles","carries","clears","inplay","blocked"]) agg[key] += out[key];
-        for (const sd of ["home","away"]) for (const key of ["poss","shots","goals","onTarget","saves","corners","fouls"]) agg[key][sd] += out[key][sd];
-        stamEnd += st.players.home.reduce((a, p) => a + p.stamina, 0) / 11;
-      }
-      const pt = agg.poss.home + agg.poss.away || 1;
-      return { poss: 100 * agg.poss.home / pt, shotsH: agg.shots.home / n, shotsA: agg.shots.away / n,
-        goalsH: agg.goals.home / n, goalsA: agg.goals.away / n, passPct: 100 * agg.passOk / (agg.passes || 1),
-        passes: agg.passes / n, corners: agg.corners.home / n, fouls: agg.fouls.home / n,
-        inplay: agg.inplay / n / ME_TPM, stam: stamEnd / n, blocked: agg.blocked / n };
-    };
-    if (gapMode) for (const g of [0, 8, 16, 29]) rows.push({ label: "+" + g, ...one(75 + g, 75) });
-    else rows.push({ label: "even 75", ...one(75, 75) });
-    setMeBatch(rows);
-  };
   // The team the right pane has drilled into. Read from `teams`, not effTeams, so the panel edits
   // the same objects updateTeam writes to.
   const detailTeam = useMemo(() => expandedTeam ? (teams.find(t => t.id === expandedTeam) || null) : null, [expandedTeam, teams]);
@@ -5922,7 +6322,7 @@ export default function App() {
     setLmA(vc.isL2 ? teams[vc.hi].id : teams[vc.ai].id);
     setLmForce(tForceResult(target)); setLm2ndLeg(vc.isL2); setLmStartScore(tStartScore(vc));
     setTPendingPlayLive(target);
-    setTab("live");
+    setAbsim(true);
   };
 
   const tConfirmPlayLive = (target) => {
@@ -6018,7 +6418,7 @@ export default function App() {
     setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv); setLm2ndLeg(isL2);
     setTLiveTarget({...target, flipped: isL2});
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setChanceStep({}); setTab("live");
+    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setChanceStep({}); setAbsim(true);
   };
 
   // Auto-save tournament state to persistent storage
@@ -8539,58 +8939,7 @@ export default function App() {
                 return (<>
                   {/* Badge padding is horizontal room for the OVR and position chips, which hang off
                       the touchline tokens on both sides. */}
-                  <div style={{ maxWidth: PITCH_MAX_W + 68, margin: "0 auto", padding: "0 34px 4px" }}>
-                    {/* containerType is what makes cq() mean anything: every token size below is a
-                        share of THIS box's width. */}
-                    <div style={{ position: "relative", containerType: "inline-size" }}>
-                      <svg viewBox={`0 0 100 ${PITCH_H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%" }}>
-                        <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} fill="var(--ui-pitch-deep)" />
-                        {Array.from({ length: 10 }, (_, i) => i % 2 === 0 ? null : (
-                          <polygon key={i} points={pitchPoly([[0, i / 10], [1, i / 10], [1, (i + 1) / 10], [0, (i + 1) / 10]])} fill="var(--ui-pitch-mid)" />))}
-                        <g fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.32" strokeLinejoin="round">
-                          <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} />
-                          <polyline points={pitchPoly([[0, 0.5], [1, 0.5]])} />
-                          <polyline points={pitchPoly(PITCH_CIRCLE)} />
-                          {/* Drawn as three-sided polylines so the goal-line edge is not painted
-                              twice over the touchline it sits on. */}
-                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 1], [PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1 - PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 1]])} />
-                          <polyline points={pitchPoly([[PITCH_MARK.boxX, 0], [PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, PITCH_MARK.boxD], [1 - PITCH_MARK.boxX, 0]])} />
-                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 1], [PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1 - PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 1]])} />
-                          <polyline points={pitchPoly([[PITCH_MARK.sixX, 0], [PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, PITCH_MARK.sixD], [1 - PITCH_MARK.sixX, 0]])} />
-                        </g>
-                        {[1 - PITCH_MARK.spot, PITCH_MARK.spot, 0.5].map((y, i) => { const [cx, cy] = pitchProj(0.5, y); return <circle key={i} cx={cx} cy={cy} r="0.35" fill="var(--chrome-muted-33)" />; })}
-                      </svg>
-                      {starters.map(([p, idx], i) => {
-                        const sp = slots[i];
-                        if (!sp) return null;
-                        const [sx, sy] = pitchToken(sp[0] / 100, sp[1] / 100);
-                        const side = sideOf(p), clr = POS_CLR[p.pos] || "var(--chrome-border)";
-                        const { first, last } = splitSurname(p.fullName || p.name, p.name);
-                        const ovr = p.ovr ?? t.skill, ovrBg = ovrHex(Math.round(Number(ovr) || 0)), ovrRgb = hexToRgb(ovrBg);
-                        const chip = { position: "absolute", top: cq(TOKEN.chipTop), ...mono, fontSize: cq(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
-                                       minWidth: cq(TOKEN.chipMin), padding: `${cq(TOKEN.chipPadY)} ${cq(TOKEN.chipPadX)}`, borderRadius: cq(TOKEN.chipR), textAlign: "center" };
-                        return (
-                        <div key={idx} style={{ position: "absolute", left: `${sx}%`, top: `${sy / PITCH_H * 100}%`, width: cq(TOK), marginLeft: cq(-TOK / 2), marginTop: cq(-TOK / 2) }}>
-                          {/* Given name light over surname bold, the way a team sheet prints it. */}
-                          <div title={p.fullName || p.name} style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cq(TOKEN.gap), textAlign: "center", maxWidth: cq(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
-                            {/* Same colour as the surname: over grass, muted grey lost the given name entirely. Size and
-                                weight still carry the hierarchy. */}
-                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-text)", ...ellip }}>{first}</div>}
-                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-text)", ...ellip }}>{last}</div>
-                          </div>
-                          <div title={side.label || undefined} onClick={() => openTeam(side.team)}
-                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
-                                     display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`, cursor: side.team ? "pointer" : "default" }}>
-                            {/* His face, not his employer's badge. The crest told you the same thing
-                                for all eleven of them; the portrait is the only thing on the token
-                                that says WHO this is rather than what he is. */}
-                            <PlayerShot name={p.fullName || p.name} size="100%" />
-                          </div>
-                          <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrBg, color: ovrRgb && percLum(ovrRgb.r, ovrRgb.g, ovrRgb.b) > 0.5 ? "#101a12" : "#f4f7fa" }}>{showOvr(ovr)}</span>
-                          <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
-                        </div>); })}
-                    </div>
-                  </div>
+                  {xiPitch(t, starters, sideOf, isIntlTeam)}
                   {/* The table never needed the full width — five short columns stretched to 1200px
                       put the nationality a screen away from the name. The rule down the middle is
                       what stops the short right-hand column reading as a box floating in the gap. */}
@@ -8740,7 +9089,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
           <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
-            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["me", "ME Lab"], ["docs", "Documentation"]].map(([id, l]) => (
+            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
@@ -9038,11 +9387,14 @@ export default function App() {
                     {/* Nationality is gone: the rail already fixes it, so the column read the same
                         value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: 44 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 82 }} /><col style={{ width: "28%" }} /><col style={{ width: "38%" }} />
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 82 }} /><col style={{ width: "28%" }} /><col style={{ width: "38%" }} />
                     </colgroup>
                     <thead>
                       <tr>
                         <th style={thStyle}>#</th>
+                        {/* Deliberately unlabelled, as in the squad table: a heading over a column
+                            of faces is noise. */}
+                        <th style={thStyle} />
                         <th style={thStyle}>Player</th>
                         <th style={{ ...thStyle, textAlign: "center" }}>OVR</th>
                         <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
@@ -9051,8 +9403,8 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
-                      {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
+                      {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={7} style={{ padding: 0, border: "none" }} /></tr>}
+                      {filtered.length === 0 && <tr><td colSpan={7} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
                       {plRows.map((p, wi) => { const i = plStart + wi;
                         const natT = p.natCode ? natTeamByCode.get(p.natCode) : null, clubT = teamByName.get(p.clubs[0]?.name);
                         const capped = p.capped && !!playerNatFilter;
@@ -9061,6 +9413,9 @@ export default function App() {
                           style={{ background: capped ? "var(--chrome-brand-11)" : i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                           <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono,
                                        borderLeft: `2px solid ${capped ? "var(--chrome-brand)" : "transparent"}` }}>{i + 1}</td>
+                          <td style={{ ...tdStyle, paddingRight: 0 }}>
+                            <PlayerShot name={p.fullName || p.name} size={24} />
+                          </td>
                           <td style={{ ...tdStyle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                               title={capped ? `${p.fullName || p.name} — in the ${p.nationality} squad` : undefined}>{boldSurname(p.fullName || p.name, p.name)}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
@@ -9082,7 +9437,7 @@ export default function App() {
                               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.clubs.map(c => c.name).join(", ")}</span>
                             </span></td>
                         </tr>); })}
-                      {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={6} style={{ padding: 0, border: "none" }} /></tr>}
+                      {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={7} style={{ padding: 0, border: "none" }} /></tr>}
                     </tbody>
                   </table>
                 </div>); })()}
@@ -9091,7 +9446,15 @@ export default function App() {
         </>)}
 
         {/* ═══ LIVE MATCH TAB ═══ */}
-        {tab === "live" && (<div style={PHASE_COL}>
+        {absim && (<div style={{ ...PHASE_COL, position: "fixed", inset: 0, height: "auto", zIndex: 70,
+                                 background: "var(--chrome-bg)", padding: "10px 16px 16px", overflowY: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexShrink: 0 }}>
+            <span style={sectionLabel}>ABSTRACT MATCH ENGINE</span>
+            <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>
+              the original non-positional simulation &mdash; still what tournament fixtures run</span>
+            <div style={{ flex: 1 }} />
+            <button onClick={() => setAbsim(false)} style={smBtn}>Close</button>
+          </div>
           {/* Unified match controls — always at top, except while the tournament
               pre-match setup screen is up: lmIsSetup (=!lmMatch) doesn't know about
               tPendingPlayLive, so left ungated this renders "Start Match"/"Sim to End"
@@ -9176,243 +9539,7 @@ export default function App() {
             <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
             <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 3 }}>&#9917; Kick Off</button>
           </div>}
-          {(lmIsSetup || tPendingPlayLive) && (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
-
-            {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
-                A flat list of every team in the game is a scroll with no landmarks; leagues are the
-                landmarks, and the tiles carry the crest and skill you actually choose on. */}
-            <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12, pointerEvents: lmLocked ? "none" : undefined }}>
-
-              {/* The two slots sit above both panes rather than in either header: at half the page
-                  width neither header has room for a team name beside its own title. */}
-              <div style={{ ...panelBox, marginBottom: 0, padding: "10px 12px", flexShrink: 0, display: "flex", gap: 8 }}>
-                {["home","away"].map(side => { const t = teamById(side === "home" ? lmH : lmA); const on = lmPick === side;
-                  return (<div key={side} onClick={() => setLmPick(side)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: "5px 10px", borderRadius: 7,
-                      background: on ? "var(--chrome-panel-66)" : "transparent", border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)") }}>
-                    <div style={{ fontSize: 7, letterSpacing: "0.16em", color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 700 }}>{side === "home" ? "TEAM 1" : "TEAM 2"}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      {t && <TeamCrest team={t} size={14} />}
-                      <span style={{ fontSize: 11, color: "var(--ui-text)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name || "—"}</span>
-                    </div>
-                  </div>);
-                })}
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch", opacity: lmLocked ? 0.5 : 1 }}>
-
-                {/* ── Leagues ── */}
-                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
-                    <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
-                  </div>
-                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                    {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
-                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
-                                  borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
-                    {entries.map(([val, ts]) => { const on = lmLeague === val;
-                      return (
-                      <div key={val} onClick={() => setLmLeague(val)}
-                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
-                                 borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
-                                 background: on ? "var(--chrome-panel-66)" : "transparent" }}>
-                        <LeagueCrest league={val} size={17} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
-                          <div style={{ fontSize: 8, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
-                        </div>
-                      </div>); })}</Fragment>))}
-                  </div>
-                </div>
-
-                {/* ── Clubs of that league ── */}
-                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <LeagueCrest league={lmLeague} size={24} />
-                      <PanelTitle>{lmLeague}</PanelTitle>
-                    </div>
-                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...ui }}>Picking {lmPick === "home" ? "Team 1" : "Team 2"}</span>
-                  </div>
-                  <div style={{ padding: 14, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
-                      {(rosterLeagues.find(([lg]) => lg === lmLeague)?.[1] || []).map(t => {
-                        const isH = t.id === lmH, isA = t.id === lmA, taken = lmPick === "home" ? isA : isH;
-                        // Same clamp the scoreboard uses — a near-white strip would wash the tile
-                        // out into the panel behind it.
-                        const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
-                        // The badge art is a 500px square with the crest inset a tenth top and
-                        // bottom, so cancelling that pulls the whole content group up.
-                        const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
-                        const ring = isH ? hClr : isA ? aClr : null;
-                        return (
-                        <div key={t.id} role="button" tabIndex={taken ? -1 : 0} title={taken ? "Already the other side" : `Pick ${t.name}`}
-                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
-                          onClick={() => !taken && lmPickTeam(t.id)} className="team-tile"
-                          style={{ position: "relative", borderRadius: 10, border: "1px solid " + (ring || "var(--chrome-border)"), cursor: taken ? "not-allowed" : "pointer", opacity: taken ? 0.3 : 1,
-                                   boxShadow: ring ? `0 0 0 1px ${ring}` : "none",
-                                   padding: "16px 8px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
-                                   background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
-                          {ring && <span style={{ position: "absolute", top: 4, left: 5, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: ring, ...mono }}>{isH ? "1" : "2"}</span>}
-                          <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
-                            <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{showOvr(t.skill)}</span>
-                          </div>
-                        </div>); })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: where it is played on top, how it is played underneath. Home advantage used
-                to be its own three-way toggle; it is the venue choice now, because picking a side's
-                own ground and giving that side the advantage were always the same decision. */}
-            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-
-              <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
-                  <PanelTitle>Venue</PanelTitle>
-                </div>
-                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                {(() => {
-                  const hT = teamById(lmH), aT = teamById(lmA);
-                  const named = lmNeutralVenueName.trim();
-                  // Every stadium that has a picture, with the owning team's city where one matches.
-                  const byStadium = new Map();
-                  for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !byStadium.has(st)) byStadium.set(st, t); }
-                  const place = (t) => { const nat = t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name;
-                    if (!t?.city && !nat) return null;
-                    return <>{t?.city && <CityLink name={t.city} />}{t?.city && nat ? ", " : ""}{nat || ""}</>; };
-                  const withPlace = (lead, t) => { const pl = place(t); return pl ? <>{lead} &middot; {pl}</> : lead; };
-                  const ownGrounds = new Set([stripVenue(hT?.stadium || ""), stripVenue(aT?.stadium || "")].filter(Boolean));
-                  const row = (key, sel, onPick, name, sub, img) => (
-                    <div key={key} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer",
-                        borderLeft: `2px solid ${sel ? "var(--chrome-brand)" : "transparent"}`, background: sel ? "var(--chrome-panel-66)" : "transparent" }}>
-                      <div style={{ width: 52, height: 30, flexShrink: 0, borderRadius: 4, border: "1px solid var(--chrome-border)",
-                                    backgroundColor: "var(--chrome-bg)", backgroundSize: "cover", backgroundPosition: "center",
-                                    backgroundImage: img ? stadiumBg(img) : "none" }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: sel ? 600 : 500, color: sel ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
-                        {sub && <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
-                      </div>
-                    </div>);
-                  // Grounds by nation, in the same row format — the nation's badge sits in the slot
-                  // a stadium photo would use, so the header reads as one of the rows rather than as
-                  // a separate control. The flat list underneath it was every PICTURE, which quietly
-                  // hid every ground that has no photo.
-                  const natRow = (g, n, open) => (
-                    <div key={"nat" + (g.code || "_")} onClick={() => toggleVenueNation(g.code)}
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer",
-                                 borderTop: "1px solid var(--chrome-border)", marginTop: 4, background: open ? "var(--chrome-panel-66)" : "transparent" }}>
-                      <div style={{ width: 52, height: 30, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {g.nation ? <TeamCrest team={g.nation} size={23} /> : null}
-                      </div>
-                      <div style={{ ...sectionLabel, fontSize: 9, color: open ? "var(--ui-text)" : "var(--chrome-muted)", flex: 1, minWidth: 0 }}>{g.name}</div>
-                      <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted-66)" }}>{n}</span>
-                      <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", width: 8 }}>{open ? "\u25BE" : "\u25B8"}</span>
-                    </div>);
-                  const groundSub = (v) => v.owner || v.city
-                    ? <>{v.city && <CityLink name={v.city} />}{v.city && v.owner ? " · " : ""}{v.owner ? v.owner.name : ""}</> : null;
-                  const grounds = (skip, isSel, onPick) => venueIndex.flatMap(g => {
-                    const vs = g.venues.filter(v => !skip.has(v.stadium));
-                    if (!vs.length) return [];
-                    const open = openVenueNations.has(g.code);
-                    return [natRow(g, vs.length, open),
-                      ...(open ? vs.map(v => row("o" + v.stadium, isSel(v.stadium), () => onPick(v.stadium), v.stadium, groundSub(v), v.img)) : [])];
-                  });
-                  const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
-                  const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
-                  const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
-                  // A tournament fixture picks from what the tournament allows and writes to its
-                  // overrides — the rows are the standalone ones so the panel looks no different.
-                  if (lmLocked && lmVc) {
-                    // A fixture picks from what the tournament allows and writes to its overrides —
-                    // same rows as the standalone list, and every other ground stays on offer.
-                    const vc = lmVc, cat = (t) => teams.find(x => x.name === t?.name) || t;
-                    const setHA = (val) => setTHomeAdvOverrides(pv => ({ ...pv, [vc.venueKey]: val === null ? "off" : val }));
-                    const clearVenue = () => setTVenueOverrides(pv => { const nm = { ...pv }; delete nm[vc.overrideKey]; return nm; });
-                    const chosen = tVenueOverrides[vc.overrideKey] || "";
-                    // Two-legged ties do not host anywhere: either each side hosts a leg, or neither does.
-                    const twoLeg = tPendingPlayLive?.type === "ko" && tConfig.koLegs === 2 && !tPendingPlayLive.tp && tPendingPlayLive.bracket !== "gf" && tPendingPlayLive.bracket !== "reset";
-                    const head = vc.hostModeActive ? (<>
-                      {tHostVenuePool.length === 0 && <div style={{ padding: "10px 14px", fontSize: 10, color: "var(--ui-danger)" }}>No host venues configured</div>}
-                      {tHostVenuePool.map((v, i2) => row("host" + i2, (vc.venue?.stadium || "") === v.stadium,
-                        () => setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: v.stadium })), v.stadium,
-                        <>{v.city && <><CityLink name={v.city} /> &middot; </>}{chosen === v.stadium ? "Manually chosen" : "Automatic"}</>,
-                        STADIUM_IMAGES.includes(v.stadium) ? v.stadium : null))}
-                    </>) : twoLeg ? (<>
-                      {row("neutral", !vc.homeAdv && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
-                      {row("alt", !!vc.homeAdv && !chosen, () => { setTHomeAdvOverrides(pv => { const nm = { ...pv }; delete nm[vc.venueKey]; return nm; }); clearVenue(); },
-                        "Alternating", "Each team hosts one leg", null)}
-                    </>) : (<>
-                      {row("neutral", vc.homeAdv === null && !chosen, () => { setHA(null); clearVenue(); }, "Neutral Venue", "No advantage", null)}
-                      {[["home", cat(vc.homeTeam)], ["away", cat(vc.awayTeam)]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
-                        return row(side, vc.homeAdv === side && !chosen, () => { setHA(side); clearVenue(); }, st || `${t.name} (no ground listed)`,
-                          withPlace(t.name, t), STADIUM_IMAGES.includes(st) ? st : null); })}
-                    </>);
-                    // Any other ground can host the fixture, in every mode — picking one is a neutral
-                    // venue by definition, so it clears whatever advantage was set.
-                    const shown = new Set([...ownGrounds, ...(vc.hostModeActive ? tHostVenuePool.map(v => v.stadium) : [])]);
-                    return (<>
-                      {head}
-                      {grounds(shown, st => chosen === st,
-                        st => { setTVenueOverrides(pv => ({ ...pv, [vc.overrideKey]: st })); setHA(null); })}
-                    </>);
-                  }
-                  return (<>
-                    {row("neutral", lmHomeAdv === null && !named, pickNeutral, "Neutral Venue", null, null)}
-                    {/* Both sides' grounds are offered whether or not a picture exists for them —
-                        the advantage is the point, the backdrop is a bonus. */}
-                    {[["home", hT], ["away", aT]].map(([side, t]) => { const st = stripVenue(t?.stadium || ""); if (!t) return null;
-                      return row(side, lmHomeAdv === side, () => pickHost(side), st || `${t.name} (no ground listed)`,
-                        withPlace(side === "home" ? "Team 1" : "Team 2", t),
-                        STADIUM_IMAGES.includes(st) ? st : null); })}
-                    {grounds(ownGrounds, st => lmHomeAdv === null && named === st, pickGround)}
-                  </>);
-                })()}
-                </div>
-              </div>
-
-              <div style={{ ...panelBox, marginBottom: 0, flexShrink: 0 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties", true], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo", false], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs", false], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds", false]].map(([checked, onChange, label, sub, tOwned], i) => (
-                  <label key={i} onClick={() => { if (!(lmLocked && tOwned)) onChange(!checked); }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: lmLocked && tOwned ? "default" : "pointer", padding: "6px 0", opacity: lmLocked && tOwned ? 0.5 : 1 }}>
-                    <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
-                      <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: checked ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
-                      <div style={{ fontSize: 9, color: "var(--chrome-muted)", lineHeight: 1.2 }}>{sub}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--chrome-border)", ...(lmLocked ? { pointerEvents: "none", opacity: 0.5 } : null) }}>
-                <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "0.18em", textAlign: "center" }}>AGGREGATE SCORING</div>
-                <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--chrome-border)" }}>
-                  {[[false, "Off"], [true, "2nd Leg"]].map(([val, label]) => (
-                    <button key={label} onClick={() => { setLm2ndLeg(val); if (!val) setLmStartScore([0, 0]); }} className={lm2ndLeg === val ? "gbtn" : ""} style={{ flex: 1, padding: "8px 6px", background: lm2ndLeg === val ? "var(--chrome-brand)" : "transparent", color: lm2ndLeg === val ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: lm2ndLeg === val ? 600 : 400, transition: "all 0.15s", borderRight: !val ? "1px solid var(--chrome-muted-33)" : "none" }}>{label}</button>
-                  ))}
-                </div>
-                {lm2ndLeg && <div style={{ marginTop: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px" }}>
-                    <span style={{ fontSize: 11, color: "#888", flex: 1, textAlign: "right" }}>{teamById(lmH)?.name}</span>
-                    <input type="number" min="0" max="99" value={lmStartScore[0]} onChange={e => setLmStartScore(s => [Math.max(0, +e.target.value || 0), s[1]])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 14 }}>–</span>
-                    <input type="number" min="0" max="99" value={lmStartScore[1]} onChange={e => setLmStartScore(s => [s[0], Math.max(0, +e.target.value || 0)])} style={{ ...inp, width: 44, padding: "6px 4px", fontSize: 16, textAlign: "center", fontWeight: 600, ...mono }} />
-                    <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{teamById(lmA)?.name}</span>
-                  </div>
-                </div>}
-              </div>
-            {teams.length < 2 && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Need at least 2 teams to play.</div>}
-            {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", marginBottom: 12 }}>Fix skill values (25–100) before playing.</div>}
-              </div>
-            </div>
-            </div>
-          )}
+          {(lmIsSetup || tPendingPlayLive) && matchSetupScreen()}
           {lmMatch && !tPendingPlayLive && (<>
             {/* Two columns, the shape of a post-match report: the match and the people who played
                 it on the left, everything derived from it on the right.
@@ -11381,6 +11508,14 @@ export default function App() {
               {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </div></>)}
+          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Abstract Match Engine</PanelTitle></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 11, color: "var(--chrome-muted)", flex: 1, lineHeight: 1.6 }}>
+              The original non-positional simulation. Live Match runs the positional engine now, but
+              tournament fixtures are still scored by this one, so it stays until they are wired over.
+            </span>
+            <button onClick={() => setAbsim(true)} style={addBtn}>Open</button>
+          </div>
           <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -11456,7 +11591,7 @@ export default function App() {
         </div>)}
 
         {/* ═══ DOCS TAB ═══ */}
-        {tab === "me" && (() => {
+        {tab === "live" && (() => {
           const m = meRef.current, st = m?.s, out = m?.out;
           const minute = m ? meMinute(m.t) : 0;
           const pt = out ? (out.poss.home + out.poss.away) || 1 : 1;
@@ -11495,7 +11630,7 @@ export default function App() {
           const ev = out?.evt && out.evt.age < 5 ? out.evt : null;
           const EVC = { pass: "#ffffff", cut: "#ffd166", shot: "#ffd166", goal: "#5ee07a",
                         save: "#7fd4ff", miss: "#c8c8c8", block: "#ff9f43", lost: "#ff6b5a", foul: "#ff6b5a",
-                        tackle: "#ff7b3d", clear: "#a8e06a" };
+                        tackle: "#ff7b3d", clear: "#a8e06a", head: "#9ec5ff" };
           const evFade = ev ? Math.max(0.12, 1 - ev.age / 5) : 0;
           const stat = (label, h, a) => (
             <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11, borderBottom: "1px solid var(--chrome-border-33)" }}>
@@ -11504,153 +11639,384 @@ export default function App() {
               <span style={{ width: 46, fontWeight: 700 }}>{a}</span>
             </div>
           );
-          return (
-            <div>
-              <div style={{ ...panelBox, padding: 14, marginBottom: 14 }}>
-                <div style={sectionLabel}>POSITIONAL MATCH ENGINE &mdash; 22 players, quarter-second slices</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-                  <select value={meHomeId ?? ""} onChange={e => { setMeHomeId(e.target.value); meStop(); meRef.current = null; setMeFrame(f => f + 1); }} style={{ ...LS, minWidth: 190 }}>
-                    <option value="">Home team...</option>
-                    {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({showOvr(t.skill)})</option>)}
-                  </select>
-                  <select value={meAwayId ?? ""} onChange={e => { setMeAwayId(e.target.value); meStop(); meRef.current = null; setMeFrame(f => f + 1); }} style={{ ...LS, minWidth: 190 }}>
-                    <option value="">Away team...</option>
-                    {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({showOvr(t.skill)})</option>)}
-                  </select>
-                  <button onClick={meKick} style={addBtn}>Kick Off</button>
-                  <button onClick={() => meRunning ? meStop() : mePlay()} style={{ ...addBtn, background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none" }}>{meRunning ? "Pause" : "Play"}</button>
-                  <button onClick={() => meStep(ME_TPM)} style={addBtn}>+1 min</button>
-                  <label style={{ fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                    speed
-                    <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
-                           onChange={e => setMeSpeedIx(+e.target.value)} style={{ width: 130 }} />
-                    <span style={{ width: 34, fontWeight: 700 }}>{ME_SPEEDS[meSpeedIx]}x</span>
-                  </label>
+          // ONE PITCH, TWO FRAMES. The same drawing serves the panel in the setup screen and the
+          // full-viewport match view, so the two can never drift apart -- which they would, because
+          // every calibration change lands in here.
+          // The viewBox carries six metres of ground BELOW the touchline. Everything on the pitch is
+          // drawn at exactly the same coordinates it always was; the strip is only so that
+          // twenty-two men walking off at the interval are somewhere you can see them go rather than
+          // clipping at the line. Height is left to the caller: the setup panel wants it to grow
+          // with its width, the match view wants it to fill what is left under the strip.
+          const pitchSvg = (fill) => (
+  <svg viewBox="0 0 105 74" preserveAspectRatio="xMidYMid meet"
+       style={fill ? { width: "100%", height: "100%", display: "block", background: "#1d3a24" }
+                   : { width: "100%", display: "block", borderRadius: 6, background: "#1d3a24" }}>
+    <rect x={46} y={67.4} width={13} height={6.6} fill="rgba(0,0,0,.34)" />
+    <g stroke="rgba(255,255,255,.32)" strokeWidth={0.28} fill="none">
+      <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+      <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+      <circle cx={52.5} cy={34} r={9.15} />
+      <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+      <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+      <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+      <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+      <rect x={-0.9} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
+      <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
+    </g>
+    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear" || ev.k === "head") && (
+      <line x1={ev.x0} y1={ev.y0} x2={ev.x1} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
+            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.16 : 0.34}
+            strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
+    )}
+    {ev && ev.k !== "pass" && <circle cx={ev.x0} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
+                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
+    {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
+    {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
+    {st && (() => {
+      const bx = (st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al;
+      const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
+      // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc --
+      // a flat overhead view has no other way of saying "this one is over your head".
+      // Above about head height nobody but a keeper can touch it, and now you can see
+      // that before it lands rather than working it out from the ball not being taken.
+      const bz = (st.mePos._bpz ?? st.mePos.bz) + (st.mePos.bz - (st.mePos._bpz ?? st.mePos.bz)) * al;
+      const lift = Math.min(1, Math.max(0, bz - ME_CFG.ballR) / BALL_LIFT_H);
+      return <circle cx={bx} cy={by} r={R_BALL * (1 + lift * BALL_LIFT)} fill="#fff"
+                     stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />;
+    })()}
+  </svg>
+          );
+          // FULL VIEWPORT. A match is watched, not inspected through a 660 px panel, so once one
+          // kicks off the view leaves the app's fixed column entirely and fills the window: one strip
+          // on top carrying the scorebug, the controls and the tabs, and the pitch taking the rest.
+          // Everything else in the app keeps its fixed height, so this is the only place that has to
+          // know about a second layout mode.
+          if (m && meView !== "setup") {
+            const brk = m.brk ? (m.brk.kind === "ft" ? "FULL TIME" : "HALF TIME") : null;
+            const code = (t) => String(t?.code || t?.name || "").slice(0, 3).toUpperCase();
+            const venue = stripVenue(m.hT?.stadium || "") || "";
+            const tabBtn = (id, label) => (
+              <button key={id} onClick={() => setMePanel(mePanel === id ? null : id)}
+                style={{ ...smBtn, fontSize: 10, padding: "6px 13px", cursor: "pointer",
+                         background: mePanel === id ? "var(--chrome-brand)" : "transparent",
+                         color: mePanel === id ? "var(--ui-on-accent)" : "var(--chrome-muted)",
+                         border: `1px solid ${mePanel === id ? "var(--chrome-brand)" : "var(--chrome-border)"}` }}>
+                {label}</button>
+            );
+            const bigScore = { fontSize: 23, fontWeight: 800, letterSpacing: ".05em", ...mono };
+            return (
+              <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
+                            display: "flex", flexDirection: "column" }}>
+                <div style={{ flexShrink: 0, height: 54, display: "flex", alignItems: "center", gap: 18,
+                              padding: "0 16px", background: "var(--chrome-panel)",
+                              borderBottom: "1px solid var(--chrome-border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                    <TeamCrest team={m.hT} size={26} />
+                    <span style={{ fontSize: 13, fontWeight: 700, ...mono }}>{code(m.hT)}</span>
+                    <span style={bigScore}>{out.goals.home}&ndash;{out.goals.away}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, ...mono }}>{code(m.aT)}</span>
+                    <TeamCrest team={m.aT} size={26} />
+                    <span style={{ fontSize: 12, fontWeight: 700, marginLeft: 10, minWidth: 78, ...mono,
+                                   color: brk ? "var(--ui-warn)" : "var(--chrome-brand)" }}>
+                      {brk || `${minute}'`}</span>
+                    {venue && <span style={{ fontSize: 10, color: "var(--chrome-muted)", whiteSpace: "nowrap",
+                                             overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>{venue}</span>}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <button onClick={() => meRunning ? meStop() : mePlay()}
+                      style={{ ...addBtn, minWidth: 74, border: "none", color: "var(--ui-on-accent)",
+                               background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
+                      {meRunning ? "Pause" : "Start"}</button>
+                    <button onClick={meSimEnd} style={addBtn} disabled={!!m.ftDone}>Sim to End</button>
+                    <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
+                             onChange={e => setMeSpeedIx(+e.target.value)} style={{ width: 96 }} />
+                      <span style={{ width: 30, fontWeight: 700, ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
+                    </label>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }} />
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    {tabBtn("stats", "Stats")}
+                    {tabBtn("subs", "Substitutions")}
+                    {tabBtn("tactics", "Tactics")}
+                    {m.ftDone
+                      ? <button onClick={() => { meStop(); meRef.current = null; setMeView("setup");
+                                                 setMePanel(null); setMeFrame(f => f + 1); }}
+                          style={{ ...smBtn, fontSize: 10, padding: "6px 11px", cursor: "pointer",
+                                   background: "var(--chrome-brand)", color: "var(--ui-on-accent)",
+                                   border: "none" }}>New Match</button>
+                      : <button onClick={() => { meStop(); setMeView("setup"); setMePanel(null); }}
+                          style={{ ...smBtn, fontSize: 10, padding: "6px 11px", cursor: "pointer" }}>Close</button>}
+                  </div>
                 </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-                <div style={{ ...panelBox, padding: 12, flex: "1 1 620px", minWidth: 380 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>{m ? m.hT.name : "\u2014"}</span>
-                    <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: ".06em" }}>
-                      {out ? `${out.goals.home} - ${out.goals.away}` : "0 - 0"}
-                      <span style={{ fontSize: 12, color: "var(--chrome-muted)", marginLeft: 10 }}>{minute}&apos;</span>
-                    </span>
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>{m ? m.aT.name : "\u2014"}</span>
-                  </div>
-                  <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", borderRadius: 6, background: "#1d3a24" }}>
-                    <g stroke="rgba(255,255,255,.32)" strokeWidth={0.28} fill="none">
-                      <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-                      <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-                      <circle cx={52.5} cy={34} r={9.15} />
-                      <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-                      <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-                      <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-                      <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-                      <rect x={-0.9} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
-                      <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
-                    </g>
-                    {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear") && (
-                      <line x1={ev.x0} y1={ev.y0} x2={ev.x1} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
-                            strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.16 : 0.34}
-                            strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
-                    )}
-                    {ev && ev.k !== "pass" && <circle cx={ev.x0} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
-                                   stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
-                    {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
-                    {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
-                    {st && (() => {
-                      const bx = (st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al;
-                      const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
-                      // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc --
-                      // a flat overhead view has no other way of saying "this one is over your head".
-                      // Above about head height nobody but a keeper can touch it, and now you can see
-                      // that before it lands rather than working it out from the ball not being taken.
-                      const bz = (st.mePos._bpz ?? st.mePos.bz) + (st.mePos.bz - (st.mePos._bpz ?? st.mePos.bz)) * al;
-                      const lift = Math.min(1, Math.max(0, bz - ME_CFG.ballR) / BALL_LIFT_H);
-                      return <circle cx={bx} cy={by} r={R_BALL * (1 + lift * BALL_LIFT)} fill="#fff"
-                                     stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />;
-                    })()}
-                  </svg>
-                  <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 6 }}>
-                    Home attacks right. Ball in white, drawn at its real 22 cm on the ground and
-                    swelling as it climbs; players at their real 56 cm across, so what you see is
-                    exactly what collides.
-                    1x is real time &mdash; a 90 minute match takes 90 minutes. G/D/M/F on each dot.
-                  </div>
-                </div>
-
-                <div style={{ ...panelBox, padding: 12, flex: "0 1 280px", minWidth: 240 }}>
-                  <div style={sectionLabel}>MATCH STATS</div>
-                  <div style={{ marginTop: 8 }}>
-                    {stat("Possession", out ? Math.round(100 * out.poss.home / pt) + "%" : "-", out ? Math.round(100 * out.poss.away / pt) + "%" : "-")}
-                    {stat("Shots", out ? out.shots.home : 0, out ? out.shots.away : 0)}
-                    {stat("On target", out ? out.onTarget.home : 0, out ? out.onTarget.away : 0)}
-                    {stat("Saves", out ? out.saves.home : 0, out ? out.saves.away : 0)}
-                    {stat("Corners", out ? out.corners.home : 0, out ? out.corners.away : 0)}
-                    {stat("Fouls", out ? out.fouls.home : 0, out ? out.fouls.away : 0)}
-                  </div>
-                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.8 }}>
-                    <div>Passes {out ? out.passes : 0} at {out && out.passes ? Math.round(100 * out.passOk / out.passes) : 0}%</div>
-                    <div>Carries {out ? out.carries : 0} &middot; tackles {out ? out.tackles : 0}</div>
-                    <div>Blocked shots {out ? out.blocked : 0} &middot; clearances {out ? out.clears : 0}</div>
-                    <div>Ball in play {out ? Math.round(out.inplay / ME_TPM) : 0} of {ME_MATCH_TICKS / ME_TPM} real min &mdash; clock shows {minute}&apos;</div>
-                  </div>
-                  <div style={{ ...sectionLabel, marginTop: 14 }}>WHAT HAPPENED</div>
-                  <div style={{ marginTop: 6, maxHeight: 210, overflowY: "auto", fontSize: 11, lineHeight: 1.65 }}>
-                    {(out?.feed || []).length === 0 && <div style={{ color: "var(--chrome-muted)" }}>Nothing yet.</div>}
-                    {(out?.feed || []).map((f, i) => (
-                      <div key={i} style={{ display: "flex", gap: 6, color: f.k === "goal" ? "#5ee07a" : "var(--chrome-muted)", fontWeight: f.k === "goal" ? 700 : 400 }}>
-                        <span style={{ width: 22, textAlign: "right", opacity: .7 }}>{f.min}&apos;</span>
-                        <span style={{ width: 6, color: f.side === "home" ? "#4da3ff" : "#ff6b5a" }}>&#9679;</span>
-                        <span style={{ flex: 1 }}>{f.txt}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ ...panelBox, padding: 14, marginTop: 14 }}>
-                <div style={sectionLabel}>CALIBRATION</div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button onClick={() => meRunBatch(12, false)} style={addBtn}>Run 12 even matches</button>
-                  <button onClick={() => meRunBatch(8, true)} style={addBtn}>Rating-gap test</button>
-                  <span style={{ fontSize: 10, color: "var(--chrome-muted)", alignSelf: "center" }}>
-                    Runs on uniform squads, so the only difference is the number under test. Freezes the tab for a few seconds.
-                  </span>
-                </div>
-                {meBatch && (
-                  <div style={{ overflowX: "auto", marginTop: 12 }}>
-                    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11 }}>
-                      <thead><tr>
-                        {["", "Goals H/A", "GD", "Shots H/A", "Poss", "Passes", "Pass%", "Corners", "Fouls", "In play", "End stam"].map(h =>
-                          <th key={h} style={thCell}>{h}</th>)}
-                      </tr></thead>
-                      <tbody>
-                        {meBatch.map(r => (
-                          <tr key={r.label}>
-                            <td style={{ ...tdCell, fontWeight: 700 }}>{r.label}</td>
-                            <td style={tdCell}>{r.goalsH.toFixed(2)} / {r.goalsA.toFixed(2)}</td>
-                            <td style={{ ...tdCell, fontWeight: 700 }}>{(r.goalsH - r.goalsA).toFixed(2)}</td>
-                            <td style={tdCell}>{r.shotsH.toFixed(1)} / {r.shotsA.toFixed(1)}</td>
-                            <td style={tdCell}>{r.poss.toFixed(0)}%</td>
-                            <td style={tdCell}>{r.passes.toFixed(0)}</td>
-                            <td style={tdCell}>{r.passPct.toFixed(0)}%</td>
-                            <td style={tdCell}>{r.corners.toFixed(1)}</td>
-                            <td style={tdCell}>{r.fouls.toFixed(1)}</td>
-                            <td style={tdCell}>{r.inplay.toFixed(0)}m</td>
-                            <td style={tdCell}>{r.stam.toFixed(0)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8 }}>
-                      Real football, per side: 13 shots, 1.4 goals, 80% passing, 5 corners, 11 fouls, 57 min in play.
-                      Old engine goal difference for reference: +8 was 1.07, +16 was 1.98, +29 was 3.31.
+                <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+                  {pitchSvg(true)}
+                  {mePanel && (
+                    <div style={{ position: "absolute", inset: 0, background: "var(--chrome-bg)",
+                                  overflowY: "auto", padding: "18px 22px" }}>
+                      {mePanel === "stats" && (() => {
+                        const pt = (out.poss.home + out.poss.away) || 1;
+                        const pc = (v) => Math.round(100 * v / pt) + "%";
+                        const line = (label, h, a) => (
+                          <div key={label} style={{ display: "flex", alignItems: "center", padding: "6px 0",
+                                                    borderBottom: "1px solid var(--chrome-border-33)", fontSize: 12 }}>
+                            <span style={{ width: 70, textAlign: "right", fontWeight: 700, ...mono }}>{h}</span>
+                            <span style={{ flex: 1, textAlign: "center", color: "var(--chrome-muted)",
+                                           letterSpacing: ".06em", fontSize: 10, textTransform: "uppercase" }}>{label}</span>
+                            <span style={{ width: 70, fontWeight: 700, ...mono }}>{a}</span>
+                          </div>);
+                        const squad = (side) => [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])];
+                        const men = (side) => (
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <thead><tr>
+                              {["", "Player", "Rat", "G", "A"].map((h, i) =>
+                                <th key={i} style={{ ...thCell, textAlign: i > 1 ? "center" : "left" }}>{h}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {squad(side).map((q, i) => (
+                                <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                                  <td style={{ ...tdCell, width: 30, color: POS_CLR[q.pos] || "var(--chrome-muted)",
+                                               fontSize: 9, fontWeight: 700, ...mono }}>{q.pos}</td>
+                                  <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden",
+                                               textOverflow: "ellipsis" }}>{q.name}
+                                    {q.rc ? <span style={{ color: "var(--ui-danger)", marginLeft: 5 }}>&#9632;</span>
+                                          : q.yc ? <span style={{ color: "var(--ui-warn)", marginLeft: 5 }}>&#9632;</span> : null}</td>
+                                  <td style={{ ...tdCell, textAlign: "center", ...mono, fontWeight: 700,
+                                               color: ovrColor((q.rating ?? 6.5) * 10) }}>{(q.rating ?? 6.5).toFixed(2)}</td>
+                                  <td style={{ ...tdCell, textAlign: "center", ...mono }}>{q.goals || ""}</td>
+                                  <td style={{ ...tdCell, textAlign: "center", ...mono }}>{q.assists || ""}</td>
+                                </tr>))}
+                            </tbody>
+                          </table>);
+                        return (<>
+                          {/* The scoreboard spans the screen: this panel is the match report, and it
+                              is what gets screenshotted. */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
+                                        gap: 26, padding: "6px 0 20px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+                              <span style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
+                                             textOverflow: "ellipsis" }}>{m.hT?.name}</span>
+                              <TeamCrest team={m.hT} size={42} />
+                            </div>
+                            <div style={{ textAlign: "center", flexShrink: 0 }}>
+                              <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: ".04em", ...mono }}>
+                                {out.goals.home}&ndash;{out.goals.away}</div>
+                              <div style={{ fontSize: 10, letterSpacing: ".18em", color: "var(--chrome-muted)" }}>
+                                {m.ftDone ? "FULL TIME" : `${minute}'`}</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                              <TeamCrest team={m.aT} size={42} />
+                              <span style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
+                                             textOverflow: "ellipsis" }}>{m.aT?.name}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,340px) minmax(0,1fr)",
+                                        gap: 24, alignItems: "start" }}>
+                            <div>{men("home")}</div>
+                            <div>
+                              {line("Possession", pc(out.poss.home), pc(out.poss.away))}
+                              {line("Shots", out.shots.home, out.shots.away)}
+                              {line("On target", out.onTarget.home, out.onTarget.away)}
+                              {line("Saves", out.saves.home, out.saves.away)}
+                              {line("Corners", out.corners.home, out.corners.away)}
+                              {line("Fouls", out.fouls.home, out.fouls.away)}
+                              {out.offside && line("Offsides", out.offside.home, out.offside.away)}
+                              <div style={{ marginTop: 14, fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.9 }}>
+                                <div>Passes {out.passes} at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}%</div>
+                                <div>Carries {out.carries} &middot; clearances {out.clears}</div>
+                                <div>Blocked shots {out.blocked}</div>
+                              </div>
+                            </div>
+                            <div>{men("away")}</div>
+                          </div>
+                        </>);
+                      })()}
+                      {mePanel === "subs" && (() => {
+                        const q = mePending.current;
+                        const pick = (side, kind, idx) => {
+                          const cur = meSubPick.current;
+                          if (kind === "off") meSubPick.current = { side, outIdx: idx };
+                          else if (cur && cur.side === side) {
+                            const queued = q.subs.filter(x => x.side === side).length;
+                            if ((m.s.subs?.[side] || 0) + queued < subLimit(m.s, side))
+                              q.subs.push({ side, outIdx: cur.outIdx, benchIdx: idx });
+                            meSubPick.current = null;
+                          }
+                          setMeFrame(f => f + 1);
+                        };
+                        const col = (side) => {
+                          const t = side === "home" ? m.hT : m.aT;
+                          const on = m.s.players[side] || [], bn = m.s.bench?.[side] || [];
+                          const sel = meSubPick.current?.side === side ? meSubPick.current.outIdx : -1;
+                          const used = (m.s.subs?.[side] || 0), capN = subLimit(m.s, side);
+                          const row = (p, i, kind) => !p ? null : (
+                            <div key={kind + i} onClick={() => !p.off && pick(side, kind, i)}
+                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px",
+                                       borderRadius: 5, cursor: p.off ? "default" : "pointer", fontSize: 11,
+                                       opacity: p.off ? 0.35 : 1,
+                                       background: kind === "off" && sel === i ? "var(--chrome-brand-11)" : "transparent" }}>
+                              <PlayerShot name={p.fullName || p.name} size={22} />
+                              <span style={{ width: 30, color: POS_CLR[p.pos] || "var(--chrome-muted)",
+                                             fontSize: 9, fontWeight: 700, ...mono }}>{p.pos}</span>
+                              <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden",
+                                             textOverflow: "ellipsis" }}>{p.name}</span>
+                              <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>
+                                {Math.round(p.stamina ?? 100)}%</span>
+                              <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
+                            </div>);
+                          return (
+                            <div key={side} style={{ minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+                                <TeamCrest team={t} size={22} />
+                                <span style={{ fontSize: 12, fontWeight: 700 }}>{t?.name}</span>
+                              </div>
+                              <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 4, display: "flex",
+                                            justifyContent: "space-between" }}>
+                                <span>ON THE PITCH</span>
+                                <span style={{ ...mono, letterSpacing: 0,
+                                               color: used >= capN ? "var(--ui-danger)" : "var(--chrome-muted)" }}>
+                                  {used}/{capN}</span>
+                              </div>
+                              {on.map((p, i) => row(p, i, "off"))}
+                              <div style={{ ...sectionLabel, fontSize: 9, margin: "12px 0 4px" }}>BENCH</div>
+                              {bn.filter(Boolean).length === 0 && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 8px" }}>
+                                {bn.length ? "Bench used up." : "No bench in this squad."}</div>}
+                              {/* Index preserved: the nulls are the men already brought on, and
+                                  benchIdx has to keep pointing at the slot meSub will read. */}
+                              {bn.map((p, i) => row(p, i, "on"))}
+                            </div>);
+                        };
+                        return (<>
+                          <div style={sectionLabel}>SUBSTITUTIONS</div>
+                          <div style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "6px 0 16px" }}>
+                            Pick a man on the pitch, then his replacement. Made at the next stoppage.
+                            {q.subs.length > 0 && <b style={{ color: "var(--chrome-brand)", marginLeft: 8 }}>
+                              {q.subs.length} queued</b>}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                            {col("home")}{col("away")}
+                          </div>
+                        </>);
+                      })()}
+                      {mePanel === "tactics" && (() => {
+                        const grp = ["possession", "transition", "defense"];
+                        const col = (side) => {
+                          const t = side === "home" ? m.hT : m.aT;
+                          const live = { ...(m.s.strategy?.[side] || {}), ...(mePending.current.strategy[side] || {}) };
+                          return (
+                            <div key={side} style={{ minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+                                <TeamCrest team={t} size={22} />
+                                <span style={{ fontSize: 12, fontWeight: 700 }}>{t?.name}</span>
+                              </div>
+                              {grp.map(g => (
+                                <div key={g} style={{ marginBottom: 14 }}>
+                                  <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 6 }}>{g}</div>
+                                  {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === g).map(([key, v]) => (
+                                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                                      <span style={{ width: 74, fontSize: 10, color: "var(--chrome-muted)" }}>{v.name}</span>
+                                      <select value={live[key] ?? 0}
+                                        onChange={e => { const st2 = mePending.current.strategy;
+                                                         st2[side] = { ...(st2[side] || {}), [key]: +e.target.value };
+                                                         setMeFrame(f => f + 1); }}
+                                        style={{ ...LS, flex: 1, minWidth: 0, fontSize: 10, padding: "4px 8px" }}>
+                                        {v.vals.map(([val, lab]) => <option key={val} value={val}>{lab}</option>)}
+                                      </select>
+                                    </div>))}
+                                </div>))}
+                            </div>);
+                        };
+                        const pend = Object.keys(mePending.current.strategy).length;
+                        return (<>
+                          <div style={sectionLabel}>TACTICS</div>
+                          <div style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "6px 0 16px" }}>
+                            Applied at the next stoppage, not mid-move.
+                            {pend > 0 && <b style={{ color: "var(--chrome-brand)", marginLeft: 8 }}>changes queued</b>}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                            {col("home")}{col("away")}
+                          </div>
+                        </>);
+                      })()}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+            );
+          }
+          // PRE-MATCH. Both sides drawn exactly as the expanded team view draws them, half the
+          // screen each, and the only thing on this screen is the fixture you are about to watch.
+          if (meView === "prematch") {
+            const hT = teamById(lmH), aT = teamById(lmA);
+            return (
+              <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
+                            display: "flex", flexDirection: "column", overflowY: "auto" }}>
+                <div style={{ flexShrink: 0, height: 54, display: "flex", alignItems: "center", gap: 14,
+                              padding: "0 18px", background: "var(--chrome-panel)",
+                              borderBottom: "1px solid var(--chrome-border)" }}>
+                  <span style={sectionLabel}>PRE-MATCH</span>
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => setMeView("setup")} style={smBtn}>Back</button>
+                  <button onClick={meKick} style={{ ...addBtn, border: "none", color: "var(--ui-on-accent)",
+                                                    background: "var(--chrome-brand)" }}>&#9917; Kick Off</button>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, display: "grid",
+                              gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 20, padding: 20 }}>
+                  {[[hT, "HOME"], [aT, "AWAY"]].map(([t, label], k) => {
+                    if (!t) return <div key={k} />;
+                    const xi = meSide(t);
+                    const avg = xi.length ? xi.reduce((x, q) => x + (q.ovr ?? t.skill ?? 0), 0) / xi.length : t.skill;
+                    return (
+                      <div key={k} style={{ ...panelBox, padding: "16px 8px 10px", marginBottom: 0, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 16px 12px", minWidth: 0 }}>
+                          <TeamCrest team={t} size={34} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
+                                          textOverflow: "ellipsis" }}>{t.name}</div>
+                            <div style={{ fontSize: 9, letterSpacing: ".16em", color: "var(--chrome-muted)" }}>
+                              {label} &middot; {t.formation || "4-3-3"}</div>
+                          </div>
+                          <span style={{ ...ovrBlock(avg), ...mono, flexShrink: 0 }}>{showOvr(avg)}</span>
+                        </div>
+                        {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), t.league === "Avium International")}
+                      </div>);
+                  })}
+                </div>
+              </div>);
+          }
+          return (
+            <div style={{ height: ROSTER_PANEL_H, display: "flex", flexDirection: "column",
+                          minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+              {/* The same three controls the abstract engine has, in the same shape and the same
+                  scBtn: Auto, the primary action, Sim to End. The positional flow puts a pre-match
+                  screen between choosing a fixture and kicking off, so the primary is Start Match
+                  until there is a match and Resume after -- but Auto and Sim to End go straight
+                  through, because wanting to watch it play and wanting the scoreline are both
+                  answers to "skip the team sheets". */}
+              <div style={{ marginBottom: 12, flexShrink: 0 }}>
+                {(() => {
+                  const notReady = !teamById(lmH) || !teamById(lmA);
+                  const m0 = meRef.current;
+                  const done = !!m0?.ftDone;
+                  const go = (then) => { if (notReady) return;
+                                         if (!m0 || done) { meKick(); } else { setMeView("live"); }
+                                         setTimeout(then, 0); };
+                  const b = (label, onClick, dis, extra) => (
+                    <button onClick={onClick} disabled={dis} className="tick-btn"
+                      style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px",
+                               opacity: dis ? 0.4 : 1, cursor: dis ? "default" : "pointer", ...extra }}>
+                      {label}</button>);
+                  return (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {b(!m0 || done ? "\u26BD Start Match" : "\u25B6 Resume",
+                         () => { if (!m0 || done) setMeView("prematch"); else setMeView("live"); }, notReady)}
+                      {b("\u23E9 Sim to End", () => go(meSimEnd), notReady)}
+                    </div>);
+                })()}
+              </div>
+              {/* The abstract engine's own fixture screen, shared rather than copied. */}
+              <div style={{ flex: 1, minHeight: 430, display: "flex", flexDirection: "column" }}>
+                {matchSetupScreen()}
               </div>
             </div>
           );
