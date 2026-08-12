@@ -45,8 +45,8 @@ function play([hT, aT, seed]) {
   st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) },
                   away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
   st.possession = "home";
-  meInit(st, pitchSlots);
   const out = freshOut(), rng = new RNG(seed);
+  meInit(st, pitchSlots, rng);           // the rng must exist first: meInit draws the toss from it
   for (let t = 0; t < ME_MATCH_TICKS + 400; t++) {
     meTick(st, rng, out);
     if (t >= ME_MATCH_TICKS + meAdded(st)) break;

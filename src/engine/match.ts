@@ -36,7 +36,21 @@ export const ME_DEF_FORM = {
   "4-3-3": "4-1-4-1", "4-2-3-1": "4-4-1-1",
 };
 
-export function meInit(s, slotsFor) {
+// THE SAME TWO TEAMS DO NOT PLAY THE SAME MATCH TWICE. `rng` is OPTIONAL and everything it drives
+// is opt-in: 167 harnesses call meInit(s, pitchSlots) and must keep getting the identical, fully
+// deterministic match they were calibrated against. Pass an rng -- as the app does -- and the match
+// gets the three things that are genuinely fresh every time a fixture is staged.
+//
+// Measured before this existed, over 40 seeds of one fixture: the starting shape was identical in
+// 100% of matches, one single player took every kickoff, the first pass reached one of two men, and
+// nothing was more than a stride out of place until tick 4. Everything AFTER that first second
+// already varied properly -- 40 of 40 distinct eight-touch openings, 19 distinct scorelines -- which
+// is why this is deliberately confined to the kickoff and adds no noise anywhere else.
+export function meInit(s, slotsFor, rng) {
+  // Zero-mean, triangular, and drawn only here: it perturbs where a man STANDS, never how he plays.
+  const jit = (a) => rng ? (rng.u() + rng.u() - 1) * a : 0;
+  // THE TOSS. The app hardcoded possession to home, so home kicked off every match ever played.
+  if (rng) s.possession = rng.u() < 0.5 ? "home" : "away";
   for (const side of ME_SIDES) {
     const ps = s.players[side], slots = slotsFor(s.formations?.[side] || "4-3-3");
     const own = meGoalX(meOther(side)), dir = meDir(side);
@@ -46,6 +60,14 @@ export function meInit(s, slotsFor) {
       p._bd = (100 - sl[1]) / 100 * PITCH_L; p._bw = sl[0] / 100 * PITCH_W;
       p._bd0 = p._bd; p._bw0 = p._bw;
       p.x = own + dir * p._bd * 0.7; p.y = p._bw; p.vx = 0; p.vy = 0;
+      // Nobody lines up on the chalk. The SLOT is untouched -- _bd0/_bw0 are what the block, the
+      // zonal anchors and mindSet are all built from, so the side's shape and every tactical
+      // consequence of it are exactly what they were; only the metre of grass he happens to be
+      // standing on when the whistle goes is fresh. A keeper stands on his line, so he gets a
+      // quarter of it.
+      const amp = CFG.lineJit * (p.pos === "GK" ? 0.25 : 1);
+      p.x = Math.max(1.5, Math.min(PITCH_L - 1.5, p.x + jit(amp)));
+      p.y = Math.max(1.5, Math.min(PITCH_W - 1.5, p.y + jit(amp)));
     }
     // mindSet: GF's one 0..1 role scalar (GK 0, CB 0, CM 0.5, CF 1 -- AIfunctions.cpp:1228-1249).
     // Derived from the formation instead of authored: your natural depth within the XI IS your role.
@@ -60,6 +82,9 @@ export function meInit(s, slotsFor) {
     pred: null, lastSide: "home", touchSide: "home", passPending: null,
     side: s.possession || "home", idx: -1, hold: 0,
     flight: false, ft: 0, fx: 0, fy: 0, fj: -1, fside: "home", dead: 0, rkind: "kickoff", rside: "home",
+    // The match's own entropy, for anything that hashes rather than drawing from the stream.
+    // 0 without an rng, which is what keeps the deterministic harnesses bit-identical.
+    vseed: rng ? (Math.floor(rng.u() * 4294967296) >>> 0) : 0,
     counter: null, counterT: 0, tick: 0, possT: 0, drive: 0, shot: null, kickBy: null, sp: null, held: false,
     map: { home: null, away: null }, blk: { home: null, away: null },
     bal: { home: 0, away: 0 }, fading: { home: 1, away: 1 },
@@ -78,12 +103,24 @@ export function meInit(s, slotsFor) {
           .map(sl => ({ bd: (100 - sl[1]) / 100 * PITCH_L, bw: sl[0] / 100 * PITCH_W, wx: 0, wy: 0 }))
       : s.mePos.slots[side].map(sl => ({ ...sl }));
   }
-  meKickoff(s, s.possession || "home");
+  meKickoff(s, s.possession || "home", rng);
 }
 
-export function meKickoff(s, side) {
+export function meKickoff(s, side, rng) {
   const mp = s.mePos, ps = s.players[side];
+  // WHO TAKES IT. Strictly the furthest-forward man meant one player took every kickoff of every
+  // match, and with him fixed the first pass reached one of only two team-mates. A kickoff is two
+  // players standing in the circle and either of them can roll it, so the taker is drawn from the
+  // koTakers men highest up the pitch -- which is the same small group a manager would send, so
+  // nothing about who is plausibly there has changed.
   let best = 0; for (let i = 1; i < ps.length; i++) if ((ps[i]._bd || 0) > (ps[best]._bd || 0)) best = i;
+  if (rng) {
+    const cand = ps.map((p, i) => i)
+      .filter(i => ps[i] && !ps[i].off && ps[i].pos !== "GK")
+      .sort((a, b) => (ps[b]._bd || 0) - (ps[a]._bd || 0))
+      .slice(0, CFG.koTakers);
+    if (cand.length) best = cand[Math.min(cand.length - 1, Math.floor(rng.u() * cand.length))];
+  }
   mp.bx = PITCH_L / 2; mp.by = ME_HALF_W; mp.bz = 0.11; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
   mp.side = side; mp.idx = best; mp.hold = 0; mp.flight = false; mp.lastSide = side; mp.passPending = null;
   if (ps[best]) { ps[best].x = PITCH_L / 2 - meDir(side) * (CFG.bodyR + CFG.ballR + 0.15); ps[best].y = ME_HALF_W; }

@@ -30,9 +30,14 @@ const clampY = (y) => Math.max(0.6, Math.min(PITCH_W - 0.6, y));
 // three corner routines is not worth the churn -- the tick and the spot are already downstream of
 // the seeded stream, so hashing them varies the shape between restarts and repeats identically on
 // a replay of the same seed.
-const spSeed = (tick, x, y) => {
+// ...and the MATCH is in the hash too. Without vseed this is a pure function of the tick and the
+// spot, so any restart taken on the same tick from the same place drew the same routine, the same
+// jitter and the same wall in every match ever played, however the match rng was seeded. vseed is 0
+// when meInit was given no rng, which keeps every deterministic harness bit-identical.
+const spSeed = (vseed, tick, x, y) => {
   let h = (Math.imul(tick, 2654435761) ^ Math.imul(Math.round(x * 8), 40503)
-                                      ^ Math.imul(Math.round(y * 8), 22273)) >>> 0;
+                                      ^ Math.imul(Math.round(y * 8), 22273)
+                                      ^ Math.imul(vseed | 0, 2246822519)) >>> 0;
   h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
   return h >>> 0;
 };
@@ -130,7 +135,7 @@ export function meSPBegin(s, kind, side, out) {
       }
     }
   }
-  mp.sp = { kind, side, x, y, ti, t: 0, quick, fx, fy, ft: 0, seed: spSeed(mp.tick, x, y) };
+  mp.sp = { kind, side, x, y, ti, t: 0, quick, fx, fy, ft: 0, seed: spSeed(mp.vseed | 0, mp.tick, x, y) };
   // Which routine this one is. Three of each, so a corner is not the same corner every time.
   mp.sp.v = Math.floor(spRnd(mp.sp, 0) * 3);
   // ...and it is still FETCHED. Quick used to mean the ball blinked onto the spot, which was fine

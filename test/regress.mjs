@@ -31,8 +31,13 @@ for (let seed = 1; seed <= N; seed++) {
   s.players.away = as.filter(p => !p.bench); s.bench.away = as.filter(p => p.bench);
   s.formations = { home: "4-3-3", away: "4-3-3" };
   s.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
-  s.possession = "home"; meInit(s, pitchSlots);
+  s.possession = "home";
+  // VARY=1 runs the engine the way the APP runs it -- meInit given the match rng, so the toss, the
+  // line-up jitter and the kickoff taker all vary. Off by default so this suite keeps measuring the
+  // same deterministic match it has always been calibrated against; both readings matter, and a
+  // divergence between them is the variation shifting an average, which it must not do.
   const out = blank(), rng = new RNG(seed);
+  meInit(s, pitchSlots, process.env.VARY ? rng : undefined);
   let kicker = null, lastHolder = null, lastDir = null, holdRun = 0;
   let prevRunners = 0;
 

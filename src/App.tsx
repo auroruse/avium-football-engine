@@ -5374,8 +5374,13 @@ export default function App() {
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
     st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
     st.possession = "home";
-    meInit(st, pitchSlots);
-    return { s: st, out: meFreshOut(), rng: new RNG((Date.now() & 0x7ffffff) || 7), t: 0, hT, aT };
+    // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
+    // the twenty-two actually line up, and which of the forward men rolls it. Without it every match
+    // between the same two teams opened identically -- same shape to the millimetre, same taker,
+    // same first pass -- for a full second before anything differed.
+    const rng = new RNG((Date.now() & 0x7ffffff) || 7);
+    meInit(st, pitchSlots, rng);
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT };
   };
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the

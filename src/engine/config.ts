@@ -1084,6 +1084,12 @@ Object.assign(CFG, {
   // The finisher term in meShotP: base + shoot/99 * skill. Anchored at a 75-rated striker
   // (shoot ~0.85 on /99): base + 0.85 * skill = 1.28, the value everything was calibrated against.
   shotFinBase: 0.60, shotFinSkill: 0.80,   // swept 0.18-0.80: no effect on the band gradient
+  // HOW A FIXTURE VARIES BETWEEN STAGINGS. lineJit is the most a man's kickoff position may sit off
+  // his formation slot, in metres, drawn triangular so the typical offset is about a third of it --
+  // his SLOT is untouched, so the shape and everything built on it are unchanged. koTakers is how
+  // many of the men highest up the pitch might be the one who rolls it. Both are inert unless meInit
+  // is given an rng.
+  lineJit: 2.0, koTakers: 3,
   // GF's `panic`: how much wider than the real frame a POOR keeper behaves as though his goal is,
   // as a fraction. It drags him toward the middle and concedes the near post, which is what bad
   // goalkeeping looks like from the stand. 0 makes every keeper position identically.
