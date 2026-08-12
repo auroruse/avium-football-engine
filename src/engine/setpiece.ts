@@ -141,8 +141,10 @@ export function meSPBegin(s, kind, side, out) {
   // ...and it is still FETCHED. Quick used to mean the ball blinked onto the spot, which was fine
   // while only free kicks could be quick -- spotFor puts a free kick where the ball already is, so
   // there was nothing to move. A goal kick's spot is the six-yard box and the ball is behind the
-  // goal line, so the same shortcut would put the snap straight back. The fetch is capped at minT
-  // either way, and a quick restart's minT is spMinT, so it is simply a fast one.
+  // goal line, so the same shortcut would put the snap straight back. The size below is PROVISIONAL:
+  // minT is not known until meDead, which caps it with ft = min(ft, minT) so the ball can never
+  // still be in transit when the restart becomes takeable. Do not read this line as the final
+  // duration -- it was written as though the cap lived here, and it does not.
   mp.sp.ft = Math.min(CFG.spFetchMax,
     CFG.spFetchMin + Math.round(Math.hypot(x - fx, y - fy) * CFG.spFetchPerM));
   meSPFetch(mp);

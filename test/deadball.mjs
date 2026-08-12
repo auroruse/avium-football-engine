@@ -40,6 +40,7 @@ function run(seed) {
   for (let t = 0; t < ME_MATCH_TICKS + 400; t++) {
     const mp = s.mePos, wasSp = mp.sp;
     const bx0 = mp.bx, by0 = mp.by;
+    const st0 = wasSp ? { t: wasSp.t, ft: wasSp.ft } : null;
     meTick(s, rng, out);
     const sp = mp.sp;
     if (sp && sp !== wasSp) {                                    // a restart has just begun
@@ -57,9 +58,17 @@ function run(seed) {
     }
     if (watch && sp !== watch) {                                 // ...and has just been taken
       A.taken++;
-      // The ball has to be ON the spot by now: meSPTake strikes from sp.x/sp.y, so anything else
-      // would be a visible jump at the moment of the kick.
-      if (Math.hypot(bx0 - watch.x, by0 - watch.y) > 0.5) A.offSpot++;
+      // THE BALL HAS TO HAVE ARRIVED BEFORE ANYBODY MAY STRIKE IT, and that is what this asks --
+      // it used to compare the ball's position against the spot one tick too early and reported 19
+      // phantom failures, all of them quick goal kicks. Inside a single tick the order is sp.t++,
+      // then meSPFetch, then meSPReady, then meSPTake: the fetch reaches u = 1 and puts the ball
+      // exactly on the mark BEFORE the take in that same tick. Sampling bx0 from before the tick
+      // therefore catches the carry at u = (t-1)/ft, still 7.4% short on the last slice -- and
+      // 7.4% of a long carry is over half a metre, which is why only goal kicks fetched 7 m or more
+      // ever tripped it. Every one of the 19 was exactly 0.074 x its carry distance.
+      // The real invariant is the one meDead enforces with ft = min(ft, minT): the take tick is
+      // st0.t + 1, so the fetch is done iff st0.t + 1 >= ft.
+      if (st0 && st0.ft && st0.t + 1 < st0.ft) A.offSpot++;
       watch = null;
     }
     if (t >= ME_MATCH_TICKS + meAdded(s)) break;
@@ -84,7 +93,7 @@ const MK={}; for(const r of res) for(const[k,v] of Object.entries(r.mark)) MK[k]
 const TD=res.flatMap(r=>r.td||[]).sort((a,b)=>a-b);
 console.log(`    teleported onto the spot       ${S("teleport")}      must be 0   ${JSON.stringify(MK)}`);
 console.log(`    displacement p50/p90/max        ${TD.length?TD[TD.length>>1]:0} / ${TD.length?TD[Math.floor(TD.length*0.9)]:0} / ${TD.length?TD[TD.length-1]:0} m`);
-console.log(`    struck from off the spot       ${S("offSpot")} of ${S("taken")}   must be 0`);
+console.log(`    struck before the ball arrived ${S("offSpot")} of ${S("taken")}   must be 0`);
 console.log(`\n  THE CELEBRATION`);
 console.log(`    goals                          ${f1(S("goals") / N)} a match`);
 console.log(`    kickoffs that celebrated first ${f1(S("celeb") / N)} a match`);
