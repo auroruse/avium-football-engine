@@ -468,10 +468,18 @@ function autoTac(rng, diff, rem, urgency, style, current, skillAdv, matchUrg) {
   // bias: baseline push toward atk(+) or def(-)
   const sp = {
     gegenpress:   {ds:-12, as:10, ceil:2.0, floor:-1.5, bias:0.15},
+    verticaltiki: {ds:-6,  as:6,  ceil:2.0, floor:-1.5, bias:0.15},
     wingplay:     {ds:-5,  as:5,  ceil:2.0, floor:-1.2, bias:0.2},
+    lanuestra:    {ds:-14, as:11, ceil:2.3, floor:-1.0, bias:0.2},
+    secondball:   {ds:-3,  as:6,  ceil:2.0, floor:-1.5, bias:0.05},
+    routeone:     {ds:0,   as:5,  ceil:2.0, floor:-1.5, bias:0},
     balanced:     {ds:0,   as:0,  ceil:2.0, floor:-2.0, bias:0},
     tikitaka:     {ds:3,   as:-5, ceil:1.6, floor:-1.5, bias:0.1},
+    possession:   {ds:6,   as:-8, ceil:1.6, floor:-1.5, bias:0},
+    cholismo:     {ds:10,  as:-6, ceil:1.6, floor:-2.0, bias:-0.2},
+    zonamista:    {ds:12,  as:-8, ceil:1.5, floor:-2.0, bias:-0.25},
     counterattack:{ds:15,  as:-8, ceil:1.3, floor:-2.0, bias:-0.4},
+    catenaccio:   {ds:18,  as:-10,ceil:1.2, floor:-2.0, bias:-0.5},
     parkthebus:   {ds:20,  as:-12,ceil:1.0, floor:-2.0, bias:-0.6},
   }[style] || {ds:0,as:0,ceil:2.5,floor:-2.0,bias:0};
   // Skill mismatch: strong teams hold tempo when leading, press harder when trailing
@@ -524,10 +532,13 @@ function autoTac(rng, diff, rem, urgency, style, current, skillAdv, matchUrg) {
   if (t>=-0.5) return "bal"; if (t>=-1.4) return "def"; return "park";
 }
 const TAC_MSG = {ultra:"throwing everything forward!",atk:"pushing more players forward",def:"dropping deep, protecting the lead",park:"ultra defensive. Wall of defenders",bal:"back to a balanced shape"};
-const STYLES = ["gegenpress","wingplay","balanced","tikitaka","counterattack","parkthebus"];
-const STYLE_GRP = [["Offensive",["gegenpress","wingplay"]],["Neutral",["balanced","tikitaka"]],["Defensive",["counterattack","parkthebus"]]];
-const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpress",tikitaka:"Tiki-Taka",counterattack:"Counter",wingplay:"Wing Play",parkthebus:"Park Bus"};
-const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"var(--ui-warn)",tikitaka:"var(--ui-style-tikitaka)",counterattack:"var(--ui-style-counter)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-style-parkbus)"};
+const STYLES = ["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone","balanced","tikitaka","possession","cholismo","counterattack","zonamista","catenaccio","parkthebus"];
+const STYLE_GRP = [["Offensive",["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone"]],["Neutral",["balanced","tikitaka","possession"]],["Defensive",["cholismo","counterattack","zonamista","catenaccio","parkthebus"]]];
+// These labels ARE the registry file format: parseBulk builds its lookup straight off this table,
+// so renaming one silently demotes every club that spells it the old way to Balanced. "Park Bus"
+// became "Park The Bus" here and keeps a legacy alias below for exactly that reason.
+const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpress",tikitaka:"Tiki-Taka",verticaltiki:"Vertical Tiki-Taka",possession:"Control Possession",cholismo:"Cholismo",counterattack:"Counter",zonamista:"Zona Mista",wingplay:"Wing Play",secondball:"Second Ball",routeone:"Route One",lanuestra:"La Nuestra",catenaccio:"Catenaccio",parkthebus:"Park The Bus"};
+const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"var(--ui-warn)",tikitaka:"var(--ui-style-tikitaka)",verticaltiki:"var(--ui-style-vertical)",possession:"var(--ui-style-possession)",counterattack:"var(--ui-style-counter)",wingplay:"var(--ui-ok)",routeone:"var(--ui-style-routeone)",catenaccio:"var(--ui-style-catenaccio)",parkthebus:"var(--ui-style-parkbus)",cholismo:"var(--ui-style-cholismo)",zonamista:"var(--ui-style-zonamista)",secondball:"var(--ui-style-secondball)",lanuestra:"var(--ui-style-lanuestra)"};
 // ponytail: replay counter store — closure keeps counts out of React DevTools; localStorage is hash-signed
 const _rc = (() => {
   const d = {}, sl = "xK9mQ2pL7vT4", lk = "aFe_rcs";
@@ -552,14 +563,58 @@ const _rc = (() => {
 // you can see and edit, and a style you have since tweaked stays tweaked.
 export const STYLE_PRESET = {
   balanced:      {},
+  // Win it back high and go again. The only style that maxes both press and line.
   gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
+  // Keep it, move it, never hurry. Presses to restart possession, not to score off the turnover.
   tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
-                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1 },
+                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1, gkDist: -1 },
+  // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
+  verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
+                   possWon: 1, dribbling: 1, creativity: 1, gkDist: -1 },
+  // Patient without the press. Holds the ball to deny it, not to build an attack with it.
+  possession:    { pressingLOE: 0, defLine: 0, passingDir: -1, approachPlay: -1, possLost: 0,
+                   possWon: -1, chanceCreation: -1, dribbling: -1, tackling: -1, gkDist: -1 },
+  // Width, overlaps, and licence to take a man on.
+  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1 },
+  // Sit off, then hurt them the moment it breaks.
   counterattack: { pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1 },
-  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1 },
+                   possWon: 1, chanceCreation: 1, gkDist: 1 },
+  // Skip the middle third entirely. Distinct from Counter by NOT sitting deep to earn the ball.
+  routeone:      { pressingLOE: 0, defLine: 0, passingDir: 2, approachPlay: 1, possWon: 1,
+                   chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, gkDist: 1 },
+  // The deep block that still intends to score: absorbs like Park The Bus, breaks like Counter,
+  // and sits deeper and more disciplined than either. Its whole value is the transition.
+  catenaccio:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: -1,
+                   gkDist: 1 },
+  // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose.
   parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 1, possLost: -1, possWon: -1,
-                   creativity: -1, tackling: 1 },
+                   creativity: -1, dribbling: -1, tackling: 1, gkDist: 1 },
+  // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
+  // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
+  // off the diagonal -- every style either pressed high from a high line or sat deep behind a low
+  // one. These occupy the empty cells.
+  //
+  // Compact in the middle third, deny the centre, never chase. The only style on pressingLOE -1,
+  // and the answer to "what sits between Gegenpress and Counter", which was nothing.
+  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1,
+                   dribbling: -1 },
+  // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
+  // nothing else in the list does. possLost Counter-Press is the whole point rather than a
+  // trimming: swarming the second ball IS the style, and without it this was two axes from
+  // Counter and read as a rename of it.
+  secondball:    { pressingLOE: 1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1,
+                   gkDist: 1 },
+  // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
+  // patience, then Counter's intent once it is out.
+  zonamista:     { pressingLOE: -1, defLine: -1, passingDir: -1, approachPlay: -1, possWon: 1,
+                   possLost: -1, gkDist: -1 },
+  // Everything forward, nobody disciplined. This is the build that used to be worth +3.3 a season
+  // when a user could assemble it slider by slider; it measures under +1 now, which is the only
+  // reason it can exist as a named option instead of a exploit.
+  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: 1, approachPlay: 1, chanceCreation: 1,
+                   dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
 };
 
 // What is left of the old style tables: one row, the neutral one. Every style used to carry its own,
@@ -678,8 +733,55 @@ function mergeModifiers(sm, fm) {
 // ponytail: style fit — key-position OVR determines how much of a style's bonus you actually get
 // Squad-fit scaled a style's modifiers by how well the players suited it. With no modifiers left to
 // scale it has nothing to do, and a side that wants to press now says so on the pressing slider.
+// WHICH PLAYERS A STYLE ACTUALLY LEANS ON. computeStyleFit weights the starting XI by these, maps
+// the result through (avg - 65) / 20 and scales the style's modifiers by it -- so a style is strong
+// when you have the players for it and damps toward Balanced when you do not.
+//
+// Only counterattack had an entry, so every other style returned a flat 1 and NO squad could ever
+// be built to suit it: a side with world-class wingers got nothing from Wing Play. Measured at the
+// time, Wing Play, Gegenpress and Tiki-Taka all sat within 0.0006 ppm of Balanced -- three styles
+// that were, functionally, the same style with different names.
+//
+// Weights sum to 1.0 in every entry, or the (avg - 65) / 20 mapping is not comparable between
+// styles and one of them silently gets a higher ceiling. Balanced deliberately has NO entry: it is
+// the style that asks nothing of your squad, which is what makes it the honest fallback.
+// `mid` and `span` CENTRE the fit. The old mapping was a hardcoded (avg - 65) / 20, so fit reached
+// 1.00 only at a weighted average of 85 and hit the 0.30 floor at 71 -- and the median international
+// squad measures 70-73 on every one of these weight sets. Every style with an entry was therefore
+// damped to about a THIRD of its designed strength for a typical side, Counter included; it merely
+// looked healthy because only elite squads ever cleared the floor. Measured after adding entries for
+// the other four, Wing Play and Gegenpress went from balanced to -0.018 ppm, which is that handicap.
+//
+// So each style carries its own centre: mid is the median squad on ITS OWN key positions, meaning a
+// typical side plays its chosen style at full strength, and span is sized so the best-suited squad
+// in the world reaches about 1.20 rather than clamping. Below the median a style damps toward
+// Balanced, which is the intended behaviour -- a system you do not have the players for.
 const STYLE_FIT_SPOS = {
-  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15 },
+  // Width wins it: the wide men, and the full-backs who overlap them.
+  wingplay:      { wide: 0.45, fb: 0.20, fwd: 0.20, gk: 0.15, mid: 70.2, span: 85 },
+  // Everything runs through the middle third.
+  tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 },
+  // There is nowhere to hide in a press -- every outfielder has to be able to do it.
+  gegenpress:    { all: 0.55, def: 0.25, gk: 0.20, mid: 72.1, span: 71 },
+  // Absorb, then hurt them: the front men who finish it and the back line that survives until then.
+  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },
+  // A back line and a goalkeeper, and enough legs in front of them to screen it.
+  parkthebus:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },
+  // The four styles added later share a curve with their nearest measured neighbour rather than
+  // getting four freshly-fitted mid/span pairs. That is deliberate: the curve answers "which
+  // players does this ask for", and two styles built on the same players should ask for the same
+  // ones. Fitting each separately would also mean four more calibration runs to buy nothing.
+  possession:    { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 }, // as tikitaka
+  verticaltiki:  { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 }, // as tikitaka
+  routeone:      { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },             // as counterattack
+  catenaccio:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },            // as parkthebus
+  secondball:    { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },             // as counterattack
+  zonamista:     { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },            // as parkthebus
+  lanuestra:     { all: 0.55, def: 0.25, gk: 0.20, mid: 72.1, span: 71 },             // as gegenpress
+  // A mid-block is the one shape here that is genuinely midfield-AND-defence led, so it does not
+  // inherit cleanly from either the cmid-heavy or the def-heavy curve. Weights are its own; mid and
+  // span are interpolated between the two it sits between rather than fitted from scratch.
+  cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, mid: 71.6, span: 76 },
 };
 const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
 const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
@@ -698,7 +800,8 @@ function computeStyleFit(style, squad) {
   if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
   if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
   if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
-  return Math.max(0.3, Math.min(1.25, (avg - 65) / 20));
+  // Defaults reproduce the old hardcoded curve exactly for any entry that omits them.
+  return Math.max(0.3, Math.min(1.25, 1 + (avg - (w.mid ?? 85)) / (w.span ?? 20)));
 }
 function applyStyleFit(mod, fit) {
   if (fit === 1) return mod;
@@ -721,6 +824,17 @@ const STRAT_LABELS = {
   dlBehavior: { name:"DL Style", vals:[[-1,"Drop Off"],[0,"No Instruction"],[1,"Step Up"],[2,"Offside Trap"]], grp:"defense" },
   tackling: { name:"Tackle", vals:[[-1,"Stay On Feet"],[0,"No Instruction"],[1,"Get Stuck In"]], grp:"defense" },
 };
+// A team's identity is its playstyle and its formation. These ten axes ARE that identity, so they
+// are no longer set per team: STYLE_PRESET stamps them and the UI does not offer them. The engine
+// still reads every one of them exactly as before -- nothing here changes what an instruction does,
+// only who decides it. This is what retires the stacked "best of every slider" build: it cannot be
+// constructed any more, because nine of its ten axes are no longer separately selectable.
+const IDENTITY_KEYS = ["approachPlay","passingDir","chanceCreation","dribbling","creativity",
+                       "possLost","possWon","pressingLOE","defLine","tackling"];
+// What survives: three execution choices no style's DEFINITION depends on. Time-wasting is game
+// management, GK distribution decides where a restart lands, and the line's behaviour is how you
+// run the line rather than where you set it. A style still stamps its own default for each.
+const STRAT_EDITABLE = ["timeWasting","gkDist","dlBehavior"];
 const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
 // MC-balanced coefficients (5000-leg test, all ±3.5% net win rate vs default).
 // Passing: ±0.008 adv/lb per step, -0.006 def per step (direct = attack, short = defend).
@@ -728,18 +842,60 @@ const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
 // Tackling: GSI +1.04 press / +0.012 def, SOF 0.97 press / -0.005 def. Engine: foul 1.10/0.88, card 1.25/0.75, dcP +0.12/-0.06.
 // Creativity: Expressive +0.002 goalP / -0.014 def / 1% solo chance. Disciplined +0.003 goalP.
 // GK dist engine: short = midfield + pressure 1, long = 35% turnover (was 60%).
+// HOW A BOX ENTRY BECOMES A CHANCE ignored the defence entirely: both nd===0 gates were a bare
+// 0.25 + 0.35 * strength ratio, with no effDef, no defTierMod and no instruction input of any kind.
+// That is the commonest route to goal in the model, so a side set up to defend did nothing at all
+// about it -- which is why a catenaccio build conceded MORE than a side with every slider at No
+// Instruction (1.78 against 1.69 a game) however large its `def` grew. `def` reached only shotP and
+// the dcP challenge: nine attacking channels reached the scoreline and defending reached two.
+// Weighted below 1.0 because this gate compounds with shotP downstream; the same back line must not
+// be paid twice for one passage of play. Module scope on purpose -- the in-function effDef is
+// block-scoped and is NOT visible at either box-entry site, which vite compiles happily and throws
+// on at runtime.
+const effDefOf = (m) => m.def / (1 + Math.abs(m.def) * 8);
+const BOX_DEF = 0.55;
 function applyStrategy(mod, strat) {
   const st = strat || STRAT_DEF;
+  // STACKING HAS DIMINISHING RETURNS. Seven instructions feed `adv` and eight feed `def`, every one
+  // of them linear and additive, so the strongest build in the game was a shopping list -- press
+  // high AND hold a high line AND play much more direct AND work it patiently into the box -- worth
+  // +4.0 points a season over doing nothing while describing no football anyone has ever played.
+  // Nothing punished the contradiction because nothing knew the instructions existed together.
+  //
+  // `soft` is quadratic, so ONE instruction is essentially untouched (about 6% at a single setting,
+  // inside the noise floor) while the full ten-instruction stack sheds roughly 40% of its sum. Each
+  // choice keeps the value it was measured at; only piling them up stops paying. Applied to the
+  // STRATEGY contribution alone -- mod.adv and mod.def carry the style and formation, which are
+  // already balanced and must not be touched by this.
+  const soft = (x, T) => x / (1 + (x / T) * (x / T));
+  const dAdv = st.passingDir * 0.006 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0)
+    + (st.dribbling === 1 ? 0.007 : st.dribbling === -1 ? -0.003 : 0)
+    + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0)
+    + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0)
+    + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0);
+  const dHold = st.passingDir * -0.034 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0)
+    + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.01 : 0);
+  const dDef = (st.pressingLOE < 0 ? -st.pressingLOE * 0.017 : -st.pressingLOE * 0.005)
+    + (st.defLine > 0 ? st.defLine * -0.019 : st.defLine * -0.032) + st.passingDir * -0.006
+    + (st.possLost === -1 ? 0.028 : st.possLost === 1 ? -0.004 : 0)
+    + (st.dlBehavior === -1 ? 0.024 : st.dlBehavior === 1 ? -0.014 : st.dlBehavior === 2 ? -0.022 : 0)
+    + (st.creativity === 1 ? -0.014 : 0)
+    + (st.dribbling === 1 ? -0.024 : st.dribbling === -1 ? 0.013 : 0)
+    + (st.tackling === 1 ? 0.020 : st.tackling === -1 ? -0.012 : 0);
   return {
     press: mod.press * PRESS_LOE_MULT[st.pressingLOE + 2] * (st.possLost === 1 ? 1.20 : st.possLost === -1 ? 0.85 : 1.0) * (st.tackling === 1 ? 1.04 : st.tackling === -1 ? 0.97 : 1.0) * (st.dribbling === 1 ? 0.95 : 1.0) * (st.defLine > 0 ? 1 + st.defLine * 0.05 : 1.0),
-    adv: mod.adv + st.passingDir * 0.008 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0) + (st.dribbling === 1 ? 0.012 : st.dribbling === -1 ? -0.005 : 0) + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0) + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0) + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0),
-    hold: mod.hold + st.passingDir * -0.02 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0) + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.01 : 0),
+    adv: mod.adv + soft(dAdv, 0.075),
+    // `hold` is NOT saturated. Only four instructions feed it, against seven for adv and eight for
+    // def, so it was never a stacking channel -- and damping it cost the possession identity its
+    // whole payoff (+0.71 -> -0.46 pts a season), since short passing buys retention and nothing
+    // else. Saturation is for channels that are actually being piled up.
+    hold: mod.hold + dHold,
     lb: mod.lb + st.passingDir * 0.008,
     boxShot: mod.boxShot + (st.chanceCreation === -1 ? 0.03 : st.chanceCreation === 1 ? -0.015 : 0),
     goalP: mod.goalP + (st.creativity === 1 ? 0.002 : st.creativity === -1 ? 0.003 : 0),
-    ctr: mod.ctr * (st.possWon === -1 ? 0.5 : st.possWon === 1 ? 1.5 : 1.0) * (st.possLost === -1 ? 0.92 : 1.0),
+    ctr: mod.ctr * (st.possWon === -1 ? 0.5 : st.possWon === 1 ? 1.5 : 1.0) * (st.possLost === -1 ? 0.97 : 1.0),
     ctrShot: mod.ctrShot + (st.possWon === 1 ? 0.04 : 0),
-    def: mod.def + st.defLine * -0.012 + st.passingDir * -0.006 + (st.possLost === -1 ? 0.016 : st.possLost === 1 ? -0.008 : 0) + (st.dlBehavior === -1 ? 0.012 : st.dlBehavior === 1 ? -0.014 : st.dlBehavior === 2 ? -0.018 : 0) + (st.creativity === 1 ? -0.014 : 0) + (st.dribbling === 1 ? -0.008 : st.dribbling === -1 ? 0.005 : 0) + (st.tackling === 1 ? 0.012 : st.tackling === -1 ? -0.005 : 0),
+    def: mod.def + soft(dDef, 0.085),
     lr: mod.lr + (st.chanceCreation === 1 ? 0.04 : st.chanceCreation === -1 ? -0.02 : 0),
     corn: mod.corn, maxT: mod.maxT, minT: mod.minT,
   };
@@ -832,7 +988,7 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     }
   }
 }
-function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) {
+function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx, qual) {
   // Link this resolution back to whatever chance is currently open (if any) so the click-through
   // card can find its own outcome later, regardless of how many ticks/events came in between —
   // see the bottom of this function and lmPendingChance/lmHiddenGoals for the other half.
@@ -867,8 +1023,14 @@ function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx) 
   s.stats[atk].shots++;
   const sGk = s.players[def].find(p => p.pos === "GK");
   const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.15+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
+  let goalP = (0.140+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
   if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
+  // HOW GOOD A CHANCE THIS ACTUALLY WAS. The engine had no such concept: goalP came from the
+  // shooter's OVR against the defensive line and nothing about where the chance came from, so
+  // "many poor chances against a few good ones" -- the whole distinction between a possession side
+  // and a counter side -- could not be expressed at all. 1 is an ordinary box entry and every
+  // existing caller omits it and gets exactly that, so nothing below this line changed behaviour.
+  goalP *= (qual ?? 1);
   // The keeper faces the shot. Must come after the chain bonuses above: those move goalP, and what
   // he stops is a share of the goalP actually being rolled. A weak keeper has a negative edge, which
   // moves probability the other way — goals up, saves down — so this is one term, not two.
@@ -1055,7 +1217,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   }
 
   // Creative freedom — brilliant chance (expressive: 1% solo chance, stacks with style soloBase)
-  const _soloP = (poSt.creativity === 1 ? 0.01 : 0) + (STYLE_CHANCE.balanced.soloBase);
+  const _soloP = (poSt.creativity === 1 ? 0.006 : 0) + (STYLE_CHANCE.balanced.soloBase);
   if (_soloP > 0 && rng.u() < _soloP) {
     s.ball = po === "home" ? 4 : 0; s.pressure = 1;
     {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
@@ -1082,11 +1244,21 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
   const dir=dir0;
   const dg=po==="home"?(4-z):z; // distance to goal (0=in opponent box)
 
+  // BOTH mispriced axes were mispriced through the FOUL SYSTEM, not through the modifier tables.
+  // A channel decomposition at 98k matches an arm put tackling's whole imbalance in the turnover-foul
+  // and foul/card multipliers (+0.68/-0.66 and +0.34/-0.40 of a +0.76/-1.03 axis) and dribbling's in
+  // the free-kicks-won multiplier (+1.17 of a +0.91 axis). dDef, dAdv and the dribble-success bonus
+  // together carried almost nothing. The reason is that a foul is a possession swing AND a set piece,
+  // so it is worth several times what a comparable modifier tweak is -- which is not visible anywhere
+  // in the tables these coefficients live in. Anything added here later should be priced by measuring
+  // it, not by comparing it to a neighbouring constant.
+  // Two of these are provably inert and were left alone rather than tuned: opSt.tackling's dcP term
+  // measured +0.00/+0.00, and gkDist Short is a no-op at both of its call sites.
   // Foul (modified by dribbling + tackling)
-  const dribbleFoulMod = poSt.dribbling === 1 ? 1.25 : poSt.dribbling === -1 ? 0.9 : 1.0;
+  const dribbleFoulMod = poSt.dribbling === 1 ? 1.075 : poSt.dribbling === -1 ? 0.97 : 1.0;
   const opSt = s.strategy?.[op] || STRAT_DEF;
-  const tackleFoulMod = opSt.tackling === 1 ? 1.10 : opSt.tackling === -1 ? 0.88 : 1.0;
-  const tackleCardMod = opSt.tackling === 1 ? 1.25 : opSt.tackling === -1 ? 0.75 : 1.0;
+  const tackleFoulMod = opSt.tackling === 1 ? 1.024 : opSt.tackling === -1 ? 0.976 : 1.0;
+  const tackleCardMod = opSt.tackling === 1 ? 1.048 : opSt.tackling === -1 ? 0.96 : 1.0;
   if(rng.u()<0.15*dribbleFoulMod*tackleFoulMod){
     // A foul stops the phase of play — whatever chance was building closes out here;
     // the free kick (or penalty) that follows is a new, separate situation.
@@ -1126,7 +1298,7 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     if(s.activeChance&&s.pressure>1){
       const df=pickDefActPlayer(rng,s,op,"defendBox");
       const dfOvr=df?ovrVs(fatigueOvr(df.ovr,df.stamina),lineOvr(s.players[po],"FWD"))*0.12:0;
-      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.12:opSt.tackling===-1?-0.06:0);
+      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.14:opSt.tackling===-1?-0.11:0);
       if(rng.u()<dcP&&df){
         const _lc=s.activeChance;
         df.defActs=(df.defActs||0)+1;
@@ -1218,42 +1390,103 @@ function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
     s.ball+=dir;const nd=po==="home"?(4-s.ball):s.ball;
     // Offside check (6% when entering final third or box)
     const dlBeh = s.strategy?.[op]?.dlBehavior || 0;
-    let offsideMod = 1 + (s.strategy?.[op]?.defLine || 0) * 0.2;
+    let offsideMod = 1 + (s.strategy?.[op]?.defLine || 0) * 0.12;
     if (dlBeh === 1) offsideMod += 0.25;
     if (dlBeh === 2) offsideMod += 0.60;
     const offsideRate = 0.06 * offsideMod;
     if(nd<=1&&rng.u()<offsideRate){
-      if (dlBeh === 2 && rng.u() < 0.15) {
-        s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-        {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
-        return;
-      }
       s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
     }
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
+    // A TRAP IS BEATEN WHEN IT DOES NOT SPRING. This used to be nested inside the successful-
+    // offside branch, so being played through was a 15% sub-outcome of catching someone offside:
+    // stepping up scaled the reward and the punishment together at a fixed ratio, and the reward
+    // won every time. Measured, Offside Trap was worth +1.71 pts a season and Step Up +0.75, both
+    // with MORE goals scored and FEWER conceded -- a defensive setting with no defensive cost at
+    // all. The risk now takes its own roll, on the entries the trap failed to catch, which is also
+    // the only reading under which the trap_beaten commentary describes what happened.
+    if (nd <= 1 && (dlBeh === 1 || dlBeh === 2) && rng.u() < (dlBeh === 2 ? 0.110 : 0.050)) {
+        s.ball = po === "home" ? 4 : 0; s.pressure = 1;
+        {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
+      return;
+    }
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)-effDefOf(opM)*BOX_DEF){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
     else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist");return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
   }else if(roll<advP+holdP){
-    // Hold ball
-    s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
+    // Hold ball. PATIENT POSSESSION HAS TO GO SOMEWHERE, AND IT HAS TO GET THERE FIRST.
+    // This branch emitted a neutral event and stopped, which made `hold` a pure do-not-advance
+    // modifier. Tiki-Taka's dAdv is -0.014, so a possession side advanced LESS than Balanced and
+    // stood still more: it never reached the final third at all. Measured, Catenaccio created 16.83
+    // chances a game to Tiki-Taka's 15.03, and Park The Bus beat Tiki-Taka too -- exactly upside
+    // down, because a deep block concedes the ball and every counter that reaches the box counts.
+    //
+    // Deep, holding now carries the ball forward: building patiently IS progress, just slow, and it
+    // takes a turnover risk for it. High, it probes -- at quarter quality, because that is the trade
+    // the style makes, many half-openings instead of a few clear ones. The quality term is what
+    // makes this work: without it the same change simply handed the possession styles goals and
+    // doubled the balance spread, since volume and scoring were the same thing.
+    {const _hnd = po==="home" ? (4-s.ball) : s.ball;
+    if (_hnd > 1) {
+      if (rng.u() < 0.50) {
+        if (rng.u() < 0.25) { s.possession = op; if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;} s.events.push({min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)}); }
+        else { s.ball += dir; s.events.push({min:dm,type:"neutral",text:comm(rng,"buildup",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)}); }
+      }
+      else s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
+    } else if (rng.u() < 0.80) {
+      s.pressure = 1;
+      if(s.activeChance){s.activeChance.chanceViz._completed=true;}
+      const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");
+      ratePlayer(s.players[po],cp.name,0.12);
+      const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);
+      const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;
+      init.chances=(init.chances||0)+1;
+      const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,"chance_created",{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};
+      s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);
+      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain),0.25);
+    } else {
+      s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
+    }}
   }else if(roll<advP+holdP+longP){
     // Long ball
     s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
+    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)-effDefOf(opM)*BOX_DEF){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
     else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
     else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
   }else{
+    // Get Stuck In used to make this 1.3x and Stay On Feet 0.75x, and a foul here RETURNS the ball
+    // to the side you just took it from -- so the aggressive setting won possession back and gave it
+    // straight up again a quarter more often than neutral. Measured, that one multiplier cost
+    // tackling:1 about 1.3 pts a season and handed tackling:-1 about 0.8, which sorted the whole
+    // style table by nothing but its tackling value. Halving the asymmetry puts both sides inside
+    // the noise floor while keeping the mechanic: diving in still concedes more fouls.
     // Turnover — but 20% are fouls that give ball back
     const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.3:tTackle===-1?0.75:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
+    if(rng.u()<0.20*(tTackle===1?1.06:tTackle===-1?0.952:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
     s.possession=op;const _toChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
     // Winning the ball back in open play is by far the most common defensive moment in a
     // match, and the main lever for making defActs volume track chances-created volume —
     // gated below 100% only so an occasional turnover has no single credited player (ball
     // bounces loose, no clean tackle), not to artificially suppress the count.
     if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendTurnover");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}
+    // A COUNTER FROM DEEP IS STILL A COUNTER. cm was a flat one-or-two zones, and a break only
+    // becomes a chance if it reaches the opponent's box (od === 0 below). A side defending deep
+    // wins the ball in its OWN third, so two zones never got there and every one of its counters
+    // resolved as a decorative "transition" event. The counter mechanic therefore rewarded winning
+    // the ball HIGH -- gegenpress -- and gave nothing at all to the one identity built to absorb
+    // and break. Measured, a catenaccio side conceded MORE than a side with every slider at No
+    // Instruction (1.703 against 1.640 a game) and scored less: it failed at the only thing it
+    // exists to do, and no amount of re-pricing `def` could fix that, because defending had no
+    // path to the scoreline at all. Nine attacking channels reached it and one defensive one did.
+    //
+    // How far the break travels is now the counter side's own shape. Springing it (possWon
+    // Counter) and sitting deep enough to have space to run into (a low line, Regroup) carry it
+    // further up the pitch -- which is what a counter-attack IS. This adds no goals on its own:
+    // it moves them from the side that had the ball to the side that took it off them.
+    const ctrReach = (opSt.possWon === 1 ? 1 : 0)
+                   + (opSt.defLine < 0 ? 1 : 0)
+                   + (opSt.possLost === -1 ? 1 : 0);
     const ctrP=(dg<=2?0.14:0.06)*opM.ctr;
     if(rng.u()<ctrP){
-      const cm=rng.u()<0.5?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
+      const cm=(rng.u()<0.5?2:1)+ctrReach;s.ball=Math.max(0,Math.min(4,z-dir*cm));
       const od=op==="home"?(4-s.ball):s.ball;
       if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
       else {const _cEv={min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}
@@ -2955,6 +3188,7 @@ function parseBulk(text) {
   const styleLookup = {};
   STYLES.forEach(s => { styleLookup[s] = s; });
   Object.entries(STYLE_LBL).forEach(([key, label]) => { styleLookup[label.toLowerCase()] = key; });
+  styleLookup["park bus"] = "parkthebus"; // pre-expansion label, still spelled that way in older registries
   const resolveStyle = (str) => str ? (styleLookup[str.trim().toLowerCase()] ?? null) : null;
   const formSet = new Set(FORMATIONS);
   const resolveForm = (str) => str ? (formSet.has(str.trim()) ? str.trim() : null) : null;
@@ -3017,6 +3251,12 @@ function parseBulk(text) {
     for (let i = 0; i < stratKeys.length && i + 4 + o < p.length; i++) {
       strategy[stratKeys[i]] = resolveStrat(stratKeys[i], p[i + 4 + o]);
     }
+    // The ten identity columns are still READ -- stratKeys is what keeps the player-name block
+    // aligned, so they cannot simply be dropped from the format -- and then discarded in favour of
+    // the style's own vector. A registry that still carries hand-tuned instructions therefore loads
+    // as whatever style it names, which is the point: identity comes from the style now.
+    const _sp = STYLE_PRESET[style] || {};
+    for (const k of IDENTITY_KEYS) strategy[k] = _sp[k] ?? 0;
     // Player names occupy a fixed 16-slot block right after the tactic columns. This was hardcoded
     // as 18 -- name, skill, style, formation, then fourteen tactics -- and nothing in it named
     // either setPieces or stratKeys, so removing an instruction moved every preset's players one
@@ -8214,7 +8454,7 @@ export default function App() {
       {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", marginBottom: 10 }}>PRE-MATCH</div>}
       {/* Pre-match tactical preview */}
       {lmMatch.phase === "pre_match" && (()=>{
-        const SC = {balanced:"#888",gegenpress:"var(--ui-danger)",tikitaka:"var(--ui-warn)",counterattack:"var(--ui-info)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-attack)"};
+        const SC = STYLE_CLR;
         const sn = shortName;
         const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
         const PitchSVG = ({starters, formation}) => {
@@ -9036,7 +9276,7 @@ export default function App() {
                   {GRPS.map(([g, label], gi) => (
                   <div key={g} style={{ borderLeft: gi ? "1px solid var(--chrome-border-33)" : "none", paddingLeft: gi ? 20 : 0 }}>
                     <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-                    {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === g).map(([key, {name, vals}]) => (
+                    {Object.entries(STRAT_LABELS).filter(([k, v]) => v.grp === g && STRAT_EDITABLE.includes(k)).map(([key, {name, vals}]) => (
                       <div key={key}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
@@ -10004,7 +10244,7 @@ export default function App() {
               {["home","away"].map((side, si) => {
                 const tm = side === "home" ? teamById(lmH) : teamById(lmA);
                 const isBreak = ["pre_match","half_time","full_time","extra_half_time"].includes(lmMatch.phase);
-                const SC2 = {balanced:"#888",gegenpress:"var(--ui-danger)",tikitaka:"var(--ui-warn)",counterattack:"var(--ui-info)",wingplay:"var(--ui-ok)",parkthebus:"var(--ui-attack)"};
+                const SC2 = STYLE_CLR;
                 const strat = lmMatch.strategy?.[side] || {};
                 return (<>
                   {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
@@ -10029,7 +10269,7 @@ export default function App() {
                       </div>
                     </div>
                     {/* Strategy instructions */}
-                    {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).map(([key, {name, vals, grp}]) => {
+                    {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).filter(([k]) => STRAT_EDITABLE.includes(k)).map(([key, {name, vals, grp}]) => {
                       const hdr = grp !== lastGrp; lastGrp = grp;
                       return (<div key={key}>{hdr && <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 6, marginBottom: 2 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 1 }}>
@@ -11917,7 +12157,7 @@ export default function App() {
                               {grp.map(g => (
                                 <div key={g} style={{ marginBottom: 14 }}>
                                   <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 6 }}>{g}</div>
-                                  {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === g).map(([key, v]) => (
+                                  {Object.entries(STRAT_LABELS).filter(([k, v]) => v.grp === g && STRAT_EDITABLE.includes(k)).map(([key, v]) => (
                                     <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
                                       <span style={{ width: 74, fontSize: 10, color: "var(--chrome-muted)" }}>{v.name}</span>
                                       <select value={live[key] ?? 0}

@@ -151,9 +151,17 @@
   --ui-shadow-2: #00000022;
   --ui-shadow-3: #00000040;
   --ui-shadow-4: #00000066;
+  --ui-style-catenaccio: #b49ad6;
+  --ui-style-cholismo: #6f8a9e;
+  --ui-style-lanuestra: #e05f7a;
+  --ui-style-secondball: #c98a3f;
+  --ui-style-zonamista: #5f9e8f;
   --ui-style-counter: #7dc9c9;
   --ui-style-parkbus: #8b6e4e;
+  --ui-style-possession: #7fa8d4;
+  --ui-style-routeone: #7a6fc4;
   --ui-style-tikitaka: #d4a0c0;
+  --ui-style-vertical: #c96a6a;
   --ui-text: #ffffff;
   --ui-text-08: #ffffff08;
   /* Text that sits ON a saturated fill (brand-filled tabs, chips, buttons). Stays light in every
