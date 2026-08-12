@@ -1,6 +1,6 @@
 // The pitch, and every spatial question asked about it.
 import { CFG } from "./config";
-import { meRollK, meRollR } from "./ball";
+import { meGroundSpeed, meRollK, meRollR } from "./ball";
 
 export const PITCH_L = 105, PITCH_W = 68, ME_HALF_W = PITCH_W / 2, ME_GOAL_W = 7.32;
 
@@ -227,10 +227,20 @@ export function meIntercept(p, mp, vmax) {
 // arrives in 0.90 s when it really takes 1.33 s. Four hundred milliseconds is more than half the
 // entire window over which a defender goes from no threat to a certain interception, which is why
 // 268 of every 290 passes were scored as under 0.2 risk and then completed at 56%.
+// ...and off the speed it was ACTUALLY STRUCK AT. meGroundSpeed clamps the launch at passMaxV,
+// because past about nineteen metres the speed this ODE asks for is more than a foot can put through
+// a ball. C was rebuilt here from passArrive and L regardless, so for every pass beyond that this
+// returned the flight time of a ball nobody kicked -- a 26 m pass came back at 1.64 s when it is
+// struck at 30 m/s and arrives at 2.3, not 6. Everything downstream believed it: the lead a through
+// ball is played with, the interception risk, and how late the receiver is judged to be. Measured,
+// through balls arrived at the aim point at 2.3 m/s at the tenth percentile against the 6 they were
+// solved for, and the man they were played to was already past the ball 21% of the time.
 export function meGroundT(L, s) {
   const k2 = 2 * meRollK(), r = meRollR(), rr = Math.sqrt(r), sc = 2 / (k2 * rr);
-  const C = (CFG.passArrive * CFG.passArrive + r) * Math.exp(k2 * L);
-  const v0 = Math.sqrt(Math.max(36, C - r)), vs = Math.sqrt(Math.max(36, C * Math.exp(-k2 * s) - r));
+  const v0 = meGroundSpeed(L), C = v0 * v0 + r;
+  // No floor at passArrive here either: a clamped ball genuinely does die below it, and flooring
+  // the far end at 6 m/s is what hid that.
+  const vs = Math.sqrt(Math.max(0, C * Math.exp(-k2 * s) - r));
   return sc * (Math.atan(v0 / rr) - Math.atan(vs / rr));
 }
 

@@ -34,6 +34,21 @@ export const SP = {
   // A free kick is played quickly when a team-mate is already this far beyond the ball with this
   // much daylight around him. Both in metres, and both deliberately generous: if it is on, take it.
   spQuickAhead: 12, spQuickRoom: 9,
+  // ...and how far away the man he plays it to may be. A restart nobody can reach quickly is not a
+  // quick restart, it is a long ball, and those are taken from a set position like everything else.
+  spQuickTo: 30,
+  spQuickRoomBy: { goalkick: 14, throw: 11, freekick: 9 },
+  // FETCHING THE BALL. How many slices it takes to be brought back to the spot: a floor, plus a bit
+  // per metre it has to travel, capped -- and capped again at the restart's own minT, because it has
+  // to be on the spot before anybody may strike it. spFetchZ is how far off the ground it is carried.
+  spFetchMin: 3, spFetchPerM: 0.45, spFetchMax: 14, spFetchZ: 0.5,
+  // How far off his mark a man stands at a restart. Three routines per set piece is variety in the
+  // SHAPE; this is variety within one, and it is what stops twenty-two men landing on coordinates.
+  spJit: 1.0,
+  // THE CELEBRATION. How long before they walk back, how far away a team-mate will come from, how
+  // many of them, and how close they get. spCelebOut/In place the corner he runs to.
+  spCelebT: 18, spCelebR: 30, spCelebN: 4, spCelebGap: 2.2, spCelebOut: 7, spCelebIn: 5,
+  spCelebRun: 14,
   spTol: 2.6, spTakerTol: 0.7, spReadyFrac: 0.62,
   // A kickoff is the one restart where the WHOLE pitch has to be set -- twenty-two men back in their
   // own halves, some of them sixty metres away. Sharing the ordinary eight-second cap meant it timed
@@ -166,6 +181,13 @@ export const CFG = {
   // Marking distance. This is geometry, not skill, so tightening it makes the game harder for everyone
   // equally -- it lowers chance quality without touching the rating gap, which is exactly the knob to
   // reach for once the skill-dependent duels are bounded.
+  // How far goal-side of his man a marker is held, as a floor rather than a target. markBase is
+  // where he would like to be; this is the line he may never be caught upfield of.
+  // Swept 0 / 1.2 / 1.8 / 2.5 against the whole regression, not just the marking metric. 2.5 buys
+  // goal-side 61% -> 69% and unguarded men in our own box 30% -> 26%, but it drops the line with it:
+  // offsides fall 2.06 -> 1.49 and shots from outside 15 m rise 51% -> 58%, and the score goes 13/21
+  // to 11. 1.2 takes the nearest defender to a man in our box from 3.5 m to 3.2 and costs nothing.
+  markGoalSide: 1.2,
   markBase: 2.10,
   markTighten: 1.10,
   // How fast a marker's target follows his man, and how far ahead of him it is aimed. An exponential
@@ -215,7 +237,12 @@ export const CFG = {
   // How far out of his block slot a defending player has to be before he is getting back into shape
   // rather than standing in it, and the pace he does that at. trackBase MUST exceed blkSlew / top
   // speed (5.5 / 7.3 = 0.75) or the shape moves away from him faster than he may follow it.
-  trackFrom: 3, trackBase: 0.82,
+  // trackBase 0.82 of a 7.3 m/s top speed is 5.99, against a block that slides at blkSlew 5.5 --
+  // half a metre per second of margin, so a man 6.5 m out of shape needs thirteen seconds to get
+  // back into it and in an eighteen-minute match never does. Measured, the median defender stood
+  // 6.5 m off the slot he had been given with a 90th percentile of 17.6, and 4.5 of ten outfielders
+  // were still in the opponent's half while their own side defended.
+  trackFrom: 3, trackBase: 0.94,
   // A beaten man chases rather than returns to shape: the ball has to be at least recoverBehind
   // metres goal-side of him, and inside recoverZone of his own goal for it to be worth the run.
   recoverBehind: 2.0, recoverZone: 45,
@@ -357,7 +384,17 @@ export const CFG = {
   // judgement (offBlind) and how far a runner aims beyond the line (runBehindX) were both swept
   // first and neither moved it: 0.58/0.75/0.92/0.90 and 0.58/0.65/0.71/0.56 respectively. It was
   // never about who could see the line -- it was about where the line was.
-  blkMin: 10, blkMax: 58, blkDrop: 8, blkDefLine: 6, blkLoe: 3,
+  // blkMax caps how far from its own goal the block line may be ordered. At 58 it never bound in
+  // practice: wantLine is a flat blkDrop behind the ball wherever the ball is, so with the ball 62 m
+  // upfield the back line was sent to 54.3 m -- past halfway -- and the block ORDERED 8.5 of ten
+  // outfielders into the opponent's half, with six or more of them up there on 81% of slices. The
+  // men were BEHIND their slots in every band, so this was never anybody failing to track back: the
+  // shape was telling them to stay, which is why every effort lever measured as noise.
+  // Swept 58 / 50 / 44 / 38 with the ball in the opponent's half (ordered upfield, 6+ share):
+  // 8.5 / 81%, 6.1 / 80%, 5.8 / 68%, 5.4 / 52%. Goals 1.3-1.6 and shots 9.4-10.2 across the whole
+  // range, so the high setting was buying nothing. 44 keeps a genuinely high line and leaves eight
+  // metres of recovery room behind halfway.
+  blkMin: 10, blkMax: 44, blkDrop: 8, blkDefLine: 6, blkLoe: 3,
   // How deep the block is, from defending your own box to camped in their half. A real low block is
   // about thirteen metres from the last man to the first, not twenty-one: held at 21 the front band
   // sat on the edge of the area while the ball was in it, so only the back four were ever inside.
@@ -454,6 +491,18 @@ export const CFG = {
   // How far the ball must get past him to count as beaten, and how long he is out of the play for
   // it, per step of Get Stuck In. Zero at Stay On Feet and at no instruction: only committing costs.
   tkBeatGap: 1.5, tkBeatT: 10, tkBeatSpd: 0.55,
+  // THE TACKLE. tkRange is how close he must be to go at all; the tkw* weights are what "his options
+  // are closed" is made of, summing to 1 at best. tkGo is the bar, lowered by his own tackle rating
+  // and by Get Stuck In. tkCool stops one man lunging every slice.
+  // Inside this of his own goal a beaten man drops goal-side; beyond it he turns and chases.
+  beatDeep: 34,
+  tkRange: 2.8, tkEdge: 8, tkCoverR: 14, tkCool: 10,
+  tkwNear: 0.42, tkwSide: 0.20, tkwSlow: 0.20, tkwEdge: 0.08, tkwCover: 0.14,
+  // Swept 0.60 / 0.78 / 0.84 / 0.88: attempts a side 103.9 / 27.3 / 9.3 / 2.8 and won 57 / 62 / 62
+  // / 68%. A real match is 15-20 tackles a side at about 65%, and this engine runs a fifth of a real
+  // one's event volume, so 4-6 attempts is the target -- 0.86.
+  tkGo: 0.86, tkGoSkill: 0.16, tkGoInstr: 0.10,
+  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.24, rateTackle: 0.06,
   runTicks: 14,
   runMax: 4,
   runCool: 28,
@@ -515,7 +564,7 @@ Object.assign(CFG, {
   bounceGrip: 0.74, bounceMin: 1.2,
   // Kicking. A ground pass is aimed to ARRIVE at passArrive m/s; execution noise replaces the old
   // outcome roll -- degrees of aim error by skill and pressure, and a power wobble.
-  passArrive: 6, passMaxV: 30, passNoiseDeg: 4.5, passNoiseSkill: 6, passNoisePress: 2.5, powerNoise: 0.08,
+  passArrive: 6, passMaxV: 30, passNoiseDeg: 3.9, passNoiseSkill: 9, passNoisePress: 2.5, powerNoise: 0.05, powerNoiseSkill: 0.15,
   // Lofted balls: flight time T = highT0 + highTk * distance, launch solved from T.
   highT0: 0.9, highTk: 0.035,
   // Receiving. Reach is a radius around the receiver against the ball's path this tick; a ball
@@ -529,6 +578,16 @@ Object.assign(CFG, {
   // little past the foot that shepherds it, but not four metres past.
   playReach: 1.10,
   reach: 0.70, cutReach: 0.60, controlV: 11, controlVSkill: 6,
+  // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
+  // anchored to 1.0 at a 75-rated centre-half (position attr ~81, meTech ~0.82) so the calibrated
+  // baseline is untouched and only the spread across bands is new.
+  // The spread is DELIBERATELY SHALLOWER than the passing spread. Interceptions are roughly flat
+  // across real divisions -- a worse defender reads less, but bad passing hands him more loose
+  // balls to feed on, and the two nearly cancel. Swept at 0.52 the cancellation was total: worse
+  // passers against proportionally worse cutters left completion FLAT at 81-83% across thirty
+  // rating points. 0.20 is where the bands finally separate (81 / 80 / 79 at 85 / 75 / 55) while
+  // the gap games keep their possession stretch.
+  cutAntLo: 0.836, cutAntW: 0.20,
   // ---- bodies -------------------------------------------------------------------------------
   // Players are SOLID. A ball cannot pass through one and two men cannot stand in the same place.
   // bodyR is shoulder to shoulder, bodyH is how high you can block a ball before it goes over you,
@@ -551,6 +610,14 @@ Object.assign(CFG, {
   // BEHIND him -- the velocity went forward and the position did not, and that is the ball dragging
   // at his heel however hard he pushed it.
   dribSet: 1.10,
+  // How far out the man in control still has the ball under his feet. MUST exceed dribSet, or the
+  // setpoint is outside the zone the control law operates in and the ball can never reach it.
+  // It cannot be widened past reach to buy that, though, and the two are not independent: control
+  // out to 1.4 m means the carrier steers a ball a defender is nearer to, so nobody can take it off
+  // him. Swept, it reads as a straight trade of realism for a broken match -- the ball sits 0.9 m in
+  // front of him and conversion goes to 22-30%, fouls halve to 4.3 a side and shots collapse to 5.5.
+  // 1.0 / 1.15 / 1.3 measured 12 / 10 / 11 on the regression against 14. dribSet moves instead.
+  dribCtrl: 0.70,
   // ctrlPull is deliberately WEAK and ctrlForce strong: he matches the ball's pace rather than
   // yanking it to a spot. A hard positional pull is what made it look like it was sliding on ice --
   // the ball being dragged sideways to a target instead of running with him.
@@ -667,6 +734,18 @@ Object.assign(CFG, {
   // else he heads it away from his own. headV is how hard, before strength scales it -- a header
   // travels a fraction of what a struck ball does.
   headShotR: 12, headAim: 0.55, headV: 12,
+  // How far a header travels. Inside clearDepth of his own goal it is a clearance, aimed away;
+  // beyond it, a knock-down aimed at the best man he can reach within headOut * 1.4.
+  headOut: 18,
+  // A ball slower than this, arriving barely above headMinZ, is one a footballer kills rather than
+  // heads. Diagnostic only until the header gate reads it.
+  headSlowV: 7, headSlowLift: 0.45,
+  // How high the ball must STILL be one slice from now for heading it to be the only thing on.
+  // Zero is not a no-op: it excludes the ball that will already be on the floor by the time he would
+  // have headed it, which is 40% of the population. Swept 0 / 0.2 / 0.4 / 0.6 -> headers 12.3 / 10.4
+  // / 8.7 / 6.6 a match against a 12-15 target, and knock-downs retained by the heading side
+  // 41.1% / 49.5% / 56.2% / 41.8% against a real 35-50%. Zero is the only cell with both in band.
+  headHoldZ: 0,
   // ...but a man throwing himself in front of a SHOT is not trying to trap it, he is trying to be in
   // the way, and he does not need a controlling touch to do it. Shrinking his reach to 0.7 m on a
   // struck ball meant nothing was ever blocked: about a third of real shots never reach the keeper,
@@ -681,6 +760,10 @@ Object.assign(CFG, {
   // and could only shuffle 0.14 m per slice -- measured, 84% of all ball-possession time was
   // somebody walking at 0.56 m/s, which is the "slow nudging" that made the match unwatchable.
   carrySpeed: 0.86, carryLook: 6,
+  // How far BEYOND the ball the carrier is aimed, along the line he has picked. Zero is a target
+  // on the ball itself, which is not a bearing at all -- see meShape. Too far and the run stops
+  // being a dribble and becomes him leaving it behind, so it is swept, not guessed.
+  carryAim: 2,
   // He commits to a direction and runs with it for about a second before looking up again, and
   // turning costs him. Re-solving an eight-way argmax every quarter-second in a steep value field is
   // what made him shuffle: measured, the steering reversed by more than 90 degrees on 13% of the
@@ -700,6 +783,15 @@ Object.assign(CFG, {
   // What running it over each line costs him, against a carry worth up to 0.83. Seen from outSee
   // metres out, so he drifts away from a line rather than swerving at the last moment.
   outSee: 9, outThrow: 0.06, outGoalkick: 0.12, outCorner: 0.45,
+  // ...and what a direction that is simply OFF the pitch costs. Large enough that no carry value
+  // can outbid it, so the search always resolves onto the grass instead of returning nothing.
+  outHard: 4,
+  // How far along his own dribble line he is held to the pitch, and how far inside the line the
+  // clamped aim point sits. dribEdge is roughly the ball's roll over one commit window.
+  // Swept over 0 / 3 / 4.5 / 6 / 8. Carried-out balls fall 5.6 -> 4.3 by 6 m and only to 3.8 by 8,
+  // and 6 is where the regression turns over: it takes pass completion 74% -> 79% and block depth
+  // under siege 15.2 -> 18.8 m, both into range, where 3 leaves both short.
+  dribEdge: 6, dribEdgeM: 1.0,
   // Below this much of "the ball is the way I am facing" he has overrun it, and recovering it is the
   // whole of his next action. -0.2 is about a hundred degrees off his line.
   dribBehind: -0.2,
@@ -717,7 +809,17 @@ Object.assign(CFG, {
   // Swept: at 0.80 the longest anyone kept the ball was 2.8 s and the match went dead; with no tax
   // at all one man once held it for 18.5 s. At 0.97 he averages 1.2 s on it, 5% of possessions run
   // past 3.3 s, and the longest carry in sixteen matches was 8.8 s -- which is a mazy dribble.
-  dwellDrop: 0.97,
+  // THE TAX ON KEEPING IT, and the one lever that makes a carrier take the grass in front of him.
+  // Measured, he releases after a median 1.00 s and 91.4% of releases are FORCED by the touch budget
+  // expiring -- but raising the budget (holdBase) lengthens his spells while DEGRADING how much of
+  // the ground he covers is toward goal, in every cell swept. Easing the dwell tax is the only cell
+  // that improves it. 0.97 -> 0.99 -> 1.00: path per spell 5.9 / 6.5 / 7.1 m, of which toward goal
+  // 21.1% / 23.2% / 26.2%, spells gaining 20 m or more 2.4 / 3.0 / 4.3 a side, and the population the
+  // complaint is actually about -- a man in the opponents' half with a clear twelve-metre wedge ahead
+  // who is not moving at goal -- 31.0% / 29.2% / 26.3% of such slices. Removing it entirely reads
+  // best there and costs the regression (10/21 against 12), and it would also hand Run At Defence
+  // back the free lunch this constant exists to charge for. 0.99 keeps both.
+  dwellDrop: 0.99,
   // Build-up: what a safe ball is worth when nothing forward is on. Higher means more recycling
   // between attacks, which is what real possessions are made of.
   keepBuild: 0.018,
@@ -832,6 +934,10 @@ Object.assign(CFG, {
   // somebody was in tackling range on 15%. The line should govern how hard you go, not whether
   // anyone goes.
   engageIn: 30, engageOut: 15,
+  // THE HANDOVER. handEngage is jockeying distance: inside it a man who was already pressing counts
+  // as ON the carrier and keeps the job against anyone merely nearer. handTake is how close another
+  // man must be to have genuinely taken it off him -- close enough to be on the ball himself.
+  handEngage: 4, handTake: 2,
   // How deep the ball must be before a block stops sending one man and starts swarming, how many
   // extra go, and how close they have to be already. Same units as engageIn.
   swarmDepth: 26, swarmMax: 1, swarmR: 11,
@@ -878,6 +984,9 @@ Object.assign(CFG, {
   // the bottom of its band before any of it, so this is what the match can currently carry.
   // It is NOT a conversion fix: conversion sat between 32% and 38% at every setting.
   judgeErr: 0.06,
+  // How much of the judgement error is the shared misreading of the situation (one draw per option
+  // class) as against per-option scatter. See meDecide: at 0 the old raffle returns in full.
+  judgeShare: 0.75,
   // Where in the goal he aims, as a fraction of the half-width out from centre. At 0.55 a good
   // finisher aimed 2.99 m off centre with the post at 3.66 m -- 0.67 m of margin -- and 30% of every
   // shot struck went wide against a real 25%. He is not that brave.
@@ -972,6 +1081,13 @@ Object.assign(CFG, {
   // How far off the centre of his goal he may shade. Clamped to the width of the posts he could not
   // get across to a ball out wide -- he was never actually between it and the goal.
   gkSide: 5.5,
+  // The finisher term in meShotP: base + shoot/99 * skill. Anchored at a 75-rated striker
+  // (shoot ~0.85 on /99): base + 0.85 * skill = 1.28, the value everything was calibrated against.
+  shotFinBase: 0.60, shotFinSkill: 0.80,   // swept 0.18-0.80: no effect on the band gradient
+  // GF's `panic`: how much wider than the real frame a POOR keeper behaves as though his goal is,
+  // as a fraction. It drags him toward the middle and concedes the near post, which is what bad
+  // goalkeeping looks like from the stand. 0 makes every keeper position identically.
+  gkPanic: 0.55,
   // Coming for it. A keeper who never leaves his line is as wrong as one who always does: if the ball
   // is loose in or around his box and he gets there first by a clear margin, he goes.
   // He comes for a ball he can actually GET, at a point that is still near his goal. Judged against
@@ -1012,7 +1128,12 @@ Object.assign(CFG, {
   handMinZ: 0.85, handP: 0.06, gkRushEdgeBox: -260,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
-  gkStand: 1.2,
+  // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
+  // 1.2 m was tuned when he never actually arrived; once he is given keeper pace and a correct
+  // bisector he does, and at 1.2 m the shot is struck inside his own reaction time and beats him
+  // every time. Swept 1.2 / 2.2 / 3.2 / 4.5: conversion 15 / 14 / 11 / 14%, and 3.2 also reads best
+  // on the angle itself at every percentile.
+  gkStand: 3.2,
   // HANDS. In his own area, and only when the last man to touch it was NOT a team-mate, he picks it
   // up -- and once it is in his hands nobody can take it off him. That makes collecting it the
   // safest thing he can possibly do, so he goes for those balls even when he would arrive after an

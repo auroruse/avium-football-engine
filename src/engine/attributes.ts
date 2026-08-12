@@ -77,6 +77,18 @@ export const meMind = (p) => Math.max(0, Math.min(1, (meOvr(p) - 58) / 26));
 // why the whole aerial half of football did not exist.
 export const meAerial = (a, CFG) => CFG.headBase + a.strength / 99 * CFG.headSpan;
 
+// TECHNIQUE, over the band a footballer can actually occupy. Every execution term used to read
+// attr/99 -- but ME_COMPRESS squeezes forty OVR points into thirty attribute points, so across the
+// whole rating scale pass noise moved 1.4 degrees and completion was measured FLAT across bands
+// (76-81%) while real football spans about 70-85. Same trick as meGkSkill and meMind: normalise
+// over the occupied band, anchored so a 75-rated player (pass attr 80 -> 0.80) keeps the exact
+// execution everything was calibrated against, and only the spread around him widens.
+// EXECUTION ONLY -- kick noise, first touch, close control, reach. Never the utility scores: what
+// an option is WORTH does not depend on who is weighing it, judgement already has its own term
+// (meMind), and set-piece strikes deliberately stay on attr/99 because a dead ball is the great
+// equaliser: penalty conversion barely varies by level in the real game, and ours is calibrated.
+export const meTech = (attr) => Math.max(0, Math.min(1, (attr - 48) / 40));
+
 // A duel: skill difference in attribute points to a probability, bounded at both ends. The endpoints
 // are the whole design -- they say what the worst and best player in the world achieve at this, and
 // nothing outside that band can happen however lopsided the ratings.

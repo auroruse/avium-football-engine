@@ -18,7 +18,13 @@ export function meShotP(s, side, p, x, y) {
   const a = meAttrs(p);
   // Base conversion from geometry alone, then the finisher, then how hurried he is.
   let q = Math.exp(-g.d * (CFG.xgK ?? ME_XG_K)) * Math.min(1, g.ang / 0.42) * 0.78;
-  q *= 0.60 + a.shoot / 99 * 0.80;
+  // The finisher. This slope dates from when execution noise was nearly flat and sp carried the
+  // whole of what a finisher was worth; meShootBall now takes meTech, so real skill spread lives in
+  // the strike itself and a steep slope HERE double-counts it -- worse, it is a slope on the
+  // ESTIMATE, so a poor finisher rationally declines shots a real one takes. Measured, shots per
+  // final-third entry fell 0.55 -> 0.38 from the 85 band to the 55 band while real shot counts are
+  // nearly flat across divisions. Kept on attr/99, anchored at 75, sweepable.
+  q *= CFG.shotFinBase + a.shoot / 99 * CFG.shotFinSkill;
   q *= 1 / (1 + mePressure(s, side, x, y) * 0.35);
   // Bodies between him and the goal, which is most of what separates a chance from a half-chance.
   const lane0 = meLaneBlock(s, side, x, y, meGoalX(side), ME_HALF_W);
@@ -84,7 +90,23 @@ export function meDecide(s, rng, side, i, dwell) {
   // outcome -- it decides a CHOICE, and the choice is then played out by the same physics as anybody
   // else's. This is the whole of judgement: one term, applied to every option equally.
   const miss = CFG.judgeErr * (1 - meMind(p));
-  const jit = () => (rng.u() + rng.u() - 1) * miss;
+  // ...but the error is mostly in his reading of the SITUATION, so it is CORRELATED across options
+  // of the same kind. Drawn independently per option it stops being judgement and becomes a raffle
+  // the biggest ticket-holder wins: a decision menu holds one shot and twenty-odd passes, and the
+  // maximum of twenty independent draws beats one draw structurally -- by about sigma * sqrt(2 ln n)
+  // -- so the noisier the player, the more the menu itself steered him away from shooting. Measured,
+  // shots per final-third entry fell 0.55 -> 0.38 from the 85 band to the 55 band, and with the
+  // jitter forced to zero the gradient INVERTED (0.58 / 0.64 / 0.70) -- the collapse was never his
+  // finishing, his range, or the defence, it was the raffle. Flattening the finisher term in sp did
+  // nothing (swept 0.18-0.80); this is the whole mechanism.
+  // One draw per CLASS carries judgeShare of the variance -- misreading the moment moves every pass
+  // together -- and each option keeps its own residue, so a poor player still picks the wrong pass
+  // as well as the wrong kind of action. Per-option variance is unchanged; only the correlation is
+  // new, so judgement stays exactly as costly as it was calibrated to be.
+  const clsW = Math.sqrt(CFG.judgeShare), ownW = Math.sqrt(1 - CFG.judgeShare);
+  const cls = { shot: (rng.u() + rng.u() - 1), pass: (rng.u() + rng.u() - 1),
+                carry: (rng.u() + rng.u() - 1), clear: (rng.u() + rng.u() - 1) };
+  const jit = (c) => (clsW * cls[c] + ownW * (rng.u() + rng.u() - 1)) * miss;
   // Shoot.
   const sp = meShotP(s, side, p, p.x, p.y);
   // A hopeless shot is not an option, it is a giveaway. Every other option is scored against losing
@@ -119,7 +141,7 @@ export function meDecide(s, rng, side, i, dwell) {
     const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * 0.32
              - offWant * CFG.shotWantW;   // a miss is only a goal kick
     if (ME_DBG) ME_DBG.shot = sc;
-    const j = sc + jit();
+    const j = sc + jit("shot");
     if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp }; }
   }
   // Pass.
@@ -176,6 +198,11 @@ export function meDecide(s, rng, side, i, dwell) {
     // ground ball futile anyway (it arrives dead or needs an absurd strike), so past 26 m the loft
     // is the only real option; in between, it pays a flat tax so a ground pass wins any tie.
     let isHigh = false;
+    // Tried and rejected: deriving this crossover from meGroundMaxD -- the distance past which the
+    // launch the ODE asks for exceeds passMaxV, about 19 m -- instead of the literal 26, on the
+    // grounds that the 19-26 m band is ground passes that physically cannot arrive. With the flight
+    // time now honest they already score as the slow balls they are, and forcing the loft on top of
+    // that read 12/21 against 13. The rule is redundant once the physics stops lying.
     if (d > 26) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
     else if (d > 10) {
       const blkH = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true);
@@ -260,7 +287,7 @@ export function meDecide(s, rng, side, i, dwell) {
     const sc = ok * (val - giveUp) - (1 - ok) * CFG.loss * (0.35 + meDanger(meOther(side), aimX, aimY))
              + (q.pos === "GK" ? -0.020 : 0);
     if (ME_DBG) ME_DBG.pass = Math.max(ME_DBG.pass ?? -1, sc);
-    const jsc = sc + jit();
+    const jsc = sc + jit("pass");
     if (jsc > bestSc) { bestSc = jsc; best = { k: "pass", j, p: ok, ax: aimX, ay: aimY, high: isHigh, thru }; }
     }
   }
@@ -297,7 +324,7 @@ export function meDecide(s, rng, side, i, dwell) {
   const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72)
             - (1 - drb) * CFG.loss * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
-  const jdsc = dsc + jit();
+  const jdsc = dsc + jit("carry");
   if (jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
   }
   // Hoofing it. You probably concede possession, but you concede it forty metres from your own goal
@@ -341,7 +368,7 @@ export function meDecide(s, rng, side, i, dwell) {
                  * CFG.clearRelief;
     const sc = ok2 * (meVal(side, cx, cy) + CFG.keep * 0.40) + relief
              - (1 - ok2) * CFG.loss * (0.35 + meDanger(meOther(side), cx, cy));
-    const jc = sc + jit();
+    const jc = sc + jit("clear");
     if (jc > bestSc) { bestSc = jc; best = { k: "clear", p: ok2, cx, cy }; }
   }
   // Into the stand. No gain at all, so it only ever wins when everything else is worse than a
@@ -349,7 +376,7 @@ export function meDecide(s, rng, side, i, dwell) {
   if (ownDepth < CFG.touchDepth && press > CFG.touchPress) {
     const sc = meDanger(meOther(side), p.x, p.y) * CFG.clearRelief
              - CFG.loss * (0.35 + meDanger(meOther(side), p.x, p.y)) * CFG.touchDiscount;
-    const jt = sc + jit();
+    const jt = sc + jit("clear");
     if (jt > bestSc) { bestSc = jt; best = { k: "touch", p: 1 }; }
   }
   if (best) best.sc = bestSc;

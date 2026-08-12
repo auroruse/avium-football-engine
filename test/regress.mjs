@@ -132,14 +132,17 @@ const row = (name, val, lo, hi, fmt) => rows.push([name, fmt ? fmt(val) : val.to
 
 const pct = (v) => v.toFixed(0) + "%";
 const m = (v) => v.toFixed(1) + " m";
-const sec = (v) => (v / 4).toFixed(2) + "s";
+const sec = (v) => v.toFixed(2) + "s";
 
 row("self-pass rate", 100 * (A.selfPass || 0) / (A.resolved || 1), 0, 1, pct);
 row("pass completion", 100 * A.passOk / (A.passes || 1), 78, 86, pct);
 row("passes per side", A.passes / N / 2, 40, 120);
 row("carrier: forward dribble illegal", 100 * (A.fwdBlocked || 0) / (A.onball || 1), 0, 4, pct);
 row("carrier: steering reversed", 100 * (A.flip || 0) / (A.held || 1), 0, 3, pct);
-row("carrier: unbroken time on ball", mean("hold"), 3.2, 6.4, sec);
+// UNITS. mean("hold") is in SLICES and the range is in SECONDS; only the formatter divided by
+// four, so a true 1.49 s was compared as 5.96 against 3.2-6.4 and scored as a pass all session.
+// Worse than a wrong number: any change that IMPROVED time on the ball got flagged HIGH for it.
+row("carrier: unbroken time on ball", mean("hold") / 4, 3.2, 6.4, sec);
 row("defenders inside the box", mean("inBox"), 4.5, 7, (v) => v.toFixed(1) + "/10");
 row("block depth under siege", mean("blockDepth"), 18, 26, m);
 row("nearest defender to a man in the box", mean("boxManGap"), 0, 3.0, m);

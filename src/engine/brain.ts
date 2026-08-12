@@ -2,7 +2,7 @@
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "./config";
 import { meHungarian } from "./assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meAttrs, meSpeed } from "./attributes";
+import { meAttrs, meGkSkill, meSpeed } from "./attributes";
 import { GOAL_HALF_W } from "./ball";
 
 // The team defensive line, one depth per side per tick: the mentality default, dragged back by the
@@ -177,7 +177,12 @@ export function meAnchor(s, side, bd, bw) {
 }
 
 export function meSlots(s, side) {
-  const ps = s.players[side], slots = s.mePos.slots[side];
+  // OUT OF POSSESSION HE TAKES HIS DEFENSIVE SLOT. Same Hungarian, same naturalness cost -- only
+  // the target shape changes, so a 3-4-3's wide midfielders get assigned into a back five without
+  // anybody being told individually to drop.
+  const ps = s.players[side];
+  const slots = (s.mePos.side !== side && s.mePos.dslots?.[side]?.length)
+    ? s.mePos.dslots[side] : s.mePos.slots[side];
   for (const sl of slots) { const a = meAnchor(s, side, sl.bd, sl.bw); sl.wx = a[0]; sl.wy = a[1]; }
   const idx = [];
   for (let i = 0; i < ps.length; i++) if (ps[i].pos !== "GK") idx.push(i);
@@ -200,6 +205,24 @@ export function meSlots(s, side) {
     const p = ps[idx[a]], b = asg[a];
     if (b >= 0) { p._bd = slots[b].bd; p._bw = slots[b].bw; }
   }
+}
+
+// THE KEEPER'S ANGLE. The unit vector from the ball toward his goal along the bisector of the two
+// posts (goalie_default.cpp:41-269) -- which is where a goalkeeper stands, and is not the line to
+// the middle of the goal. For a ball in front of the goal the two agree; out wide they do not, and
+// the difference is the near post, the one thing he is never allowed to give away.
+//
+// The frame he bisects is WIDER the worse he is. GF calls it `panic`: a keeper with poor positioning
+// behaves as though he has more goal to cover, which drags him toward the middle and concedes the
+// near post. It is the only place in the engine where goalkeeping is worth anything beyond reaction
+// time and diving speed.
+export function meGkAngle(p, own, bx, by) {
+  const h = GOAL_HALF_W * (1 + (1 - meGkSkill(meAttrs(p))) * CFG.gkPanic);
+  const ax = own - bx, ay = (ME_HALF_W - h) - by, al = Math.hypot(ax, ay) || 1;
+  const cx = own - bx, cy = (ME_HALF_W + h) - by, cl = Math.hypot(cx, cy) || 1;
+  let mx = ax / al + cx / cl, my = ay / al + cy / cl;
+  const ml = Math.hypot(mx, my) || 1;
+  return [mx / ml, my / ml];
 }
 
 // ---- coordinators --------------------------------------------------------------------------
@@ -249,6 +272,14 @@ export function meDuties(s, side) {
         const use = (prev >= 0 && pd < bd * 1.45) ? prev : bi;
         if (use >= 0) us[use]._duty = "press";
       }
+      // Tried and rejected: choosing the presser from the men with a CLAIM on the ball -- everyone
+      // who was pressing and is still inside jockeying distance, plus anyone who has got within
+      // handTake of it -- nearest first, instead of the single nearest by time-to-ball. It is the
+      // rule the complaint describes and it reads worse on the complaint's own measure: the carrier
+      // had nobody within four metres a second later on 4.6% of handovers against 1.3%, and the
+      // relieved man ended up further away rather than nearer. Sticky at the DUTY level is the
+      // wrong instrument, because the duty was never really the thing changing hands; see the
+      // handover below, which is about where the relieved man goes.
     }
     // A CROWD CONTESTS. Exactly one man was sent to the ball however many were standing behind it,
     // so a side defending its own penalty area gave the man shooting the same 2.3 m of room as a
@@ -263,7 +294,10 @@ export function meDuties(s, side) {
       // theory that they would contest without leaving the area. It read worse on every count --
       // 10/21 on the regression against 12, and the box share stopped falling monotonically with
       // the line at all. Whoever is nearest goes.
-      for (let k = 0; k < CFG.swarmMax; k++) {
+      // Tops the ball up to a TOTAL, rather than adding on top of whatever retention already kept
+      // there: added unconditionally it stacked on the men who were already engaged and put three
+      // defenders on the ball 8.4% of the time.
+      for (let k = us.reduce((n, p) => n + (p._duty === "press" ? 1 : 0), 0); k <= CFG.swarmMax; k++) {
         const [si, sdist] = nearest(mp.bx, mp.by, free());
         if (si < 0 || sdist > CFG.swarmR) break;
         us[si]._duty = "press";
@@ -296,9 +330,42 @@ export function meDuties(s, side) {
         if (ri >= 0 && rd < CFG.recoverFrom) us[ri]._duty = "recover";
       }
     }
+    // THE HANDOVER. A man who has just been relieved of the ball does not turn and sprint off to
+    // pick somebody up thirty metres away -- he drops in behind whoever took it off him. Without
+    // this the press job changing hands put him straight back into the free pool, where the
+    // Hungarian is looking for the cheapest man for a mark and he is by definition the nearest
+    // defender to the most dangerous part of the pitch. Measured: he ended up a further 2.5 m from
+    // the carrier a second later, 6.7 m at the ninetieth percentile, and 30% of the time he was
+    // marking somebody else. That is the thing being watched from the stand, and it is not the
+    // duty changing hands -- somebody was still within a metre and a half of the ball on 98.7% of
+    // those handovers -- it is where the relieved man goes afterwards. Cover is where he goes.
+    if (mp.idx >= 0) for (let i = 0; i < us.length; i++) {
+      const p = us[i];
+      if (!p._wasPress || p._duty !== "hold" || p.off || p.pos === "GK" || p._beat > 0) continue;
+      if (Math.hypot(p.x - mp.bx, p.y - mp.by) < CFG.handEngage) p._duty = "cover";
+    }
     // ONE cover, goal-side of the ball.
     const [ci] = nearest(mp.bx - dir * 8, mp.by, free());
     if (ci >= 0) us[ci]._duty = "cover";
+    // A BEATEN MAN HAS A DECISION TO MAKE, and until now he made none: _beat drops him out of free()
+    // so he takes no job at all and drifts back to his block slot. He has just gone in and missed.
+    // Deep in his own third the answer is to get goal-side and let the cover engage; out in midfield
+    // there is room to turn and go with the man, and dropping off just concedes the whole half.
+    //
+    // WHICH HE PICKS IS HIS OWN READING OF IT. meAttrs().position is exactly that attribute, so a
+    // good defender is usually on the right side of the choice and a poor one is often not -- which
+    // is what "he gave up and marked somebody else" looks like from the stand. Rolled off a hash of
+    // the tick rather than the rng, so it is reproducible and does not consume the seeded stream in
+    // a function that has never needed one.
+    for (let i = 0; i < us.length; i++) {
+      const p = us[i];
+      if (!(p._beat > 0) || p.off || p.pos === "GK") continue;
+      const deep = ballDepth < CFG.beatDeep;
+      let h = (Math.imul(mp.tick, 2654435761) ^ Math.imul(i + 1, 40503)) >>> 0;
+      h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+      const reads = (h >>> 8) / 16777216 < meAttrs(p).position / 99;
+      p._duty = reads === deep ? "recover" : "press";
+    }
     // Man-mark the most dangerous opponents, tightening as they get nearer our goal.
     const threats = [];
     for (let j = 0; j < them.length; j++) { const q = them[j]; if (q.pos === "GK") continue;
@@ -314,7 +381,15 @@ export function meDuties(s, side) {
     // Assigned as one problem, not one pick at a time. Picking greedily hands the same region to
     // several defenders at once, which is what put six of them in the same square metre.
     {
-      const avail = free(), pick = threats.slice(0, Math.min(nMark, threats.length));
+      // ...and never ask for more men than we have. The Hungarian minimises TOTAL cost and has no
+      // idea that pick[0] is the most dangerous man on the pitch: handed eight threats and five
+      // free defenders it leaves three unassigned, and the three it leaves are whichever are
+      // expensive to reach -- which is precisely the man who has already got away. Measured, the
+      // most dangerous opponent off the ball was marked 59.6% of the time and free 61.7%. Cutting
+      // the list to the number of men available makes the ones we cannot cover the ones that
+      // matter least, which is the decision a defence actually makes.
+      const avail = free();
+      const pick = threats.slice(0, Math.min(nMark, threats.length, avail.length));
       const n = Math.max(avail.length, pick.length);
       if (pick.length && avail.length) {
         const cost = [];
@@ -329,6 +404,13 @@ export function meDuties(s, side) {
             // and that was the case being charged the six-metre penalty, so the assignment actively
             // preferred handing each attacker the defender on the wrong side of him.
             const behind = (p.x - q.x) * dir > 0 ? 6 : 0;
+            // Tried and rejected: a markStick discount for keeping the man you already had, read
+            // off _mkPrev. It moved the "marks somebody else after being beaten" figure by nothing
+            // (8.9% -> 9.2%, noise) and cost the regression a point. The figure is not measuring
+            // what it looks like: it counts EVERY defender the carrier goes past, about 120 a match,
+            // almost none of whom were marking him -- they were never engaged, so marking somebody
+            // else is them doing their job. A man who is genuinely beaten is excluded from free()
+            // and cannot be assigned a mark at all.
             row[b] = (d + behind) * (d + behind);
           }
           cost.push(row);
@@ -492,6 +574,14 @@ export function meBlock(s, side) {
   const dlb = st.dlBehavior || 0;
   let dlA = dlb < 0 ? -CFG.dlDrop : dlb * CFG.dlStep;
   if (dlb === 2 && mp.idx >= 0 && mp.side !== side && mp.hold >= CFG.trapHold) dlA += CFG.trapStep;
+  // Tried and rejected: letting the deepest band hug the ball under siege instead of sitting on
+  // blkMin's flat ten-metre floor, on the theory that attackers were getting goal-side of the whole
+  // defence. They are not -- measured, only 1.2% of opponents in our own third are nearer our goal
+  // than our deepest outfielder, who sits at 13.1 m. Swept over 1.0 / 0.7 / 0.55 / 0.4 it moved that
+  // to 0.9% and took the nearest defender to a man in our box the WRONG way, 3.2 m to 3.8. The
+  // block's depth problem is real -- 15.3 m of spread against a wanted 18-26, and 3.6 of ten men
+  // inside the box against 4.5-7 -- but it is not the line's floor, and it is not blkDepthLow
+  // either, which moved the spread 15.0 to 16.4 and nothing else.
   const wantLine = Math.max(CFG.blkMin, Math.min(CFG.blkMax,
     ballDepth - CFG.blkDrop + st.defLine * CFG.blkDefLine + st.pressingLOE * CFG.blkLoe - drop + dlA));
   const wantCy = ME_HALF_W + (mp.by - ME_HALF_W) * CFG.blkSlide;
@@ -517,11 +607,22 @@ export function meBlock(s, side) {
   const idx = [];
   for (let i = 0; i < us.length; i++) if (us[i].pos !== "GK") idx.push(i);
   let mn = Infinity, mx = -Infinity;
-  for (const i of idx) { const b = us[i]._bd0; if (b < mn) mn = b; if (b > mx) mx = b; }
+  // THE LIVE SLOT, NOT THE ONE HE STARTED IN. These read _bd0, which match.ts:32 writes once at
+  // kickoff and nothing but a substitution ever touches -- so which band a man belonged to was fixed
+  // for the whole match. meSlots (brain.ts:179) meanwhile runs every eighth tick and solves exactly
+  // the problem that creates: a Hungarian assignment of players to formation slots, with a
+  // naturalness cost so a striker does not become a centre-half, which is how a vacated slot gets
+  // covered when somebody leaves it to press. It writes _bd/_bw, and meBlock never read them. The
+  // re-covering machinery has been running all along with its output discarded.
+  //
+  // Measured before this: a 5-3-2 put FEWER men in its own box than a 4-3-3 (0.87 against 1.01),
+  // because bands are thirds of the _bd0 RANGE rather than of the formation's actual lines, so a
+  // back five was split across bands by natural depth and never defended as a five.
+  for (const i of idx) { const b = us[i]._bd ?? us[i]._bd0; if (b < mn) mn = b; if (b > mx) mx = b; }
   const span = Math.max(1, mx - mn);
   const bands = [[], [], []];
   for (const i of idx) {
-    const rel = (us[i]._bd0 - mn) / span;
+    const rel = ((us[i]._bd ?? us[i]._bd0) - mn) / span;
     bands[rel < 0.34 ? 0 : rel < 0.72 ? 1 : 2].push(i);
   }
   for (let b = 0; b < 3; b++) {
@@ -533,6 +634,11 @@ export function meBlock(s, side) {
     // half-spacing the midfield sat 23 m up the pitch with the ball in the six-yard box and only a
     // third of it ever got inside the area -- so a back three defended the box on its own, which is
     // why a formation with fewer defenders had nothing at all against a forward run.
+    // Tried and rejected: dropping the FRONT band under siege too, on the finding that the forwards
+    // are ordered to stand a median 12 m ahead of the ball even with it in our own box. Swept at
+    // 0 / 0.20, defenders inside the box went 4.3 -> 3.8 of ten and the regression 13/21 -> 12 --
+    // the wrong way. Pulling the front three back does not add bodies to the area; it just shortens
+    // the block, and the men it moves stop being an out-ball without ever reaching the box.
     const frac = b === 1 ? 0.5 - siege * CFG.blkMidDrop : b / 2;
     const bx = own + dir * (line + depth * frac);
     // A BAND IS AS WIDE AS THE MEN IN IT. Held at a flat width, a back FOUR stood ten metres apart
@@ -729,9 +835,16 @@ export function meShape(s, side) {
       // man, and the smother in meTick does the rest.
       if (mp.idx >= 0 && mp.side === meOther(side)
           && Math.hypot(mp.bx - own, mp.by - ME_HALF_W) < CFG.gkBoxR) {
-        const dx3 = mp.bx - p.x, dy3 = mp.by - p.y, dl3 = Math.hypot(dx3, dy3) || 1;
-        const step3 = Math.max(0, dl3 - CFG.gkStand);
-        p._tx = p.x + dx3 / dl3 * step3; p._ty = p.y + dy3 / dl3 * step3;
+        // ...and he closes ALONG HIS ANGLE. Walking straight at the ball from wherever he happened
+        // to be means the angle he ends up covering is whatever it was when the carrier entered the
+        // area, and he arrives square to nothing. Two thirds of all shots are struck inside the area,
+        // so this branch owns the keeper for most of them: measured, even with the resting stance on
+        // the bisector his target still sat 0.19 of the half-angle toward the far post, and all of
+        // that was here. He now stands gkStand short of the ball ON the bisector, so coming out and
+        // being on his angle are the same movement instead of two that fight each other.
+        const [mx3, my3] = meGkAngle(p, own, mp.bx, mp.by);
+        p._tx = mp.bx + mx3 * CFG.gkStand;
+        p._ty = mp.by + my3 * CFG.gkStand;
         p._closing = true;
         continue;
       }
@@ -739,10 +852,29 @@ export function meShape(s, side) {
       const vx2 = bx2 - own, vy2 = by2 - ME_HALF_W, vd = Math.hypot(vx2, vy2) || 1;
       const out2 = Math.max(CFG.gkOutMin,
                    Math.min(CFG.gkOutMax, CFG.gkOutMin + vd * CFG.gkOutK + st.dlBehavior * 1.2));
+      // HIS ANGLE IS THE BISECTOR OF THE TWO POSTS, not the line to the middle of his goal
+      // (goalie_default.cpp:41-269). For a ball in front of the goal the two are the same line; for
+      // a ball out wide they are not, and the whole of the difference is the near post. Bisecting
+      // the posts leans him toward the post the shooter is nearest, which is the one thing a keeper
+      // never gives away; the centre line leans him off it. Measured from the shooter's own view of
+      // the mouth, he stood 35% of the way from his angle toward the FAR post on a median shot and
+      // 57% of the way on shots from outside the width of the six-yard box.
+      //
+      // ...and against a goal that is wider the worse he is. GF calls it `panic`: a keeper with poor
+      // positioning behaves as though he has more frame to cover, which drags him toward the middle
+      // and concedes the near post. It is the only place in the engine where being a good goalkeeper
+      // is worth anything other than diving speed and reaction time.
+      const [mx2, my2] = meGkAngle(p, own, bx2, by2);
+      const sgn2 = vx2 >= 0 ? 1 : -1;
+      // Walk down the bisector from the ball until he is out2 metres off his line. If the ball is
+      // level with the goal the bisector runs parallel to it and there is no such point, so the old
+      // radial rule stands in -- which is also the case where the two rules agree anyway.
+      const step2 = Math.abs(mx2) > 1e-3 ? (own + sgn2 * out2 - bx2) / mx2 : -1;
       p._tx = own + vx2 / vd * out2;
-      // On the line between the ball and the middle of his goal -- properly, not clamped to the width
-      // of the posts. Held inside the frame he could never get across to a ball out wide.
-      p._ty = ME_HALF_W + Math.max(-CFG.gkSide, Math.min(CFG.gkSide, vy2 / vd * out2));
+      const rawY = step2 > 0 ? by2 + step2 * my2 : ME_HALF_W + vy2 / vd * out2;
+      // Not clamped to the width of the posts, which is what GF does: held inside the frame he could
+      // never get across to a ball out wide, and that was measured and fixed here long before this.
+      p._ty = ME_HALF_W + Math.max(-CFG.gkSide, Math.min(CFG.gkSide, rawY - ME_HALF_W));
       continue;
     }
     // READING THE PASS. A ball played into the man I am marking is a decision, not something I
@@ -789,8 +921,28 @@ export function meShape(s, side) {
     // screening rule -- because those were all separate attempts to recover a shape the block just
     // has. A man who has picked somebody up moves at his own pace rather than easing into a mark.
     if (!attacking && p._duty !== "press" && p._duty !== "cover" && p._duty !== "recover") {
-      const tx2 = Math.max(1.5, Math.min(PITCH_L - 1.5, p._bsx ?? p.x));
-      const ty2 = Math.max(1.5, Math.min(PITCH_W - 1.5, p._bsy ?? p.y));
+      let tx2 = p._bsx ?? p.x, ty2 = p._bsy ?? p.y;
+      // ...BUT A MAN WHO HAS BEEN GIVEN SOMEBODY TO MARK GOES AND MARKS HIM. The block owning every
+      // defending position meant the whole of `case "mark"` below -- the goal-side offset, the
+      // shooting point, the drop-off-when-beaten -- was dead code whenever the side was actually
+      // defending, because this branch returns before the switch is ever reached. meDuties assigned
+      // markers, _mk decided he should hurry, and then nobody walked toward anybody: measured, the
+      // marker was goal-side of his man 56.3% of the time against a real defence's ~95%, the most
+      // dangerous opponent off the ball had nobody goal-side within five metres 61.7% of the time,
+      // and a third of the men standing in our own box had nobody between them and the goal at all.
+      //
+      // The block stays the base -- it is the thing that actually holds a shape, and every previous
+      // attempt to replace it with man-marking positions read worse. He is drawn off it toward his
+      // man by markPull, and then the invariant is asserted rather than approached: whatever the
+      // slot says, a marker is never left standing upfield of the man he is marking.
+      // Swept a markPull term alongside this -- how far off the slot he is drawn toward his man --
+      // over 0 / 0.5 / 0.75 / 1.0. It measured as noise at every value (60.5 to 63.2% goal-side)
+      // because the clamp below already does the work, so it is not here: a knob that reads as
+      // noise is a knob that should not exist.
+      const mk2 = p._mk >= 0 ? them[p._mk] : null;
+      if (mk2 && !mk2.off && (mk2.x - tx2) * dir < CFG.markGoalSide) tx2 = mk2.x - dir * CFG.markGoalSide;
+      tx2 = Math.max(1.5, Math.min(PITCH_L - 1.5, tx2));
+      ty2 = Math.max(1.5, Math.min(PITCH_W - 1.5, ty2));
       // Picked somebody up, caught upfield, or simply out of shape: either way he is not strolling.
       if (p._mk >= 0 || (p.x - (p._bsx ?? p.x)) * dir > CFG.blkRecover
           || Math.hypot(p.x - tx2, p.y - ty2) > CFG.blkChase) p._closing = true;
@@ -841,8 +993,9 @@ export function meShape(s, side) {
           // nothing in the engine modelled going PAST a man. Dive in and lose, and you are out of it
           // for a couple of seconds; only Get Stuck In pays that, which is what makes it a trade
           // rather than a better way to defend.
-          if ((st.tackling || 0) > 0 && (mp.bx - own) * dir < (p.x - own) * dir - CFG.tkBeatGap)
-            p._beat = Math.max(p._beat || 0, Math.round(CFG.tkBeatT * st.tackling));
+          // _beat is set in meTackle now, as the outcome of a challenge he chose to make. It was
+          // set here from "the ball has gone past me", gated behind an instruction nobody sets by
+          // default, which is why being beaten measured at 0.0% of slices.
           const jk = CFG.jockeyStand * (1 - (st.tackling || 0) * CFG.tkClose);
           const gx2 = own - mp.bx, gy2 = ME_HALF_W - mp.by, gl2 = Math.hypot(gx2, gy2) || 1;
           tx = mp.bx + gx2 / gl2 * jk;
@@ -973,7 +1126,6 @@ export function meShape(s, side) {
         for (let k = 0; k < 8; k++) {
           const ang = k * Math.PI / 4;
           const cx = p.x + Math.cos(ang) * CFG.carryLook, cy = p.y + Math.sin(ang) * CFG.carryLook;
-          if (cx < 2 || cx > PITCH_L - 2 || cy < 2 || cy > PITCH_W - 2) continue;
           if (CFG.carrierOffside && (cx - off) * dir > 0.4) continue;
           // Where he takes it is worth what it is worth WITH the bodies there, and a footballer
           // does not turn on a sixpence: holding your line is cheaper than reversing it.
@@ -988,6 +1140,15 @@ export function meShape(s, side) {
           if (eSide < CFG.outSee) sc2 -= (1 - eSide / CFG.outSee) * CFG.outThrow;
           if (eFar  < CFG.outSee) sc2 -= (1 - eFar  / CFG.outSee) * CFG.outGoalkick;
           if (eOwn  < CFG.outSee) sc2 -= (1 - eOwn  / CFG.outSee) * CFG.outCorner;
+          // OFF THE PITCH IS NOT AN OPTION, and it used to be removed from the search rather than
+          // scored -- `continue` on any point outside a 2 m margin. A man already inside that margin
+          // therefore had every one of his eight directions vetoed, the search returned nothing, and
+          // he simply held his previous committed angle: straight over the line. Measured, 5.5 balls
+          // a match were carried out, 36% of every ball that left the pitch, and the median carrier
+          // was 1.2 m from the touchline at the moment he committed. Priced instead of vetoed, the
+          // search always has an answer and the answer always points back onto the grass.
+          const outBy = Math.max(0, 2 - Math.min(eSide, cx, PITCH_L - cx));
+          if (outBy > 0) sc2 -= CFG.outHard * (1 + outBy);
           if (p._drbA != null) sc2 -= Math.abs(Math.atan2(Math.sin(ang - p._drbA), Math.cos(ang - p._drbA))) * CFG.carryTurn;
           if (sc2 > bSc) { bSc = sc2; bAng = ang; }
         }
@@ -1011,6 +1172,22 @@ export function meShape(s, side) {
         const mt = CFG.dribTurn / (1 + vNow * CFG.dribTurnV);
         p._drbA += Math.max(-mt, Math.min(mt, dth));
       }
+      // THE LINE IS ALWAYS THERE. Pricing the out-of-play terms in the search above is the wrong
+      // instrument for this and measured like it: twelve cells over outLook 6-18 m and 1-20x the
+      // price all landed between 3.8 and 6.0 carried-out balls a match with no trend at all. The
+      // search only runs every carryCommit slices, and at carry pace that is five metres of travel
+      // -- traced, the median man who ran it out was 0.5 m from the line with the ball already
+      // 1.4 m in front of him and rolling at 5.2 m/s. Nothing he DECIDED could still reach that.
+      // A footballer does not re-notice the touchline once a second; he can see it the whole time.
+      // So the line he is taking the ball on is clamped against the pitch every slice, from where
+      // the BALL is rather than where he is. Running the touchline is untouched -- a heading that
+      // stays inside is never bent -- and only one that genuinely exits gets turned back.
+      {
+        const ex = mp.bx + Math.cos(p._drbA) * CFG.dribEdge, ey = mp.by + Math.sin(p._drbA) * CFG.dribEdge;
+        const cxE = Math.max(CFG.dribEdgeM, Math.min(PITCH_L - CFG.dribEdgeM, ex));
+        const cyE = Math.max(CFG.dribEdgeM, Math.min(PITCH_W - CFG.dribEdgeM, ey));
+        if (cxE !== ex || cyE !== ey) p._drbA = Math.atan2(cyE - mp.by, cxE - mp.bx);
+      }
       // And if it HAS got behind him, getting it back in front is the only thing he is doing: he
       // checks, turns onto it, and takes it on again from there.
       {
@@ -1026,7 +1203,6 @@ export function meShape(s, side) {
       // is. Aiming him at a distant spot instead left him running away from a ball he then never
       // made contact with: measured, the man "in possession" stood 1.6 m off it all match and the
       // whole game ran at two passes a side.
-      const ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
       // Aimed THROUGH the ball, not just past it. At a metre and a half his arrival gate stopped him
       // a stride short of it -- man and ball both standing still, a metre apart, for the rest of the
       // possession. He has to be running somewhere beyond it to keep making contact.
@@ -1041,7 +1217,25 @@ export function meShape(s, side) {
       // and is fatal: standing at that target means matching the ball's velocity exactly, so the gap
       // never closes, the two decelerate together and both come to rest a stride apart. That is the
       // stall. What keeps the ball in front of him is not where he aims -- it is the TOUCH.
-      p._tx = mp.bx; p._ty = mp.by;
+      //
+      // ...but a target ON the ball is not a bearing, it is a point under his own feet, and that is
+      // the whole of "he drags it by his side". Traced: his target was the ball on 99.6% of carried
+      // slices, the ball sat 0.62 m away, and his velocity was 65 degrees off both. The direction to
+      // a target that close swings through a right angle in the time it takes him to move past it,
+      // so his steering can never settle and he circles the ball instead of running with it -- which
+      // is also the slow gravitating around the ball, the same mechanism seen from further away.
+      // Tightening the touch-offset limit was the obvious answer and is not the mechanism: swept
+      // from 180 degrees down to 30 it moved the angle the wrong way, 78 to 87, because the limit is
+      // measured against a velocity that is itself pointing at the off-line ball.
+      //
+      // So he is aimed BEYOND the ball, along the line he has picked. That is a bearing that holds
+      // for several slices, and it does not stall the way a point behind the ball does: the target
+      // is on the far side of it, so he runs THROUGH the ball, and the touch is what puts it back in
+      // front. He cannot outrun it either -- the touch leaves his foot touchMin quicker than he is
+      // going, every time.
+      const ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
+      p._tx = mp.bx + Math.cos(ca) * CFG.carryAim;
+      p._ty = mp.by + Math.sin(ca) * CFG.carryAim;
       continue;                                                    // no leash, no trap, no offside clamp
     }
     // A committed run overrides the job for as long as it lasts -- but a man going in behind holds

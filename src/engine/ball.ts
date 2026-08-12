@@ -9,7 +9,7 @@
 // that fills the forecast, so the two can never diverge. Rebuilt on every touch, so a kick is
 // visible to every brain within one slice.
 import { CFG, ME_DT } from "./config";
-import { meAttrs } from "./attributes";
+import { meAttrs, meTech } from "./attributes";
 
 import { ME_HALF_W, PITCH_L } from "./geometry";
 
@@ -100,7 +100,14 @@ function hitBodies(b, players, ctrl, skip) {
   }
   if (ctrl && b.bz < CFG.touchZ) {
     const rx = b.bx - ctrl.x, ry = b.by - ctrl.y, rd = Math.hypot(rx, ry);
-    if (rd < CFG.reach) {
+    // CLOSE CONTROL REACHES FURTHER THAN A TOE. This used to be gated on CFG.reach, 0.70 m, while
+    // the setpoint it is steering toward -- dribSet -- is 1.10 m: the ball was wanted at a distance
+    // at which it could no longer be touched, so the control law could never arrive anywhere. Past
+    // 0.70 m the ball was simply free, decelerating on the grass at 4.6 m/s while the man ran at
+    // 5.1, so he caught it up and went past it. Measured, the ball sat 0.11 m ahead of the carrier
+    // at the median and a metre BEHIND him at the tenth percentile, which is the dragging. reach is
+    // the radius for getting a boot to somebody else's ball; running with your own is not that.
+    if (rd < CFG.dribCtrl) {
       const cvx = (ctrl.vx || 0) / ME_DT, cvy = (ctrl.vy || 0) / ME_DT;
       const hs = Math.hypot(cvx, cvy);
       const hx = chx, hy = chy;
@@ -113,7 +120,7 @@ function hitBodies(b, players, ctrl, skip) {
       const dvx = hx * want + (wx - b.bx) * CFG.ctrlPull - b.bvx;
       const dvy = hy * want + (wy - b.by) * CFG.ctrlPull - b.bvy;
       const dm = Math.hypot(dvx, dvy);
-      const cap = (CFG.ctrlForce + meAttrs(ctrl).pass / 99 * CFG.ctrlSkill) * BALL_SUB;
+      const cap = (CFG.ctrlForce + meTech(meAttrs(ctrl).pass) * CFG.ctrlSkill) * BALL_SUB;
       const k = dm > cap ? cap / dm : 1;
       b.bvx += dvx * k; b.bvy += dvy * k;
       if (!b.hitP) { b.hitP = ctrl; b.hitV = 0; }
@@ -230,6 +237,17 @@ export function meGroundSpeed(d) {
   return Math.min(CFG.passMaxV, Math.sqrt(Math.max(36, (a2 + r) * Math.exp(2 * k * d) - r)));
 }
 
+/** The distance past which a ground pass CANNOT arrive: the launch the ODE above asks for exceeds
+ *  passMaxV, so the ball is struck at the cap and dies short whatever the decision believed. This is
+ *  the crossover to a lofted ball, and it belongs here rather than as the literal 26 that decide.ts
+ *  used to carry -- it is about nineteen metres on these constants, so the whole 19 to 26 m band was
+ *  a window of ground passes that physically could not get there, which is exactly the length a
+ *  through ball is. It moves when the pitch moves, which is the point of deriving it. */
+export function meGroundMaxD() {
+  const a2 = CFG.passArrive * CFG.passArrive, k = meRollK(), r = meRollR();
+  return Math.log((CFG.passMaxV * CFG.passMaxV + r) / (a2 + r)) / (2 * k);
+}
+
 // A lofted ball: pick a flight time from distance, split it into a launch. GF's HighPass power is
 // NormalizedClamp(dist,0,60)^1.4 * 1.15 (AIfunctions.cpp:1063-1074); this parameterisation lands in
 // the same place while staying in metres and seconds.
@@ -247,7 +265,13 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press) {
   const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress)
               * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
-  const pow = 1 + g2(rng) * CFG.powerNoise;
+  // WEIGHT is a skill. The aim cone always was, and the power wobble sat at a flat 0.08 for all
+  // twenty-two -- but weight is the half of passing that actually separates levels: an under-hit
+  // ball dies in the lane and belongs to whoever is standing there, however short his reach, and an
+  // over-hit one runs through the receiver. Swept, the aim cone alone could not move completion at
+  // the low bands at all (83% at slope 6 and 82% at slope 15) because a short recycling ball barely
+  // misses at any angle. Anchored at 75 like every meTech site.
+  const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill);
   let vxy, vz;
   if (type === "ground") { vxy = meGroundSpeed(d) * pow; vz = 0; }
   else { const L = meLoftFor(type === "clear" ? Math.max(d, 30) : d); vxy = L.vxy * pow; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }

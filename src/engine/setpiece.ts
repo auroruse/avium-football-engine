@@ -22,6 +22,38 @@ export const meFoot = (p) => ((p._bw0 ?? ME_HALF_W) < ME_HALF_W - CFG.spLeftOf ?
 const clampX = (x) => Math.max(0.6, Math.min(PITCH_L - 0.6, x));
 const clampY = (y) => Math.max(0.6, Math.min(PITCH_W - 0.6, y));
 
+// A ROLL FOR THIS PARTICULAR RESTART. Every corner used to produce the same five marks, every wall
+// the same four men, every throw the same three options -- watch two corners and you have seen them
+// all. Varying them needs randomness, and meSPShape runs every slice, so it cannot be re-rolled
+// there: the whole box would twitch. It is rolled once when the ball goes dead and read back.
+// There is no rng in meDead's eight call sites and threading one through them to choose between
+// three corner routines is not worth the churn -- the tick and the spot are already downstream of
+// the seeded stream, so hashing them varies the shape between restarts and repeats identically on
+// a replay of the same seed.
+const spSeed = (tick, x, y) => {
+  let h = (Math.imul(tick, 2654435761) ^ Math.imul(Math.round(x * 8), 40503)
+                                      ^ Math.imul(Math.round(y * 8), 22273)) >>> 0;
+  h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+  return h >>> 0;
+};
+/** Stream k of this restart's roll, in [0, 1). Same restart and same k always give the same number. */
+export const spRnd = (sp, k) => {
+  let h = (sp.seed ^ Math.imul(k + 1, 2654435761)) >>> 0;
+  h ^= h >>> 16; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+  return (h >>> 8) / 16777216;
+};
+const spJ = (sp, k) => (spRnd(sp, k) * 2 - 1) * CFG.spJit;
+
+/** The ball is FETCHED to the spot, not teleported onto it. Called once a slice while it is dead. */
+export function meSPFetch(mp) {
+  const sp = mp.sp; if (!sp || !sp.ft) return;
+  const u = Math.min(1, sp.t / sp.ft), e = u * u * (3 - 2 * u);
+  mp.bx = sp.fx + (sp.x - sp.fx) * e;
+  mp.by = sp.fy + (sp.y - sp.fy) * e;
+  // Carried rather than dragged through the grass: a little off the ground while it is in transit.
+  mp.bz = CFG.ballR + Math.sin(Math.PI * u) * CFG.spFetchZ;
+}
+
 /** Where the ball is put, per restart. Called once, when play stops. */
 function spotFor(s, kind, side) {
   const mp = s.mePos, dir = meDir(side), own = meGoalX(meOther(side)), gx = meGoalX(side);
@@ -38,7 +70,10 @@ function spotFor(s, kind, side) {
 export function meSPBegin(s, kind, side, out) {
   const mp = s.mePos;
   const [x, y] = spotFor(s, kind, side);
-  mp.bx = x; mp.by = y; mp.bz = CFG.ballR;
+  // Read spotFor FIRST -- a throw and a goal kick both decide which side of the pitch they are
+  // taken from by looking at mp.by -- then remember where the ball really stopped, so it can be
+  // fetched from there instead of blinking onto the spot.
+  const fx = mp.bx, fy = mp.by;
   mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
   mp.idx = -1; mp.flight = false; mp.passPending = null; mp.shot = null; mp.kickBy = null;
   mp.dead = 0;
@@ -59,27 +94,53 @@ export function meSPBegin(s, kind, side, out) {
       if (p.pos === "GK") continue; const d = Math.hypot(p.x - x, p.y - y);
       if (d < bd) { bd = d; ti = i; } } }
   if (ti < 0) ti = 0;
-  // IS ANYTHING ON? A free kick in open play is either a set piece or a chance to catch them before
-  // they have got back, and until now it was always the first. That is not a dice roll: it is taken
-  // quickly when a team-mate is ALREADY away up the pitch with daylight around him, which is the
-  // whole reason a side plays it quickly. Never in shooting range -- nobody waves away a free header
-  // at the edge of the box to tap it sideways.
+  // IS ANYTHING ON? A restart is either a set piece or a chance to get on with it, and this decides
+  // which. Not a dice roll: it is played quickly when there is somebody to play it TO -- a team-mate
+  // within range with daylight around him -- because that is the only reason anybody ever does.
+  //
+  // Extended past the free kick it started as. Measured, a goal kick's mean duration EQUALLED its
+  // longest, 37.5 displayed seconds every single time, and a corner's 45.5 -- so readiness never
+  // decided anything and the floor decided everything. Every goal kick in the match was the keeper
+  // waving his defence up the pitch and nobody ever simply rolled it to a full-back.
+  //
+  // A corner, a penalty and a kickoff are excluded by definition: those ARE set pieces, and nobody
+  // takes a penalty quickly. A free kick in shooting range is excluded for the same reason -- nobody
+  // waves away a free strike at goal to tap it sideways.
   let quick = 0;
-  if (kind === "freekick") {
+  if (kind === "freekick" || kind === "goalkick" || kind === "throw") {
     const dir2 = meDir(side), them2 = s.players[meOther(side)] || [];
-    if (Math.abs(meGoalX(side) - x) >= CFG.spShootRange) {
+    if (!(kind === "freekick" && Math.abs(meGoalX(side) - x) < CFG.spShootRange)) {
       for (let i = 0; i < us.length; i++) {
         const p = us[i];
         if (i === ti || p.pos === "GK" || p.off) continue;
-        if ((p.x - x) * dir2 < CFG.spQuickAhead) continue;
+        if (Math.hypot(p.x - x, p.y - y) > CFG.spQuickTo) continue;   // has to be a ball he can play
+        // A free kick is played quickly to catch them before they have got back, so the man has to
+        // be AHEAD of the ball for it to be worth anything. A goal kick or a throw is played quickly
+        // simply because somebody is free, which is most of the time and should be.
+        if (kind === "freekick" && (p.x - x) * dir2 < CFG.spQuickAhead) continue;
         let d = Infinity;
         for (const q of them2) { if (q.off) continue;
           const dd = Math.hypot(q.x - p.x, q.y - p.y); if (dd < d) d = dd; }
-        if (d > CFG.spQuickRoom) { quick = 1; break; }
+        // PER KIND, because the daylight a man needs is not the same thing at each. A throw-in
+        // needs almost none -- you throw it to a man with a yard. A goal kick needs him genuinely
+        // free, because a side that presses goal kicks is pressing exactly this: held at the free
+        // kick's nine metres, 80% of goal kicks went short and the mean fell to 14.7 displayed
+        // seconds against a real 25-35.
+        if (d > (CFG.spQuickRoomBy[kind] ?? CFG.spQuickRoom)) { quick = 1; break; }
       }
     }
   }
-  mp.sp = { kind, side, x, y, ti, t: 0, quick };
+  mp.sp = { kind, side, x, y, ti, t: 0, quick, fx, fy, ft: 0, seed: spSeed(mp.tick, x, y) };
+  // Which routine this one is. Three of each, so a corner is not the same corner every time.
+  mp.sp.v = Math.floor(spRnd(mp.sp, 0) * 3);
+  // ...and it is still FETCHED. Quick used to mean the ball blinked onto the spot, which was fine
+  // while only free kicks could be quick -- spotFor puts a free kick where the ball already is, so
+  // there was nothing to move. A goal kick's spot is the six-yard box and the ball is behind the
+  // goal line, so the same shortcut would put the snap straight back. The fetch is capped at minT
+  // either way, and a quick restart's minT is spMinT, so it is simply a fast one.
+  mp.sp.ft = Math.min(CFG.spFetchMax,
+    CFG.spFetchMin + Math.round(Math.hypot(x - fx, y - fy) * CFG.spFetchPerM));
+  meSPFetch(mp);
 }
 
 /** Every player's target, for as long as the set piece lasts. */
@@ -89,7 +150,43 @@ export function meSPShape(s) {
   const us = s.players[side], them = s.players[opp];
   const dir = meDir(side), gx = meGoalX(side), own = meGoalX(opp);
   const st = s.strategy?.[side] || {};
-  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = false; p._spSet = false; }
+  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = false; p._spSet = false; p._celeb = false; }
+
+  // IT HAS JUST GONE IN. A goal restarts with a kickoff, and the kickoff shape used to begin the
+  // instant the ball crossed the line -- twenty-two men turning on the spot and walking to their
+  // marks while the net was still moving. For a few seconds the side that scored is not walking
+  // anywhere: the scorer runs off toward the corner at the end he scored at and whoever was near
+  // him goes with him. The side that CONCEDED takes the kickoff, so the taker is never one of them
+  // and nothing about the restart itself is held up beyond the time it takes them to come back.
+  if (sp.celeb && sp.t < CFG.spCelebT) {
+    const cu = s.players[sp.celeb.side] || [];
+    const sc = cu[sp.celeb.i] || cu.find(p => p.pos !== "GK" && !p.off);
+    if (sc && !sc.off) {
+      // A CAPPED RUN, resolved once. Sending him to the corner flag itself made a goal cost 105.8
+      // displayed seconds against a real 45-60, and almost none of that was the celebration: it was
+      // the fifty metres back. He runs a little way toward the corner at the end he scored at, from
+      // where he was when it went in, and that is what a footballer actually does. Resolved on the
+      // first slice because his own position is the origin and it moves the moment he sets off.
+      if (sp.celeb.rx == null) {
+        const dx2 = sp.celeb.x - sc.x, dy2 = sp.celeb.y - sc.y, dl = Math.hypot(dx2, dy2) || 1;
+        const run = Math.min(dl, CFG.spCelebRun);
+        sp.celeb.rx = sc.x + dx2 / dl * run; sp.celeb.ry = sc.y + dy2 / dl * run;
+      }
+      sc._tx = clampX(sp.celeb.rx); sc._ty = clampY(sp.celeb.ry);
+      sc._spSet = true; sc._closing = true; sc._celeb = true;
+      // Whoever can get to him. Not the whole side sprinting the length of the pitch -- the men who
+      // were already up there, fanned around him rather than stacked on the same square metre.
+      const near = cu.map((p, i) => [i, Math.hypot(p.x - sc.x, p.y - sc.y)])
+                     .filter(([i, d]) => cu[i] !== sc && !cu[i].off && cu[i].pos !== "GK" && d < CFG.spCelebR)
+                     .sort((a, b) => a[1] - b[1]).slice(0, CFG.spCelebN);
+      near.forEach(([i], k) => {
+        const p = cu[i], a2 = k * 2.1 + spRnd(sp, 90 + k);
+        p._tx = clampX(sp.celeb.rx + Math.cos(a2) * CFG.spCelebGap);
+        p._ty = clampY(sp.celeb.ry + Math.sin(a2) * CFG.spCelebGap);
+        p._spSet = true; p._closing = true; p._celeb = true;
+      });
+    }
+  }
 
   // ---- the taker. A corner or a free kick is STRUCK, so he backs off the ball and to one side and
   // then runs at it; everything else he simply stands over.
@@ -145,13 +242,26 @@ export function meSPShape(s) {
 
   const targets = [];
   if (sp.kind === "corner") {
-    // The box: near post, penalty spot, far post, the edge, and a short option at the flag.
     const nearSide = sp.y < ME_HALF_W ? -1 : 1;
-    targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 5.0]);      // near post
-    targets.push([gx - dir * 10.5, ME_HALF_W + nearSide * 1.0]);     // penalty spot
-    targets.push([gx - dir * 6.0, ME_HALF_W - nearSide * 5.5]);      // far post
-    targets.push([gx - dir * 19.0, ME_HALF_W]);                      // edge, for the cut-back
-    targets.push([sp.x - dir * 7.0, sp.y - nearSide * 5.0]);         // short
+    if (sp.v === 0) {                                                // spread across the six-yard box
+      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 5.0]);    // near post
+      targets.push([gx - dir * 10.5, ME_HALF_W + nearSide * 1.0]);   // penalty spot
+      targets.push([gx - dir * 6.0, ME_HALF_W - nearSide * 5.5]);    // far post
+      targets.push([gx - dir * 19.0, ME_HALF_W]);                    // edge, for the cut-back
+      targets.push([sp.x - dir * 7.0, sp.y - nearSide * 5.0]);       // short
+    } else if (sp.v === 1) {                                         // flooding the near post
+      targets.push([gx - dir * 4.0, ME_HALF_W + nearSide * 6.5]);
+      targets.push([gx - dir * 5.5, ME_HALF_W + nearSide * 2.5]);
+      targets.push([gx - dir * 9.5, ME_HALF_W + nearSide * 4.5]);
+      targets.push([gx - dir * 16.0, ME_HALF_W + nearSide * 3.0]);
+      targets.push([sp.x - dir * 6.0, sp.y - nearSide * 4.0]);
+    } else {                                                         // held at the back post
+      targets.push([gx - dir * 6.5, ME_HALF_W - nearSide * 7.0]);
+      targets.push([gx - dir * 11.0, ME_HALF_W - nearSide * 3.0]);
+      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 4.0]);
+      targets.push([gx - dir * 20.0, ME_HALF_W - nearSide * 2.0]);
+      targets.push([sp.x - dir * 9.5, sp.y - nearSide * 6.5]);
+    }
   } else if (sp.kind === "goalkick") {
     const long = (st.gkDist || 0) > 0;
     if (long) {
@@ -184,6 +294,12 @@ export function meSPShape(s) {
       targets.push([sp.x + dir * 26, ME_HALF_W]);
     }
   }
+  // Nobody stands on a coordinate. Scatter is applied here rather than inside each routine so it
+  // covers every restart at once, and it is a function of the mark's index so it does not move
+  // underneath a man who is already walking to it.
+  for (let k2 = 0; k2 < targets.length; k2++) {
+    targets[k2][0] += spJ(sp, 10 + k2); targets[k2][1] += spJ(sp, 40 + k2);
+  }
   const marks = [];
   for (const t of targets) { const i = take(t[0], t[1]); if (i >= 0) marks.push([us[i], t]); }
   // Anybody left holds a sensible shape: behind the ball for a defensive restart, up for an
@@ -196,7 +312,7 @@ export function meSPShape(s) {
       ? own + dir * (18 + (p._bd0 || 40) * 0.45
                      + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
       : sp.x - dir * (10 + k * 7);
-    place(i, base, ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3)));
+    place(i, base + spJ(sp, 60 + k), ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3)) + spJ(sp, 70 + k));
     k++;
   }
 
@@ -218,15 +334,18 @@ export function meSPShape(s) {
   }
   if (sp.kind === "corner") {
     const nearSide = sp.y < ME_HALF_W ? -1 : 1;
-    dtake(gx - dir * 0.8, ME_HALF_W + nearSide * 3.4);               // near post
-    dtake(gx - dir * 0.8, ME_HALF_W - nearSide * 3.4);               // far post
+    // Both posts covered, the near one only, or neither and everybody picks a man up instead.
+    if (sp.v !== 2) dtake(gx - dir * 0.8, ME_HALF_W + nearSide * 3.4);
+    if (sp.v === 0) dtake(gx - dir * 0.8, ME_HALF_W - nearSide * 3.4);
   } else if (Math.abs(gx - sp.x) < CFG.spShootRange && (sp.kind === "freekick")) {
-    // A WALL, on the line between the ball and the goal, ten yards off it.
+    // A WALL, on the line between the ball and the goal, ten yards off it. Three, four or five men
+    // in it: how many you put in a wall is a decision, and it was the same four every time.
+    const wall = Math.max(2, CFG.spWall + sp.v - 1);
     const wx = sp.x + (gx - sp.x) * 0, wy = sp.y;
     const bx2 = gx - sp.x, by2 = ME_HALF_W - sp.y, bl = Math.hypot(bx2, by2) || 1;
     const px = -by2 / bl, py = bx2 / bl;
-    for (let w = 0; w < CFG.spWall; w++) {
-      const off = (w - (CFG.spWall - 1) / 2) * 0.6;
+    for (let w = 0; w < wall; w++) {
+      const off = (w - (wall - 1) / 2) * 0.6;
       dtake(wx + bx2 / bl * CFG.spWallDist + px * off, wy + by2 / bl * CFG.spWallDist + py * off);
     }
   }
@@ -240,7 +359,7 @@ export function meSPShape(s) {
     if (them[i]._spSet) continue;
     const p = them[i];
     const base = gx - dir * (14 + dk * 8);
-    dplace(i, base, ME_HALF_W + ((dk % 2 ? 1 : -1) * (8 + dk * 3)));
+    dplace(i, base + spJ(sp, 80 + dk), ME_HALF_W + ((dk % 2 ? 1 : -1) * (8 + dk * 3)) + spJ(sp, 85 + dk));
     dk++;
   }
   // Both sides stay in their own half for a kickoff, and out of the circle.
@@ -249,6 +368,7 @@ export function meSPShape(s) {
       const d2 = meDir(sd), mine = sd === side;
       for (const p of s.players[sd]) {
         if (mine && p === taker) continue;
+        if (p._celeb) continue;                       // he is not at the kickoff yet
         if ((p._tx - PITCH_L / 2) * d2 > 0) p._tx = PITCH_L / 2 - d2 * 2;
         if (!mine && Math.hypot(p._tx - PITCH_L / 2, p._ty - ME_HALF_W) < 9.2) {
           const a2 = Math.atan2(p._ty - ME_HALF_W, p._tx - PITCH_L / 2) || Math.PI;
