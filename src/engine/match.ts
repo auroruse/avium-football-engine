@@ -621,11 +621,11 @@ export function meTackle(s, rng, out) {
       out.tackles++; meBump(out, "tacklesSide", meSideOfP(s, p));
       out.tackleWon = (out.tackleWon || 0) + 1; meRate(p, CFG.rateTackle);
       meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
-      meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.name} wins it off ${c.name}`);
+      meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
     } else {
       p._beat = CFG.tkBeatT;
       out.beaten = (out.beaten || 0) + 1;
-      meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, `${c.name} goes past ${p.name}`);
+      meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, `${c.fullName || c.name} goes past ${p.fullName || p.name}`);
     }
     return;                                   // one challenge a slice, not a scrum
   }
@@ -650,7 +650,7 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   ps[outIdx] = inn; bench[benchIdx] = null;
   s.subs = s.subs || { home: 0, away: 0 }; s.subs[side]++;
   (s.subbedOff = s.subbedOff || { home: [], away: [] })[side].push(gone);
-  if (out) meEvt(out, "sub", side, inn.x, inn.y, inn.x, inn.y, `${inn.name} on for ${gone.name}`);
+  if (out) meEvt(out, "sub", side, inn.x, inn.y, inn.x, inn.y, `${inn.fullName || inn.name} on for ${gone.fullName || gone.name}`);
   return true;
 }
 
@@ -773,11 +773,11 @@ export function meTick(s, rng, out) {
           // Counted, not inferred from the event text: meDead overwrites out.evt inside the same
           // tick, so anything reading it back sees whatever was written last and reports zero.
           out.wasteYc = (out.wasteYc || 0) + 1;
-          meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.name} booked for time-wasting`);
+          meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.fullName || q.name} booked for time-wasting`);
           if (q.yc >= 2) {
             q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0; q._offAt = mp.tick; q._offAt = mp.tick;
             (out.reds = out.reds || { home: 0, away: 0 })[wS]++;
-            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.name} is off, second yellow`);
+            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.fullName || q.name} is off, second yellow`);
           }
         }
       }
@@ -873,6 +873,10 @@ export function meTick(s, rng, out) {
         // already how this engine reports a booking or an injury, so a caller reads it off the squad
         // it handed in.
         let gi = -1;
+        // The commentary line is built where the scorer is RESOLVED, not at the meEvt below. Reading
+        // `sh` there meant the feed disagreed with out.scorers on four goals in five -- the table had
+        // the name, the line said "GOAL".
+        let goalTxt = "GOAL";
         {
           // WHO STRUCK IT. Not simply mp.shot: a block, a save and a header all clear it, so most
           // goals arrive with no live shot attached -- 78 of 96 in a thirty-match sample, which is
@@ -898,6 +902,14 @@ export function meTick(s, rng, out) {
             if (e.i !== gi) { ast = s.players[e.s]?.[e.i] || null; break; }
           }
           if (ast && ast !== gp) ast.assists = (ast.assists || 0) + 1;
+          // Same three cases the rating code below already distinguishes: a scorer, a scorer with a
+          // team-mate who made it, and a true own goal -- which leaves nobody on the scoring side and
+          // is named off the last man of the CONCEDING side to have touched it, exactly as the
+          // own-goal rating is.
+          if (gp) goalTxt = `GOAL - ${gp.fullName || gp.name}`
+                          + (ast && ast !== gp ? ` (${ast.fullName || ast.name})` : "");
+          else { const og = s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i];
+                 if (og) goalTxt = `Own goal - ${og.fullName || og.name}`; }
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
             { name: gp.name, assist: ast ? ast.name : null, min: out.min ?? 0 });
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
@@ -938,7 +950,7 @@ export function meTick(s, rng, out) {
             else if (q.pos === "DEF") meRate(q, -CFG.rateConcedeDef);
           }
         }
-        meEvt(out, "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, sh ? `GOAL - ${sh.name}` : "GOAL");
+        meEvt(out, "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, goalTxt);
         meDead(s, "kickoff", cross.conceding, 190, out);
         // Where he runs. The corner at the end he has just scored at, on the side he finished from,
         // which is near enough to where a footballer actually goes. meSPShape does the rest.
@@ -951,7 +963,7 @@ export function meTick(s, rng, out) {
       if (cross.kind === "woodwork") {
         // Off the frame and back into play: a live ball, not a stoppage.
         out.woodwork = (out.woodwork || 0) + 1;
-        meEvt(out, "block", scorer, mp.bx, mp.by, mp.bx, mp.by, sh ? `${sh.name} hits the frame` : "off the woodwork");
+        meEvt(out, "block", scorer, mp.bx, mp.by, mp.bx, mp.by, sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
         mp.bvx = -mp.bvx * 0.55; mp.bvy = mp.bvy * 0.55 + (rng.u() - 0.5) * 3; mp.bvz = Math.abs(mp.bvz) * 0.4 + 1;
         mp.bx += mp.bvx * 0.05;
         mp.lastSide = scorer;
@@ -959,7 +971,7 @@ export function meTick(s, rng, out) {
         return;
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
-                meEvt(out, "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y, `${sh.name} drags it wide`); }
+                meEvt(out, "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y, `${sh.full || sh.name} drags it wide`); }
       if (cross.conceding === mp.touchSide) meDead(s, "corner", meOther(cross.conceding), 236, out);
       else meDead(s, "goalkick", cross.conceding, 200, out);
       return;
@@ -1108,7 +1120,7 @@ export function meTick(s, rng, out) {
             && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW
             && rng.u() < CFG.handP) {
           out.fouls[bs]++;
-          meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.name}`);
+          meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.fullName || q.name}`);
           meDead(s, "penalty", meOther(bs), 470, out);
           return true;
         }
@@ -1150,13 +1162,13 @@ export function meTick(s, rng, out) {
             // Close enough to attack it: a header at goal, and it counts as a shot like any strike.
             out.shots[bs]++;
             const aimY = ME_HALF_W + (q.y < ME_HALF_W ? 1 : -1) * GOAL_HALF_W * CFG.headAim;
-            mp.shot = { side: bs, name: q.name, i: bi, t0: mp.tick };
+            mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick };
             const gkH = s.players[meOther(bs)].find(z => z.pos === "GK");
             if (gkH) {
               const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
               mp.shot.readY = okH ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
             }
-            meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, `${q.name} heads it goalwards`);
+            meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, `${q.fullName || q.name} heads it goalwards`);
             meKnock(mp, rng, gxA, aimY, CFG.headV * power, 0.35);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
@@ -1176,7 +1188,7 @@ export function meTick(s, rng, out) {
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
             if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear); }
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty,
-                  `${q.name} ${relief ? "heads it clear" : "heads it on"}`);
+                  `${q.fullName || q.name} ${relief ? "heads it clear" : "heads it on"}`);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
           }
           return true;
@@ -1220,7 +1232,7 @@ export function meTick(s, rng, out) {
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
             meRate(q, meSaveBonus(shp.xg));
-                     meEvt(out, "save", shp.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} parries it`); }
+                     meEvt(out, "save", shp.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} parries it`); }
           // Whose goal it still is, if this parry ends up in the net. One touch off the keeper is a
           // deflected shot and the goal belongs to the man who hit it; only a ball that comes off him
           // and then off him AGAIN is an own goal.
@@ -1270,7 +1282,7 @@ export function meTick(s, rng, out) {
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meRate(q, meSaveBonus(mp.shot.xg));
-          meEvt(out, "save", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} saves`);
+          meEvt(out, "save", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} saves`);
           mp.shot = null;
         }
         // OFFSIDE. Given when he plays it, not when it was struck: a ball rolled into an offside man
@@ -1279,7 +1291,7 @@ export function meTick(s, rng, out) {
             && bs === mp.fside && bi === mp.fj) {
           const pp = mp.passPending; mp.passPending = null;
           (out.offside = out.offside || { home: 0, away: 0 })[bs]++;
-          meEvt(out, "offside", bs, pp.ox, pp.oy, pp.ox, pp.oy, `${q.name} is offside`);
+          meEvt(out, "offside", bs, pp.ox, pp.oy, pp.ox, pp.oy, `${q.fullName || q.name} is offside`);
           mp.bx = pp.ox; mp.by = pp.oy;             // the free kick is where he was standing
           meDead(s, "freekick", meOther(bs), 104, out);
           stopTick = true;                          // and the tick ends here, as a foul's does
@@ -1291,7 +1303,7 @@ export function meTick(s, rng, out) {
           // A deflection. If a shot was live, that was a block.
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
             meRate(q, CFG.rateBlock);
-            meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} blocks it`);
+            meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
             // man who hit it, not the defence putting it through their own net. Only a ball that
             // comes off the defending side twice is an own goal.
@@ -1313,7 +1325,7 @@ export function meTick(s, rng, out) {
         if (mp.shot && bs !== mp.shot.side) {
           out.blocked = (out.blocked || 0) + 1;
           meRate(q, CFG.rateBlock);
-          meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.name} blocks it`);
+          meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
           mp.shot = null;
@@ -1503,7 +1515,7 @@ export function meTick(s, rng, out) {
       const gk = opp[gki], gd = Math.hypot(gk.x - p.x, gk.y - p.y);
       if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR) * (0.6 + meAttrs(gk).reflex / 99 * 0.6)) {
         out.tackles++; meBump(out, "gkStopSide", meSideOfP(s, gk)); gk.saves = (gk.saves || 0) + 1;
-        meEvt(out, "save", side, p.x, p.y, p.x, p.y, `${gk.name} smothers it`);
+        meEvt(out, "save", side, p.x, p.y, p.x, p.y, `${gk.fullName || gk.name} smothers it`);
         // In his hands, held out in front of him. Placing it at gk.x, gk.y put the ball at his exact
         // centre, which is the ball drawn INSIDE the keeper.
         const sx2 = p.x - gk.x, sy2 = p.y - gk.y, sl2 = Math.hypot(sx2, sy2) || 1;
@@ -1571,10 +1583,10 @@ export function meTick(s, rng, out) {
         q.x = q.x; q.y = -6; q.vx = 0; q.vy = 0;
         (out.reds = out.reds || { home: 0, away: 0 })[fSide]++;
         meEvt(out, "red", fSide, p.x, p.y, p.x, p.y,
-              card === "red2" ? `${q.name} is sent off, second yellow` : `${q.name} is sent off`);
+              card === "red2" ? `${q.fullName || q.name} is sent off, second yellow` : `${q.fullName || q.name} is sent off`);
       } else {
         meEvt(out, card === "yellow" ? "yellow" : "foul", fSide, p.x, p.y, p.x, p.y,
-              card === "yellow" ? `${q.name} is booked` : `Foul by ${q.name}`);
+              card === "yellow" ? `${q.fullName || q.name} is booked` : `Foul by ${q.fullName || q.name}`);
       }
       // IN THE BOX IT IS A PENALTY. Same challenge, same card, different restart.
       // INJURY. A man who has just been gone through at pace is the one who gets hurt, so it hangs
@@ -1586,10 +1598,10 @@ export function meTick(s, rng, out) {
         (out.injuries = out.injuries || { home: 0, away: 0 })[side]++;
         if (rng.u() < CFG.injSerious) {
           p.rc = false; p.off = true; p.inj = true; p.y = -6; p.vx = 0; p.vy = 0;
-          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.name} cannot continue`);
+          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.fullName || p.name} cannot continue`);
         } else {
           p.knock = CFG.injKnockT;                 // he runs it off
-          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.name} is hurt but carries on`);
+          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.fullName || p.name} is hurt but carries on`);
         }
       }
       // THE OFFENCE IS WHERE HE WAS FOULED, and the ball has to be moved there BEFORE the restart
@@ -1667,7 +1679,7 @@ export function meTick(s, rng, out) {
     const shooter = mp.idx;
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
-    mp.shot = { side, name: p.name, i: shooter, xg: act.p, t0: mp.tick };
+    mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: act.p, t0: mp.tick };
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted
@@ -1697,7 +1709,7 @@ export function meTick(s, rng, out) {
     return;
   }
   if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, CFG.rateClear);
-    meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.name} clears it`);
+    meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.fullName || p.name} clears it`);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     meKickBall(mp, rng, act.cx ?? (p.x + meDir(side) * 36), act.cy ?? (p.y + (rng.u() - 0.5) * 30),
@@ -1706,7 +1718,7 @@ export function meTick(s, rng, out) {
   if (act.k === "touch") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p));
     // Into the stand. It concedes a throw and it keeps the goal, which is the trade being made.
     const sy = p.y < ME_HALF_W ? -4 : PITCH_W + 4;
-    meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, `${p.name} puts it out`);
+    meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, `${p.fullName || p.name} puts it out`);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     meKickBall(mp, rng, p.x + meDir(side) * 6, sy, "clear", meTech(a.pass), press);

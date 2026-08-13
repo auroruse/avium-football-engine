@@ -571,9 +571,16 @@ export const STYLE_PRESET = {
   // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
   verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
                    possWon: 1, dribbling: 1, creativity: 1, gkDist: -1 },
-  // Patient without the press. Holds the ball to deny it, not to build an attack with it.
+  // Patient without the press: shortest passing outside Tiki-Taka, plays out from the back, holds
+  // shape, keeps the ball. It used to carry SEVEN negative instructions and not one positive -- a
+  // style defined entirely by refusal -- and measured as the worst side in the game on territory,
+  // shots and goals. Leave-one-out showed no single culprit: removing ANY of the seven gained shots,
+  // between +0.5 and +2.7. It was the accumulation.
+  // dribbling and chanceCreation are gone because they contradict the name as well as the numbers:
+  // a possession side's midfielders carry the ball, that is how positional play advances, and a side
+  // that works it into the box then declines to shoot has no way to finish what it starts.
   possession:    { pressingLOE: 0, defLine: 0, passingDir: -1, approachPlay: -1, possLost: 0,
-                   possWon: -1, chanceCreation: -1, dribbling: -1, tackling: -1, gkDist: -1 },
+                   possWon: -1, tackling: -1, gkDist: -1 },
   // Width, overlaps, and licence to take a man on.
   wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1 },
   // Sit off, then hurt them the moment it breaks.
@@ -584,12 +591,48 @@ export const STYLE_PRESET = {
                    chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, gkDist: 1 },
   // The deep block that still intends to score: absorbs like Park The Bus, breaks like Counter,
   // and sits deeper and more disciplined than either. Its whole value is the transition.
+  // dribbling: -1 is gone for the same reason it left Cholismo, and the measurement is the same
+  // shape: worst style in the game at -0.30 goal difference, fewest shots (8.2) and fewest goals
+  // (1.03) despite allowing a mid-table 14.9%. It was not defending badly, it was not breaking.
+  // Five candidates at 260 fixtures each, where a real difference needs about 0.26 GD: dropping
+  // dribbling was worth +0.31 and nothing else cleared the bar. Shots 8.2 -> 9.1, scored 1.03 ->
+  // 1.23, conceded 1.33 -> 1.22 -- it improves at BOTH ends, which is what a side that can finally
+  // carry the ball out looks like.
+  // The block itself is untouched: pressingLOE -2 and defLine -2 are where it defends from. What
+  // moves is where the ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter
+  // actually happening. It is also what finally separates it from Park The Bus at 38.0 -- one
+  // absorbs and breaks, the other only absorbs.
   catenaccio:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: -1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1,
                    gkDist: 1 },
-  // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose.
-  parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 1, possLost: -1, possWon: -1,
-                   creativity: -1, dribbling: -1, tackling: 1, gkDist: 1 },
+  // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
+  // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
+  // Tiki-Taka, while passing more (120 a match) and completing more (80.8%) than any side in the
+  // list. A bus that outpasses Tiki-Taka is not a bus.
+  // Leave-one-out found one axis responsible and it was not the obvious one: dropping `tackling`
+  // alone was worth -4.7pp, five times any other instruction in the vector. Get Stuck In was winning
+  // it 17.4 times a match and every one of those is a turnover in its own favour. Stay On Feet is
+  // also how a low block actually defends -- diving in is what breaks the block, which is why
+  // Catenaccio has carried -1 all along.
+  // approachPlay biases the CLEAR option in decide.ts, so at 0 this side never hoofed it, it
+  // recycled among the back four; and passingDir 1 asked for 20 m balls, which in its own third
+  // means short, safe and kept. The three together land it at 44.6% with MORE clearances, and it
+  // both scores more (1.11 -> 1.23) and concedes less (1.34 -> 1.14) than the version that hogged
+  // the ball. Two axes still separate it from Catenaccio, and they are the two that matter:
+  // possWon -1 rather than +1, and no Shoot On Sight. It absorbs and it does not break.
+  // timeWasting is what keeps it from BEING Catenaccio. Taking tackling out fixed the possession
+  // profile and left the two indistinguishable -- 45.2 / 44.9 possession, 36.2 / 35.7 up the pitch,
+  // 6.8 / 6.7 clearances, a 0.03 gap in goal difference against a 0.09 standard error -- because
+  // possWon and chanceCreation, the two axes meant to carry the difference, are both worth less than
+  // the noise. Killing the game is the one thing this style does that a side trying to counter must
+  // not, and the engine charges for it properly: dead time comes back at 55% and the caution is the
+  // price, and it only applies while in front. Measured separation goes 0.66 to 2.12 with goal
+  // difference untouched.
+  // The cost, stated: holding the ball longer means carriers travel further before releasing it, so
+  // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
+  parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: -1, creativity: -1, dribbling: -1, tackling: -1, gkDist: 1,
+                   timeWasting: 2 },
   // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
   // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
   // off the diagonal -- every style either pressed high from a high line or sat deep behind a low
@@ -597,8 +640,12 @@ export const STYLE_PRESET = {
   //
   // Compact in the middle third, deny the centre, never chase. The only style on pressingLOE -1,
   // and the answer to "what sits between Gegenpress and Counter", which was nothing.
-  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1,
-                   dribbling: -1 },
+  // A mid-block defends narrow and deep; it does not refuse to run with the ball. dribbling: -1 was
+  // the only axis in this vector doing real damage -- leave-one-out moved shots by at most 1.5 for
+  // everything else, while dropping dribbling was worth +0.54 goals and 4.9 m of territory. The rest
+  // of the vector measured as working: sitting deeper IS the style, and 33 m up the pitch is a
+  // mid-block behaving like one rather than a fault.
+  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1 },
   // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
   // nothing else in the list does. possLost Counter-Press is the whole point rather than a
   // trimming: swarming the second ball IS the style, and without it this was two axes from
@@ -5206,14 +5253,21 @@ export default function App() {
   const allClubTeams = useMemo(() => teams.filter(t => t.league !== "Avium International"), [teams]);
   // The whole squad split by line, starters and backups alike, left unrounded — a column of
   // integers hides the difference between two squads a third of a point apart, which at this scale
-  // is most of them. The keeper sits outside all three: POS_GROUP has no entry for GK and every
-  // position filter in the app treats it separately, so folding it into DEF would make this column
-  // mean something different from DEF everywhere else. `avg` skips a line nobody carries rather
-  // than counting it as zero, which would rank a side with no forward below one with a bad forward.
+  // is most of them. `avg` skips a line nobody carries rather than counting it as zero, which would
+  // rank a side with no forward below one with a bad forward.
+  // THE KEEPER IS PART OF THE DEFENCE. POS_GROUP has no entry for GK, so he used to fall outside all
+  // three lines and a side's DEF read as its back four alone -- which is not what anyone means by
+  // how well a team defends, and left the best goalkeeper in the game contributing to no rating
+  // anywhere. This is the only place the displayed lines are computed, memoised into teamLinesById
+  // and read by the roster table, the team card and the tile, so folding him in here does it
+  // everywhere at once. The abstract engine's own lineOvr(..., "DEF") is deliberately NOT changed:
+  // its shot ladder prices the shooter against the defence and THEN against the keeper, so counting
+  // him in both would charge the same man twice.
   const teamLines = (t) => {
     const sq = (t.squad || []).filter(p => p.ovr != null);
+    const bandOf = (sp) => sp === "GK" ? "DEF" : POS_GROUP[sp];
     const line = (g) => {
-      const ps = sq.filter(p => POS_GROUP[(p.spos || p.pos || "").split("/")[0]] === g);
+      const ps = sq.filter(p => bandOf((p.spos || p.pos || "").split("/")[0]) === g);
       return ps.length ? ps.reduce((a, p) => a + p.ovr, 0) / ps.length : 0;
     };
     const att = line("FWD"), mid = line("MID"), def = line("DEF");
@@ -5456,6 +5510,132 @@ export default function App() {
                     </div>
                   </div>
     );
+  };
+
+  // THE BENCH, under the pitch. An international names eleven and a club five, and the row has to
+  // hold both without turning into a different screen: the grid takes its column count from the
+  // squad and a max width proportional to it, so five subs keep the chip size eleven have instead of
+  // stretching across the panel. Position lives in the ring colour AND in text, the way the pitch
+  // tokens carry it, because the colour only separates the four groups.
+  const benchRow = (t) => {
+    const bn = meBench(t);
+    if (!bn.length) return null;
+    return (
+      <div style={{ padding: "12px 16px 2px" }}>
+        <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 9 }}>Bench</div>
+        {/* SUBORDINATE TO THE ELEVEN, but not cramped. The pitch sizes its tokens in cq() off its own
+            width, so capping the pitch to fit the viewport shrank the starters while a fixed-pixel
+            bench stayed put -- and the reserves ended up the loudest thing on the team sheet. The
+            answer is a quieter chip, NOT a narrower column: smaller portrait, thinner ring, muted
+            surname, a badge that reports the rating without announcing it. The column is sized off
+            the longest surname a bench actually carries, because eleven is the most it can ever hold
+            and there is a whole panel of width to spend on them. */}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${bn.length}, minmax(0, 1fr))`,
+                      gap: 6, maxWidth: bn.length * 88 }}>
+          {bn.map((p, i) => {
+            const clr = POS_CLR[p.pos] || "var(--chrome-border)";
+            const { last } = splitSurname(p.fullName || p.name, p.name);
+            return (
+              <div key={i} title={p.fullName || p.name} style={{ minWidth: 0, textAlign: "center" }}>
+                <div style={{ position: "relative", width: 24, height: 24, margin: "0 auto" }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden",
+                                background: "var(--chrome-bg-dd)", border: `1px solid ${clr}` }}>
+                    <PlayerShot name={p.fullName || p.name} size="100%" />
+                  </div>
+                  {/* Outside the circle, not over the face. */}
+                  <span style={{ ...ovrBlock(p.ovr, true), ...mono, position: "absolute", right: -4, bottom: -3,
+                                 minWidth: 0, padding: "0 2.5px", fontSize: 7, lineHeight: 1.5 }}>{showOvr(p.ovr)}</span>
+                </div>
+                <div style={{ fontSize: 7.5, fontWeight: 700, textTransform: "uppercase", color: "var(--chrome-muted)",
+                              marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{last}</div>
+                <div style={{ ...mono, fontSize: 6.5, fontWeight: 700, color: clr, opacity: 0.8 }}>{p.spos || p.pos}</div>
+              </div>);
+          })}
+        </div>
+      </div>);
+  };
+
+  // THE REST OF THE TEAM SHEET. The panel runs to the bottom of the viewport whatever is in it, so an
+  // XI and eleven subs left half a screen of nothing under them. What belongs there is what you would
+  // actually want to know before kick-off: where this side's strength sits, and what the coach has
+  // told them to do.
+  // The instructions resolve through the SAME expression both engine entry points read --
+  // { ...STRAT_DEF, ...t.strategy } -- so this cannot show a setting the match will not play. Grey is
+  // the axis left alone, white is one the playstyle actually stamped, which makes the three-column
+  // block read as the shape of the style rather than as a table of thirteen values.
+  const tacticsBlock = (t) => {
+    const xi = meSide(t);
+    const strat = { ...STRAT_DEF, ...(t.strategy || {}) };
+    const style = t.style || "balanced";
+    const clr = STYLE_CLR[style] || "var(--chrome-muted)";
+    // The keeper counts in DEF, the same as he now does in teamLines: a back line rated without him
+    // is not how well the side defends, and it left the best goalkeeper in the game out of every
+    // rating on the screen.
+    const LINES = [["DEF", /^(GK|CB|LB|RB|LWB|RWB|DEF)$/], ["MID", /^(DM|CM|AM|LM|RM|MID)$/],
+                   ["ATT", /^(LW|RW|ST|FWD)$/]];
+    const GRPS = [["Possession", "possession"], ["Transition", "transition"], ["Out of Possession", "defense"]];
+    return (
+      <div style={{ padding: "20px 16px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+        <div>
+          <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 10 }}>Strength</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+            {LINES.map(([lbl, re]) => {
+              const m = xi.filter(p => re.test(p.spos || p.pos));
+              const av = m.length ? m.reduce((a, p) => a + (p.ovr ?? t.skill ?? 0), 0) / m.length : 0;
+              // 60 to 90 across the bar. A share of 100 would leave every line looking identical --
+              // no XI in the game averages under 60, so the bottom two thirds of the track are dead.
+              const pct = Math.max(4, Math.min(100, (av - 60) / 30 * 100));
+              return (
+                <div key={lbl}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                    <span style={{ ...mono, fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>{lbl}</span>
+                    <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: ovrColor(av) }}>{m.length ? showOvr(av) : "–"}</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: "var(--chrome-border)", overflow: "hidden" }}>
+                    <div style={{ width: `${m.length ? pct : 0}%`, height: "100%", background: ovrHex(Math.round(av)) }} />
+                  </div>
+                </div>);
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <span style={{ ...sectionLabel, fontSize: 9 }}>Tactics</span>
+            <span style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                           color: clr, border: `1px solid ${clr}`, borderRadius: 4, padding: "2px 7px" }}>
+              {STYLE_LBL[style] || style}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "0 20px" }}>
+            {GRPS.map(([title, grp]) => (
+              <div key={grp} style={{ minWidth: 0 }}>
+                <div style={{ ...mono, fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+                              color: "var(--chrome-muted-66)", paddingBottom: 6, marginBottom: 6,
+                              borderBottom: "1px solid var(--chrome-border)" }}>{title}</div>
+                {Object.entries(STRAT_LABELS).filter(([, v]) => v.grp === grp).map(([k, v]) => {
+                  const val = strat[k] || 0;
+                  // EVERY AXIS SIGNS THE SAME WAY: positive is the aggressive end, negative the
+                  // cautious one -- direct passing, shooting on sight, counter-pressing, a higher
+                  // line. Time-wasting is the one inversion in the whole table, because wasting it
+                  // constantly is the most defensive thing on the list, so it reads backwards.
+                  // Colours are the app's own position language: attacking red, defending blue, the
+                  // same two the pitch tokens give a striker and a centre-half.
+                  const dir = k === "timeWasting" ? -val : val;
+                  return (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 10,
+                                          padding: "3px 0", fontSize: 10, minWidth: 0 }}>
+                      <span style={{ color: "var(--chrome-muted)", flexShrink: 0 }}>{v.name}</span>
+                      <span style={{ color: dir > 0 ? "var(--ui-attack)" : dir < 0 ? "var(--ui-info)" : "var(--chrome-muted-66)",
+                                     fontWeight: dir ? 600 : 400,
+                                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {(v.vals.find(([n]) => n === val) || [0, "–"])[1]}</span>
+                    </div>);
+                })}
+              </div>))}
+          </div>
+        </div>
+      </div>);
   };
 
   // THE MATCH SETUP SCREEN, shared. This is the abstract engine's own screen, lifted out unchanged
@@ -5712,7 +5892,7 @@ export default function App() {
     st.bench = { home: meBench(hT), away: meBench(aT) };
     // subCap is what subLimit reads, and it is set from the bench each side actually named -- an
     // eleven-man bench is an international squad and plays to five, everything else keeps three.
-    st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+    st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
     st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
     st.possession = "home";
@@ -11989,16 +12169,25 @@ export default function App() {
           // ONE PITCH, TWO FRAMES. The same drawing serves the panel in the setup screen and the
           // full-viewport match view, so the two can never drift apart -- which they would, because
           // every calibration change lands in here.
-          // The viewBox carries six metres of ground BELOW the touchline. Everything on the pitch is
-          // drawn at exactly the same coordinates it always was; the strip is only so that
-          // twenty-two men walking off at the interval are somewhere you can see them go rather than
-          // clipping at the line. Height is left to the caller: the setup panel wants it to grow
-          // with its width, the match view wants it to fill what is left under the strip.
+          // RUN-OFF COSTS SIZE, so it is 3 m and not a metre more. The box is height-limited in the
+          // match view -- the window is about 1.59 wide to 1 tall and the bare pitch is 1.57 -- so
+          // every metre added above and below shrinks the whole pitch by more than a percent. Six and
+          // a half metres each way, which is what "equal space top and bottom" first cost, threw away
+          // 11% of the pitch and left 250px of empty grass at one edge. Three is still enough to see
+          // twenty-two men walk off at the interval, and it renders the pitch a tenth larger.
+          // The painted tunnel rectangle is gone: players walking there says it without a black slab.
+          // x runs -1 to 106 because the goal frames are drawn OUTSIDE the goal line and were being
+          // clipped in half by a box that started at zero.
+          // CENTRED, not left. There is always horizontal slack -- a pitch with any run-off at all
+          // cannot match this window's aspect -- and banking all of it against one edge is what read
+          // as bad alignment. Split evenly it reads as a margin. xMinYMid puts it all on the right.
+          // Everything on the pitch is still drawn at exactly the coordinates it always was. Height
+          // is left to the caller: the setup panel wants it to grow with its width, the match view
+          // wants it to fill what is left under the scoreboard.
           const pitchSvg = (fill) => (
-  <svg viewBox="0 0 105 74" preserveAspectRatio="xMidYMid meet"
+  <svg viewBox="-1 -2.4 107 72.8" preserveAspectRatio="xMidYMid meet"
        style={fill ? { width: "100%", height: "100%", display: "block", background: "#1d3a24" }
                    : { width: "100%", display: "block", borderRadius: 6, background: "#1d3a24" }}>
-    <rect x={46} y={67.4} width={13} height={6.6} fill="rgba(0,0,0,.34)" />
     <g stroke="rgba(255,255,255,.32)" strokeWidth={0.28} fill="none">
       <rect x={0.6} y={0.6} width={103.8} height={66.8} />
       <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
@@ -12040,63 +12229,125 @@ export default function App() {
           // know about a second layout mode.
           if (m && meView !== "setup") {
             const brk = m.brk ? (m.brk.kind === "ft" ? "FULL TIME" : "HALF TIME") : null;
-            const code = (t) => String(t?.code || t?.name || "").slice(0, 3).toUpperCase();
             const venue = stripVenue(m.hT?.stadium || "") || "";
+            const venueNat = m.hT?.league === "Avium International" ? m.hT?.name : leagueNation(m.hT?.league)?.name;
             const tabBtn = (id, label) => (
               <button key={id} onClick={() => setMePanel(mePanel === id ? null : id)}
-                style={{ ...smBtn, fontSize: 10, padding: "6px 13px", cursor: "pointer",
+                style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer",
                          background: mePanel === id ? "var(--chrome-brand)" : "transparent",
                          color: mePanel === id ? "var(--ui-on-accent)" : "var(--chrome-muted)",
                          border: `1px solid ${mePanel === id ? "var(--chrome-brand)" : "var(--chrome-border)"}` }}>
                 {label}</button>
             );
-            const bigScore = { fontSize: 23, fontWeight: 800, letterSpacing: ".05em", ...mono };
+            // THE OLD SCOREBOARD'S GRADIENT, back where it belongs. Each side's own kit runs out from
+            // its own half and they meet in the middle, which is the only thing on this screen that
+            // says whose colours these are before you read a name. hClr2/aClr2 are the pre-swap kit
+            // colours with a clash resolved between the two halves themselves -- this IS the panel
+            // rather than text drawn on one, so it does not take the panel-contrast swap.
+            // SPLIT AT 50%, with a narrow ramp. The old 38/62 stops put a 24%-wide blend across the
+            // middle, and between two dark kits -- navy against black -- the whole ramp reads as one
+            // murky band, so the boundary looks like it lands wherever that band stops rather than
+            // under the score. A 6% ramp puts it where the score is, which is where it belongs.
+            // Full opacity: hClr2/aClr2 are already luminance-clamped, and the old scoreboard only
+            // dropped to 53% because it had a stadium photograph to show through.
+            const sbBg = `linear-gradient(90deg, ${hClr2} 0%, ${hClr2} 47%, ${aClr2} 53%, ${aClr2} 100%)`;
+            const teamName = { fontSize: 14, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase",
+                               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" };
+            // The badge art is a 500px square with the crest inset a tenth top and bottom, so drawing
+            // it at 76 gives 61 of actual crest. Cancelling that inset with negative margins is the
+            // same trick the team tiles use, and it is the difference between a badge and a stamp.
+            // 66 in a 72px strip, with the inset cancelled, so the crest fills the bar's height
+            // instead of sitting in it. row-reverse mirrors the away side without a second copy of
+            // the markup: the badge stays outboard and the name reads in toward the score on both.
+            const SB_CREST = 66, SB_CREST_PAD = Math.round(SB_CREST * CREST_PAD_RATIO);
+            // THE ELEVEN ON THE PITCH, not the squad. Read off st.players, so it moves when a
+            // substitute comes on and when a man is sent off -- which is the only reason to put it on
+            // a live scoreboard rather than showing the team's static rating. One decimal, because
+            // rounding to whole numbers hides exactly the change a substitution makes.
+            const xiOvr = (side) => {
+              const ps = st?.players?.[side] || [];
+              return ps.length ? ps.reduce((a, p) => a + (p.ovr || 0), 0) / ps.length : 0;
+            };
+            const sbSide = (t, side) => (
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13,
+                            flexDirection: side === "home" ? "row" : "row-reverse",
+                            justifyContent: "flex-end" }}>
+                <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1,
+                              alignItems: side === "home" ? "flex-end" : "flex-start" }}>
+                  <span style={teamName}>{t?.name}</span>
+                  <div style={{ ...mono, fontSize: 10, fontWeight: 700, display: "flex",
+                                alignItems: "baseline", gap: 9 }}>
+                    <span style={{ letterSpacing: ".16em", opacity: 0.72 }}>{t?.code || abbr(t?.name, t?.code)}</span>
+                    <span style={{ opacity: 0.95 }}>{xiOvr(side).toFixed(1)}</span>
+                  </div>
+                </div>
+                <TeamCrest team={t} size={SB_CREST} style={{ flexShrink: 0,
+                           marginTop: -SB_CREST_PAD, marginBottom: -SB_CREST_PAD }} />
+              </div>
+            );
+            // MINUTES AND SECONDS. meMinute floors to the minute and clamps at 90, which is right for
+            // a timestamp on an event but reads as a stopped clock on a scoreboard. This one is not
+            // clamped, so added time runs on past 90:00 the way a real one does.
+            // INTERPOLATED, because a tick is 1.25 match-seconds -- 4320 of them across 5400 -- so a
+            // clock read straight off the tick counter MUST drop one second in every four. `al` is
+            // the same fraction-of-a-tick the pitch uses to draw players between slices; running the
+            // clock on it means every second gets shown instead of three out of four.
+            const secTot = Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400));
+            const clock = `${Math.floor(secTot / 60)}:${String(secTot % 60).padStart(2, "0")}`;
+            const DIV = { height: 1, background: "var(--chrome-border)", flexShrink: 0 };
+            // NAMES BOLD IN THE COMMENTARY. The engine writes each line as a flat sentence, so the
+            // only way to know which words are a person is to match against the people on the pitch.
+            // Longest first, or "Sato" inside "Satoshi Sato" would match the wrong half.
+            const feedWho = (() => {
+              const all = [...(st?.players?.home || []), ...(st?.players?.away || []),
+                           ...(st?.bench?.home || []), ...(st?.bench?.away || [])];
+              const by = new Map();
+              for (const p of all) { const f = p?.fullName || p?.name; if (f && !by.has(f)) by.set(f, p); }
+              const keys = [...by.keys()].sort((a, b) => b.length - a.length);
+              return { by, re: keys.length
+                ? new RegExp("(" + keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g")
+                : null };
+            })();
+            const feedRich = (txt) => {
+              if (!feedWho.re) return txt;
+              // The WHOLE name lifts, given name included. Bolding the surname alone left the given
+              // name in the muted body colour, so a two-word name read as two different things.
+              return String(txt).split(feedWho.re).map((part, i) =>
+                feedWho.by.has(part)
+                  ? <b key={i} style={{ fontWeight: 700, color: "var(--ui-text)" }}>{part}</b>
+                  : part);
+            };
+            // The best game anyone on the pitch is having, either side. meFinalise shrinks ratings
+            // toward 6.5, so before a goal goes in this is genuinely the man who has done most.
+            const topMan = st ? [...st.players.home.map(p => [p, "home"]), ...st.players.away.map(p => [p, "away"])]
+              .reduce((a, x) => (x[0]?.rating || 0) > (a[0]?.rating || 0) ? x : a) : null;
             return (
               <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
                             display: "flex", flexDirection: "column" }}>
-                <div style={{ flexShrink: 0, height: 54, display: "flex", alignItems: "center", gap: 18,
-                              padding: "0 16px", background: "var(--chrome-panel)",
+
+                {/* THE STRIP IS THE SCOREBOARD AND NOTHING ELSE. It used to carry the scorebug, two
+                    buttons, a speed slider and four tabs in one 54px row, which left the score -- the
+                    one thing you look up at -- as the smallest claim on it. The controls moved to the
+                    sidebar and this became a scoreboard. */}
+                {/* backgroundImage, not the `background` shorthand with a colour tacked on the end --
+                    one layer, one property, nothing for the parser to drop. */}
+                <div style={{ flexShrink: 0, height: 72, display: "flex", alignItems: "center", gap: 22,
+                              padding: "0 24px", backgroundImage: sbBg, backgroundColor: "var(--chrome-panel)",
+                              textShadow: SCOREBOARD_SHADOW, color: "var(--ui-on-accent)",
                               borderBottom: "1px solid var(--chrome-border)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-                    <TeamCrest team={m.hT} size={26} />
-                    <span style={{ fontSize: 13, fontWeight: 700, ...mono }}>{code(m.hT)}</span>
-                    <span style={bigScore}>{out.goals.home}&ndash;{out.goals.away}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, ...mono }}>{code(m.aT)}</span>
-                    <TeamCrest team={m.aT} size={26} />
-                    <span style={{ fontSize: 12, fontWeight: 700, marginLeft: 10, minWidth: 78, ...mono,
-                                   color: brk ? "var(--ui-warn)" : "var(--chrome-brand)" }}>
-                      {brk || `${minute}'`}</span>
-                    {venue && <span style={{ fontSize: 10, color: "var(--chrome-muted)", whiteSpace: "nowrap",
-                                             overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>{venue}</span>}
+                  {sbSide(m.hT, "home")}
+                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 150 }}>
+                    <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: ".06em", lineHeight: 1.05, ...mono }}>
+                      {out.goals.home}&ndash;{out.goals.away}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".12em", ...mono,
+                                  color: brk ? "var(--ui-warn)" : "var(--ui-on-accent)", opacity: brk ? 1 : 0.85 }}>
+                      {brk || clock}</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <button onClick={() => meRunning ? meStop() : mePlay()}
-                      style={{ ...addBtn, minWidth: 74, border: "none", color: "var(--ui-on-accent)",
-                               background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
-                      {meRunning ? "Pause" : "Start"}</button>
-                    <button onClick={meSimEnd} style={addBtn} disabled={!!m.ftDone}>Sim to End</button>
-                    <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
-                             onChange={e => setMeSpeedIx(+e.target.value)} style={{ width: 96 }} />
-                      <span style={{ width: 30, fontWeight: 700, ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
-                    </label>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }} />
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    {tabBtn("stats", "Stats")}
-                    {tabBtn("subs", "Substitutions")}
-                    {tabBtn("tactics", "Tactics")}
-                    {m.ftDone
-                      ? <button onClick={() => { meStop(); meRef.current = null; setMeView("setup");
-                                                 setMePanel(null); setMeFrame(f => f + 1); }}
-                          style={{ ...smBtn, fontSize: 10, padding: "6px 11px", cursor: "pointer",
-                                   background: "var(--chrome-brand)", color: "var(--ui-on-accent)",
-                                   border: "none" }}>New Match</button>
-                      : <button onClick={() => { meStop(); setMeView("setup"); setMePanel(null); }}
-                          style={{ ...smBtn, fontSize: 10, padding: "6px 11px", cursor: "pointer" }}>Close</button>}
-                  </div>
+                  {sbSide(m.aT, "away")}
                 </div>
-                <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+
+                <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+                <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
                   {pitchSvg(true)}
                   {mePanel && (
                     <div style={{ position: "absolute", inset: 0, background: "var(--chrome-bg)",
@@ -12288,6 +12539,105 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {/* THE SIDEBAR. Where you are, what has happened, who is having the game, and what
+                    you can do about it -- in that order, because that is the order you want them in
+                    while a match is running. It also gives the pitch a right-hand edge to sit
+                    against, which is what lets the pitch align left instead of floating. */}
+                <aside style={{ width: 330, flexShrink: 0, minWidth: 0, background: "var(--chrome-panel)",
+                                borderLeft: "1px solid var(--chrome-border)", display: "flex",
+                                flexDirection: "column" }}>
+
+                  <div style={{ flexShrink: 0 }}>
+                    <div style={{ height: 108, backgroundColor: "var(--chrome-bg)", backgroundSize: "cover",
+                                  backgroundPosition: "center",
+                                  backgroundImage: venue && STADIUM_IMAGES.includes(venue) ? stadiumBg(venue) : "none" }} />
+                    <div style={{ padding: "11px 15px 13px", minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
+                                    textOverflow: "ellipsis" }}>{venue || "Neutral Venue"}</div>
+                      <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 2, whiteSpace: "nowrap",
+                                    overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {m.hT?.city && <CityLink name={m.hT.city} />}
+                        {m.hT?.city && venueNat ? " · " : ""}{venueNat || ""}</div>
+                    </div>
+                  </div>
+                  <div style={DIV} />
+
+                  {/* The feed is the only thing here that grows, so it takes the slack and everything
+                      else keeps its natural height. out.feed is unshifted, newest first. */}
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 15px" }}>
+                    {!(out.feed || []).length && (
+                      <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
+                        Nothing yet.</div>)}
+                    {(out.feed || []).map((f, i) => (
+                      <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
+                                            lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
+                                       color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
+                        <span style={{ minWidth: 0, color: f.k === "goal" ? "var(--ui-ok)" : "var(--chrome-muted)",
+                                       fontWeight: f.k === "goal" ? 700 : 400 }}>{feedRich(f.txt)}</span>
+                      </div>))}
+                  </div>
+                  <div style={DIV} />
+
+                  {topMan && topMan[0] && (() => {
+                    const [p, side] = topMan;
+                    return (
+                      <div style={{ flexShrink: 0, padding: "12px 15px", display: "flex",
+                                    alignItems: "center", gap: 11 }}>
+                        <PlayerShot name={p.fullName || p.name} size={36} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted)",
+                                        marginBottom: 3 }}>Top Player</div>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap",
+                                        overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                          <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 2,
+                                        display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                            <TeamCrest team={side === "home" ? m.hT : m.aT} size={11} />
+                            <span style={mono}>{p.spos || p.pos}</span>
+                            {!!p.goals && <span>{p.goals}G</span>}
+                            {!!p.assists && <span>{p.assists}A</span>}
+                            {!!p.saves && <span>{p.saves} saves</span>}
+                          </div>
+                        </div>
+                        {/* Two decimals, like every other match statistic in the app. */}
+                        <span style={{ ...mono, fontSize: 14, fontWeight: 800, flexShrink: 0,
+                                       color: ratingColor(p.rating ?? 6.5) }}>{(p.rating ?? 6.5).toFixed(2)}</span>
+                      </div>);
+                  })()}
+                  <div style={DIV} />
+
+                  <div style={{ flexShrink: 0, padding: "12px 15px 14px", display: "flex",
+                                flexDirection: "column", gap: 9 }}>
+                    <div style={{ display: "flex", gap: 7 }}>
+                      <button onClick={() => meRunning ? meStop() : mePlay()}
+                        style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
+                                 background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
+                        {meRunning ? "Pause" : "Start"}</button>
+                      <button onClick={meSimEnd} style={{ ...addBtn, flex: 1 }} disabled={!!m.ftDone}>Sim to End</button>
+                    </div>
+                    <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex",
+                                    alignItems: "center", gap: 8 }}>
+                      <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
+                             onChange={e => setMeSpeedIx(+e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+                      <span style={{ width: 30, fontWeight: 700, textAlign: "right", ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
+                    </label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {tabBtn("stats", "Stats")}
+                      {tabBtn("subs", "Subs")}
+                      {tabBtn("tactics", "Tactics")}
+                      {m.ftDone
+                        ? <button onClick={() => { meStop(); meRef.current = null; setMeView("setup");
+                                                   setMePanel(null); setMeFrame(f => f + 1); }}
+                            style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer",
+                                     background: "var(--chrome-brand)", color: "var(--ui-on-accent)",
+                                     border: "none" }}>New</button>
+                        : <button onClick={() => { meStop(); setMeView("setup"); setMePanel(null); }}
+                            style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer" }}>Close</button>}
+                    </div>
+                  </div>
+                </aside>
+                </div>
               </div>
             );
           }
@@ -12295,9 +12645,13 @@ export default function App() {
           // screen each, and the only thing on this screen is the fixture you are about to watch.
           if (meView === "prematch") {
             const hT = teamById(lmH), aT = teamById(lmA);
+            // THE SCROLL LIVES ON THE GRID, not on the fixed box. With overflow on the container the
+            // bar scrolled away with the team sheets, so on any screen the content overran -- which
+            // is every screen now that the bench and the tactics sit under the pitch -- Kick Off went
+            // off the top and the only way back to it was to scroll up.
             return (
               <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
-                            display: "flex", flexDirection: "column", overflowY: "auto" }}>
+                            display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <div style={{ flexShrink: 0, height: 54, display: "flex", alignItems: "center", gap: 14,
                               padding: "0 18px", background: "var(--chrome-panel)",
                               borderBottom: "1px solid var(--chrome-border)" }}>
@@ -12307,7 +12661,7 @@ export default function App() {
                   <button onClick={meKick} style={{ ...addBtn, border: "none", color: "var(--ui-on-accent)",
                                                     background: "var(--chrome-brand)" }}>&#9917; Kick Off</button>
                 </div>
-                <div style={{ flex: 1, minHeight: 0, display: "grid",
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignItems: "start",
                               gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 20, padding: 20 }}>
                   {[[hT, "HOME"], [aT, "AWAY"]].map(([t, label], k) => {
                     if (!t) return <div key={k} />;
@@ -12325,7 +12679,22 @@ export default function App() {
                           </div>
                           <span style={{ ...ovrBlock(avg), ...mono, flexShrink: 0 }}>{showOvr(avg)}</span>
                         </div>
-                        {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), t.league === "Avium International")}
+                        {/* THE PITCH GIVES WAY, not the team sheet. It is the only element here whose
+                            height is a free variable -- the SVG is width-driven at PITCH_H/100, and
+                            the tokens size in cq() off the container's WIDTH, so bounding it by width
+                            is the only way to shrink it that takes the names and badges with it.
+                            The budget is everything else on the screen, ADDED UP term by term rather
+                            than eyeballed -- guessing it is what put this back into scrolling twice.
+                            bar 55, grid padding 40, panel padding and border 28, crest row 46, pitch
+                            bottom padding 4, bench 81, strength and tactics 257. Call it 511, plus a
+                            few px of slack. Only below roughly 900px tall does the grid scroll, and
+                            that is why the scroll moved onto it. */}
+                        <div style={{ width: "100%", margin: "0 auto",
+                                      maxWidth: `clamp(320px, calc((100vh - 516px) * ${(100 / PITCH_H).toFixed(3)} + 68px), ${PITCH_MAX_W + 68}px)` }}>
+                          {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), t.league === "Avium International")}
+                        </div>
+                        {benchRow(t)}
+                        {tacticsBlock(t)}
                       </div>);
                   })}
                 </div>

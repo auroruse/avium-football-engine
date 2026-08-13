@@ -371,7 +371,18 @@ export const CFG = {
   // THE SHOOTER. Measured: a man one-on-one from 14 m was given a 5.9% chance, so he dribbled
   // instead of shooting 77% of the time. Real conversion from there is about 0.06 in a crowd and
   // 0.3 or so clean through, and this is the term that tells them apart.
-  shotClear: 3.2, shotCrowd: 0.40, shotLaneK: 0.80,
+  // A LOW BLOCK HAS TO ACTUALLY STOP GOALS. It did not: Park The Bus faced a middling 11.0 shots and
+  // allowed 16.0% conversion, the worst in the game, while sides defending high allowed 11.9%. Every
+  // one of its own defensive instructions -- Much Lower press, Much Lower line, Regroup -- made it
+  // concede MORE, which on the one style that exists to not concede is backwards.
+  // It was never conceding more shots, it was conceding better ones. meShotP prices proximity
+  // exponentially, exp(-d * 0.165), so an 8 m chance is worth seven 20 m ones -- while density was
+  // priced linearly AND floored: clamp(shotCrowd, clearMax - blk*shotLaneK, clearMax), clearMax up to
+  // 3.2 close in. At 0.40/0.80 it took about three and a half bodies on the shot line to reach the
+  // floor, and even a wall kept 40% of the chance. A block trading distance for bodies was trading an
+  // exponential for a capped linear and losing every time.
+  // At 0.25/1.10 it takes ~2.7 bodies, and deep sides now allow 12.3% against a high line's 17.2%.
+  shotClear: 3.2, shotCrowd: 0.25, shotLaneK: 1.10,
   // ---- the defensive block ------------------------------------------------------------------
   // blkDrop is how far behind the ball the deepest line sits; blkDepth is how deep the whole thing
   // is when defending its own box (real: 20-25 m) and blkStretch how much it lengthens as it steps

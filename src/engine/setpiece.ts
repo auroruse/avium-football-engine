@@ -473,7 +473,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     out.shots[side]++;
     mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
-    meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.name} steps up`);
+    meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
     return;
   }
@@ -488,7 +488,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
     // stood and watched every free kick struck at his goal.
     gkRead(away, CFG.gkReadMin, CFG.gkReadMax - CFG.gkReadMin);
-    meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.name} strikes the free kick`);
+    meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} strikes the free kick`);
     meShootBall(mp, rng, gx, away, 1.0 + rng.u() * 1.1, a.shoot / 99, 0, CFG.spFkElev);
     return;
   }
@@ -497,10 +497,10 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const high = sp.kind === "corner"
     || (sp.kind === "goalkick" && (s.strategy?.[side]?.gkDist || 0) > 0)
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);
-  const label = sp.kind === "corner" ? `${taker.name} swings it in`
-    : sp.kind === "throw" ? `${taker.name} takes the throw`
-    : sp.kind === "goalkick" ? `${taker.name} goes ${high ? "long" : "short"}`
-    : sp.kind === "kickoff" ? "Kick off" : `${taker.name} plays it`;
+  const label = sp.kind === "corner" ? `${taker.fullName || taker.name} swings it in`
+    : sp.kind === "throw" ? `${taker.fullName || taker.name} takes the throw`
+    : sp.kind === "goalkick" ? `${taker.fullName || taker.name} goes ${high ? "long" : "short"}`
+    : sp.kind === "kickoff" ? "Kick off" : `${taker.fullName || taker.name} plays it`;
   mp.passPending = { side };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
