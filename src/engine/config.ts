@@ -487,7 +487,7 @@ export const CFG = {
   // trap -- how long the man on the ball must have had it before the line jumps, and how far.
   dlDrop: 4, dlStep: 3, trapHold: 3, trapStep: 6,
   // How much closer Get Stuck In stands to the man on the ball, as a fraction of jockeyStand.
-  tkClose: 0.45,
+  tkClose: 0.10,
   // How far the ball must get past him to count as beaten, and how long he is out of the play for
   // it, per step of Get Stuck In. Zero at Stay On Feet and at no instruction: only committing costs.
   tkBeatGap: 1.5, tkBeatT: 10, tkBeatSpd: 0.55,
@@ -501,7 +501,23 @@ export const CFG = {
   // Swept 0.60 / 0.78 / 0.84 / 0.88: attempts a side 103.9 / 27.3 / 9.3 / 2.8 and won 57 / 62 / 62
   // / 68%. A real match is 15-20 tackles a side at about 65%, and this engine runs a fifth of a real
   // one's event volume, so 4-6 attempts is the target -- 0.86.
-  tkGo: 0.86, tkGoSkill: 0.16, tkGoInstr: 0.10,
+  tkGo: 0.76, tkGoSkill: 0.16, tkGoInstr: 0.02,
+  // tkGo was 0.86 and the whole game tackled 7.1 times a MATCH across both sides, winning 81% of
+  // them, because the threshold only ever let through the near-certain challenge. Real football is
+  // 15-20 tackles a side at 50-60%. The gate is violently non-linear -- 0.86 gives 2.5 outfield
+  // tackles a side and 0.74 gives 21.3 -- so it was swept finely: 0.76 lands 15.9 a side at 62%,
+  // with pass completion (79.7%) and fouls (18.0) unmoved.
+  // tkGoInstr was 0.10 and tkClose 0.45. `angle` is CAPPED AT 1.0, so shifting the threshold by
+  // 0.10 near the top of that range is not a nudge, it is a switch: Stay On Feet sat at ~0.90-0.96
+  // and tackled 0.0 times a match, Get Stuck In at ~0.70-0.76 and tackled 15.8. The two compounded,
+  // because tkClose also pulled the jockey distance from 2.18 m to 0.83 m, which RAISES angle
+  // through its own distance term -- the instruction opened the gate and then walked through it.
+  // Measured, that made tackling the loudest instruction in the engine at 328% of mean, and it set
+  // the possession table outright: the four Get Stuck In styles were the top four for possession and
+  // Park The Bus led the game at 60.4% while passing most and carrying least. Ball-winning was
+  // buying possession that nothing on the ball had earned. At 0.02/0.10 the spread is 167% and Park
+  // The Bus sits at 49.6%, which is a real difference between a side that dives in and one that
+  // does not, rather than a different sport.
   tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.24, rateTackle: 0.06,
   runTicks: 14,
   runMax: 4,
@@ -983,6 +999,30 @@ Object.assign(CFG, {
   // the shot that is not on and plays the pass that is not there -- but completion is already at
   // the bottom of its band before any of it, so this is what the match can currently carry.
   // It is NOT a conversion fix: conversion sat between 32% and 38% at every setting.
+  // --- WHAT THE COACH ACTUALLY CHANGES -------------------------------------------
+  // A playstyle is an instruction to the players, so it belongs on the DECISION, not on the outcome
+  // and not only on where men stand. meDecide already scores every option as gain*P - loss*(1-P);
+  // these put a thumb on that scale. Before this, ten of the thirteen instruction axes only moved
+  // positions (brain.ts) or resolved outcomes (match.ts), which is why measured on the pitch the
+  // styles separated hard on defensive signals and came out BACKWARDS on attacking ones -- Control
+  // Possession held less of the ball than Catenaccio, Park The Bus more than Tiki-Taka.
+  styleW: 0.020,
+  // Nudge for a good player, order for a poor one. meMind is the same read-the-situation term that
+  // scales judgement error, so a man who cannot see the better option for himself leans harder on
+  // what he was told, and an elite player's own read can overrule the touchline. obeyBase keeps even
+  // the best from ignoring the coach outright -- meMind saturates at OVR 84, and (1 - meMind) alone
+  // would mean every world-class player plays whatever he likes.
+  obeyBase: 0.55,
+  obeySpan: 0.75,
+  // Be More Expressive discounts what losing it costs; Be More Disciplined inflates it. This is the
+  // only one of these that touches every option at once, because risk appetite is not a preference
+  // between actions, it is how much the downside of any of them weighs.
+  // NAMED styleRiskW, NOT riskW: CFG already has a riskW (0.92, the pass-success discount at
+  // config.ts:946, packed mid-line with riskLateMs/riskSpanMs). Adding a second riskW silently
+  // overrode it and moved pass completion 80.3% -> 65.0% across every match in the game, with the
+  // four new keys appearing completely inert on inspection. Object.assign(CFG, {...}) spans 600
+  // lines with several keys per line, so grep for a name before adding one.
+  styleRiskW: 0.30,
   judgeErr: 0.06,
   // How much of the judgement error is the shared misreading of the situation (one draw per option
   // class) as against per-option scatter. See meDecide: at 0 the old raffle returns in full.

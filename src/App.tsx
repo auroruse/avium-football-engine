@@ -713,18 +713,27 @@ const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2",
 function parseFormation(f) { const p = (f || "4-3-3").split("-").map(Number); return { DEF: p[0], MID: p.slice(1, -1).reduce((a, b) => a + b, 0), FWD: p[p.length - 1] }; }
 const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
 const FORM_CLR={"4-2-4":"var(--ui-attack)","3-4-3":"var(--ui-attack)","4-1-2-1-2":"var(--ui-attack)","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"var(--ui-form-defensive)","4-3-2-1":"var(--ui-form-defensive)","5-3-2":"var(--ui-form-defensive)"};
+// Every deviation in this table was scaled to 55% of what it was. Measured, the eleven formations
+// spanned 3.34 pts a season while the fourteen playstyles spanned 2.13 -- so the shape a side lined
+// up in mattered MORE than the football it played, which is backwards. Flattening the table entirely
+// collapses the spread to 0.90, which proves it all lives here and none of it in squad composition;
+// no single channel is at fault either, since removing any one of them mostly made the spread WORSE
+// (hold by +2.74), the table having been tuned to compensate internally. So the whole thing is
+// scaled rather than repriced: every formation keeps its character in proportion, the shapes simply
+// sit closer together. 4-3-3 and 4-2-3-1, the two most common shapes in the registries, were the
+// two worst before this.
 const FORM_MOD = {
-  "4-3-3":   {press:1.0,adv:0,hold:0,lb:0,boxShot:0.01,goalP:0,ctr:1.0,ctrShot:0,def:0.01,lr:0,corn:1.0},
-  "4-4-2":   {press:1.0,adv:0,hold:0,lb:0.02,boxShot:0.04,goalP:0,ctr:0.95,ctrShot:0,def:0.01,lr:-0.02,corn:1.15},
-  "4-2-3-1": {press:1.0,adv:0,hold:0.04,lb:-0.01,boxShot:-0.03,goalP:0,ctr:0.9,ctrShot:0,def:0.03,lr:0.03,corn:1.0},
-  "4-1-4-1": {press:1.0,adv:0,hold:0.03,lb:0,boxShot:0,goalP:0,ctr:0.85,ctrShot:0,def:0.05,lr:0,corn:1.2},
-  "4-1-2-1-2":{press:1.0,adv:0.01,hold:0.01,lb:0,boxShot:0.02,goalP:0,ctr:1.0,ctrShot:0,def:-0.03,lr:0.03,corn:0.75},
-  "4-3-2-1": {press:1.0,adv:0,hold:0.03,lb:-0.01,boxShot:0,goalP:0,ctr:0.9,ctrShot:0,def:0.03,lr:0.04,corn:0.85},
-  "4-2-4":   {press:0.8,adv:0.04,hold:-0.08,lb:0.03,boxShot:0.04,goalP:0,ctr:0.9,ctrShot:0,def:-0.11,lr:0,corn:1.1},
-  "3-5-2":   {press:1.0,adv:0.02,hold:0.01,lb:0,boxShot:0.02,goalP:0,ctr:1.05,ctrShot:0,def:-0.04,lr:0,corn:1.15},
-  "3-4-3":   {press:1.05,adv:0.04,hold:-0.02,lb:0,boxShot:0.04,goalP:0,ctr:1.0,ctrShot:0,def:-0.05,lr:0,corn:1.0},
-  "3-4-1-2": {press:1.0,adv:0.01,hold:0.02,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:-0.03,lr:0.03,corn:0.95},
-  "5-3-2":   {press:0.8,adv:-0.02,hold:0,lb:0.03,boxShot:0,goalP:0,ctr:1.30,ctrShot:0.02,def:0.07,lr:0,corn:0.85},
+  "4-3-3":   {press:1.0,adv:0.0,hold:0.0,lb:0.0,boxShot:0.0055,goalP:0,ctr:1.0,ctrShot:0.0,def:0.0055,lr:0.0,corn:1.0},
+  "4-4-2":   {press:1.0,adv:0.0,hold:0.0,lb:0.011,boxShot:0.022,goalP:0,ctr:0.9725,ctrShot:0.0,def:0.0055,lr:-0.011,corn:1.0825},
+  "4-2-3-1": {press:1.0,adv:0.0,hold:0.022,lb:-0.0055,boxShot:-0.0165,goalP:0,ctr:0.945,ctrShot:0.0,def:0.0165,lr:0.0165,corn:1.0},
+  "4-1-4-1": {press:1.0,adv:0.0,hold:0.0165,lb:0.0,boxShot:0.0,goalP:0,ctr:0.9175,ctrShot:0.0,def:0.0275,lr:0.0,corn:1.11},
+  "4-1-2-1-2":{press:1.0,adv:0.0055,hold:0.0055,lb:0.0,boxShot:0.011,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0165,lr:0.0165,corn:0.8625},
+  "4-3-2-1": {press:1.0,adv:0.0,hold:0.0165,lb:-0.0055,boxShot:0.0,goalP:0,ctr:0.945,ctrShot:0.0,def:0.0165,lr:0.022,corn:0.9175},
+  "4-2-4":   {press:0.89,adv:0.022,hold:-0.044,lb:0.0165,boxShot:0.022,goalP:0,ctr:0.945,ctrShot:0.0,def:-0.0605,lr:0.0,corn:1.055},
+  "3-5-2":   {press:1.0,adv:0.011,hold:0.0055,lb:0.0,boxShot:0.011,goalP:0,ctr:1.0275,ctrShot:0.0,def:-0.022,lr:0.0,corn:1.0825},
+  "3-4-3":   {press:1.0275,adv:0.022,hold:-0.011,lb:0.0,boxShot:0.022,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0275,lr:0.0,corn:1.0},
+  "3-4-1-2": {press:1.0,adv:0.0055,hold:0.011,lb:0.0,boxShot:0.0,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0165,lr:0.0165,corn:0.9725},
+  "5-3-2":   {press:0.89,adv:-0.011,hold:0.0,lb:0.0165,boxShot:0.0,goalP:0,ctr:1.165,ctrShot:0.011,def:0.0385,lr:0.0,corn:0.9175},
 };
 function mergeModifiers(sm, fm) {
   if (!fm) return sm;
@@ -758,30 +767,30 @@ function mergeModifiers(sm, fm) {
 // Balanced, which is the intended behaviour -- a system you do not have the players for.
 const STYLE_FIT_SPOS = {
   // Width wins it: the wide men, and the full-backs who overlap them.
-  wingplay:      { wide: 0.45, fb: 0.20, fwd: 0.20, gk: 0.15, mid: 70.2, span: 85 },
+  wingplay:      { wide: 0.45, fb: 0.20, fwd: 0.20, gk: 0.15, mid: 72.4, span: 74 },
   // Everything runs through the middle third.
-  tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 },
+  tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 },
   // There is nowhere to hide in a press -- every outfielder has to be able to do it.
-  gegenpress:    { all: 0.55, def: 0.25, gk: 0.20, mid: 72.1, span: 71 },
+  gegenpress:    { all: 0.55, def: 0.25, gk: 0.20, mid: 74.7, span: 58 },
   // Absorb, then hurt them: the front men who finish it and the back line that survives until then.
-  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },
+  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },
   // A back line and a goalkeeper, and enough legs in front of them to screen it.
-  parkthebus:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },
+  parkthebus:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },
   // The four styles added later share a curve with their nearest measured neighbour rather than
   // getting four freshly-fitted mid/span pairs. That is deliberate: the curve answers "which
   // players does this ask for", and two styles built on the same players should ask for the same
   // ones. Fitting each separately would also mean four more calibration runs to buy nothing.
-  possession:    { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 }, // as tikitaka
-  verticaltiki:  { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 71.3, span: 79 }, // as tikitaka
-  routeone:      { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },             // as counterattack
-  catenaccio:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },            // as parkthebus
-  secondball:    { fwd: 0.55, def: 0.30, gk: 0.15, mid: 72.6, span: 77 },             // as counterattack
-  zonamista:     { def: 0.55, gk: 0.30, cmid: 0.15, mid: 71.9, span: 74 },            // as parkthebus
-  lanuestra:     { all: 0.55, def: 0.25, gk: 0.20, mid: 72.1, span: 71 },             // as gegenpress
+  possession:    { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 }, // as tikitaka
+  verticaltiki:  { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 }, // as tikitaka
+  routeone:      { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },             // as counterattack
+  catenaccio:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
+  secondball:    { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },             // as counterattack
+  zonamista:     { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
+  lanuestra:     { all: 0.55, def: 0.25, gk: 0.20, mid: 74.7, span: 58 },             // as gegenpress
   // A mid-block is the one shape here that is genuinely midfield-AND-defence led, so it does not
   // inherit cleanly from either the cmid-heavy or the def-heavy curve. Weights are its own; mid and
   // span are interpolated between the two it sits between rather than fitted from scratch.
-  cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, mid: 71.6, span: 76 },
+  cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, mid: 74.5, span: 61 },
 };
 const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
 const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
@@ -800,13 +809,35 @@ function computeStyleFit(style, squad) {
   if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
   if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
   if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
-  // Defaults reproduce the old hardcoded curve exactly for any entry that omits them.
-  return Math.max(0.3, Math.min(1.25, 1 + (avg - (w.mid ?? 85)) / (w.span ?? 20)));
+  // MEASURED AGAINST THE SQUAD'S OWN LEVEL, not a population median. Centring on the population
+  // conflated squad QUALITY with style SUITABILITY: a strong side scored high fit for every style,
+  // so the sixteen best national teams all sat at ~1.13 and collected a flat bonus that had nothing
+  // to do with whether the system suited them. Quality is already priced in OVR. What decides
+  // whether a side can carry out a system is whether its strength sits WHERE the system needs it,
+  // which is exactly (style-weighted average - own average).
+  // This also makes the term genuinely zero-mean for ANY pool rather than only for the one it was
+  // calibrated on, so mid is no longer needed and no longer read.
+  const own = starters.length ? starters.reduce((a, p) => a + (p.ovr || 65), 0) / starters.length : 65;
+  return Math.max(0.3, Math.min(1.25, 1 + (avg - own) / (w.span ?? 20)));
 }
 function applyStyleFit(mod, fit) {
   if (fit === 1) return mod;
   const BAL = STYLE_MOD.balanced;
-  return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
+  // WHETHER YOUR SQUAD CAN ACTUALLY PLAY THIS, as a term of its own.
+  // Everything else in this function interpolates the FORMATION row by fit -- all applyStyleFit had
+  // left to scale once the per-style modifier tables were removed. Once those formation rows were
+  // themselves cut to 55%, the whole mechanism measured under half a point a season for most styles:
+  // squad suitability was computed correctly and did nothing, which hollows out the point of picking
+  // a style at all.
+  // Centred on fit = 1.0, which IS the population median by construction, so a typical squad gets
+  // exactly zero from this and it cannot act as the hidden per-style buff the old tables were.
+  // Bounded because fit floors at 0.30: unbounded, (fit-1)*C reaches -0.245 against formation values
+  // of +/-0.022, which does not make a lopsided squad worse at its wrong style, it deletes it.
+  // Measured at C=0.70: playing a style the squad suits is worth ~3.6 pts a season over playing
+  // its worst-suited one. That deliberately sits ABOVE the style spread (2.17) and the formation
+  // spread (1.65), so having the right players matters more than which system or shape you pick.
+  const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
+  return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
 const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
@@ -3191,8 +3222,25 @@ function parseBulk(text) {
   styleLookup["park bus"] = "parkthebus"; // pre-expansion label, still spelled that way in older registries
   const resolveStyle = (str) => str ? (styleLookup[str.trim().toLowerCase()] ?? null) : null;
   const formSet = new Set(FORMATIONS);
-  const resolveForm = (str) => str ? (formSet.has(str.trim()) ? str.trim() : null) : null;
-  const stratKeys = ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
+  // A Sheets-bound registry writes "'4-4-2", because a bare 4-4-2 gets eaten as a date. The
+  // apostrophe never reached here before, so resolveForm missed on every row and silently handed
+  // back the 4-3-3 default -- a whole league re-importing as one formation, with nothing logged.
+  const resolveForm = (str) => { if (!str) return null; const f = str.trim().replace(/^'/, ""); return formSet.has(f) ? f : null; };
+  // A registry carries either all thirteen instruction columns or only the three that survived the
+  // move to playstyle-as-identity -- and PLAYER_START below is derived from this list's LENGTH, so
+  // getting it wrong shifts the whole player block and every squad reads back short. That is not
+  // hypothetical: it is the same failure the comment on PLAYER_START already describes, and it
+  // happened again the moment the registries dropped the ten folded columns. Read the width from
+  // the header instead of asserting it. Headerless input keeps the old thirteen-column assumption,
+  // which is what the in-app export still emits.
+  const STRAT_HDR = {"APPROACH":"approachPlay","PASSING":"passingDir","CHANCES":"chanceCreation",
+    "DRIBBLING":"dribbling","CREATIVITY":"creativity","TIME WASTING":"timeWasting","POS. LOST":"possLost",
+    "POS. WON":"possWon","GK PASSING":"gkDist","PRESSING":"pressingLOE","DEF. LINE":"defLine",
+    "DL BEHAVIOR":"dlBehavior","TACKLING":"tackling"};
+  const _hdr = text.split("\n").find(l => /\bPLAYSTYLE\b/i.test(l));
+  const _fromHdr = _hdr ? _hdr.split("\t").map(c => STRAT_HDR[c.trim().toUpperCase()]).filter(Boolean) : [];
+  const stratKeys = _fromHdr.length ? _fromHdr
+    : ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
   Object.entries(STRAT_LABELS).forEach(([key, {vals}]) => { const m = {}; vals.forEach(([v, l]) => { m[l.toLowerCase()] = v; }); m["no instruction"] = 0; m["standard"] = vals.find(([v]) => v === 0) ? 0 : 0; stratLookup[key] = m; });
   // Full-label aliases (TSV uses long labels, STRAT_LABELS uses short display labels)
@@ -3928,14 +3976,23 @@ function buildSquad(formation, names, benchSize) {
 
 
 function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, hasHeader = true) {
-  return parseBulk((hasHeader ? raw.split("\n").slice(1) : raw.split("\n")).map(line => {
+  const all = raw.split("\n");
+  const strip = (line) => line.split("\t").slice(skipStart, hasSuffix ? -1 : undefined).map(c => c.trim()).join("\t");
+  // The header has to SURVIVE into parseBulk. It reads the instruction-column width off it, and a
+  // registry carrying only the three surviving instructions parsed as a thirteen-column one puts
+  // PLAYER_START ten columns too far right -- every squad came back six players deep with no
+  // forwards at all. parseBulk discards the header as a row by itself, since its skill cell is a
+  // word. It also bypasses the league filter below, which would otherwise drop it.
+  const hdr = hasHeader && all.length ? [strip(all[0])] : [];
+  const body = (hasHeader ? all.slice(1) : all).map(line => {
     const cols = line.split("\t");
     if (hasSuffix) {
       const league = cols[cols.length - 1]?.trim();
       if (filterLeagues && !filterLeagues.includes(league)) return null;
     }
-    return cols.slice(skipStart, hasSuffix ? -1 : cols.length).map(c => c.trim()).join("\t");
-  }).filter(Boolean).join("\n"));
+    return strip(line);
+  }).filter(Boolean);
+  return parseBulk([...hdr, ...body].join("\n"));
 }
 // AVIUM.tsv is the national teams: column 1 is a display rank, the last is the confederation, and
 // parseBulk reads that off the end of the metadata tail as `conference`, so it is kept rather than
@@ -3961,13 +4018,20 @@ const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Frederikka Cup", "Kullanmaan
                              "Karjanian Secondary League"]);
 function nationLeagues(raw) {
   const out = new Map();
-  for (const line of raw.split("\n").slice(1)) {
+  const _lines = raw.split("\n");
+  // Each league is handed to parseBulk as its OWN batch, and parseBulk reads the instruction-column
+  // width off the header -- so every batch needs its own copy of it. Without one, a registry
+  // carrying only the three surviving instructions is parsed as a thirteen-column one, the player
+  // block is read ten columns too far right, and every squad comes back six deep with no forwards.
+  // parseBulk drops the header as a row by itself.
+  const _hdr = (_lines[0] || "").split("\t").slice(1, -1).map(c => c.trim()).join("\t");
+  for (const line of _lines.slice(1)) {
     const cols = line.split("\t");
     // A row needs a league to be placed and a code to be a team; the sheets carry trailing blank
     // rows that satisfy neither.
     const league = (cols[cols.length - 1] || "").trim();
     if (!league || LEAGUES_OFF.has(league) || !(cols[1] || "").trim()) continue;
-    if (!out.has(league)) out.set(league, []);
+    if (!out.has(league)) out.set(league, [_hdr]);
     out.get(league).push(cols.slice(1, -1).map(c => c.trim()).join("\t"));
   }
   return out;
@@ -5019,6 +5083,55 @@ const T_PRESETS = {
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── HEADLESS MATCH CONSTRUCTION ────────────────────────────────────────────────
+// These three were inside the component, which meant nothing outside React could build a positional
+// match -- so the only simulation reachable from a script was the abstract one, and every harness
+// and every measurement quietly aimed there. They are pure (team in, players out), so they lift
+// without ceremony. Lifted rather than copied: a second copy in a harness drifts, and then the
+// harness is measuring an engine the app does not run.
+const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
+  onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
+  passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0,
+  // The engine fills these only if they are offered. Without them every "does this style pass more"
+  // question was being answered with both teams' passes added together.
+  passSide:{home:0,away:0}, passOkSide:{home:0,away:0},
+  possX:{home:0,away:0}, passFwd:{home:0,away:0},
+  evt: null, feed: [], min: 0 });
+// The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
+// players synthesised at the team's own rating so an unfilled preset is still testable.
+const meSide = (t) => {
+  const xi = (t?.squad || []).filter(p => !p.bench).slice(0, 11);
+  const base = xi.length === 11 ? xi : buildSquad(t?.formation || "4-3-3", null).filter(p => !p.bench);
+  return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
+    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0, defActs: 0, _att: null }));
+};
+// Everyone who is not in the XI, in the same shape meSide gives the starters.
+const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
+  .map((p, i) => ({ ...p, name: p.name || (p.pos + "B" + i), ovr: p.ovr ?? t?.skill ?? 70,
+                    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
+                    defActs: 0, _att: null }));
+
+// A whole positional match, start to whistle, with no React anywhere near it. This is the shape the
+// tournament will eventually call instead of simInstantMatch.
+export function runPositionalMatch(hT, aT, seed) {
+  const st = createMatchState();
+  st.players.home = meSide(hT); st.players.away = meSide(aT);
+  st.bench = { home: meBench(hT), away: meBench(aT) };
+  st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+  st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
+  st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
+  st.styles = { home: hT.style || "balanced", away: aT.style || "balanced" };
+  st.teamSkill = { home: hT.skill, away: aT.skill };
+  st.possession = "home";
+  const rng = new RNG(seed >>> 0 || 7);
+  meInit(st, pitchSlots, rng);
+  const out = meFreshOut();
+  for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
+  meFinalise(st);
+  return { s: st, out };
+}
+
 export default function App() {
   const [tab, setTab] = useState("teams");
   const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
@@ -5253,18 +5366,10 @@ export default function App() {
   const mePending = useRef({ subs: [], strategy: {} });
   const meSubPick = useRef(null);        // the man taken off, waiting for his replacement
   const meRef = useRef(null), meTimer = useRef(null);
-  const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
-    onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
-    passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0,
-    evt: null, feed: [], min: 0 });
+
   // The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
   // players synthesised at the team's own rating so an unfilled preset is still testable.
-  const meSide = (t) => {
-    const xi = (t?.squad || []).filter(p => !p.bench).slice(0, 11);
-    const base = xi.length === 11 ? xi : buildSquad(t?.formation || "4-3-3", null).filter(p => !p.bench);
-    return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
-      stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0, defActs: 0, _att: null }));
-  };
+
   // Everyone who is not in the XI, in the same shape meSide gives the starters.
   // THE XI ON A PITCH, exactly as the expanded team view draws it -- this IS that code, lifted out
   // rather than reimplemented, so the pre-match screen and the team view can never show a player
@@ -5595,10 +5700,7 @@ export default function App() {
             </div>
   );
 
-  const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
-    .map((p, i) => ({ ...p, name: p.name || (p.pos + "B" + i), ovr: p.ovr ?? t?.skill ?? 70,
-                      stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
-                      defActs: 0, _att: null }));
+
   const meBuild = () => {
     const hT = teamById(lmH) || teams[0], aT = teamById(lmA) || teams[1];
     if (!hT || !aT) return null;

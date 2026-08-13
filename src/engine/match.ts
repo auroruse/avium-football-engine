@@ -577,6 +577,14 @@ export function meDead(s, kind, side, ticks, out) {
 // whether there is cover behind. A better tackler needs less of it, because he trusts himself at a
 // worse one, and Get Stuck In lowers the bar for everybody. That is a THRESHOLD moving, not a
 // success coefficient being scaled -- the rule every other instruction in here follows.
+// Which side a man plays for. tackles/carries/clears were pooled match totals, so a harness that
+// asked "does this style tackle more" was reading both teams at once and attributing the lot to
+// whichever happened to be home. Cards, offsides and injuries already carry per-side counts; these
+// now do too, on the same self-initialising pattern so an out object that does not want them is
+// unaffected.
+const meSideOfP = (s, pl) => (s.players.home.indexOf(pl) >= 0 ? "home" : "away");
+const meBump = (out, key, side) => { (out[key] = out[key] || { home: 0, away: 0 })[side]++; };
+
 export function meTackle(s, rng, out) {
   const mp = s.mePos;
   if (mp.sp || mp.idx < 0) return;
@@ -610,7 +618,8 @@ export function meTackle(s, rng, out) {
       // out.tackles is ALSO incremented by the keeper-save path below, which is the bug that made
       // the app print saves under the word tackles. Kept for compatibility, but the honest count of
       // tackles WON is its own field.
-      out.tackles++; out.tackleWon = (out.tackleWon || 0) + 1; meRate(p, CFG.rateTackle);
+      out.tackles++; meBump(out, "tacklesSide", meSideOfP(s, p));
+      out.tackleWon = (out.tackleWon || 0) + 1; meRate(p, CFG.rateTackle);
       meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.name} wins it off ${c.name}`);
     } else {
@@ -826,7 +835,17 @@ export function meTick(s, rng, out) {
     // Per side as well, when the harness asks: pooled completion hides exactly the thing a
     // mismatch is about -- who is completing and who is coughing it up.
     if (out.passSide) out.passSide[pp.side]++;
-    if (okSide === pp.side) { out.passOk++; if (out.passOkSide) out.passOkSide[pp.side]++; }
+    // Banked on COMPLETION, not per tick while it travels. Credited per tick, a forty-metre ball
+    // hanging two seconds in the air earned three times what a five-metre one did, and the long-ball
+    // styles floated to the top of the possession table -- Park The Bus highest in the game at 58.9%
+    // with 261 passes. Airtime is not control. A pass that reaches a team-mate was your possession
+    // the whole way; a hoof that gets headed clear never was.
+    if (okSide === pp.side) { out.passOk++; if (out.passOkSide) out.passOkSide[pp.side]++;
+                              out.poss[pp.side] += (pp.t || 0);
+                              // Ground actually gained by a pass that found a team-mate. A side can
+                              // complete 160 passes a game and be no nearer the goal at the end of it.
+                              if (out.passFwd && pp.sx !== undefined)
+                                out.passFwd[pp.side] += (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx); }
     else { out.passFail++; meEvt(out, "cut", pp.side, mp.bx, mp.by, mp.bx, mp.by, null); }
   };
   if (mp.by < 0 || mp.by > PITCH_W) { resolvePending(null); mp.shot = null; meDead(s, "throw", meOther(mp.touchSide), 76, out); return; }
@@ -1155,7 +1174,7 @@ export function meTick(s, rng, out) {
             // every won header near the box teed a team-mate up. A flick is a ball into an area.
             const ax = ownA - q.x, ay = ME_HALF_W - q.y, al = Math.hypot(ax, ay) || 1;
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
-            if (relief) { out.clears++; meRate(q, CFG.rateClear); }
+            if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear); }
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty,
                   `${q.name} ${relief ? "heads it clear" : "heads it on"}`);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
@@ -1435,6 +1454,19 @@ export function meTick(s, rng, out) {
     }
   }
 
+  // A PASS IN FLIGHT IS STILL YOUR POSSESSION. out.poss only ever counted ticks with a man within
+  // touchKeep of the ball, so a ball travelling between two team-mates belonged to nobody -- which
+  // systematically under-counts precisely the sides that pass most and flatters the ones that run
+  // with it. Measured on the pitch, Control Possession played 258 passes a game and registered the
+  // LOWEST possession in the game at 38.9%, below a deep block, while Wing Play carried 1371 times
+  // and registered among the highest. Real possession is credited to the side in control while the
+  // ball travels, and mp.passPending is exactly who that is.
+  {
+    const _h = (!claimed && mp.idx >= 0) ? s.players[mp.side]?.[mp.idx] : null;
+    const _onBall = !!_h && Math.hypot(_h.x - mp.bx, _h.y - mp.by) <= CFG.touchKeep;
+    if (!_onBall && mp.passPending) mp.passPending.t++;
+  }
+
   // ================ 3. THE MAN ON THE BALL ==================================================
   // He has been moved by the steering layer above, so he decides from where he actually is.
   if (claimed || mp.idx < 0) return;
@@ -1445,6 +1477,10 @@ export function meTick(s, rng, out) {
   // He keeps it while it is still HIS -- inside the range of his own touch, and with nobody nearer.
   if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.touchKeep) { mp.idx = -1; return; }
   out.poss[side]++;
+  // WHERE the ball is while you have it, not just how long. "This side passes a lot and never
+  // shoots" has two completely different causes -- progressing and declining to shoot, or never
+  // leaving its own half -- and possession share alone cannot tell them apart.
+  if (out.possX) out.possX[side] += (side === "home" ? mp.bx : PITCH_L - mp.bx);
   // ...and he can only PLAY it if he can actually reach it. Possession deliberately runs out to
   // touchKeep so a man does not lose the ball every time it gets a stride ahead of him -- but
   // between his own reach and that he is CHASING it, not carrying it, and he certainly cannot pass
@@ -1454,7 +1490,7 @@ export function meTick(s, rng, out) {
   // of slices while it is inside his control radius and on 74.6% while it is outside -- because
   // outside it nothing steers it at all, and he was free to keep "dribbling" anyway.
   // He is already pursuing it in meMove; this just stops him kicking what he cannot touch.
-  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { out.carries++; return; }
+  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { out.carries++; meBump(out, "carriesSide", meSideOfP(s, p)); return; }
   const a = meAttrs(p), sp = meSpeed(a, p.stamina), opp = s.players[meOther(side)];
   // A challenge is one against one: only the CLOSEST opponent in range rolls the duel. Letting every
   // body within 3.2 m roll independently meant a second presser doubled the dispossession rate and
@@ -1466,7 +1502,7 @@ export function meTick(s, rng, out) {
     if (gki >= 0) {
       const gk = opp[gki], gd = Math.hypot(gk.x - p.x, gk.y - p.y);
       if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR) * (0.6 + meAttrs(gk).reflex / 99 * 0.6)) {
-        out.tackles++; gk.saves = (gk.saves || 0) + 1;
+        out.tackles++; meBump(out, "gkStopSide", meSideOfP(s, gk)); gk.saves = (gk.saves || 0) + 1;
         meEvt(out, "save", side, p.x, p.y, p.x, p.y, `${gk.name} smothers it`);
         // In his hands, held out in front of him. Placing it at gk.x, gk.y put the ball at his exact
         // centre, which is the ball drawn INSIDE the keeper.
@@ -1597,7 +1633,7 @@ export function meTick(s, rng, out) {
   // Once his time is up the carry is off the menu and he plays the best ball there is.
   const forced = mp.hold >= natural;
   const act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
-  if (act.k === "carry") { out.carries++; return; }              // meDribble is already running him
+  if (act.k === "carry") { out.carries++; meBump(out, "carriesSide", meSideOfP(s, p)); return; }              // meDribble is already running him
   if (!forced && (act.sc ?? 0) <= CFG.actNow) return;
   mp.firstTouch = mp.hold <= 1;
   mp.hold = 0;
@@ -1660,14 +1696,14 @@ export function meTick(s, rng, out) {
     meShootBall(mp, rng, gx, aimY, aimZ, sk / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
     return;
   }
-  if (act.k === "clear") { out.clears++; meRate(p, CFG.rateClear);
+  if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, CFG.rateClear);
     meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.name} clears it`);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     meKickBall(mp, rng, act.cx ?? (p.x + meDir(side) * 36), act.cy ?? (p.y + (rng.u() - 0.5) * 30),
                "clear", meTech(a.pass), press);
     return; }
-  if (act.k === "touch") { out.clears++;
+  if (act.k === "touch") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p));
     // Into the stand. It concedes a throw and it keeps the goal, which is the trade being made.
     const sy = p.y < ME_HALF_W ? -4 : PITCH_W + 4;
     meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, `${p.name} puts it out`);
@@ -1710,7 +1746,7 @@ export function meTick(s, rng, out) {
     && (q.x - PITCH_L / 2) * meDir(side) > 0        // only in the opponent's half
     && (q.x - p.x) * meDir(side) > 0;               // and ahead of the ball
   mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced,
-                     off: wasOff, ox: q.x, oy: q.y };
+                     off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
              meTech(a.pass) / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
 }

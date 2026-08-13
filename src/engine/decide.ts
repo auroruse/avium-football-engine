@@ -82,7 +82,12 @@ export function meDecide(s, rng, side, i, dwell) {
   // Every option below is scored the same way -- what you gain times the chance of getting it, minus
   // what you lose times the chance of not. Charging that cost to passes ALONE made carrying strictly
   // dominant and passing collapsed to a fifth of its rate, so it has to be applied to all three.
-  const lose = CFG.loss * (0.35 + meDanger(meOther(side), p.x, p.y));
+  // How hard this player takes his orders. See CFG.obeyBase.
+  const obey = CFG.obeyBase + CFG.obeySpan * (1 - meMind(p));
+  const styleW = CFG.styleW * obey;
+  // Risk appetite multiplies EVERY loss term below, so it has to be a factor rather than an offset.
+  const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey);
+  const lose = CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y));
   let best = null, bestSc = -Infinity;
   // He does not see his own options perfectly. Every score below is what he THINKS it is worth, and
   // how far that is from the truth is his rating. A good player's ranking is nearly right; a poor one
@@ -284,7 +289,7 @@ export function meDecide(s, rng, side, i, dwell) {
     // thirty metres further from your goal, and that difference is the entire case for playing out.
     // The position he is handing back. Only ever a cost, never a bonus for passing to a worse spot.
     const giveUp = Math.max(0, here - meVal(side, aimX, aimY)) * CFG.surrender;
-    const sc = ok * (val - giveUp) - (1 - ok) * CFG.loss * (0.35 + meDanger(meOther(side), aimX, aimY))
+    const sc = ok * (val - giveUp) - (1 - ok) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), aimX, aimY))
              + (q.pos === "GK" ? -0.020 : 0);
     if (ME_DBG) ME_DBG.pass = Math.max(ME_DBG.pass ?? -1, sc);
     const jsc = sc + jit("pass");
@@ -322,9 +327,10 @@ export function meDecide(s, rng, side, i, dwell) {
             * Math.pow(CFG.dwellDrop, Math.max(0, dwell || 0));
   // Same for running with it: he loses it where he has taken it to.
   const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72)
-            - (1 - drb) * CFG.loss * (0.35 + meDanger(meOther(side), cdx, p.y));
+            - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
-  const jdsc = dsc + jit("carry");
+  // Run At Defence / Be More Disciplined, on the choice itself.
+  const jdsc = dsc + styleW * (st.dribbling || 0) + jit("carry");
   if (jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
   }
   // Hoofing it. You probably concede possession, but you concede it forty metres from your own goal
@@ -367,15 +373,17 @@ export function meDecide(s, rng, side, i, dwell) {
     const relief = Math.max(0, meDanger(meOther(side), p.x, p.y) - meDanger(meOther(side), cx, cy))
                  * CFG.clearRelief;
     const sc = ok2 * (meVal(side, cx, cy) + CFG.keep * 0.40) + relief
-             - (1 - ok2) * CFG.loss * (0.35 + meDanger(meOther(side), cx, cy));
-    const jc = sc + jit("clear");
+             - (1 - ok2) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cx, cy));
+    // Play Out of Defence means he would rather find a pass than clear it, and Pass Into Space
+    // means he is happier to send it. Neither reached this decision before.
+    const jc = sc + styleW * (st.approachPlay || 0) * 0.8 + jit("clear");
     if (jc > bestSc) { bestSc = jc; best = { k: "clear", p: ok2, cx, cy }; }
   }
   // Into the stand. No gain at all, so it only ever wins when everything else is worse than a
   // throw-in against you -- which, ten metres from your own goal with three men on you, it is.
   if (ownDepth < CFG.touchDepth && press > CFG.touchPress) {
     const sc = meDanger(meOther(side), p.x, p.y) * CFG.clearRelief
-             - CFG.loss * (0.35 + meDanger(meOther(side), p.x, p.y)) * CFG.touchDiscount;
+             - CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y)) * CFG.touchDiscount;
     const jt = sc + jit("clear");
     if (jt > bestSc) { bestSc = jt; best = { k: "touch", p: 1 }; }
   }
