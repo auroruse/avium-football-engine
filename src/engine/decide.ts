@@ -330,7 +330,7 @@ export function meDecide(s, rng, side, i, dwell) {
             - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.
-  const jdsc = dsc + styleW * (st.dribbling || 0) + jit("carry");
+  const jdsc = dsc + CFG.carryInstrW * obey * (st.dribbling || 0) + jit("carry");
   if (jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
   }
   // Hoofing it. You probably concede possession, but you concede it forty metres from your own goal

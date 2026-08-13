@@ -108,7 +108,14 @@ export const CFG = {
   // The range he is looking to shoot from, and how far each step of chance creation moves it.
   shotWant: 14, shotWantStep: 5, shotWantW: 0.004,
   // Extra touches per step of the dribbling instruction, before he has to release it.
-  dribHold: 2,
+  // Halved. dribbling turned out to account for ~70% of the entire territorial difference between
+  // playstyles -- zeroing it collapsed the field-position spread from 26.4 m to 7.6 m and every style
+  // landed between 36 and 44 m up the pitch. It reached the game twice: here, as how long a man keeps
+  // running with it, and (added at the same time as this comment) as whether he chooses to carry at
+  // all. The same double-count that made tackling the loudest instruction in the engine. Swept
+  // together, 0.005/1.0 puts the spread at 15.0 m -- dribbling still shapes territory, it no longer
+  // decides it -- while keeping a shot spread of 5.8 across the fourteen.
+  dribHold: 1.0,
   // Metres the whole side shifts while its own keeper has the ball, per step of GK distribution.
   gkDistPush: 9,
   // ...and metres the men who are NOT the intended receivers shift at a goal kick. Going long with
@@ -1007,6 +1014,9 @@ Object.assign(CFG, {
   // styles separated hard on defensive signals and came out BACKWARDS on attacking ones -- Control
   // Possession held less of the ball than Catenaccio, Park The Bus more than Tiki-Taka.
   styleW: 0.020,
+  // The carry choice gets its own weight rather than borrowing styleW, which also drives the
+  // approachPlay clear term -- they need to move independently.
+  carryInstrW: 0.005,
   // Nudge for a good player, order for a poor one. meMind is the same read-the-situation term that
   // scales judgement error, so a man who cannot see the better option for himself leans harder on
   // what he was told, and an elite player's own read can overrule the touchline. obeyBase keeps even
