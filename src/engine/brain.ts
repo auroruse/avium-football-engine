@@ -950,8 +950,23 @@ export function meShape(s, side) {
       // over 0 / 0.5 / 0.75 / 1.0. It measured as noise at every value (60.5 to 63.2% goal-side)
       // because the clamp below already does the work, so it is not here: a knob that reads as
       // noise is a knob that should not exist.
+      // BETWEEN THE MAN AND THE GOAL IS TWO-DIMENSIONAL. This asserted it on x alone, so a marker
+      // could satisfy it completely while standing eight metres to one side of his man -- goal-side
+      // along the pitch, beside him on the grass, and no use to anybody. That is also why the
+      // markPull sweep above read as noise at every value: it was testing a knob against a clamp
+      // that only ever fixed half the geometry.
+      // The goal-side point is markGoalSide metres from him ALONG THE LINE TO OUR GOAL, not simply
+      // lower x. He is drawn onto that line by markLine -- the block still shapes him, which is the
+      // thing that actually holds a defensive structure -- and then the x invariant is asserted on
+      // top, so however the pull lands he is never level with his man or upfield of him.
       const mk2 = p._mk >= 0 ? them[p._mk] : null;
-      if (mk2 && !mk2.off && (mk2.x - tx2) * dir < CFG.markGoalSide) tx2 = mk2.x - dir * CFG.markGoalSide;
+      if (mk2 && !mk2.off) {
+        const vx = own - mk2.x, vy = ME_HALF_W - mk2.y, L = Math.hypot(vx, vy) || 1;
+        const gsx = mk2.x + vx / L * CFG.markGoalSide, gsy = mk2.y + vy / L * CFG.markGoalSide;
+        tx2 += (gsx - tx2) * CFG.markLine;
+        ty2 += (gsy - ty2) * CFG.markLine;
+        if ((mk2.x - tx2) * dir < CFG.markGoalSide) tx2 = mk2.x - dir * CFG.markGoalSide;
+      }
       tx2 = Math.max(1.5, Math.min(PITCH_L - 1.5, tx2));
       ty2 = Math.max(1.5, Math.min(PITCH_W - 1.5, ty2));
       // Picked somebody up, caught upfield, or simply out of shape: either way he is not strolling.

@@ -226,6 +226,13 @@ export function meSPShape(s) {
     let k = 0;
     for (const sd of ME_SIDES) for (const p of s.players[sd]) {
       if (p._spSet || p.off) continue;
+      // THE OTHER KEEPER STAYS AT HIS OWN END. This loop runs over BOTH sides and only the defending
+      // goalkeeper had been marked _spSet already, so the attacking side's keeper fell through into
+      // the arc of men around the box and trotted seventy metres up the pitch for a penalty.
+      if (p.pos === "GK") {
+        p._tx = clampX(meGoalX(meOther(sd)) + meDir(sd) * 2);
+        p._ty = ME_HALF_W; p._spSet = true; continue;
+      }
       const ang = -1.1 + (k++ % 10) * 0.24;
       p._tx = clampX(sp.x - dir * (CFG.spPenBack + Math.cos(ang) * 2));
       p._ty = clampY(ME_HALF_W + Math.sin(ang) * CFG.spPenSpread);
@@ -396,8 +403,14 @@ export function meSPShape(s) {
     // At a kickoff or a goal kick they are not defending a restart at all, they are just standing in
     // their shape, so they take formation depth too.
     const shape2 = sp.kind === "kickoff" || sp.kind === "goalkick";
+    // HOW DEEP THE LINE SITS IS A TACTIC. A flat 13 m meant every side defended a free kick from the
+    // same distance, so a team told to hold a high line dropped onto its own six-yard box like a bus
+    // and the gap between the two sides was the same whoever was playing. dst is the DEFENDING
+    // side's own strategy -- st above belongs to the side taking it.
+    const dst = s.strategy?.[opp] || {};
+    const dLine = 13 + (dst.defLine || 0) * CFG.spLineStep;
     const base = shape2 ? gx - dir * (p._bd0 ?? 40) * 0.5
-                        : gx - dir * (13 + Math.floor(dk / 4) * 7);
+                        : gx - dir * (dLine + Math.floor(dk / 4) * 7);
     dplace(i, base + spJ(sp, 80 + dk), (p._bw0 ?? ME_HALF_W) + spJ(sp, 85 + dk));
     dk++;
   }

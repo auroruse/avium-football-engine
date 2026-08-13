@@ -40,6 +40,14 @@ export const SP = {
   // enough that your best header of a ball attacks the near post and your best striker of one
   // takes the edge, without anybody crossing the pitch for a spot somebody else can fill.
   spRoleW: 12,
+  // How far a step of the defensive-line instruction moves the block at a free kick, and how far
+  // a keeper has to be out of position before the goal counts as open. gkBeatX is along the pitch
+  // (behind him is behind him), gkBeatY across it.
+  spLineStep: 2.5, gkBeatX: 8, gkBeatY: 10, clearPress: 1.6,
+  // How far onto the line between his man and our goal a marker is drawn off his block slot. 0
+  // is the old behaviour -- goal-side on x and anywhere at all across the pitch. 1 abandons the
+  // block entirely for man-marking, which measured worse every time it was tried.
+  markLine: 0.6,
   // How hard the delivery favours the best-placed man. The choice used to be an argmax, so every
   // corner of a match found the same player; this is the exponent on the same value, turning it
   // into a weighted draw. Higher is more predictable, 0 is a lottery. 0.22 keeps a man at the far
@@ -656,7 +664,16 @@ Object.assign(CFG, {
   // ejecting it along the contact normal, so a man who ran onto the ball from behind had it placed
   // BEHIND him -- the velocity went forward and the position did not, and that is the ball dragging
   // at his heel however hard he pushed it.
-  dribSet: 1.10,
+  // 0.60, INSIDE dribCtrl. The comment below states the contract -- dribCtrl must exceed dribSet --
+  // and it was 0.70 against 1.10, so the control law steered the ball to a point at which it
+  // switched itself off. Every carry pushed the ball out of its own control radius and left it
+  // free on the grass until he caught it up or it ran out of play, which is the losing-it-while-
+  // dribbling nobody could place. The comment even names the resolution -- 'dribSet moves instead'
+  // -- and then the sweep that followed moved dribCtrl and left this where it was.
+  // Swept 1.10 / 0.85 / 0.65 / 0.55 at the fixed radius: goals 2.75 / 2.63 / 2.63 / 2.98, carries
+  // and completion flat. Aggregates cannot see this, which is expected -- it is a possession-
+  // quality fault, not a scoring one -- so the value is chosen for margin inside 0.70, not fitted.
+  dribSet: 0.60,
   // How far out the man in control still has the ball under his feet. MUST exceed dribSet, or the
   // setpoint is outside the zone the control law operates in and the ball can never reach it.
   // It cannot be widened past reach to buy that, though, and the two are not independent: control
@@ -807,6 +824,10 @@ Object.assign(CFG, {
   // and could only shuffle 0.14 m per slice -- measured, 84% of all ball-possession time was
   // somebody walking at 0.56 m/s, which is the "slow nudging" that made the match unwatchable.
   carrySpeed: 0.86, carryLook: 6,
+  // Running onto one. strideT is how many touches the momentum survives, strideVTol how far the
+  // ball's pace may miss his before he has to check, strideMinV the speed below which he is not
+  // running onto anything, and strideTouch what the worst technician in the game still gets.
+  strideT: 3, strideVTol: 7, strideMinV: 2.2, strideTouch: 0.55,
   // How far BEYOND the ball the carrier is aimed, along the line he has picked. Zero is a target
   // on the ball itself, which is not a bearing at all -- see meShape. Too far and the run stops
   // being a dribble and becomes him leaving it behind, so it is swept, not guessed.

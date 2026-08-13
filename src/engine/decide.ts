@@ -33,7 +33,19 @@ export function meShotP(s, side, p, x, y) {
   q *= Math.max(CFG.shotCrowd, Math.min(clearMax, clearMax - lane0 * CFG.shotLaneK));
   // The keeper. Absolute: his reflexes against this shot, nothing to do with who he plays for.
   const gk = s.players[meOther(side)].find(q2 => q2.pos === "GK");
-  if (gk) q *= Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70) * (gk.emergencyGK ? 1.35 : 1);
+  if (gk) {
+    // WHERE HE IS, not just how good he is. This read his reflexes and nothing else, so a keeper
+    // stranded thirty metres upfield discounted the shot exactly as much as one stood on his line --
+    // an open net was priced as an ordinary save and the man in front of it rationally declined to
+    // shoot. He cannot save what is already behind him, and he cannot save what is across the goal
+    // from where he is standing.
+    const gxg = meGoalX(side), dr = meDir(side);
+    const behind = Math.max(0, (x - gk.x) * dr);          // shooter nearer the goal than the keeper
+    const lat = Math.abs(gk.y - y);
+    const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
+    const D = Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70);
+    q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
+  }
   return Math.max(0, Math.min(0.95, q));
 }
 
@@ -372,7 +384,13 @@ export function meDecide(s, rng, side, i, dwell) {
     // and it was the one thing not being counted.
     const relief = Math.max(0, meDanger(meOther(side), p.x, p.y) - meDanger(meOther(side), cx, cy))
                  * CFG.clearRelief;
-    const sc = ok2 * (meVal(side, cx, cy) + CFG.keep * 0.40) + relief
+    // ...but relief is relief from DANGER, and a man with six metres of space around him is not in
+    // any. Unweighted, this was the reason for headed clearances nobody had asked for: a defender
+    // standing alone in his own half scored the same relief as one with three men on him, so he
+    // launched it. Under real pressure it counts in full; unpressured it nearly vanishes and he is
+    // left choosing between a pass and a carry, which is what he should be choosing between.
+    const urgency = Math.min(1, press / CFG.clearPress);
+    const sc = ok2 * (meVal(side, cx, cy) + CFG.keep * 0.40) + relief * (0.2 + 0.8 * urgency)
              - (1 - ok2) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cx, cy));
     // Play Out of Defence means he would rather find a pass than clear it, and Pass Into Space
     // means he is happier to send it. Neither reached this decision before.

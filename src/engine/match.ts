@@ -165,8 +165,14 @@ export function meMove(s, rng) {
       // Running with the ball costs you speed. That is the only thing having it changes.
       // A keeper jogs about his box, but a keeper going for a ball dives, and a dive is quick.
       if (p.knock > 0) p.knock--;
+      if (p._strideT > 0) p._strideT--;
       const sp = meSpeed(a, p.stamina) * (p.pos === "GK" ? (p._closing ? CFG.gkScramble : 0.75) : 1)
-               * (onBall ? CFG.carrySpeed : 1) * (p.knock > 0 ? CFG.injKnockSpd : 1)
+               // ...unless he has just taken it in stride, in which case he keeps what he had for a
+               // touch or two and only then settles to carrying pace.
+               * (onBall ? (p._strideT > 0
+                            ? CFG.carrySpeed + (1 - CFG.carrySpeed) * (p._stride || 0)
+                            : CFG.carrySpeed) : 1)
+               * (p.knock > 0 ? CFG.injKnockSpd : 1)
                // Beaten. He dived in, the man went past him, and he is turning: taking him out of
                // the pressing pool was not enough on its own, because somebody else simply stepped
                // in. What being beaten costs is the GROUND, and only a committed defender pays it.
@@ -416,6 +422,29 @@ export function meBallTo(s, side, i, x, y) {
       if (_d < 1e-3) { const _v = Math.hypot(_p.vx || 0, _p.vy || 0);
         if (_v > 1e-4) { _dx = _p.vx / _v; _dy = _p.vy / _v; } else { _dx = meDir(side); _dy = 0; } _d = 1; }
       x = _p.x + _dx / _d * _R; y = _p.y + _dy / _d * _R;
+    }
+  }
+  // TAKING IT IN STRIDE. carrySpeed says having the ball costs you speed, and it applied from the
+  // very first frame of a reception -- so a man sprinting onto a through ball decelerated the instant
+  // it reached him, every time, however well it was played. That is the whole of "nobody ever runs
+  // onto one cleanly": there was no such thing as a good ball, only a completed one.
+  // Quality is measured off the ball itself, here, because this is the last moment it still has any:
+  // how nearly it is travelling the way he is running, and how nearly at his pace. A ball laid into
+  // his path at the speed he is going costs him nothing; one played behind him or twenty metres too
+  // hard makes him check, which is what checking IS. Touch buys a little of it back, so a good
+  // technician takes a worse ball cleanly.
+  {
+    const rc = s.players[side][i];
+    if (rc) {
+      const bs = Math.hypot(mp.bvx || 0, mp.bvy || 0), vs = Math.hypot(rc.vx || 0, rc.vy || 0);
+      let str = 0;
+      if (bs > 0.5 && vs > CFG.strideMinV) {
+        const dot = ((mp.bvx || 0) * rc.vx + (mp.bvy || 0) * rc.vy) / (bs * vs);
+        const pace = 1 - Math.min(1, Math.abs(bs - vs) / CFG.strideVTol);
+        str = Math.max(0, dot) * Math.max(0, pace)
+            * (CFG.strideTouch + meAttrs(rc).pass / 99 * (1 - CFG.strideTouch));
+      }
+      rc._stride = str; rc._strideT = CFG.strideT;
     }
   }
   mp.side = side; mp.idx = i; mp.bx = x; mp.by = y; mp.hold = 0; mp.flight = false;
