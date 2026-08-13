@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_MATCH_TICKS, ME_TPM, meAdded, meFinalise, meInit, meMinute, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, meShootout, meSub, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -5443,6 +5443,10 @@ export default function App() {
   // same match view parked on the stats panel for a screenshot. Kept separate from meRef so pausing
   // a match does not drop you back to team selection.
   const [meView, setMeView] = useState("setup");
+  // Whether this fixture is allowed to end level. A league match is; a knockout is not, and that is
+  // the only thing extra time and a shootout are conditional on. The tournament will set this per
+  // fixture when the engine is hooked up; in the lab it is a toggle.
+  const [meNeedWin, setMeNeedWin] = useState(false);
   // THE OLD ENGINE, still here. Tournament fixtures run the abstract simulation, so it cannot go
   // until they are wired to the positional one -- but it no longer deserves a tab of its own. It
   // opens over the top from Utilities, and from the tournament's own Play Live.
@@ -5949,7 +5953,7 @@ export default function App() {
     // same first pass -- for a full second before anything differed.
     const rng = new RNG((Date.now() & 0x7ffffff) || 7);
     meInit(st, pitchSlots, rng);
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT };
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: meNeedWin };
   };
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
@@ -5968,7 +5972,18 @@ export default function App() {
     // Where he came from, so he has somewhere to come back to.
     for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
       if (p.off) continue;                          // sent off or injured: already gone
-      if (p._hx === undefined) { p._hx = p.x; p._hy = p.y; }
+      // WHERE HE WALKS BACK TO. At full time it does not matter, but at half time returning every
+      // man to the yard of grass the whistle caught him on is exactly the bug: the second half kicked
+      // off with both sides still arranged for whatever was happening in the 45th minute.
+      // meInit builds the opening lineup as own + dir * _bd * 0.7, and _bd/_bw live on the player for
+      // the whole match, so the kickoff shape is recoverable here without re-running init or touching
+      // anything else it does -- no fresh toss, no re-jitter, no reset of what the match has become.
+      if (p._hx === undefined) {
+        if (b.kind === "ht") {
+          const own = meGoalX(meOther(sd)), dr = meDir(sd);
+          p._hx = own + dr * (p._bd ?? 30) * 0.7; p._hy = p._bw ?? p.y;
+        } else { p._hx = p.x; p._hy = p.y; }
+      }
       const tx = back ? p._hx : meTunnel[0], ty = back ? p._hy : meTunnel[1];
       p._px = p.x; p._py = p.y;
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
@@ -5979,6 +5994,20 @@ export default function App() {
     mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
     if (b.t >= ME_BRK.off + ME_BRK.hold + ME_BRK.on) {
       for (const sd of ["home", "away"]) for (const p of st.players[sd]) { p._hx = undefined; p._hy = undefined; }
+      if (b.kind === "ht") {
+        // THE OTHER SIDE KICKS OFF, which is the half of "switch sides" that changes the football.
+        // meDead is what every other restart in the match goes through, so the second half begins as
+        // a kickoff rather than as play simply resuming wherever the ball was left.
+        const ko = meOther(st.possession);
+        st.mePos.bx = PITCH_L / 2; st.mePos.by = ME_HALF_W;
+        st.mePos.bvx = 0; st.mePos.bvy = 0; st.mePos.bvz = 0;
+        st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
+        meDead(st, "kickoff", ko, 40, m.out);
+        // ...and the other half is only ever drawn. Actually swapping ends means flipping meDir under
+        // fifty-two call sites; mirroring the VIEW is the same picture for none of the risk, and the
+        // engine keeps the one coordinate convention every calibrated number was measured in.
+        m.h2 = !m.h2;
+      }
       m.brk = null;
       if (b.kind === "ft") meStop();
     }
@@ -5992,8 +6021,16 @@ export default function App() {
     if (m.brk) { for (let i = 0; i < n && m.brk; i++) meBreakStep(m); setMeFrame(f => f + 1); return; }
     // ...plus stoppage. meAdded grows as the ball spends time dead, so the finish line moves out
     // during the match exactly as the board going up at ninety does -- it is not known in advance.
-    const end = ME_MATCH_TICKS + meAdded(m.s);
-    const half = ME_MATCH_TICKS >> 1;
+    // EXTRA TIME is thirty minutes on the same scale, in two halves, with the interval the ordinary
+    // half-time break already animates. Nothing else about the match changes: same tick, same shape,
+    // same fatigue -- which is the point, because a side that spent its legs chasing a winner in
+    // normal time is exactly who extra time is supposed to punish.
+    const ET = m.et ? ME_ET_TICKS : 0;
+    const end = ME_MATCH_TICKS + ET + meAdded(m.s);
+    // In extra time the interval moves to ITS midpoint, and it gets its own done-flag so the first
+    // one having fired at 45 does not swallow the second.
+    const half = m.et ? ME_MATCH_TICKS + (ME_ET_TICKS >> 1) : (ME_MATCH_TICKS >> 1);
+    const halfKey = m.et ? "etHtDone" : "htDone";
     // Anything the manager asked for is applied HERE, on the first slice of a stoppage, which is
     // where meAutoSubs already does its work. A change made while the ball is running waits.
     const drain = () => {
@@ -6011,16 +6048,26 @@ export default function App() {
       m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; drain();
       // The interval, taken at the first dead ball at or after the halfway point rather than in the
       // middle of a move -- which is how a referee does it too.
-      if (m.t >= half && !m.htDone && (m.s.mePos.sp || m.s.mePos.idx < 0)) {
-        m.htDone = true; m.brk = { t: 0, kind: "ht" }; break;
+      if (m.t >= half && !m[halfKey] && (m.s.mePos.sp || m.s.mePos.idx < 0)) {
+        m[halfKey] = true; m.brk = { t: 0, kind: "ht" }; break;
       }
     }
     // Full time. meFinalise is what turns raw event deltas into a rating: it shrinks a substitute's
     // toward par by the minutes he actually played and applies the positional par itself. Without
     // this call the numbers are the un-normalised running total and forwards sit half a point clear.
-    if (m.t >= ME_MATCH_TICKS + meAdded(m.s) && !m.ftDone) {
-      m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
-      setMeView("post"); setMePanel("stats");
+    if (m.t >= end && !m.ftDone) {
+      const level = m.out.goals.home === m.out.goals.away;
+      // A fixture that must produce a winner goes to extra time, and then to kicks. Everything else
+      // is allowed to be a draw, which is most football.
+      if (m.needWin && level && !m.et) {
+        m.et = 1; m.brk = { t: 0, kind: "ht" };            // off, back on, and kick off again
+      } else {
+        // meShootout drives itself to a conclusion in one call -- five each, then sudden death,
+        // stopped the moment it cannot be caught -- so there is nothing to tick here.
+        if (m.needWin && level) m.pens = meShootout(m.s, m.rng, m.out, 40);
+        m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
+        setMeView("post"); setMePanel("stats");
+      }
     }
     setMeFrame(f => f + 1);
   };
@@ -12173,7 +12220,9 @@ export default function App() {
           // drawing raw positions teleports everyone a quarter-second of travel at once. Draw BETWEEN
           // slices instead, using however much of the next one has already elapsed.
           const al = meRunning ? Math.max(0, Math.min(1, meAcc.current)) : 1;
-          const ix = (p) => (p._px ?? p.x) + (p.x - (p._px ?? p.x)) * al;
+          // Ends swap at the interval, on screen. x only -- mirroring y would swap the touchlines too.
+          const fx = (x) => m?.h2 ? PITCH_L - x : x;
+          const ix = (p) => fx((p._px ?? p.x) + (p.x - (p._px ?? p.x)) * al);
           const iy = (p) => (p._py ?? p.y) + (p.y - (p._py ?? p.y)) * al;
           // Drawn at the size they actually ARE. The dot was 1.56 m across and the ball 0.68 m, so
           // what you watched had nothing to do with the hitboxes underneath it -- a "collision" you
@@ -12247,16 +12296,16 @@ export default function App() {
       <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
     </g>
     {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear" || ev.k === "head") && (
-      <line x1={ev.x0} y1={ev.y0} x2={ev.x1} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
+      <line x1={fx(ev.x0)} y1={ev.y0} x2={fx(ev.x1)} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
             strokeWidth={ev.k === "pass" || ev.k === "cut" ? 0.16 : 0.34}
             strokeDasharray={ev.k === "cut" ? "1.4 1" : undefined} />
     )}
-    {ev && ev.k !== "pass" && <circle cx={ev.x0} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
+    {ev && ev.k !== "pass" && <circle cx={fx(ev.x0)} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
                    stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
     {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
     {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
     {st && (() => {
-      const bx = (st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al;
+      const bx = fx((st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al);
       const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
       // A ball in the air is drawn BIGGER, and it swells and shrinks with the arc --
       // a flat overhead view has no other way of saying "this one is over your head".
@@ -12389,6 +12438,13 @@ export default function App() {
                     <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".12em", ...mono,
                                   color: brk ? "var(--ui-warn)" : "var(--ui-on-accent)", opacity: brk ? 1 : 0.85 }}>
                       {brk || clock}</div>
+                    {/* A shootout is not part of the scoreline -- meShootout puts the goals back --
+                        so the kicks are reported beside it rather than added to it. */}
+                    {m.pens && <div style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em",
+                                             opacity: 0.9 }}>{m.pens.home}&ndash;{m.pens.away} pens</div>}
+                    {!m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
+                                                      letterSpacing: ".16em", opacity: 0.75 }}>
+                      {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
                   </div>
                   {sbSide(m.aT, "away")}
                 </div>
@@ -12704,6 +12760,12 @@ export default function App() {
                               borderBottom: "1px solid var(--chrome-border)" }}>
                   <span style={sectionLabel}>PRE-MATCH</span>
                   <div style={{ flex: 1 }} />
+                  <button onClick={() => setMeNeedWin(v => !v)} title="Knockout: level after 90 goes to extra time, then kicks"
+                    style={{ ...smBtn, cursor: "pointer",
+                             background: meNeedWin ? "var(--chrome-brand)" : "transparent",
+                             color: meNeedWin ? "var(--ui-on-accent)" : "var(--chrome-muted)",
+                             border: `1px solid ${meNeedWin ? "var(--chrome-brand)" : "var(--chrome-border)"}` }}>
+                    {meNeedWin ? "\u2713 " : ""}Must Have A Winner</button>
                   <button onClick={() => setMeView("setup")} style={smBtn}>Back</button>
                   <button onClick={meKick} style={{ ...addBtn, border: "none", color: "var(--ui-on-accent)",
                                                     background: "var(--chrome-brand)" }}>&#9917; Kick Off</button>

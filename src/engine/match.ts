@@ -435,6 +435,9 @@ export function meBallTo(s, side, i, x, y) {
 // same event is also pushed onto a short history. Bounded, because nothing needs the first half.
 export const meKickedBy = (mp, side, i) => {
   mp.kickBy = [{ s: side, i, t: mp.tick }];
+  // A deliberate play supersedes any earlier deflection: he has the ball now, so whatever it last
+  // bounced off stops deciding the next throw-in.
+  mp.touchP = null;
   const g = (mp.tlog = mp.tlog || []);
   // ...and where. mp.bx/mp.by at the moment of the kick IS where he played it, so an error can be
   // located without threading a position through every call site.
@@ -825,9 +828,14 @@ export function meTick(s, rng, out) {
   // and the handball, and both of those mean a DELIBERATE play by a team-mate: a keeper may pick up
   // a ball that has deflected off his own defender, and merging the two would have him unable to.
   mp.touchSide = mp.lastSide;
-  if (mp.hitP) {
-    if (s.players.home.indexOf(mp.hitP) >= 0) mp.touchSide = "home";
-    else if (s.players.away.indexOf(mp.hitP) >= 0) mp.touchSide = "away";
+  // hitP is this tick's touch, touchP the one carried over from an earlier tick that nobody has
+  // played on purpose since. Either beats lastSide, which only ever moves on a deliberate play.
+  {
+    const tp = mp.hitP || mp.touchP;
+    if (tp) {
+      if (s.players.home.indexOf(tp) >= 0) mp.touchSide = "home";
+      else if (s.players.away.indexOf(tp) >= 0) mp.touchSide = "away";
+    }
   }
   let stopTick = false;                  // a whistle blown inside tryPickup ends the tick
   const resolvePending = (okSide) => {

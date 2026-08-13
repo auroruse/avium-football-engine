@@ -11,7 +11,7 @@
 // cross, a goal kick is a punt or a pass out, a free kick near goal can be struck at goal. None of
 // that is the ordinary decision code, because none of it is ordinary play.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meGkSkill } from "./attributes";
+import { meAttrs, meGkSkill , meAttrs } from "./attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meOther, meShotGeom } from "./geometry";
 import { meKickBall, meShootBall } from "./ball";
 import { GOAL_HALF_W } from "./ball";
@@ -239,10 +239,20 @@ export function meSPShape(s) {
   const place = (i, tx, ty) => { const p = us[i]; p._tx = clampX(tx); p._ty = clampY(ty); p._spSet = true; p._closing = true; };
   // Pick the man whose natural role best suits a spot: nearest by current position, so nobody
   // crosses the whole pitch when somebody else is already there.
-  const take = (tx, ty) => {
-    let bi = -1, bd = Infinity;
+  // THE COMMENT ABOVE WAS A LIE FOR AS LONG AS THIS EXISTED: it promised the man whose natural role
+  // best suits a spot, and then picked purely on who was standing nearest. So the near post at a
+  // corner went to whichever full-back happened to be closest and a centre-half took the short one.
+  // Nobody was ever chosen for the job, which is most of why the restarts looked wrong.
+  // Distance still decides most of it -- nobody crosses the pitch for a mark somebody else can fill
+  // -- but the right KIND of player is worth a few metres of walking, and `want` names which kind.
+  // strength IS the aerial attribute here: meAerial reads nothing else.
+  const take = (tx, ty, want) => {
+    let bi = -1, bs = Infinity;
     for (const i of free) { if (us[i]._spSet) continue;
-      const d = Math.hypot(us[i].x - tx, us[i].y - ty); if (d < bd) { bd = d; bi = i; } }
+      const q = us[i], d = Math.hypot(q.x - tx, q.y - ty);
+      const fit = want ? Math.max(0, Math.min(1, (meAttrs(q)[want] - 60) / 39)) : 0;
+      const sc = d - fit * CFG.spRoleW;
+      if (sc < bs) { bs = sc; bi = i; } }
     if (bi >= 0) place(bi, tx, ty);
     return bi;
   };
@@ -251,49 +261,49 @@ export function meSPShape(s) {
   if (sp.kind === "corner") {
     const nearSide = sp.y < ME_HALF_W ? -1 : 1;
     if (sp.v === 0) {                                                // spread across the six-yard box
-      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 5.0]);    // near post
-      targets.push([gx - dir * 10.5, ME_HALF_W + nearSide * 1.0]);   // penalty spot
-      targets.push([gx - dir * 6.0, ME_HALF_W - nearSide * 5.5]);    // far post
-      targets.push([gx - dir * 19.0, ME_HALF_W]);                    // edge, for the cut-back
-      targets.push([sp.x - dir * 7.0, sp.y - nearSide * 5.0]);       // short
+      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 5.0].concat('strength'));    // near post
+      targets.push([gx - dir * 10.5, ME_HALF_W + nearSide * 1.0].concat('strength'));   // penalty spot
+      targets.push([gx - dir * 6.0, ME_HALF_W - nearSide * 5.5].concat('strength'));    // far post
+      targets.push([gx - dir * 19.0, ME_HALF_W].concat('shoot'));   // edge, for the cut-back
+      targets.push([sp.x - dir * 7.0, sp.y - nearSide * 5.0].concat('pass'));       // short
     } else if (sp.v === 1) {                                         // flooding the near post
-      targets.push([gx - dir * 4.0, ME_HALF_W + nearSide * 6.5]);
-      targets.push([gx - dir * 5.5, ME_HALF_W + nearSide * 2.5]);
-      targets.push([gx - dir * 9.5, ME_HALF_W + nearSide * 4.5]);
-      targets.push([gx - dir * 16.0, ME_HALF_W + nearSide * 3.0]);
-      targets.push([sp.x - dir * 6.0, sp.y - nearSide * 4.0]);
+      targets.push([gx - dir * 4.0, ME_HALF_W + nearSide * 6.5].concat('strength'));
+      targets.push([gx - dir * 5.5, ME_HALF_W + nearSide * 2.5].concat('strength'));
+      targets.push([gx - dir * 9.5, ME_HALF_W + nearSide * 4.5].concat('strength'));
+      targets.push([gx - dir * 16.0, ME_HALF_W + nearSide * 3.0].concat('shoot'));
+      targets.push([sp.x - dir * 6.0, sp.y - nearSide * 4.0].concat('pass'));
     } else {                                                         // held at the back post
-      targets.push([gx - dir * 6.5, ME_HALF_W - nearSide * 7.0]);
-      targets.push([gx - dir * 11.0, ME_HALF_W - nearSide * 3.0]);
-      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 4.0]);
-      targets.push([gx - dir * 20.0, ME_HALF_W - nearSide * 2.0]);
-      targets.push([sp.x - dir * 9.5, sp.y - nearSide * 6.5]);
+      targets.push([gx - dir * 6.5, ME_HALF_W - nearSide * 7.0].concat('strength'));
+      targets.push([gx - dir * 11.0, ME_HALF_W - nearSide * 3.0].concat('strength'));
+      targets.push([gx - dir * 5.0, ME_HALF_W + nearSide * 4.0].concat('strength'));
+      targets.push([gx - dir * 20.0, ME_HALF_W - nearSide * 2.0].concat('shoot'));
+      targets.push([sp.x - dir * 9.5, sp.y - nearSide * 6.5].concat('pass'));
     }
   } else if (sp.kind === "goalkick") {
     const long = (st.gkDist || 0) > 0;
     if (long) {
-      targets.push([own + dir * 62, ME_HALF_W - 8]);
-      targets.push([own + dir * 62, ME_HALF_W + 8]);
-      targets.push([own + dir * 48, ME_HALF_W]);
+      targets.push([own + dir * 62, ME_HALF_W - 8].concat('strength'));
+      targets.push([own + dir * 62, ME_HALF_W + 8].concat('strength'));
+      targets.push([own + dir * 48, ME_HALF_W].concat('strength'));
     } else {
-      targets.push([own + dir * 14, 8]);                             // full-backs wide and short
-      targets.push([own + dir * 14, PITCH_W - 8]);
+      targets.push([own + dir * 14, 8].concat('pace'));                             // full-backs wide and short
+      targets.push([own + dir * 14, PITCH_W - 8].concat('pace'));
       targets.push([own + dir * 24, ME_HALF_W - 7]);
       targets.push([own + dir * 24, ME_HALF_W + 7]);
     }
   } else if (sp.kind === "throw") {
     const inw = sp.y < ME_HALF_W ? 1 : -1;
-    targets.push([sp.x + dir * 6, sp.y + inw * 3]);                  // short, down the line
+    targets.push([sp.x + dir * 6, sp.y + inw * 3].concat('pace'));                  // short, down the line
     targets.push([sp.x - dir * 5, sp.y + inw * 5]);                  // back inside
-    targets.push([sp.x + dir * 12, sp.y + inw * 9]);                 // longer, infield
+    targets.push([sp.x + dir * 12, sp.y + inw * 9].concat('pace'));                 // longer, infield
   } else if (sp.kind === "kickoff") {
     targets.push([PITCH_L / 2 - dir * 3, ME_HALF_W + 2]);            // the partner
   } else {                                                            // free kick
     const shooting = Math.abs(gx - sp.x) < CFG.spShootRange;
     if (shooting) {
-      targets.push([gx - dir * 8, ME_HALF_W - 6]);
-      targets.push([gx - dir * 8, ME_HALF_W + 6]);
-      targets.push([gx - dir * 13, ME_HALF_W]);
+      targets.push([gx - dir * 8, ME_HALF_W - 6].concat('strength'));
+      targets.push([gx - dir * 8, ME_HALF_W + 6].concat('strength'));
+      targets.push([gx - dir * 13, ME_HALF_W].concat('shoot'));
       targets.push([sp.x - dir * 2, sp.y + 3]);                      // over the ball with him
     } else {
       targets.push([sp.x + dir * 16, sp.y - 10]);
@@ -308,18 +318,27 @@ export function meSPShape(s) {
     targets[k2][0] += spJ(sp, 10 + k2); targets[k2][1] += spJ(sp, 40 + k2);
   }
   const marks = [];
-  for (const t of targets) { const i = take(t[0], t[1]); if (i >= 0) marks.push([us[i], t]); }
+  for (const t of targets) { const i = take(t[0], t[1], t[2]); if (i >= 0) marks.push([us[i], t]); }
   // Anybody left holds a sensible shape: behind the ball for a defensive restart, up for an
   // attacking one, and never all in the same place.
   let k = 0;
   for (const i of free) {
     if (us[i]._spSet) continue;
     const p = us[i];
-    const base = sp.kind === "goalkick" || sp.kind === "kickoff"
-      ? own + dir * (18 + (p._bd0 || 40) * 0.45
+    // A KICKOFF IS A TEAM STANDING IN ITS SHAPE, and this put nine of them on a zigzag ladder:
+    // ME_HALF_W +/- (7 + k*3), alternating, which ignores _bw0 completely -- so the left-back could
+    // line up on the right and the whole side fanned out in a widening V. Depth already came from
+    // the formation; width simply never did. _bw0 is his slot and it is on the player already.
+    // 0.5 rather than 0.45 + 18: everyone must be in their own half at a kickoff, and _bd0 runs to
+    // about 95, so half of it is the compression that guarantees it.
+    const shape = sp.kind === "goalkick" || sp.kind === "kickoff";
+    const base = shape
+      ? own + dir * ((p._bd0 ?? 40) * 0.5
                      + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
       : sp.x - dir * (10 + k * 7);
-    place(i, base + spJ(sp, 60 + k), ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3)) + spJ(sp, 70 + k));
+    const wide = shape ? (p._bw0 ?? ME_HALF_W)
+                       : ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3));
+    place(i, base + spJ(sp, 60 + k), wide + spJ(sp, 70 + k));
     k++;
   }
 
@@ -357,16 +376,29 @@ export function meSPShape(s) {
     }
   }
   // Everyone else picks up whoever is standing in a dangerous place, goal-side of him.
+  // PICK UP EVERYBODY WORTH PICKING UP. At 30 m only the men already in the box were marked, so the
+  // rest of the attack stood in one group and the rest of the defence in another -- two tidy blocks
+  // with a corridor between them, which is not what a set piece looks like from above. 40 m reaches
+  // the edge-of-box and cut-back marks as well, and the pairs are goal-side and a stride off, so the
+  // two sides end up interleaved the way they actually stand.
   for (const [man] of marks) {
-    if (Math.abs(gx - man._tx) > 30) continue;                       // only in and around the box
-    dtake(man._tx + dir * 1.2, man._ty + 0.8);
+    if (Math.abs(gx - man._tx) > 40) continue;
+    dtake(man._tx + dir * 1.1, man._ty + (man._ty < ME_HALF_W ? -0.9 : 0.9));
   }
   let dk = 0;
   for (const i of dfree) {
     if (them[i]._spSet) continue;
     const p = them[i];
-    const base = gx - dir * (14 + dk * 8);
-    dplace(i, base + spJ(sp, 80 + dk), ME_HALF_W + ((dk % 2 ? 1 : -1) * (8 + dk * 3)) + spJ(sp, 85 + dk));
+    // A BACK LINE, NOT A CONE. This receded (14, 22, 30, 38 m from goal) and widened (+/-8, 11, 14,
+    // 17) at the same time, which draws a V opening away from the keeper -- a shape no side has ever
+    // defended a free kick in. Men who are not in the wall and not marking anybody drop into a flat
+    // line at their OWN formation width, with a second line behind the first once four are used.
+    // At a kickoff or a goal kick they are not defending a restart at all, they are just standing in
+    // their shape, so they take formation depth too.
+    const shape2 = sp.kind === "kickoff" || sp.kind === "goalkick";
+    const base = shape2 ? gx - dir * (p._bd0 ?? 40) * 0.5
+                        : gx - dir * (13 + Math.floor(dk / 4) * 7);
+    dplace(i, base + spJ(sp, 80 + dk), (p._bw0 ?? ME_HALF_W) + spJ(sp, 85 + dk));
     dk++;
   }
   // Both sides stay in their own half for a kickoff, and out of the circle.
@@ -396,6 +428,11 @@ export function meSPReady(s) {
   // Taken quickly: the only man who has to be anywhere is the one taking it. Everybody else is
   // wherever the whistle left them, which is exactly the point of playing it before they set.
   if (sp.quick) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spTakerTol * 2.5;
+  // A GOAL KICK IS NOT A CEREMONY. The keeper has the ball in his hands and the whole point of a
+  // short one is that it goes before the other side has set -- waiting on ten outfielders to trot
+  // onto their marks is what made every goal kick in the match look identical. He needs to be at the
+  // ball and nothing else; the shape can arrive around him or not.
+  if (sp.kind === "goalkick") return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spTakerTol * 2.5;
   const struck = sp.kind === "corner" || sp.kind === "freekick" || sp.kind === "penalty";
   // Second phase: he has started his run-up, and it is struck the moment he reaches the ball.
   if (sp.run) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spRunTol || sp.t > CFG.spMaxT + 14;
@@ -437,16 +474,30 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   mp.sp = null;
   meBallTo(s, side, sp.ti, sp.x, sp.y);
   // Pick the man it is aimed at: whoever the shape put in the best place for this restart.
-  let ti = -1, bestV = -Infinity;
+  // A CORNER THAT ALWAYS FINDS THE SAME MAN IS THE SAME CORNER EVERY TIME, and this was an argmax:
+  // nearest the goal, most central, no randomness anywhere. With the shape fixed the delivery was
+  // fixed too, which is why every corner in a match looked like the one before it.
+  // Now it is a weighted draw. Being well placed still dominates -- an exponential on the same value
+  // keeps a man at the far post far likelier than one on the halfway line -- but who gets it varies,
+  // and for a delivery into the box being able to head it is worth as much as standing in the right
+  // spot. strength is the aerial attribute; meAerial reads nothing else.
+  const into = sp.kind === "corner" || sp.kind === "freekick";
+  const cands = [];
   for (let i = 0; i < us.length; i++) {
     if (i === sp.ti || us[i].pos === "GK") continue;
     const q = us[i], d = Math.hypot(q.x - sp.x, q.y - sp.y);
     if (d > CFG.spMaxBall) continue;
-    // For a delivery into the box, nearer the goal is better; for a short restart, nearer the ball.
-    const v = (sp.kind === "corner" || sp.kind === "freekick")
-      ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35
-      : -d;
-    if (v > bestV) { bestV = v; ti = i; }
+    const v = into ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d;
+    let w = Math.exp(v * CFG.spAimSharp);
+    if (into) w *= 0.5 + meAttrs(q).strength / 99;
+    cands.push([i, w]);
+  }
+  let ti = -1;
+  if (cands.length) {
+    let tw = 0; for (const c of cands) tw += c[1];
+    let r = rng.u() * tw;
+    for (const c of cands) { r -= c[1]; if (r <= 0) { ti = c[0]; break; } }
+    if (ti < 0) ti = cands[cands.length - 1][0];
   }
   const them2 = s.players[meOther(side)];
   // Whether the keeper picks the right way. On a shot from open play he READS it -- the ball is

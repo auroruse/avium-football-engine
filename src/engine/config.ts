@@ -34,6 +34,17 @@ export const SP = {
   // A free kick is played quickly when a team-mate is already this far beyond the ball with this
   // much daylight around him. Both in metres, and both deliberately generous: if it is on, take it.
   spQuickAhead: 12, spQuickRoom: 9,
+  // WHAT THE RIGHT MAN IS WORTH IN METRES OF WALKING. Set-piece marks were filled purely by who
+  // stood nearest, so nobody was ever picked for the job -- the near post at a corner went to a
+  // full-back if he happened to be closest. A full attribute advantage now buys 12 m of travel,
+  // enough that your best header of a ball attacks the near post and your best striker of one
+  // takes the edge, without anybody crossing the pitch for a spot somebody else can fill.
+  spRoleW: 12,
+  // How hard the delivery favours the best-placed man. The choice used to be an argmax, so every
+  // corner of a match found the same player; this is the exponent on the same value, turning it
+  // into a weighted draw. Higher is more predictable, 0 is a lottery. 0.22 keeps a man at the far
+  // post several times likelier than one on the edge without making him certain.
+  spAimSharp: 0.22,
   // ...and how far away the man he plays it to may be. A restart nobody can reach quickly is not a
   // quick restart, it is a long ball, and those are taken from a set position like everything else.
   spQuickTo: 30,
@@ -74,6 +85,8 @@ export const SP = {
   spMaxBall: 45,        // how far a restart will be played
 };
 export const ME_MATCH_TICKS = ME_SIM_MIN * ME_TPM;
+// Thirty minutes on the same scale the ninety uses, so extra time needs no second clock.
+export const ME_ET_TICKS = Math.round(ME_MATCH_TICKS / 3);
 export const meMinute = (tick) => Math.min(90, Math.floor(tick / ME_MATCH_TICKS * 90));
 
 export const CFG = {

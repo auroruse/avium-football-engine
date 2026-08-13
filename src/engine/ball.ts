@@ -176,6 +176,12 @@ function hitBodies(b, players, ctrl, skip) {
 export function meBallStep(mp, seconds, players, ctrl, skip) {
   const n = Math.round(seconds / BALL_SUB);
   mp._touched = 0;
+  // CARRY THE LAST PHYSICAL TOUCH FORWARD. hitP is a per-step field and was cleared here every tick,
+  // but a ball that clips a defender and then runs out of play crosses the line several ticks later
+  // -- by which point the deflection had been forgotten and the restart fell back to whoever last
+  // played it deliberately. So a shot deflected behind was a goal kick and a pass off a defender's
+  // shin was thrown in the wrong way. touchP survives until somebody plays it on purpose.
+  if (mp.hitP) mp.touchP = mp.hitP;
   mp.hitP = null; mp.hitV = 0;
   for (let i = 0; i < n; i++) {
     const px = mp.bx, py = mp.by, pz = mp.bz;

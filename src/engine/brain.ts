@@ -259,7 +259,18 @@ export function meDuties(s, side) {
   if (defending) {
     // ONE presser, and only inside the line of engagement. This is the whole fix.
     const loeM = CFG.loeBase + st.pressingLOE * CFG.loeStep;
-    if (mp.idx >= 0) {
+    // PRESS THE BALL, NOT ONLY THE MAN. This branch was gated on mp.idx >= 0, so the moment the ball
+    // came loose -- a tackle, a deflection, a bad touch -- nobody on the defending side was assigned
+    // to it at all. Two things fell out of that, and they are the two complaints:
+    //   a man standing over a loose ball holds his shape and watches an attacker come and take it,
+    //   because the only defender who goes is mp.desig and he may be somebody else entirely;
+    //   and the presser's duty EVAPORATES for those ticks, so on the next one he is back in the free
+    //   pool where the assignment hands him a mark. He never chose to leave the ball -- a loose
+    //   frame released him and something else picked him up.
+    // A ball in flight is deliberately still excluded: that one has an intended receiver and a
+    // designated chaser already, and sending the block after it is how a side gets pulled apart.
+    const ballLive = mp.idx >= 0 || (!mp.flight && !mp.sp);
+    if (ballLive) {
       // Inside the line of engagement a man travels a long way to the ball; outside it he goes only
       // if he is already close. Somebody is always tasked with it -- that is the difference between
       // a block and eleven men watching.
@@ -289,7 +300,7 @@ export function meDuties(s, side) {
     // scenery. Near its own goal the block now closes with everybody near enough to matter, which is
     // the resistance a low block is for -- and it costs what it should, because every extra man at
     // the ball is a man not marking somebody.
-    if (mp.idx >= 0 && ballDepth < CFG.swarmDepth) {
+    if (ballLive && ballDepth < CFG.swarmDepth) {
       // Tried and rejected: restricting the swarm to men already goal-side of the ball, on the
       // theory that they would contest without leaving the area. It read worse on every count --
       // 10/21 on the regression against 12, and the box share stopped falling monotonically with
