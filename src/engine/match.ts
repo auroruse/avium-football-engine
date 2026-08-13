@@ -361,7 +361,15 @@ export function meMove(s, rng) {
       p.x = Math.max(0.5, Math.min(PITCH_L - 0.5, p.x + p.vx));
       p.y = Math.max(0.5, Math.min(PITCH_W - 0.5, p.y + p.vy));
       // Running costs. Sprinting flat out for a whole half is what empties a gegenpress.
-      p.stamina = Math.max(0, (p.stamina ?? 100) - step * CFG.drain * (1 + (s.strategy?.[side]?.pressingLOE || 0) * 0.18));
+      p.stamina = Math.max(0, (p.stamina ?? 100) - step * CFG.drain
+      // TEMPO IS PAID IN LEGS, not in accuracy. Pressing has always cost stamina here; playing fast
+      // is the same kind of thing and a better cost than widening the aim cone, because it is
+      // DEFERRED -- you go quick now and fade for it later, which is what makes tempo a decision
+      // you take at a moment rather than a slider you set once. The existing fatigue and
+      // substitution machinery then handles the consequence without anything new.
+      // Clamped at zero as a whole, so a slow side saves legs but can never bank stamina.
+      * (1 + Math.max(0, (s.strategy?.[side]?.pressingLOE || 0) * 0.18
+                          + (s.strategy?.[side]?.tempo || 0) * CFG.tempoDrain)));
       // The ball is NOT dragged along with him. He is running near an object.
       p._avgV = (p._avgV ?? 0) * 0.9 + (step / ME_DT) * 0.1;   // ~10-tick lungs for the breath model
     }
@@ -1639,7 +1647,13 @@ export function meTick(s, rng, out) {
   // exactly that, and the ball gets harder to keep the whole time he has it.
   const natBase = Math.max(1, Math.round(CFG.holdBase - press * CFG.holdPress));
   const natural = Math.max(1, natBase + tw * CFG.wasteHold
-                              + (s.strategy?.[side]?.dribbling || 0) * CFG.dribHold);
+                              // UP ONLY. The dwell tax is charged from natBase, which excludes this term, so a
+                              // negative budget forced a disciplined man off the ball a slice BEFORE the cost he
+                              // was supposedly avoiding began -- a constraint that bought nothing. Measured at
+                              // -0.21 xG against a +0.07 benefit at the other end: a tax wearing a tactic's name.
+                              + Math.max(0, s.strategy?.[side]?.dribbling || 0) * CFG.dribHold
+                              // Quicker tempo means less time on it before he has to move it on.
+                              - (s.strategy?.[side]?.tempo || 0) * CFG.tempoHold);
   // Carrying is not a terminal state. It used to be -- if `carry` scored best he simply never let
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
@@ -1760,7 +1774,8 @@ export function meTick(s, rng, out) {
   mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced,
                      off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
-             meTech(a.pass) / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
+             meTech(a.pass) / (mp.firstTouch ? Math.max(1, CFG.firstTouchNoise + (s.strategy?.[side]?.dribbling || 0) * CFG.dribTouch) : 1), press,
+             s.strategy?.[side]?.tempo || 0);
 }
 
 // Published for the viewer: the last thing that happened and where, plus a rolling commentary.

@@ -886,9 +886,10 @@ function applyStyleFit(mod, fit) {
   const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
   return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
-const STRAT_DEF = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
+const STRAT_DEF = { tempo:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
+  tempo: { name:"Tempo", vals:[[-2,"Much Slower"],[-1,"Slower"],[0,"Standard"],[1,"Quicker"],[2,"Much Quicker"]], grp:"possession" },
   passingDir: { name:"Passing", vals:[[-2,"Much Shorter"],[-1,"Shorter"],[0,"Standard"],[1,"More Direct"],[2,"Much More Direct"]], grp:"possession" },
   chanceCreation: { name:"Chances", vals:[[-1,"Work Ball In"],[0,"No Instruction"],[1,"Shoot On Sight"]], grp:"possession" },
   dribbling: { name:"Dribble", vals:[[-1,"Disciplined"],[0,"No Instruction"],[1,"Run At Defence"]], grp:"possession" },
@@ -912,7 +913,35 @@ const IDENTITY_KEYS = ["approachPlay","passingDir","chanceCreation","dribbling",
 // What survives: three execution choices no style's DEFINITION depends on. Time-wasting is game
 // management, GK distribution decides where a restart lands, and the line's behaviour is how you
 // run the line rather than where you set it. A style still stamps its own default for each.
-const STRAT_EDITABLE = ["timeWasting","gkDist","dlBehavior"];
+// tempo joins these three rather than the identity set, on the gkDist pattern: STYLE_PRESET stamps
+// a default so a style still has a natural speed, and the manager can override it -- including
+// mid-match from the Tactics panel, which reads STRAT_EDITABLE directly. Second leg, protecting a
+// lead, chasing a goal: all reasons to change how fast you play that have nothing to do with the
+// system you picked.
+const STRAT_EDITABLE = ["tempo","timeWasting","gkDist","dlBehavior"];
+
+// STYLE FIT, ON THE ENGINE THAT ACTUALLY PLAYS THE MATCHES. computeStyleFit has existed since the
+// abstract engine and is called from nowhere inside src/engine -- so the term built to stop a side
+// playing a system it has not got the players for, calibrated at ~3.6 points a season and
+// deliberately set ABOVE the style spread so that squad matters more than system, was worth exactly
+// zero on the positional engine. The designed hierarchy was missing a leg.
+// It lands on the INSTRUCTION MAGNITUDES here rather than on modifier tables, because the positional
+// engine has no modifier tables. A side that does not suit its system carries its instructions out
+// weakly and drifts toward all-zero, which is precisely Balanced -- the same thing applyStyleFit
+// does by interpolating toward the Balanced row, expressed in the only currency this engine has.
+// Safe because every identity axis is read arithmetically in brain/decide/match: no array is indexed
+// by one, no branch switches on an exact value, and the one boolean gate (possLost > 0) keeps its
+// sign under a positive scale factor.
+// The three EDITABLE axes are deliberately untouched. Time-wasting, GK distribution and how the line
+// behaves are execution choices a manager makes; they are not claims about whether the squad suits
+// the system, so squad suitability has no business damping them.
+const meStrategyFor = (t) => {
+  const st = { ...STRAT_DEF, ...(t?.strategy || {}) };
+  const fit = computeStyleFit(t?.style || "balanced", t?.squad || []);
+  if (fit === 1) return st;
+  for (const k of IDENTITY_KEYS) if (st[k]) st[k] = st[k] * fit;
+  return st;
+};
 const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
 // MC-balanced coefficients (5000-leg test, all ±3.5% net win rate vs default).
 // Passing: ±0.008 adv/lb per step, -0.006 def per step (direct = attack, short = defend).
@@ -5144,6 +5173,13 @@ const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{
   // question was being answered with both teams' passes added together.
   passSide:{home:0,away:0}, passOkSide:{home:0,away:0},
   possX:{home:0,away:0}, passFwd:{home:0,away:0},
+  // xG, WHICH THE ENGINE ONLY KEEPS IF ASKED. Both writes are guarded -- `if (out.xgS)` and
+  // `if (out.shotDist)` -- so leaving these out did not zero the numbers, it stopped them being
+  // recorded at all, silently. Every sweep run through runPositionalMatch was therefore
+  // measuring goals, a Poisson count with a mean around 1.4 a side, when the engine was already
+  // able to hand back the same question answered from eight or so continuous samples per match.
+  // That is the difference between needing 300 fixtures to see an effect and needing 60.
+  xg: 0, xgS:{home:0,away:0}, shotDist: new Array(10).fill(0),
   evt: null, feed: [], min: 0 });
 // The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
 // players synthesised at the team's own rating so an unfilled preset is still testable.
@@ -5167,7 +5203,7 @@ export function runPositionalMatch(hT, aT, seed) {
   st.bench = { home: meBench(hT), away: meBench(aT) };
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
   st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
-  st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
+  st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
   st.styles = { home: hT.style || "balanced", away: aT.style || "balanced" };
   st.teamSkill = { home: hT.skill, away: aT.skill };
   st.possession = "home";
@@ -5559,15 +5595,19 @@ export default function App() {
   // XI and eleven subs left half a screen of nothing under them. What belongs there is what you would
   // actually want to know before kick-off: where this side's strength sits, and what the coach has
   // told them to do.
-  // The instructions resolve through the SAME expression both engine entry points read --
-  // { ...STRAT_DEF, ...t.strategy } -- so this cannot show a setting the match will not play. Grey is
-  // the axis left alone, white is one the playstyle actually stamped, which makes the three-column
+  // The instructions shown are the ones the COACH SET, which is what a team sheet reports. Since
+  // style fit now scales every identity axis inside the engine, the numbers the match actually runs
+  // on are these multiplied by fit -- so fit is printed beside the style rather than folded silently
+  // into the rows, where it would have to render "0.7 of Much Higher" against labels that only exist
+  // for whole steps. What you asked for, and how well this squad can carry it out.
+  // Grey is the axis left alone, colour is one the playstyle stamped, which makes the three-column
   // block read as the shape of the style rather than as a table of thirteen values.
   const tacticsBlock = (t) => {
     const xi = meSide(t);
     const strat = { ...STRAT_DEF, ...(t.strategy || {}) };
     const style = t.style || "balanced";
     const clr = STYLE_CLR[style] || "var(--chrome-muted)";
+    const fit = computeStyleFit(style, t.squad || []);
     // The keeper counts in DEF, the same as he now does in teamLines: a back line rated without him
     // is not how well the side defends, and it left the best goalkeeper in the game out of every
     // rating on the screen.
@@ -5606,6 +5646,13 @@ export default function App() {
             <span style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
                            color: clr, border: `1px solid ${clr}`, borderRadius: 4, padding: "2px 7px" }}>
               {STYLE_LBL[style] || style}</span>
+            {/* Only when it is doing something. Balanced asks nothing of the squad, so it has no
+                entry and no fit, and a row reading 1.00 on every neutral side is noise. */}
+            {fit !== 1 && (
+              <span title="How well this squad suits this system. Every instruction below is scaled by it."
+                    style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+                             color: fit >= 1.05 ? "var(--ui-ok)" : fit <= 0.9 ? "var(--ui-danger)" : "var(--chrome-muted)" }}>
+                FIT {fit.toFixed(2)}</span>)}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "0 20px" }}>
             {GRPS.map(([title, grp]) => (
@@ -5894,7 +5941,7 @@ export default function App() {
     // eleven-man bench is an international squad and plays to five, everything else keeps three.
     st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
-    st.strategy = { home: { ...STRAT_DEF, ...(hT.strategy || {}) }, away: { ...STRAT_DEF, ...(aT.strategy || {}) } };
+    st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
     st.possession = "home";
     // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
     // the twenty-two actually line up, and which of the forward men rolls it. Without it every match

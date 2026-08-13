@@ -259,10 +259,16 @@ export function meLoftFor(d) {
 /** Kick the real ball at (tx, ty). `type`: "ground" | "high" | "clear". Skill and pressure turn
  *  into execution noise -- the roll of the dice moved from the OUTCOME to the KICK, which is the
  *  whole point: whether a pass arrives is now geometry's problem. */
-export function meKickBall(mp, rng, tx, ty, type, skill01, press) {
+export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.5, Math.hypot(dx, dy));
   const g2 = (r) => (r.u() + r.u() - 1);          // cheap gaussian-ish, [-1, 1], peaked at 0
-  const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress)
+  // HASTE COSTS ACCURACY, and this is where the engine already prices haste -- the aim cone widens
+  // with pressure and with a worse passer, but not with how fast a side is trying to play. Without
+  // it, quick tempo bought a firmer ball that arrived before the lane shut and cost nothing:
+  // measured at +0.320 xG for Much Quicker, 3.3 standard errors, which is not an instruction but a
+  // setting nobody would ever move off. Symmetric, so a patient side strikes it more precisely.
+  const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress
+                 + (tempo || 0) * CFG.tempoNoise)
               * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
   // WEIGHT is a skill. The aim cone always was, and the power wobble sat at a flat 0.08 for all
@@ -273,8 +279,13 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press) {
   // misses at any angle. Anchored at 75 like every meTech site.
   const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill);
   let vxy, vz;
-  if (type === "ground") { vxy = meGroundSpeed(d) * pow; vz = 0; }
-  else { const L = meLoftFor(type === "clear" ? Math.max(d, 30) : d); vxy = L.vxy * pow; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
+  // TEMPO IS WEIGHT ON THE BALL. Playing quickly is not merely deciding sooner -- it is striking
+  // it harder, so it arrives before the lane closes. That is a genuine trade rather than a bonus:
+  // a firmer ball spends less time interceptable but `pow` noise scales with it, so it runs
+  // through the receiver more often. A slow side plays it softer and safer into feet.
+  const tmp = 1 + (tempo || 0) * CFG.tempoPace;
+  if (type === "ground") { vxy = meGroundSpeed(d) * pow * tmp; vz = 0; }
+  else { const L = meLoftFor(type === "clear" ? Math.max(d, 30) : d); vxy = L.vxy * pow * tmp; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
   mp.bvx = Math.cos(ang) * vxy; mp.bvy = Math.sin(ang) * vxy; mp.bvz = vz;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   meBallPredict(mp);

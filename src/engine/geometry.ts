@@ -36,8 +36,20 @@ export const meDanger = (side, x, y) => meVal(side, x, y) / ME_VAL_MAX;
 // it. That is why running at goal outscored striking it from every range on the pitch -- a carry was
 // credited with the full possession value of wherever it ended up, for free -- and why every chance
 // in the match was a tap-in walked into the six-yard box.
-export const meValHere = (s, side, x, y) =>
-  meVal(side, x, y) * (1 - Math.min(CFG.valPressMax, mePressure(s, side, x, y) * CFG.valPress));
+export const meValHere = (s, side, x, y) => {
+  const base = meVal(side, x, y) * (1 - Math.min(CFG.valPressMax, mePressure(s, side, x, y) * CFG.valPress));
+  // WHERE THE SPACE IS. Everything above is local: meVal is pure geometry and mePressure counts
+  // bodies inside six metres. So a defensive SHAPE twenty metres away was invisible to every
+  // decision in the game -- the ground behind a high line scored exactly as the ground behind a deep
+  // block, a low block cost nothing to approach, and a press was felt at the ball and never as a
+  // thing to play around. Measured consequence: across five archetypes the real matchup interaction
+  // came out 0.000 against a ladder spread of 0.254. No style was ever the answer to another one.
+  // meCtrl is the missing term and it was already written -- pitch control, positive when this side
+  // owns the spot -- sitting in this file with no callers at all. One weight, and all three classic
+  // counters follow from the same quantity: space in behind a high line, space wide of a narrow
+  // block, space beyond a press.
+  return CFG.valCtrlW ? base * (1 + CFG.valCtrlW * meCtrl(s, side, x, y)) : base;
+};
 
 // ---- pitch control -------------------------------------------------------------------------
 // After Fernandez & Bornn: every player owns an area of the pitch, stretched along the way he is

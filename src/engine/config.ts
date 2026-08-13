@@ -837,6 +837,45 @@ Object.assign(CFG, {
   // harder to strike, and being closed down makes him release SOONER, not later. The old rule had a
   // pressed player dwelling 6 slices against a free player's 4 -- exactly backwards.
   holdBase: 5, holdPress: 1.4, actNow: 0.10, firstTouchNoise: 1.75,
+  // How much a spot being OWNED is worth, on top of where it is. 0 reproduces the engine that
+  // had no idea where the opponent's shape was. Kept a dial rather than a rewrite because this
+  // is the value surface every calibrated number in the file sits on.
+  // 0 -- MEASURED AND REJECTED, kept as a dial so nobody has to run this again. Wiring meCtrl
+  // into the value surface was meant to create matchup structure: in isolation it plainly
+  // works, the direct-vs-high-line gap going +0.054 to +0.291 to +0.561 across 0/0.40/0.60.
+  // In the round it does nothing. Five archetypes, fifteen cells, measured at 0, 0.20 and
+  // 0.50: real interaction came out 0.000 every time, with the residual spread BELOW the
+  // measurement noise in all three. It rebalances the ladder -- Counter +0.245 to +0.153, and
+  // width finally beats a block -- but it buys no matchup, and it costs half a goal a match
+  // that has to be bought back through xgK, which is not the clean conversion dial it looks.
+  // The likely reason a meta does not appear is not spatial blindness at all: brain.ts
+  // re-solves the whole shape every tick, so no side is ever COMMITTED to anything long enough
+  // to be exploited. That would be inertia, and it is a far deeper change than a weight.
+  valCtrlW: 0,
+  // WHAT BEING DISCIPLINED BUYS. A man who is not looking to beat anyone is SET TO RELEASE, so
+  // his first touch is cleaner; one looking to run at people is not, so his is worse. Scales
+  // firstTouchNoise by the instruction, which makes the axis a trade in BOTH directions instead
+  // of a licence at one end and a fine at the other. Measured paired on xG at 60 fixtures a
+  // cell: -1 goes from -0.206 to -0.022, +1 stays a modest +0.026. 0.60 works too but widens
+  // the bars and pushes +1 back out to +0.079.
+  dribTouch: 0.35,
+  // TEMPO, on two channels so neither end is a flat tax -- the mistake dribbling: -1 made, where a
+  // shortened budget met a dwell charge measured from natBase and so bought nothing at all.
+  // Quick: less time on the ball AND a firmer pass that arrives before the lane shuts.
+  // Slow:  more time to find the right ball AND a softer, safer weight into feet -- paid for by
+  // press rising while he dwells and dwellDrop compounding, which is where a slow side's cost has
+  // always come from. Both values pending the +/-1 measurement; nothing stamps tempo yet.
+  // tempoNoise stays 0: the aim cone was the first idea and stamina is the better one. Kept as a
+  // hook in case quick tempo still needs an immediate cost on top of the deferred one.
+  // tempoDrain 0.30, calibrated so tempo is a CHOICE and not a default. At 0 Much Quicker was worth
+  // +0.292 xG for nothing; at 0.22 the extremes were neutral but +1 still read +0.198, which is the
+  // reason to test every rung rather than the ends. At 0.30 all four sit within a quarter of a
+  // standard error of zero: -0.019, -0.013, -0.024, -0.024.
+  // Slow is untouched at every setting -- the Math.max(0, ...) clamp means negative tempo never
+  // reaches the drain term, so its neutrality is structural rather than tuned.
+  // End-of-match stamina runs 83 / 75 / 68 / 60 across the drain sweep: smooth, so this is a price
+  // paid across ninety minutes, not a collapse after the hour.
+  tempoHold: 0.8, tempoPace: 0.10, tempoNoise: 0, tempoDrain: 0.30,
   // What every extra slice on the ball past that budget costs his chance of keeping it. Geometric,
   // so a man with genuinely nothing on can drive on for another second or two and a man dwelling in
   // his own box runs out of reasons to.
