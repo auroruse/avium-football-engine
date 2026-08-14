@@ -27,6 +27,21 @@ export function meShotP(s, side, p, x, y) {
   q *= CFG.shotFinBase + a.shoot / 99 * CFG.shotFinSkill;
   q *= 1 / (1 + mePressure(s, side, x, y) * 0.35);
   // Bodies between him and the goal, which is most of what separates a chance from a half-chance.
+  // Tried and rejected: scoring this as the share of the GOAL MOUTH screened -- each defender's
+  // shadow projected onto the goal plane and unioned -- instead of as a pass corridor, on the
+  // finding that a block with 6.24 men in its own box returned 1.03 here where one with 4.82
+  // returned 0.98. The geometry was right -- project each defender onto the goal plane along the ray
+  // from the striker, union the intervals, divide by 7.32 -- and it is not worth writing again.
+  // It fails, and it fails for a reason worth writing down: CONDITIONAL ON A SHOT BEING TAKEN, THE
+  // SHOOTER HAS ALREADY FOUND A CLEAR LINE. He chose the spot. So a measure of "is my line blocked"
+  // reads about the same whoever is defending, however many of them are in the area -- swept over
+  // coverScale 2 / 3.5 / 5 / 6.5 / 8, the deep block conceded MORE xG than the mid block at every
+  // single setting (1.09 / 1.04 / 1.05 / 1.00 / 0.89 against 0.77 / 0.77 / 0.80 / 0.90 / 0.88), so
+  // the ordering this was built to invert never inverted. The quantity is also much smaller than
+  // the one it replaced -- lane0 came out 0.30-0.47 against 0.98 -- which halved the crowding
+  // penalty, took shots conceded from 5.8-8.4 up to 9-12 and goals a match from 2.80 to 2.73-3.57.
+  // A low block cannot be made to pay in the QUALITY of the shots it allows. It has to pay in how
+  // many it allows and from where, which is the carry and pass models, not this line.
   const lane0 = meLaneBlock(s, side, x, y, meGoalX(side), ME_HALF_W);
   const clearMax = 1 + (CFG.shotClear - 1)
     * Math.max(0, Math.min(1, 1 - (g.d - CFG.shotClearD) / CFG.shotClearFade));
@@ -153,8 +168,22 @@ export function meDecide(s, rng, side, i, dwell) {
     // Charged RELATIVE to the neutral range, so an instruction left at zero is exactly a no-op --
     // as an absolute penalty it moved shots from outside 15 m from 40% to 32% with nobody having
     // asked for anything. A tactic must cost nothing until it is set.
-    const wantD = CFG.shotWant - st.chanceCreation * CFG.shotWantStep;
-    const offWant = Math.abs(gsh.d - wantD) - Math.abs(gsh.d - CFG.shotWant);
+    // THE SIGN WAS BACKWARDS. Read the paragraph above: shoot on sight takes it from twenty yards.
+    // The line said `shotWant - chanceCreation * shotWantStep`, so Shoot On Sight asked for a
+    // preferred range of 9 m and Work Ball Into Box asked for 19 -- each instruction did the other
+    // one's job. Measured across the five styles stamped Shoot On Sight, they took the SHORTEST
+    // shots in the game: Counter and La Nuestra at 11.7 m against Tiki-Taka's 12.6 on Work Ball In.
+    // It never showed up because the term was too weak to move anything: mean shot distance ran
+    // 11.7-12.9 m across all fourteen styles, so the whole axis was 1.2 m wide and pointing the
+    // wrong way inside that.
+    // ONE-SIDED, because nobody declines a tap-in. For passing a preferred length cuts both ways --
+    // a short side really does not want the thirty-metre ball -- but no forward alive turns down six
+    // yards because he was told to shoot from distance. The instruction moves where distance STARTS
+    // costing him, and closer than that is always free.
+    // Still charged relative to neutral, so an instruction left at zero remains exactly a no-op.
+    const wantD = CFG.shotWant + st.chanceCreation * CFG.shotWantStep;
+    const offWant = Math.max(0, gsh.d - wantD - CFG.shotBand)
+                  - Math.max(0, gsh.d - CFG.shotWant - CFG.shotBand);
     const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * 0.32
              - offWant * CFG.shotWantW;   // a miss is only a goal kick
     if (ME_DBG) ME_DBG.shot = sc;
@@ -194,9 +223,21 @@ export function meDecide(s, rng, side, i, dwell) {
     // ball to a man an inch beyond the line, so offside could not happen and the trap had no payoff.
     // His perception carries error scaled by his rating, which errs BOTH ways -- a poor player plays
     // the one that is off and declines the one that is on, and a good one judges it well.
+    // ...and offside is being nearer the goal than the second-last man AND THE BALL, which is half
+    // the law and the half that was missing here. Enforcement has it right -- see wasOff in
+    // match.ts, which asks for both -- so the decision was refusing balls the referee would have
+    // allowed: a man at the byline is beyond the last defender by definition, and every team-mate in
+    // the area is too, so the veto fired on all of them. A cross is exactly that ball.
+    // It did NOT restore crossing, and the measurement is here so nobody runs it again: 0.9 balls a
+    // match from a wide attacking spot into the area against 1.4 before, which is noise on 30
+    // matches. Crossing is not being declined -- there is nobody to cross to. 74% of every pass
+    // struck in the final third has ZERO team-mates in the box, because the whole attacking shape is
+    // clamped to the offside line (see meShape) and the offside line sits at 16.7 m while the area
+    // starts at 16.5. Standing in the box is illegal for the entire match. That is a question about
+    // how deep the defending block sits, and it lives in meAnchor.
     const slack = thru ? CFG.offsideGrace : 0.4;
     const seen = (q.x - off) * dir + (rng.u() + rng.u() - 1) * CFG.offBlind * (1 - meMind(p));
-    if (seen > slack) continue;
+    if (seen > slack && (q.x - p.x) * dir > 0 && (q.x - PITCH_L / 2) * dir > 0) continue;
     const fwd = (aimX - p.x) * meDir(side);
     // Never backwards from a shooting position. Square and forward balls stay available -- a
     // team-mate better placed is a real reason to pass; turning round is not.
@@ -220,7 +261,13 @@ export function meDecide(s, rng, side, i, dwell) {
     // grounds that the 19-26 m band is ground passes that physically cannot arrive. With the flight
     // time now honest they already score as the slow balls they are, and forcing the loft on top of
     // that read 12/21 against 13. The rule is redundant once the physics stops lying.
-    if (d > 26) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
+    // ...AND WHERE THAT CROSSOVER SITS IS A TACTIC. A ball went long on pure geometry, so nothing a
+    // style could say ever made it go over the top: measured across the fourteen, the lofted share
+    // ran 27-38% and was INVERTED -- Gegenpress hit more long balls than Route One, whose entire
+    // description is skipping the middle third. Directness moves the crossover, which is what
+    // choosing to play over a midfield rather than through it actually is.
+    const loftAt = CFG.loftD - (st.passingDir || 0) * CFG.loftDir;
+    if (d > loftAt) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
     else if (d > 10) {
       const blkH = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true);
       if (blkH * CFG.laneK + 0.45 < blk * CFG.laneK) { blk = blkH; isHigh = true; }
@@ -232,8 +279,23 @@ export function meDecide(s, rng, side, i, dwell) {
     // completion sat at 95% -- no turnovers, no shots, a match of endless sideways passing.
     const rPress = mePressure(s, side, q.x, q.y);
     let val0 = 0;
+    // ...and how much that marking MATTERS depends on whether the ball is coming to his feet or over
+    // the man marking him. A defender standing on your toes is most of why a ball rolled in is cut
+    // out; he is very little of why a ball delivered above his head is not headed. This term did not
+    // know the difference, so a lofted ball into a defended box was priced at a defended box's
+    // ground-pass completion. The gates were never the problem: 82% of every candidate cross reached
+    // the decision menu and was simply outscored, 95% of the time by carrying it instead.
+    // STILL OUT BY FIFTEEN POINTS, and the number is here so the next person starts from it rather
+    // than from a theory. Checked against the engine's own resolution -- what the decision believed
+    // a ball into the box was worth, against what then happened to it -- the model expects 28-31%
+    // and the physics delivers 43-50%, at every setting of this coefficient from 1.40 down to 0.15.
+    // So this is not the term causing it. What is left is the pair that both count bodies near the
+    // TARGET: the airborne lane block in meLaneBlock, which charges a dropping ball for every
+    // defender within 4.5 m of where it lands using a ground pass's radius, and mePassRisk, which
+    // charges for the same men again on the same geometry.
+    const rp = isHigh ? CFG.recvPressHigh : CFG.recvPress;
     let ok = (CFG.passBase - d * 0.0072) * Math.exp(-blk * CFG.laneK) * (0.72 + a.pass / 99 * 0.34)
-           * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * CFG.recvPress)) * (0.86 + meAttrs(q).position / 99 * 0.20);
+           * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp)) * (0.86 + meAttrs(q).position / 99 * 0.20);
     // The decision now asks the resolution's own question: can anyone reach this ball first? A
     // lofted ball is only cuttable near its ends, so it is judged on a straighter, faster line.
     const spd = isHigh ? meLoftFor(d).vxy : meGroundSpeed(d);
@@ -282,8 +344,15 @@ export function meDecide(s, rng, side, i, dwell) {
     // A preferred length is a constraint instead. Both ends play the best ball they can see; they
     // are looking at different balls, and each pays for it -- short forgoes ground, long forgoes
     // completion. That is a trade, which is what a tactic is supposed to be.
+    // A BAND HE IS LOOKING IN, not a tax on every ball he is not. As a flat penalty on |d - want|
+    // this could not bite: at passWantW 0.0006 a ball ten metres off the preferred length cost 0.006
+    // against option scores that differ by 0.05, so the preference was stated and then outvoted.
+    // Measured, mean pass length across all fourteen styles ran 17.6 m to 20.2 -- Route One sat one
+    // metre from Tiki-Taka. Inside the band a ball is free, and the charge only starts where the
+    // side stops looking. That is a constraint on the option set rather than a distortion of the
+    // objective, which is the only shape of instruction that has ever worked in here.
     const want = CFG.passWant + st.passingDir * CFG.passWantStep;
-    val -= Math.abs(d - want) * CFG.passWantW;
+    val -= Math.max(0, Math.abs(d - want) - CFG.passBand) * CFG.passWantW;
     // ...and it is worth far more if the man receiving it has ROOM. meVal is pure geometry: on a
     // surface that is nearly flat through midfield it says twelve metres of progress is worth 0.007
     // against 0.030 for simply still having the ball, so a ball into twenty metres of open grass and
@@ -394,7 +463,23 @@ export function meDecide(s, rng, side, i, dwell) {
              - (1 - ok2) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cx, cy));
     // Play Out of Defence means he would rather find a pass than clear it, and Pass Into Space
     // means he is happier to send it. Neither reached this decision before.
-    const jc = sc + styleW * (st.approachPlay || 0) * 0.8 + jit("clear");
+    // THIS ONE ALREADY WORKS, which is worth writing down because it does not look like it does --
+    // there is no column for it in the behaviour audit and it is easy to assume it is as dead as
+    // width and directness were. Isolated on a Balanced side with only this axis moved, over 90
+    // blocked fixtures a cell, every measure is monotone and pointed the right way:
+    //   -1 Play Out    3.5 clears   101 passes   50.5% poss   41.6 from own third   30% lofted
+    //    0             3.8          97           49.4         34.9                  32%
+    //   +1 Into Space  4.4          94           48.1         31.9                  35%
+    // Thirty per cent more of the ball played out from its own third is the largest behavioural
+    // swing any instruction in this engine produces. Do not "fix" it.
+    // Two things that ARE worth doing, neither of them here. The label is wrong: +1 raises the score
+    // of CLEARING it, so the axis is build-from-the-back against get-it-forward, and "Pass Into
+    // Space" implies a feet-versus-channels choice that is not what is modelled. And nine of the
+    // fourteen styles are stamped +1, so across the style set the axis is very nearly a constant --
+    // it separates almost nothing, and all nine share the +0.11 xG that Into Space is worth over
+    // Play Out. That gradient is about 1.2 standard errors, so it is a slope rather than a trade,
+    // but it is too marginal to act on without a bigger sample.
+    const jc = sc + styleW * (st.approachPlay || 0) * CFG.apClearW + jit("clear");
     if (jc > bestSc) { bestSc = jc; best = { k: "clear", p: ok2, cx, cy }; }
   }
   // Into the stand. No gain at all, so it only ever wins when everything else is worse than a

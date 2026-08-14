@@ -14,6 +14,12 @@ function meTrap(s, side) {
   const b = (mp.bx - own) * dir;
   const offsetX = 20 + 10 * (1 - offB), bTop = d1 + offsetX;
   const s2f = Math.max(0, Math.min(1, (bTop - b) / Math.max(1, bTop - CFG.trapForce)));
+  // Tried and rejected: flooring the gap between the ball and the line so it cannot taper to nothing
+  // on the goal line, on the grounds that the deep block sits too high and the offside line with it.
+  // It reads as a no-op and it has to: this value only ever RAISES a defender (see the trap band in
+  // meShape -- it pushes stragglers up onto the line and never pulls anybody back), so lowering it
+  // releases the back four to sit deeper without asking them to. Where they actually stand is
+  // meAnchor, and that is where a fix for the depth of the deep block belongs.
   const d2 = b - offsetX * (1 - s2f);
   let d3 = Infinity;
   if (mp.idx >= 0 && mp.side === meOther(side)) {
@@ -120,8 +126,11 @@ export function meRuns(s, side) {
 // are squared so the algorithm shuffles several men a little rather than marching one man miles.
 // Where a given formation slot sits on the pitch right now. Shared so the reassignment and the
 // positioning can never disagree about where a zone actually is.
-export function meAnchor(s, side, bd, bw) {
-  const st = s.strategy?.[side] || NO_INSTRUCTIONS, mp = s.mePos;
+// `neutral` answers the same question with the instruction vector zeroed -- where the FORMATION
+// alone would put him. The distance between the two is how far this side's system has
+// deliberately moved him, and meFindSpace defends a deliberate slot harder than a default one.
+export function meAnchor(s, side, bd, bw, neutral) {
+  const st = neutral ? NO_INSTRUCTIONS : (s.strategy?.[side] || NO_INSTRUCTIONS), mp = s.mePos;
   const dir = meDir(side), own = meGoalX(meOther(side));
   const ballDepth = (mp.bx - own) * dir;
   const bal = Math.max(-1, Math.min(1, mp.bal[side]));
@@ -142,6 +151,12 @@ export function meAnchor(s, side, bd, bw) {
   // -- is handled there instead, by gkShapePush.
   const gkHas = mp.idx >= 0 && mp.side === side && s.players[side][mp.idx]?.pos === "GK";
   const gkPush = gkHas ? (st.gkDist || 0) * CFG.gkDistPush : 0;
+  // Tried and rejected: sweeping this floor -- it is "ball minus thirty", which goes behind the goal
+  // line once the ball is inside thirty metres, so the literal 18 was never anything but a catch.
+  // Swept 18 / 13 / 9 / 6 over 36 matches a cell looking for the reason nobody stands in the box:
+  // the offside line moved 17.3 m to 16.7 and men in the area 0.46 to 0.48, which is nothing. This
+  // is the shape of the side IN POSSESSION (t is high when you have the ball) and it barely touches
+  // the DEFENDING block, which is meBlock and is where the line really comes from.
   const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push + gkPush));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
@@ -166,8 +181,44 @@ export function meAnchor(s, side, bd, bw) {
   // shots conceded from inside the box by one tenth of one percent -- 81.1% to 81.0% -- while making
   // the deepest setting concede more. Compactness is not what a low block is missing here. What it
   // is missing is in the next comment down.
-  let ay = ME_HALF_W + wideness * ME_HALF_W * (wide ? 0.94 : 0.66) * (1 + st.passingDir * 0.02);
-  ay += (mp.by - ay) * (wide ? 0.10 : 0.30);
+  // HOW WIDE THE SIDE PLAYS, which until now nothing could ask for. Every other thing a style is
+  // supposed to do to a shape had an instruction behind it and this one had none, so Wing Play was
+  // stamped `{passingDir, approachPlay, creativity, dribbling}` and not one of those four touches
+  // the y axis. Measured over 90 blocked fixtures a style, every side in the game struck 39-45% of
+  // its passes from the wide channels -- which is what you get from a uniform spread across the
+  // pitch. Nobody played wide and nobody played narrow, and Wing Play put FEWER balls into the area
+  // (2.4 a match) than Gegenpress (3.2) or Vertical Tiki-Taka (3.3).
+  // Two terms, because width is two things: how far off centre a man's slot sits, and whether he
+  // holds that width when the ball goes to the other side. A narrow side collapses onto the ball --
+  // that is what compact MEANS -- and a wide one refuses to, which is what keeps a switch on.
+  //
+  // AND IT IS THROTTLED, BY MESHAPE RATHER THAN BY ANYTHING HERE. Read the three widths for the side
+  // in possession -- what this function asks for, what meShape ends up targeting, and where the men
+  // actually stand, each as a mean distance off the centre line over ten outfielders:
+  //   Wing Play +2, widthStep 0.16    asked 14.99   targeted 12.22   stood 11.73
+  //   Wing Play +2, widthStep 0.90    asked 19.73   targeted 13.81   stood 13.00
+  //   Balanced   0, widthStep 0.16    asked 12.04   targeted 11.32   stood 11.02
+  //   Tiki-Taka -1, widthStep 0.90    asked  2.81   targeted  7.29   stood  7.70
+  // The men chase their targets faithfully -- under a metre is lost between target and boot. Nearly
+  // six metres is lost between HERE and the target, and at the narrow end the shape overrides the
+  // anchor outright and stands them WIDER than asked. So an anchor range of 2.8 to 19.7 m arrives on
+  // the pitch as 7.7 to 13.0, and pinning every wide slot to the touchline (widthStep 0.90, a 5.6x
+  // coefficient) buys Wing Play 0.18 m of real width over the default.
+  // This is why the defensive instructions bite and the attacking ones do not, and it is not about
+  // width: pressingLOE and defLine feed meBlock's wantLine, which IS the target a defender chases,
+  // with nothing re-solving on top of it. Everything in possession goes through meAnchor first and
+  // is then overwritten by the duty, the leash, the rest-defence pull and the offside clamp. An
+  // attacking instruction cannot reach the pitch until it has a path into the TARGET.
+  // Kept rather than reverted: correctly ordered and monotone, it lifted Wing Play from +0.011 to
+  // +0.102 xG on the blocked table while the spread went 0.428 -> 0.388 and goals a match held at
+  // 2.80, and the model plumbing is what a real fix will need. Do not re-tune widthStep -- it is
+  // already past saturation. Fix meShape.
+  const wd = 1 + (st.width || 0) * CFG.widthStep;
+  let ay = ME_HALF_W + wideness * ME_HALF_W * (wide ? 0.94 : 0.66) * wd * (1 + st.passingDir * 0.02);
+  ay += (mp.by - ay) * (wide ? 0.10 : 0.30) * Math.max(0, 1 - (st.width || 0) * CFG.widthPull);
+  // ...and a slot still has to be on the grass. wideness runs to about +/-0.76 on a real formation,
+  // so the widest setting would otherwise post a full-back a metre off the touchline or past it.
+  ay = Math.max(CFG.widthEdge, Math.min(PITCH_W - CFG.widthEdge, ay));
   // A side asked to keep it short needs somebody short to give it to, so the shape comes with the
   // instruction rather than leaving the passer to want a ball that is not on. Compress toward the
   // ball when playing shorter, stretch away from it when playing direct.
@@ -521,16 +572,52 @@ function attackingRing(s, side, cx, cy) {
 }
 export function meFindSpace(s, side, p, baseX, baseY, off) {
   const mp = s.mePos, dir = meDir(side);
+  // HOW CLOSE THE SIDE IS WILLING TO STAND. A flat radius here is a MINIMUM SPACING nothing can
+  // reach, and it is the single biggest thing standing between an instruction and the pitch.
+  // Measured, as the mean distance off the centre line for ten outfielders at each stage of
+  // meShape, with both sides on the same style:
+  //                anchor   after this   after rest   after leash   target   stood
+  //   Wing Play +2  15.06   15.10 (+.04)  13.20        13.29         12.79    12.41
+  //   Balanced   0  12.06   13.41 (+1.36) 11.80        11.78         11.36    11.06
+  //   Tiki-Taka -1   9.57   12.01 (+2.43) 10.72        10.62         10.27    10.11
+  // It does not clamp the wide end -- it INFLATES the narrow one, by 2.43 m against 0.04 -- so an
+  // anchor range of 5.49 m leaves this one stage as 3.09. A compact side stands close together by
+  // definition, every central candidate is therefore crowd-penalised, and the search shoves them
+  // back apart. The leash, for the record, is innocent: it moves the target 0.09 / -0.02 / -0.10.
+  // Same disease as blkSpacing in meBlock, and the same cure -- the constant carries the
+  // instruction instead of overruling it.
+  // AND IT ONLY GETS PART OF IT BACK, so do not read this as solved. Scaling the radius takes the
+  // range surviving THIS stage from 3.09 m to 3.67 m of the anchor's 5.50 -- 19% more -- and the
+  // table is unmoved by it (spread 0.412 -> 0.418, goals 2.77 -> 2.81, both inside a se of 0.07).
+  // End to end it buys nothing yet: 43% of the anchor's range reaches the pitch either way, because
+  // rest defence then takes 2.12 m off a wide side against 1.17 off a narrow one and the smoothing
+  // takes a flat half metre more. There is no single villain left -- three stages each shave a
+  // legitimate slice, and the sum is the instruction. Kept because it is a correctness fix of the
+  // same kind that DID work in meBlock, and because it composes: fix the compression downstream and
+  // this gain stops being eaten. The next real move is architectural -- solve the target once from
+  // (anchor, job, ball) instead of as a chain of overwrites and pulls.
+  const st = s.strategy?.[side] || NO_INSTRUCTIONS;
+  const cr = Math.max(4, CFG.crowdR * (1 + (st.width || 0) * CFG.widthStep));
+  // NINE CANDIDATES WAS A JUMP OR NOTHING. The search offered his own slot or a point exactly
+  // ME_SPACE_R away in one of eight directions, so it could never make a small adjustment: either
+  // the base won outright or he was displaced nine metres. That is why raising basePullW bought so
+  // little -- swept to fourteen times its value it moved the width arriving on the pitch from 18%
+  // to 26%, because the term was not losing a close contest, it was losing a binary one. A second
+  // ring at half the radius lets him shade a couple of metres off his slot, which is what a
+  // footballer adjusting his position actually does.
+  // ...and how hard the base pulls is now a property of WHY he is standing there. A man on his
+  // formation's own slot is cheap to move; one an instruction has deliberately placed is not.
+  const hold = CFG.basePullW * (1 + CFG.holdDev * (p._dev || 0));
   let bx = baseX, by = baseY, best = -Infinity;
-  for (let k = 0; k <= 8; k++) {
-    const ang = k * Math.PI / 4;
-    const cx = k === 8 ? baseX : baseX + Math.cos(ang) * ME_SPACE_R;
-    const cy = k === 8 ? baseY : baseY + Math.sin(ang) * ME_SPACE_R;
+  for (let k = 0; k <= 16; k++) {
+    const ang = (k % 8) * Math.PI / 4, rad = k >= 8 ? ME_SPACE_R : ME_SPACE_R * CFG.spaceInner;
+    const cx = k === 16 ? baseX : baseX + Math.cos(ang) * rad;
+    const cy = k === 16 ? baseY : baseY + Math.sin(ang) * rad;
     if (cx < 2 || cx > PITCH_L - 2 || cy < 2 || cy > PITCH_W - 2) continue;
     if ((cx - off) * dir > 0 && (cx - mp.bx) * dir > 0) continue;          // would be offside
     let crowd = 0;
     for (const q of s.players[side]) { if (q === p || q.pos === "GK") continue;
-      const d = Math.hypot(q.x - cx, q.y - cy); if (d < 14) crowd += (14 - d) / 14; }
+      const d = Math.hypot(q.x - cx, q.y - cy); if (d < cr) crowd += (cr - d) / cr; }
     const sc = meCtrl(s, side, cx, cy) * 1.00                    // do we own it
              + meDanger(side, cx, cy) * 1.30                     // is it worth owning
              - meLaneBlock(s, side, mp.bx, mp.by, cx, cy) * 0.30 // can the ball reach me
@@ -541,7 +628,7 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
              // spot on the carrier's shoulder and one forty metres away scored identically.
              + (attackingRing(s, side, cx, cy)) * CFG.orbitW
              // The further out of shape you already are, the harder the base pulls you back.
-             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * (0.3 + 0.7 * Math.min(1, Math.hypot(p.x - baseX, p.y - baseY) / 20)) * CFG.basePullW;
+             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * (0.3 + 0.7 * Math.min(1, Math.hypot(p.x - baseX, p.y - baseY) / 20)) * hold;
     if (sc > best) { best = sc; bx = cx; by = cy; }
   }
   return [bx, by];
@@ -657,7 +744,21 @@ export function meBlock(s, side) {
     // it left, which is exactly backwards. A real back three defends narrow and lets the wing backs
     // cover the width; that is the whole idea of the shape. Spacing is what is constant, not span.
     const spacing = CFG.blkSpacing + b * CFG.blkSpaceStep;
-    const w = Math.min(CFG.blkWidthMax, spacing * Math.max(1, rowi.length - 1))
+    // ...AND THE BLOCK IS AS WIDE AS THE SIDE IS ASKED TO BE. Without this the width instruction is
+    // undone by the side's own rest defence: a man who is not on a run is dragged restW of the way
+    // back to his BLOCK slot while his own team attacks (see meShape), and that slot was a pure
+    // function of spacing and row size. Full-backs are both the men who give a side its width and
+    // the men rest defence holds hardest, so the instruction was being written and then erased by
+    // the next line of the same function.
+    // Measured, with restW swept 0.7 / 0.35 / 0 on Wing Play at width +2: the share of the asked-for
+    // width that survives to the pitch goes 18% / 24% / 37%, crosses 0.50 / 0.60 / 0.96 and balls
+    // into the area 2.44 / 2.25 / 2.69. Turning rest defence off is not the fix -- it is there
+    // because a side with no shape to fall into arrives four seconds late to every counter -- so the
+    // slot it pulls them to carries the instruction instead.
+    // It also gives width the second half an instruction needs: a wide side now DEFENDS wide, which
+    // is a real cost in the middle, and a narrow one defends narrow. That is the trade.
+    const bwd = 1 + (st.width || 0) * CFG.widthStep;
+    const w = Math.min(CFG.blkWidthMax, spacing * Math.max(1, rowi.length - 1) * bwd)
             * (1 - siege * CFG.blkSiegeNarrow);
     for (let k = 0; k < rowi.length; k++) {
       const p = us[rowi[k]];
@@ -987,6 +1088,11 @@ export function meShape(s, side) {
     }
     // The zonal anchor for whatever slot he is currently filling.
     const _a = meAnchor(s, side, p._bd, p._bw);
+    // How far the system has moved him off his own formation slot. An instruction that has
+    // deliberately put a man somewhere is worth more than a default, and this is what tells
+    // the space search to hold it rather than trade it away for the nearest patch of grass.
+    const _a0 = meAnchor(s, side, p._bd, p._bw, true);
+    p._dev = Math.hypot(_a[0] - _a0[0], _a[1] - _a0[1]);
     let ax = _a[0], ay = _a[1];
 
     let tx = ax, ty = ay;
@@ -1280,7 +1386,27 @@ export function meShape(s, side) {
     // comes off his natural depth: a centre-half almost none of it, a holding midfielder some, a
     // forward all of it. A man on a committed run is exempt -- that is the whole point of the run.
     if (attacking && (p._runT ?? 0) <= 0 && p._bsx !== undefined) {
-      const rest = Math.max(0, Math.min(1, (CFG.restMind - (p._mind ?? 0.5)) / Math.max(0.01, CFG.restTaper)));
+      let rest = Math.max(0, Math.min(1, (CFG.restMind - (p._mind ?? 0.5)) / Math.max(0.01, CFG.restTaper)));
+      // WHO STAYS HOME IS A PROPERTY OF THE SYSTEM, not only of how deep a man naturally plays.
+      // Keyed on _mind alone, a full-back is pinned back exactly as hard in a side built to attack
+      // from the flanks as in one built to sit -- and a full-back IS the width of a wide system.
+      // Measured stage by stage, this line was the largest single loss left: it took 2.10 m off a
+      // wide side's shape against 1.03 off a narrow one, because the block it drags them to is
+      // rightly narrower than the attack. So a side told to play wide commits the men who provide
+      // that width, and the centre-halves and the holder do the resting instead.
+      // It is a trade rather than a gift, and the cost is the one real football pays for it: those
+      // full-backs are not behind the ball when it turns over.
+      const wideSlot = Math.abs((p._bw ?? ME_HALF_W) - ME_HALF_W) / ME_HALF_W;
+      rest *= Math.max(0, 1 - Math.max(0, st.width || 0) * wideSlot * CFG.restWide);
+      // Tried and rejected: scaling this by creativity, so that Be More Disciplined bought rest
+      // defence. The motive was real -- leave-one-out on Cholismo says creativity: -1 costs +0.185
+      // xG at 2.1 standard errors and the side scores MORE and concedes LESS without it, which is a
+      // tax rather than a tactic, exactly what dribbling: -1 was. This is not the fix. Swept
+      // 0 / 0.30 / 0.55 over 90 blocked fixtures a cell, it FAILED ITS OWN CONTROL: Balanced carries
+      // creativity 0, so the term is identically 1 for it and its shape cannot change, and it still
+      // moved +0.241 +/- 0.119 -- as far as any style the knob actually touches. Wing Play and La
+      // Nuestra both carry +1 and went opposite ways, +0.165 and -0.155. Moving rest defence moves
+      // the whole game through territory, so it cannot carry one axis.
       const w2 = rest * CFG.restW;
       tx += (p._bsx - tx) * w2; ty += (p._bsy - ty) * w2;
     }

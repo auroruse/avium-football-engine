@@ -567,10 +567,10 @@ export const STYLE_PRESET = {
   gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
   // Keep it, move it, never hurry. Presses to restart possession, not to score off the turnover.
   tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
-                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1, gkDist: -1 },
+                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1, gkDist: -1, width: -1 },
   // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
   verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
-                   possWon: 1, dribbling: 1, creativity: 1, gkDist: -1 },
+                   possWon: 1, dribbling: 1, creativity: 1, gkDist: -1, width: -1 },
   // Patient without the press: shortest passing outside Tiki-Taka, plays out from the back, holds
   // shape, keeps the ball. It used to carry SEVEN negative instructions and not one positive -- a
   // style defined entirely by refusal -- and measured as the worst side in the game on territory,
@@ -579,10 +579,25 @@ export const STYLE_PRESET = {
   // dribbling and chanceCreation are gone because they contradict the name as well as the numbers:
   // a possession side's midfielders carry the ball, that is how positional play advances, and a side
   // that works it into the box then declines to shoot has no way to finish what it starts.
-  possession:    { pressingLOE: 0, defLine: 0, passingDir: -1, approachPlay: -1, possLost: 0,
+  // ...AND THE LINE IS HIGH, which it was not. "Patient without the press" was read as a standard
+  // line, and with short passing and playing out on top of it the side held the ball DEEPER THAN
+  // PARK THE BUS -- a mean possession position of 35.8 m, the lowest of all fourteen. Controlling
+  // possession without controlling territory is not a style, it is sterile possession, and it left
+  // this a notch of line and a notch of press away from Zona Mista: 0.34 apart on twelve behaviour
+  // columns, the closest pair in the game and the only one too close to tell apart.
+  // A high line with NO press is a combination nobody else holds -- Tiki-Taka presses from its high
+  // line, Zona Mista sits deep and does not -- so this is what separates all three.
+  // IT DID NOT FIX THE TERRITORY, and the honest number belongs here rather than the intention: a
+  // full notch of defensive line moved the mean possession position 35.8 m to 36.4, and the distance
+  // to Zona Mista 0.34 to 0.41. Where a side HOLDS the ball is contested -- it is capped by the
+  // opponent's block and by the offside line -- so its own defensive line does not push the ball up
+  // the pitch. Kept because a control side genuinely should hold a high line and because it is now
+  // two notches of line from Zona Mista rather than one, but a possession side that cannot gain
+  // territory is a progression problem in the pass model, not something a stamp can reach.
+  possession:    { pressingLOE: 0, defLine: 1, passingDir: -1, approachPlay: -1, possLost: 0,
                    possWon: -1, tackling: -1, gkDist: -1 },
   // Width, overlaps, and licence to take a man on.
-  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1 },
+  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
   // Sit off, then hurt them the moment it breaks.
   counterattack: { pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
                    possWon: 1, chanceCreation: 1, gkDist: 1 },
@@ -604,7 +619,7 @@ export const STYLE_PRESET = {
   // absorbs and breaks, the other only absorbs.
   catenaccio:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
                    possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1,
-                   gkDist: 1 },
+                   gkDist: 1, width: -1 },
   // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
   // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
   // Tiki-Taka, while passing more (120 a match) and completing more (80.8%) than any side in the
@@ -632,7 +647,7 @@ export const STYLE_PRESET = {
   // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
   parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
                    possWon: -1, creativity: -1, dribbling: -1, tackling: -1, gkDist: 1,
-                   timeWasting: 2 },
+                   timeWasting: 2, width: -1 },
   // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
   // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
   // off the diagonal -- every style either pressed high from a high line or sat deep behind a low
@@ -645,7 +660,7 @@ export const STYLE_PRESET = {
   // everything else, while dropping dribbling was worth +0.54 goals and 4.9 m of territory. The rest
   // of the vector measured as working: sitting deeper IS the style, and 33 m up the pitch is a
   // mid-block behaving like one rather than a fault.
-  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1 },
+  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1, width: -1 },
   // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
   // nothing else in the list does. possLost Counter-Press is the whole point rather than a
   // trimming: swarming the second ball IS the style, and without it this was two axes from
@@ -660,7 +675,14 @@ export const STYLE_PRESET = {
   // Everything forward, nobody disciplined. This is the build that used to be worth +3.3 a season
   // when a user could assemble it slider by slider; it measures under +1 now, which is the only
   // reason it can exist as a named option instead of a exploit.
-  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: 1, approachPlay: 1, chanceCreation: 1,
+  // ...BUT NOT LONG. It carried passingDir 1 and approachPlay 1 together, which is a preference for
+  // the longer ball plus a taste for clearing it, and once directness became an instruction that
+  // actually reaches the pitch that is what it played: a mean pass of 20.7 m with 43% of them
+  // lofted, which is Route One's profile under the name of the most technical style in football.
+  // La Nuestra is la gambeta -- short, on the deck, through the middle, with the licence to beat a
+  // man. The expression stays (dribbling, creativity, shoot on sight, and pressing high to get it
+  // back); the long ball goes, and it no longer hoofs it clear.
+  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: -1, approachPlay: 0, chanceCreation: 1,
                    dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
 };
 
@@ -886,11 +908,12 @@ function applyStyleFit(mod, fit) {
   const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
   return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
-const STRAT_DEF = { tempo:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
+const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
   tempo: { name:"Tempo", vals:[[-2,"Much Slower"],[-1,"Slower"],[0,"Standard"],[1,"Quicker"],[2,"Much Quicker"]], grp:"possession" },
   passingDir: { name:"Passing", vals:[[-2,"Much Shorter"],[-1,"Shorter"],[0,"Standard"],[1,"More Direct"],[2,"Much More Direct"]], grp:"possession" },
+  width: { name:"Width", vals:[[-2,"Much Narrower"],[-1,"Narrower"],[0,"Standard"],[1,"Wider"],[2,"Much Wider"]], grp:"possession" },
   chanceCreation: { name:"Chances", vals:[[-1,"Work Ball In"],[0,"No Instruction"],[1,"Shoot On Sight"]], grp:"possession" },
   dribbling: { name:"Dribble", vals:[[-1,"Disciplined"],[0,"No Instruction"],[1,"Run At Defence"]], grp:"possession" },
   creativity: { name:"Freedom", vals:[[-1,"Disciplined"],[0,"No Instruction"],[1,"Expressive"]], grp:"possession" },
@@ -908,7 +931,7 @@ const STRAT_LABELS = {
 // still reads every one of them exactly as before -- nothing here changes what an instruction does,
 // only who decides it. This is what retires the stacked "best of every slider" build: it cannot be
 // constructed any more, because nine of its ten axes are no longer separately selectable.
-const IDENTITY_KEYS = ["approachPlay","passingDir","chanceCreation","dribbling","creativity",
+const IDENTITY_KEYS = ["approachPlay","passingDir","width","chanceCreation","dribbling","creativity",
                        "possLost","possWon","pressingLOE","defLine","tackling"];
 // What survives: three execution choices no style's DEFINITION depends on. Time-wasting is game
 // management, GK distribution decides where a restart lands, and the line's behaviour is how you

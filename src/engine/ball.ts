@@ -300,7 +300,7 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
   // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
   // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
@@ -314,7 +314,10 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul) {
     const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r.u());
     return Math.max(-3, Math.min(3, z)) * CFG.shotSigma;
   };
-  const v = CFG.shotV0 + skill01 * CFG.shotVSkill;
+  // How hard he hits it is normally a property of the man. A free kick is the exception: the pace is
+  // part of the SOLUTION, because clearing a wall and staying under the bar is two constraints and
+  // an ordinary strike only has room for one. See meFkArc.
+  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill);
   // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
   // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
   // Traced: a 20 m shot was down to 7 m/s and still three metres outside the six-yard box when the
@@ -338,6 +341,39 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul) {
                         * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   meBallPredict(mp);
+}
+
+/** A FREE KICK HAS TWO CONSTRAINTS AND EVERY OTHER STRIKE HAS ONE. It has to pass ABOVE the wall
+ *  nine metres in front of the ball, and still be UNDER the bar at the goal line -- and satisfying
+ *  both fixes the PACE as well as the angle, which is why a free kick from twenty metres is clipped
+ *  and one from thirty is hit. That was never solved: the strike picked a target height at the goal
+ *  between one metre and two, aimed a plain parabola at it, and the four men standing in front of it
+ *  played no part in the arithmetic at all. Whether it cleared them was therefore the elevation
+ *  error and nothing else -- measured, the ball passed the wall plane at 0.81 m at the tenth
+ *  percentile and 3.74 m at the ninetieth, and 54% of every free kick in the game was struck into
+ *  somebody's legs. Half of them into the wall and half of them over everything is not a technique,
+ *  it is a coin toss.
+ *
+ *  Quadratic drag makes the time to cover s metres (e^(k s) - 1)/(k v), so the RATIO of the time to
+ *  the wall and the time to the goal is a constant r that does not depend on how hard he hits it.
+ *  Pinning z(t) = z0 + vz t - 4.905 t^2 at both ends then leaves one unknown:
+ *      t_goal = sqrt( (z0 + (zWall - z0)/r - zGoal) / (4.905 (1 - r)) ),   v = B / t_goal
+ *  Returns [zGoal, v] for meShootBall, which re-derives the same launch from the pair. */
+export function meFkArc(d, z0, rng) {
+  const zg = CFG.spFkZ + rng.u() * CFG.spFkZVar;
+  const k = CFG.ballDrag, w = CFG.spWallDist, zw = CFG.bodyH + CFG.spFkWallJump;
+  // Nothing to clear: from inside about thirteen metres the wall is standing on the goal line, and
+  // once it is not comfortably nearer than the goal the solve has no answer anyway. v = 0 hands
+  // meShootBall back its own pace and the strike is the ordinary one.
+  if (d < w + CFG.spFkNear || zg >= zw) return [zg, 0];
+  const A = (Math.exp(k * w) - 1) / k, B = (Math.exp(k * d) - 1) / k, r = A / B;
+  const num = z0 + (zw - z0) / r - zg;
+  if (r >= 1 || !(num > 0)) return [zg, 0];
+  const t = Math.sqrt(num / (4.905 * (1 - r)));
+  // ...and a man can only strike a dead ball so hard and so softly. Clamped, the two constraints
+  // stop both being met and he hits the one he can: from close range that is a flatter ball into
+  // the wall, which is exactly what a free kick from eighteen metres without any dip on it does.
+  return [zg, Math.max(CFG.spFkVMin, Math.min(CFG.spFkVMax, B / t))];
 }
 
 /** A nudge rather than a kick: deflections, dispossessions, blocks. */

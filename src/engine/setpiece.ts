@@ -13,7 +13,7 @@
 import { CFG, ME_DT } from "./config";
 import { meAttrs, meGkSkill , meAttrs } from "./attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meOther, meShotGeom } from "./geometry";
-import { meKickBall, meShootBall } from "./ball";
+import { meFkArc, meKickBall, meShootBall } from "./ball";
 import { GOAL_HALF_W } from "./ball";
 
 // Which foot he kicks with, from where he plays. Left only if he is clearly a left-sided player.
@@ -414,6 +414,24 @@ export function meSPShape(s) {
     dplace(i, base + spJ(sp, 80 + dk), (p._bw0 ?? ME_HALF_W) + spJ(sp, 85 + dk));
     dk++;
   }
+  // TEN YARDS. The wall was the only part of the defending side that knew the ball had to be given
+  // room -- everybody else was placed by his own rule and several of them landed inside it. A free
+  // kick from twenty-four metres put the second line of leftovers on their own thirteen and twenty,
+  // which is four metres in FRONT of the ball, and a centre-half standing there is simply in the
+  // way: measured, the tenth percentile of every free kick blocked was struck into a body 5.1 m
+  // out, well short of the wall's 9.15. The referee moves them back, so this does.
+  const keepOut = CFG.spKeepOut[sp.kind];
+  if (keepOut) for (const p of them) {
+    if (p.off || p.pos === "GK") continue;
+    const dx2 = (p._tx ?? p.x) - sp.x, dy2 = (p._ty ?? p.y) - sp.y;
+    const d2 = Math.hypot(dx2, dy2);
+    if (d2 >= keepOut) continue;
+    // Straight back from the ball, or toward his own goal if he is standing on it.
+    const ux = d2 > 0.05 ? dx2 / d2 : (gx - sp.x) / (Math.abs(gx - sp.x) || 1);
+    const uy = d2 > 0.05 ? dy2 / d2 : 0;
+    p._tx = clampX(sp.x + ux * keepOut); p._ty = clampY(sp.y + uy * keepOut);
+    p._closing = true;
+  }
   // Both sides stay in their own half for a kickoff, and out of the circle.
   if (sp.kind === "kickoff") {
     for (const sd of ME_SIDES) {
@@ -551,9 +569,23 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     mp.fj = -1;
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
     // stood and watched every free kick struck at his goal.
-    gkRead(away, CFG.gkReadMin, CFG.gkReadMax - CFG.gkReadMin);
+    // HE HAS ALL DAY. Every shot in open play buys the keeper a better read the longer the flight
+    // is -- see the tAv bonus in meTick -- and a free kick from twenty-five metres is the longest
+    // flight he ever gets, a full second of a ball he watched being placed. This branch was the one
+    // strike in the game that did not pay him for it, so a dead ball struck from range was read no
+    // better than a shot from the six-yard box.
+    // It BUYS NOTHING, and the honest reason to keep it is consistency rather than effect: swept
+    // 0 against 0.18 over 150 matches, conversion came out 9.5% and 9.9% at a standard error of 1.2,
+    // and goals a match 2.81 and 2.79. A free kick is decided by the wall and by being off target
+    // -- 26% blocked and 24% wide -- long before the keeper's read is asked anything.
+    const fkT = Math.max(0, Math.min(1, (g.d / Math.max(8, CFG.shotV0 + a.shoot / 99 * CFG.shotVSkill)
+                                         - CFG.gkReadT0) / CFG.gkReadTSpan)) * CFG.spFkRead;
+    gkRead(away, CFG.gkReadMin + fkT, CFG.gkReadMax - CFG.gkReadMin);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} strikes the free kick`);
-    meShootBall(mp, rng, gx, away, 1.0 + rng.u() * 1.1, a.shoot / 99, 0, CFG.spFkElev);
+    // Over the wall and under the bar, which is the whole act. meFkArc solves the pair; the target
+    // height used to be a coin toss between one metre and two with the wall nowhere in it.
+    const [fkZ, fkV] = meFkArc(g.d, mp.bz, rng);
+    meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99, 0, CFG.spFkElev, fkV);
     return;
   }
   const q = ti >= 0 ? us[ti] : null;

@@ -90,6 +90,10 @@ export const SP = {
   spRunup: 3.0, spRunupSide: 1.7, spRunTol: 0.60, spLeftOf: 4,
   spShootRange: 27,     // a free kick inside this is struck at goal rather than delivered
   spWall: 4, spWallDist: 9.15,
+  // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
+  // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
+  // and are not in here. Enforced on the TARGETS, so they walk back rather than being teleported.
+  spKeepOut: { freekick: 9.15, corner: 9.15, throw: 2 },
   spMaxBall: 45,        // how far a restart will be played
 };
 export const ME_MATCH_TICKS = ME_SIM_MIN * ME_TPM;
@@ -125,9 +129,30 @@ export const CFG = {
   // The pass length a side is looking for, and how far each step of the passing instruction moves
   // it. passWantW is what a metre away from that length costs in the pass score -- the whole of the
   // instruction's authority now, and deliberately a preference rather than a veto.
-  passWant: 16, passWantStep: 4, passWantW: 0.0006,
+  // passBand is the free half-width around the preferred length -- inside it every ball costs
+  // nothing, outside it the charge starts. loftD/loftDir are the ground-to-air crossover and
+  // how far a notch of directness moves it. Both sweepable; see meDecide.
+  // passWantW was 0.0006 and could not bite at all: mean pass length ran 17.6-20.2 m across all
+  // fourteen styles and Route One sat a metre from Tiki-Taka. Swept at 0.0040 and 0.0025 with the
+  // band in place -- mean pass length from the shortest style to the longest, then the lofted share,
+  // then the blocked spread and goals a match:
+  //   0.0040   12.7 -> 23.5 m   13% -> 62%   spread 0.445   goals 2.85
+  //   0.0025   14.1 -> 22.6 m   16% -> 56%   spread 0.452   goals 2.77
+  // Real football runs about 15 m for a short side to 22 for a direct one, so 0.0025 is the honest
+  // match; it also recovers Control Possession, which 0.0040 left toothless at 1.03 goals and 7.3
+  // shots a match. The two settings are indistinguishable on spread.
+  passWant: 16, passWantStep: 4, passWantW: 0.0025,
+  passBand: 6, loftD: 26, loftDir: 3,
   // The range he is looking to shoot from, and how far each step of chance creation moves it.
-  shotWant: 14, shotWantStep: 5, shotWantW: 0.004,
+  // shotBand is the free zone beyond the preferred range before distance starts costing him, and it
+  // is ZERO because the band was the wrong idea here. A threshold only works if it sits inside the
+  // distribution it is filtering: mean shot distance is about 12.5 m, so shotWant 14 plus a band of
+  // 3 put the neutral cutoff at 17 and the term was inactive for nine shots in ten. Swept 3 / 1.5 /
+  // 0, the gap between Work Ball Into Box and Shoot On Sight ran 0.79 / 1.34 / 1.83 m and the share
+  // of shots from beyond 16 m went 10-20% / 9-25% / 9-34%, with goals a match flat at 2.86 / 2.73 /
+  // 2.88. Kept as a named zero rather than deleted: if the shot distribution ever moves, this is the
+  // knob that has to move with it.
+  shotWant: 14, shotWantStep: 5, shotWantW: 0.004, shotBand: 0,
   // Extra touches per step of the dribbling instruction, before he has to release it.
   // Halved. dribbling turned out to account for ~70% of the entire territorial difference between
   // playstyles -- zeroing it collapsed the field-position spread from 26.4 m to 7.6 m and every style
@@ -290,6 +315,18 @@ export const CFG = {
   // it down. Too loose and nobody ever gets near the ball; too tight and eleven players chase it.
   compactDef: 0.22,
   compactAtk: 0.06,
+  // WIDTH. widthStep is what one notch moves the distance of a slot from the centre line, so the
+  // full range runs about 0.68x to 1.32x of the formation's own shape. widthPull is how much the
+  // same notch stops a man drifting toward the ball when it goes to the other side -- holding width
+  // is the half of the instruction that keeps a switch of play on. widthEdge keeps the widest
+  // setting from posting a full-back on the paint. See meAnchor for what this was fixing.
+  widthStep: 0.16, widthPull: 0.20, widthEdge: 3,
+  // The old literal 14 out of meFindSpace, now a named constant so width can scale it.
+  crowdR: 14,
+  // holdDev is how much a metre of deliberate displacement stiffens the base pull in
+  // meFindSpace, so an instruction defends its own slot. spaceInner is the second search ring,
+  // as a fraction of ME_SPACE_R, which is what lets the search adjust instead of jump.
+  holdDev: 0.35, spaceInner: 0.5,
   engageR: 26,
   // How many defenders leave their zonal spot to pick up a man, by how deep the ball is in our half.
   // Ten was the old value and it destroyed the shape entirely; these are tuned against shots conceded.
@@ -301,6 +338,17 @@ export const CFG = {
   // engine ran 963 carries to 554 passes, which is the opposite of the sport.
   passBase: 1.06,
   recvPress: 1.40,
+  // The same thing for a ball played OVER the man marking him rather than into his feet. See the rp
+  // term in meDecide -- a lofted ball into an area is an aerial contest, and being tight to a man
+  // does far less to stop a header than it does to stop a pass being received. Sharing one
+  // coefficient priced a cross at a defended box's GROUND-pass completion.
+  // Swept 1.40 / 0.55 / 0.30 / 0.15 at blkDrop 14, 36 matches a cell -- balls landing in the box a
+  // match, then crosses, then pass completion and goals:
+  //   2.8 / 0.8 / 79.5% / 2.83     4.4 / 1.1 / 78.4% / 2.92
+  //   4.9 / 1.1 / 77.0% / 2.67     6.0 / 1.4 / 77.7% / 2.83
+  // 0.55 buys 57% more balls into the area for a point of completion. Past it the returns go flat
+  // and the whole game's completion starts paying for it.
+  recvPressHigh: 0.55,
   // ---- distribution and clearances ---------------------------------------------------------
   // Getting rid of it was gated at press > 2.1 -- three opponents inside six metres. Below that bar
   // it did not exist as an option at all, so a keeper being closed down had nothing to choose from
@@ -433,7 +481,23 @@ export const CFG = {
   // 8.5 / 81%, 6.1 / 80%, 5.8 / 68%, 5.4 / 52%. Goals 1.3-1.6 and shots 9.4-10.2 across the whole
   // range, so the high setting was buying nothing. 44 keeps a genuinely high line and leaves eight
   // metres of recovery room behind halfway.
-  blkMin: 10, blkMax: 44, blkDrop: 8, blkDefLine: 6, blkLoe: 3,
+  // blkDrop is the gap the block holds BEHIND the ball, and at 8 m it was the reason nobody in this
+  // game ever stood in a penalty area. The chain: every attacker's off-ball target is clamped to the
+  // offside line (meShape), the offside line is the second-deepest defender, and the second-deepest
+  // defender is this line -- so where the block stands is where the whole attack stands. Measured,
+  // the most advanced attacker was aimed within a metre or two of the offside line in every band on
+  // the pitch. With the ball 20 m out the line sat on 17.3 m and the eighteen-yard box starts at
+  // 16.5, so being in the area was illegal for the entire match: 75% of every pass struck in the
+  // final third had nobody in the box to aim at. A real back four defending a ball 20 m out is on
+  // its own six-yard box, not six metres in front of the ball.
+  // Swept 8 / 11 / 14 / 17 over 36 matches a cell -- offside line with the ball 16-25 m out, then
+  // men in the box with the ball in the final third, then goals and shots a match:
+  //   17.3 / 0.51 / 3.06 / 19.4     16.6 / 0.55 / 2.92 / 17.0
+  //   14.7 / 0.63 / 2.83 / 17.1     14.0 / 0.78 / 2.53 / 16.5
+  // 14 takes the goal rate to 2.83 against a real 2.7-2.8 rather than away from it, which is the
+  // tell that 8 was buying chances by leaving the box undefended. 17 keeps going and costs half a
+  // goal a match for it.
+  blkMin: 10, blkMax: 44, blkDrop: 14, blkDefLine: 6, blkLoe: 3,
   // How deep the block is, from defending your own box to camped in their half. A real low block is
   // about thirteen metres from the last man to the first, not twenty-one: held at 21 the front band
   // sat on the edge of the area while the ball was in it, so only the back four were ever inside.
@@ -459,6 +523,10 @@ export const CFG = {
   // over what span of depth that fades out, and how strongly he holds it against his attacking job.
   // At 0.55 / 0.25 it is the back line plus the deepest midfielder, which is a 4+1 rest shape.
   restMind: 0.55, restTaper: 0.25, restW: 0.7,
+  // How much a notch of WIDTH releases a wide player from rest defence. At 0.35 the widest
+  // setting frees a touchline full-back about half way; a narrow side is untouched, because
+  // its full-backs were never the thing providing the width.
+  restWide: 0.35,
   blkZone: 8, blkTight: 1.6,
   // How far out of his slot a man will step to pick somebody up, and how much he prefers to stay
   // with the man he already had. Without the stickiness the greedy assignment swapped defenders
@@ -594,6 +662,13 @@ export const CFG = {
   // How much the pressure at the spot he is dribbling INTO counts against him, next to the pressure
   // he is already under. This is what makes a packed penalty area something to be broken down
   // rather than walked through.
+  // Swept 1.0 / 1.8 / 2.2 / 2.6 over 90 fixtures a cell, against the finding that EVERY close-range
+  // shot in this engine is carried in -- 0% arrive from a pass into the area, and the man shooting
+  // from 11.5 m against a six-man block picked the ball up at 21.5 and dribbled 15.9 m through it.
+  // Raising this does bite in the right direction: the deep block's xG-conceded penalty over the mid
+  // block runs +0.148 / +0.155 / +0.118 / +0.028 (se ~0.08). But it never inverts -- parity is the
+  // ceiling -- and parity costs goals a match 2.95 -> 2.67. A 30-fixture pass at the same values DID
+  // show an inversion; it was noise, and it is only recorded here so nobody chases it again.
   carryAhead: 1.0,
 };
 export type EngineConfig = typeof CFG;
@@ -1097,6 +1172,9 @@ Object.assign(CFG, {
   // positions (brain.ts) or resolved outcomes (match.ts), which is why measured on the pitch the
   // styles separated hard on defensive signals and came out BACKWARDS on attacking ones -- Control
   // Possession held less of the ball than Catenaccio, Park The Bus more than Tiki-Taka.
+  // The approachPlay thumb on the CLEAR score, extracted from a literal 0.8 so a sweep can
+  // reach it. See the gradient note in meDecide.
+  apClearW: 0.8,
   styleW: 0.020,
   // The carry choice gets its own weight rather than borrowing styleW, which also drives the
   // approachPlay clear term -- they need to move independently.
@@ -1260,6 +1338,15 @@ Object.assign(CFG, {
   // widening open-play elevation did), 0.55 -> 73.8%, 0.30 -> 78.0%, 0.16 -> 77.8%. Real is 76%
   // scored, 19% saved, 2% woodwork. 0.40 sits between the two cells that bracket it.
   spPenElev: 0.40, spFkElev: 0.60,
+  // THE ARC OVER THE WALL. See meFkArc. zWall is bodyH plus how high the wall gets off the ground;
+  // spFkZ..spFkZ+spFkZVar is the band under the bar he tries to drop it into; spFkNear is how much
+  // further out than the wall the ball has to be for there to be an arc worth solving at all, and
+  // the two speed bounds are what a man can actually put through a dead ball.
+  spFkWallJump: 0.35, spFkZ: 1.25, spFkZVar: 0.90, spFkNear: 4,
+  spFkVMin: 13, spFkVMax: 30,
+  // What a long flight buys the keeper on a free kick, on gkReadT0/gkReadTSpan's ramp. Its own key
+  // rather than gkReadTime so a sweep can reach it without moving every shot in open play with it.
+  spFkRead: 0.18,
   // HANDBALL: how high the ball has to strike him to be arm rather than body, and how often the
   // referee gives it when it does.
   // Measured by forcing handP to 1: the geometry -- a ball striking an outfielder above waist
