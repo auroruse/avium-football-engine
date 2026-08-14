@@ -1001,6 +1001,25 @@ Object.assign(CFG, {
   // who is not moving at goal -- 31.0% / 29.2% / 26.3% of such slices. Removing it entirely reads
   // best there and costs the regression (10/21 against 12), and it would also hand Run At Defence
   // back the free lunch this constant exists to charge for. 0.99 keeps both.
+  // WHAT HOLDING ON COSTS. At 0.99 four extra ticks on the ball cost four per cent of retention,
+  // which is nothing -- so Run At Defence bought territory for free and the axis was a gradient
+  // rather than a tactic: swept at 300 blocked fixtures a cell it read -0.072 / -0.019 / +0.091 xGD,
+  // the two ends 3.7 standard errors apart.
+  // The thumb on the carry score was not the cause -- zeroing carryInstrW left the gradient WIDER --
+  // because the territory comes from dribHold extending the touch budget, and a longer budget was
+  // free. This is the price of using it. Swept 0.99 / 0.96 / 0.92 / 0.88 on the isolated axis:
+  //   gradient  0.226 / 0.279 / 0.066 / 0.097     fieldX span  5.4 / 4.2 / 3.0 / 3.0 m
+  // 0.92 is where it stops being a gradient (0.066 against a standard error of 0.038) while three
+  // metres of territory and a dozen passes still separate the ends.
+  // AND IT IS NOT SHIPPABLE, because it charges EVERY side that dwells rather than the instructed
+  // one. At 0.92 the isolated axis is healthy and the whole game is not: the blocked table went to
+  // a spread of 0.523 with GOALS A MATCH AT 2.21, down from 2.77, with shots falling across every
+  // style (5.4-10.9 against 7-11) and carries from about 600 to 510. A fifth of the scoring, to
+  // convert one axis. Left at 0.99.
+  // The lever is real and the diagnosis stands -- dribHold buys territory for free and this is what
+  // it should cost -- so the fix has to charge the dwell of a side that ASKED to run at people,
+  // rather than everybody's. That means the penalty belongs on the instruction rather than on the
+  // global constant, and it is the next thing to try.
   dwellDrop: 0.99,
   // Build-up: what a safe ball is worth when nothing forward is on. Higher means more recycling
   // between attacks, which is what real possessions are made of.
