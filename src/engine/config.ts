@@ -552,6 +552,14 @@ export const CFG = {
   // The missing decision is shoot-versus-carry -- a man with nobody in front of him should drive at
   // the goal rather than strike it from where he stands. That is the next thing, and it is the first
   // lever tonight that has not already been measured and refuted.
+  // AND IT FAILED AGAIN AFTER THAT LEVER LANDED. Re-tested at 0.6 head to head once carryShotW was
+  // in and players would actually use the space: the spread went 0.92 to 1.18 and it hurt the styles
+  // it was built for. Control Possession -- the biggest ball-holder in the game -- lost 0.21 a match,
+  // Park The Bus 0.09. The side that GAINED most was Gegenpress, +0.23, which barely holds the ball
+  // at all: it wins possession back so fast that its own block never tires while everyone else's
+  // does, so slowing recovery is a straight gift to the highest press in the game.
+  // Twice measured, twice refuted, both before and after the decision it was supposedly waiting on.
+  // Do not try a third dose; whatever possession is missing here, it is not defensive inertia.
   chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
   // Metres between adjacent men in a band, and how much wider the bands in front space out. The
   // whole band is capped at blkWidthMax so a seven-man midfield does not span the touchlines.
