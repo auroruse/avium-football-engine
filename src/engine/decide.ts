@@ -305,7 +305,15 @@ export function meDecide(s, rng, side, i, dwell) {
     // defender within 4.5 m of where it lands using a ground pass's radius, and mePassRisk, which
     // charges for the same men again on the same geometry.
     const rp = isHigh ? CFG.recvPressHigh : CFG.recvPress;
-    let ok = (CFG.passBase - d * 0.0072) * Math.exp(-blk * CFG.laneK) * (0.72 + a.pass / 99 * 0.34)
+    // WHAT A LONG BALL COSTS, and it is the only thing directness ever pays. Measured on the isolated
+    // axis, Much More Direct plays SEVEN METRES further up the pitch, scores 0.34 more a match and
+    // concedes 0.10 LESS, for three and a half points of completion -- a free lunch rather than a
+    // trade, and the two styles that max it (Second Ball, Route One) finish first and second in the
+    // head-to-head table with Second Ball beating all thirteen opponents.
+    // Giving the ball away is nearly free when you give it away in their half, so the only lever that
+    // can price directness is how often the long ball fails in the first place. It was a hard-coded
+    // 0.0072 a metre; named and raised so a forty-metre ball is meaningfully worse than a twenty.
+    let ok = (CFG.passBase - d * CFG.passDistK) * Math.exp(-blk * CFG.laneK) * (0.72 + a.pass / 99 * 0.34)
            * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp)) * (0.86 + meAttrs(q).position / 99 * 0.20);
     // The decision now asks the resolution's own question: can anyone reach this ball first? A
     // lofted ball is only cuttable near its ends, so it is judged on a straighter, faster line.

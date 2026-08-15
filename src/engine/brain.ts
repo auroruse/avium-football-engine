@@ -794,7 +794,22 @@ export function meBlock(s, side) {
   const wantDepth = CFG.blkDepthLow
     + Math.max(0, Math.min(1, (ballDepth - 18) / 42)) * (CFG.blkDepth - CFG.blkDepthLow);
   const bs = (mp.blk[side] = mp.blk[side] || { line: wantLine, cy: wantCy, depth: wantDepth });
-  const mv = (wantLine < bs.line ? CFG.blkSlewBack : CFG.blkSlew) * ME_DT;
+  // A BLOCK THAT HAS BEEN CHASED ALL AFTERNOON DOES NOT RESET PERFECTLY. This is the inertia the
+  // note above valCtrlW says is missing: the shape is re-solved every tick, so no side is ever out
+  // of position long enough to be exploited, and therefore keeping the ball buys nothing.
+  // Measured over 1,645 shots with both sides Balanced -- xG per shot against how long the side had
+  // held the ball: 0.167 within a second of winning it, 0.101 at one to three seconds, 0.089 at
+  // three to six, 0.118 after twelve. A worked chance is WORSE than a turnover chance, and the box
+  // refills inside three seconds (4.43 defenders at the turnover, 4.80 by six). Transition is the
+  // only way to create, which is why the three transition styles finish first, second and third and
+  // the two possession styles finish last.
+  // So the longer they keep it, the slower the block recovers its line. It is not a penalty on
+  // defending -- a side that wins the ball back promptly is untouched, and the ramp only starts once
+  // a possession has already outlasted a normal one.
+  const chased = (mp.side !== side && mp.side !== null)
+    ? Math.max(0, Math.min(1, (mp.possT - CFG.chaseFrom) / CFG.chaseRamp)) : 0;
+  const mv = (wantLine < bs.line ? CFG.blkSlewBack : CFG.blkSlew)
+           * (1 - chased * CFG.chaseSlow) * ME_DT;
   bs.line += Math.max(-mv, Math.min(mv, wantLine - bs.line));
   bs.cy += Math.max(-mv, Math.min(mv, wantCy - bs.cy));
   // ...AND ITS DEPTH. Only the line was ever slew-limited. The depth was recomputed straight off the

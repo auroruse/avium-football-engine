@@ -337,6 +337,13 @@ export const CFG = {
   // ratio wrong is what makes a side dribble instead of playing: at 66% passing and 85% carrying, the
   // engine ran 963 carries to 554 passes, which is the opposite of the sport.
   passBase: 1.06,
+  // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
+  // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
+  // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
+  // directness, because a long ball that fails still moves the ball forty metres upfield -- the
+  // opponent wins it in their own half either way. Completion is not the lever; what a side can do
+  // after winning it deep is. Left where it was.
+  passDistK: 0.0072,
   recvPress: 1.40,
   // The same thing for a ball played OVER the man marking him rather than into his feet. See the rp
   // term in meDecide -- a lofted ball into an area is an aerial contest, and being tight to a man
@@ -515,6 +522,22 @@ export const CFG = {
   // own area is genuinely compact: back four on the six-yard line, midfield on the penalty spot,
   // forwards on the edge.
   blkDepthLow: 15, blkDepth: 32, blkStretch: 14, blkSlide: 0.55,
+  // Inertia. chaseFrom is when a possession has outlasted an ordinary one and the block starts to
+  // tire (24 ticks, six seconds -- the point the box has finished refilling); chaseRamp is how long
+  // it takes to tire fully; chaseSlow is how much of its recovery speed it loses at the end of that.
+  // OFF, AND THE REASON IS THE FINDING. Swept 0 / 0.45 / 0.75 over 1,645 shots. It WORKS -- at 0.75 a
+  // side that has kept the ball twelve seconds faces 3.71 defenders in the box against 4.27 -- and it
+  // buys nothing: the chance is worth 0.110 instead of 0.118, and turnover chances got BETTER, 0.167
+  // to 0.191. Emptying the box does not improve the shot, for the third time tonight and for the
+  // reason meShotP already gives: conditional on shooting, the shooter has already found his line.
+  // What actually separates a turnover chance from a worked one is DISTANCE and nothing else --
+  // 10.7 m against 12.1 -- through the exponential in meShotP. Chance quality here is geometry.
+  // So possession can only pay if a side with space gets CLOSER before shooting, and it does not:
+  // at chaseSlow 0.75 the box emptied and the shot distance went the wrong way, 12.1 m to 12.5.
+  // The missing decision is shoot-versus-carry -- a man with nobody in front of him should drive at
+  // the goal rather than strike it from where he stands. That is the next thing, and it is the first
+  // lever tonight that has not already been measured and refuted.
+  chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
   // Metres between adjacent men in a band, and how much wider the bands in front space out. The
   // whole band is capped at blkWidthMax so a seven-man midfield does not span the touchlines.
   blkSpacing: 8.5, blkSpaceStep: 2.0, blkWidthMax: 44,
