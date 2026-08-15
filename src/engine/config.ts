@@ -665,11 +665,6 @@ export const CFG = {
   // How far up the pitch the ball must be before ANYBODY runs beyond it. A counter-attack starts by
   // definition with the ball deep, so this number decides whether the engine can counter at all.
   runMinDepth: 30,
-  // ...or enough grass behind THEIR line, which is the counter-attack's own gate. See meRuns.
-  // Calibrated off the measured range of where a back four actually stands: 29.9 m from its own goal
-  // at defLine -2 and 36.9 at +2, so 34 opens the gate against a neutral-or-higher line and keeps it
-  // shut against a side already sitting deep, where there is nothing to run onto. Untested.
-  runRoom: 34,
   runThirdDepth: 52,
   offsideGrace: 2.2,
   // How far beyond the line he can misjudge it, at the bottom of the rating scale -- a top player

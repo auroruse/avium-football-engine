@@ -86,24 +86,25 @@ export function meRuns(s, side) {
   if (brk < 0) return;                                          // hold shape: nobody breaks yet
   const runCap = Math.max(1, CFG.runMax + cre * CFG.creRuns + brk);
   const minD = brk > 0 ? CFG.runMinDepth * CFG.brkDepth : CFG.runMinDepth;
-  // WHAT MATTERS IS THE GRASS, NOT THE POSTCODE. The gate asked how far up the pitch the ball was
-  // and nothing else, which is exactly inverted for the situation that makes sitting deep worth
-  // choosing: a side that wins it on its own eighteen-yard line against a high line has sixty metres
-  // in front of it -- the best counter-attacking position in football -- and was forbidden from
-  // sending anybody, because the BALL was only eighteen metres up. Meanwhile a side that wins it on
-  // halfway against a packed block, with nowhere to run, was waved through.
-  // That is why depth is a pure cost here. Measured across the whole range, a deep block defends
-  // about as well as a neutral one and scores markedly less -- GF 1.18 at -2 against 1.45 at 0 --
-  // and the transition dividend that pays for conceding territory in real football never arrives.
-  // Catenaccio and Park The Bus sit at -2 and are the two worst styles in the game; Counter sits at
-  // -1, wins it just high enough to clear this gate, and is one of the best.
-  // `room` is the space between their last man and their own goal, which is what a run in behind is
-  // actually run into: a high line leaves fifty metres of it, a low block leaves none. Added as an
-  // ALTERNATIVE qualifier rather than a replacement, so an organised attack keeps the old rule and
-  // only the counter case is new. It is a trade in both directions -- pushing your own line up now
-  // genuinely opens you to the break, which is the price a high line is supposed to pay.
-  const room = Math.abs(meGoalX(side) - off);
-  if (mp.idx < 0 || active >= runCap || (ballDepth < minD && room < CFG.runRoom)) return;
+  // TRIED AND REJECTED: gating the runs on the GRASS rather than on where the ball is. The rule
+  // asks how far up the pitch the ball is and nothing else, which is inverted for the one situation
+  // that makes sitting deep worth choosing -- a side winning it on its own eighteen-yard line
+  // against a high line has sixty metres in front of it and was forbidden from sending anybody.
+  // Added as an alternative qualifier (ballDepth < minD && room < 34, room being the gap between
+  // their last man and their own goal) so organised attacks kept the old rule. A/B on the same
+  // fixtures and seeds, 360 blocked fixtures a rung, gate off / gate on:
+  //   defLine      -2       -1        0       +1       +2      (se ~0.047)
+  //   xGD       -0.078   +0.109   +0.190   -0.037   -0.184     off
+  //   xGD       -0.091   +0.095   +0.142   +0.089   -0.234     on
+  //   GF      1.25/1.38  1.44/1.51  1.65/1.63  1.49/1.65  1.71/1.78
+  //   GA      1.29/1.47  1.33/1.32  1.36/1.45  1.65/1.65  1.93/2.01
+  // THE MECHANISM WORKS AND THE TRADE IS BAD, which is the useful half. A deep side really does get
+  // its dividend -- GF at -2 goes 1.25 to 1.38, the counter this was written to enable -- and pays
+  // more for it than it earns, GA 1.29 to 1.47, for a net of nothing. The only rung that gained is
+  // +1, the opposite of the target, and the ownThird span NARROWED from 11.9 passes to 10.3: it
+  // bought that by making the rungs more alike. Do not re-attempt this; the counter-attack is not
+  // what depth is missing.
+  if (mp.idx < 0 || active >= runCap || ballDepth < minD) return;   // nothing to run onto
   const carrier = us[mp.idx];
   for (let i = 0; i < us.length; i++) {
     const p = us[i];
