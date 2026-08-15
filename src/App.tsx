@@ -566,8 +566,16 @@ export const STYLE_PRESET = {
   // Win it back high and go again. The only style that maxes both press and line.
   gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
   // Keep it, move it, never hurry. Presses to restart possession, not to score off the turnover.
+  // ELEVEN INSTRUCTIONS AND NINE OF THEM COST. Last in the head-to-head, beating two of thirteen and
+  // losing to the side that carries no instructions at all. The two dropped here are the two that are
+  // NOT what Tiki-Taka is: gkDist is classified in this file as an execution choice rather than an
+  // identity axis (it is in STRAT_EDITABLE, excluded from fit damping) and costs 0.08 whichever way
+  // it is set, and tackling -1 is incidental at 0.10. Together that is a fifth of a goal of pure tax
+  // for nothing anyone would call tiki-taka.
+  // What makes it the style is untouched: shortest passing in the game, narrow, high line, presses to
+  // restart possession, holds shape, works the ball in, expressive.
   tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
-                   possWon: -1, chanceCreation: -1, creativity: 1, tackling: -1, gkDist: -1, width: -1 },
+                   possWon: -1, chanceCreation: -1, creativity: 1, width: -1 },
   // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
   verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
                    possWon: 1, dribbling: 1, creativity: 1, gkDist: -1, width: -1 },
@@ -594,8 +602,17 @@ export const STYLE_PRESET = {
   // the pitch. Kept because a control side genuinely should hold a high line and because it is now
   // two notches of line from Zona Mista rather than one, but a possession side that cannot gain
   // territory is a progression problem in the pass model, not something a stamp can reach.
-  possession:    { pressingLOE: 0, defLine: 1, passingDir: -1, approachPlay: -1, possLost: 0,
-                   possWon: -1, tackling: -1, gkDist: -1 },
+  // ...AND THE LINE IS GONE, on this stamp's own evidence. The note above records what it bought:
+  // 0.6 m of possession position and 0.07 of separation from Zona Mista. Measured since, a notch of
+  // defensive line is the most expensive instruction in the game at ANY setting -- 0.23 at one notch,
+  // 0.37 at two -- and this side had six instructions of which every single one was a net cost, which
+  // is why it finished last of fourteen head to head, beating one opponent.
+  // gkDist goes with it: this file classifies it as an execution choice rather than an identity axis
+  // (STRAT_EDITABLE, excluded from fit damping) and it costs about 0.08 whichever way it is set.
+  // What a control side IS survives intact -- shortest passing outside Tiki-Taka, plays out from the
+  // back, holds shape rather than countering, stays on its feet, and presses at nobody.
+  possession:    { pressingLOE: 0, passingDir: -1, approachPlay: -1, possLost: 0,
+                   possWon: -1, tackling: -1 },
   // Width, overlaps, and licence to take a man on.
   wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
   // Sit off, then hurt them the moment it breaks.
@@ -677,7 +694,14 @@ export const STYLE_PRESET = {
   // The signature is kept because it is the design; the separation comes from the one thing the
   // concept names that Route One has no claim on. You do not spread out to contest a knock-down,
   // you compress around where it lands.
-  secondball:    { pressingLOE: 1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 1,
+  // DIRECT, NOT ROUTE ONE. passingDir 2 is the biggest single buff in the game -- worth +0.37 on the
+  // isolated axis, more than twice anything else -- and the two styles that maxed it finished first
+  // and second head to head, with this one beating all thirteen opponents and its WORST result still
+  // a win. Nothing else in the game has no bogey team.
+  // Dropped to 1, which also sharpens the pair: Route One keeps 2 and is THE long-ball style; this
+  // one goes direct and contests the knock-down, which is what its name says and what the width
+  // stamp already expresses.
+  secondball:    { pressingLOE: 1, defLine: -1, passingDir: 1, approachPlay: 1, possLost: 1,
                    possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1,
                    gkDist: 1, width: -1 },
   // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
