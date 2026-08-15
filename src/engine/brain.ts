@@ -144,6 +144,28 @@ export function meAnchor(s, side, bd, bw, neutral) {
   // all: it is a window, not a style, and it closes in a couple of seconds.
   const wonT = mp.side === side ? mp.possT : 1e9;
   const push = Math.max(0, 1 - wonT / CFG.transT) * CFG.transPush * (st.possWon || 0);
+  // KEEPING THE BALL HAS TO BUY GROUND, and until now it bought none. Measured at 360 blocked
+  // fixtures, the two styles with the MOST possession had the LEAST territory and the FEWEST shots
+  // in the game -- Tiki-Taka 54.3% and 37.0 m and 7.8 shots, Control Possession 52.0 and 35.8 and
+  // 8.1, against Counter's 43.5% of the ball, 44.0 m and 10.0 shots. Four of the seven styles
+  // outside the noise band sat in the bottom tail and three of them were possession sides, so this
+  // is one mechanism producing most of the imbalance rather than four stamps being wrong.
+  // The reason is circular and it is structural: every line in here is a function of where the BALL
+  // is, so a side's shape follows its ball instead of its ball following its shape. A team that
+  // keeps it in front of a low block can pass sideways all afternoon and never move the anchor,
+  // because the anchor is measured from the ball it is passing sideways.
+  // What breaks the circle is time. A settled possession is one the opposition has stopped being
+  // able to contest, and a real side answers that by stepping the whole shape up. The engine
+  // already knew the concept -- meTactical has computed `settled` off possT for as long as
+  // settleTicks has existed -- and did nothing with it: mp.phase is written every tick, carries its
+  // own hysteresis, and IS READ NOWHERE. This is what it was for.
+  // It needs no stamp, because it targets itself: a side that strings possessions together earns it
+  // and a side that hits it long and loses it never reaches the ramp. And it is paid for on the
+  // other side of the ball -- a shape that has stepped up is the shape that transDrop has to bring
+  // home when the possession finally ends.
+  const settle = mp.side === side
+    ? Math.max(0, Math.min(1, (mp.possT - CFG.settleTicks) / CFG.settleRamp)) : 0;
+  const hold = settle * CFG.settlePush;
   // GK DISTRIBUTION is a decision the whole side takes, not just the keeper: Short means come and get
   // it and Long means get up the pitch for the second ball.
   // This half covers the keeper holding it in OPEN play, after a catch or a pickup. A stoppage runs
@@ -157,9 +179,16 @@ export function meAnchor(s, side, bd, bw, neutral) {
   // the offside line moved 17.3 m to 16.7 and men in the area 0.46 to 0.48, which is nothing. This
   // is the shape of the side IN POSSESSION (t is high when you have the ball) and it barely touches
   // the DEFENDING block, which is meBlock and is where the line really comes from.
-  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + push + gkPush));
+  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + gkPush));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
-  const lineM = lineD + (lineA - lineD) * t;
+  // THE PUSH GOES ON THE BLEND, NOT INSIDE IT. It used to be a term of lineA, and lineA is weighted
+  // by t -- which comes off the possession EMA, and the EMA is at its LOWEST in exactly the seconds
+  // after you win the ball. So the window and the weight were fighting: transPush was at its maximum
+  // at the one moment t was near 0.25, and twelve metres of break arrived on the pitch as three.
+  // That is the "moved the anchor line by a few metres" this instruction was written off for.
+  // Clamped to the union of the two envelopes, because a push of +/-12 on an unclamped blend can put
+  // a line behind its own goal or past the halfway flag.
+  const lineM = Math.max(7, Math.min(64, lineD + (lineA - lineD) * t + push + hold));
   // Under siege the whole side squeezes toward its own goal: a block defending its box is ~22 m
   // deep. Held at its full midfield depth, the front of it sat 46 m out while the ball was in the
   // area, so the box itself was defended by two men.
@@ -660,7 +689,24 @@ export function meBlock(s, side) {
   // This is the missing phase, and it is what possLost has always meant: drop, or swarm it.
   const lostT = mp.side !== side && mp.side !== null ? mp.possT : 1e9;
   const trans = Math.max(0, 1 - lostT / CFG.transT);        // 1 the instant it goes, 0 by transT
-  const drop = trans * CFG.transDrop * (1 - (st.possLost || 0) * CFG.transPressW);
+  // ONLY THE COUNTER-PRESS END SCALES THIS. Regroup used to double the drop to 30 m and it bought
+  // literally nothing -- the -1 column was identical to neutral on every behaviour measure in the
+  // isolated axis. Two reasons, and they compound: the drop DECAYS to zero by transT, so it is a
+  // three-and-a-half second pulse that ends where it started, and the block slides at running pace.
+  // Men cannot chase a pulse. Cancelling the drop (the +1 end) is a different proposition because it
+  // holds for the window rather than pulsing, and it is unclamped whenever the ball is lost in
+  // midfield -- at ballDepth 50 it is the difference between a wanted line of 21 and one of 36.
+  // (High up the pitch both clamp to blkMax and the +1 end does its work through the extra presser
+  // in meDuties instead.)
+  // ...AND THE REGROUP END GETS A SUSTAINED ONE INSTEAD. Urgency alone was measured and it is not
+  // enough: sprinting men into a block that is still clamped to blkMax wins the ball back HIGHER,
+  // which is the counter-press's job. fieldX read 40.5 against a neutral 38.9 -- the axis moving
+  // backwards. What separates regrouping from counter-pressing is not speed, it is that a regrouping
+  // side CONCEDES the territory and re-forms behind the ball, and it does that for as long as they
+  // have it rather than for three and a half seconds. So this half does not decay: it holds while
+  // the other side is in possession and lifts the moment we win it back.
+  const drop = trans * CFG.transDrop * (1 - Math.max(0, st.possLost || 0) * CFG.transPressW)
+             + (lostT < 1e9 && (st.possLost || 0) < 0 ? CFG.regroupDrop : 0);
   // THE BACK LINE'S OWN INSTRUCTION. Offside became a real rule with a real free kick, and the one
   // instruction named after it moved the keeper's sweeper distance by 1.2 m and nothing else -- so
   // the setting called Offside Trap sprang no trap, and dlBehavior sat on the noise floor.
@@ -1093,6 +1139,7 @@ export function meShape(s, side) {
     // the space search to hold it rather than trade it away for the nearest patch of grass.
     const _a0 = meAnchor(s, side, p._bd, p._bw, true);
     p._dev = Math.hypot(_a[0] - _a0[0], _a[1] - _a0[1]);
+    p._anx = _a0[0]; p._any = _a0[1];        // kept as a vector too -- see the restore below the leash
     let ax = _a[0], ay = _a[1];
 
     let tx = ax, ty = ay;
@@ -1417,10 +1464,53 @@ export function meShape(s, side) {
                   : (p._duty === "press" || p._duty === "cover") ? CFG.leashPress : CFG.leash;
       if (ld > leash) { tx = ax0 + lx / ld * leash; ty = ay0 + ly / ld * leash; }
     }
+    // SOLVE ONCE, rather than chasing the stages one at a time. Measured end to end, both sides on
+    // the same style, mean distance off centre for ten outfielders:
+    //                anchor  after duty  after rest  after leash  target  stood
+    //   Wing Play +2  15.09    15.54       13.44       13.50      12.99   12.57
+    //   Balanced   0  12.08    13.39       11.86       11.83      11.39   11.11
+    //   Tiki-Taka -1   9.59    11.47       10.44       10.34      10.06    9.93
+    // An anchor range of 5.50 m arrives as 2.64. There is no villain: the space search inflates the
+    // narrow end (+1.88 against Wing Play's +0.45, because a compact side crowd-penalises its own
+    // central candidates), rest defence pulls proportionally toward a block that is rightly narrower
+    // than the attack, and the smoothing takes a flat slice. Each is doing its job. THE SUM is the
+    // instruction, which is why widthStep, basePullW and the search radius each bought a fraction
+    // and the balance table never moved -- three fractions of a thing that is being divided.
+    // So the invariant is asserted instead of defended. Whatever the chain did, the component of the
+    // target ALONG the deliberate part of the anchor is restored, and only along that axis: the
+    // crowd search, the rest pull and the leash keep their full effect perpendicular to it. He still
+    // avoids traffic and still works inside his zone -- he does it from the width and the height he
+    // was told to hold, instead of trading them away first. A man the system never moved has dl ~ 0
+    // and is untouched, so a side carrying no instructions cannot be shifted by this at all, which
+    // is the control every previous attempt at this failed.
+    if (attacking && p._anx !== undefined) {
+      const dx = ax - p._anx, dy = ay - p._any, dl = Math.hypot(dx, dy);
+      if (dl > 0.5) {
+        const ux = dx / dl, uy = dy / dl;
+        const got = (tx - p._anx) * ux + (ty - p._any) * uy;   // how much of the ask survived
+        const add = Math.max(0, dl - got) * CFG.devRestore;    // never past it: add is clamped at 0
+        tx += ux * add; ty += uy * add;
+      }
+    }
     // Offside holds everyone except a man running in behind, who is gambling on the timing.
     if (p._run !== "behind" && (tx - off) * dir > 0 && (tx - mp.bx) * dir > 0) tx = off - dir * 0.6;
     tx = Math.max(1.5, Math.min(PITCH_L - 1.5, tx));
     ty = Math.max(1.5, Math.min(PITCH_W - 1.5, ty));
+    // REGROUP, and it is urgency rather than geometry. Everybody upfield of the ball in the seconds
+    // after losing it is committed: _closing takes a man off the lazy ramp in match.ts -- which
+    // otherwise pins him at 30% of his pace for the last four metres -- and off target smoothing
+    // below. That is the difference between jogging back into the shape and sprinting into it, and
+    // it is what the doubled block drop was trying and failing to buy. The men upfield of the ball
+    // are the ones who were committed to the attack, so the instruction reaches exactly them, and
+    // it costs the stamina of running rather than nothing.
+    // GATED ON THE TARGET BEING BEHIND HIM, not on him being upfield of the ball. The first version
+    // used the ball test and moved the axis the WRONG WAY -- fieldX 40.7 against a neutral 38.8 --
+    // because _closing only makes a man reach his target sooner, and a side that loses it in the
+    // final third has a block whose front slots are up there with it. So "urgency" bought a faster
+    // arrival into an ADVANCED shape. Pointing it at men whose target is goal-side of where they
+    // stand means it can only ever accelerate a retreat, which is the whole of what regrouping is.
+    if (!attacking && (st.possLost || 0) < 0 && mp.possT < CFG.transT
+        && (tx - p.x) * dir < 0 && p.pos !== "GK") p._closing = true;
     // Target smoothing stops off-ball players twitching, but a man closing the ball must track it
     // exactly -- filtered, he permanently chased where the carrier WAS and never arrived.
     // Only the man going for the BALL tracks it frame-exact. Snapping markers onto their man as

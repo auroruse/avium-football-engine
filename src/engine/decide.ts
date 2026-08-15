@@ -109,11 +109,22 @@ export function meDecide(s, rng, side, i, dwell) {
   // Every option below is scored the same way -- what you gain times the chance of getting it, minus
   // what you lose times the chance of not. Charging that cost to passes ALONE made carrying strictly
   // dominant and passing collapsed to a fifth of its rate, so it has to be applied to all three.
-  // How hard this player takes his orders. See CFG.obeyBase.
-  const obey = CFG.obeyBase + CFG.obeySpan * (1 - meMind(p));
+  // How hard this player takes his orders. See CFG.obeyBase -- and CFG.creObey, because creative
+  // freedom IS this quantity: Expressive backs his own read over the touchline, Disciplined does
+  // what the side was told to do. Note this multiplies styleW and riskM below, so it reaches every
+  // instruction the side carries rather than adding a channel of its own.
+  const obey = (CFG.obeyBase + CFG.obeySpan * (1 - meMind(p)))
+             * (1 - (st.creativity || 0) * CFG.creObey);
   const styleW = CFG.styleW * obey;
+  // HOLD SHAPE, in the seconds after winning it. The instruction had exactly one channel and it was
+  // a removal -- `if (brk < 0) return` in meRuns, which withholds runners -- so it gave things up
+  // and bought nothing back: measured, it scored 0.18 fewer than neutral and saved 0.05. Not
+  // breaking is only half of it. The other half is that the man who has just won the ball MAKES SURE
+  // OF IT, and that is a risk appetite for a few seconds rather than a shape. Counter needs no
+  // equivalent here: its channels are the extra runner and the depth gate, and both already bite.
+  const held = (st.possWon || 0) < 0 && mp.side === side && mp.possT < CFG.transT ? CFG.holdSafe : 0;
   // Risk appetite multiplies EVERY loss term below, so it has to be a factor rather than an offset.
-  const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey);
+  const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey + held);
   const lose = CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y));
   let best = null, bestSc = -Infinity;
   // He does not see his own options perfectly. Every score below is what he THINKS it is worth, and
@@ -404,6 +415,10 @@ export function meDecide(s, rng, side, i, dwell) {
   // you do not dribble out of trouble by running into more of it.
   const cdx = p.x + dir * CFG.carryAdv;
   const carryPress = Math.max(press, mePressure(s, side, cdx, p.y) * CFG.carryAhead);
+  // NOTE THAT `drb` IS A SCORE AND NOT A ROLL. It is computed here, handed out on the carry option,
+  // and the handler in match.ts returns without ever reading it -- the only thing that actually takes
+  // the ball off a carrier is meTackle finding him. So every attempt to charge the carrier through
+  // this number has removed his option rather than priced it, which is the whole history below.
   const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + carryPress * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7)))
             * Math.pow(CFG.dwellDrop, Math.max(0, dwell || 0));
   // Same for running with it: he loses it where he has taken it to.

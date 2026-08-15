@@ -571,6 +571,34 @@ export const CFG = {
   // exactly one player holds, and everyone else has been given something better to do.
   balLag: 0.055,
   settleTicks: 40,
+  // Ticks from settled to the full step-up, and how far the whole shape climbs once a possession
+  // has stopped being contested. See meAnchor: this is the only thing in the engine that converts
+  // TIME on the ball into GROUND, and without it a possession side's anchor is measured from the
+  // ball it is passing sideways, so keeping it bought nothing at all.
+  // OFF, AND BLOCKED BEHIND MESHAPE RATHER THAN WRONG. Two findings, in order.
+  // The gate was set where possessions end. At settleTicks 40 -- ten seconds of unbroken
+  // possession before the ramp even starts -- settlePush 8 and 16 both moved Tiki-Taka's fieldX
+  // by NOTHING: 37.2 stock, 36.6 and 36.6 swept, with Control Possession equally flat. Reopened at
+  // settleTicks 8 / settleRamp 16 the mechanism does reach: Tiki-Taka 37.2 -> 38.0, Zona Mista
+  // 36.5 -> 38.1, Park The Bus 36.8 -> 37.9.
+  // And that is the second finding, because it is a metre of arrival for a TWELVE metre ask, and
+  // Park The Bus is not a possession side. The push is being eaten between meAnchor and the pitch
+  // exactly as the width instruction is -- see the long note in meAnchor, "asked 19.73, targeted
+  // 13.81, stood 13.00" -- and what survives is a small universal nudge rather than a possession
+  // side's reward. Control Possession, one of the two styles this exists for, did not move at all
+  // and its xGD fell to -0.243.
+  // So territory is not reachable from the anchor by ANY term, and that is now three independent
+  // confirmations of the same wall: width, this, and the general finding that defensive
+  // instructions bite because they feed meBlock's wantLine while possession instructions do not.
+  // The bottom of the balance table -- Tiki-Taka, Control Possession, Catenaccio, Park The Bus --
+  // is downstream of meShape's erosion, and no constant in this file can fix it. Left at 0 with the
+  // mechanism intact, because it is one number away from live once the target pipeline is fixed.
+  settleRamp: 40, settlePush: 0,
+  // How much of the anchor's deliberate displacement is restored after the positioning chain has
+  // eroded it. 1 is the principled value -- the instruction arrives -- and anything less is an
+  // arbitrary fraction of a thing that is already being divided three ways. Left as a knob because
+  // the shape of a real side is a tuned quantity and this is the one lever over all of it.
+  devRestore: 1,
   phaseHyst: 2,
   // Off-ball brains are staggered rather than run every slice: a quarter of the side re-evaluates each
   // tick, so the cost is spread and nobody twitches.
@@ -1019,7 +1047,37 @@ Object.assign(CFG, {
   // The lever is real and the diagnosis stands -- dribHold buys territory for free and this is what
   // it should cost -- so the fix has to charge the dwell of a side that ASKED to run at people,
   // rather than everybody's. That means the penalty belongs on the instruction rather than on the
-  // global constant, and it is the next thing to try.
+  // global constant.
+  // TRIED, AND IT FAILS THE SAME WAY. dwellDrib steepened this drop by max(0, dribbling), so only
+  // the side that bought the extra slices paid for them and the neutral game was untouched by
+  // construction. Swept on the isolated axis, 90 blocked fixtures a cell:
+  //   dwellDrib     0        0.03      0.06      0.09      (span se ~0.085)
+  //   xGD span   +0.156    +0.176    -0.137    -0.104
+  //   fieldX +1    41.6      38.1      35.7      34.8      (neutral ~38.5)
+  //   passes +1      88        98       105       109      (neutral ~103)
+  // The territory dies before the edge does. At 0.03 the whole 3.5 m Run At Defence gains is already
+  // gone and the span has not moved; at 0.06 the span has flipped but so has the identity -- a side
+  // told to run at people now plays DEEPER than a neutral one and passes MORE. Territory parity is
+  // near 0.028 and the span crosses zero near 0.047, so no setting buys the trade.
+  // WHY ALL THREE ATTEMPTS FAIL: `drb` in decide.ts is a SCORE, never a roll. The carry handler in
+  // match.ts returns without reading it, and the only thing that takes the ball off a carrier is
+  // meTackle. So charging this number cannot make carrying cost possession, only make him stop
+  // choosing it -- carryInstrW, the global dwellDrop and the targeted dwellDrib all removed the
+  // option rather than pricing it.
+  // THE AXIS IS FLAT NOW, AND NOT BECAUSE OF ANY OF THIS. Re-measured at 180 blocked fixtures a cell
+  // after the positioning fix (devRestore, in meShape) landed, it reads -0.018 / -0.009 / +0.028
+  // against a standard error of 0.042: a span of 0.046, inside one se end to end, where it was
+  // -0.072 / -0.019 / +0.091 at 3.7 se. Delivering the instruction faithfully to the pitch removed
+  // the free lunch that four attempts at pricing it could not.
+  // The outcome-side lever WAS then tried, since it was the one thing left: a sixth term in
+  // meTackle's `angle`, scaling with slices past the touch budget, so a man who has been running
+  // with it is easier to dispossess. It reads mp.hold rather than the instruction, so it prices the
+  // behaviour and not the stamp, and it is the right shape. It is also strictly harmful here --
+  // against the tkwDwell = 0 control on the same seeds it reopened the gradient to 0.261 at six
+  // standard errors, pointing the WRONG WAY, with Run At Defence conceding 1.09 against the
+  // control's 1.41. Reverted whole; match.ts is untouched.
+  // The lesson for the next person: measure whether the defect still exists before fixing it. This
+  // one had already been fixed somewhere else.
   dwellDrop: 0.99,
   // Build-up: what a safe ball is worth when nothing forward is on. Higher means more recycling
   // between attacks, which is what real possessions are made of.
@@ -1099,6 +1157,27 @@ Object.assign(CFG, {
   // sends a second man at the ball instead, which is a counter-press. transPush is the mirror for
   // the side that has just WON it, driven by possWon: break now, or keep it and stay compact.
   transT: 14, transDrop: 15, transPressW: 1.0, transPush: 12,
+  // How much deeper a regrouping side sits for the WHOLE of the opposition's possession, as against
+  // transDrop's pulse. About one step of blkDefLine, so Regroup reads as a line-step lower while
+  // they have it and nothing at all while we do -- which is what makes it a transition instruction
+  // rather than a second copy of defLine.
+  regroupDrop: 7,
+  // What Hold Shape adds to riskM for the length of the window: how much dearer losing it is to a
+  // side that has just won it and been told to make sure of it. An addend rather than a factor
+  // because it stacks with creativity, which is the same quantity for the whole match.
+  holdSafe: 0.7,
+  // CREATIVE FREEDOM IS OBEDIENCE, and this engine already had the variable: obey is how hard a man
+  // takes his orders as against his own read of what is in front of him. Every other channel the
+  // instruction had was an expressive-end perk -- an extra runner, a wider shoulder, a discount on
+  // losing it -- so Disciplined was an instruction with nothing on the other side of it, and it
+  // measured as no instruction at all: 79.8 completion against neutral's 79.6, 50.4 possession
+  // against 49.9. Now Disciplined EXECUTES THE REST OF THE PLAN HARDER, which is a benefit rather
+  // than the absence of a licence, and Expressive plays what he sees at the cost of the side's shape
+  // being what the coach asked for.
+  // Swept 0 / 0.15 / 0.30 on the isolated axis at 90 blocked fixtures a cell, reading the gap
+  // between Disciplined and neutral: completion 0.6 / 0.8 / 1.5 points and possession 0.8 / 2.1 /
+  // 2.9. Monotone, and 0.30 is where the end that used to be invisible is plainly a different side.
+  creObey: 0.30,
   // The team defensive line (teamAIcontroller.cpp:91-128): a default height moved by mentality,
   // dragged back by whichever threat is deepest, never below 6 m. The trap band compresses
   // stragglers UP onto the line so the back four holds its stagger while stepping together.
