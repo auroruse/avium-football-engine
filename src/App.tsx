@@ -924,14 +924,43 @@ const FIT_KEY_ROLE = { width: "wide", dribbling: "wide",
                        passingDir: "cmid", approachPlay: "cmid", possWon: "cmid", possLost: "cmid",
                        creativity: "cmid", chanceCreation: "fwd",
                        pressingLOE: "all", tackling: "def", defLine: "def" };
-const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
-const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
-const _isFitCMid = (sp) => sp==="CM"||sp==="DM"||sp==="AM";
+// A WING-BACK IS NOT A WINGER, AND A DM IS NOT AN ATTACKING MIDFIELDER. Membership of a role used to
+// be a yes/no: six different positions all counted as fully "wide", so a 3-5-2's wing-backs made it a
+// perfect Wing Play side and a holding midfielder was worth exactly what a number ten was worth to
+// Tiki-Taka. That is the same flattening as the missing-winger bug, one level down -- the shape
+// technically fields the role, so nothing is charged.
+// Each position now contributes a WEIGHT to each role. Supply is the sum of those weights, so two
+// wing-backs are 1.2 wingers rather than 2, and quality is their weighted mean. Full-backs carry a
+// quarter of the width, which is why a back four gives a shape SOME wide presence without being a
+// wide system, and the wide men carry a little of the full-back role, which retires the old
+// no-fullbacks special case: a 3-4-3 is covered by its wide players rather than exempted by a branch.
+const FIT_ROLE_W = {
+  LW:  { wide: 1.00, fb: 0.15 },              RW:  { wide: 1.00, fb: 0.15 },
+  LM:  { wide: 0.80, fb: 0.40, cmid: 0.30 },  RM:  { wide: 0.80, fb: 0.40, cmid: 0.30 },
+  LWB: { wide: 0.60, fb: 1.00, def: 0.45 },   RWB: { wide: 0.60, fb: 1.00, def: 0.45 },
+  LB:  { wide: 0.25, fb: 1.00, def: 1.00 },   RB:  { wide: 0.25, fb: 1.00, def: 1.00 },
+  CB:  { def: 1.00 },
+  DM:  { cmid: 0.80, def: 0.40 },
+  CM:  { cmid: 1.00 },
+  AM:  { cmid: 0.85, fwd: 0.30 },
+  ST:  { fwd: 1.00 },
+  GK:  { gk: 1.00 },
+  // Squads carrying only a broad pos rather than a specific one. Deliberately blunt: an unspecified
+  // defender is most of a centre-half and a bit of a full-back, and nothing is a winger by accident.
+  DEF: { def: 0.90, fb: 0.35, wide: 0.10 },
+  MID: { cmid: 0.85, wide: 0.20 },
+  FWD: { fwd: 0.95 },
+};
+const fitRoleW = (sp, role) => (role === "all" ? (sp === "GK" ? 0 : 1) : (FIT_ROLE_W[sp]?.[role] ?? 0));
 // HOW MANY OF EACH A STYLE NEEDS ON THE PITCH, not just how good they are. Anything unlisted needs
 // one. This is the half computeStyleFit never had: it asked whether your wide men were good and
 // never whether you had any.
 const STYLE_FIT_NEED = {
-  wingplay:      { wide: 2, fb: 2, fwd: 1 },
+  // IN GRADED UNITS, NOT BODIES. Since FIT_ROLE_W a full-back supplies a quarter of the width and a
+  // wing-back three-fifths, so a back four hands any shape 0.5 wide units for nothing -- against a
+  // headcount of 2 that is a quarter of the requirement met by defenders. 2.5 is what a genuine wide
+  // system fields: two actual wingers plus the full-backs behind them. A 3-5-2 supplies 1.2 of it.
+  wingplay:      { wide: 2.5, fb: 2, fwd: 1 },
   tikitaka:      { cmid: 3, def: 4, fwd: 1 },
   possession:    { cmid: 3, def: 4, fwd: 1 },
   verticaltiki:  { cmid: 3, def: 4, fwd: 1 },
@@ -956,30 +985,26 @@ function _fitParts(style, squad) {
   const own = starters.length ? starters.reduce((a, p) => a + fitEffOvr(p), 0) / starters.length : 65;
   const need = STYLE_FIT_NEED[style] || {};
   const roles = {};
-  const grp = (key, pred) => {
-    const m = starters.filter(p => pred(p.spos || p.pos));
+  const grp = (key) => {
+    const m = starters.filter(p => fitRoleW(p.spos || p.pos, key) > 0);
     // A MISSING POSITION IS NOT A 65-RATED PLAYER. An empty group used to score a flat 65, so a
     // shape with nobody wide "had" two average wingers and Wing Play on a 75-rated side computed
     // 0.94 -- the entire basis of the style absent, for six per cent. Empty now scores the squad's
     // own average, which is neutral on QUALITY, and the absence is charged as SUPPLY below.
-    const os_ = m.map(fitEffOvr);
-    const mean = os_.length ? os_.reduce((a, b) => a + b, 0) / os_.length : own;
+    // Weighted by how much of this role each man actually is, so a wing-back lifts the wide group
+    // less than a winger does and drags it less when he is poor.
+    const ws = m.map(p => fitRoleW(p.spos || p.pos, key)), os_ = m.map(fitEffOvr);
+    const wsum = ws.reduce((a, b) => a + b, 0);
+    const mean = wsum ? os_.reduce((a, o, i) => a + o * ws[i], 0) / wsum : own;
     // How far this role's WORST man falls below its own average. Charged relative to how lopsided
     // the squad is in general (see penBar), because a blend toward the minimum is always negative --
     // uncentred it is a flat tax on having a style at all, and Balanced pays no fit, so it would
     // quietly make the no-instruction style the strongest thing in the game.
+    // Supply is the SUM of the weights, not a headcount: two wing-backs are 1.2 wingers.
     roles[key] = { avg: mean, pen: os_.length ? FIT_WEAK * (mean - Math.min(...os_)) : 0,
-                   miss: Math.max(0, 1 - m.length / (need[key] ?? 1)) };
+                   miss: Math.max(0, 1 - wsum / (need[key] ?? 1)) };
   };
-  grp("wide", _isFitWide);
-  // No true fullbacks in the shape (3-4-3, 4-2-4) means the wide players ARE the width from deep --
-  // fall back to them rather than charging a shortfall for a role the formation fills differently.
-  grp("fb", starters.some(p => _isFitFB(p.spos || p.pos)) ? _isFitFB : _isFitWide);
-  grp("fwd", sp => sp === "ST" || sp === "FWD");
-  grp("cmid", _isFitCMid);
-  grp("def", sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
-  grp("gk", sp => sp === "GK");
-  grp("all", sp => sp !== "GK");
+  for (const k of ["wide", "fb", "fwd", "cmid", "def", "gk", "all"]) grp(k);
   // The squad's typical lopsidedness across the four outfield roles, so the weak-link term measures
   // whether THIS role is unusually top-heavy rather than whether the squad has any spread at all.
   const ks = ["wide", "cmid", "def", "fwd"].filter(k => roles[k]);
