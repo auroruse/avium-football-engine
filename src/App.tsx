@@ -852,7 +852,11 @@ const STYLE_FIT_SPOS = {
   // Everything runs through the middle third.
   tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 },
   // There is nowhere to hide in a press -- every outfielder has to be able to do it.
-  gegenpress:    { all: 0.55, def: 0.25, gk: 0.20, mid: 74.7, span: 58 },
+  // cmid is weighted, not just needed: computeStyleFit only charges a shortfall on a role the style
+  // WEIGHTS, so a need on an unweighted role is silently dead. Gegenpress asked for a midfield
+  // overload it never weighted and scored a flat 1.000 for every shape in the game.
+  // Weights still sum to 1.0, which the (avg - own) mapping depends on.
+  gegenpress:    { all: 0.40, cmid: 0.20, def: 0.20, gk: 0.20, mid: 74.7, span: 58 },
   // Absorb, then hurt them: the front men who finish it and the back line that survives until then.
   counterattack: { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },
   // A back line and a goalkeeper, and enough legs in front of them to screen it.
@@ -867,7 +871,7 @@ const STYLE_FIT_SPOS = {
   catenaccio:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
   secondball:    { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },             // as counterattack
   zonamista:     { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
-  lanuestra:     { all: 0.55, def: 0.25, gk: 0.20, mid: 74.7, span: 58 },             // as gegenpress
+  lanuestra:     { all: 0.40, cmid: 0.20, def: 0.20, gk: 0.20, mid: 74.7, span: 58 }, // as gegenpress
   // A mid-block is the one shape here that is genuinely midfield-AND-defence led, so it does not
   // inherit cleanly from either the cmid-heavy or the def-heavy curve. Weights are its own; mid and
   // span are interpolated between the two it sits between rather than fitted from scratch.
@@ -937,7 +941,7 @@ const FIT_KEY_ROLE = { width: "wide", dribbling: "wide",
 const FIT_ROLE_W = {
   LW:  { wide: 1.00, fb: 0.15 },              RW:  { wide: 1.00, fb: 0.15 },
   LM:  { wide: 0.80, fb: 0.40, cmid: 0.30 },  RM:  { wide: 0.80, fb: 0.40, cmid: 0.30 },
-  LWB: { wide: 0.60, fb: 1.00, def: 0.45 },   RWB: { wide: 0.60, fb: 1.00, def: 0.45 },
+  LWB: { wide: 0.60, fb: 1.00, def: 0.70 },   RWB: { wide: 0.60, fb: 1.00, def: 0.70 },
   LB:  { wide: 0.25, fb: 1.00, def: 1.00 },   RB:  { wide: 0.25, fb: 1.00, def: 1.00 },
   CB:  { def: 1.00 },
   DM:  { cmid: 0.80, def: 0.40 },
@@ -956,24 +960,42 @@ const fitRoleW = (sp, role) => (role === "all" ? (sp === "GK" ? 0 : 1) : (FIT_RO
 // one. This is the half computeStyleFit never had: it asked whether your wide men were good and
 // never whether you had any.
 const STYLE_FIT_NEED = {
-  // IN GRADED UNITS, NOT BODIES. Since FIT_ROLE_W a full-back supplies a quarter of the width and a
-  // wing-back three-fifths, so a back four hands any shape 0.5 wide units for nothing -- against a
-  // headcount of 2 that is a quarter of the requirement met by defenders. 2.5 is what a genuine wide
-  // system fields: two actual wingers plus the full-backs behind them. A 3-5-2 supplies 1.2 of it.
+  // DEMANDING SPECIALISTS, NOT ADEQUATE COVERAGE. These were headcounts of what an ordinary shape
+  // already fields, so a plain 4-3-3 satisfied nearly every style and the supply term went silent for
+  // three quarters of club-by-style pairs. A system should want MORE of its key role than a generic
+  // formation supplies, or picking it says nothing about your squad.
+  // Graded units (see FIT_ROLE_W), and what the common shapes actually supply:
+  //             wide   cmid    def    fwd
+  //   4-3-3     2.50   3.00   4.00   1.00
+  //   4-4-2     2.10   2.60   4.00   2.00
+  //   4-2-3-1   2.50   2.45   4.80   1.30
+  //   3-5-2     1.20   3.00   4.40   2.00
+  // Two actual wingers with the full-backs behind them. A 3-5-2 supplies 1.2 of it.
   wingplay:      { wide: 2.5, fb: 2, fwd: 1 },
-  tikitaka:      { cmid: 3, def: 4, fwd: 1 },
-  possession:    { cmid: 3, def: 4, fwd: 1 },
-  verticaltiki:  { cmid: 3, def: 4, fwd: 1 },
-  cholismo:      { cmid: 3, def: 4, fwd: 1 },
-  gegenpress:    { def: 4 },
-  lanuestra:     { def: 4 },
-  counterattack: { fwd: 2, def: 4 },
-  routeone:      { fwd: 2, def: 4 },
-  secondball:    { fwd: 2, def: 4 },
-  parkthebus:    { def: 4, cmid: 2 },
-  catenaccio:    { def: 4, cmid: 2 },
-  zonamista:     { def: 4, cmid: 2 },
+  // A midfield overload: more than the three a 4-3-3 gives, so only a shape built around the middle
+  // clears it. A 4-4-2 diamond (DM, two CM, AM) supplies 3.65.
+  tikitaka:      { cmid: 3.5, def: 4, fwd: 1 },
+  possession:    { cmid: 3.5, def: 4, fwd: 1 },
+  verticaltiki:  { cmid: 3.5, def: 4, fwd: 1 },
+  cholismo:      { cmid: 3.2, def: 4, fwd: 1 },
+  // Pressing is legs in midfield as much as a back line -- there is nowhere to hide in it, and a
+  // side with two holders and nobody ahead of them cannot sustain one.
+  // 3.4, not 3: at 3 every common shape cleared it and Gegenpress scored a flat 1.000 for all of
+  // them -- a style that asks nothing of your squad, which is the whole defect this table exists to
+  // fix. Sustaining a press is a midfield overload for the same reason Tiki-Taka is.
+  gegenpress:    { def: 4, cmid: 3.4 },
+  lanuestra:     { def: 4, cmid: 3.4 },
+  // A front two AND somebody arriving. A flat 4-4-2 supplies exactly 2.0 and is a shade short.
+  counterattack: { fwd: 2.2, def: 4 },
+  routeone:      { fwd: 2.2, def: 4 },
+  secondball:    { fwd: 2.2, def: 4 },
+  // Five at the back, which is what these shapes are for: a back four supplies 4.0 against 4.5, a
+  // back five with wing-backs 4.4. Plus a screen in front of it rather than a lone holder.
+  parkthebus:    { def: 4.5, cmid: 2.5 },
+  catenaccio:    { def: 4.5, cmid: 2.5 },
+  zonamista:     { def: 4.5, cmid: 2.5 },
 };
+
 // One pass over the XI, resolved PER ROLE. Both the scalar fit (which the abstract engine's
 // applyStyleFit still wants) and the per-role fit the positional engine damps instructions with are
 // collapses of the same numbers, so they cannot disagree about a squad.
