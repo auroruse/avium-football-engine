@@ -498,6 +498,11 @@ export const CFG = {
   // tell that 8 was buying chances by leaving the box undefended. 17 keeps going and costs half a
   // goal a match for it.
   blkMin: 10, blkMax: 44, blkDrop: 14, blkDefLine: 6, blkLoe: 3,
+  // The window blkMin/blkMax describe moves WITH defLine, at the same step the value moves, so the
+  // instruction survives the clamp instead of being eaten by it -- see meBlock. These two are the
+  // absolute stops that remain: a back four never inside its own six-yard box, and never past the
+  // halfway line, whatever it was told.
+  blkFloor: 6, blkCeil: 52,
   // How deep the block is, from defending your own box to camped in their half. A real low block is
   // about thirteen metres from the last man to the first, not twenty-one: held at 21 the front band
   // sat on the edge of the area while the ball was in it, so only the back four were ever inside.
@@ -660,6 +665,11 @@ export const CFG = {
   // How far up the pitch the ball must be before ANYBODY runs beyond it. A counter-attack starts by
   // definition with the ball deep, so this number decides whether the engine can counter at all.
   runMinDepth: 30,
+  // ...or enough grass behind THEIR line, which is the counter-attack's own gate. See meRuns.
+  // Calibrated off the measured range of where a back four actually stands: 29.9 m from its own goal
+  // at defLine -2 and 36.9 at +2, so 34 opens the gate against a neutral-or-higher line and keeps it
+  // shut against a side already sitting deep, where there is nothing to run onto. Untested.
+  runRoom: 34,
   runThirdDepth: 52,
   offsideGrace: 2.2,
   // How far beyond the line he can misjudge it, at the bottom of the rating scale -- a top player
@@ -1194,6 +1204,38 @@ Object.assign(CFG, {
   // trade: they have the ball all game and get nothing but distance and blocked efforts. Here it
   // buys neither, which is why defLine measures as a real 0.69 buff. The fix is resistance to
   // entering a crowded area, not more squeezing of the shape -- see the siegeWide experiment.
+  // WHERE IT STANDS NOW: the top half of the axis works and the bottom half is inert. Isolated on a
+  // Balanced side, 180 blocked fixtures a rung:
+  //   defLine   -2      -1       0      +1      +2      (se ~0.045)
+  //   xGD    +0.053  +0.032  +0.023  -0.033  -0.076
+  //   GA       1.02    1.11    1.08    1.26    1.56
+  // Raising the line moves xGD by -0.099 over two rungs; lowering it moves +0.030, inside one se,
+  // and GA across 0 / -1 / -2 is indistinguishable. So defLine is a three-rung instruction wearing
+  // five, and the deep rungs are what make Catenaccio and Park The Bus the worst styles on the
+  // table. It is NOT a delivery problem: passes from own third run 37.3 / 39.2 / 40.9 as it drops,
+  // so the side genuinely plays deeper and gains nothing by it.
+  // Two of the three candidate causes are now closed. Shot QUALITY is correctly blind to bodies and
+  // must stay that way (see meShotP: conditional on a shot, the shooter already found his line) --
+  // measured, 5.83 defenders in the box and 3.56 both yield 0.097 xG a shot. And the PASS route is
+  // already stopped: Park The Bus allows 0.1 balls into its area against Gegenpress's 3.6.
+  // What is left is volume, and it does not respond. Broken down by origin against a Balanced
+  // opponent, 60 matches a cell, everything below is what the deep side CONCEDED per match:
+  //   defLine   total  open play  dead ball  goals |  from a pass  carried >5m  off a turnover
+  //     -2       8.33     6.13      2.20      1.37 |     4.68         0.50          2.75
+  //      0       7.57     5.87      1.70      1.22 |     4.58         0.47          2.52
+  //     +2      10.02     8.10      1.92      1.88 |     6.23         0.85          2.87
+  // Two things fall out. CARRYING IS NOT THE ROUTE -- 0.50 shots a match, 8% of open play -- so the
+  // never-rolled carry score is not how a low block gets opened up, and no amount of contesting the
+  // dribbler will fix this. 76% arrive from a PASS. And dropping below neutral does not merely fail
+  // to help, it HURTS: more shots, more open-play xG, more goals and 29% more dead balls than a
+  // neutral line.
+  // THE DEAD BALLS ARE INVISIBLE TO THE BALANCE TABLE. out.xgS is incremented in exactly one place,
+  // the open-play shot branch in match.ts, so set-piece xG is counted NOWHERE while set-piece goals
+  // count in GF/GA like any other. Dead balls are 20-27% of the shots conceded here and deep sides
+  // concede disproportionately many, so xGD -- the statistic every balance reading in this file is
+  // built on -- is blind to a fifth of the game and blind unevenly across the styles it compares.
+  // Fix the metric before tuning anything else on this axis; a deep block may be being judged on
+  // three quarters of its own defensive record.
   siegeDepth: 28, siegeSpan: 0.58,
   // Markers when the ball is in and around our box. Four was a midfield number.
   markSiege: 5, markSiegeDepth: 26,
@@ -1436,6 +1478,28 @@ Object.assign(CFG, {
   // widening open-play elevation did), 0.55 -> 73.8%, 0.30 -> 78.0%, 0.16 -> 77.8%. Real is 76%
   // scored, 19% saved, 2% woodwork. 0.40 sits between the two cells that bracket it.
   spPenElev: 0.40, spFkElev: 0.60,
+  // WHAT A DEAD BALL IS WORTH, because until now it was worth nothing. out.xgS was incremented in
+  // exactly one place -- the open-play shot branch in match.ts -- so a penalty and a free kick
+  // struck at goal counted in out.shots and in the SCORE, and contributed no xG at all. Dead balls
+  // are 20-27% of the shots a side concedes and a deep block concedes disproportionately many, so
+  // xGD, the statistic every balance reading in this file rests on, was blind to a fifth of the game
+  // and blind unevenly across the styles it was comparing.
+  // Both figures are this engine's own measured conversion, not an outside model: the penalty from
+  // the spPenRead sweep above (74% scored at the shipped aim and read, against a real 76%), the free
+  // kick from the 150-match sweep recorded at the shooting branch in setpiece.ts (9.5% and 9.9% at a
+  // standard error of 1.2). They are constants because both are the same shot every time -- a
+  // distance model for direct free kicks is the obvious refinement and is not needed to unbias the
+  // comparison, which is all this fixes.
+  // WHAT IT CHANGED, at 360 blocked fixtures before and after. The behaviour table is byte-identical
+  // -- possession, territory, passes, tackles, carries, fouls, and goals a match at 2.74 -- because
+  // this is a measurement change and moves nothing on the pitch. Only the xGD column moved, and it
+  // moved along exactly the axis predicted: sides that WIN dead balls gained (Vertical Tiki-Taka
+  // +0.145, Wing Play +0.109, La Nuestra +0.088, Gegenpress +0.076) and sides that CONCEDE them lost
+  // (Park The Bus -0.136, Zona Mista -0.122, Control Possession -0.085, Catenaccio -0.074).
+  // The spread went 0.486 -> 0.611, so the old metric was under-reporting the imbalance by about a
+  // quarter, and flattering the deep styles specifically. Every balance reading taken before this
+  // is biased in that direction; do not compare across the fix.
+  spPenXg: 0.75, spFkXg: 0.097,
   // THE ARC OVER THE WALL. See meFkArc. zWall is bodyH plus how high the wall gets off the ground;
   // spFkZ..spFkZ+spFkZVar is the band under the bar he tries to drop it into; spFkNear is how much
   // further out than the wall the ball has to be for there to be an arc worth solving at all, and

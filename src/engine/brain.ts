@@ -86,7 +86,24 @@ export function meRuns(s, side) {
   if (brk < 0) return;                                          // hold shape: nobody breaks yet
   const runCap = Math.max(1, CFG.runMax + cre * CFG.creRuns + brk);
   const minD = brk > 0 ? CFG.runMinDepth * CFG.brkDepth : CFG.runMinDepth;
-  if (mp.idx < 0 || active >= runCap || ballDepth < minD) return;   // nothing to run onto
+  // WHAT MATTERS IS THE GRASS, NOT THE POSTCODE. The gate asked how far up the pitch the ball was
+  // and nothing else, which is exactly inverted for the situation that makes sitting deep worth
+  // choosing: a side that wins it on its own eighteen-yard line against a high line has sixty metres
+  // in front of it -- the best counter-attacking position in football -- and was forbidden from
+  // sending anybody, because the BALL was only eighteen metres up. Meanwhile a side that wins it on
+  // halfway against a packed block, with nowhere to run, was waved through.
+  // That is why depth is a pure cost here. Measured across the whole range, a deep block defends
+  // about as well as a neutral one and scores markedly less -- GF 1.18 at -2 against 1.45 at 0 --
+  // and the transition dividend that pays for conceding territory in real football never arrives.
+  // Catenaccio and Park The Bus sit at -2 and are the two worst styles in the game; Counter sits at
+  // -1, wins it just high enough to clear this gate, and is one of the best.
+  // `room` is the space between their last man and their own goal, which is what a run in behind is
+  // actually run into: a high line leaves fifty metres of it, a low block leaves none. Added as an
+  // ALTERNATIVE qualifier rather than a replacement, so an organised attack keeps the old rule and
+  // only the counter case is new. It is a trade in both directions -- pushing your own line up now
+  // genuinely opens you to the break, which is the price a high line is supposed to pay.
+  const room = Math.abs(meGoalX(side) - off);
+  if (mp.idx < 0 || active >= runCap || (ballDepth < minD && room < CFG.runRoom)) return;
   const carrier = us[mp.idx];
   for (let i = 0; i < us.length; i++) {
     const p = us[i];
@@ -388,6 +405,17 @@ export function meDuties(s, side) {
       // Tops the ball up to a TOTAL, rather than adding on top of whatever retention already kept
       // there: added unconditionally it stacked on the men who were already engaged and put three
       // defenders on the ball 8.4% of the time.
+      // TRIED AND REJECTED: scaling the swarm with depth, so a besieged box converges more men than a
+      // midfield one (swarmMax + round((1 - ballDepth/swarmDepth) * 2), i.e. up to four on the goal
+      // line). The motive was sound -- a block at -2 keeps 5.83 men in its own box against a high
+      // line's 3.56 and concedes exactly the same 4.0 shots at an identical 0.097 xG each, so the
+      // extra bodies were scenery. It is strictly worse. Measured against a common attack, 60 matches
+      // a cell, shots conceded / xG conceded at defLine -2 / 0 / +2:
+      //   flat swarmMax   4.0 / 4.0 / 7.3     0.38 / 0.43 / 0.71
+      //   scaled          5.7 / 5.7 / 8.6     0.57 / 0.58 / 0.75
+      // Every rung concedes MORE and -2 is still identical to 0. Every extra man at the ball is a man
+      // not marking somebody, and the marking is the half that works: Park The Bus allows 0.1 balls
+      // into its area. Do not send more men at the carrier -- the shots are not arriving that way.
       for (let k = us.reduce((n, p) => n + (p._duty === "press" ? 1 : 0), 0); k <= CFG.swarmMax; k++) {
         const [si, sdist] = nearest(mp.bx, mp.by, free());
         if (si < 0 || sdist > CFG.swarmR) break;
@@ -467,6 +495,21 @@ export function meDuties(s, side) {
       threats.push([meDanger(meOther(side), q.x, q.y) + runBonus, j]); }
     threats.sort((a, b) => b[0] - a[0]);
     const runners = them.filter(q => (q._runT ?? 0) > 0 && q.pos !== "GK").length;
+    // TRIED AND REJECTED: scaling the marker budget with how many men are actually back, so a deep
+    // block's surplus bodies pick opponents up instead of standing in the shape. nMark keys on where
+    // the BALL is and nothing else, so a block on defLine -2 with 5.83 men in its own area marked as
+    // many opponents as a high line caught out with 3.56, and the passer always had a free man --
+    // measured over 200 matches controlled for distance, a ball into the box completed 49.3% against
+    // 0-2 defenders and 42.9% against six, flat inside the noise.
+    // It makes the deep block WORSE. Every man back beyond a spare-count of 7 picking somebody up,
+    // at 360 blocked fixtures a rung, goals against at defLine -2 / -1 / 0 / +1 / +2:
+    //   before   1.35 / 1.26 / 1.33 / 1.53 / 1.73     xGD at -2  -0.080
+    //   after    1.43 / 1.36 / 1.32 / 1.47 / 1.80     xGD at -2  -0.191
+    // Box-pass completion did fall in aggregate, 51.3% to 45.5% over the 8-20 m band, and it bought
+    // nothing: the men doing the marking leave the block, and the block is worth more than the marks.
+    // That is the SECOND confirmation of the same law tonight -- the swarm experiment took men out of
+    // the shape to contest the ball and also made it worse. A low block cannot be improved by giving
+    // its members a different job. Whatever is wrong with depth here, it is not the duties.
     const nMark = (ballDepth < CFG.markSiegeDepth ? CFG.markSiege
                  : ballDepth < 34 ? 4 : ballDepth < 60 ? 2 : 1) + runners;
     // Assigned as one problem, not one pick at a time. Picking greedily hands the same region to
@@ -726,7 +769,23 @@ export function meBlock(s, side) {
   // block's depth problem is real -- 15.3 m of spread against a wanted 18-26, and 3.6 of ten men
   // inside the box against 4.5-7 -- but it is not the line's floor, and it is not blkDepthLow
   // either, which moved the spread 15.0 to 16.4 and nothing else.
-  const wantLine = Math.max(CFG.blkMin, Math.min(CFG.blkMax,
+  // THE BOUNDS CARRY THE INSTRUCTION INSTEAD OF OVERRULING IT. blkMin/blkMax were fixed, and they
+  // ate defLine almost entirely: measured over 25,000 defending samples a rung, 63-66% of all
+  // defending time was spent pinned against a bound, and the high clamp rose monotonically with the
+  // instruction -- 44% / 51% / 56% at -2 / 0 / +2 -- which is the instruction being applied and then
+  // erased. The line the back four actually held spanned 31.6 to 35.3 m across the whole range: 3.7
+  // metres of an instruction worth 6 a step, so 24 metres nominal arrived as 15%.
+  // Delivery below this line is faultless, which is why it took so long to find. Ask -> block loses
+  // 0.1 m and block -> where the men stand loses 0.3, at every rung. Nothing downstream is broken;
+  // the ASK never contained the instruction in the first place.
+  // Shifting the window by the same step the value moves is exact rather than approximate:
+  // clamp(a + k, lo, hi) eats k, clamp(a + k, lo + k, hi + k) is clamp(a, lo, hi) + k. So a side
+  // told to sit deep gets a deeper sane range and one told to push up gets a higher one, and the
+  // absolute bounds below only stop a line leaving the pitch or crossing halfway.
+  const lineShift = st.defLine * CFG.blkDefLine;
+  const lineLo = Math.max(CFG.blkFloor, CFG.blkMin + lineShift);
+  const lineHi = Math.min(CFG.blkCeil, CFG.blkMax + lineShift);
+  const wantLine = Math.max(lineLo, Math.min(lineHi,
     ballDepth - CFG.blkDrop + st.defLine * CFG.blkDefLine + st.pressingLOE * CFG.blkLoe - drop + dlA));
   const wantCy = ME_HALF_W + (mp.by - ME_HALF_W) * CFG.blkSlide;
   // The block slides at running pace, because it is a body of men rather than a formula.

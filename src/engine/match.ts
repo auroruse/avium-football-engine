@@ -203,7 +203,13 @@ export function meMove(s, rng) {
       // 3.4 m away from the man he was pressing -- measured, he was standing on his own target 7% of
       // the time and 4.14 m off it -- which is the whole reason nothing was ever contested: 43% of
       // shots had a defender inside 2 m and 2% were blocked, because near is not in the way.
-      const stopAt = mp.sp ? 0.12 : p.pos === "GK" ? 0.25 : onBall ? 0
+      // ...and it is 0.12 only for the men meSPShape actually PLACED. Keyed on mp.sp alone it
+      // tightened the arrival tolerance ten-fold for all twenty-two the instant a restart was
+      // called, so every player already standing still on his mark was abruptly no longer arrived
+      // and took a step for no reason. That is the twitch you can see on the whistle. The precision
+      // is for the taker, the wall and the men on their spots -- _spSet is exactly that set, and it
+      // is cleared for everybody at the top of meSPShape each time it runs.
+      const stopAt = (mp.sp && p._spSet) ? 0.12 : p.pos === "GK" ? 0.25 : onBall ? 0
                    : i === scramble ? (deadBall ? 0 : CFG.scrambleStop)
                    : p._closing ? CFG.closeStop : 1.3;
       if (d < stopAt) { p.vx = 0; p.vy = 0; continue; }   // arrived; stop rather than jiggle on the spot

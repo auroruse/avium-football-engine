@@ -553,6 +553,10 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   if (sp.kind === "penalty") {
     const away = ME_HALF_W + (rng.u() < 0.5 ? -1 : 1) * GOAL_HALF_W * CFG.spPenAim;
     out.shots[side]++;
+    // A penalty is a shot and it is worth what this engine converts it at. See CFG.spPenXg: xgS was
+    // open-play only, so a side that won or conceded dead balls was invisible to the balance table.
+    if (out.xgS) out.xgS[side] += CFG.spPenXg;
+    if (out.shotDist) out.xg = (out.xg || 0) + CFG.spPenXg;
     mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
@@ -565,6 +569,11 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     const g = meShotGeom(side, sp.x, sp.y);
     const away = ME_HALF_W + (sp.y <= ME_HALF_W ? 1 : -1) * GOAL_HALF_W * (0.35 + a.shoot / 99 * 0.5);
     out.shots[side]++;
+    // Same for the free kick, at the conversion measured in the sweep noted below. The shotDist
+    // histogram is deliberately NOT fed from here -- it exists to describe open-play shot SELECTION,
+    // and a dead ball is struck from wherever the foul happened.
+    if (out.xgS) out.xgS[side] += CFG.spFkXg;
+    if (out.shotDist) out.xg = (out.xg || 0) + CFG.spFkXg;
     mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick };
     mp.fj = -1;
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
