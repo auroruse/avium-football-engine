@@ -152,6 +152,9 @@ export function meDecide(s, rng, side, i, dwell) {
   const jit = (c) => (clsW * cls[c] + ownW * (rng.u() + rng.u() - 1)) * miss;
   // Shoot.
   const sp = meShotP(s, side, p, p.x, p.y);
+  // What the shot becomes if he takes it a stride nearer. Hoisted out of the shot branch because the
+  // CARRY needs it too -- see the drive-at-goal term below.
+  const spAhead = meShotP(s, side, p, p.x + dir * CFG.carryAdv, p.y);
   // A hopeless shot is not an option, it is a giveaway. Every other option is scored against losing
   // the ball, so when a man is swamped and nothing is on, a shot worth a tenth of a percent can win
   // simply by being the least negative thing available -- which is where an attempt from forty
@@ -166,7 +169,6 @@ export function meDecide(s, rng, side, i, dwell) {
                 * Math.max(0, Math.min(1, 1 - (gsh.d - range) / CFG.shotRangeFade));
     // Would carrying closer improve this chance, or ruin it? meShotP already knows about the bodies
     // in the lane and the pressure at a point, so ask it about the spot he would dribble to.
-    const spAhead = meShotP(s, side, p, p.x + dir * CFG.carryAdv, p.y);
     const nowBetter = sp > spAhead ? (sp - spAhead) / Math.max(sp, 1e-4) : 0;
     const appetite = 1 + meAtkW(p) * 0.30 + sight * CFG.shotSight + nowBetter * CFG.shotNowW;
     // CHANCE CREATION IS A RANGE, the same way passing directness is. It used to multiply the value
@@ -430,7 +432,20 @@ export function meDecide(s, rng, side, i, dwell) {
   const drb = Math.max(CFG.carryFloor, Math.min(0.97, 1 - (0.05 + carryPress * CFG.carryRisk) * (1.7 - a.pace / 99 * 0.7)))
             * Math.pow(CFG.dwellDrop, Math.max(0, dwell || 0));
   // Same for running with it: he loses it where he has taken it to.
-  const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72)
+  // DRIVING AT GOAL IS WORTH THE SHOT IT UNLOCKS, and nothing was paying for that. The shot branch
+  // asks whether to strike NOW rather than carry -- `nowBetter`, how much the chance decays if he
+  // takes it a stride further on -- and there is no mirror: when carrying would make the shot far
+  // better, the carry gets no credit for it. It is scored on position alone, and meVal is nearly
+  // flat through the final third, so a man driving from eighteen metres to twelve gains almost
+  // nothing on this line while very nearly doubling what his shot is worth.
+  // That asymmetry is why chance quality here is pure geometry. Measured over 1,645 shots, a chance
+  // taken within a second of winning the ball is worth 0.167 from 10.7 m and one worked for twelve
+  // seconds is worth 0.118 from 12.1 m -- the entire gap is those two metres. And when the box was
+  // deliberately emptied (see chaseSlow) shot distance went the WRONG way, 12.1 m to 12.5: the space
+  // appeared and nobody walked into it, because walking into it paid nothing.
+  // Multiplied by drb, because he only gets the better shot if he still has the ball when he arrives.
+  const spGain = Math.max(0, spAhead - sp);
+  const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72 + spGain * CFG.carryShotW)
             - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.

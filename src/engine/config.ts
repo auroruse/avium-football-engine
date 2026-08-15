@@ -440,6 +440,21 @@ export const CFG = {
   // carrying; the bodies that will converge on him as he does argue the other way. A clean sight from
   // twenty metres with the box packed in front of him is a better chance than a crowded one from
   // twelve, and that -- not distance alone -- is when a man should hit it.
+  // The mirror of shotNowW: what a man gains by carrying INTO a better chance rather than striking
+  // the one he has. See the drive-at-goal term in meDecide.
+  // Swept 0 / 0.25 / 0.45 / 0.8 over 1,645 shots, both sides Balanced. Worked chances (twelve
+  // seconds or more on the ball) and the shot they produce:
+  //   0     0.118 xG from 12.1 m   6.9 shots a match   0.741 xG a match
+  //   0.25  0.123 from 11.4        5.7                 0.756
+  //   0.45  0.160 from 10.8        4.9                 0.738
+  //   0.8   0.169 from 10.8        4.3                 0.680
+  // 0.45 buys a 36% better worked chance from a metre and a bit closer at NO cost in total output --
+  // it redistributes rather than adds, which is what driving at goal instead of striking from range
+  // looks like. Past that the carry starts beating shots it should not and the total falls away.
+  // NOTE WHAT IT DOES NOT FIX: turnover chances improved too, 0.167 to 0.234, so transition still
+  // out-creates possession by about the same ratio. This corrects an asymmetric decision; it does
+  // not make keeping the ball pay.
+  carryShotW: 0.45,
   shotNowW: 4.5,
   // How clear the sight of goal is, in the SHOT PROBABILITY itself rather than merely in appetite.
   // Two shots from fourteen metres -- one with five bodies in the way, one clean through on the
