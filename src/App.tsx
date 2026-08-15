@@ -873,33 +873,122 @@ const STYLE_FIT_SPOS = {
   // span are interpolated between the two it sits between rather than fitted from scratch.
   cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, mid: 74.5, span: 61 },
 };
+// What a full weight of missing personnel costs. 0.60 puts a style whose entire key group is absent
+// at roughly 0.73 fit, which is well inside applyStyleFit's damping toward Balanced without being a
+// death sentence -- you can play a system you are not built for, badly.
+const FIT_MISS = 0.60;
+// A MAN OUT OF POSITION IS NOT THE PLAYER HIS RATING SAYS HE IS. natPos has existed on every player
+// since the formation-change work and is read NOWHERE in src/engine -- a striker fielded at centre
+// half was worth his full OVR to the shape, the block and the fit alike. Fit is the honest place to
+// charge it: the question it asks is whether this squad can carry out this system, and eleven men
+// in the wrong shirts cannot.
+// Positions sit on a depth/width grid, so the cost is a distance rather than a table of pairs.
+// Depth is the expensive axis -- a striker at the back is a catastrophe, a left-back on the right is
+// an inconvenience -- and the keeper is its own case, because there is no such thing as nearly a
+// goalkeeper.
+const FIT_POS_XY = { GK:[0,0], CB:[1,0], LB:[1,-1], RB:[1,1], DEF:[1,0],
+                     LWB:[2,-1], RWB:[2,1], DM:[2,0],
+                     CM:[3,0], LM:[3,-1], RM:[3,1], MID:[3,0],
+                     AM:[4,0], LW:[4,-1], RW:[4,1],
+                     ST:[5,0], FWD:[5,0] };
+const FIT_OOP_DEPTH = 4, FIT_OOP_SIDE = 3, FIT_OOP_GK = 25;
+const fitEffOvr = (p) => {
+  const o = p.ovr || 65, np = p.natPos || p.spos || p.pos, sp = p.spos || p.pos;
+  if (!np || np === sp) return o;
+  if ((np === "GK") !== (sp === "GK")) return Math.max(20, o - FIT_OOP_GK);
+  const a = FIT_POS_XY[np], b = FIT_POS_XY[sp];
+  if (!a || !b) return o;
+  return Math.max(20, o - Math.abs(a[0] - b[0]) * FIT_OOP_DEPTH - Math.abs(a[1] - b[1]) * FIT_OOP_SIDE);
+};
+// WHICH ROLE POWERS WHICH INSTRUCTION. meStrategyFor scaled all eleven identity axes by ONE number,
+// so a side with no wide men had its pressing line damped exactly as hard as its width -- which says
+// squad suitability is a volume knob rather than a statement about what you can and cannot do.
+// One generic mapping rather than one per style: width and running at people come from the wide men,
+// the build-up axes from midfield, shooting from the forwards, the press from everybody, and the
+// line and the challenge from the defence. A style that wants something its squad has not got now
+// loses THAT, and keeps the rest.
+const FIT_KEY_ROLE = { width: "wide", dribbling: "wide",
+                       passingDir: "cmid", approachPlay: "cmid", possWon: "cmid", possLost: "cmid",
+                       creativity: "cmid", chanceCreation: "fwd",
+                       pressingLOE: "all", tackling: "def", defLine: "def" };
 const _isFitWide = (sp) => sp==="LM"||sp==="RM"||sp==="LW"||sp==="RW"||sp==="LWB"||sp==="RWB";
 const _isFitFB = (sp) => sp==="LB"||sp==="RB"||sp==="LWB"||sp==="RWB";
 const _isFitCMid = (sp) => sp==="CM"||sp==="DM"||sp==="AM";
-function computeStyleFit(style, squad) {
-  const w = STYLE_FIT_SPOS[style]; if (!w) return 1;
+// HOW MANY OF EACH A STYLE NEEDS ON THE PITCH, not just how good they are. Anything unlisted needs
+// one. This is the half computeStyleFit never had: it asked whether your wide men were good and
+// never whether you had any.
+const STYLE_FIT_NEED = {
+  wingplay:      { wide: 2, fb: 2, fwd: 1 },
+  tikitaka:      { cmid: 3, def: 4, fwd: 1 },
+  possession:    { cmid: 3, def: 4, fwd: 1 },
+  verticaltiki:  { cmid: 3, def: 4, fwd: 1 },
+  cholismo:      { cmid: 3, def: 4, fwd: 1 },
+  gegenpress:    { def: 4 },
+  lanuestra:     { def: 4 },
+  counterattack: { fwd: 2, def: 4 },
+  routeone:      { fwd: 2, def: 4 },
+  secondball:    { fwd: 2, def: 4 },
+  parkthebus:    { def: 4, cmid: 2 },
+  catenaccio:    { def: 4, cmid: 2 },
+  zonamista:     { def: 4, cmid: 2 },
+};
+// One pass over the XI, resolved PER ROLE. Both the scalar fit (which the abstract engine's
+// applyStyleFit still wants) and the per-role fit the positional engine damps instructions with are
+// collapses of the same numbers, so they cannot disagree about a squad.
+// Ratings here are fitEffOvr, not raw OVR: a man in the wrong position is not the player his rating
+// says he is, and until now nothing in the project charged for that.
+function _fitParts(style, squad) {
+  const w = STYLE_FIT_SPOS[style]; if (!w) return null;
   const starters = squad.filter(p => !p.bench);
-  const avgOf = (pred) => { const m = starters.filter(p => pred(p.spos || p.pos)); return m.length ? m.reduce((a, p) => a + (p.ovr || 65), 0) / m.length : 65; };
-  let avg = 0;
-  if (w.wide) avg += w.wide * avgOf(_isFitWide);
-  // No true fullbacks in the shape (3-4-3's LM/RM, 4-2-4 aside) means the wide players ARE the
-  // width from deep — fall back to them rather than letting avgOf return its empty-set 65.
-  if (w.fb) avg += w.fb * (starters.some(p => _isFitFB(p.spos || p.pos)) ? avgOf(_isFitFB) : avgOf(_isFitWide));
-  if (w.fwd) avg += w.fwd * avgOf(sp => sp === "ST" || sp === "FWD");
-  if (w.cmid) avg += w.cmid * avgOf(_isFitCMid);
-  if (w.def) avg += w.def * avgOf(sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
-  if (w.gk) avg += w.gk * avgOf(sp => sp === "GK");
-  if (w.all) avg += w.all * avgOf(sp => sp !== "GK");
-  // MEASURED AGAINST THE SQUAD'S OWN LEVEL, not a population median. Centring on the population
-  // conflated squad QUALITY with style SUITABILITY: a strong side scored high fit for every style,
-  // so the sixteen best national teams all sat at ~1.13 and collected a flat bonus that had nothing
-  // to do with whether the system suited them. Quality is already priced in OVR. What decides
-  // whether a side can carry out a system is whether its strength sits WHERE the system needs it,
-  // which is exactly (style-weighted average - own average).
-  // This also makes the term genuinely zero-mean for ANY pool rather than only for the one it was
-  // calibrated on, so mid is no longer needed and no longer read.
-  const own = starters.length ? starters.reduce((a, p) => a + (p.ovr || 65), 0) / starters.length : 65;
-  return Math.max(0.3, Math.min(1.25, 1 + (avg - own) / (w.span ?? 20)));
+  const own = starters.length ? starters.reduce((a, p) => a + fitEffOvr(p), 0) / starters.length : 65;
+  const need = STYLE_FIT_NEED[style] || {};
+  const roles = {};
+  const grp = (key, pred) => {
+    const m = starters.filter(p => pred(p.spos || p.pos));
+    // A MISSING POSITION IS NOT A 65-RATED PLAYER. An empty group used to score a flat 65, so a
+    // shape with nobody wide "had" two average wingers and Wing Play on a 75-rated side computed
+    // 0.94 -- the entire basis of the style absent, for six per cent. Empty now scores the squad's
+    // own average, which is neutral on QUALITY, and the absence is charged as SUPPLY below.
+    roles[key] = { avg: m.length ? m.reduce((a, p) => a + fitEffOvr(p), 0) / m.length : own,
+                   miss: Math.max(0, 1 - m.length / (need[key] ?? 1)) };
+  };
+  grp("wide", _isFitWide);
+  // No true fullbacks in the shape (3-4-3, 4-2-4) means the wide players ARE the width from deep --
+  // fall back to them rather than charging a shortfall for a role the formation fills differently.
+  grp("fb", starters.some(p => _isFitFB(p.spos || p.pos)) ? _isFitFB : _isFitWide);
+  grp("fwd", sp => sp === "ST" || sp === "FWD");
+  grp("cmid", _isFitCMid);
+  grp("def", sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
+  grp("gk", sp => sp === "GK");
+  grp("all", sp => sp !== "GK");
+  return { w, own, span: w.span ?? 20, roles };
+}
+// MEASURED AGAINST THE SQUAD'S OWN LEVEL, not a population median. Centring on the population
+// conflated squad QUALITY with style SUITABILITY: a strong side scored high fit for every style, so
+// the sixteen best national teams all sat at ~1.13 and collected a flat bonus that had nothing to do
+// with whether the system suited them. Quality is already priced in OVR. What decides whether a side
+// can carry out a system is whether its strength sits WHERE the system needs it, plus whether the
+// bodies are there at all.
+const _fitOf = (avg, miss, own, span) =>
+  Math.max(0.3, Math.min(1.25, 1 + (avg - own) / span - miss * FIT_MISS));
+function computeStyleFit(style, squad) {
+  const P = _fitParts(style, squad); if (!P) return 1;
+  let avg = 0, miss = 0;
+  for (const k of ["wide", "fb", "fwd", "cmid", "def", "gk", "all"]) {
+    const wt = P.w[k]; if (!wt) continue;
+    avg += wt * P.roles[k].avg; miss += wt * P.roles[k].miss;
+  }
+  return _fitOf(avg, miss, P.own, P.span);
+}
+// The same question asked one role at a time, so an instruction can be damped by the men who
+// actually carry it out rather than by a single number standing for the whole squad.
+function computeRoleFit(style, squad) {
+  const P = _fitParts(style, squad);
+  const out = { overall: P ? computeStyleFit(style, squad) : 1 };
+  if (!P) return out;
+  for (const k of ["wide", "fwd", "cmid", "def", "all"])
+    out[k] = _fitOf(P.roles[k].avg, P.roles[k].miss, P.own, P.span);
+  return out;
 }
 function applyStyleFit(mod, fit) {
   if (fit === 1) return mod;
@@ -981,11 +1070,18 @@ const STRAT_EDITABLE = ["tempo","timeWasting","gkDist","dlBehavior"];
 // The three EDITABLE axes are deliberately untouched. Time-wasting, GK distribution and how the line
 // behaves are execution choices a manager makes; they are not claims about whether the squad suits
 // the system, so squad suitability has no business damping them.
+// ...AND IT DAMPS PER ROLE, not by one number. Scaling all eleven identity axes by a single scalar
+// said squad suitability is a volume knob: a side with no wide men had its pressing line, its
+// tackling and its defensive line pulled toward zero exactly as hard as its width, which is not a
+// claim anybody would make about a football team. What a squad without wingers cannot do is play
+// wide; it can still press. FIT_KEY_ROLE maps each axis to the men who carry it out.
 const meStrategyFor = (t) => {
   const st = { ...STRAT_DEF, ...(t?.strategy || {}) };
-  const fit = computeStyleFit(t?.style || "balanced", t?.squad || []);
-  if (fit === 1) return st;
-  for (const k of IDENTITY_KEYS) if (st[k]) st[k] = st[k] * fit;
+  const rf = computeRoleFit(t?.style || "balanced", t?.squad || []);
+  for (const k of IDENTITY_KEYS) {
+    const f = rf[FIT_KEY_ROLE[k]] ?? rf.overall;
+    if (st[k] && f !== 1) st[k] = st[k] * f;
+  }
   return st;
 };
 const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
