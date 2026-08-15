@@ -649,11 +649,20 @@ const STYLE_PRESET = {
   // dribbling was worth +0.31 and nothing else cleared the bar. Shots 8.2 -> 9.1, scored 1.03 ->
   // 1.23, conceded 1.33 -> 1.22 -- it improves at BOTH ends, which is what a side that can finally
   // carry the ball out looks like.
-  // The block itself is untouched: pressingLOE -2 and defLine -2 are where it defends from. What
-  // moves is where the ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter
-  // actually happening. It is also what finally separates it from Park The Bus at 38.0 -- one
-  // absorbs and breaks, the other only absorbs.
-  catenaccio:    { gkDist: 1, pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+  // The block itself is untouched: pressingLOE -2 is where it presses from. What moves is where the
+  // ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter actually happening.
+  //
+  // defLine -2 -> -1, AND IT IS THE ONLY INSTRUCTION IN THIS STAMP THAT WAS COSTING ANYTHING.
+  // Taken apart axis by axis against the full field, 180 blocked fixtures an arm: dropping defLine
+  // was worth +0.73 goals and nothing else in the stamp cleared its own error. Every other
+  // instruction is EARNING -- possWon -0.30, width -0.28, passingDir -0.17, approachPlay -0.12, so
+  // the side is worse without them. It is not a broken setting at -2 either; depth is penalised
+  // about 0.25 goals a rung all the way down, because the four styles at the top of the table
+  // (Route One, Wing Play, Second Ball, Gegenpress) all feast on a deep line and nothing punishes
+  // them back. One rung up puts this style at +0.16 against Balanced's +0.02, which is the whole
+  // point of the change, and it is still in the deepest tier in the game beside Zona Mista.
+  // Park The Bus is NOT fixable this way -- at -1 it is still -0.09, below Balanced. See its note.
+  catenaccio:    { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
                    possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1, width: -1 },
   // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
   // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
@@ -1130,7 +1139,7 @@ function applyStyleFit(mod, fit) {
 // six-match group is 146 minutes. Tournaments need the positional engine off the main thread --
 // workers, or a coarse mode for bulk rounds with the full engine reserved for watched matches --
 // before this comes back. Flip this to true once that exists.
-const TOURNAMENTS_ENABLED = false;
+const TOURNAMENTS_ENABLED = true;
 const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
@@ -2291,16 +2300,19 @@ function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, away
 }
 
 
+// The second leg is played with the sides swapped into the home and away slots, so what a tie is
+// worth to each of them has to be swapped with them. Urgency follows the men, not the slot.
+const flipUrg = (u) => u ? { home: u.away ?? 0, away: u.home ?? 0 } : u;
 function quickPenShootout(rng) {
   let h = 0, a = 0;
   for (let i = 0; i < 5; i++) { if (rng.u() < 0.75) h++; if (rng.u() < 0.75) a++; }
   while (h === a) { if (rng.u() < 0.75) h++; else a++; if (h !== a) break; if (rng.u() < 0.75) a++; else h++; }
   return { home: h, away: a };
 }
-function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad) {
-  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad);
+function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg);
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simInstantMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad);
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg));
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway;
   const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
@@ -2313,13 +2325,13 @@ function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeFor
   return result;
 }
 
-function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad) {
-  const l1 = simInstantMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad);
+function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg);
   return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, playerData:{leg1:l1.playerData} };
 }
-function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad) {
+function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simInstantMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad);
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg));
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
   const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
@@ -5450,8 +5462,11 @@ const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
 
 // A whole positional match, start to whistle, with no React anywhere near it. This is the shape the
 // tournament will eventually call instead of simInstantMatch.
-export function runPositionalMatch(hT, aT, seed) {
+// homeAdv is optional and names the side playing at its own ground, or null for a neutral venue,
+// which is what the balance harnesses want and therefore what they get by leaving it off.
+export function runPositionalMatch(hT, aT, seed, homeAdv) {
   const st = createMatchState();
+  st.homeAdv = homeAdv || null;
   st.players.home = meSide(hT); st.players.away = meSide(aT);
   st.bench = { home: meBench(hT), away: meBench(aT) };
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
@@ -5466,6 +5481,71 @@ export function runPositionalMatch(hT, aT, seed) {
   for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
   meFinalise(st);
   return { s: st, out };
+}
+
+// THE TOURNAMENT'S ENGINE. Same signature as simInstantMatch and the same result shape, so the
+// fixture-scoring call sites swap in place -- everything downstream (accumulateMatchStats, the
+// suspension counters, the player-stat tables) keeps working untouched.
+//
+// Three things the abstract sim modelled that had to be rebuilt rather than ported:
+//   MATCH URGENCY and TEAM FORM reach the pitch through meChase, which is the manager on the
+//     touchline: what a fixture is worth and what sort of run a side is on both feed the intent it
+//     reads the game with. In the abstract sim both were multipliers on effectiveness -- form was
+//     two per cent, well under the noise floor, and urgency only ever moved a tactic label. Here
+//     they move where the team stands and what it looks for, which is what they always meant.
+//   HOME ADVANTAGE is territory, handled by ME_HOME_ADV in meInit. The abstract sim's `hE *= 1.03`
+//     and the rating bump that first replaced it both said a crowd makes the players better, which
+//     it does not; it pushes one side up the pitch and pins the other back. Passed through as
+//     st.homeAdv and applied to the instructions, not to anybody's numbers.
+function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm,
+                            awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad,
+                            matchUrg, teamForm) {
+  const hT = { skill: homeSkill, style: homeStyle || "balanced", formation: homeForm || "4-3-3",
+               strategy: homeStrat, squad: homeSquad };
+  const aT = { skill: awaySkill, style: awayStyle || "balanced", formation: awayForm || "4-3-3",
+               strategy: awayStrat, squad: awaySquad };
+  const st = createMatchState();
+  st.players.home = meSide(hT); st.players.away = meSide(aT);
+  st.bench = { home: meBench(hT), away: meBench(aT) };
+  st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
+  st.formations = { home: hT.formation, away: aT.formation };
+  st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+  st.styles = { home: hT.style, away: aT.style };
+  st.teamSkill = { home: homeSkill, away: awaySkill };
+  st.homeAdv = homeAdv || null;
+  if (matchUrg) st.matchUrg = matchUrg;
+  if (teamForm) st.teamForm = teamForm;
+  st.possession = "home";
+  const r = new RNG(((rng?.next?.() ?? Math.floor(Math.random() * 2 ** 31)) >>> 0) || 7);
+  meInit(st, pitchSlots, r);
+  const out = meFreshOut();
+  for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, r, out);
+  const ftH = out.goals.home, ftA = out.goals.away;
+  let et = null, pen = null;
+  // Extra time is a third of a match, the same proportion thirty minutes is of ninety, and then
+  // kicks. meShootout drives itself to a conclusion in one call.
+  if (forceResult && ftH === ftA) {
+    for (let t = 0; t < Math.round(ME_MATCH_TICKS / 3); t++) meTick(st, r, out);
+    if (out.goals.home !== ftH || out.goals.away !== ftA)
+      et = { home: out.goals.home - ftH, away: out.goals.away - ftA };
+    if (out.goals.home === out.goals.away) {
+      const sh = meShootout(st, r, out, 40);
+      if (sh) pen = { home: sh.home ?? 0, away: sh.away ?? 0 };
+    }
+  }
+  meFinalise(st);
+  const allP = (sd) => [...st.players[sd], ...((st.subbedOff && st.subbedOff[sd]) || [])];
+  // A second yellow shows up in the engine as a red on a man already booked, so it is counted rather
+  // than reported -- accumulateMatchStats needs it separately for the suspension rules.
+  const cardsOf = (sd) => ({
+    yellows: out.yellows?.[sd] || 0,
+    reds: out.reds?.[sd] || 0,
+    secondYellows: allP(sd).filter(p => p.rc && (p.yc || 0) >= 2).length,
+    injuries: out.injuries?.[sd] || 0,
+  });
+  return { ftHome: ftH, ftAway: ftA, et, pen,
+           cards: { home: cardsOf("home"), away: cardsOf("away") },
+           playerData: { home: allP("home"), away: allP("away") } };
 }
 
 export default function App() {
@@ -5699,7 +5779,6 @@ export default function App() {
   // Whether this fixture is allowed to end level. A league match is; a knockout is not, and that is
   // the only thing extra time and a shootout are conditional on. The tournament will set this per
   // fixture when the engine is hooked up; in the lab it is a toggle.
-  const [meNeedWin, setMeNeedWin] = useState(false);
   // THE OLD ENGINE, still here. Tournament fixtures run the abstract simulation, so it cannot go
   // until they are wired to the positional one -- but it no longer deserves a tab of its own. It
   // opens over the top from Utilities, and from the tournament's own Play Live.
@@ -6199,6 +6278,14 @@ export default function App() {
     st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
     st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+    // THE VENUE AND THE STAKES, which this builder never carried. Everything above is about the two
+    // squads; these three are about the match, and without them the ground you pick on the setup
+    // screen did nothing at all to a live match. The values were being computed and written onto
+    // lmMatch, which is the ABSTRACT engine's state object -- a different thing from the st the
+    // positional engine actually runs on, so they were set and then never read by anybody.
+    st.homeAdv = lmHomeAdv || null;
+    st.matchUrg = lmMatch?.matchUrg || { home: 0, away: 0 };
+    st.teamForm = lmMatch?.teamForm || { home: 0, away: 0 };
     st.possession = "home";
     // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
     // the twenty-two actually line up, and which of the forward men rolls it. Without it every match
@@ -6212,7 +6299,7 @@ export default function App() {
     // in-match "Must Have A Winner" button -- so the checkbox you ticked before kick-off governed
     // one engine and silently did nothing to the other. It governs both now; the button stays as an
     // in-match override for a tie you decide to settle after the fact.
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: meNeedWin || lmForce };
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: lmForce };
   };
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
@@ -8086,7 +8173,7 @@ export default function App() {
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
     const _stamD = tConfig.staminaCarry ? tPlayerStats : null;
     const _hSq = filterSquad(gm.home.squad, gm.home.name, mUnavail, _stamD), _aSq = filterSquad(gm.away.squad, gm.away.name, mUnavail, _stamD);
-    const _sr = simInstantMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm);
+    const _sr = simPositionalMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm);
     const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
     const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
@@ -8140,7 +8227,7 @@ export default function App() {
         const _hSq2 = km?.home ? filterSquad(km.home.squad, km.home.name, koUnavail, _stamD2) : null;
         const _aSq2 = km?.away ? filterSquad(km.away.squad, km.away.name, koUnavail, _stamD2) : null;
         const _haKey = bracket === "lb" ? `lb_${ri}_${mi}` : bracket === "gf" ? "gf" : bracket === "reset" ? "reset" : bracket === "tp" ? "tp" : `ko_${ri}_${mi}`;
-        const _sr2 = (km?.home && km?.away) ? simInstantMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2) : null;
+        const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2) : null;
         const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
       if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
     };
@@ -8213,7 +8300,7 @@ export default function App() {
         const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: _hHor[0]?.skill ?? null, horizon: _hHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
         const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
-        m.result = simInstantMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
+        m.result = simPositionalMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
           { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) });
         const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
         const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
@@ -8468,14 +8555,14 @@ export default function App() {
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
     const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
-    if (tConfig.koLegs === 1) return simInstantMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
+    if (tConfig.koLegs === 1) return simPositionalMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
-    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq);
-    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
-    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq);
+    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
+    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg);
+    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg);
     return m.result;
   };
   const tScorinateKO = (targetRi, targetMi, legTarget, bracket) => {
@@ -12423,12 +12510,10 @@ export default function App() {
                               borderBottom: "1px solid var(--chrome-border)" }}>
                   <span style={sectionLabel}>PRE-MATCH</span>
                   <div style={{ flex: 1 }} />
-                  <button onClick={() => setMeNeedWin(v => !v)} title="Knockout: level after 90 goes to extra time, then kicks"
-                    style={{ ...smBtn, cursor: "pointer",
-                             background: meNeedWin ? "var(--chrome-brand)" : "transparent",
-                             color: meNeedWin ? "var(--ui-on-accent)" : "var(--chrome-muted)",
-                             border: `1px solid ${meNeedWin ? "var(--chrome-brand)" : "var(--chrome-border)"}` }}>
-                    {meNeedWin ? "\u2713 " : ""}Must Have A Winner</button>
+                  {/* No "Must Have A Winner" here. Whether a tie gets settled is a property of the
+                      FIXTURE, not of the moment before kick-off, and the setup screen already asks
+                      it as Force Result -- two controls for one decision, on two screens, with the
+                      later one silently overriding the earlier. meKick reads lmForce now. */}
                   <button onClick={() => setMeView("setup")} style={smBtn}>Back</button>
                   <button onClick={meKick} style={{ ...addBtn, border: "none", color: "var(--ui-on-accent)",
                                                     background: "var(--chrome-brand)" }}>&#9917; Kick Off</button>
@@ -12462,7 +12547,7 @@ export default function App() {
                             few px of slack. Only below roughly 900px tall does the grid scroll, and
                             that is why the scroll moved onto it. */}
                         <div style={{ width: "100%", margin: "0 auto",
-                                      maxWidth: `clamp(320px, calc((100vh - 516px) * ${(100 / PITCH_H).toFixed(3)} + 68px), ${PITCH_MAX_W + 68}px)` }}>
+                                      maxWidth: `clamp(240px, calc((100vh - 516px) * ${(100 / PITCH_H).toFixed(3)} + 68px), ${PITCH_MAX_W + 68}px)` }}>
                           {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), t.league === "Avium International")}
                         </div>
                         {benchRow(t)}

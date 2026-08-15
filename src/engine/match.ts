@@ -14,7 +14,7 @@ import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClo
 // what succeeds, so every setting costs something somewhere -- turn the press up and the space
 // behind it is really there for someone to run into. That is the whole reason for the rewrite.
 export { ME_HZ, ME_DT, ME_TPM } from "./config";
-import { ME_DEAD_SCALE, ME_DT, ME_SIM_MIN, ME_TPM } from "./config";
+import { ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meMinute } from "./config";
 
 // ---- setup ------------------------------------------------------------------------------
 // Positions live ON the player records, not in a side table, so cloneState already deep-copies them
@@ -47,6 +47,26 @@ export const ME_DEF_FORM = {
 // already varied properly -- 40 of 40 distinct eight-touch openings, 19 distinct scorelines -- which
 // is why this is deliberately confined to the kickoff and adds no noise anywhere else.
 export function meInit(s, slotsFor, rng) {
+  // WHERE THE TWO SIDES PLAY FROM, applied before anything else reads an instruction so it lands on
+  // the baseline stamped into mp.stratBase below. s.homeAdv names the side WITH the advantage rather
+  // than the fixture's home slot: a tie played at the away team's ground sets it to "away".
+  if (s.homeAdv === "home" || s.homeAdv === "away") {
+    const host = s.homeAdv, k = ME_HOME_ADV.k;
+    const tilt = (side, shape) => {
+      const st = s.strategy?.[side]; if (!st) return;
+      for (const key in shape) {
+        const r = ME_STRAT_RANGE[key] || [-2, 2];
+        st[key] = Math.max(r[0], Math.min(r[1], (st[key] || 0) + shape[key] * k));
+      }
+    };
+    tilt(host, ME_HOME_ADV.host);
+    tilt(meOther(host), ME_HOME_ADV.guest);
+    // Bench included: a substitute is playing in front of the same crowd as the man he replaced.
+    // _att is memoised off ovr the first time anybody reads it, so it has to be dropped with it.
+    if (ME_HOME_ADV.ovr) for (const p of [...(s.players[host] || []), ...(s.bench?.[host] || [])]) {
+      p.ovr = (p.ovr ?? 70) + ME_HOME_ADV.ovr * k; p._att = null;
+    }
+  }
   // Zero-mean, triangular, and drawn only here: it perturbs where a man STANDS, never how he plays.
   const jit = (a) => rng ? (rng.u() + rng.u() - 1) * a : 0;
   // THE TOSS. The app hardcoded possession to home, so home kicked off every match ever played.
@@ -91,7 +111,12 @@ export function meInit(s, slotsFor, rng) {
     offB: { home: 0.5, away: 0.5 }, trap: { home: 30, away: 30 }, goals: { home: 0, away: 0 },
     desig: { home: -1, away: -1 }, ttbBest: { home: 9999, away: 9999 },
     slots: { home: [], away: [] }, dslots: { home: [], away: [] },
-    phase: { home: "def", away: "def" }, phaseT: { home: 0, away: 0 } };
+    phase: { home: "def", away: "def" }, phaseT: { home: 0, away: 0 },
+    // The fit-damped instructions as the whistle went. meChase always works out from these rather
+    // than from the live values, so a reaction never compounds on the last one, and so how well the
+    // squad suits the system still governs the baseline the manager moves away from.
+    stratBase: { home: { ...(s.strategy?.home || {}) }, away: { ...(s.strategy?.away || {}) } },
+    chaseT: { home: 0, away: 0 } };
   for (const side of ME_SIDES) {
     s.mePos.slots[side] = s.players[side].filter(p => p.pos !== "GK")
       .map(p => ({ bd: p._bd0, bw: p._bw0, wx: p.x, wy: p.y }));
@@ -786,6 +811,57 @@ export function meShootout(s, rng, out, maxKicks) {
            winner: sc.home === sc.away ? null : (sc.home > sc.away ? "home" : "away") };
 }
 
+// Once a football minute, per side: read the scoreline, the clock and what the fixture is worth, and
+// decide whether to go and get it or see it out. The intent is recomputed from scratch every time
+// rather than nudged, so it cannot drift, and the instructions then SLEW toward it -- a manager
+// changes a game over a few minutes, not between two ticks, and a side that equalises walks its
+// shape back rather than snapping into it.
+//
+// Sits on top of the kickoff baseline, which is already fit-damped. Chasing a game is a call the
+// manager makes, not a claim that the squad suits the system, so squad fit has no business damping
+// it: the same reasoning that keeps time-wasting and GK distribution out of meStrategyFor.
+//
+// Extra time reads as nought minutes left for its whole half hour, because meMinute clamps at 90.
+// That is close enough to right to leave alone: everybody is committed in extra time, and a side in
+// front is protecting from the moment it goes in front.
+function meChase(s, out) {
+  const mp = s.mePos;
+  if (!ME_CHASE_W.on || mp.tick < ME_CHASE_W.fromTick
+      || mp.tick % ME_CHASE_W.every || !mp.stratBase) return;
+  const rem = 90 - meMinute(mp.tick);
+  for (const side of ME_SIDES) {
+    if (s.allowTacChange?.[side] === false) continue;
+    const base = mp.stratBase[side], st = s.strategy?.[side];
+    if (!base || !st) continue;
+    const sp = ME_CHASE[s.styles?.[side]] || ME_CHASE.balanced;
+    const lead = (out.goals?.[side] || 0) - (out.goals?.[meOther(side)] || 0);
+    const urg = s.matchUrg?.[side] || 0, form = s.teamForm?.[side] || 0;
+    let t = urg * ME_CHASE_W.urg + form * ME_CHASE_W.form;
+    // How hard depends on the size of the deficit AND on how little time is left to fix it, which is
+    // why it is a ramp rather than a threshold: one down with an hour to go is barely a change of
+    // plan, one down with ten minutes is a different sport.
+    //
+    // bias is inside the branch, not outside it, because it is a lean on the REACTION and not a
+    // second helping of the style. Added unconditionally it was a permanent offset on top of a
+    // side's own stamp -- Park The Bus, bias -0.60, would have sat 0.27 of a step deeper than its
+    // preset at nought-nought with an hour left, which is not a manager reacting to anything, it is
+    // the style being applied twice. Level, with nothing at stake and no run behind them, both sides
+    // now play exactly what they were set up to play, which is also what keeps this off the balance
+    // table for every match that stays level.
+    if (lead < 0) { const rA = rem - sp.as; t += sp.bias - lead * 0.35 + Math.max(0, Math.min(1, (50 - rA) / 50)) * 1.40; }
+    else if (lead > 0) { const rD = rem - sp.ds; t += sp.bias - lead * 0.20 - Math.max(0, Math.min(1, (40 - rD) / 40)) * 1.10; }
+    // Nobody chases a game that has stopped mattering. A dead rubber can coast; it cannot go for it.
+    if (urg < -0.2) t = Math.min(t, 1.0);
+    t = Math.max(sp.floor, Math.min(sp.ceil, t));
+    mp.chaseT[side] += (t - mp.chaseT[side]) * ME_CHASE_W.slew;
+    const k = mp.chaseT[side], w = k > 0 ? ME_CHASE_W.atk : ME_CHASE_W.def, m = Math.abs(k);
+    for (const key in ME_STRAT_RANGE) {
+      const r = ME_STRAT_RANGE[key];
+      st[key] = Math.max(r[0], Math.min(r[1], (base[key] || 0) + (w[key] || 0) * m));
+    }
+  }
+}
+
 export function meTick(s, rng, out) {
   const mp = s.mePos;
   if (mp.counterT > 0) mp.counterT--;
@@ -793,6 +869,7 @@ export function meTick(s, rng, out) {
   if (out.evt) out.evt.age++;
   mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
   mp.tick++;
+  meChase(s, out);
   // A restart is played out, not waited out. Everyone walks to the job this particular stoppage
   // gives him, and it is taken when the men who matter are actually set -- so nobody freezes and
   // nobody is teleported onto the ball.

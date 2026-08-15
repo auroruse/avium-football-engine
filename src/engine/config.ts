@@ -1598,3 +1598,143 @@ export const NO_INSTRUCTIONS = { passingDir:0, chanceCreation:0, pressingLOE:0, 
   approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0,
   dlBehavior:0, tackling:0 };
 export const DEFAULT_OVR = 60;
+
+// THE MANAGER ON THE TOUCHLINE. Every instruction in this engine is read fresh off s.strategy on
+// every tick, in brain, decide, match and setpiece alike -- and until now nothing ever wrote to it.
+// meStrategyFor ran once at kickoff and that was the side's football for ninety minutes. A team
+// losing 0-1 at 85 played exactly as it had at 0-0 in the first minute: it never pushed the line up,
+// never went more direct, never stopped running the clock down. Protecting a lead did not exist
+// either, which is the likeliest reason the two styles built to do nothing else sit at the bottom of
+// the balance table. Catenaccio and Park The Bus had no mechanism for the one thing they are for.
+//
+// ds and as are MINUTES OF SHIFT on the clock a side reads, lifted from the abstract sim's autoTac
+// so the fourteen styles keep the reactions they were tuned with. ds positive means this style
+// starts protecting a lead that many minutes earlier than neutral; as positive means it starts
+// chasing that many minutes earlier. ceil and floor cap how far it will ever go either way, so Park
+// The Bus will not throw everybody forward however far behind it gets and La Nuestra will not park.
+// bias is where the style leans with the game level.
+export const ME_CHASE = {
+  gegenpress:   { ds:-12, as: 10, ceil:2.0, floor:-1.5, bias: 0.15 },
+  verticaltiki: { ds: -6, as:  6, ceil:2.0, floor:-1.5, bias: 0.15 },
+  wingplay:     { ds: -5, as:  5, ceil:2.0, floor:-1.2, bias: 0.20 },
+  lanuestra:    { ds:-14, as: 11, ceil:2.3, floor:-1.0, bias: 0.20 },
+  secondball:   { ds: -3, as:  6, ceil:2.0, floor:-1.5, bias: 0.05 },
+  routeone:     { ds:  0, as:  5, ceil:2.0, floor:-1.5, bias: 0.00 },
+  balanced:     { ds:  0, as:  0, ceil:2.0, floor:-2.0, bias: 0.00 },
+  tikitaka:     { ds:  3, as: -5, ceil:1.6, floor:-1.5, bias: 0.10 },
+  possession:   { ds:  6, as: -8, ceil:1.6, floor:-1.5, bias: 0.00 },
+  cholismo:     { ds: 10, as: -6, ceil:1.6, floor:-2.0, bias:-0.20 },
+  zonamista:    { ds: 12, as: -8, ceil:1.5, floor:-2.0, bias:-0.25 },
+  counterattack:{ ds: 15, as: -8, ceil:1.3, floor:-2.0, bias:-0.40 },
+  catenaccio:   { ds: 18, as:-10, ceil:1.2, floor:-2.0, bias:-0.50 },
+  parkthebus:   { ds: 20, as:-12, ceil:1.0, floor:-2.0, bias:-0.60 },
+};
+
+// Intent is one scalar, positive to chase and negative to protect, and these turn it into football.
+// Chasing is the line up the pitch, the press up with it, the ball forward faster, shots taken
+// earlier and the clock left alone. Protecting is the line dropped, the press pulled off, the tempo
+// killed and the clock run down. One step of defLine is six metres of block (CFG.blkDefLine), so a
+// hard chase at 1.5 lifts the line about four metres and a side protecting at -1.0 drops it under
+// three: a real shift in where the team stands, not a wholesale change of identity.
+//
+// Deliberately a shift in WHERE THE TEAM STANDS AND WHAT IT LOOKS FOR, never a multiplier on
+// anything that resolves. Pushing up has to be genuinely beatable in behind, and here it is, because
+// the space is simulated. That is the one thing the abstract sim could never have priced honestly,
+// and it is why this belongs on the positional engine rather than being ported onto the old one.
+export const ME_CHASE_W = {
+// TRIED AND REJECTED: width 0.40 and possLost 0.45 on the chase, meant as the exposure a desperate
+// side leaves behind it -- wide men gone and no drop-off when it loses the ball. Both read as
+// exposure and neither is. Over 400 fixtures with the first seventy minutes held bit-identical, they
+// cost the chaser 0.054 goals SCORED (0.313 down to 0.259) and moved his goals against by 0.007,
+// which is nothing. width widens crowdR at brain.ts:673, so a wider side engages the ball over a
+// bigger radius rather than being stretched thin by it, and possLost positive is a counter-press,
+// which wins the ball back instead of conceding the break. Two axes that sound like a gamble and
+// score like a downgrade.
+  atk: { defLine: 0.45, pressingLOE: 0.40, passingDir: 0.35, tempo: 0.40,
+         chanceCreation: 0.30, timeWasting: -0.80 },
+  def: { defLine:-0.45, pressingLOE:-0.30, tempo:-0.35, timeWasting: 0.80 },
+  on: true,     // the A/B switch. The harness flips this to measure chasing against not chasing.
+  // Ships at 0, which is every minute of the match. It exists because the obvious A/B is not a valid
+  // one: chasing starts long before the seventy-minute mark you want to measure from, so by then the
+  // two arms have already diverged and "the side behind at 70" is a DIFFERENT SET OF MATCHES in each
+  // (278 against 302 on the first run). Holding the layer off until the snapshot makes everything
+  // before it bit-identical, so the arms share one population and the window is a clean comparison.
+  fromTick: 0,
+  urg: 0.60,    // must-win adds to intent, dead rubber subtracts. Stakes reach the pitch here.
+  form: 0.25,   // a side on a run is marginally braver. Small on purpose: form was always ~2%.
+  every: 48,    // ticks between decisions, which is one football minute at ME_MATCH_TICKS over 90.
+  slew: 0.34,   // fraction of the gap closed per decision, so a change takes about three minutes.
+};
+// MEASURED, 400 fixtures, identical clubs, styles and seeds, chasing live from the first minute:
+//   goals per match          2.82 -> 2.85    it is a reaction, not a goal-printer
+//   goals after 70 minutes   0.66 -> 0.58    FEWER, because the side in front now sees it out
+//   draws                   22.8% -> 25.0%   real football sits around a quarter
+//   four goals or more      30.3% -> 29.5%   the tail does not bloat
+//   behind at 70, rescues it  5.8% -> 12.6%  real football is 12 to 15 per cent; 5.8 was nonsense
+//
+// One thing this does NOT do, and it is worth writing down because two rounds of work went into
+// trying: chasing does not cost the chaser goals at his own end. Holding the first seventy minutes
+// bit-identical so both arms shared one population, a trailing side that pushed conceded 0.44 -> 0.34
+// LESS, and it made no difference which axes did the pushing -- the block half and the on-the-ball
+// half each bought about the same drop on their own. The mechanism is possession: a side that
+// attacks more has the ball more, and it cannot concede while it has it. Adding exposure did not
+// touch it and only cost goals at the other end (see the rejected width/possLost note above).
+// That is not a bug to fix here. Chasing SHOULD beat not chasing when you are behind -- nobody sits
+// back at 0-1 with fifteen left -- and the trailing side still ends the last twenty net negative
+// even at full tilt. If anything is undermodelled it is the counter-attack, which is an engine
+// question and a much larger one than the touchline.
+//
+// PLAYING AT HOME. The abstract sim made this a three per cent bump to effectiveness, and the first
+// positional adapter carried that over as HOME_ADV_OVR on every player of the favoured side -- which
+// says a crowd makes the goalkeeper better at saving and the striker better at finishing. It does
+// not. What a crowd does is push one side up the pitch and pin the other one back, so that is what
+// this is: the home side defends from further forward and presses from further forward, the away
+// side sits deeper and plays slower. Nobody gets better at football.
+//
+// Applied in meInit before the kickoff instructions are stamped, so it lands on the baseline the
+// touchline manager works out from and a chase stacks on top of it rather than replacing it. Kept
+// out of the fit damping on the same reasoning as the chase: where you play is not a claim about
+// whether your squad suits the system.
+//
+// TRIED AND REJECTED: the territorial version, host pushed up the pitch and visitor pinned back.
+// It is the obvious model of a home crowd and it does NOTHING. Swept at 0.10, 0.20, 0.30 and 0.45
+// over 320 blocked fixtures a row, every magnitude landed inside one standard error of zero with no
+// monotonic response: -0.016 goals at the setting meant to be worth a third of one. The reason is
+// that pushing up and dropping off are BOTH defensive gains in this engine (see the chase note
+// above, where each half of the block bought the same drop on its own), so tilting the two sides in
+// opposite directions cancels. A visitor made cautious instead was worth +0.113, and both together
+// +0.075, which is worse than either alone; all three sit inside their own error.
+//
+// What is left is what measured: the host plays with its tail up, quicker and shooting earlier, and
+// a rating nudge to carry the magnitude the instructions cannot. Calibrated on the shipped path,
+// 320 blocked fixtures a row, goal difference against the same fixture at a neutral venue:
+//   behaviour alone      +0.125 (se 0.13)   45.0/20.9/34.1
+//   behaviour + 2 ovr    +0.219 (se 0.12)   42.5/23.8/33.8
+//   behaviour + 3 ovr    +0.359 (se 0.13)   48.1/19.1/32.8    shipped
+//   behaviour + 4 ovr    +0.553 (se 0.13)   50.0/23.1/26.9
+//   behaviour + 6 ovr    +0.666 (se 0.12)   51.6/24.1/24.4
+// Against a real-football +0.35 and a 45/25/30 home record.
+//
+// Measure this on the SHIPPED path or not at all. A first calibration bumped the ratings on the
+// squad before the match was built, which fed computeRoleFit as well, so the crowd was also making
+// the squad better suited to its own system and un-damping its instructions. That read +0.328 for a
+// nudge genuinely worth +0.219. The bump belongs after fit is computed, which is where it now is.
+//
+// It also prices what this replaced: the old adapter's flat 2 points with no behaviour at all sat
+// between the rows above at roughly +0.15 goals, under half of real football's home advantage. The
+// brute carry was not only blunt, it was badly calibrated, and nobody had ever checked.
+//
+// k scales the whole thing, shape and rating together, so it is one dial. k=1 is real football.
+// Not modelled, deliberately: the referee. Marginal fouls and cards do go the home side's way in
+// real football, and it is probably the largest single cause, but a thumb on the whistle is its own
+// mechanic and this is not the place for it.
+export const ME_HOME_ADV = {
+  k: 1,
+  ovr: 3,
+  host:  { chanceCreation: 0.50, tempo: 0.50, passingDir: 0.40 },
+  guest: {},
+};
+
+// What the UI could legally set. A chase must not push an instruction somewhere a manager could not.
+export const ME_STRAT_RANGE = { defLine:[-2,2], pressingLOE:[-2,2], passingDir:[-2,2], tempo:[-2,2],
+  chanceCreation:[-1,1], timeWasting:[0,2] };
