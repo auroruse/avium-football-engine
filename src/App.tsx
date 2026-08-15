@@ -665,9 +665,21 @@ export const STYLE_PRESET = {
   // nothing else in the list does. possLost Counter-Press is the whole point rather than a
   // trimming: swarming the second ball IS the style, and without it this was two axes from
   // Counter and read as a rename of it.
+  // ...AND IT WAS A RENAME OF ROUTE ONE INSTEAD. Measured at 0.45 rms z-distance, the closest pair
+  // in the game, and the stamps say why: eight of the instructions were byte-identical to Route
+  // One's and all three differences were defensive, so the two had the same attack by construction.
+  // Pass length 21.1 against 21.2, long balls 51% against 52%, shot distance 13.7 against 13.6,
+  // fouls 13.4 against 13.4.
+  // The high-press-from-a-low-line signature does not separate them because it cancels ITSELF:
+  // pressingLOE and defLine both feed meBlock's wantLine at blkDefLine 6 m a step against blkLoe's
+  // 3, so -1 line and +1 press nets to three metres DEEPER, and this side wins its tackles at 50.8 m
+  // against Route One's 53.6 -- pressing lower than a side carrying no press instruction at all.
+  // The signature is kept because it is the design; the separation comes from the one thing the
+  // concept names that Route One has no claim on. You do not spread out to contest a knock-down,
+  // you compress around where it lands.
   secondball:    { pressingLOE: 1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 1,
                    possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1,
-                   gkDist: 1 },
+                   gkDist: 1, width: -1 },
   // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
   // patience, then Counter's intent once it is out.
   zonamista:     { pressingLOE: -1, defLine: -1, passingDir: -1, approachPlay: -1, possWon: 1,
@@ -908,6 +920,17 @@ function applyStyleFit(mod, fit) {
   const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
   return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
+// TOURNAMENTS ARE OFF until the positional engine drives them. Every tournament result still comes
+// from the abstract instant-sim -- simInstantMatch, at four call sites in tScorinate/tScorinateKO
+// and the two-leg helpers -- so a tournament and a Live Match were being scored by two different
+// games with different balance, different instructions and different physics. Leaving both on is
+// worse than turning one off.
+// It is not a flag flip to bring back. Measured, one positional match takes 1.46 s: a 20-team double
+// round robin is 380 matches and 9.3 minutes of blocked UI, and a 1000-run Monte Carlo of a single
+// six-match group is 146 minutes. Tournaments need the positional engine off the main thread --
+// workers, or a coarse mode for bulk rounds with the full engine reserved for watched matches --
+// before this comes back. Flip this to true once that exists.
+const TOURNAMENTS_ENABLED = false;
 const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
   approachPlay: { name:"Approach", vals:[[-1,"Play Out"],[0,"No Instruction"],[1,"Into Space"]], grp:"possession" },
@@ -5976,7 +5999,13 @@ export default function App() {
     // same first pass -- for a full second before anything differed.
     const rng = new RNG((Date.now() & 0x7ffffff) || 7);
     meInit(st, pitchSlots, rng);
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: meNeedWin };
+    // TWO ENGINES, ONE SETUP. "Force Result" on the setup screen sets lmForce, which drives extra
+    // time and penalties in the classic simulation (createMatchState's forceResult, read at the
+    // second-half stoppage). The positional engine has its own flag, needWin, read only by the
+    // in-match "Must Have A Winner" button -- so the checkbox you ticked before kick-off governed
+    // one engine and silently did nothing to the other. It governs both now; the button stays as an
+    // in-match override for a tie you decide to settle after the fact.
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: meNeedWin || lmForce };
   };
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
@@ -9733,7 +9762,9 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
           <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
-            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"], ["tournament", "Tournament"], ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
+            {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"],
+              ...(TOURNAMENTS_ENABLED ? [["tournament", "Tournament"]] : []),
+              ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
           </div>
@@ -10090,643 +10121,31 @@ export default function App() {
         </>)}
 
         {/* ═══ LIVE MATCH TAB ═══ */}
-        {absim && (<div style={{ ...PHASE_COL, position: "fixed", inset: 0, height: "auto", zIndex: 70,
-                                 background: "var(--chrome-bg)", padding: "10px 16px 16px", overflowY: "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexShrink: 0 }}>
-            <span style={sectionLabel}>ABSTRACT MATCH ENGINE</span>
-            <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>
-              the original non-positional simulation &mdash; still what tournament fixtures run</span>
-            <div style={{ flex: 1 }} />
-            <button onClick={() => setAbsim(false)} style={smBtn}>Close</button>
-          </div>
-          {/* Unified match controls — always at top, except while the tournament
-              pre-match setup screen is up: lmIsSetup (=!lmMatch) doesn't know about
-              tPendingPlayLive, so left ungated this renders "Start Match"/"Sim to End"
-              wired to the standalone flow's lmKickOff/lmSimAll — the wrong match
-              entirely — concurrently with the setup screen's own Kick Off button. */}
-          {!tPendingPlayLive && <div style={{ marginBottom: 12, flexShrink: 0 }}>
-            {(() => {
-              const finished = lmMatch?.phase === "finished";
-              // If the most recent chance hasn't finished revealing, the "next minute" button
-              // steps through it instead of advancing the match — mirrors the `gated` check
-              // in the "chance" event-card render branch further down.
-              const pendingChance = lmPendingChance(lmMatch, chanceStep);
-              // Tournament fixtures have no "New Match" escape hatch — Import/Replay/Abandon
-              // are the only way out, so tReplayCounts can't be bypassed by resetting around them.
-              if (finished && tLiveTarget) return (
-                <div style={{ background: "var(--ui-info-22)", border: "1px solid var(--ui-info-44)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-                    {lastLiveResult && <span style={{ fontSize: 10, color: "var(--ui-info)" }}>⚽ {lastLiveResult.homeName} {lastLiveResult.homeScore}–{lastLiveResult.awayScore} {lastLiveResult.awayName}{lastLiveResult.penalties ? " ("+lastLiveResult.penalties.homeScore+"–"+lastLiveResult.penalties.awayScore+" pen)" : ""}</span>}
-                    <button onClick={() => { importLiveToMatch(tLiveTarget); setTLiveTarget(null); setTab("tournament"); }} style={{ background: "var(--chrome-brand)", border: "none", borderRadius: 6, color: "var(--ui-on-accent)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>Import to Tournament</button>
-                    <button onClick={() => { setLastLiveResult(null); tPlayLive({...tLiveTarget}); }} style={{ background: "none", border: "1px solid var(--ui-info)", borderRadius: 6, color: "var(--ui-info)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Replay</button>
-                    <button onClick={() => { setTLiveTarget(null); setLmMatch(null); setTab("tournament"); }} style={{ background: "none", border: "1px solid var(--ui-danger-66)", borderRadius: 6, color: "var(--ui-danger)", fontSize: 10, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>Abandon</button>
-                  </div>
-                </div>
-              );
-              const primaryLabel = lmIsSetup ? "⚽ Start Match" : finished ? "New Match" : pendingChance ? "▶ Continue" : lmBl;
-              // A pending chance's "next" click used to only ever simulate one minute, so a
-              // chance that took N minutes to build needed N clicks to simulate it PLUS
-              // another click each to reveal every hop it grew — the old atEnd branch tried
-              // to paper over this with a 9-iteration fast-forward loop, but that loop checked
-              // a chain-length snapshot taken before the loop's own first advance, so it broke
-              // out on iteration one for any chain that was actually still growing (the common
-              // case) and only ever fired for a chain already stuck at CHANCE_MAX_HOPS. Simulating
-              // one minute and immediately revealing whatever that minute produced — new hop or
-              // outcome — in the same click halves the click count for every multi-minute chance,
-              // not just the stuck-at-cap edge case.
-              const primaryClick = lmIsSetup ? lmKickOff : finished ? lmReset : () => { if (pendingChance) { if (pendingChance.atEnd) {
-                // Must go through the functional setLmMatch(prev => ...) form, not compute
-                // lmAdvance(lmMatch, ...) eagerly off the closed-over value and setLmMatch(s)
-                // that result directly — auto-play's own interval can also be mid-flight on
-                // this exact match (it uses the same prev=>lmAdvance(prev,...) form below), and
-                // a direct-value setLmMatch(s) computed from a now-stale lmMatch can silently
-                // clobber whatever the interval just committed, re-simulating the same minute
-                // against an already-advanced RNG. That's what a goal appearing, vanishing, and
-                // reappearing on the next tick actually was — two divergent updates to the same
-                // state, applied out of order, not an intentional "reversal."
-                const _h={name:teamById(lmH).name,skill:teamById(lmH).skill},_a={name:teamById(lmA).name,skill:teamById(lmA).skill};
-                setLmMatch(prev => {
-                  const s=lmAdvance(prev,lmRng.current,_h,_a);
-                  // Re-resolve the pending chance's index against `prev` here, not the
-                  // `pendingChance.idx` captured at render time — if auto-play's own interval
-                  // (or another queued update) advanced the match in between, that render-time
-                  // index can point at the wrong event. Mutating the wrong event's chanceViz
-                  // is worse than a no-op: cloneState only shallow-copies events, so that
-                  // object reference is shared across every future snapshot too, corrupting
-                  // it permanently instead of just missing one update.
-                  const freshPc = lmPendingChance(prev, chanceStepRef.current);
-                  const idx = freshPc?.idx;
-                  if (idx != null) { const cv=s.events[idx]?.chanceViz; if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[idx]:Math.max(k[idx]||0,newTotal-1)}));} }
-                  return s;
-                });
-              } else { setChanceStep(k => ({ ...k, [pendingChance.idx]: Math.min(pendingChance.totalSteps-1, (k[pendingChance.idx]||0)+1) })); } return; } if (autoPlay) setAutoPlay(false); else lmTick(); };
-              const lmNotReady = teamErrors || teams.length < 2 || !teamById(lmH) || !teamById(lmA);
-              const primaryDisabled = lmIsSetup ? lmNotReady : (!finished && autoPlay);
-              const autoClick = () => { if (autoPlay) { setAutoPlay(false); return; } if (lmIsSetup) { lmKickOff(); setAutoPlay(true); } else setAutoPlay(true); };
-              return primaryLabel ? (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {finished ? (
-                  <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, fontSize: 14, opacity: primaryDisabled ? 0.5 : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
-                ) : (<div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={autoClick} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", background: autoPlay ? "linear-gradient(135deg, var(--ui-danger) 0%, var(--ui-danger-deep) 100%)" : "var(--chrome-brand)", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>{autoPlay ? "⏸ Pause" : "⏵ Auto"}</button>
-                  <button onClick={primaryClick} disabled={primaryDisabled} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: primaryDisabled ? (lmIsSetup ? 0.4 : 0.5) : 1, cursor: primaryDisabled ? "default" : "pointer" }}>{primaryLabel}</button>
-                  <button onClick={lmSimAll} disabled={lmIsSetup && lmNotReady} className="tick-btn" style={{ ...scBtn, flex: 1, fontSize: 12, padding: "10px 8px", opacity: lmIsSetup && lmNotReady ? 0.4 : 1, cursor: lmIsSetup && lmNotReady ? "default" : "pointer" }}>⏩ Sim to End</button>
-                </div>)}
-                {autoPlay && <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                  {[{l:"1x",v:1500},{l:"2x",v:750},{l:"5x",v:300},{l:"10x",v:150}].map(s => (
-                    <button key={s.v} onClick={() => setAutoSpeed(s.v)} className={autoSpeed === s.v ? "gbtn" : ""} style={{ background: autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-panel)", border: "1px solid " + (autoSpeed === s.v ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), borderRadius: 6, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: autoSpeed === s.v ? "var(--ui-on-accent)" : "var(--chrome-muted)", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
-                  ))}
-                </div>}
-              </div>) : null;
-            })()}
-          </div>}
-          {tPendingPlayLive && <div style={{ display: "flex", gap: 8, marginBottom: 12, flexShrink: 0 }}>
-            <button onClick={() => { setTPendingPlayLive(null); setTab("tournament"); }} style={{ ...addBtn, flex: 1, padding: "8px 0", textAlign: "center" }}>Cancel</button>
-            <button onClick={() => tConfirmPlayLive(tPendingPlayLive)} style={{ ...scBtn, flex: 3 }}>&#9917; Kick Off</button>
-          </div>}
-          {(lmIsSetup || tPendingPlayLive) && matchSetupScreen()}
-          {lmMatch && !tPendingPlayLive && (<>
-            {/* Two columns, the shape of a post-match report: the match and the people who played
-                it on the left, everything derived from it on the right.
-                One fixed height on the grid with stretched items, each column scrolling inside
-                itself — the same shape the roster tabs use. The two sides hold wildly different
-                amounts (a pre-match scoreboard is tall and the event feed is empty; by full time
-                that has inverted), so letting the page scroll left them ending hundreds of pixels
-                apart. Height on the container rather than a maxHeight on each: matching two
-                independent heights by hand only holds until one side grows a panel. */}
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
-            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-            {renderScoreboard(lmMatch.phase === "pre_match" ? { flex: "1 1 auto", marginBottom: 0 } : null)}
-            {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 0, width: "100%", boxSizing: "border-box" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: hClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
-                  <div style={{ display: "flex", flex: 1, gap: 2 }}>
-                    {(() => { const _pc = lmPendingChance(lmMatch, chanceStep); const _pe = _pc ? lmMatch.events[_pc.idx] : null; const _dispBall = _pe?.team ? (_pe.team === "home" ? 4 : 0) : lmMatch.ball; const _dispPoss = _pe?.team || lmMatch.possession; return ["BOX","HLF","MID","HLF","BOX"].map((label, z) => {
-                      const active = _dispBall === z;
-                      const clr = _dispPoss === "home" ? hClr : aClr;
-                      return <div key={z} style={{ flex: 1, height: 24, background: active ? clr + "30" : "var(--chrome-panel)", border: `1px solid ${active ? clr : "var(--chrome-border)"}`, borderRadius: 6, transition: "all 0.3s", boxShadow: active ? `0 0 10px ${clr}33` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.08em", color: active ? clr : "var(--chrome-muted-66)", ...mono }}>{label}</span>
-                      </div>;
-                    }); })()}
-                  </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: aClr, width: 36, textAlign: "center", flexShrink: 0, ...mono }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
-                </div>
-              </div>
-            )}
-            {lmMatch.phase !== "pre_match" && (<>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 0, boxShadow: "0 2px 12px var(--ui-shadow-2)", flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, flexShrink: 0, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)", ...ui }}>Player Stats</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px", flex: "1 1 auto", minHeight: 0, overflowY: "auto", alignContent: "stretch" }} className="grid-2col">
-              {["home","away"].map((side,si) => {
-                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-                const onPitch = lmMatch.players[side] || [];
-                const bench = lmMatch.bench?.[side] || [];
-                // A player currently on the pitch or bench is authoritative. subbedOff can carry
-                // a stale/duplicate record for a name that's since reappeared elsewhere (e.g. the
-                // same name logged twice across a card + injury event) — deduped so a starter can
-                // never be double-counted as both "still out there" and "already left."
-                const onNames = new Set([...onPitch.map(p=>p.name), ...bench.map(p=>p.name)]);
-                const seenOff = new Set();
-                const off = (lmMatch.subbedOff?.[side] || []).filter(p => !onNames.has(p.name) && !seenOff.has(p.name) && seenOff.add(p.name));
-                // Starters/bench must reflect the ACTUAL match squad (post-rotation via
-                // managerSelect), not the raw squad definition — a player rested for stamina
-                // or rotation reasons is a normal bench player this match, not still "starting."
-                // Split by WHO STARTED WHERE, not current array membership — a bench player
-                // who's since been subbed on has left the bench array entirely, so keying off
-                // membership alone would silently fold them into "starters" with no trace they
-                // came off the bench, and vice versa for a subbed-off starter.
-                const squadDef = tm?.squad || buildSquad(tm?.formation, null);
-                const defByName = new Map(squadDef.map(p => [p.name, p]));
-                const kf = n => playerKey(tm?.name, n);
-                const isOut = n => { const v = tPlayerStats?.[kf(n)]; return !!(v && ((v.suspended||0) > 0 || (v.injOut||0) > 0)); };
-                const inMatch = new Set([...onNames, ...off.map(p=>p.name)]);
-                const outPlayers = squadDef.filter(p => !inMatch.has(p.name) && isOut(p.name)).map(p => ({ ...p, bench: true, out: true }));
-                const byPos = (a, b) => (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4);
-                // startedBench (stamped once, at the moment a bench player first comes on, and
-                // preserved through any later departure) is what decides the bucket — NOT
-                // current location. A player who started on the bench, came on, and was later
-                // subbed off/injured/carded is still a bench starter, not a starting-XI
-                // departure: .sub gets overwritten to 'off' by every removal site, so it can no
-                // longer tell the two apart.
-                const starters = [...onPitch.filter(p => !p.startedBench), ...off.filter(p => !p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).sort(byPos);
-                const benchSq = [...bench, ...onPitch.filter(p => p.startedBench), ...off.filter(p => p.startedBench)].map(p => ({ ...p, fullName: defByName.get(p.name)?.fullName })).concat(outPlayers).sort(byPos);
-                // Masks the pending scorer's/assister's tally and every affected rating (scorer,
-                // assist, conceding side's dip) — otherwise any of them would spoil who's about
-                // to score before the card reveals it.
-                const hiddenGoals = lmHiddenGoals(lmMatch, chanceStep);
-                const lookup = (name) => {
-                  const found = onPitch.find(p=>p.name===name) || off.find(p=>p.name===name) || bench.find(p=>p.name===name);
-                  if (!found) return found;
-                  let goals = found.goals||0, assists = found.assists||0, rating = found.rating;
-                  for (const pg of hiddenGoals) {
-                    rating = lmAdjRating(pg, side, { name: found.name, rating });
-                    if (pg.team === side) {
-                      if (found.name === pg.scorerName) goals = Math.max(0, goals - 1);
-                      if (found.name === pg.assistName) assists = Math.max(0, assists - 1);
-                    }
-                  }
-                  if (goals === (found.goals||0) && assists === (found.assists||0) && rating === found.rating) return found;
-                  return { ...found, goals, assists, rating };
-                };
-                return (<>
-                {si === 1 && <div style={{ background: "var(--chrome-muted)" }}></div>}
-                <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-                  <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                  <div className="player-row" style={{ display: "grid", gridTemplateColumns: "22px 26px 1fr 18px 18px 16px 16px 16px 28px 12px", gap: "0px 2px", fontSize: 9, lineHeight: 1.2, alignItems: "center", flex: "1 1 auto", gridTemplateRows: `auto repeat(${starters.length}, minmax(min-content, 1fr)) auto repeat(${benchSq.length}, minmax(min-content, 1fr))` }}>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>POS</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>OVR</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7 }}>PLAYER</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>G</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>A</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Chances created">C</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Defensive actions">D</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }} title="Saves (GK)">S</span>
-                    <span style={{ color: "var(--chrome-muted)", fontSize: 7, textAlign: "center" }}>RTG</span>
-                    <span></span>
-                    {starters.map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOff = off.some(x=>x.name===sq2.name); const isOn = onPitch.some(x=>x.name===sq2.name&&x.sub==='on'); const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOff?"var(--chrome-muted)":"var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                      <span style={{ textAlign: "center", color: ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOff?"var(--ui-danger)":"var(--chrome-muted)", textAlign: "center" }}>{isOff?"▼":""}</span>
-                    </>); })}
-                    <span style={{ gridColumn: "1/-1", borderTop: "1px solid var(--chrome-border)", marginTop: 2, marginBottom: 2 }}></span>
-                    {[...benchSq].sort((a,b) => { const dp = (POS_ORDER[a.pos] ?? 4) - (POS_ORDER[b.pos] ?? 4); if (dp !== 0) return dp; return (a.startedBench?0:1)-(b.startedBench?0:1); }).map((sq2,pi) => { const p = lookup(sq2.name) || {rating:null,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:sq2.atkW||0,chances:0,defActs:0,saves:0}; const isOn = !!sq2.startedBench; const eOvr = sq2.ovr ?? tm?.skill; return (<>
-                      <span style={{ color: POS_CLR[sq2.pos]||"#888", fontSize: 7, fontWeight: 700, ...mono }}>{sq2.pos}</span>
-                      <span style={{ textAlign: "center", color: ovrColor(eOvr), fontWeight: 700, ...mono }}>{eOvr ?? "–"}</span>
-                      <span style={{ color: isOn?"var(--ui-text)":"var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(sq2.fullName || sq2.name, sq2.name)}{p.rc&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-danger)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{!p.rc&&p.yc>0&&<span style={{display:"inline-block",width:6,height:8,background:"var(--ui-warn)",borderRadius:1,marginLeft:3,verticalAlign:"middle"}} />}{p.inj&&<span style={{marginLeft:3,fontSize:8,color:"var(--ui-injury)"}}>INJ</span>}{sq2.out&&<span style={{marginLeft:3,fontSize:7,color:"var(--ui-danger)",fontWeight:700}}>OUT</span>}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.goals>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.goals>0?700:400 }}>{p.goals||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.assists>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: p.assists>0?700:400 }}>{p.assists||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.chances>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.chances||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.defActs>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{p.defActs||"-"}</span>
-                      <span style={{ ...mono, textAlign: "center", color: p.saves>0?"var(--ui-text)":"var(--chrome-muted)", fontWeight: 400 }}>{sq2.pos==="GK"?(p.saves||"-"):""}</span>
-                      <span style={{ textAlign: "center", color: !isOn?"var(--chrome-muted)":ratingColor(p.rating||6.5), fontWeight: 600, ...mono }}>{isOn&&p.rating!=null?p.rating.toFixed(1):"–"}</span>
-                      <span style={{ fontSize: 7, color: isOn?"var(--ui-ok)":"var(--chrome-muted)", textAlign: "center" }}>{isOn?"▲":""}</span>
-                    </>); })}
-                  </div>
-                </div>
-                </>);
-              })}
-              </div>
-            </div>
-            </>)}
-            </div>
-            <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-              {/* Overview meta. Referee, attendance and weather have no data behind them in this
-                  engine, so the block is venue only rather than a row of blanks. */}
-              {(() => { const v = lmVenue(); return (
-                <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-                  <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-                    <span style={{ fontSize: 11 }}>📍</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", ...ui }}>{v.stadium || (v.city ? <CityLink name={v.city} /> : v.text)}</span>
-                    {v.stadium && v.city && <span style={{ fontSize: 10, color: "var(--chrome-muted)", ...ui }}><CityLink name={v.city} /></span>}
-                  </span>
-                  <span style={{ flex: 1 }} />
-                  {!["pre_match","finished","penalties"].includes(lmMatch.phase) && <button onClick={() => setLmPanel("subs")} style={{ ...smBtn, fontSize: 9 }}>&#8644; Substitutions</button>}
-                  <button onClick={() => setLmPanel("tactics")} style={{ ...smBtn, fontSize: 9 }}>&#9881; Tactics</button>
-                  <button onClick={() => setLmPanel("mods")} style={{ ...smBtn, fontSize: 9 }}>&#8721; Modifiers</button>
-                </div>); })()}
-            {/* Takes the height that is left, rather than claiming a fixed 270. The tab is a fixed
-                PHASE_COL sized as PANEL_H + LM_CONTROLS_H, and LM_CONTROLS_H is a GUESS at the
-                controls row above — 47px, which is the three-button standalone row. A tournament
-                fixture's row is taller: a bordered box whose buttons wrap. The row does not shrink
-                and these columns do not scroll, so every pixel it costs came out of the bottom of
-                this panel and simply left the box. The feed reached its own last event the whole
-                time; that last event was off-screen. Growth inside is still absorbed by the
-                scroller, so a revealed chance cannot shove anything either way. */}
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden", boxShadow: "0 2px 12px var(--ui-shadow-2)", display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0 }}>
-              <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--chrome-panel)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", textAlign: "center", flexShrink: 0 }}>Match Events</div>
-              {/* Padding only at the top. A scroll container's own bottom padding is not reliably part
-                  of its scroll range, so the last event sat behind it and could not be reached by
-                  the wheel or by scrollTop — the breathing room is a trailing spacer instead. */}
-              <div ref={lmFeedRef} style={{ padding: "10px 0 0", flex: "1 1 auto", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" }}>
-              {(()=>{ const hN=teamById(lmH)?.name, aN=teamById(lmA)?.name, hC=teamById(lmH)?.code, aC=teamById(lmA)?.code;
-                const tBadge = (isH) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <div style={{ padding: "2px 6px", borderRadius: 6, background: (isH ? hClr : aClr) + "22", fontSize: 8, fontWeight: 700, color: isH ? hClr : aClr, border: "1px solid " + (isH ? hClr : aClr) + "33", letterSpacing: "0.08em", ...mono }}>{isH ? hC : aC}</div>
-                </div>);
-                const mC = (min) => (<div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min}'</span>
-                </div>);
-                const iC = (content, sz) => (<div style={{ width: 30, minWidth: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: sz || 14 }}>{content || " "}</div>);
-                const parseSub = (txt) => { const s = txt.replace(/^(?:🔄|⇄)\s*/, '').split(/\s*→\s*/); if (s.length < 2) return null; const tm = s[0].match(/^(.+?)'s\s+(.+)$/); const rm = s[1].match(/^(.+?)\.\s+(.+?)\.?$/); return { team: tm?.[1]||"", off: tm?.[2]||s[0], on: rm?.[1]||s[1].replace(/\.\s*$/,""), reason: rm?.[2]||"" }; };
-                // gvGoalMouth viewBox is 220x136 at up to 190px wide; the goal frame itself
-                // spans gT=10 to gB=82 (72 units), excluding the grass strip beneath it.
-                const GV_FRAME_H = Math.round(72 * 190 / 220);
-                // gvPitch viewBox is 206x142 at up to 280px wide. Sizing the button so its
-                // bottom edge lands on the pitch view's bottom edge (mouth height + gap + button).
-                const GV_STACKED_BTN_H = Math.round(280 * 142 / 206) - Math.round(190 * 136 / 220) - 16;
-                const gvReplayBtn = (i, stacked) => (<button onClick={() => setGvReplayKeys(k => ({ ...k, [i]: (k[i]||0) + 1 }))} style={{ background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, color: "var(--chrome-muted)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: stacked ? 0 : "0 14px", width: stacked ? "100%" : "auto", height: stacked ? GV_STACKED_BTN_H : GV_FRAME_H, flexShrink: 0 }}><span style={{ fontSize: 11 }}>⟲</span> Replay</button>);
-                // The one chance (if any) the "next minute" button is currently driving — see
-                // lmPendingChance. A card is "gated" (external-button-only, no in-card Back)
-                // exactly when it's this one; every other chance card is historical.
-                const pendingChance = lmPendingChance(lmMatch, chanceStep);
-                return lmMatch.events.map((e, i) => {
-                if (e.type === "phase") return (<div key={i} className="ev-enter" style={{ padding: "8px 18px", textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--chrome-muted)", letterSpacing: "0.12em", borderBottom: "1px solid var(--chrome-panel)" }}>{e.text}</div>);
-                // Nothing renders past the reveal frontier. A chance's own outcome can cascade
-                // into further events within the SAME tick (a save that wins a corner, that
-                // corner's own resolution) — those aren't independently gated, so without this
-                // they'd render immediately, visible before the chance that caused them has
-                // even been clicked through. Once the pending chance is fully revealed,
-                // pendingChance becomes null (or advances to a later index) and everything
-                // past it appears at once — it was never re-ordered, just held back.
-                if (pendingChance && i > pendingChance.idx) return null;
-                // A goal/save/miss/woodwork immediately after a chance is that chance's own
-                // pay-off (see chanceCtxFromChain / lmResolveShot) — it's absorbed as the last
-                // click-through step of the chance card above it, not shown as its own card.
-                if (e.suppressStandalone) return null;
-                const isH = e.team === "home" || (e.type === "sub" && e.text.includes(hN+"'s"));
-                const isForcedSub = e.type === "injury" && e.text.includes("Forced substitution");
-                const T1 = new Set(["goal","penalty","red","second_yellow","sub","pen_miss","chance","save","miss","woodwork"]);
-                if (T1.has(e.type) || isForcedSub) {
-                  let icon, header, headerColor, body, bg;
-                  // A shot with no build-up chain still gets a two-step reveal: this step
-                  // establishes who's taking it before the outcome branches below show what
-                  // happened. Once past step 0 (or once historical), falls through unchanged.
-                  const isStandaloneShot = isGatableShot(e);
-                  const shotGated = isStandaloneShot && pendingChance?.idx === i;
-                  const shotStep = isStandaloneShot ? (shotGated ? Math.max(0, Math.min(chanceStep[i]||0, 1)) : 1) : 1;
-                  if (isStandaloneShot && shotStep === 0) {
-                    const shotClr = isH ? hClr : aClr;
-                    const aimPhrases = ["{n} shapes to shoot.", "{n} lines up the effort.", "{n} goes for goal.", "{n} steps into it."];
-                    icon = <span>🎯</span>; header = "Shot!"; headerColor = shotClr;
-                    body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(aimPhrases[i % aimPhrases.length].replace("{n}", e.playerFull || ""), e.playerFull, shotClr)}</div>;
-                    // Establishing "who's taking it" includes where from — reuse the chain
-                    // renderer with a synthetic 1-2 hop chain built from this shot's own
-                    // (already-computed) position data, fully revealed. Never shows the
-                    // shot-to-goal line itself — that's step 1's reveal, not this one's.
-                    const gv0 = e.goalViz;
-                    const teaseChain = gv0?.shotFrom ? (gv0.assistFrom ? [{ name: gv0.assist, pos: gv0.assistFrom }, { name: gv0.scorer, pos: gv0.shotFrom }] : [{ name: gv0.scorer, pos: gv0.shotFrom }]) : null;
-                    body = (<>{body}<div style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{teaseChain && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(teaseChain, shotClr, teaseChain.length - 1)}</div>}<div style={{ flex: teaseChain ? "7 1 190px" : "1 1 260px", maxWidth: teaseChain ? 385 : 440, minWidth: 175 }}>{gvChanceGoalPreview()}</div></div></>);
-                    bg = shotClr + "08";
-                  }
-                  else if (e.type === "goal") { icon = <span>⚽</span>; header = "GOAL!"; headerColor = "var(--ui-text)"; const goalClr = isH ? hClr : aClr; const gt = e.text.replace(/^[^\p{L}\p{N}]+/u, ''); body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{styledGoalText(gt, e.playerFull, goalClr)}</div>; if (e.goalViz) { const gv = e.goalViz; const hasPitch = !!gv.shotFrom && gv.method !== "pen"; const mDelay = (!hasPitch || isStandaloneShot) ? 0.15 : (gv.assistFrom ? 1.55 : 0.75); const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, goalClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, mDelay)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, mDelay)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); } bg = "var(--ui-text-08)"; }
-                  else if (e.type === "penalty") { icon = <span className="card-slam">🎯</span>; header = "PENALTY!"; headerColor = "var(--ui-warn)"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "var(--ui-warn-08)"; }
-                  else if (e.type === "red" || e.type === "second_yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-danger)", borderRadius: 3 }} />; const rcLabels = { dogso: "DOGSO", violent: "Violent conduct", abusive: "Abusive language", sfp: "Serious foul play" }; header = e.type === "second_yellow" ? "Second yellow" : e.rcVariant ? "Red card — " + rcLabels[e.rcVariant] : "Red card"; headerColor = "var(--ui-danger)"; body = <div style={{ fontSize: 11, color: "var(--ui-text)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; bg = "var(--ui-danger-08)"; }
-                  else if (e.type === "pen_miss") { icon = <span>❌</span>; header = e.goalViz?.result === "save" ? "Penalty saved" : "Penalty missed"; headerColor = "var(--ui-danger)"; body = <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>; if (e.goalViz) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 8, display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}><div style={{ maxWidth: 190, width: "100%", alignSelf: "flex-start" }}>{gvGoalMouth(e.goalViz, 0.15)}</div>{gvReplayBtn(i, false)}</div></>); } bg = "transparent"; }
-                  else if (isForcedSub) { icon = <span style={{ fontSize: 13 }}>🏥</span>; header = null; headerColor = null; body = <div style={{ fontSize: 11, color: "var(--ui-injury)", lineHeight: 1.5 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>; bg = "transparent"; }
-                  else if (e.type === "sub") { const p = (e.onName != null || e.offName != null) ? { on: e.onName, off: e.offName, reason: e.reason } : parseSub(e.text); icon = <span style={{ fontSize: 13 }}>🔄</span>; header = null; headerColor = null; body = p ? (<><div className="sub-on-line" style={{ fontSize: 11, color: "var(--ui-qual-direct)", display: "flex", alignItems: "center", gap: 4 }}>▲ <span style={{ fontWeight: 700 }}>{p.on}</span>{e.onPos && <span style={{ ...mono, color: POS_CLR[e.onPos] || "var(--chrome-muted)" }}>{e.onPos}</span>}</div><div className="sub-off-line" style={{ fontSize: 11, color: "var(--ui-danger)", display: "flex", alignItems: "center", gap: 4 }}>▼ <span style={{ fontWeight: 700 }}>{p.off}</span>{e.offPos && <span style={{ ...mono, color: POS_CLR[e.offPos] || "var(--chrome-muted)" }}>{e.offPos}</span>}{e.offRating != null && <span style={{ ...mono, color: ratingColor(e.offRating), fontWeight: 600 }}>({e.offRating.toFixed(1)})</span>}</div>{p.reason && <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 1 }}>{p.reason}</div>}</>) : <div style={{ fontSize: 11, color: "var(--chrome-muted)" }}>{e.text}</div>; bg = "transparent"; }
-                  else if (e.type === "chance") {
-                    const chain = e.chanceViz?.chain || []; const nextE = e.chanceViz?.outcomeEvent;
-                    const hasOutcome = !!nextE;
-                    const gated = pendingChance?.idx === i;
-                    const chainSteps = gated ? (e.chanceViz._baseLen || chain.length) : chain.length;
-                    const totalSteps = chainSteps + (hasOutcome?1:0);
-                    const step = gated ? Math.max(0, Math.min(chanceStep[i]||0, totalSteps-1)) : totalSteps-1;
-                    const chanceClr = isH ? hClr : aClr;
-                    const isOutcomeStep = hasOutcome && step === chainSteps;
-                    if (isOutcomeStep) {
-                      const outcomeMeta = { goal: {icon:"⚽", header:"GOAL!", color:"var(--ui-text)", bg:"var(--ui-text-08)"}, save: {icon:"🧤", header:"Saved!", color:"var(--ui-danger)", bg:"transparent"}, miss: {icon:"💨", header:"Off Target!", color:"var(--ui-danger)", bg:"transparent"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"var(--ui-danger)", bg:"transparent"}, tackle: {icon:"🛡️", header:"Tackled!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, interception: {icon:"🛡️", header:"Intercepted!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, block: {icon:"🛡️", header:"Blocked!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, clearance: {icon:"🛡️", header:"Cleared!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, corner: {icon:"🏴", header:"Corner!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, neutral: {icon:"🔄", header:"Retained", color:"var(--chrome-muted)", bg:"transparent"}, foul: {icon:"⚠️", header:"Fouled!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, penalty: {icon:"🎯", header:"Penalty!", color:"var(--ui-warn)", bg:"var(--ui-warn-08)"}, press: {icon:"💪", header:"Pressed!", color:"var(--ui-info)", bg:"var(--ui-info-08)"}, counter: {icon:"⚡", header:"Counter!", color:"var(--ui-info)", bg:"var(--ui-info-08)"} };
-                      const om = outcomeMeta[nextE.type];
-                      icon = <span>{om.icon}</span>; header = om.header; headerColor = om.color;
-                      const nextText = nextE.text.replace(/^[^\p{L}\p{N}]+/u, '');
-                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{nextE.type === "goal" ? styledGoalText(nextText, nextE.playerFull, chanceClr) : boldNames(nextText, nextE.playerFull, om.color)}</div>;
-                      const gv = nextE.goalViz, rk = gvReplayKeys[i]||0;
-                      if (gv) {
-                        body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{chain.length > 0 && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, nextE.goalViz, rk > 0)}</div>}<div style={{ flex: chain.length > 0 ? "7 1 190px" : "1 1 260px", maxWidth: chain.length > 0 ? 385 : 440, minWidth: 175 }}>{chain.length > 0 ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>);
-                      } else if (chain.length > 0) {
-                        body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}><div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, chain.length - 1, null, rk > 0)}</div>{gvReplayBtn(i, false)}</div></>);
-                      }
-                      bg = om.bg;
-                    } else {
-                      icon = <span className="sparkle-pop">✨</span>; header = "CHANCE!"; headerColor = evColor.chance || "var(--ui-warn)";
-                      body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, headerColor)}</div>;
-                      if (chain.length) { const rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"cvrk"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}><div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvChancePitch(chain, chanceClr, gated ? step : chain.length - 1, null, !gated && rk > 0)}</div><div style={{ flex: "7 1 190px", maxWidth: 385, minWidth: 175 }}><div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvChanceGoalPreview()}{!gated && gvReplayBtn(i, true)}</div></div></div></>); }
-                      bg = "var(--ui-warn-08)";
-                    }
-                  }
-                  else if (e.type === "save" || e.type === "miss" || e.type === "woodwork") {
-                    // Every shot outcome gets the same pitch+goal-mouth treatment goals do,
-                    // not just ones that happened to follow a chance — the data (goalViz) is
-                    // already generated unconditionally in lmResolveShot's non-goal branches.
-                    const shotMeta = { save: {icon:"🧤", header:"Saved!", color:"var(--ui-danger)"}, miss: {icon:"💨", header:"Off Target!", color:"var(--ui-danger)"}, woodwork: {icon:"🪨", header:"Woodwork!", color:"var(--ui-danger)"} };
-                    const sm = shotMeta[e.type];
-                    icon = <span>{sm.icon}</span>; header = sm.header; headerColor = sm.color;
-                    body = <div style={{ fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.5 }}>{boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, sm.color)}</div>;
-                    if (e.goalViz) { const gv = e.goalViz, shotClr = isH ? hClr : aClr, hasPitch = !!gv.shotFrom, rk = gvReplayKeys[i]||0; body = (<>{body}<div key={"gvrow"+i+"-"+rk} style={{ marginTop: 10, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>{hasPitch && <div style={{ flex: "8 1 220px", maxWidth: 440, minWidth: 200 }}>{gvPitch(gv, shotClr, isStandaloneShot)}</div>}<div style={{ flex: hasPitch ? "7 1 190px" : "1 1 260px", maxWidth: hasPitch ? 385 : 440, minWidth: 175 }}>{hasPitch ? (<div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 190 }}>{gvGoalMouth(gv, 0.15)}{gvReplayBtn(i, true)}</div>) : (<div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "flex-start" }}><div style={{ maxWidth: 190, width: "100%" }}>{gvGoalMouth(gv, 0.15)}</div>{gvReplayBtn(i, false)}</div>)}</div></div></>); }
-                    bg = "transparent";
-                  }
-                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "9px 0", borderBottom: "1px solid var(--chrome-panel)", background: bg, alignItems: (e.goalViz || e.chanceViz) ? "flex-start" : "center" }}>
-                    {mC(e.min)}
-                    {iC(icon, 16)}
-                    <div style={{ flex: 1, padding: "0 8px" }}>
-                      {header && <div style={{ fontSize: 13, fontWeight: 700, color: headerColor, marginBottom: 2 }}>{header}</div>}
-                      {body}
-                    </div>
-                    {tBadge(isH)}
-                  </div>);
-                }
-                const T2 = new Set(["yellow","injury"]);
-                if (T2.has(e.type)) {
-                  let icon, txt, clr;
-                  if (e.type === "yellow") { icon = <div className="card-slam" style={{ width: 10, height: 14, background: "var(--ui-warn)", borderRadius: 3 }} />; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^Yellow\.\s*/, ''), e.playerFull, "var(--ui-warn)"); clr = "var(--chrome-muted)"; }
-                  else { icon = <span className="injury-shake">🏥</span>; txt = boldNames(e.text.replace(/^[^\p{L}\p{N}]+/u, ''), e.playerFull, "var(--ui-text)"); clr = "var(--ui-injury)"; }
-                  return (<div key={i} className="ev-card" style={{ display: "flex", gap: 0, padding: "5px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
-                    {mC(e.min)}
-                    {iC(icon, 12)}
-                    <div style={{ flex: 1, padding: "0 8px", fontSize: 11, color: clr }}>{txt}</div>
-                  </div>);
-                }
-                const t3Icons = { corner: "🏴", foul: "⚠️", offside: "🚩", counter: "⚡", press: "🔥" };
-                return (<div key={i} className="ev-enter" style={{ display: "flex", gap: 0, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", alignItems: "center" }}>
-                  {mC(e.min)}
-                  {iC(t3Icons[e.type] ? <span>{t3Icons[e.type]}</span> : null, 10)}
-                  <div style={{ flex: 1, padding: "0 8px", fontSize: 10, color: evColor[e.type] || "var(--chrome-muted)", lineHeight: 1.4 }}>{e.text.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
-                </div>);
-              }); })()}
-              {lmMatch.events.length === 0 && <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--chrome-muted)", fontSize: 11 }}>Awaiting kick off...</div>}
-              <div style={{ height: 10, flexShrink: 0 }} />
-              </div>
-            </div>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 0, boxShadow: "0 2px 12px var(--ui-shadow-2)", flex: "1 1 auto" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Match Stats</div>
-              {(() => { const ph = lmMatch.possCount.home, pa = lmMatch.possCount.away, pt = ph + pa || 1; const hp = Math.round(ph/pt*100), ap = 100-hp; return (<div style={{ marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", padding: "3px 0", fontSize: 11 }}>
-                  <span style={{ width: 20, textAlign: "right", color: hp >= ap ? hStatClr : "var(--chrome-muted)", fontWeight: hp >= ap ? 600 : 400 }}>{hp}%</span>
-                  <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 70, textAlign: "center", color: "var(--chrome-muted)", fontSize: 9, flexShrink: 0 }}>Possession</span>
-                  <div style={{ flex: 1, margin: "0 4px" }}></div>
-                  <span style={{ width: 20, textAlign: "left", color: ap > hp ? aStatClr : "var(--chrome-muted)", fontWeight: ap > hp ? 600 : 400 }}>{ap}%</span>
-                </div>
-                <div style={{ display: "flex", height: 4, borderRadius: 3, overflow: "hidden", background: "var(--chrome-muted)" }}>
-                  <div style={{ width: `${hp}%`, background: hClr, borderRadius: 3, transition: "width 0.3s" }} />
-                  <div style={{ width: `${ap}%`, background: aClr, borderRadius: 3, transition: "width 0.3s" }} />
-                </div>
-              </div>); })()}
-              {[["xG", Math.round((lmMatch.xG?.home||0)*100)/100, Math.round((lmMatch.xG?.away||0)*100)/100], ["Shots", lmMatch.stats.home.shots, lmMatch.stats.away.shots], ["On Target", lmMatch.stats.home.onTarget, lmMatch.stats.away.onTarget], ["Corners", lmMatch.stats.home.corners, lmMatch.stats.away.corners], ["Fouls", lmMatch.stats.home.fouls, lmMatch.stats.away.fouls], ["Yellows", lmMatch.stats.home.yellows, lmMatch.stats.away.yellows], ["Reds", lmMatch.stats.home.reds, lmMatch.stats.away.reds]].map(([label, h, a], i) => { const mx = Math.max(h, a, 1); return (<div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", fontSize: 11 }}>
-                <span style={{ width: 24, textAlign: "right", color: h > a ? hStatClr : "var(--chrome-muted)", fontWeight: h > a ? 600 : 400 }}>{typeof h === "number" && h % 1 !== 0 ? h.toFixed(2) : h}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", padding: "0 4px" }}><div style={{ width: `${(h/mx)*100}%`, height: 4, background: h >= a ? hClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: h > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 70, textAlign: "center", color: "var(--ui-text)", fontSize: 9, flexShrink: 0 }}>{label}</span>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", padding: "0 4px" }}><div style={{ width: `${(a/mx)*100}%`, height: 4, background: a >= h ? aClr + "88" : "var(--chrome-muted)", borderRadius: 3, transition: "width 0.3s", minWidth: a > 0 ? 2 : 0 }} /></div>
-                <span style={{ width: 24, textAlign: "left", color: a > h ? aStatClr : "var(--chrome-muted)", fontWeight: a > h ? 600 : 400 }}>{typeof a === "number" && a % 1 !== 0 ? a.toFixed(2) : a}</span>
-              </div>); })}
-              {/* Momentum graph */}
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--chrome-border)" }}>
-                <div style={{ textAlign: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.16em", fontWeight: 600 }}>Momentum</span>
-                </div>
-                {(() => {
-                  const W = 400, H = 44, mid = H / 2;
-                  const h = lmMatch.momHist;
-                  const maxMin = h.length > 0 ? Math.max(h[h.length-1].m, 90) : 90;
-                  const pts = h.length > 0 ? h.map(p => ({ x: (p.m / maxMin) * W, y: mid - p.v * mid })) : [];
-                  const pathD = pts.length > 1 ? "M0," + mid + " " + pts.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + ` L${pts[pts.length-1].x.toFixed(1)},${mid} Z` : "";
-                  return (
-                  <div style={{ position: "relative" }}>
-                    <span style={{ position: "absolute", top: 2, left: 6, fontSize: 8, color: hClr, fontWeight: 700, ...mono }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)} ▲</span>
-                    <span style={{ position: "absolute", bottom: 2, left: 6, fontSize: 8, color: aClr, fontWeight: 700, ...mono }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)} ▼</span>
-                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 44, display: "block" }}>
-                      <defs>
-                        <clipPath id="momClipTop"><rect x="0" y="0" width={W} height={mid} /></clipPath>
-                        <clipPath id="momClipBottom"><rect x="0" y={mid} width={W} height={mid} /></clipPath>
-                      </defs>
-                      <rect x="0" y="0" width={W} height={H} fill="var(--chrome-panel)" rx="3" />
-                      {[45,90,105,120].filter(m=>m<=maxMin).map(m => <line key={m} x1={(m/maxMin)*W} y1="0" x2={(m/maxMin)*W} y2={H} stroke="var(--chrome-muted)" strokeWidth="0.5" strokeDasharray="2,2" />)}
-                      <line x1="0" y1={mid} x2={W} y2={mid} stroke="var(--chrome-muted)" strokeWidth="1" />
-                      {pathD && <g clipPath="url(#momClipTop)"><path d={pathD} fill={hClr + "55"} stroke={hClr} strokeWidth="1.5" /></g>}
-                      {pathD && <g clipPath="url(#momClipBottom)"><path d={pathD} fill={aClr + "55"} stroke={aClr} strokeWidth="1.5" /></g>}
-                    </svg>
-                  </div>);
-                })()}
-              </div>
-              {/* How many times this fixture has been kicked off live. _rc survives reload and
-                  slot switches, so a re-run is visible rather than something you have to remember;
-                  reading it in render is enough because _rcV bumps alongside every inc. */}
-              {tLiveTarget && (() => { const n = _rc.get(fixtureKey(tLiveTarget) + (tLiveTarget.flipped ? "_L2" : ""));
-                return (<div title="Live kickoffs recorded for this fixture, across reloads" style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)" }}>PLAYED LIVE</span>
-                  <span style={{ ...mono, fontSize: 10, fontWeight: 600, color: n > 1 ? "var(--ui-warn)" : "var(--chrome-muted)" }}>&#215;{n}</span>
-                </div>); })()}
-            </div>
-            </div>
-            </div>
-            {/* One overlay, one panel — which one is whatever the button set. All three are
-                blocks whose height has no ceiling (an eleven-man bench, fourteen dropdowns a side,
-                eleven modifier rows), which is exactly why none of them can live in a column that
-                has to fit the viewport. Widths differ because the contents do. */}
-            {lmPanel && (() => {
-              const [title, wide] = { subs: ["Substitutions", 780], tactics: ["Tactics", 880], mods: ["Live Modifiers", 460] }[lmPanel];
-              return (<div onClick={() => setLmPanel(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-                <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: wide, maxHeight: "86vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", ...ui }}>{title}</span>
-                    <span onClick={() => setLmPanel(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
-                  </div>
-                  {/* The overlay is the only thing in this tab allowed to scroll: these panels
-                      genuinely do not fit, and they are opened deliberately. */}
-                  <div style={{ overflowY: "auto", minHeight: 0 }}>
-                  {lmPanel === "subs" && <>
-            {lmMatch.phase !== "pre_match" && lmMatch.phase !== "finished" && lmMatch.phase !== "penalties" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Substitutions</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
-              {["home","away"].map((side, si) => {
-                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-                const sClr = side === "home" ? hClr : aClr;
-                const subsLeft = 3 - (lmMatch.subs[side]||0);
-                // GK excluded on both ends — the OFF list never offered the keeper to begin
-                // with, but the ON list used to show the WHOLE bench including a backup GK,
-                // so picking one there could leave the side with two keepers and no keeper
-                // among the outfield, silently breaking the pitch/GK invariant elsewhere.
-                const onPitch = (lmMatch.players[side]||[]).filter(p => p.pos !== "GK");
-                const bench = (lmMatch.bench[side]||[]).filter(p => p.pos !== "GK");
-                const isActive = manualSub.side === side;
-                const offPlayer = isActive ? onPitch.find(p => p.name === manualSub.off) : null;
-                const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
-                // extra is only passed for on-pitch pills — bench players sit at a flat 100
-                // stamina until subbed on, so a fatigue readout there would just be noise.
-                const pill = (p, onClick, badge, badgeClr, extra) => (
-                  <span key={p.name} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, padding: "3px 6px", borderRadius: 6, cursor: onClick ? "pointer" : "default", opacity: onClick ? 1 : 0.55, background: "var(--chrome-bg)", border: "1px solid var(--chrome-border-88)" }}>
-                    <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
-                    <span style={{ color: "var(--ui-text)" }}>{p.name}</span>
-                    {badge != null && <span style={{ ...mono, color: badgeClr, fontWeight: 600 }}>{badge}</span>}
-                    {extra}
-                  </span>
-                );
-                const canSub = subsLeft > 0 && bench.length > 0;
-                return (<>
-                  {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600 }}>{tm?.name?.toUpperCase()}</span>
-                      <span style={{ fontSize: 8, color: subsLeft > 0 ? "var(--chrome-muted)" : "var(--ui-danger)", ...mono }}>{subsLeft}/3</span>
-                    </div>
-                    {offPlayer && canSub ? (<>
-                      {/* Replacement step — bench, sorted best OVR first, click to confirm */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: sClr + "14", border: "1px solid " + sClr + "44", borderRadius: 6 }}>
-                        <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Replacing <b style={{ color: "var(--ui-text)" }}>{offPlayer.name}</b></span>
-                        <span onClick={() => setManualSub({side:null,off:null})} title="Cancel" style={{ fontSize: 9, color: "var(--ui-danger)", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                        {[...bench].sort((a,b) => (b.ovr||0)-(a.ovr||0)).map(p => pill(p, () => executeManualSub(side, offPlayer.name, p.name), p.ovr!=null?p.ovr:"–", ovrColor(p.ovr)))}
-                      </div>
-                    </>) : (<>
-                      {/* On-pitch, grouped by line — click anyone to start a sub, when subs are
-                          available. Rating's already visible right above (Player Stats tab), so
-                          repeating it here was redundant — shows stamina plus how much fatigue
-                          has knocked off this player's OVR instead. Stays visible even once subs
-                          run out or the bench is empty, just with the pills no longer clickable —
-                          losing sight of who's gassed on the pitch was worse than a disabled row. */}
-                      {[["DEF"],["MID"],["FWD"]].map(([grp]) => {
-                        // Live-match squad players (mapP) only ever carry the broad pos
-                        // (GK/DEF/MID/FWD) — unlike playerIndex entries elsewhere, there's no
-                        // specific code to run through POS_GROUP, so compare pos directly.
-                        const inGrp = onPitch.filter(p => p.pos === grp);
-                        if (!inGrp.length) return null;
-                        return (<div key={grp} style={{ marginBottom: 4 }}>
-                          <div style={{ fontSize: 6, color: "var(--chrome-muted-66)", letterSpacing: "0.12em", marginBottom: 2, ...mono }}>{grp}</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                            {inGrp.map(p => { const stam = p.stamina??100; const drop = Math.round((p.ovr??65) - fatigueOvr(p.ovr, stam)); return pill(p, canSub ? () => setManualSub({side, off:p.name}) : undefined, null, null, (<>
-                              <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
-                              {drop >= 1 && <span style={{ ...mono, fontSize: 7, color: "var(--ui-danger)", fontWeight: 600 }}>(▼{drop})</span>}
-                            </>)); })}
-                          </div>
-                        </div>);
-                      })}
-                      {!canSub && <div style={{ fontSize: 7, color: "var(--chrome-muted-88)", fontStyle: "italic", marginTop: 2 }}>{subsLeft === 0 ? "No subs remaining" : "No bench players"}</div>}
-                    </>)}
-                  </div>
-                </>);
-              })}
-              </div>
-            </div>
-            </>}
-                  </>}
-                  {lmPanel === "tactics" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Tactics</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: "0 12px" }} className="grid-2col">
-              {["home","away"].map((side, si) => {
-                const tm = side === "home" ? teamById(lmH) : teamById(lmA);
-                const isBreak = ["pre_match","half_time","full_time","extra_half_time"].includes(lmMatch.phase);
-                const SC2 = STYLE_CLR;
-                const strat = lmMatch.strategy?.[side] || {};
-                return (<>
-                  {si === 1 && <div style={{ background: "var(--chrome-muted)" }} />}
-                  <div>
-                    <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6 }}>{tm?.name?.toUpperCase()}</div>
-                    {/* Style */}
-                    <div style={{ marginBottom: 4 }}>
-                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", marginBottom: 2 }}>STYLE</div>
-                      {isBreak ? <select value={lmMatch.styles[side]} onChange={e => setLmMatch(m => ({...m, styles:{...m.styles, [side]:e.target.value}}))} style={{ ...inp, fontSize: 10, padding: "3px 6px", width: "100%", color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)" }}>{STYLE_GRP.map(([label, styles]) => <optgroup key={label} label={label}>{styles.map(s => <option key={s} value={s} style={{color:SC2[s]}}>{STYLE_LBL[s]}</option>)}</optgroup>)}</select> : <div style={{ fontSize: 10, color: SC2[lmMatch.styles[side]]||"var(--chrome-muted)", fontWeight: 600, padding: "3px 0" }}>{STYLE_LBL[lmMatch.styles[side]]}</div>}
-                    </div>
-                    {/* Formation + Tempo */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
-                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em" }}>FORMATION</div><div style={{ fontSize: 10, color: "#888", padding: "2px 0" }}>{lmMatch.formations[side]}</div></div>
-                      <div><div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em" }}>TEMPO</div><select value={lmMatch.tactics[side]} onChange={e => setLmMatch(m => ({...m, tactics:{...m.tactics, [side]:e.target.value}, allowTacChange:{...m.allowTacChange, [side]:false}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", width: "100%", color: "#888" }}><option value="park">Ultra Defensive</option><option value="def">Defensive</option><option value="bal">Balanced</option><option value="atk">Offensive</option><option value="ultra">Ultra Offensive</option></select></div>
-                    </div>
-                    {/* Stamina */}
-                    <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", marginBottom: 3 }}>STAMINA</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "var(--chrome-panel)", borderRadius: 3 }}><div style={{ width: `${Math.max(2, teamStam(lmMatch, side))}%`, height: "100%", borderRadius: 3, background: teamStam(lmMatch, side) > 60 ? "var(--chrome-muted)" : teamStam(lmMatch, side) > 30 ? "var(--ui-warn)" : "var(--ui-danger)", transition: "width 0.3s, background 0.3s" }} /></div>
-                        <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 22, textAlign: "right", flexShrink: 0, ...mono }}>{Math.round(teamStam(lmMatch, side))}</span>
-                      </div>
-                    </div>
-                    {/* Strategy instructions */}
-                    {(()=>{ let lastGrp = ""; return Object.entries(STRAT_LABELS).filter(([k]) => STRAT_EDITABLE.includes(k)).map(([key, {name, vals, grp}]) => {
-                      const hdr = grp !== lastGrp; lastGrp = grp;
-                      return (<div key={key}>{hdr && <div style={{ fontSize: 7, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 6, marginBottom: 2 }}>{grp === "possession" ? "IN POSSESSION" : grp === "transition" ? "TRANSITION" : "DEFENSE"}</div>}
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 1 }}>
-                        <span style={{ fontSize: 8, color: "var(--chrome-muted)", width: 44, flexShrink: 0, ...mono }}>{name}</span>
-                        <select value={strat[key] ?? 0} onChange={e => setLmMatch(m => ({...m, strategy:{...m.strategy, [side]:{...(m.strategy?.[side]||{}), [key]: +e.target.value}}}))} style={{ ...inp, fontSize: 9, padding: "1px 4px", flex: 1, minWidth: 0, color: (strat[key] ?? 0) === 0 ? "var(--chrome-muted)" : (strat[key] ?? 0) > 0 ? "var(--ui-attack)" : "var(--ui-info)" }}>
-                          {vals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
-                      </div></div>);
-                    }); })()}
-                  </div>
-                </>);
-              })}
-              </div>
-            </div>
-                  </>}
-                  {lmPanel === "mods" && <>
-            <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, boxShadow: "0 2px 12px var(--ui-shadow-2)" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 10, textAlign: "center", paddingBottom: 6, borderBottom: "1px solid var(--chrome-panel)" , ...ui }}>Live Modifiers</div>
-              {(()=>{
-                const cM = (side) => applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[lmMatch.formations?.[side]]),lmMatch.styleFit?.[side]??1), lmMatch.strategy?.[side]);
-                const hM = cM("home"), aM = cM("away");
-                const ps = [
-                  {k:"press",l:"Press",m:true},{k:"adv",l:"Advance",m:false},{k:"hold",l:"Hold",m:false},
-                  {k:"lb",l:"Long Ball",m:false},{k:"boxShot",l:"Box Shot",m:false},{k:"goalP",l:"Goal Prob",m:false},
-                  {k:"ctr",l:"Counter",m:true},{k:"ctrShot",l:"Ctr Shot",m:false},{k:"def",l:"Defense",m:false},
-                  {k:"lr",l:"Long-range",m:false},{k:"corn",l:"Corners",m:true}
-                ];
-                const fmt = (v, mult) => mult ? v.toFixed(2)+"x" : (v >= 0 ? "+" : "")+v.toFixed(3);
-                const clr = (v, mult) => { const b = mult ? 1.0 : 0; if (Math.abs(v-b) < 0.001) return "var(--chrome-muted)"; return v > b ? "var(--ui-ok)" : "var(--ui-danger)"; };
-                const wt = (v, mult) => Math.abs(v - (mult ? 1 : 0)) > 0.001 ? 600 : 400;
-                return (
-                  <div style={{ ...mono }}>
-                    <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                      <span style={{ width: 66, flexShrink: 0 }} />
-                      <span style={{ flex: 1, textAlign: "right", fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span>
-                      <span style={{ flex: 1, textAlign: "left", fontSize: 9, color: "var(--chrome-muted)", fontWeight: 600 }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span>
-                    </div>
-                    {ps.map(({k,l,m}) => (
-                      <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
-                        <span style={{ width: 66, flexShrink: 0, color: "var(--chrome-muted)", fontSize: 9 }}>{l}</span>
-                        <span style={{ flex: 1, textAlign: "right", color: clr(hM[k],m), fontWeight: wt(hM[k],m) }}>{fmt(hM[k],m)}</span>
-                        <span style={{ flex: 1, textAlign: "left", color: clr(aM[k],m), fontWeight: wt(aM[k],m) }}>{fmt(aM[k],m)}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-                  </>}
-                  </div>
-                </div>
-              </div>);
-            })()}
-          </>)}
-        </div>)}
+        {/* THE ABSTRACT MATCH ENGINE'S INTERFACE WAS HERE -- 634 lines of it, the whole classic
+            live-match screen: controls, minute feed, chance cards, team sheets and subs. It was
+            gated on `absim`, and the only thing that ever set that was the Utilities panel above
+            and the two tournament Play Live paths. Both are gone (see TOURNAMENTS_ENABLED), so
+            nothing could open it and nothing could close it -- it was unreachable UI for a second
+            simulation the app no longer runs.
+            The ENGINE is untouched: simInstantMatch, createMatchState, lmAdvance and the rest all
+            still exist, because lib.mjs runs full seasons through them for the avium-tactics skill
+            and they are the only thing that can score a season in under nine minutes. When
+            tournaments come back on the positional engine this screen is not what returns. */}
 
         {/* ═══ TOURNAMENT TAB ═══ */}
-        {tab === "tournament" && (<div>
+        {/* Still rendered when the tab is restored from a saved session, so nobody lands on a blank
+            page wondering what broke. The tab button itself is gone from the header. */}
+        {tab === "tournament" && !TOURNAMENTS_ENABLED && (
+          <div style={{ maxWidth: 620, margin: "80px auto", textAlign: "center", padding: "0 24px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".1em", color: "var(--chrome-muted)", marginBottom: 14 }}>
+              TOURNAMENTS ARE DISABLED</div>
+            <div style={{ fontSize: 12, color: "var(--chrome-muted)", lineHeight: 1.7 }}>
+              Every tournament result was scored by the abstract instant simulation while Live Match
+              runs the positional engine, so the two disagreed about the same fixture. Tournaments
+              come back once the positional engine can score them without blocking the interface.
+              Nothing has been deleted &mdash; your saved tournaments are untouched.</div>
+          </div>)}
+        {tab === "tournament" && TOURNAMENTS_ENABLED && (<div>
           {tKoDrawFail && <div onClick={() => setTKoDrawFail("")} style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 11, color: "var(--ui-danger)", cursor: "pointer" }}>{tKoDrawFail}</div>}
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
           {/* Save slots — several tournaments in flight, one open at a time. Only the setup phase
@@ -12152,14 +11571,16 @@ export default function App() {
               {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </div></>)}
-          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Abstract Match Engine</PanelTitle></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 11, color: "var(--chrome-muted)", flex: 1, lineHeight: 1.6 }}>
-              The original non-positional simulation. Live Match runs the positional engine now, but
-              tournament fixtures are still scored by this one, so it stays until they are wired over.
-            </span>
-            <button onClick={() => setAbsim(true)} style={addBtn}>Open</button>
-          </div>
+          {/* The Abstract Match Engine panel was here, and its own caption said why it stayed:
+              "tournament fixtures are still scored by this one, so it stays until they are wired
+              over." Tournaments are off (TOURNAMENTS_ENABLED), so that reason is spent and this was
+              the last way into the abstract simulation from the interface. Everything the app can
+              now reach runs the positional engine.
+              The CODE stays. simInstantMatch is what .claude/skills/avium-tactics/scripts/lib.mjs
+              runs full double round-robin seasons through, and it is the only thing in the project
+              that can score a season in less than the nine minutes the positional engine needs. The
+              `absim` overlay is unreachable dead UI now -- safe to delete, not worth the risk of
+              doing it blind. */}
           <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -12436,10 +11857,22 @@ export default function App() {
                   ? <b key={i} style={{ fontWeight: 700, color: "var(--ui-text)" }}>{part}</b>
                   : part);
             };
-            // The best game anyone on the pitch is having, either side. meFinalise shrinks ratings
-            // toward 6.5, so before a goal goes in this is genuinely the man who has done most.
-            const topMan = st ? [...st.players.home.map(p => [p, "home"]), ...st.players.away.map(p => [p, "away"])]
-              .reduce((a, x) => (x[0]?.rating || 0) > (a[0]?.rating || 0) ? x : a) : null;
+            // The best game anyone has HAD, either side, not the best game anyone currently on the
+            // pitch is having. meSub writes the substitute over the outgoing man in s.players and
+            // pushes him onto s.subbedOff, so a man taken off on 8.4 having run the match simply
+            // vanished from this line and the badge dropped to whoever was second. He keeps it.
+            // meFinalise shrinks ratings toward 6.5, so before a goal goes in this is genuinely the
+            // man who has done most.
+            const meRated = st ? [...st.players.home.map(p => [p, "home"]),
+                                  ...st.players.away.map(p => [p, "away"]),
+                                  ...(st.subbedOff?.home || []).map(p => [p, "home"]),
+                                  ...(st.subbedOff?.away || []).map(p => [p, "away"])] : [];
+            const meBest = meRated.reduce((a, x) => (x[0]?.rating ?? 0) > (a?.[0]?.rating ?? -1) ? x : a, null);
+            // ...and NOBODY while it is a tie. Everyone kicks off on 6.5, so a strict > handed the
+            // badge to whichever player happened to sit first in the home array before a ball had
+            // been kicked. A shared best is not a best.
+            const topMan = meBest && meRated.filter(x => (x[0]?.rating ?? 0) === (meBest[0]?.rating ?? 0)).length === 1
+              ? meBest : null;
             return (
               <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
                             display: "flex", flexDirection: "column" }}>
