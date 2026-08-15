@@ -877,6 +877,19 @@ const STYLE_FIT_SPOS = {
 // at roughly 0.73 fit, which is well inside applyStyleFit's damping toward Balanced without being a
 // death sentence -- you can play a system you are not built for, badly.
 const FIT_MISS = 0.60;
+// A SYSTEM IS LIMITED BY ITS WORST KEY MAN, NOT ITS AVERAGE ONE. Fit took the mean of a role group,
+// so an 85 winger alongside a 57 scored exactly what two 71s scored -- and in football those are not
+// the same side, because the weak flank gets attacked for ninety minutes.
+// It is also where the only real signal is. Measured across all 61 clubs: the gap between a group's
+// average and the squad's own average has a standard deviation of 2.0 rating points, which through
+// the old span is worth 0.03 of fit and is why 52% of club-by-style pairs sat inside 0.98-1.02. The
+// spread WITHIN a role averages 4.2 points and reaches 28. Fit was reading the flat quantity and
+// discarding the varied one.
+// FIT_WEAK 0.5 is a half-and-half blend of the group mean and its worst member.
+// ...and the spans were fitted for the old population-centred mapping that `mid` served, which the
+// zero-mean rewrite retired without re-fitting them. At 58-74 in the denominator a six-point deficit
+// moved fit by a tenth. Halved, so the quality term has range comparable to the supply term.
+const FIT_WEAK = 0.5, FIT_SPAN = 0.5;
 // A MAN OUT OF POSITION IS NOT THE PLAYER HIS RATING SAYS HE IS. natPos has existed on every player
 // since the formation-change work and is read NOWHERE in src/engine -- a striker fielded at centre
 // half was worth his full OVR to the shape, the block and the fit alike. Fit is the honest place to
@@ -949,7 +962,13 @@ function _fitParts(style, squad) {
     // shape with nobody wide "had" two average wingers and Wing Play on a 75-rated side computed
     // 0.94 -- the entire basis of the style absent, for six per cent. Empty now scores the squad's
     // own average, which is neutral on QUALITY, and the absence is charged as SUPPLY below.
-    roles[key] = { avg: m.length ? m.reduce((a, p) => a + fitEffOvr(p), 0) / m.length : own,
+    const os_ = m.map(fitEffOvr);
+    const mean = os_.length ? os_.reduce((a, b) => a + b, 0) / os_.length : own;
+    // How far this role's WORST man falls below its own average. Charged relative to how lopsided
+    // the squad is in general (see penBar), because a blend toward the minimum is always negative --
+    // uncentred it is a flat tax on having a style at all, and Balanced pays no fit, so it would
+    // quietly make the no-instruction style the strongest thing in the game.
+    roles[key] = { avg: mean, pen: os_.length ? FIT_WEAK * (mean - Math.min(...os_)) : 0,
                    miss: Math.max(0, 1 - m.length / (need[key] ?? 1)) };
   };
   grp("wide", _isFitWide);
@@ -961,7 +980,11 @@ function _fitParts(style, squad) {
   grp("def", sp => sp === "CB" || sp === "LB" || sp === "RB" || sp === "DEF");
   grp("gk", sp => sp === "GK");
   grp("all", sp => sp !== "GK");
-  return { w, own, span: w.span ?? 20, roles };
+  // The squad's typical lopsidedness across the four outfield roles, so the weak-link term measures
+  // whether THIS role is unusually top-heavy rather than whether the squad has any spread at all.
+  const ks = ["wide", "cmid", "def", "fwd"].filter(k => roles[k]);
+  const penBar = ks.length ? ks.reduce((a, k) => a + roles[k].pen, 0) / ks.length : 0;
+  return { w, own, span: (w.span ?? 20) * FIT_SPAN, roles, penBar };
 }
 // MEASURED AGAINST THE SQUAD'S OWN LEVEL, not a population median. Centring on the population
 // conflated squad QUALITY with style SUITABILITY: a strong side scored high fit for every style, so
@@ -973,12 +996,12 @@ const _fitOf = (avg, miss, own, span) =>
   Math.max(0.3, Math.min(1.25, 1 + (avg - own) / span - miss * FIT_MISS));
 function computeStyleFit(style, squad) {
   const P = _fitParts(style, squad); if (!P) return 1;
-  let avg = 0, miss = 0;
+  let avg = 0, miss = 0, pen = 0;
   for (const k of ["wide", "fb", "fwd", "cmid", "def", "gk", "all"]) {
     const wt = P.w[k]; if (!wt) continue;
-    avg += wt * P.roles[k].avg; miss += wt * P.roles[k].miss;
+    avg += wt * P.roles[k].avg; miss += wt * P.roles[k].miss; pen += wt * (P.roles[k].pen - P.penBar);
   }
-  return _fitOf(avg, miss, P.own, P.span);
+  return _fitOf(avg - pen, miss, P.own, P.span);
 }
 // The same question asked one role at a time, so an instruction can be damped by the men who
 // actually carry it out rather than by a single number standing for the whole squad.
@@ -987,7 +1010,7 @@ function computeRoleFit(style, squad) {
   const out = { overall: P ? computeStyleFit(style, squad) : 1 };
   if (!P) return out;
   for (const k of ["wide", "fwd", "cmid", "def", "all"])
-    out[k] = _fitOf(P.roles[k].avg, P.roles[k].miss, P.own, P.span);
+    out[k] = _fitOf(P.roles[k].avg - (P.roles[k].pen - P.penBar), P.roles[k].miss, P.own, P.span);
   return out;
 }
 function applyStyleFit(mod, fit) {
