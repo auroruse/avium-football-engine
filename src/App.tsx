@@ -561,7 +561,26 @@ const _rc = (() => {
 // name on the team sheet was quietly worth more than the tactics underneath it. Picking a style now
 // stamps these values into the sliders and then gets out of the way -- what the team does is what
 // you can see and edit, and a style you have since tweaked stays tweaked.
-export const STYLE_PRESET = {
+export // GOAL-KICK DISTANCE: SHORT IS A TAX, LONG IS NOT. Removed from all seven stamps that carried it,
+// then measured head to head, and the two halves went opposite ways. Every side that played it SHORT
+// improved -- Zona Mista -0.50 to -0.28 and one win to five, Vertical Tiki-Taka +0.15 to +0.36,
+// Control Possession -0.43 to -0.30. Every side that played it LONG got worse: Catenaccio +0.02 to
+// -0.30 and eight wins down to one, Counter +0.20 to +0.07, Second Ball +0.16 to +0.06, Park The Bus
+// -0.27 to -0.47.
+// So the isolated axis was wrong about the long end. On a Balanced side in isolation both settings
+// measured as a cost (-0.084 short, -0.093 long); in combination, a side that clears its lines is
+// getting something the isolated test cannot see. Long restored where it was stamped, short left off.
+// The general lesson is the one the cost table already carries: it predicts direction about three
+// times in four, and a stamp change still has to be measured in combination.
+// The old note, kept because the classification argument still holds for the SHORT end:
+// GOAL-KICK DISTANCE IS OFF EVERY SHORT STAMP. This file classifies it as an execution choice rather than
+// an identity axis -- it lives in STRAT_EDITABLE beside tempo and time-wasting, and is deliberately
+// excluded from squad-fit damping because it is "not a claim about whether the squad suits the
+// system". Seven styles stamped it anyway, and measured on the isolated axis it costs about 0.08 a
+// match WHICHEVER WAY IT IS SET: short -0.084, long -0.093. Not a trade, a fine for having an
+// opinion about goal kicks, paid by half the roster.
+// A manager can still set it per match from the Tactics panel, which is what an execution choice is.
+const STYLE_PRESET = {
   balanced:      {},
   // Win it back high and go again. The only style that maxes both press and line.
   gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
@@ -578,7 +597,7 @@ export const STYLE_PRESET = {
                    possWon: -1, chanceCreation: -1, creativity: 1, width: -1 },
   // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
   verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
-                   possWon: 1, dribbling: 1, creativity: 1, gkDist: -1, width: -1 },
+                   possWon: 1, dribbling: 1, creativity: 1, width: -1 },
   // Patient without the press: shortest passing outside Tiki-Taka, plays out from the back, holds
   // shape, keeps the ball. It used to carry SEVEN negative instructions and not one positive -- a
   // style defined entirely by refusal -- and measured as the worst side in the game on territory,
@@ -616,11 +635,11 @@ export const STYLE_PRESET = {
   // Width, overlaps, and licence to take a man on.
   wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
   // Sit off, then hurt them the moment it breaks.
-  counterattack: { pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1, gkDist: 1 },
+  counterattack: { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1 },
   // Skip the middle third entirely. Distinct from Counter by NOT sitting deep to earn the ball.
-  routeone:      { pressingLOE: 0, defLine: 0, passingDir: 2, approachPlay: 1, possWon: 1,
-                   chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, gkDist: 1 },
+  routeone:      { gkDist: 1, pressingLOE: 0, defLine: 0, passingDir: 2, approachPlay: 1, possWon: 1,
+                   chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1 },
   // The deep block that still intends to score: absorbs like Park The Bus, breaks like Counter,
   // and sits deeper and more disciplined than either. Its whole value is the transition.
   // dribbling: -1 is gone for the same reason it left Cholismo, and the measurement is the same
@@ -634,9 +653,8 @@ export const STYLE_PRESET = {
   // moves is where the ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter
   // actually happening. It is also what finally separates it from Park The Bus at 38.0 -- one
   // absorbs and breaks, the other only absorbs.
-  catenaccio:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1,
-                   gkDist: 1, width: -1 },
+  catenaccio:    { gkDist: 1, pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1, width: -1 },
   // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
   // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
   // Tiki-Taka, while passing more (120 a match) and completing more (80.8%) than any side in the
@@ -662,8 +680,8 @@ export const STYLE_PRESET = {
   // difference untouched.
   // The cost, stated: holding the ball longer means carriers travel further before releasing it, so
   // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
-  parkthebus:    { pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: -1, creativity: -1, dribbling: -1, tackling: -1, gkDist: 1,
+  parkthebus:    { gkDist: 1, pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: -1, creativity: -1, dribbling: -1, tackling: -1,
                    timeWasting: 2, width: -1 },
   // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
   // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
@@ -701,13 +719,12 @@ export const STYLE_PRESET = {
   // Dropped to 1, which also sharpens the pair: Route One keeps 2 and is THE long-ball style; this
   // one goes direct and contests the knock-down, which is what its name says and what the width
   // stamp already expresses.
-  secondball:    { pressingLOE: 1, defLine: -1, passingDir: 1, approachPlay: 1, possLost: 1,
-                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1,
-                   gkDist: 1, width: -1 },
+  secondball:    { gkDist: 1, pressingLOE: 1, defLine: -1, passingDir: 1, approachPlay: 1, possLost: 1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, width: -1 },
   // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
   // patience, then Counter's intent once it is out.
   zonamista:     { pressingLOE: -1, defLine: -1, passingDir: -1, approachPlay: -1, possWon: 1,
-                   possLost: -1, gkDist: -1 },
+                   possLost: -1 },
   // Everything forward, nobody disciplined. This is the build that used to be worth +3.3 a season
   // when a user could assemble it slider by slider; it measures under +1 now, which is the only
   // reason it can exist as a named option instead of a exploit.
