@@ -12560,7 +12560,7 @@ export default function App() {
                           // it drifts toward the centre spot and dragged the marker into the corner
                           // of the card with a shot line pointing at nothing. Clamped to the mouth,
                           // which is where a goal physically is.
-                          const gx = X(meGoalX(c.side));
+                          const gx = 105.2;              // in the mouth: the card is always normalised to attack right
                           const gy = Math.max(31.2, Math.min(36.8, Y(c.end?.y ?? 34)));
                           // THE LINE IS THE BALL, NOT THE TOUCHES. Joining touch to touch was the
                           // obvious thing and it is close to useless: mp.idx is -1 for every slice the
@@ -12631,8 +12631,28 @@ export default function App() {
                                   <circle cx={52.5} cy={34} r={9.15} />
                                   <rect x={0.6} y={13.85} width={16.5} height={40.3} />
                                   <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+                                  <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+                                  <rect x={98.9} y={24.85} width={5.5} height={18.3} />
                                   <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
                                   <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
+                                </g>
+                                {/* THE GOAL ITSELF, which this card has been missing all along. Every
+                                    shot line ran to a small ring hanging in empty grass, because the
+                                    furniture here copied the boxes and the D and stopped -- no six
+                                    yard box, and no frame. A goal diagram whose goal is not drawn is
+                                    asking the reader to take the finish on trust. Netting is hinted
+                                    with a few uprights so the mouth reads as a mouth at any crop. */}
+                                <g>
+                                  <rect x={104.4} y={30.34} width={1.9} height={7.32}
+                                        fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.85)"
+                                        strokeWidth={0.34 * k} />
+                                  <rect x={-1.3} y={30.34} width={1.9} height={7.32}
+                                        fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.45)"
+                                        strokeWidth={0.3 * k} />
+                                  <g stroke="rgba(255,255,255,.4)" strokeWidth={0.12 * k}>
+                                    {[1.5, 3.0, 4.5, 6.0].map(o => (
+                                      <line key={o} x1={104.4} y1={30.34 + o} x2={106.3} y2={30.34 + o} />))}
+                                  </g>
                                 </g>
                                 {/* the build-up, segment by segment, then the finish over the top */}
                                 {path.slice(0, -1).map((q, i) => (strike >= 0 && i >= strike) ? null : (
