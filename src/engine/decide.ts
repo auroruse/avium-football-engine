@@ -1,5 +1,5 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
-import { CFG, NO_INSTRUCTIONS } from "./config";
+import { CFG, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs } from "./attributes";
 import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundSpeed, meLoftFor } from "./ball";
@@ -383,6 +383,17 @@ export function meDecide(s, rng, side, i, dwell) {
     // taking; the same ground into a body is not, so the two are multiplied rather than added.
     const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull);
     val += room * Math.max(0, fwd) * CFG.roomFwd;
+    // THE PATTERN. Everything above prices this pass on its own; this prices what it SETS UP. A
+    // square ball that begins a switch and a square ball that begins nothing score identically to a
+    // one-move utility, and the first is how possession football actually moves a defence. The style
+    // supplies the lookahead the scorer does not have. Balanced declares no patterns and therefore
+    // gets nothing here, which is the mechanism rather than a penalty applied to it.
+    const _pat = ME_PAT_MAP[s.styles?.[side]];
+    if (_pat) {
+      const _gx = meGoalX(side);
+      const _w = _pat.get(meZone(Math.abs(_gx - p.x), p.y) * 9 + meZone(Math.abs(_gx - aimX), aimY));
+      if (_w) val += _w * CFG.patW;
+    }
     // Losing it costs what it costs WHERE IT IS LOST, not where the passer happens to be standing.
     // Charged at his own position, every option out of a defence paid the same enormous penalty --
     // the danger of his own box -- so only completion could separate them, and the shortest backward

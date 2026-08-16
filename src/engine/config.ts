@@ -538,12 +538,19 @@ export const CFG = {
   // where it ships: both are resolved by the ball physics rather than by a roll, so there is no
   // reason to assume the estimate should differ until it is measured.
   headXg: 1,
-  // Rating points per unit of instruction set, and per unit of contradiction. At 0.077 goals a
-  // rating point, drillCap 5 makes a fully committed plan worth about 0.39 goals -- roughly the
-  // bottom half of the style spread, which is what has to be crossed for every style to clear a
-  // stamp containing nothing. clashOvr is deliberately steeper than drillOvr so a contradictory
-  // build can go net negative rather than merely earning less.
-  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0,
+  // How much of a system a side has drilled, and what it costs not to have drilled one. commit is
+  // scored in units of instruction set, capped, less what its contradictions take back; the result
+  // is then read as a SHORTFALL against a full plan and charged in rating points.
+  // At 0.077 goals a rating point, drillCap 5 and indecision 2.0 means a side with no instructions
+  // at all plays 10 points below its squad -- about 0.77 goals -- while every designed style in the
+  // game sits within 1.2 points of its true rating. That asymmetry is the entire mechanism.
+  // indecision was pushed to 2.0 on arithmetic that turned out to be wrong, and measured blocked at
+  // 80 fixtures a style it bought -0.18 goals for a TEN point penalty -- inside its own error, and a
+  // slope of 0.018 goals a rating point rather than the 0.09 the home-advantage sweep reported for
+  // the same quantity. Those two blocked measurements disagree by five times and the disagreement is
+  // unresolved; until it is, rating is not a channel to push anything through. Back to 1.0, which is
+  // the magnitude that measured as closing the squad-fit inversion (+0.427 -> -0.069).
+  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0, indecision: 1.0,
   lineADefL: 7,
   //
   // FOUR THINGS THAT DO NOT FIX PARK THE BUS. It sits at -0.28 against the field where Balanced is
@@ -568,6 +575,11 @@ export const CFG = {
   // and is not done: Tiki-Taka's ground gained fell 296 -> 162 metres, because bunching everyone
   // behind the ball does not create a short ball FORWARD, it just makes every forward ball tiny.
   // Whatever short passing is missing, it is not a tighter shape.
+  // What a pattern step is worth on top of the option's own score. val terms here run about 0.03 for
+  // simply keeping the ball and 0.04 for twenty metres of ground, so 0.045 is decisive without being
+  // overwhelming -- enough to make a square ball that starts a switch beat a square ball that does
+  // not, which is the entire point.
+  patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
   // attempts tonight aimed at the wrong link, and the funnel says exactly where the break is.
@@ -1781,8 +1793,63 @@ export function meDrill(st) {
     if (gate === "pos" && va <= 0) continue;
     clash += Math.max(0, -w * va * vb);        // only the disagreements; agreeing pays nothing
   }
-  return Math.min(CFG.drillCap, commit * CFG.drillOvr) - clash * CFG.clashOvr;
+  // NEGATIVE OR ZERO, never positive. A side that has drilled a full system plays at its rating; one
+  // that has drilled nothing plays below it. Expressed as a penalty rather than a bonus on purpose:
+  // a bonus inflates real styles above what their squad is worth, which breaks the rule that squad
+  // quality should outweigh system, and that ceiling is what stopped the effect being pushed hard
+  // enough to matter. Nothing here lifts anybody -- it only declines to penalise the committed.
+  const drilled = Math.min(CFG.drillCap, commit * CFG.drillOvr) - clash * CFG.clashOvr;
+  return (Math.max(0, drilled) - CFG.drillCap) * CFG.indecision;
 }
+
+// WHAT A STYLE IS TRYING TO DO, rather than what it prefers.
+// The engine scores every option with one global utility and takes the argmax, and that utility is
+// well calibrated and exactly ONE MOVE DEEP. Those two facts together are why a side with no
+// instructions finished mid-table against thirteen designed systems: it plays the argmax of the
+// engine's own definition of good football, and every instruction moves it off a maximum. No
+// coefficient fixes that. It is the shape of the thing.
+//
+// It is also why possession football cannot move the ball. A short-passing side gains 5.3 m of
+// ground per forward pass where Gegenpress gains 14.0, because a greedy scorer looking at eight
+// metre options takes the safest one and the safest one is sideways. That pass is not wrong -- a
+// square ball is the first move of a switch, a cutback, a third man through the seam -- but its
+// worth lives three actions later and a one-move utility cannot see three actions later.
+//
+// A pattern is that missing knowledge, and it is what a tactical system actually is: the manager
+// knows what comes next and the player choosing greedily does not. Nine zones, three depth bands by
+// three lateral, in attacking orientation. A pattern says moving the ball from this zone to that one
+// is worth more than it looks. Balanced declares NOTHING, plays one move deep, and is last by
+// construction rather than by penalty.
+export function meZone(dGoal, y) {
+  const depth = dGoal < 35 ? 2 : dGoal < 70 ? 1 : 0;   // 0 own third, 1 middle, 2 final
+  const lat = y < 20.4 ? 0 : y > 47.6 ? 2 : 1;         // 0 left, 1 centre, 2 right
+  return depth * 3 + lat;
+}
+// [fromZone, toZone, worth 0..1]. Zones: 0-2 own L/C/R, 3-5 middle L/C/R, 6-8 final L/C/R.
+export const ME_PATTERN = {
+  // Combine through the middle, and switch to move them before you do.
+  tikitaka:      [[4,7,1.0],[3,5,0.6],[5,3,0.6],[3,4,0.5],[5,4,0.5]],
+  possession:    [[4,7,0.9],[3,5,0.7],[5,3,0.7],[3,4,0.5],[5,4,0.5]],
+  lanuestra:     [[4,7,0.9],[3,4,0.6],[5,4,0.6],[6,7,0.6],[8,7,0.6]],
+  // Straight through the seam, fast.
+  verticaltiki:  [[4,7,1.0],[3,7,0.8],[5,7,0.8],[1,4,0.5]],
+  gegenpress:    [[4,7,0.9],[6,7,0.8],[8,7,0.8],[3,7,0.6],[5,7,0.6]],
+  // Get it wide, then cut it back. The cutback is the whole style and nothing priced it.
+  wingplay:      [[4,6,0.8],[4,8,0.8],[6,7,1.0],[8,7,1.0],[3,6,0.5],[5,8,0.5]],
+  // Skip the midfield entirely; win what comes off it.
+  routeone:      [[1,7,1.0],[4,7,0.8],[0,6,0.6],[2,8,0.6]],
+  secondball:    [[1,7,0.9],[4,7,0.7],[6,7,0.7],[8,7,0.7]],
+  // Absorb, win it deep, release into the channel.
+  catenaccio:    [[1,6,0.9],[1,8,0.9],[0,3,0.6],[2,5,0.6],[4,7,0.5]],
+  counterattack: [[1,7,1.0],[3,7,0.8],[5,7,0.8],[1,6,0.7],[1,8,0.7]],
+  parkthebus:    [[1,6,0.8],[1,8,0.8],[0,3,0.5],[2,5,0.5]],
+  cholismo:      [[1,4,0.6],[4,7,0.8],[3,7,0.5],[5,7,0.5]],
+  zonamista:     [[4,7,0.7],[1,4,0.6],[3,4,0.5],[5,4,0.5]],
+  // balanced: deliberately absent. No plan, no lookahead.
+};
+// Flattened once at module load: from*9+to -> worth.
+export const ME_PAT_MAP = Object.fromEntries(Object.entries(ME_PATTERN).map(
+  ([k, rows]) => [k, new Map(rows.map(([a, b, w]) => [a * 9 + b, w]))]));
 
 export const DEFAULT_OVR = 60;
 
