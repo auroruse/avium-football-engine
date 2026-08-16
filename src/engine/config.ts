@@ -710,10 +710,6 @@ export const CFG = {
   // Twice measured, twice refuted, both before and after the decision it was supposedly waiting on.
   // Do not try a third dose; whatever possession is missing here, it is not defensive inertia.
   chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
-  // How far a man may carry the ball after receiving it and still have the pass count as the chance
-  // that created his shot. Beyond this he made it himself. Reporting only -- nothing reads it that
-  // can change a match.
-  keyPassCarry: 12,
   // THE STIR, tried and reverted in one night: bank "disorganisation" while the other side holds
   // the ball, decay it on a clock, spend it as deterministic positional error on every man in the
   // block (worse for a poor position attribute), so lanes that do not exist against a set block

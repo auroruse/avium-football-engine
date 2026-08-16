@@ -483,15 +483,6 @@ export const ME_DRAIN = CFG.drain;
 // ---- the tick ---------------------------------------------------------------------------
 export function meBallTo(s, side, i, x, y) {
   const mp = s.mePos;
-  // WHERE HE GOT IT AND WHO FROM. Needed for the chance-created count in the match report, and it
-  // has to live here rather than in an instrumentation patch: mp.kickBy names the man who last
-  // deliberately played the ball, which is the passer. A team-mate's pass sets _from; winning it
-  // off the opposition, or picking up a loose ball, clears it, because neither created anything.
-  { const _r = s.players[side]?.[i], _k = mp.kickBy && mp.kickBy[0];
-    if (_r) {
-      _r._gotX = x; _r._gotY = y;
-      _r._from = (_k && _k.s === side && _k.i !== i) ? _k.i : -1;
-    } }
   if (mp.side !== side) { mp.counter = side; mp.counterT = 26; mp.possT = 0; }   // just won it
   mp.drive = 0;
   for (const q of s.players[meOther(side)]) { q._run = null; q._runT = 0; }
@@ -1025,6 +1016,7 @@ export function meTick(s, rng, out) {
     // with 261 passes. Airtime is not control. A pass that reaches a team-mate was your possession
     // the whole way; a hoof that gets headed clear never was.
     if (okSide === pp.side) { out.passOk++; if (out.passOkSide) out.passOkSide[pp.side]++;
+                              if (pp.byP) pp.byP.passOk = (pp.byP.passOk || 0) + 1;
                               out.poss[pp.side] += (pp.t || 0);
                               // Ground actually gained by a pass that found a team-mate. A side can
                               // complete 160 passes a game and be no nearer the goal at the end of it.
@@ -1506,7 +1498,7 @@ export function meTick(s, rng, out) {
           // A deflection. If a shot was live, that was a block.
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
             meBump(out, "blockedSide", bs);
-            meRate(q, CFG.rateBlock); q.defActs = (q.defActs || 0) + 1;
+            meRate(q, CFG.rateBlock);
             meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
             // man who hit it, not the defence putting it through their own net. Only a ball that
@@ -1528,7 +1520,7 @@ export function meTick(s, rng, out) {
         // not actually broken, was drawn from a stat that was undercounting by four times.
         if (mp.shot && bs !== mp.shot.side) {
           out.blocked = (out.blocked || 0) + 1; meBump(out, "blockedSide", bs);
-          meRate(q, CFG.rateBlock); q.defActs = (q.defActs || 0) + 1;
+          meRate(q, CFG.rateBlock);
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
@@ -1888,9 +1880,6 @@ export function meTick(s, rng, out) {
     // with a chance the forward then carried thirty metres and manufactured himself -- which is why
     // an unguarded version of this put 55% of all chances created on DEFENDERS. A key pass is one
     // the shot follows from, so the shooter has to still be near where he received it.
-    { const _cr = p._from >= 0 ? ps[p._from] : null;
-      const _carry = p._gotX === undefined ? 1e9 : Math.hypot(p.x - p._gotX, p.y - p._gotY);
-      if (_cr && _cr !== p && _carry < CFG.keyPassCarry) _cr.chances = (_cr.chances || 0) + 1; }
     meEvt(out, "shot", side, p.x, p.y, gx, aimY, null);
     // Read the shooter BEFORE the ball leaves him: mp.idx is cleared on the line above, so taking
     // the index after it recorded -1 on every shot from open play. The goal attribution only looked
@@ -1979,7 +1968,7 @@ export function meTick(s, rng, out) {
     && (q.x - PITCH_L / 2) * meDir(side) > 0        // only in the opponent's half
     && (q.x - p.x) * meDir(side) > 0;               // and ahead of the ball
   mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced,
-                     off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x };
+                     off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x, byP: p };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
              meTech(a.pass) / (mp.firstTouch ? Math.max(1, CFG.firstTouchNoise + (s.strategy?.[side]?.dribbling || 0) * CFG.dribTouch) : 1), press,
              s.strategy?.[side]?.tempo || 0);

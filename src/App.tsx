@@ -5556,7 +5556,7 @@ const meSide = (t) => {
   const xi = (t?.squad || []).filter(p => !p.bench).slice(0, 11);
   const base = xi.length === 11 ? xi : buildSquad(t?.formation || "4-3-3", null).filter(p => !p.bench);
   return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
-    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0, defActs: 0, _att: null }));
+    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, passOk: 0, defActs: 0, _att: null }));
 };
 // Everyone who is not in the XI, in the same shape meSide gives the starters.
 const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
@@ -12664,14 +12664,17 @@ export default function App() {
                         // from the bench. Grid over <table> for the same reason the original used
                         // one: the columns have to line up between the two sides of the panel, and
                         // fixed pixel tracks do that where auto-layout cannot.
-                        // C and D are REAL here now. They were the two columns I dropped when this
-                        // was rebuilt, because the positional engine populated neither -- it rated a
-                        // tackle, a block and a clearance and then forgot them. They are counted per
-                        // man in the engine now, and a chance is credited off the pass the shooter
-                        // actually received (meBallTo stamps who played it), when the shot is TAKEN
-                        // rather than when it goes in, which is the whole difference between a
-                        // chance created and an assist.
-                        const COLS = "20px 26px 1fr 16px 16px 16px 16px 16px 26px 11px";
+                        // The middle two columns are what this engine can honestly count per man.
+                        // The abstract screen had C (chances created) and D (defensive actions).
+                        // Chances needed a key-pass model, and every cut of it read badly -- keyed on
+                        // the intended receiver it was nonsense, keyed on the passer it still put a
+                        // quarter of all chances on centre-halves hitting a forward who did the rest
+                        // himself. Dropped rather than shipped half-right. The slots hold the two
+                        // things this engine already resolves exactly instead: PAS is passes
+                        // COMPLETED, credited when the ball reaches a team-mate rather than when it
+                        // leaves the boot, and T+C is tackles won plus clearances. A block is
+                        // neither of those, so it is not in there.
+                        const COLS = "20px 26px 1fr 15px 15px 26px 24px 18px 26px 11px";
                         const men = (side, clr) => {
                           const start = (m.s.players[side] || []).filter(q => q._onAt === undefined);
                           const came = (m.s.players[side] || []).filter(q => q._onAt !== undefined);
@@ -12701,7 +12704,7 @@ export default function App() {
                                 </span>
                                 {val(q.goals, true)}
                                 {val(q.assists, true)}
-                                {val(q.chances)}
+                                {val(q.passOk)}
                                 {val(q.defActs)}
                                 {val(q.pos === "GK" ? q.saves : 0)}
                                 <span style={{ ...cellBase, textAlign: "center", ...mono, fontWeight: 700,
@@ -12717,7 +12720,7 @@ export default function App() {
                               <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 2, fontSize: 7,
                                             letterSpacing: ".08em", color: "var(--chrome-muted)",
                                             padding: "0 0 3px", borderBottom: "1px solid var(--chrome-border-33)" }}>
-                                {["", "OVR", "PLAYER", "G", "A", "C", "D", "S", "RTG", ""].map((h, i) => (
+                                {["", "OVR", "PLAYER", "G", "A", "PAS", "T+C", "SV", "RTG", ""].map((h, i) => (
                                   <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
                               </div>
                               <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>

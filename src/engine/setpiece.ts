@@ -606,7 +606,10 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     : sp.kind === "throw" ? `${taker.fullName || taker.name} takes the throw`
     : sp.kind === "goalkick" ? `${taker.fullName || taker.name} goes ${high ? "long" : "short"}`
     : sp.kind === "kickoff" ? "Kick off" : `${taker.fullName || taker.name} plays it`;
-  mp.passPending = { side };
+  // The taker gets credited for it like any other pass. Left off, every corner, throw, goal kick
+  // and free kick completed into the match total and onto nobody's name -- about twenty-five passes
+  // a match, which is where the per-player column stopped reconciling with the team's.
+  mp.passPending = { side, byP: taker };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
 }
