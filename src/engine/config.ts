@@ -431,6 +431,15 @@ export const CFG = {
   // a property of the finisher -- shotRange metres plus what his shooting buys him, so 14 m for a
   // centre-half and about 23 for a striker -- and it fades over shotRangeFade rather than switching
   // off at a line. Without this nobody ever elected to shoot from outside ten metres all match.
+  // How much a carry is discounted for the time it takes, per unit of pressure already on the man.
+  // At 1.4 a carrier with a defender engaged reads the spot eight metres on as roughly half what a
+  // frozen defence would make it, which is what forces the ball to be struck rather than improved.
+  carryDelay: 1.4,
+  // Metres of room the spot ahead needs for the carry to be worth its full value. Inside this the
+  // destination is contested by the time he gets there and the ball is better struck now.
+  carryRoom: 9,
+  // Metres of extra range a completely unobstructed sight of goal buys.
+  shotClearRange: 8,
   shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6, shotSight: 0.8,
   // A clear sight of goal is worth a great deal at ten metres and very little at twenty-five: past
   // that the keeper, not the bodies in front of him, is what stops it. Flat, it made a clean look
@@ -1419,7 +1428,17 @@ Object.assign(CFG, {
   // What a shot is worth against keeping the ball. At 0.6 a man through on goal preferred a safe
   // ball sideways: real footballers shoot considerably more than the expected-goals-optimal rate,
   // and a chance that is not taken is worth nothing at all.
-  xgK: 0.165, shotWorth: 1.0,
+  // 0.165 -> 0.135. A single exponential at 0.165 decays far faster than real chance quality does,
+  // and the error is all at range: against an eleven-metre shot, this engine valued a twenty-five
+  // metre one at 0.099 of it where real xG puts that ratio at about 0.21. Half. No appetite term can
+  // rescue a base value that is half of reality, which is why efforts from distance were 2.1% of all
+  // shots -- against something nearer 15-20% in the real game -- and why nobody ever has a go with
+  // the goal wide open. Fitted across 6-28 m against real xG by distance (0.35 / 0.12 / 0.06 / 0.03
+  // / 0.018 at 6 / 11 / 16 / 22 / 28 m central), one exponential lands at k = 0.135.
+  // Real xG is steeper than one exponential close in and flatter far out; 0.135 splits that, so
+  // six-yard chances are slightly under-valued and twenty-five yard ones slightly over. That is the
+  // right way round for a model that has to pick ONE curve.
+  xgK: 0.135, xgBase: 0.68, shotWorth: 1.0,
   // Below this chance it is not a shot worth taking at all. Set to clear hopeless efforts from
   // 35 m+ (worth about 0.001) without touching real long-range attempts from 20-25 m (about 0.007).
   shotMinP: 0.004,

@@ -17,7 +17,12 @@ export function meShotP(s, side, p, x, y) {
   if (g.d > 40) return 0;
   const a = meAttrs(p);
   // Base conversion from geometry alone, then the finisher, then how hurried he is.
-  let q = Math.exp(-g.d * (CFG.xgK ?? ME_XG_K)) * Math.min(1, g.ang / 0.42) * 0.78;
+  // The 0.78 was inline and is now a knob, because flattening xgK from 0.165 to 0.135 raised the
+  // value of every shot beyond six metres and took goals a match from about 2.8 to 3.0. The decay
+  // decides the SHAPE of the distribution and this decides its LEVEL, so they are set separately:
+  // the shape is now right (71.3% of shots inside the box against a real 70-75%, long-range efforts
+  // up from 2.1% to 6.2%) and this puts the level back where it was calibrated.
+  let q = Math.exp(-g.d * (CFG.xgK ?? ME_XG_K)) * Math.min(1, g.ang / 0.42) * CFG.xgBase;
   // The finisher. This slope dates from when execution noise was nearly flat and sp carried the
   // whole of what a finisher was worth; meShootBall now takes meTech, so real skill spread lives in
   // the strike itself and a steep slope HERE double-counts it -- worse, it is a slope on the
@@ -154,7 +159,26 @@ export function meDecide(s, rng, side, i, dwell) {
   const sp = meShotP(s, side, p, p.x, p.y);
   // What the shot becomes if he takes it a stride nearer. Hoisted out of the shot branch because the
   // CARRY needs it too -- see the drive-at-goal term below.
-  const spAhead = meShotP(s, side, p, p.x + dir * CFG.carryAdv, p.y);
+  // ...AND A CARRY IS NOT FREE. carryAdv is eight metres, roughly 1.6 s at a dribbler's pace, and in
+  // 1.6 s every defender near him closes the same eight. This was read off a defence frozen exactly
+  // where it stands, so the spot he COULD reach always looked better than the one he is on -- closer
+  // is always better -- and improving a chance therefore always beat taking one. That is the whole
+  // reason nobody shoots first time in the box: a cutback arrives, the tap-in is worth less on paper
+  // than the same ball struck four metres nearer, and he takes a touch instead while the defence
+  // arrives. It also recurses, which is why long-range efforts never happen either: twenty-five
+  // metres loses to carrying to seventeen, seventeen loses to carrying to nine, and by then the
+  // chance has gone. Charged by the pressure he is ALREADY under, which is what decides whether he
+  // gets to make the carry at all.
+  // ...and you only get to carry into space you will still HAVE when you arrive. meShotP prices the
+  // destination against whoever stands there now, which is nobody, because the man who will be there
+  // is currently ten metres away and walking. Discounted by the room at the destination as well as
+  // the pressure here, so driving into an empty channel stays free and driving into a gap that is
+  // about to close does not. Without this a shooter received the ball 27 m out and struck it at 12,
+  // carrying fifteen metres through a defence that was modelled as standing still.
+  const _cx = p.x + dir * CFG.carryAdv;
+  const spAhead = meShotP(s, side, p, _cx, p.y)
+                / (1 + mePressure(s, side, p.x, p.y) * CFG.carryDelay)
+                * Math.min(1, meOppDist(s, side, _cx, p.y) / CFG.carryRoom);
   // A hopeless shot is not an option, it is a giveaway. Every other option is scored against losing
   // the ball, so when a man is swamped and nothing is on, a shot worth a tenth of a percent can win
   // simply by being the least negative thing available -- which is where an attempt from forty
@@ -164,8 +188,14 @@ export function meDecide(s, rng, side, i, dwell) {
     // survives belongs to the finisher rather than to a fixed threshold.
     const gsh = meShotGeom(side, p.x, p.y);
     const lane = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W);
-    const range = CFG.shotRange + a.shoot / 99 * CFG.shotRangeSkill;
-    const sight = Math.max(0, 1 - lane / CFG.shotLaneClear)
+    // A CLEAR SIGHT EXTENDS THE RANGE, rather than merely surviving inside a fixed one. These two
+    // were multiplied, so a man with nothing whatever in front of him was still judged out of range
+    // at the same distance as one shooting through a crowd -- and nobody hits it from twenty-five
+    // yards in this engine even with the goal wide open, which is not the game. How far out you will
+    // have a go is exactly a function of whether anything is in the way.
+    const clear = Math.max(0, 1 - lane / CFG.shotLaneClear);
+    const range = CFG.shotRange + a.shoot / 99 * CFG.shotRangeSkill + clear * CFG.shotClearRange;
+    const sight = clear
                 * Math.max(0, Math.min(1, 1 - (gsh.d - range) / CFG.shotRangeFade));
     // Would carrying closer improve this chance, or ruin it? meShotP already knows about the bodies
     // in the lane and the pressure at a point, so ask it about the spot he would dribble to.
