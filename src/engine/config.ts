@@ -1706,10 +1706,16 @@ export const ME_CLASH = [
   // takes 39.6% of its shots from turnovers against a neutral line's 44.1%. The mirror is not true:
   // winning it high and going straight at them is what a high press IS, not a contradiction, and
   // an ungated rule charged Vertical Tiki-Taka three rating points for pressing properly.
-  ["defLine", "possWon", -1, "deep"],
-  ["passingDir", "approachPlay", 1],  // direct wants the ball into space, short wants to play out
+  ["defLine", "possWon", -1, "neg"],
+  // Gated to DIRECT only. Playing it long and then insisting on building from the back is the
+  // contradiction. Short passing into space is not -- it is the whole of what "vertical" means in
+  // vertical tiki-taka, and an ungated rule charged that style for being itself.
+  ["passingDir", "approachPlay", 1, "pos"],
   ["passingDir", "chanceCreation", 1],// hit it long and shoot early, or work it in patiently
-  ["passingDir", "creativity", -1],   // short passing needs licence; direct football needs shape
+  // Gated to SHORT only. Combining in tight spaces needs licence, so short-and-disciplined is the
+  // contradiction. Direct-and-expressive is not: getting it wide for a winger to beat his man is
+  // Wing Play, and the ungated rule charged it three rating points for having wingers.
+  ["passingDir", "creativity", -1, "neg"],
   ["pressingLOE", "tackling", 1],     // a side that presses has to go and win it
 ];
 // REMOVED, both of them my error rather than the stamps':
@@ -1731,7 +1737,10 @@ export function meDrill(st) {
   for (const [a, b, w, gate] of ME_CLASH) {
     const va = (st[a] || 0) / (ME_AXIS_MAX[a] || 1), vb = (st[b] || 0) / (ME_AXIS_MAX[b] || 1);
     if (!va || !vb) continue;
-    if (gate === "deep" && va >= 0) continue;  // the rule only runs one way; see the note above
+    // Some rules only run one way -- see the notes on each. "neg" fires only when the first axis is
+    // set low, "pos" only when it is set high.
+    if (gate === "neg" && va >= 0) continue;
+    if (gate === "pos" && va <= 0) continue;
     clash += Math.max(0, -w * va * vb);        // only the disagreements; agreeing pays nothing
   }
   return Math.min(CFG.drillCap, commit * CFG.drillOvr) - clash * CFG.clashOvr;

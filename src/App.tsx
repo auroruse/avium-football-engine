@@ -707,8 +707,12 @@ const STYLE_PRESET = {
   // Two thirds of what depth cost this side was at the OTHER end: goals for 0.98 against 1.30.
   // Four things that did NOT fix it are recorded in engine/config.ts beside lineADefL, with their
   // numbers. Read those before touching this again.
+  // possWon -1 -> +1. A side that parks the bus and then KEEPS the ball is the one contradiction
+  // left in this stamp, and it is measured rather than argued: it takes 39.6% of its shots from
+  // turnovers where a neutral line takes 44.1%, and the engine had it at 52.1% possession, second
+  // most in the game. Park it and hit them on the break, which is what the style is.
   parkthebus:    { gkDist: 1, pressingLOE: -1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 0,
-                   possWon: -1, creativity: -1, dribbling: -1, tackling: -1,
+                   possWon: 1, creativity: -1, dribbling: -1, tackling: -1,
                    timeWasting: 2, width: -1 },
   // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
   // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
@@ -746,7 +750,10 @@ const STYLE_PRESET = {
   // Dropped to 1, which also sharpens the pair: Route One keeps 2 and is THE long-ball style; this
   // one goes direct and contests the knock-down, which is what its name says and what the width
   // stamp already expresses.
-  secondball:    { gkDist: 1, pressingLOE: 1, defLine: -1, passingDir: 1, approachPlay: 1, possLost: 1,
+  // defLine -1 -> 0. A second-ball side fights for knock-downs from a compact MID block; it does
+  // not defend deep AND press high at the same time, which is what -1 alongside pressingLOE +1
+  // was asking for.
+  secondball:    { gkDist: 1, pressingLOE: 1, defLine: 0, passingDir: 1, approachPlay: 1, possLost: 1,
                    possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, width: -1 },
   // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
   // patience, then Counter's intent once it is out.
@@ -762,7 +769,10 @@ const STYLE_PRESET = {
   // La Nuestra is la gambeta -- short, on the deck, through the middle, with the licence to beat a
   // man. The expression stays (dribbling, creativity, shoot on sight, and pressing high to get it
   // back); the long ball goes, and it no longer hoofs it clear.
-  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: -1, approachPlay: 0, chanceCreation: 1,
+  // chanceCreation +1 -> 0. Short passing and shoot-on-sight pull against each other. La Nuestra is
+  // about working the opening and individual brilliance, not speculative efforts -- but this is the
+  // most arguable of the five, so it goes to NO instruction rather than asserting the opposite.
+  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: -1, approachPlay: 0, chanceCreation: 0,
                    dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
 };
 
