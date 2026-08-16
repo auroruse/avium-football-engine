@@ -13090,6 +13090,10 @@ export default function App() {
                       // kind -> icon, header, colour, and whether it is a headline event
                       const META = {
                         goal:    { icon: "⚽", head: "GOAL", clr: "var(--ui-text)", big: true },
+                        pen:     { icon: "🥅", head: "PENALTY SCORED", clr: "var(--ui-ok)", big: true,
+                                   tint: "var(--ui-ok)" },
+                        penmiss: { icon: "🥅", head: "PENALTY MISSED", clr: "var(--ui-danger)", big: true,
+                                   tint: "var(--ui-danger)" },
                         red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
                         sub:     { icon: "⇄", head: "SUB", clr: "var(--chrome-muted)", big: true },
                         save:    { icon: "🧤", clr: "var(--ui-info)" },
@@ -13110,7 +13114,9 @@ export default function App() {
                         const cl = side === "away" ? aClr : hClr;
                         return (
                           <div key={i} style={{ display: "flex", alignItems: "center", padding: md.big ? "6px 0" : "3px 0",
-                                                background: md.big ? (k === "goal" ? cl + "14" : "var(--chrome-bg-08)") : "transparent",
+                                                background: md.tint ? md.tint + "1e"
+                                                          : md.big ? "var(--chrome-bg-08)" : "transparent",
+                                                borderLeft: md.tint ? `2px solid ${md.tint}` : "2px solid transparent",
                                                 borderRadius: md.big ? 4 : 0,
                                                 borderBottom: "1px solid var(--chrome-border-33)" }}>
                             {mCell(min)}
@@ -13118,7 +13124,7 @@ export default function App() {
                             <div style={{ flex: 1, minWidth: 0, padding: "0 6px", lineHeight: 1.4 }}>
                               {(headOver || md.head) && (
                                 <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em",
-                                              color: k === "goal" ? cl : md.clr }}>{headOver || md.head}</div>)}
+                                              color: md.clr }}>{headOver || md.head}</div>)}
                               <div style={{ fontSize: md.big ? 10.5 : 9.5,
                                             color: md.big ? "var(--ui-text)" : (md.clr || "var(--chrome-muted)") }}>{body}</div>
                             </div>
@@ -13129,7 +13135,10 @@ export default function App() {
                         const key = [];
                         for (const sd of ["home", "away"]) {
                           for (const g of (out.scorers?.[sd] || []))
-                            key.push({ min: g.min, side: sd, k: "goal", name: g.name, full: g.full, assist: g.assist });
+                            key.push({ min: g.min, side: sd, k: g.pen ? "pen" : "goal", name: g.name,
+                                       full: g.full, assist: g.assist });
+                          for (const q of (out.penMiss?.[sd] || []))
+                            key.push({ min: q.min, side: sd, k: "penmiss", name: q.name, full: q.full });
                           for (const r of (out.sendOff?.[sd] || []))
                             key.push({ min: r.min, side: sd, k: "red", name: r.name, full: r.full, second: r.second });
                         }
@@ -13138,7 +13147,7 @@ export default function App() {
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
                         return key.map((f, i) => row(i, f.min, f.side, f.k, (<>
                           <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
-                          {f.k === "goal" && f.assist
+                          {(f.k === "goal" || f.k === "pen") && f.assist
                             ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
                         </>), f.k === "red" ? RED_WHY(f.second) : null));
                       }
@@ -13149,7 +13158,7 @@ export default function App() {
                         // A goal caption arrives as "Scorer Full Name (Assister Full Name)". The
                         // scorer is the headline and the assist is a footnote, so they are set as
                         // two different things rather than run together in one weight.
-                        if (f.k === "goal") {
+                        if (f.k === "goal" || f.k === "pen") {
                           const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(f.txt);
                           const who = mt ? mt[1] : f.txt, ast = mt ? mt[2] : null;
                           return row(i, f.min, f.side, f.k, (<>

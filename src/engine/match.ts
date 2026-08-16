@@ -533,6 +533,9 @@ export function meBallTo(s, side, i, x, y) {
   }
   mp.side = side; mp.idx = i; mp.bx = x; mp.by = y; mp.hold = 0; mp.flight = false;
   if (s.players[side][i]) { s.players[side][i]._drbA = null; s.players[side][i]._drbT = 0; }
+  // No `out` reaches this function, so an unresolved penalty is parked on the state and the next
+  // tick flushes it through the funnel -- the weak penalty a defender simply collects ends here.
+  if (mp.shot && mp.shot.pen && !mp.shot._pd) mp._penGone = mp.shot;
   mp.bz = 0.11; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0; mp.lastSide = side; mp.passPending = null; mp.shot = null;
   mp.kickBy = null;
   mp.held = false;              // any new possession is with the feet until proven otherwise
@@ -708,6 +711,24 @@ export function meDead(s, kind, side, ticks, out) {
 // unaffected.
 const meSideOfP = (s, pl) => (s.players.home.indexOf(pl) >= 0 ? "home" : "away");
 const meBump = (out, key, side) => { (out[key] = out[key] || { home: 0, away: 0 })[side]++; };
+// A PENALTY RESOLVES EXACTLY ONCE, whatever ends it. Scored, the goal path tags the shot record;
+// everything else -- parried, gathered, dragged wide, off the frame, blocked, shanked out for a
+// throw, or a stoppage beginning while the rebound is loose -- funnels through here on its way to
+// clearing mp.shot. Without the funnel a penalty whose ball died quietly simply evaporated: taken
+// twenty-three times, resolved twenty-one.
+const mePenRes = (out, sh, mp) => {
+  if (!sh || !sh.pen || sh._pd) return;
+  sh._pd = 1;
+  (out.penMiss = out.penMiss || { home: [], away: [] })[sh.side].push(
+    { name: sh.name, full: sh.full || sh.name, min: out.min ?? 0 });
+  // The silent endings still get a line -- a defender collecting a weak penalty is a missed
+  // penalty, and the feed should say so, not just the ledger. Sites that already emitted their own
+  // penmiss event (the parry, the gather, the wide, the frame) resolve BEFORE their meEvt call
+  // overwrites out.evt, so passing mp only from the genuinely wordless sites keeps one event per
+  // penalty.
+  if (mp) meEvt(out, "penmiss", sh.side, mp.bx, mp.by, mp.bx, mp.by,
+                `${sh.full || sh.name} misses the penalty`);
+};
 
 export function meTackle(s, rng, out) {
   const mp = s.mePos;
@@ -827,6 +848,7 @@ export function meShootout(s, rng, out, maxKicks) {
     if (sc[side] + left(side) < sc[other] && taken[other] >= taken[side]) break;
     if (sc[other] + left(other) < sc[side] && taken[side] > taken[other]) break;
     const g0 = out.goals[side], s0 = out.shots[side];
+    const sc0 = out.scorers?.[side]?.length ?? 0, pm0 = out.penMiss?.[side]?.length ?? 0;
     // EVERYBODY RESETS BETWEEN KICKS. They were left standing wherever the final whistle caught
     // them, and meSPReady gives up after spMaxT -- so a keeper sixty metres up the pitch simply did
     // not get back before the kick was taken, and the first version of this converted 98%.
@@ -861,6 +883,12 @@ export function meShootout(s, rng, out, maxKicks) {
     // A shootout is not part of the match: neither its goals nor its kicks belong in the scoreline.
     if (out.goals[side] > g0) sc[side]++;
     out.goals[side] = g0; out.shots[side] = s0;
+    // ...nor in the match's own records. Goals and shots were already being reset; the scorer list
+    // was NOT, so every converted shootout kick had been leaking into the report as a 120th-minute
+    // goal, and the miss funnel would now leak the failures the same way. Truncated back to their
+    // pre-kick lengths, same pattern as the two counters above.
+    if (out.scorers?.[side]) out.scorers[side].length = sc0;
+    if (out.penMiss?.[side]) out.penMiss[side].length = pm0;
     mp.sp = null; mp.idx = -1; mp.flight = false; mp.shot = null;
   }
   return { home: sc.home, away: sc.away, kicks: taken.home + taken.away,
@@ -923,6 +951,7 @@ export function meTick(s, rng, out) {
   if (mp.counterT > 0) mp.counterT--;
   mp.possT++;
   if (out.evt) out.evt.age++;
+  if (mp._penGone) { mePenRes(out, mp._penGone, mp); mp._penGone = null; }
   mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
   mp.tick++;
   meChase(s, out);
@@ -1037,7 +1066,7 @@ export function meTick(s, rng, out) {
                                 out.passFwd[pp.side] += (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx); }
     else { out.passFail++; meEvt(out, "cut", pp.side, mp.bx, mp.by, mp.bx, mp.by, null); }
   };
-  if (mp.by < 0 || mp.by > PITCH_W) { resolvePending(null); mp.shot = null; meDead(s, "throw", meOther(mp.touchSide), 76, out); return; }
+  if (mp.by < 0 || mp.by > PITCH_W) { resolvePending(null); mePenRes(out, mp.shot, mp); mp.shot = null; meDead(s, "throw", meOther(mp.touchSide), 76, out); return; }
   // Crossing your own goal line is the same event whether you dribbled it there or shot it.
   const endOfPlay = () => {
       resolvePending(null);
@@ -1101,7 +1130,7 @@ export function meTick(s, rng, out) {
                  if (og) goalTxt = `Own goal - ${og.fullName || og.name}`; }
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
             { name: gp.name, full: gp.fullName || gp.name, assist: ast ? ast.name : null,
-              min: out.min ?? 0 });
+              min: out.min ?? 0, pen: !!(sh && sh.pen) });
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
           // winner is scored as the goal that won it rather than as the one that made it 2-1.
           const gm = out.min ?? 0, xg = sh ? sh.xg : CFG.rateGoalXgDef;
@@ -1140,7 +1169,8 @@ export function meTick(s, rng, out) {
             else if (q.pos === "DEF") meRate(q, -CFG.rateConcedeDef);
           }
         }
-        meEvt(out, "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, goalTxt);
+        if (sh && sh.pen) sh._pd = 1;                    // scored: the funnel must not call it missed
+        meEvt(out, sh && sh.pen ? "pen" : "goal", scorer, mp.bx, mp.by, meGoalX(scorer), cross.y, goalTxt);
         meDead(s, "kickoff", cross.conceding, 190, out);
         // Where he runs. The corner at the end he has just scored at, on the side he finished from,
         // which is near enough to where a footballer actually goes. meSPShape does the rest.
@@ -1153,7 +1183,9 @@ export function meTick(s, rng, out) {
       if (cross.kind === "woodwork") {
         // Off the frame and back into play: a live ball, not a stoppage.
         out.woodwork = (out.woodwork || 0) + 1; meBump(out, "woodworkSide", scorer);
-        meEvt(out, "block", scorer, mp.bx, mp.by, mp.bx, mp.by, sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
+        mePenRes(out, sh);
+        meEvt(out, sh && sh.pen ? "penmiss" : "block", scorer, mp.bx, mp.by, mp.bx, mp.by,
+              sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
         mp.bvx = -mp.bvx * 0.55; mp.bvy = mp.bvy * 0.55 + (rng.u() - 0.5) * 3; mp.bvz = Math.abs(mp.bvz) * 0.4 + 1;
         mp.bx += mp.bvx * 0.05;
         mp.lastSide = scorer;
@@ -1161,7 +1193,9 @@ export function meTick(s, rng, out) {
         return;
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
-                meEvt(out, "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y, `${sh.full || sh.name} drags it wide`); }
+                mePenRes(out, sh);
+                meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
+                      sh.pen ? `${sh.full || sh.name} misses the penalty` : `${sh.full || sh.name} drags it wide`); }
       if (cross.conceding === mp.touchSide) meDead(s, "corner", meOther(cross.conceding), 236, out);
       else meDead(s, "goalkick", cross.conceding, 200, out);
       return;
@@ -1447,13 +1481,15 @@ export function meTick(s, rng, out) {
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
             meRate(q, meSaveBonus(shp.xg));
-                     meEvt(out, "save", bs, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} parries it`); }
+            mePenRes(out, shp);
+                     meEvt(out, shp.pen ? "penmiss" : "save", shp.pen ? shp.side : bs, mp.bx, mp.by, mp.bx, mp.by,
+                           shp.pen ? `${q.fullName || q.name} saves the penalty` : `${q.fullName || q.name} parries it`); }
           // Whose goal it still is, if this parry ends up in the net. One touch off the keeper is a
           // deflected shot and the goal belongs to the man who hit it; only a ball that comes off him
           // and then off him AGAIN is an own goal.
           if (shp) mp.deflect = { side: shp.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
-          mp.shot = null; mp.lastSide = bs; meKickedBy(mp, bs, bi);
+          mePenRes(out, mp.shot); mp.shot = null; mp.lastSide = bs; meKickedBy(mp, bs, bi);
           // A REFLECTION off his hands. The surface is square to the line from him to the ball, so
           // angle in equals angle out -- that is the whole geometry of a parry and there is nothing
           // random in it. What varies is how much of a HAND he got on it, and that is how far he had
@@ -1497,11 +1533,14 @@ export function meTick(s, rng, out) {
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meRate(q, meSaveBonus(mp.shot.xg));
+          mePenRes(out, mp.shot);
           // The SIDE on an event is whose event it is, and a save is the keeper's. Tagged with the
           // shooter it drew the wrong club badge and the wrong colour in the feed, so a goalkeeper
           // keeping his side in it read as something the other lot had done.
-          meEvt(out, "save", bs, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} saves`);
-          mp.shot = null;
+          meEvt(out, mp.shot.pen ? "penmiss" : "save", mp.shot.pen ? mp.shot.side : bs,
+                mp.bx, mp.by, mp.bx, mp.by,
+                mp.shot.pen ? `${q.fullName || q.name} saves the penalty` : `${q.fullName || q.name} saves`);
+          mePenRes(out, mp.shot); mp.shot = null;
         }
         // OFFSIDE. Given when he plays it, not when it was struck: a ball rolled into an offside man
         // that a defender cuts out first is simply a ball a defender cut out.
@@ -1528,7 +1567,7 @@ export function meTick(s, rng, out) {
             // comes off the defending side twice is an own goal.
             mp.deflect = { side: mp.shot.side, t: mp.tick,
               n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
-            mp.shot = null; }
+            mePenRes(out, mp.shot); mp.shot = null; }
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
           meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * 8, mp.by + (rng.u() - 0.5) * 8,
                   v2d * CFG.deflectKeep, 0);
@@ -1547,7 +1586,7 @@ export function meTick(s, rng, out) {
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
-          mp.shot = null;
+          mePenRes(out, mp.shot); mp.shot = null;
         }
         resolvePending(bs);
         mp.flight = false;

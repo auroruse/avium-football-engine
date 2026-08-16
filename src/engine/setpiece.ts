@@ -557,8 +557,10 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // open-play only, so a side that won or conceded dead balls was invisible to the balance table.
     if (out.xgS) out.xgS[side] += CFG.spPenXg;
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spPenXg;
-    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;   // `full` or the miss
-                                                                            // caption abbreviates him
+    // `pen` rides with the shot so whatever it turns into knows where it came from: a penalty
+    // scored and a penalty missed are their own events, not a goal and a shot off target.
+    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti,
+                t0: mp.tick, pen: true }; mp.fj = -1;
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
