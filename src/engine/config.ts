@@ -435,9 +435,13 @@ export const CFG = {
   // At 1.4 a carrier with a defender engaged reads the spot eight metres on as roughly half what a
   // frozen defence would make it, which is what forces the ball to be struck rather than improved.
   carryDelay: 1.4,
-  // Metres of room the spot ahead needs for the carry to be worth its full value. Inside this the
-  // destination is contested by the time he gets there and the ball is better struck now.
-  carryRoom: 9,
+  // Metres of room the spot ahead needs, DERIVED rather than picked: he covers carryAdv in about
+  // 1.6 s and a defender covers the same ground in the same time, so anybody within roughly carryAdv
+  // of the destination is standing on it when he arrives. carryReach adds the margin he needs beyond
+  // that to actually get the ball out of his feet. At 9 the radius was smaller than the distance he
+  // was travelling, which is why a clear sight from twenty-five metres still read as a free carry:
+  // the lane was empty NOW and nothing modelled it closing.
+  carryReach: 1.6,
   // Metres of extra range a completely unobstructed sight of goal buys.
   shotClearRange: 8,
   shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6, shotSight: 0.8,
@@ -1441,6 +1445,10 @@ Object.assign(CFG, {
   xgK: 0.135, xgBase: 0.68, shotWorth: 1.0,
   // Below this chance it is not a shot worth taking at all. Set to clear hopeless efforts from
   // 35 m+ (worth about 0.001) without touching real long-range attempts from 20-25 m (about 0.007).
+  // What a missed shot costs against what an open-play giveaway costs. It has to sit well under a
+  // failed dribble's (1 - drb), which is about 0.20, or the engine is telling everyone to run with
+  // it instead of hitting it -- which is exactly what it was doing at 0.32.
+  shotMissW: 0.10,
   shotMinP: 0.004,
   // Shooting, as a real kick. Speed is what carries a shot past defenders before anyone reaches it;
   // the error cone is wider than a pass because a shot is struck, not stroked.

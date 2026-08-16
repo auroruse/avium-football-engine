@@ -178,7 +178,7 @@ export function meDecide(s, rng, side, i, dwell) {
   const _cx = p.x + dir * CFG.carryAdv;
   const spAhead = meShotP(s, side, p, _cx, p.y)
                 / (1 + mePressure(s, side, p.x, p.y) * CFG.carryDelay)
-                * Math.min(1, meOppDist(s, side, _cx, p.y) / CFG.carryRoom);
+                * Math.min(1, meOppDist(s, side, _cx, p.y) / (CFG.carryAdv * CFG.carryReach));
   // A hopeless shot is not an option, it is a giveaway. Every other option is scored against losing
   // the ball, so when a man is swamped and nothing is on, a shot worth a tenth of a percent can win
   // simply by being the least negative thing available -- which is where an attempt from forty
@@ -227,8 +227,17 @@ export function meDecide(s, rng, side, i, dwell) {
     const wantD = CFG.shotWant + st.chanceCreation * CFG.shotWantStep;
     const offWant = Math.max(0, gsh.d - wantD - CFG.shotBand)
                   - Math.max(0, gsh.d - CFG.shotWant - CFG.shotBand);
-    const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * 0.32
-             - offWant * CFG.shotWantW;   // a miss is only a goal kick
+    // A MISS IS ONLY A GOAL KICK -- and at 0.32 this line said so while charging more than a failed
+    // DRIBBLE does. Compare them: a carry that comes off costs (1 - drb) * lose, which at a typical
+    // dribble success of 0.8 is 0.20 * lose; a shot at twelve metres cost (1 - 0.11) * 0.32 = 0.285.
+    // So every man on the pitch was correctly told that running with it is safer than hitting it,
+    // every tick, and that is the whole reason a shooter carried fourteen metres before striking and
+    // efforts from range were 2% of all shots. It is backwards: a missed shot hands the ball back on
+    // their own goal line, which is the least dangerous turnover in football, and a saved one often
+    // returns a corner or a rebound. A lost carry hands it over in the attacking third with the side
+    // committed forward. Shooting is the SAFEST way to lose the ball and it was priced as the riskiest.
+    const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * CFG.shotMissW
+             - offWant * CFG.shotWantW;
     if (ME_DBG) ME_DBG.shot = sc;
     const j = sc + jit("shot");
     if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp }; }
