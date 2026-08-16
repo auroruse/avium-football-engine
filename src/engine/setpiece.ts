@@ -89,7 +89,14 @@ export function meSPBegin(s, kind, side, out) {
   let ti = -1;
   // A penalty is taken by whoever is best at it, and nothing else about where he happens to be
   // standing matters. Everything else goes to the nearest man.
-  if (kind === "penalty") { let best = -1; for (let i = 0; i < us.length; i++) {
+  // ...unless somebody has been NOMINATED. A shootout is a rota, not eleven deferrals to the same
+  // best shooter, so meShootout hands the next man in and this consumes the nomination. In-match
+  // penalties still go to the best striker of a ball, which is what a designated taker is.
+  if (kind === "penalty" && s.mePos._penTaker != null
+      && us[s.mePos._penTaker] && !us[s.mePos._penTaker].off) {
+    ti = s.mePos._penTaker; s.mePos._penTaker = null;
+  }
+  else if (kind === "penalty") { let best = -1; for (let i = 0; i < us.length; i++) {
       const p = us[i]; if (p.pos === "GK" || p.off) continue;
       if (best < 0 || meAttrs(p).shoot > meAttrs(us[best]).shoot) best = i; } ti = best; }
   else if (kind === "goalkick") ti = us.findIndex(p => p.pos === "GK");

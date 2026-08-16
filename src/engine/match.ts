@@ -536,6 +536,7 @@ export function meBallTo(s, side, i, x, y) {
   // No `out` reaches this function, so an unresolved penalty is parked on the state and the next
   // tick flushes it through the funnel -- the weak penalty a defender simply collects ends here.
   if (mp.shot && mp.shot.pen && !mp.shot._pd) mp._penGone = mp.shot;
+  mp._carryBy = null;                          // a fresh claim opens a fresh episode
   mp.bz = 0.11; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0; mp.lastSide = side; mp.passPending = null; mp.shot = null;
   mp.kickBy = null;
   mp.held = false;              // any new possession is with the feet until proven otherwise
@@ -550,6 +551,7 @@ export function meBallTo(s, side, i, x, y) {
 // is overwritten every kick and remembers nothing. An assist needs the touch BEFORE the shot, so the
 // same event is also pushed onto a short history. Bounded, because nothing needs the first half.
 export const meKickedBy = (mp, side, i) => {
+  mp._carryBy = null;                          // a deliberate play ends the carry episode
   mp.kickBy = [{ s: side, i, t: mp.tick }];
   // A deliberate play supersedes any earlier deflection: he has the ball now, so whatever it last
   // bounced off stops deciding the next throw-in.
@@ -716,6 +718,17 @@ const meBump = (out, key, side) => { (out[key] = out[key] || { home: 0, away: 0 
 // throw, or a stoppage beginning while the rebound is loose -- funnels through here on its way to
 // clearing mp.shot. Without the funnel a penalty whose ball died quietly simply evaporated: taken
 // twenty-three times, resolved twenty-one.
+// ONE CARRY IS ONE RUN. Both carry paths used to bump the counter on every quarter-second slice
+// the man kept running, so a single burst down the wing arrived in the report as thirty carries
+// and a match totted up seven hundred. An episode opens when a man starts running with it and
+// closes when the ball leaves him -- meKickedBy for a deliberate release, meBallTo for any fresh
+// claim -- so holding it longer no longer manufactures statistics.
+const meCarry = (s, out, p) => {
+  const mp = s.mePos, key = mp.side + ":" + mp.idx;
+  if (mp._carryBy === key) return;
+  mp._carryBy = key;
+  out.carries++; meBump(out, "carriesSide", meSideOfP(s, p));
+};
 const mePenRes = (out, sh, mp) => {
   if (!sh || !sh.pen || sh._pd) return;
   sh._pd = 1;
@@ -840,6 +853,17 @@ export function meShootout(s, rng, out, maxKicks) {
   const mp = s.mePos;
   const sc = { home: 0, away: 0 }, taken = { home: 0, away: 0 };
   const order = ["home", "away"];
+  // THE ROTA. Five different men, best takers first, and if it goes the distance everybody kicks
+  // before anybody kicks twice -- the keeper going last of all, which is the law's own order of
+  // desperation. Built once from whoever is still on the pitch at the whistle.
+  const rota = {};
+  for (const sd of ME_SIDES) {
+    const ps = s.players[sd];
+    const idx = ps.map((q, i) => i).filter(i => !ps[i].off);
+    idx.sort((a, b) => (ps[a].pos === "GK") - (ps[b].pos === "GK")
+                     || meAttrs(ps[b]).shoot - meAttrs(ps[a]).shoot);
+    rota[sd] = idx;
+  }
   const left = (sd) => Math.max(0, 5 - taken[sd]);
   for (let k = 0; k < (maxKicks || 40); k++) {
     const side = order[k % 2], other = meOther(side);
@@ -862,6 +886,7 @@ export function meShootout(s, rng, out, maxKicks) {
     // keeper who has just been placed from a standstill is still a 0.39 m disc when it is struck --
     // his capsule only opens with speed. Shootout conversion sat at 88.8% against 74.7% for the
     // identical kick in a match.
+    if (rota[side].length) mp._penTaker = rota[side][taken[side] % rota[side].length];
     meDead(s, "penalty", side, 470, out);
     // ONE ATTEMPT. A shootout kick is dead the moment the keeper touches it or it misses -- there is
     // no rebound and no second bite, which is a rule and not a physical fact. Letting it play on for
@@ -1113,7 +1138,10 @@ export function meTick(s, rng, out) {
           // never had it in between -- a goal that came from winning the ball off somebody is not
           // assisted by the man he took it from.
           let ast = null;
-          if (gp) for (let k = lg.length - 1; k >= 0; k--) {
+          // A penalty is one man against the keeper; the touch-log walk would hand an assist to
+          // whoever rolled him the ball to spot it, which in a shootout meant kicks arriving with
+          // assists attached. No penalty has one, by definition rather than by data.
+          if (gp && !(sh && sh.pen)) for (let k = lg.length - 1; k >= 0; k--) {
             const e = lg[k];
             if (e.t > gt) continue;                    // touches after the strike are deflections
             if (e.s !== scorer) break;                 // they had it: no assist
@@ -1760,7 +1788,7 @@ export function meTick(s, rng, out) {
   // of slices while it is inside his control radius and on 74.6% while it is outside -- because
   // outside it nothing steers it at all, and he was free to keep "dribbling" anyway.
   // He is already pursuing it in meMove; this just stops him kicking what he cannot touch.
-  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { out.carries++; meBump(out, "carriesSide", meSideOfP(s, p)); return; }
+  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { meCarry(s, out, p); return; }
   const a = meAttrs(p), sp = meSpeed(a, p.stamina), opp = s.players[meOther(side)];
   // A challenge is one against one: only the CLOSEST opponent in range rolls the duel. Letting every
   // body within 3.2 m roll independently meant a second presser doubled the dispossession rate and
@@ -1911,7 +1939,7 @@ export function meTick(s, rng, out) {
   // Once his time is up the carry is off the menu and he plays the best ball there is.
   const forced = mp.hold >= natural;
   const act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
-  if (act.k === "carry") { out.carries++; meBump(out, "carriesSide", meSideOfP(s, p)); return; }              // meDribble is already running him
+  if (act.k === "carry") { meCarry(s, out, p); return; }              // meDribble is already running him
   if (!forced && (act.sc ?? 0) <= CFG.actNow) return;
   mp.firstTouch = mp.hold <= 1;
   mp.hold = 0;

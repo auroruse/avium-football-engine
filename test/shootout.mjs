@@ -1,38 +1,35 @@
-// Shootouts in isolation, the same trick as test/pensim.mjs -- four a season is not a sample.
-// Real: about 75% of kicks are scored, and a shootout runs 9-11 kicks.
-process.env.QUIET = "1";
-import { parMap } from "./par.mjs";
-const eng = await import("./engine.mjs");
-const { RNG, buildSquad, createMatchState, pitchSlots, meInit, meShootout, STRAT_DEF } = eng;
-const sq = (o) => buildSquad("4-3-3", null).filter(p => !p.bench)
-  .map((p, i) => ({ ...p, name: p.pos + i, ovr: o, stamina: 100, rating: 6.5, atkW: p.atkW ?? 0.5, _att: null }));
-const blank = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
-  onTarget:{home:0,away:0}, offTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0},
-  fouls:{home:0,away:0}, passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0,
-  blocked:0, woodwork:0, shotDist: new Array(10).fill(0), xg: 0 });
-const T = +(process.env.TRIALS || 150);
-function run(k0) {
-  let kicks = 0, sc = 0, undecided = 0, n = 0, matchGoals = 0, matchShots = 0;
-  for (let k = k0; k < k0 + T; k++) {
-    const s = createMatchState();
-    s.players.home = sq(75); s.players.away = sq(75);
-    s.formations = { home: "4-3-3", away: "4-3-3" };
-    s.strategy = { home: { ...STRAT_DEF }, away: { ...STRAT_DEF } };
-    s.possession = "home"; meInit(s, pitchSlots);
-    const out = blank(), rng = new RNG(k + 1);
-    const r = meShootout(s, rng, out);
-    kicks += r.kicks; sc += r.home + r.away; if (!r.winner) undecided++; n++;
-    matchGoals += out.goals.home + out.goals.away;
-    matchShots += out.shots.home + out.shots.away;
+// A PROPER SHOOTOUT: five different takers, the keeper last if it ever gets that far, and not one
+// kick arriving with an assist. Also: carries are episodes now, so a match total in the hundreds
+// means the counter is broken again.
+import { load, PROJECT } from "/Users/zli/Documents/NICHIRIN/.claude/skills/avium-tactics/scripts/lib.mjs";
+import path from "path";
+const eng = await import("./deng.mjs");
+const { clubs } = await load(path.join(PROJECT, "src/presets/AVIUM.tsv"));
+const pool = clubs.slice(0, 12);
+class RNG { constructor(s){ this.s = (s >>> 0) || 1; } u(){ this.s = (Math.imul(this.s, 1664525) + 1013904223) >>> 0; return this.s / 4294967296; } }
+let dup5 = 0, assisted = 0, shoots = 0, kicksTotal = 0, carryTot = 0, n = 0;
+for (let k = 0; k < 10; k++) {
+  const H = { ...pool[k % 12], style: "catenaccio", strategy: { ...eng.STYLE_PRESET.catenaccio } };
+  const A = { ...pool[(k + 5) % 12], style: "parkthebus", strategy: { ...eng.STYLE_PRESET.parkthebus } };
+  eng.DIAG.evt = [];
+  const { s, out } = eng.runPositionalMatch(H, A, 6060 + k * 7919);
+  n++; carryTot += out.carries;
+  const mark = eng.DIAG.evt.length;
+  const r = eng.meShootout(s, new RNG(99 + k), out, 40);
+  shoots++; kicksTotal += r.kicks;
+  // the takers, in order, from the steps-up captions
+  const takers = { home: [], away: [] };
+  for (const [, kind, side, , , txt] of eng.DIAG.evt.slice(mark)) {
+    if (kind === "shot" && txt && /steps up/.test(txt)) takers[side].push(txt.replace(" steps up", ""));
+    if ((kind === "pen" || kind === "goal") && txt && txt.includes("(")) { assisted++; console.log("  ASSISTED KICK: " + txt); }
   }
-  return { kicks, sc, undecided, n, matchGoals, matchShots };
+  for (const sd of ["home", "away"]) {
+    const five = takers[sd].slice(0, 5);
+    if (new Set(five).size !== five.length) { dup5++; console.log(`  DUPLICATE in first five (${sd}): ${five.join(", ")}`); }
+  }
 }
-const res = await parMap([0, T, 2*T, 3*T], run);
-if (!res) process.exit(0);
-const S = res.reduce((a, r) => ({ kicks: a.kicks+r.kicks, sc: a.sc+r.sc, undecided: a.undecided+r.undecided,
-  n: a.n+r.n, matchGoals: a.matchGoals+r.matchGoals, matchShots: a.matchShots+r.matchShots }));
-console.log(`\n${S.n} shootouts.\n`);
-console.log(`  kicks per shootout   ${(S.kicks/S.n).toFixed(1)}      real 9-11`);
-console.log(`  conversion           ${(100*S.sc/S.kicks).toFixed(1)}%    real ~75%`);
-console.log(`  undecided            ${S.undecided}`);
-console.log(`\n  leaked into the match scoreline: ${S.matchGoals} goals, ${S.matchShots} shots   (must be 0)`);
+console.log(`\n${shoots} shootouts, ${kicksTotal} kicks`);
+console.log(`  duplicate taker inside a side's first five: ${dup5}`);
+console.log(`  kicks with an assist: ${assisted}`);
+console.log(`  carries a match (open play): ${(carryTot / n).toFixed(0)}   (was ~700-1000 as a heartbeat)`);
+process.exit(dup5 + assisted ? 1 : 0);

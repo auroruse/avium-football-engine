@@ -12723,13 +12723,17 @@ export default function App() {
                           const bd = (q) => q._bd0 ?? q._bd ?? 0;
                           const start = all.filter(q => q._onAt === undefined).sort((u, v) => bd(u) - bd(v));
                           const came = all.filter(q => q._onAt !== undefined).sort((u, v) => bd(u) - bd(v));
+                          // The bench that never got on. meSub nulls a used slot, so what is left in
+                          // s.bench IS the unused bench -- greyed, with a dash where a rating would
+                          // be, exactly as the old screen treated a man who never played.
+                          const unused = (m.s.bench?.[side] || []).filter(Boolean);
                           const cellBase = { padding: "1.5px 0", minWidth: 0, overflow: "hidden" };
                           const val = (v, bold) => (
                             <span style={{ ...cellBase, textAlign: "center", ...mono,
                                            fontWeight: v && bold ? 700 : 400,
                                            color: v ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{v || "-"}</span>);
-                          const row = (q, i, benched) => {
-                            const played = true;
+                          const row = (q, i, benched, sat) => {
+                            const played = !sat;
                             return (
                               <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: COLS,
                                           alignItems: "center", fontSize: 9.5, gap: 2,
@@ -12756,7 +12760,7 @@ export default function App() {
                                   {played ? (q.rating ?? 6.5).toFixed(1) : "-"}</span>
                                 <span style={{ ...cellBase, fontSize: 7, textAlign: "center",
                                                color: q._offAt !== undefined ? "var(--ui-danger)" : "var(--ui-ok)" }}>
-                                  {q._offAt !== undefined ? "▼" : benched ? "▲" : ""}</span>
+                                  {sat ? "" : q._offAt !== undefined ? "▼" : benched ? "▲" : ""}</span>
                               </div>);
                           };
                           return (
@@ -12768,19 +12772,13 @@ export default function App() {
                                   <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
                               </div>
                               <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>
-                              {came.length ? (
+                              {(came.length || unused.length) ? (
                                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border)" }}>
                                   {came.map((q, i) => row(q, i, true))}
+                                  {unused.map((q, i) => row(q, 200 + i, true, true))}
                                 </div>) : null}
                             </div>);
                         };
-                        const teamHead = (t, clr, right) => (
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7,
-                                        flexDirection: right ? "row-reverse" : "row" }}>
-                            <TeamCrest team={t} size={20} />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: clr, whiteSpace: "nowrap",
-                                           overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name}</span>
-                          </div>);
                         // Three weights, because the breaks are not equal: a hairline inside a
                         // section, a normal rule between sections, and a heavy one before the goals,
                         // which are the part you scroll to rather than the part you read.
@@ -12848,7 +12846,6 @@ export default function App() {
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                         gap: 46, alignItems: "start", marginBottom: 4 }}>
                             <div>
-                              {sect("With The Ball")}
                               {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
                               {bar("Shots", out.shots.home, out.shots.away)}
                               {bar("On target", out.onTarget.home, out.onTarget.away)}
@@ -12861,7 +12858,6 @@ export default function App() {
                               {bar("Offsides", out.offside?.home, out.offside?.away)}
                             </div>
                             <div>
-                              {sect("Without It")}
                               {bar("Saves", out.saves.home, out.saves.away)}
                               {bar("Blocks", out.blockedSide?.home, out.blockedSide?.away)}
                               {bar("Clearances", out.clearsSide?.home, out.clearsSide?.away)}
@@ -12880,11 +12876,12 @@ export default function App() {
                               start under the fold and you have to scroll to find them, which is the
                               right order to read a match report in. */}
                           <div style={{ flex: "1 0 auto" }}>
-                            {sect("Players")}
                             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                           gap: 40, alignItems: "start" }}>
-                              <div>{teamHead(m.hT, HC)}{men("home", HC)}</div>
-                              <div>{teamHead(m.aT, AC)}{men("away", AC)}</div>
+                              {/* No team headers: the possession bar above carries both crests and
+                                  names, and the columns keep its left/right order. */}
+                              <div>{men("home", HC)}</div>
+                              <div>{men("away", AC)}</div>
                             </div>
                           </div>
 
