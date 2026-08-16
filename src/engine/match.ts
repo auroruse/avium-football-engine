@@ -4,7 +4,7 @@ import { meAerial, meAttrs, meDuel, meGkSkill, meSpeed, meTech } from "./attribu
 import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, meLoftFor, meShootBall } from "./ball";
 import { meBlock, meDuties, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
-import { meDecide } from "./decide";
+import { meDecide, meShotP } from "./decide";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
@@ -1289,6 +1289,24 @@ export function meTick(s, rng, out) {
           if (dGoalA < CFG.headShotR && !mp.shot) {
             // Close enough to attack it: a header at goal, and it counts as a shot like any strike.
             out.shots[bs]++;
+            // ...AND IT DID NOT COUNT ITS xG, which is what "like any strike" was supposed to mean.
+            // A strike adds out.xgS[side] += act.p sixteen lines below; this counted the shot, made
+            // the shot object and emitted the shot event, and skipped the only line that feeds the
+            // expected-goals model. Every header at goal was therefore free: it could score, and it
+            // registered nothing to have scored from.
+            // Measured before the fix, goals a match against the engine's own total xG: Balanced
+            // 1.50 against 1.118, Control Possession 1.58 against 0.950, Route One 1.33 against
+            // 0.880. About a quarter of all scoring arrived with no xG behind it -- and unevenly,
+            // 40% of Control Possession's goals against 11% of Park The Bus's, so every balance
+            // reading taken on xGD was biased BETWEEN the styles it was comparing.
+            // Priced with the same model a strike uses, from where the header is met, so a free
+            // header six yards out is worth what a shot from there is worth. headXg is the knob if
+            // heading turns out to deserve a discount against a foot; it ships at parity because
+            // the outcome here is resolved by the physics either way, exactly as a strike is.
+            { const hp = meShotP(s, bs, q, q.x, q.y) * CFG.headXg;
+              if (out.xgS) out.xgS[bs] += hp;
+              if (out.shotDist) { out.shotDist[Math.min(9, Math.floor(dGoalA / 5))]++;
+                                  out.xg = (out.xg || 0) + hp; } }
             const aimY = ME_HALF_W + (q.y < ME_HALF_W ? 1 : -1) * GOAL_HALF_W * CFG.headAim;
             mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick };
             const gkH = s.players[meOther(bs)].find(z => z.pos === "GK");

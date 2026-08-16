@@ -519,6 +519,43 @@ export const CFG = {
   // 14 takes the goal rate to 2.83 against a real 2.7-2.8 rather than away from it, which is the
   // tell that 8 was buying chances by leaving the box undefended. 17 keeps going and costs half a
   // goal a match for it.
+  // HOW FAR defLine MOVES THE SHAPE THE SIDE ATTACKS WITH. lineA is the in-possession line -- the
+  // comment above it in brain.ts says so -- and it carried the same 7 m a rung as the defending line
+  // did, so an instruction labelled "Def. Line" was also deciding where the side sets up WITH the
+  // ball. At -2 that is fourteen metres, and it is most of what Park The Bus pays for parking:
+  // measured against the field, its shooter receives the ball 33.2 m from goal against 29.4 for a
+  // neutral line, carries it 28.3 m against 24.7, and takes 18% fewer shots at identical quality
+  // (0.124 xG against 0.132). It also explains why telling it to counter does nothing -- possWon +1
+  // measured -0.05, because there is nobody up the pitch to counter with.
+  // MEASURED AND INERT -- 7 stays. Swept 7 / 5 / 3 / 0 against the full field, 180 blocked fixtures
+  // an arm: Park The Bus moved +0.01, +0.00 and +0.01. Nothing. The reason is the clamp on the same
+  // line: at defLine -2 the expression `ballDepth - 30 - 14` is negative for most of a match, so
+  // lineA is already pinned at its floor of 18 and the coefficient never reaches the pitch. The
+  // sweep of that same floor recorded above this line found the same nothing for the same reason.
+  // Kept as a named constant rather than reverted to a literal 7, because the next person to look
+  // at "defLine also moves the attacking shape" should find this note instead of running it again.
+  // What a header at goal is worth against a strike from the same spot. 1 is parity, which is
+  // where it ships: both are resolved by the ball physics rather than by a roll, so there is no
+  // reason to assume the estimate should differ until it is measured.
+  headXg: 1,
+  lineADefL: 7,
+  //
+  // FOUR THINGS THAT DO NOT FIX PARK THE BUS. It sits at -0.28 against the field where Balanced is
+  // +0.02, and defLine -2 is the whole of the gap: at defLine 0 it is +0.20. What that costs splits
+  // two thirds attacking (goals for 0.98 -> 1.30) and one third defending (against 1.21 -> 1.06).
+  //   1. ANOTHER AXIS IN THE STAMP FIGHTING IT. Taken apart axis by axis, no. Every other
+  //      instruction it sets is EARNING: approachPlay -0.30, width -0.22, passingDir -0.19.
+  //   2. THE BLOCK'S CEILING. At -2 the block may not push past 32 m against 38 at -1. Raising it
+  //      32 -> 44: goals for 1.185 -> 1.155, against 1.230 -> 1.240, GD -0.04 +/- 0.15.
+  //   3. TELLING IT TO COUNTER. possWon -1 -> +1 measured -0.05 +/- 0.17, and -> 0 measured +0.02.
+  //      It wins the ball in the best counter-attacking situation in football -- against a side
+  //      committed forward -- and takes 39.6% of its shots from turnovers against a neutral line's
+  //      44.1%. The intent is not what is missing.
+  //   4. THE IN-POSSESSION LINE, above.
+  // What is actually true of it, measured: its shooter receives the ball 33.2 m from goal against
+  // 29.4 for a neutral line and carries it 28.3 m against 24.7, for 18% fewer shots at identical
+  // quality. And it concedes MORE shots from CLOSER while standing 7.81 men in its own box against
+  // 6.97 -- inside 8 m, 1.08 a match against 0.93. More bodies, more shots, nearer the goal.
   blkMin: 10, blkMax: 44, blkDrop: 14, blkDefLine: 6, blkLoe: 3,
   // The window blkMin/blkMax describe moves WITH defLine, at the same step the value moves, so the
   // instruction survives the clamp instead of being eaten by it -- see meBlock. These two are the

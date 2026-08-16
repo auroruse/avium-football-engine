@@ -474,10 +474,10 @@ function autoTac(rng, diff, rem, urgency, style, current, skillAdv, matchUrg) {
     secondball:   {ds:-3,  as:6,  ceil:2.0, floor:-1.5, bias:0.05},
     routeone:     {ds:0,   as:5,  ceil:2.0, floor:-1.5, bias:0},
     balanced:     {ds:0,   as:0,  ceil:2.0, floor:-2.0, bias:0},
-    tikitaka:     {ds:3,   as:-5, ceil:1.6, floor:-1.5, bias:0.1},
+  tikitaka:     {ds:3,   as:-5, ceil:1.6, floor:-1.5, bias:0.1},
     possession:   {ds:6,   as:-8, ceil:1.6, floor:-1.5, bias:0},
     cholismo:     {ds:10,  as:-6, ceil:1.6, floor:-2.0, bias:-0.2},
-    zonamista:    {ds:12,  as:-8, ceil:1.5, floor:-2.0, bias:-0.25},
+  zonamista:    {ds:12,  as:-8, ceil:1.5, floor:-2.0, bias:-0.25},
     counterattack:{ds:15,  as:-8, ceil:1.3, floor:-2.0, bias:-0.4},
     catenaccio:   {ds:18,  as:-10,ceil:1.2, floor:-2.0, bias:-0.5},
     parkthebus:   {ds:20,  as:-12,ceil:1.0, floor:-2.0, bias:-0.6},
@@ -630,8 +630,16 @@ const STYLE_PRESET = {
   // (STRAT_EDITABLE, excluded from fit damping) and it costs about 0.08 whichever way it is set.
   // What a control side IS survives intact -- shortest passing outside Tiki-Taka, plays out from the
   // back, holds shape rather than countering, stays on its feet, and presses at nobody.
+  // possWon -1 -> +1, worth +0.49 goals against the field (se 0.16). A side that wins the ball back
+  // and then HOLDS it is what was killing this style, and its other three axes all measure as
+  // earning, so there was nothing to remove -- only this to reverse. It is still the shortest,
+  // most patient passing side in the game; it just goes somewhere when it gets the ball.
+  // It does NOT clear Balanced on its own (-0.70 to -0.22 in the same run). Four separate
+  // measurements now say this style cannot be lifted above an all-zero stamp by stamp surgery:
+  // every instruction off measures -0.07, best single removal -0.11, this -0.22. What it needs is
+  // for the engine to pay for keeping the ball, which it does not.
   possession:    { pressingLOE: 0, passingDir: -1, approachPlay: -1, possLost: 0,
-                   possWon: -1, tackling: -1 },
+                   possWon: 1, tackling: -1 },
   // Width, overlaps, and licence to take a man on.
   wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
   // Sit off, then hurt them the moment it breaks.
@@ -689,7 +697,18 @@ const STYLE_PRESET = {
   // difference untouched.
   // The cost, stated: holding the ball longer means carriers travel further before releasing it, so
   // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
-  parkthebus:    { gkDist: 1, pressingLOE: -2, defLine: -2, passingDir: 2, approachPlay: 1, possLost: -1,
+  // MEASURED, +0.90 goals against the field (se 0.16), -0.53 to +0.37 -- the largest single gain in
+  // the table, and it clears Balanced at +0.02. Three axes, each measured as a cost INSIDE this
+  // stamp rather than guessed: defLine -2 -> -1, possLost -1 -> 0, pressingLOE -2 -> -1.
+  // It still parks, and it is still the deepest tier in the game beside Zona Mista. What it stops
+  // doing is parking so far back that it cannot get out. At -2 its shooter received the ball 33.2 m
+  // from goal and carried it 28.3 m, taking 18% fewer shots than a neutral line at identical chance
+  // quality (0.124 xG against 0.132) -- and it conceded MORE shots from CLOSER while standing 7.81
+  // men in its own box against 6.97. More bodies, more shots, nearer the goal.
+  // Two thirds of what depth cost this side was at the OTHER end: goals for 0.98 against 1.30.
+  // Four things that did NOT fix it are recorded in engine/config.ts beside lineADefL, with their
+  // numbers. Read those before touching this again.
+  parkthebus:    { gkDist: 1, pressingLOE: -1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 0,
                    possWon: -1, creativity: -1, dribbling: -1, tackling: -1,
                    timeWasting: 2, width: -1 },
   // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
