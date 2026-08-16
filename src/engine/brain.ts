@@ -211,7 +211,20 @@ export function meAnchor(s, side, bd, bw, neutral) {
   // deep. Held at its full midfield depth, the front of it sat 46 m out while the ball was in the
   // area, so the box itself was defended by two men.
   const siege = Math.max(0, Math.min(1, 1 - ballDepth / CFG.siegeDepth));
-  const span = (38 + (t * 10 - 4) - st.defLine * 2) * (1 - siege * (1 - CFG.siegeSpan));
+  // HOW FAR APART THE SIDE STANDS, and until now passingDir had no say in it. That instruction sets
+  // the LENGTH a passer looks for -- want = 16 + passingDir * 4, so Much Shorter hunts eight-metre
+  // balls -- while the shape it stands in was spaced for sixteen. At eight metres the only men
+  // available are the ones beside and behind him, so a short-passing side passes sideways because
+  // sideways is the only short pass that EXISTS. Measured: Tiki-Taka plays 104.8 passes a match, more
+  // than any side in the game, for 296 metres of ground, less than any side in the game, with 49% of
+  // them going forward against Gegenpress's 75%. It reaches the final third 11 times a match where
+  // Gegenpress reaches it 27. Once there it is fine -- it turns final-third entries into box entries
+  // at 10.6%, better than Wing Play -- so the whole deficit is that it never arrives.
+  // Compressing the shape is what makes a short FORWARD ball exist. It is the option set again,
+  // not the objective: a compact side advances as a unit and a stretched one plays over the top,
+  // and each gives something up for it.
+  const span = (38 + (t * 10 - 4) - st.defLine * 2 + Math.max(0, st.passingDir || 0) * CFG.spanDir)
+             * (1 - siege * (1 - CFG.siegeSpan));
   const sl = mp.slots[side];
   let mn = Infinity, mx = -Infinity;
   for (const q of sl) { if (q.bd < mn) mn = q.bd; if (q.bd > mx) mx = q.bd; }
@@ -968,7 +981,7 @@ export function meShape(s, side) {
   const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * CFG.lineADefL));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
-  const span = 38 + (t * 10 - 4) - st.defLine * 2;
+  const span = 38 + (t * 10 - 4) - st.defLine * 2 + Math.max(0, st.passingDir || 0) * CFG.spanDir;
   let minBd = Infinity, maxBd = -Infinity;
   for (const q of ps) if (q.pos !== "GK") { if (q._bd < minBd) minBd = q._bd; if (q._bd > maxBd) maxBd = q._bd; }
   const bdRange = Math.max(1, maxBd - minBd);

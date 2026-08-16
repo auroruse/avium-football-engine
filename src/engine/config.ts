@@ -562,6 +562,44 @@ export const CFG = {
   // 29.4 for a neutral line and carries it 28.3 m against 24.7, for 18% fewer shots at identical
   // quality. And it concedes MORE shots from CLOSER while standing 7.81 men in its own box against
   // 6.97 -- inside 8 m, 1.08 a match against 0.93. More bodies, more shots, nearer the goal.
+  // Metres of front-to-back spread per rung of DIRECTNESS, one-sided on purpose. Stretching a direct
+  // side measured well -- Wing Play 730 -> 876 metres of ground and +0.43 goals, Route One's box
+  // entries 2.40 -> 3.50, Catenaccio +0.30 goals. COMPRESSING a short-passing side measured badly
+  // and is not done: Tiki-Taka's ground gained fell 296 -> 162 metres, because bunching everyone
+  // behind the ball does not create a short ball FORWARD, it just makes every forward ball tiny.
+  // Whatever short passing is missing, it is not a tighter shape.
+  spanDir: 5,
+  // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
+  // attempts tonight aimed at the wrong link, and the funnel says exactly where the break is.
+  // Per match, against the same rotating field:
+  //   style          passes  fwd%  metres  final 3rd  into box  shots   box/3rd
+  //   Tiki-Taka       104.8   49%     296       11.0      1.17   3.60     10.6%
+  //   Control Poss     98.1   54%     352        9.1      0.97   4.03     10.6%
+  //   Balanced         82.1   64%     570       15.2      1.37   4.00      9.0%
+  //   Gegenpress       79.4   75%     869       27.4      4.40   6.30     16.1%
+  // Tiki-Taka plays more passes than any side in the game and moves the ball less than any side in
+  // the game. It reaches the final third 11 times where Gegenpress reaches it 27.
+  //
+  // THE LAST LINK IS FINE. Possession sides turn final-third entries into box entries at 10.6%,
+  // BETTER than Wing Play's 8.9%. Once they arrive they do the right things. So every fix aimed at
+  // chance quality -- the rejected screening model, passShotW, carryShotW's mirror -- is aimed at a
+  // chain that breaks four steps earlier.
+  //
+  // THE BREAK IS GROUND PER PASS. A possession side gains 5.3 m of goalward progress per forward
+  // pass; Gegenpress gains 14.0. Crossing thirty metres therefore costs one side about eleven
+  // completed passes and the other about three. Completion is already correctly steep with length
+  // (92.9% at 0-6 m, 86.0% at 6-10, 68.6% at 18-24, 56.9% at 24-32, all physical interception
+  // geometry rather than a coefficient), so eleven passes at 85% is 0.17 against three at 69% for
+  // 0.31. Short passing loses to compounding attrition and would break even at about 90% in the
+  // 6-14 m band, which is where real tiki-taka sides actually sit.
+  //
+  // AND 5.3 m FROM A 10 m BALL MEANS THE FORWARD OPTIONS ARE DIAGONAL. That is an off-ball
+  // positioning problem: the men a short passer can reach are beside him rather than ahead of him.
+  // TRIED AND REJECTED, same night: compressing the shape for short-passing sides (spanDir applied
+  // to negative passingDir). It made it worse, not better -- Tiki-Taka's ground gained fell 296 to
+  // 162 metres -- because bunching everyone behind the ball does not create a short ball FORWARD,
+  // it makes every forward ball tiny. The answer is not a tighter shape and not the shot model.
+  // It is whether a short-passing side has anybody standing in front of it.
   blkMin: 10, blkMax: 44, blkDrop: 14, blkDefLine: 6, blkLoe: 3,
   // The window blkMin/blkMax describe moves WITH defLine, at the same step the value moves, so the
   // instruction survives the clamp instead of being eaten by it -- see meBlock. These two are the
