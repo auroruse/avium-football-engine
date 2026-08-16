@@ -111,6 +111,37 @@ export function meInit(s, slotsFor, rng) {
       p._avgV = 0;
     }
   }
+  // THE KICKOFF SET. A formation scaled by 0.7 is not a kickoff position. At 105 m a forward's slot
+  // lands him 73.5 m from his own goal, which is twenty-one metres INSIDE the opposition half, and
+  // nothing ever kept the side not kicking off out of the centre circle -- so a restart was staged
+  // with men in the wrong half and opponents standing over the ball. Both are laws of the game
+  // rather than taste: the referee does not whistle until they hold.
+  // Asserted as an invariant rather than fixed by shrinking the 0.7, because a scale factor cannot
+  // express either rule -- it moves every man including the ones already legal, and it has no idea
+  // where the circle is. The SHAPE is untouched: _bd0/_bw0 still carry the formation, so the block,
+  // the zonal anchors and mindSet are all exactly what they were, and only the metre of grass a man
+  // stands on at the whistle changes.
+  {
+    const CIRCLE_R = 9.15, CHALK = 0.6;    // the centre circle, and a stride clear of any line
+    const kick = s.possession === "away" ? "away" : "home";
+    const cx = PITCH_L / 2;
+    for (const side of ME_SIDES) {
+      const dir = meDir(side);
+      for (const p of s.players[side]) {
+        // In his own half.
+        const over = (p.x - cx) * dir;
+        if (over > 0) p.x -= dir * (over + CHALK);
+        // ...and outside the circle unless his side has the ball. He is pushed BACK out of it along
+        // the pitch rather than radially, because radially out of a circle straddling the halfway
+        // line is exactly how you put a man in the other team's half again.
+        if (side === kick) continue;
+        const dy = p.y - ME_HALF_W;
+        if (Math.abs(dy) >= CIRCLE_R) continue;
+        const edge = cx - dir * (Math.sqrt(CIRCLE_R * CIRCLE_R - dy * dy) + CHALK);
+        if ((p.x - edge) * dir > 0) p.x = edge;
+      }
+    }
+  }
   s.mePos = { bx: PITCH_L / 2, by: ME_HALF_W, bz: 0.11, bvx: 0, bvy: 0, bvz: 0,
     pred: null, lastSide: "home", touchSide: "home", passPending: null,
     side: s.possession || "home", idx: -1, hold: 0,
