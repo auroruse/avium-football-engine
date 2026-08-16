@@ -12658,49 +12658,75 @@ export default function App() {
                             </div>);
                         };
                         // ── THE PEOPLE ────────────────────────────────────────────────────────
+                        // THE OLD PLAYER STATS PANEL, structurally. A ten-column grid rather than a
+                        // table, full names with the surname bolded, POS and OVR ahead of the name,
+                        // the chances/defensive/saves trio, rating last, and the starters ruled off
+                        // from the bench. Grid over <table> for the same reason the original used
+                        // one: the columns have to line up between the two sides of the panel, and
+                        // fixed pixel tracks do that where auto-layout cannot.
+                        // C and D are REAL here now. They were the two columns I dropped when this
+                        // was rebuilt, because the positional engine populated neither -- it rated a
+                        // tackle, a block and a clearance and then forgot them. They are counted per
+                        // man in the engine now, and a chance is credited off the pass the shooter
+                        // actually received (meBallTo stamps who played it), when the shot is TAKEN
+                        // rather than when it goes in, which is the whole difference between a
+                        // chance created and an assist.
+                        const COLS = "20px 26px 1fr 16px 16px 16px 16px 16px 26px 11px";
                         const men = (side, clr) => {
-                          const on = (m.s.players[side] || []).map(q => ({ q, off: false }));
-                          const gone = (m.s.subbedOff?.[side] || []).map(q => ({ q, off: true }));
-                          const rows = [...on, ...gone];
-                          const cell = { padding: "1.5px 4px", borderBottom: "1px solid var(--chrome-border-33)" };
+                          const start = (m.s.players[side] || []).filter(q => q._onAt === undefined);
+                          const came = (m.s.players[side] || []).filter(q => q._onAt !== undefined);
+                          const gone = (m.s.subbedOff?.[side] || []);
+                          const cellBase = { padding: "1.5px 0", minWidth: 0, overflow: "hidden" };
+                          const val = (v, bold) => (
+                            <span style={{ ...cellBase, textAlign: "center", ...mono,
+                                           fontWeight: v && bold ? 700 : 400,
+                                           color: v ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{v || "-"}</span>);
+                          const row = (q, i, benched) => {
+                            const played = !benched || q._onAt !== undefined;
+                            return (
+                              <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: COLS,
+                                          alignItems: "center", fontSize: 9.5, gap: 2,
+                                          opacity: played ? 1 : 0.5 }}>
+                                <span style={{ ...cellBase, ...mono, fontSize: 8, fontWeight: 700,
+                                               color: POS_CLR[q.pos] || "var(--chrome-muted)" }}>{q.pos}</span>
+                                <span style={{ ...cellBase, ...mono, fontSize: 9, textAlign: "center",
+                                               color: ovrColor(q.ovr ?? 70) }}>{Math.round(q.ovr ?? 70)}</span>
+                                <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                                  {boldSurname(q.fullName || q.name, q.name)}
+                                  {q.rc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
+                                                         background: "var(--ui-danger)", verticalAlign: "middle" }} /> : null}
+                                  {!q.rc && q.yc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
+                                                         background: "var(--ui-warn)", verticalAlign: "middle" }} /> : null}
+                                  {q.inj ? <span style={{ marginLeft: 4, fontSize: 7, color: "var(--ui-warn)" }}>INJ</span> : null}
+                                </span>
+                                {val(q.goals, true)}
+                                {val(q.assists, true)}
+                                {val(q.chances)}
+                                {val(q.defActs)}
+                                {val(q.pos === "GK" ? q.saves : 0)}
+                                <span style={{ ...cellBase, textAlign: "center", ...mono, fontWeight: 700,
+                                               color: played ? ratingColor(q.rating ?? 6.5) : "var(--chrome-muted-66)" }}>
+                                  {played ? (q.rating ?? 6.5).toFixed(1) : "-"}</span>
+                                <span style={{ ...cellBase, fontSize: 7, textAlign: "center",
+                                               color: q._onAt !== undefined ? "var(--ui-ok)" : "var(--ui-danger)" }}>
+                                  {q._onAt !== undefined ? "▲" : benched ? "▼" : ""}</span>
+                              </div>);
+                          };
                           return (
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                              <colgroup><col style={{ width: 26 }} /><col /><col style={{ width: 30 }} />
-                                <col style={{ width: 20 }} /><col style={{ width: 20 }} /><col style={{ width: 22 }} />
-                                <col style={{ width: 34 }} /></colgroup>
-                              <thead><tr style={{ fontSize: 8.5, letterSpacing: ".08em", color: "var(--chrome-muted)" }}>
-                                {["", "PLAYER", "OVR", "G", "A", "SV", "RTG"].map((h, i) =>
-                                  <th key={i} style={{ ...cell, textAlign: i === 1 ? "left" : i === 0 ? "left" : "center",
-                                                       fontWeight: 600 }}>{h}</th>)}
-                              </tr></thead>
-                              <tbody>
-                                {rows.map(({ q, off }, i) => (
-                                  <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)",
-                                                       opacity: off ? 0.62 : 1 }}>
-                                    <td style={{ ...cell, color: POS_CLR[q.pos] || "var(--chrome-muted)",
-                                                 fontSize: 8.5, fontWeight: 700, ...mono }}>{q.pos}</td>
-                                    <td style={{ ...cell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                      {shortName(q.name)}
-                                      {q.rc ? <span style={{ color: "var(--ui-danger)", marginLeft: 4 }}>&#9632;</span>
-                                            : q.yc ? <span style={{ color: "var(--ui-warn)", marginLeft: 4 }}>&#9632;</span> : null}
-                                      {off && <span style={{ color: "var(--ui-danger)", marginLeft: 4, fontSize: 8 }}>&#9660;</span>}
-                                      {!off && q._onAt !== undefined && <span style={{ color: "var(--ui-ok)", marginLeft: 4, fontSize: 8 }}>&#9650;</span>}
-                                      {q.inj && <span style={{ color: "var(--ui-warn)", marginLeft: 4, fontSize: 7.5 }}>INJ</span>}
-                                    </td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono, fontSize: 10,
-                                                 color: ovrColor(q.ovr ?? 70) }}>{Math.round(q.ovr ?? 70)}</td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: q.goals ? 700 : 400,
-                                                 color: q.goals ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{q.goals || "-"}</td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: q.assists ? 700 : 400,
-                                                 color: q.assists ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{q.assists || "-"}</td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono,
-                                                 color: q.saves ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>
-                                      {q.pos === "GK" ? (q.saves || 0) : "-"}</td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: 700,
-                                                 color: ratingColor(q.rating ?? 6.5) }}>{(q.rating ?? 6.5).toFixed(1)}</td>
-                                  </tr>))}
-                              </tbody>
-                            </table>);
+                            <div>
+                              <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 2, fontSize: 7,
+                                            letterSpacing: ".08em", color: "var(--chrome-muted)",
+                                            padding: "0 0 3px", borderBottom: "1px solid var(--chrome-border-33)" }}>
+                                {["", "OVR", "PLAYER", "G", "A", "C", "D", "S", "RTG", ""].map((h, i) => (
+                                  <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
+                              </div>
+                              <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>
+                              {(came.length || gone.length) ? (
+                                <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border)" }}>
+                                  {came.map((q, i) => row(q, i, true))}
+                                  {gone.map((q, i) => row(q, 100 + i, true))}
+                                </div>) : null}
+                            </div>);
                         };
                         const teamHead = (t, clr, right) => (
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7,

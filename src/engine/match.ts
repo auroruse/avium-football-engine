@@ -483,6 +483,15 @@ export const ME_DRAIN = CFG.drain;
 // ---- the tick ---------------------------------------------------------------------------
 export function meBallTo(s, side, i, x, y) {
   const mp = s.mePos;
+  // WHERE HE GOT IT AND WHO FROM. Needed for the chance-created count in the match report, and it
+  // has to live here rather than in an instrumentation patch: mp.kickBy names the man who last
+  // deliberately played the ball, which is the passer. A team-mate's pass sets _from; winning it
+  // off the opposition, or picking up a loose ball, clears it, because neither created anything.
+  { const _r = s.players[side]?.[i], _k = mp.kickBy && mp.kickBy[0];
+    if (_r) {
+      _r._gotX = x; _r._gotY = y;
+      _r._from = (_k && _k.s === side && _k.i !== i) ? _k.i : -1;
+    } }
   if (mp.side !== side) { mp.counter = side; mp.counterT = 26; mp.possT = 0; }   // just won it
   mp.drive = 0;
   for (const q of s.players[meOther(side)]) { q._run = null; q._runT = 0; }
@@ -735,7 +744,7 @@ export function meTackle(s, rng, out) {
       // tackles WON is its own field.
       out.tackles++; meBump(out, "tacklesSide", meSideOfP(s, p));
       out.tackleWon = (out.tackleWon || 0) + 1; meBump(out, "tackleWonSide", def);
-      meRate(p, CFG.rateTackle);
+      meRate(p, CFG.rateTackle); p.defActs = (p.defActs || 0) + 1;
       meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
     } else {
@@ -1379,7 +1388,8 @@ export function meTick(s, rng, out) {
             // every won header near the box teed a team-mate up. A flick is a ball into an area.
             const ax = ownA - q.x, ay = ME_HALF_W - q.y, al = Math.hypot(ax, ay) || 1;
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
-            if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear); }
+            if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear);
+                          q.defActs = (q.defActs || 0) + 1; }
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty,
                   `${q.fullName || q.name} ${relief ? "heads it clear" : "heads it on"}`);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
@@ -1496,7 +1506,7 @@ export function meTick(s, rng, out) {
           // A deflection. If a shot was live, that was a block.
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
             meBump(out, "blockedSide", bs);
-            meRate(q, CFG.rateBlock);
+            meRate(q, CFG.rateBlock); q.defActs = (q.defActs || 0) + 1;
             meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
             // man who hit it, not the defence putting it through their own net. Only a ball that
@@ -1518,7 +1528,7 @@ export function meTick(s, rng, out) {
         // not actually broken, was drawn from a stat that was undercounting by four times.
         if (mp.shot && bs !== mp.shot.side) {
           out.blocked = (out.blocked || 0) + 1; meBump(out, "blockedSide", bs);
-          meRate(q, CFG.rateBlock);
+          meRate(q, CFG.rateBlock); q.defActs = (q.defActs || 0) + 1;
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
@@ -1873,6 +1883,14 @@ export function meTick(s, rng, out) {
     // the effect being measured. xG is the same question answered from ~8 continuous samples.
     if (out.shotDist) { const _g = meShotGeom(side, p.x, p.y); out.shotDist[Math.min(9, Math.floor(_g.d / 5))]++; out.xg = (out.xg || 0) + act.p; }
     if (out.xgS) out.xgS[side] += act.p;
+    // ...but only if the pass actually MADE the chance. _gotFj is stamped when a man receives the
+    // ball and it persists, so a centre-half who found a forward in his own half was being credited
+    // with a chance the forward then carried thirty metres and manufactured himself -- which is why
+    // an unguarded version of this put 55% of all chances created on DEFENDERS. A key pass is one
+    // the shot follows from, so the shooter has to still be near where he received it.
+    { const _cr = p._from >= 0 ? ps[p._from] : null;
+      const _carry = p._gotX === undefined ? 1e9 : Math.hypot(p.x - p._gotX, p.y - p._gotY);
+      if (_cr && _cr !== p && _carry < CFG.keyPassCarry) _cr.chances = (_cr.chances || 0) + 1; }
     meEvt(out, "shot", side, p.x, p.y, gx, aimY, null);
     // Read the shooter BEFORE the ball leaves him: mp.idx is cleared on the line above, so taking
     // the index after it recorded -1 on every shot from open play. The goal attribution only looked
@@ -1911,6 +1929,7 @@ export function meTick(s, rng, out) {
     return;
   }
   if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, CFG.rateClear);
+    p.defActs = (p.defActs || 0) + 1;
     meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.fullName || p.name} clears it`);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
