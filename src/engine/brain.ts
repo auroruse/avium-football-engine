@@ -197,7 +197,7 @@ export function meAnchor(s, side, bd, bw, neutral) {
   // the offside line moved 17.3 m to 16.7 and men in the area 0.46 to 0.48, which is nothing. This
   // is the shape of the side IN POSSESSION (t is high when you have the ball) and it barely touches
   // the DEFENDING block, which is meBlock and is where the line really comes from.
-  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7 + gkPush));
+  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * CFG.lineADefL + gkPush));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   // THE PUSH GOES ON THE BLEND, NOT INSIDE IT. It used to be a term of lineA, and lineA is weighted
   // by t -- which comes off the possession EMA, and the EMA is at its LOWEST in exactly the seconds
@@ -965,7 +965,7 @@ export function meShape(s, side) {
   // several seconds and should ease; dropping is a reaction to something that has already happened.
   // So the blend still eases upward and snaps down.
   const t = mp.side === side ? (bal + 1) / 2 : Math.min((bal + 1) / 2, CFG.dropSnap);
-  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * 7));
+  const lineA = Math.max(18, Math.min(64, ballDepth - 30 + st.defLine * CFG.lineADefL));
   const lineD = Math.max(7,  Math.min(56, ballDepth - 18 + st.defLine * 7));
   const lineM = lineD + (lineA - lineD) * t;
   const span = 38 + (t * 10 - 4) - st.defLine * 2;
