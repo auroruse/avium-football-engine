@@ -1,7 +1,7 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
 import { CFG, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs } from "./attributes";
-import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
+import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundSpeed, meLoftFor } from "./ball";
 import { meMind } from "./attributes";
 import { meOppDist } from "./brain";
@@ -52,7 +52,7 @@ export function meShotP(s, side, p, x, y) {
     * Math.max(0, Math.min(1, 1 - (g.d - CFG.shotClearD) / CFG.shotClearFade));
   q *= Math.max(CFG.shotCrowd, Math.min(clearMax, clearMax - lane0 * CFG.shotLaneK));
   // The keeper. Absolute: his reflexes against this shot, nothing to do with who he plays for.
-  const gk = s.players[meOther(side)].find(q2 => q2.pos === "GK");
+  const gk = meKeeper(s.players[meOther(side)]);
   if (gk) {
     // WHERE HE IS, not just how good he is. This read his reflexes and nothing else, so a keeper
     // stranded thirty metres upfield discounted the shot exactly as much as one stood on his line --

@@ -394,18 +394,17 @@ export const CFG = {
   // cardYellow swept against foulBase: at 0.16/0.24 with eleven fouls the yellows come out at
   // 1.44 / 2.25 a side. Straight reds cut to 0.002 because most dismissals here arrive as second
   // yellows and the two together were running about three times the real rate.
-  // cardYellow carries the damp below: at 0.18 with it applied the match produced 2.8 yellows
-  // against a real 3.9, because the damp takes bookings off already-booked men and those were
-  // part of the total. 0.26 puts the total back where it was measured and leaves the second
-  // yellow where it belongs.
-  cardYellow: 0.26, cardStraightRed: 0.0065,
-  // A BOOKED MAN IS A DIFFERENT PLAYER, and so is the referee looking at him. Measured, second
-  // yellows came out at 0.265 a match against a real 0.06 -- not because the yellow rate is wrong
-  // (3.5 a match is right) but because nothing here knew he was already on one. Independent rolls
-  // over eleven men predict 0.26 exactly. He pulls out of the challenge he would otherwise make,
-  // his manager takes him off, and the referee finds a word instead of a card; one multiplier is
-  // all three, because they are indistinguishable from the outside.
-  cardBooked: 0.20,
+  cardYellow: 0.18, cardStraightRed: 0.0065,
+  // A BOOKED MAN IS A DIFFERENT PLAYER. Measured, second yellows came out at 0.265 a match against
+  // a real 0.06 -- not because the yellow rate is wrong, 3.5 a match is right, but because nothing
+  // here knew he was already on one, and independent rolls over eleven men predict 0.26 exactly.
+  // The first fix damped the CARD, which says the referee goes soft on him. Referees do not; the
+  // player does. He pulls out of challenges he would otherwise make (foulBooked), he needs the ball
+  // to be a certainty before he goes to ground for it (tkGoBooked), and his manager starts looking
+  // at the bench (subBooked). All three cost his side something real, which is the point: a booking
+  // is a handicap you carry, not a dice roll you survive. Measured together: second yellows 0.19 to
+  // 0.09 a match, and the number of booked men hooked before the end more than doubles.
+  foulBooked: 0.50, tkGoBooked: 0.10, subBooked: 10,
   // How much less readily a challenge in the penalty area is given as a foul.
   // Swept against the penalty count: 0.30 gave 0.55 penalties a match from fouls alone against a
   // real 0.28 for all causes. At 0.115 the foul-derived share is about 0.21, leaving room for the
@@ -2156,26 +2155,68 @@ export const ME_RED_SAID = { second: "second yellow", dogso: "denying a goalscor
                              abusive: "abusive language" };
 
 // ── WHAT HE DID TO HIMSELF ──────────────────────────────────────────────────────────────────
-// Body part first, then how bad, because some parts cannot take some injuries: in footballing
-// terms a head does not sprain and ribs do not tear. dur is the range of matches out, which is
-// what a competition's injury counter spends.
-export const INJ_SEV = [{ id: "bruise", label: "Bruise", dur: [1, 1] },
-                        { id: "sprain", label: "Sprain", dur: [1, 2] },
-                        { id: "fracture", label: "Fracture", dur: [3, 5] },
-                        { id: "tear", label: "Tear", dur: [4, 7] }];
-export const INJ_SEV_W = [40, 30, 15, 15];
-export const INJ_PART = ["upper leg", "knee", "lower leg", "groin", "foot", "head", "shoulder", "ribs"];
-export const INJ_PART_W = [22, 20, 20, 12, 8, 8, 5, 5];
-export const INJ_PART_SEV_EXCLUDE = { head: ["sprain", "tear"], ribs: ["sprain", "tear"] };
-const mePickW = (rng, items, w) => {
-  let r = rng.u() * w.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < items.length; i++) { r -= w[i]; if (r <= 0) return items[i]; }
-  return items[items.length - 1];
-};
+// One table, joint over the part and the injury, because those two are not independent and the
+// old model treated them as though they were: it rolled a severity, rolled a body part, and had
+// to carry an exclusion list to stop itself producing head sprains. Worse, a "Tear" was four to
+// seven matches whether it was a hamstring or a cruciate ligament -- so the injury that ends a
+// career and the one that costs a fortnight were the same event with different words on them.
+//
+// dur is MATCHES missed, min to max inclusive. The shape follows the UEFA elite-club injury
+// picture: muscle strains are most of it and cost a week or two, thigh is roughly a third of
+// everything, and the long ones are rare but real. THERE IS NO CEILING. A cruciate, an Achilles
+// and a broken leg take the rest of the season, which is what they take.
+//
+// w is the relative weight. Totals land near: thigh 31%, knee 15%, ankle 13%, groin 11%,
+// calf 10%, foot 7%, trunk 6%, head 4%, shoulder 3%.
+export const ME_INJURY = [
+  // ── thigh: the most-injured part of a footballer, and the hamstring most of that ──
+  { id: "ham-strain",   part: "hamstring",   label: "Strain",            dur: [1, 2],   w: 95 },
+  { id: "ham-tear",     part: "hamstring",   label: "Tear",              dur: [4, 9],   w: 30 },
+  { id: "quad-strain",  part: "quadriceps",  label: "Strain",            dur: [1, 3],   w: 32 },
+  { id: "thigh-dead",   part: "thigh",       label: "Dead Leg",          dur: [1, 1],   w: 30 },
+  // ── knee ──
+  { id: "knee-mcl",     part: "knee",        label: "Ligament Sprain",   dur: [3, 7],   w: 50 },
+  { id: "knee-bruise",  part: "knee",        label: "Contusion",         dur: [1, 2],   w: 20 },
+  { id: "knee-cart",    part: "knee",        label: "Cartilage Damage",  dur: [6, 14],  w: 14 },
+  { id: "knee-acl",     part: "knee",        label: "Cruciate Rupture",  dur: [30, 42], w: 8 },
+  // ── ankle ──
+  { id: "ank-sprain",   part: "ankle",       label: "Sprain",            dur: [2, 5],   w: 60 },
+  { id: "ank-lig",      part: "ankle",       label: "Ligament Damage",   dur: [6, 12],  w: 14 },
+  { id: "ank-frac",     part: "ankle",       label: "Fracture",          dur: [12, 20], w: 4 },
+  // ── calf and Achilles ──
+  { id: "calf-strain",  part: "calf",        label: "Strain",            dur: [2, 4],   w: 45 },
+  { id: "ach-tend",     part: "Achilles",    label: "Tendinitis",        dur: [3, 8],   w: 10 },
+  { id: "ach-rupt",     part: "Achilles",    label: "Rupture",           dur: [32, 44], w: 4 },
+  { id: "leg-frac",     part: "lower leg",   label: "Fracture",          dur: [18, 30], w: 3 },
+  // ── groin and hip ──
+  { id: "groin-strain", part: "groin",       label: "Strain",            dur: [2, 5],   w: 50 },
+  { id: "add-tear",     part: "adductor",    label: "Tear",              dur: [5, 10],  w: 12 },
+  { id: "hip-imp",      part: "hip",         label: "Impingement",       dur: [4, 10],  w: 6 },
+  // ── foot ──
+  { id: "foot-bruise",  part: "foot",        label: "Contusion",         dur: [1, 2],   w: 22 },
+  { id: "foot-sprain",  part: "foot",        label: "Sprain",            dur: [2, 4],   w: 12 },
+  { id: "meta-frac",    part: "metatarsal",  label: "Fracture",          dur: [9, 15],  w: 6 },
+  // ── head and face. A concussion is short and non-negotiable; nobody plays on. ──
+  { id: "concussion",   part: "head",        label: "Concussion",        dur: [1, 3],   w: 14 },
+  { id: "head-cut",     part: "head",        label: "Laceration",        dur: [1, 1],   w: 8 },
+  { id: "face-frac",    part: "cheekbone",   label: "Fracture",          dur: [2, 5],   w: 5 },
+  // ── trunk ──
+  { id: "back-strain",  part: "back",        label: "Strain",            dur: [2, 4],   w: 18 },
+  { id: "rib-bruise",   part: "ribs",        label: "Contusion",         dur: [1, 2],   w: 14 },
+  { id: "rib-frac",     part: "ribs",        label: "Fracture",          dur: [3, 6],   w: 5 },
+  // ── shoulder ──
+  { id: "sh-sprain",    part: "shoulder",    label: "Sprain",            dur: [2, 4],   w: 12 },
+  { id: "sh-disloc",    part: "shoulder",    label: "Dislocation",       dur: [5, 10],  w: 5 },
+  { id: "clav-frac",    part: "collarbone",  label: "Fracture",          dur: [8, 14],  w: 3 },
+];
+// Anything past this is gone for the season on any ordinary calendar; used only to say so.
+export const ME_INJ_SEASON = 30;
+
 export function mePickInjury(rng) {
-  const part = mePickW(rng, INJ_PART, INJ_PART_W);
-  const ex = INJ_PART_SEV_EXCLUDE[part] || [];
-  const sev = mePickW(rng, INJ_SEV.filter(v => !ex.includes(v.id)),
-                           INJ_SEV_W.filter((_, i) => !ex.includes(INJ_SEV[i].id)));
-  return { sev, part };
+  let t = 0;
+  for (const v of ME_INJURY) t += v.w;
+  let r = rng.u() * t;
+  for (const v of ME_INJURY) { r -= v.w; if (r <= 0) return { sev: v, part: v.part }; }
+  const last = ME_INJURY[ME_INJURY.length - 1];
+  return { sev: last, part: last.part };
 }

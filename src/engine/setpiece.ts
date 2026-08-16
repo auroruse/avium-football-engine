@@ -12,7 +12,7 @@
 // that is the ordinary decision code, because none of it is ordinary play.
 import { CFG, ME_DT } from "./config";
 import { meAttrs, meGkSkill , meAttrs } from "./attributes";
-import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meOther, meShotGeom } from "./geometry";
+import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meKeeper, meKeeperIx, meOther, meShotGeom } from "./geometry";
 import { meFkArc, meKickBall, meShootBall } from "./ball";
 import { GOAL_HALF_W } from "./ball";
 
@@ -99,7 +99,7 @@ export function meSPBegin(s, kind, side, out) {
   else if (kind === "penalty") { let best = -1; for (let i = 0; i < us.length; i++) {
       const p = us[i]; if (p.pos === "GK" || p.off) continue;
       if (best < 0 || meAttrs(p).shoot > meAttrs(us[best]).shoot) best = i; } ti = best; }
-  else if (kind === "goalkick") ti = us.findIndex(p => p.pos === "GK");
+  else if (kind === "goalkick") ti = meKeeperIx(us);
   else if (kind === "kickoff") { let best = -1; for (let i = 0; i < us.length; i++)
       if (us[i].pos !== "GK" && (best < 0 || (us[i]._bd0 || 0) > (us[best]._bd0 || 0))) best = i; ti = best; }
   else { let bd = Infinity; for (let i = 0; i < us.length; i++) { const p = us[i];
@@ -228,7 +228,7 @@ export function meSPShape(s) {
   // ---- A PENALTY empties the box. Nobody but the taker and the keeper may be inside the area,
   // within 9.15 m of the spot, or ahead of the ball, so the other twenty wait on the arc behind it.
   if (sp.kind === "penalty") {
-    const gkD = them.find(p => p.pos === "GK");
+    const gkD = meKeeper(them);
     if (gkD) { gkD._tx = clampX(gx - dir * 0.3); gkD._ty = ME_HALF_W; gkD._spSet = true; gkD._closing = true; }
     let k = 0;
     for (const sd of ME_SIDES) for (const p of s.players[sd]) {
@@ -366,7 +366,7 @@ export function meSPShape(s) {
     if (bi >= 0) dplace(bi, tx, ty);
     return bi;
   };
-  const gk = them.find(p => p.pos === "GK");
+  const gk = meKeeper(them);
   if (gk) {
     if (sp.kind === "corner") { gk._tx = clampX(gx - dir * 1.4); gk._ty = ME_HALF_W - (sp.y < ME_HALF_W ? -1 : 1) * 1.5; }
     else { gk._tx = clampX(gx - dir * 2.0); gk._ty = ME_HALF_W; }
@@ -543,7 +543,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // struck against a man who knows that, which is why a penalty is converted three times in four:
   // his rating buys him a little over a coin flip and no more.
   const gkRead = (aimY, base, skillW) => {
-    const g = them2.find(q => q.pos === "GK");
+    const g = meKeeper(them2);
     if (!g) return;
     const ok = rng.u() < Math.min(0.97, base + meGkSkill(meAttrs(g)) * skillW);
     mp.shot.readY = ok ? aimY : ME_HALF_W - (aimY - ME_HALF_W);

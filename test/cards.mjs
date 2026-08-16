@@ -22,6 +22,7 @@ const ok = (name, cond, got) => {
 
 const why = {}, sev = {}, part = {};
 let reds = 0, hurt = 0, noDiag = 0, noVariant = 0, noOffAt = 0, badSaid = 0, badExclude = 0;
+const weeks = [];
 const SAID = eng.ME_RED_SAID;
 
 for (let k = 0; k < N; k++) {
@@ -44,10 +45,11 @@ for (let k = 0; k < N; k++) {
       hurt++;
       if (!q.injSev || !q.injPart) { noDiag++; continue; }
       if (q._offAt === undefined) noOffAt++;
-      sev[q.injSev] = (sev[q.injSev] || 0) + 1;
+      const row = eng.ME_INJURY.find(v => v.id === q.injSev);
+      if (!row || row.part !== q.injPart) { badExclude++; continue; }
+      sev[row.label] = (sev[row.label] || 0) + 1;
       part[q.injPart] = (part[q.injPart] || 0) + 1;
-      const ex = eng.INJ_PART_SEV_EXCLUDE[q.injPart] || [];
-      if (ex.includes(q.injSev)) badExclude++;
+      weeks.push([q.injPart + " " + row.label, row.dur]);
     }
   }
   // The feed has to carry the reason structurally, because the header reads it off the event.
@@ -61,8 +63,15 @@ console.log("\n" + N + " matches");
 console.log("  reds/match      ", (reds / N).toFixed(3));
 console.log("  by reason       ", JSON.stringify(why));
 console.log("  injured off/match", (hurt / N).toFixed(3));
-console.log("  severity        ", JSON.stringify(sev));
-console.log("  body part       ", JSON.stringify(part));
+console.log("  injury           ", JSON.stringify(sev));
+console.log("  body part        ", JSON.stringify(part));
+// Every combination carries its own lay-off, which is the whole point of the joint table: a torn
+// hamstring and a ruptured cruciate were the same four-to-seven matches when severity was rolled
+// on its own.
+const seen = new Map();
+for (const [k, d] of weeks) seen.set(k, d);
+console.log("  lay-offs seen    ", [...seen].sort((a, b) => a[1][0] - b[1][0])
+  .map(([k, d]) => k + " " + d[0] + "-" + d[1]).join(", ") || "none");
 
 console.log("\nintegrity");
 ok("every red has a reason",         !why.MISSING, why.MISSING || 0);
@@ -70,8 +79,25 @@ ok("the man carries his own reason", noVariant === 0, noVariant);
 ok("everyone who left has _offAt",   noOffAt === 0, noOffAt);
 ok("every caption names the reason", badSaid === 0, badSaid);
 ok("every injury has a diagnosis",   noDiag === 0, noDiag);
-ok("no head sprains, no rib tears",  badExclude === 0, badExclude);
+ok("diagnosis matches its table row", badExclude === 0, badExclude);
 ok("more than one reason appears",   Object.keys(why).length >= 2, Object.keys(why));
+// The table itself, checked once rather than waited for: a season-ending injury is roughly one in
+// fifty and will not show up reliably in a couple of hundred matches, but it has to EXIST and it
+// has to be uncapped.
+const T = eng.ME_INJURY, wTot = T.reduce((a, b) => a + b.w, 0);
+const enders = T.filter(v => v.dur[0] >= eng.ME_INJ_SEASON);
+const mean = T.reduce((a, b) => a + b.w / wTot * (b.dur[0] + b.dur[1]) / 2, 0);
+console.log("\nthe table");
+console.log("  entries", T.length, " mean lay-off", mean.toFixed(2), "matches",
+            " longest", Math.max(...T.map(v => v.dur[1])));
+console.log("  season-ending  ", enders.map(v => v.part + " " + v.label).join(", "),
+            " (" + (enders.reduce((a, b) => a + b.w, 0) / wTot * 100).toFixed(1) + "% of injuries)");
+ok("season-ending injuries exist", enders.length > 0, enders.length);
+ok("no two rows share an id",      new Set(T.map(v => v.id)).size === T.length);
+ok("every row is a real range",    T.every(v => v.dur[0] >= 1 && v.dur[1] >= v.dur[0]));
+ok("the same part varies by injury",
+   new Set(T.filter(v => v.part === "knee").map(v => v.dur.join("-"))).size >= 3,
+   T.filter(v => v.part === "knee").map(v => v.label + " " + v.dur.join("-")));
 
 // ── the toggle ───────────────────────────────────────────────────────────────
 // A competition that turns injuries off should not produce one. Cards are untouched by it.

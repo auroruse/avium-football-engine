@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, INJ_SEV, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, meShootout, meSub, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -7343,7 +7343,7 @@ export default function App() {
         for (const [k, v] of Object.entries(entries)) {
           const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,defActs:v.defActs||0,saves:v.saves||0};
           if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
-          if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
+          if (v.inj) { const sev = v.injSev ? ME_INJURY.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
         }
         return diffs;
@@ -8278,7 +8278,7 @@ export default function App() {
       // PER MAN. This took the FIRST injured player's lay-off and gave it to everybody hurt in the
       // match, and recorded only his diagnosis -- so two injuries in one game came out as one
       // knee and one guess. A torn hamstring and a bruised foot are not the same number of weeks.
-      const injDurOf = (p) => { const sev = INJ_SEV.find(v => v.id === p.injSev);
+      const injDurOf = (p) => { const sev = ME_INJURY.find(v => v.id === p.injSev);
         if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1));
         const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; };
       const staminaOf = {};
@@ -9212,7 +9212,11 @@ export default function App() {
                         <div style={{ overflowY: "auto", minHeight: 0 }}>
                       <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 18px" }} className="grid-4col">
                         {unavail.map((p,i) => {
-                          const injReason = p.reason === "inj" && p.injPart ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " " + (INJ_SEV.find(s => s.id === p.injSev)?.label || "") : null;
+                          const injReason = p.reason === "inj" && p.injPart
+                            ? p.injPart.replace(/\b\w/g, c => c.toUpperCase()) + " "
+                              + (ME_INJURY.find(s => s.id === p.injSev)?.label || "")
+                              + ((p.out || 0) >= ME_INJ_SEASON ? " \u2014 out for the season" : "")
+                            : null;
                           return (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 0", fontSize: 10 }}>
                             <span style={{ flex: 1, color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={injReason || undefined}>{p.name}{injReason && <span style={{ color: "var(--chrome-muted)" }}> ({injReason})</span>}</span>
@@ -12827,8 +12831,17 @@ export default function App() {
                                           opacity: played ? 1 : 0.5 }}>
                                 <span style={{ ...cellBase, ...mono, fontSize: 8, fontWeight: 700,
                                                color: POS_CLR[q.pos] || "var(--chrome-muted)" }}>{q.pos}</span>
-                                <span style={{ ...cellBase, ...mono, fontSize: 9, textAlign: "center",
-                                               color: ovrColor(q.ovr0 ?? q.ovr ?? 70) }}>{Math.round(q.ovr0 ?? q.ovr ?? 70)}</span>
+                                {/* AN OUTFIELD MAN IN GOAL IS HALF THE PLAYER. Every other row shows
+                                    the base rating, because a man is not worse for having run ninety
+                                    minutes -- but this one is not fatigue, it is a centre-half in the
+                                    gloves, and the number has to say so or the goals he lets in look
+                                    like his fault as a defender. His real rating is untouched
+                                    underneath; only what he is playing at changes. */}
+                                <span title={q.inGoal ? "Outfield player in goal" : undefined}
+                                      style={{ ...cellBase, ...mono, fontSize: 9, textAlign: "center",
+                                               fontStyle: q.inGoal ? "italic" : "normal",
+                                               color: ovrColor(q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)) }}>
+                                  {Math.round(q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70))}</span>
                                 <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                                   {boldSurname(q.fullName || q.name, q.name)}
                                   {q.rc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
@@ -13190,7 +13203,10 @@ export default function App() {
                         foul:    { icon: "⚠️", clr: "var(--ui-warn)" },
                         offside: { icon: "🚩", clr: "var(--ui-warn)" },
                         yellow:  { icon: YCARD, clr: "var(--ui-warn)" },
-                        injury:  { icon: "🏥", clr: "var(--ui-injury)" },
+                        injury:  { icon: "\uD83C\uDFE5", clr: "var(--ui-injury)" },
+                        // An outfield player pulling the gloves on is the sort of thing a feed
+                        // should shout about, so it gets a head and the emphasis a goal gets.
+                        gloves:  { icon: "\uD83E\uDDE4", clr: "var(--ui-warn)", head: "IN GOAL", big: true },
                       };
                       // The offence, off the event rather than out of the wording. Reading it back
                       // from the caption is how this worked before, and rewording the caption broke

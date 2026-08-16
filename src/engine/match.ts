@@ -5,7 +5,7 @@ import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, me
 import { meBlock, meDuties, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meDecide, meShotP } from "./decide";
-import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
+import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
 // Twenty-two players on a 105x68 pitch, advanced in quarter-second slices. No team rating appears
@@ -780,7 +780,10 @@ export function meTackle(s, rng, out) {
                   && Math.hypot(q.x - c.x, q.y - c.y) < CFG.tkCoverR) ? CFG.tkwCover : 0));
     const a = meAttrs(p);
     const go = CFG.tkGo - (a.tackle - 60) / 99 * CFG.tkGoSkill
-                        - (s.strategy?.[def]?.tackling || 0) * CFG.tkGoInstr;
+                        - (s.strategy?.[def]?.tackling || 0) * CFG.tkGoInstr
+                        // A booked man jockeys. He wants a better angle than he would have settled
+                        // for before, which costs his side tackles -- and that is the handicap.
+                        + ((p.yc || 0) ? CFG.tkGoBooked : 0);
     if (angle < go) continue;
     out.tackleTry = (out.tackleTry || 0) + 1; meBump(out, "tackleTrySide", def);
     p._tkCool = CFG.tkCool;
@@ -818,7 +821,7 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   inn._runT = 0; inn._run = null; inn._cool = 0; inn._cut = 0;
   inn._track = false; inn._closing = false; inn._avgV = 0;
   inn.knock = 0; inn.off = false; inn.inj = false; inn.rc = false;
-  inn.injSev = undefined; inn.injPart = undefined; inn.rcVariant = undefined;
+  inn.injSev = undefined; inn.injPart = undefined; inn.rcVariant = undefined; inn.inGoal = false;
   if (inn.stamina === undefined) inn.stamina = 100;
   // Minutes played, for the shrink in meFinalise. Without it a substitute who came on for the last
   // five and touched nothing is rated as confidently as a man who played the whole match.
@@ -845,7 +848,10 @@ export function meAutoSubs(s, side, out) {
       if (q.off && q.inj) { pick = i; forced = true; break; }      // cannot continue
       if (q.off) continue;                                          // sent off: nobody replaces him
       if (s.mePos.tick < CFG.subFromTick) continue;
-      const tired = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0);
+      // A booking is read here the way a knock is: not a reason on its own, but it moves a man up
+      // the list, and a tiring player already on a yellow is the first one a manager protects.
+      const tired = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0)
+                                       - ((q.yc || 0) ? CFG.subBooked : 0);
       if (tired < CFG.subStamina && tired < worst) { worst = tired; pick = i; }
     }
     if (pick < 0) return;
@@ -862,6 +868,62 @@ export function meAutoSubs(s, side, out) {
     if (!meSub(s, side, pick, bi, out)) return;
     if (!forced) return;                                            // one tactical change at a time
   }
+}
+
+// ── NOBODY IN GOAL ──────────────────────────────────────────────────────────────────────────
+// The keeper has been sent off or carried off, and that is not a substitution like any other.
+// Carried off, the reserve simply takes his place. SENT off, nobody replaces him at all -- so a
+// team-mate has to come off to let the reserve on, and the side finishes with ten and a bench one
+// change shorter. And if there is no reserve, or no changes left, somebody pulls the gloves on.
+// Nothing here ever handled any of it: a dismissed keeper left the goal empty for the rest of the
+// match, because his side kept a man labelled GK who happened to be standing on the touchline.
+export function meKeeperCrisis(s, side, out) {
+  const ps = s.players[side];
+  if (meKeeperIx(ps) >= 0) return;                              // somebody is in it
+  const gone = ps.find(p => p && p.pos === "GK" && p.off) || null;
+  const bench = s.bench?.[side] || [];
+  const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
+  s.subs = s.subs || { home: 0, away: 0 };
+  const bj = bench.findIndex(b => b && b.pos === "GK");
+
+  if (bj >= 0 && s.subs[side] < cap) {
+    // Who makes way. An injured keeper makes way for himself; a sent-off one cannot, so the weakest
+    // man still on the pitch is sacrificed for him -- which is what a manager actually does.
+    let oi = -1;
+    if (gone && gone.inj) oi = ps.indexOf(gone);
+    else { let worst = Infinity;
+      for (let i = 0; i < ps.length; i++) { const q = ps[i];
+        if (!q || q.off || q.pos === "GK") continue;
+        if ((q.ovr ?? 65) < worst) { worst = q.ovr ?? 65; oi = i; } } }
+    if (oi >= 0 && meSub(s, side, oi, bj, out)) {
+      // He came on into somebody else's place in the shape. Put him in the one he is here for, or
+      // he keeps goal from wherever the man he replaced happened to be standing.
+      const gk = ps[oi];
+      if (gone) for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
+        gk[k] = gone[k];
+      gk._duty = "gk"; gk._att = null;
+      return;
+    }
+  }
+
+  // AN OUTFIELD PLAYER GOES IN. The man standing nearest his own goal, which is a centre-half, the
+  // way it always is. He is HALF the player he was and the number says so: being good at football
+  // is not being good at goalkeeping, and the engine reads his rating for reflexes it will not
+  // find. His real OVR is untouched on ovr0 -- the competition still knows who he is.
+  let pi = -1, deep = Infinity;
+  for (let i = 0; i < ps.length; i++) {
+    const q = ps[i]; if (!q || q.off || q.pos === "GK") continue;
+    const d = q._bd0 ?? q._bd ?? 99;
+    if (d < deep) { deep = d; pi = i; }
+  }
+  if (pi < 0) return;
+  const p = ps[pi];
+  p.pos = "GK"; p.inGoal = true;
+  p.ovr = Math.max(1, Math.round((p.ovr0 ?? p.ovr ?? 70) / 2));
+  p._att = null; p._duty = "gk";
+  if (gone) for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind"]) p[k] = gone[k];
+  meEvt(out, "gloves", side, p.x, p.y, p.x, p.y,
+        `${p.fullName || p.name} goes in goal`, { inGoal: true });
 }
 
 export function meShootout(s, rng, out, maxKicks) {
@@ -1003,7 +1065,7 @@ export function meTick(s, rng, out) {
     mp.sp.t++;
     meSPFetch(mp);                       // somebody is bringing it back; it does not teleport
     // Changes are made at a stoppage, once, as the ball goes dead -- not mid-move.
-    if (mp.sp.t === 1) for (const sd of ME_SIDES) meAutoSubs(s, sd, out);
+    if (mp.sp.t === 1) for (const sd of ME_SIDES) { meAutoSubs(s, sd, out); meKeeperCrisis(s, sd, out); }
     meSPShape(s);
     meMove(s, rng);
     if (meSPReady(s)) {
@@ -1817,7 +1879,7 @@ export function meTick(s, rng, out) {
   // sides. The extra men still matter: they are pressure, and pressure taxes every other option.
   // The keeper smothers first: at close range in his own box he is the challenge, not a spectator.
   {
-    const gki = opp.findIndex(q => q.pos === "GK");
+    const gki = meKeeperIx(opp);
     if (gki >= 0) {
       const gk = opp[gki], gd = Math.hypot(gk.x - p.x, gk.y - p.y);
       if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR) * (0.6 + meAttrs(gk).reflex / 99 * 0.6)) {
@@ -1837,7 +1899,15 @@ export function meTick(s, rng, out) {
   // above. What survives is the foul: going through somebody to get there.
   let qi = -1, qGap = Infinity;
   for (let k = 0; k < opp.length; k++) {
-    const q = opp[k]; if (q.pos === "GK") continue;
+    const q = opp[k];
+    // A sent-off man is parked at y = -6, six metres beyond the touchline. Nothing excluded him
+    // here, so a carrier hugging the byline could be fouled by somebody who was not on the pitch.
+    if (!q || q.off) continue;
+    // A KEEPER OFF HIS LINE IS A DEFENDER. He was skipped outright, which is why a goalkeeper in
+    // this engine could not be sent off at all -- and the one red card a keeper really does get is
+    // rushing out, missing, and taking the man down. Inside his own area he is the smother above
+    // rather than a challenge, and letting him foul there would invent penalties nobody conceded.
+    if (q.pos === "GK" && Math.abs(q.x - meGoalX(side)) < CFG.gkBoxR) continue;
     const g = Math.hypot(q.x - p.x, q.y - p.y);
     if (g < qGap) { qGap = g; qi = k; }
   }
@@ -1860,7 +1930,10 @@ export function meTick(s, rng, out) {
     const rate = CFG.foulBase * (1 + closeV * CFG.foulPace)
                * (1 - qa2.tackle / 99 * CFG.foulSkill)
                * (1 + (dSt.tackling || 0) * CFG.foulAggr)
-               * (inArea0 ? CFG.foulBoxScale : 1);
+               * (inArea0 ? CFG.foulBoxScale : 1)
+               // On a yellow, and he knows it. This is the same challenge he would have made ten
+               // minutes ago and did not make now.
+               * ((q.yc || 0) ? CFG.foulBooked : 1);
     if (rng.u() < rate) {
       const fSide = meOther(side);
       out.fouls[fSide]++;
@@ -1880,7 +1953,7 @@ export function meTick(s, rng, out) {
       let card = "", dogso = false;
       if (clear && rng.u() < CFG.dogsoRed) { card = "red"; dogso = true; }
       else if (rng.u() < CFG.cardStraightRed * sev) card = "red";
-      else if (rng.u() < CFG.cardYellow * (0.4 + sev) * ((q.yc || 0) ? CFG.cardBooked : 1)) card = "yellow";
+      else if (rng.u() < CFG.cardYellow * (0.4 + sev)) card = "yellow";
       meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
       // Giving a penalty away is its own thing, separate from whatever card came with it, and the
       // man who drew it gets the credit for it.
@@ -1985,7 +2058,7 @@ export function meTick(s, rng, out) {
     // one it found an empty corner -- conversion alternated between 98% and 7% with distance for no
     // footballing reason at all. Better finishers pick the side he has left; poorer ones aim nearer
     // the middle, where he is.
-    const gkp = s.players[meOther(side)].find(q => q.pos === "GK");
+    const gkp = meKeeper(s.players[meOther(side)]);
     const sk = meTech(a.shoot);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     const aimY = ME_HALF_W + away * GOAL_HALF_W * (CFG.shotAimBase + sk * CFG.shotAimSkill);

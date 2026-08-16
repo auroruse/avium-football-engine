@@ -43,6 +43,17 @@ export const ME_VAL_MAX = 0.26;
 
 export const meDanger = (side, x, y) => meVal(side, x, y) / ME_VAL_MAX;
 
+// WHO IS ACTUALLY IN GOAL. Seven places asked for "the man whose pos is GK" and took the first one
+// they found, which is fine right up until he is sent off or carried off -- he keeps his slot in
+// the array and his position label, so every one of them went on aiming shots at him, standing him
+// up for penalties and giving him the goal kicks while he watched from the touchline. Anyone can
+// end up in goal; only one man is in it.
+export const meKeeper = (ps) => { for (const p of ps) if (p && !p.off && p.pos === "GK") return p; return null; };
+export const meKeeperIx = (ps) => {
+  for (let i = 0; i < ps.length; i++) { const p = ps[i]; if (p && !p.off && p.pos === "GK") return i; }
+  return -1;
+};
+
 // What a spot is worth once you account for who is standing on it. meVal is pure geometry: it says a
 // ball ten metres from goal is worth 0.12 whether the six-yard box is empty or has five defenders in
 // it. That is why running at goal outscored striking it from every range on the pitch -- a carry was
