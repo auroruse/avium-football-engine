@@ -1386,11 +1386,12 @@ export function meTick(s, rng, out) {
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
             if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear);
                           q.defActs = (q.defActs || 0) + 1; }
-            // A flick-on is a header and it fires ten times a match; a defensive header away is a
-            // real clearance and keeps its line. Measured, captioned events run 142 a match against
-            // a feed that holds 60, so the noisy kinds were pushing the goals off the end.
-            meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty,
-                  relief ? `${q.fullName || q.name} heads it clear` : null);
+            // Neither a flick-on nor a header away is commentary. Measured, captioned events ran
+            // 142 a match against a feed that holds 60, so the routine kinds were literally pushing
+            // the goals off the end of the buffer -- which is what the "only second half" summary
+            // turned out to be. Everything muted here still FIRES: the pitch draws it and every
+            // counter, out.clears and the player T+C column included, still moves.
+            meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty, null);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
           }
           return true;
@@ -1926,7 +1927,7 @@ export function meTick(s, rng, out) {
   }
   if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, CFG.rateClear);
     p.defActs = (p.defActs || 0) + 1;
-    meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, `${p.fullName || p.name} clears it`);
+    meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, null);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     meKickBall(mp, rng, act.cx ?? (p.x + meDir(side) * 36), act.cy ?? (p.y + (rng.u() - 0.5) * 30),
@@ -1935,7 +1936,7 @@ export function meTick(s, rng, out) {
   if (act.k === "touch") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p));
     // Into the stand. It concedes a throw and it keeps the goal, which is the trade being made.
     const sy = p.y < ME_HALF_W ? -4 : PITCH_W + 4;
-    meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, `${p.fullName || p.name} puts it out`);
+    meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, null);
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
     meKickBall(mp, rng, p.x + meDir(side) * 6, sy, "clear", meTech(a.pass), press);

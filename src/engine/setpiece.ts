@@ -602,12 +602,11 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const high = sp.kind === "corner"
     || (sp.kind === "goalkick" && (s.strategy?.[side]?.gkDist || 0) > 0)
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);
-  const label = sp.kind === "corner" ? `${taker.fullName || taker.name} swings it in`
-    : sp.kind === "throw" ? `${taker.fullName || taker.name} takes the throw`
-    : sp.kind === "goalkick" ? `${taker.fullName || taker.name} goes ${high ? "long" : "short"}`
-    // A free kick simply played on is not commentary -- the foul that won it already reported, and
-    // whatever comes of the delivery reports on its own. Null caption: meEvt still marks the pitch.
-    : sp.kind === "kickoff" ? "Kick off" : null;
+  // NO SET-PIECE DELIVERY IS COMMENTARY. A throw, a goal kick, a corner swung in and a free kick
+  // played on came to nineteen lines a match between them -- restarts, not events. Whatever comes of
+  // the delivery reports on its own, and the foul or the corner that won it already did. meEvt still
+  // marks the pitch, and the taker is still credited with the pass in his own column.
+  const label = null;
   // The taker gets credited for it like any other pass. Left off, every corner, throw, goal kick
   // and free kick completed into the match total and onto nobody's name -- about twenty-five passes
   // a match, which is where the per-player column stopped reconciling with the team's.
