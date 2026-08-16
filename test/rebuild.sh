@@ -15,7 +15,10 @@ cat "$SP/prelude.js" "$SP/engine.tsx" > "$SP/e2.tsx" && mv "$SP/e2.tsx" "$SP/eng
 # Re-attach the engine: one import for App.tsx's own use, and a re-export so tests can reach it.
 # Mirror App.tsx's own engine import exactly -- a symbol missing here is a ReferenceError that
 # only shows up when a harness runs the function that uses it.
-printf 'import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, meShootout, meSub, meTick } from "%s";\n' "$ENGDIR" > "$SP/e3.tsx"
+# Take App.tsx's OWN engine import line and repoint it at the engine directory. Copying the
+# symbol list by hand is how this broke twice: a symbol added to App.tsx but not here is a
+# ReferenceError that only appears when a harness runs the function that needs it.
+grep -m1 '^import .* from "./engine";$' src/App.tsx | sed "s#\"./engine\"#\"$ENGDIR\"#" > "$SP/e3.tsx"
 cat "$SP/engine.tsx" >> "$SP/e3.tsx"
 printf '\nexport * from "%s";\n' "$ENGDIR" >> "$SP/e3.tsx"
 mv "$SP/e3.tsx" "$SP/engine.tsx"

@@ -394,7 +394,18 @@ export const CFG = {
   // cardYellow swept against foulBase: at 0.16/0.24 with eleven fouls the yellows come out at
   // 1.44 / 2.25 a side. Straight reds cut to 0.002 because most dismissals here arrive as second
   // yellows and the two together were running about three times the real rate.
-  cardYellow: 0.18, cardStraightRed: 0.002,
+  // cardYellow carries the damp below: at 0.18 with it applied the match produced 2.8 yellows
+  // against a real 3.9, because the damp takes bookings off already-booked men and those were
+  // part of the total. 0.26 puts the total back where it was measured and leaves the second
+  // yellow where it belongs.
+  cardYellow: 0.26, cardStraightRed: 0.0065,
+  // A BOOKED MAN IS A DIFFERENT PLAYER, and so is the referee looking at him. Measured, second
+  // yellows came out at 0.265 a match against a real 0.06 -- not because the yellow rate is wrong
+  // (3.5 a match is right) but because nothing here knew he was already on one. Independent rolls
+  // over eleven men predict 0.26 exactly. He pulls out of the challenge he would otherwise make,
+  // his manager takes him off, and the referee finds a word instead of a card; one multiplier is
+  // all three, because they are indistinguishable from the outside.
+  cardBooked: 0.20,
   // How much less readily a challenge in the penalty area is given as a foul.
   // Swept against the penalty count: 0.30 gave 0.55 penalties a match from fouls alone against a
   // real 0.28 for all causes. At 0.115 the foul-derived share is about 0.21, leaving room for the
@@ -404,6 +415,21 @@ export const CFG = {
   // fouled, injPace scales it by how fast he was gone through, and injSerious is the share of those
   // he cannot continue with. Serious ones are rare on purpose: nothing can replace him yet.
   injP: 0.030, injPace: 0.25, injSerious: 0.16, injKnockT: 240, injKnockSpd: 0.86,
+  // WHY HE WALKED, where the engine can tell. A challenge red is DOGSO if the man fouled had a
+  // clear run at goal and nobody but the keeper behind him, and serious foul play otherwise --
+  // dogsoDanger is how close to goal that run has to be pointing (meDanger units, 1.0 at the goal
+  // line, about 0.05 at twenty-five metres). flashP is the chance per restart of an off-the-ball
+  // flashpoint, which is the only way violent conduct and dissent can happen at all: everything
+  // else the referee does here comes out of a tackle, and neither of those is a tackle.
+  // dogsoCover is how many outfield defenders may still be goalside and it still count: the letter
+  // of the law is the last man, but a single defender chasing back from behind the play does not
+  // save a chance, and at zero the engine produced DOGSO on 9% of straight reds against a real
+  // third or so -- a back four means almost nobody is ever the genuine last man.
+  // dogsoRed is its OWN gate, not a label stuck on a straight red after the fact. A straight red
+  // here is rolled off how hard he came in, and the foul that denies a goal is usually the opposite
+  // of that -- a shirt pulled, a heel clipped, nothing violent about it. Labelling produced DOGSO
+  // on 5% of dismissals against a real third, because cynical fouls were never reaching the roll.
+  dogsoRed: 0.027, dogsoDanger: 0.045, dogsoCover: 1, flashP: 0.00044, flashViolent: 0.62,
   // SUBSTITUTIONS. subFromTick is how far into the match before a manager makes a change for tired
   // legs -- an injury is replaced whenever it happens. subStamina is the level he goes at, and a man
   // carrying a knock is treated as this much more tired than he reads. subSamePos favours a like-for
@@ -2116,3 +2142,40 @@ export const ME_HOME_ADV = {
 // What the UI could legally set. A chase must not push an instruction somewhere a manager could not.
 export const ME_STRAT_RANGE = { defLine:[-2,2], pressingLOE:[-2,2], passingDir:[-2,2], tempo:[-2,2],
   chanceCreation:[-1,1], timeWasting:[0,2] };
+
+// ── WHY HE WALKED ───────────────────────────────────────────────────────────────────────────
+// A dismissal is not one offence and the difference is the ban: violent conduct costs three
+// matches and a second yellow costs one, so a competition cannot count them the same. The engine
+// decides DOGSO and serious foul play from the challenge itself -- where it happened and who was
+// left behind it -- and rolls the two off-the-ball offences at a stoppage.
+export const ME_RED_WHY = { second: "2nd Yellow", dogso: "DOGSO", sfp: "Serious Foul Play",
+                            violent: "Violent Conduct", abusive: "Abusive Language" };
+// How the feed says it. Same five reasons, worded to follow "is sent off,".
+export const ME_RED_SAID = { second: "second yellow", dogso: "denying a goalscoring opportunity",
+                             sfp: "serious foul play", violent: "violent conduct",
+                             abusive: "abusive language" };
+
+// ── WHAT HE DID TO HIMSELF ──────────────────────────────────────────────────────────────────
+// Body part first, then how bad, because some parts cannot take some injuries: in footballing
+// terms a head does not sprain and ribs do not tear. dur is the range of matches out, which is
+// what a competition's injury counter spends.
+export const INJ_SEV = [{ id: "bruise", label: "Bruise", dur: [1, 1] },
+                        { id: "sprain", label: "Sprain", dur: [1, 2] },
+                        { id: "fracture", label: "Fracture", dur: [3, 5] },
+                        { id: "tear", label: "Tear", dur: [4, 7] }];
+export const INJ_SEV_W = [40, 30, 15, 15];
+export const INJ_PART = ["upper leg", "knee", "lower leg", "groin", "foot", "head", "shoulder", "ribs"];
+export const INJ_PART_W = [22, 20, 20, 12, 8, 8, 5, 5];
+export const INJ_PART_SEV_EXCLUDE = { head: ["sprain", "tear"], ribs: ["sprain", "tear"] };
+const mePickW = (rng, items, w) => {
+  let r = rng.u() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < items.length; i++) { r -= w[i]; if (r <= 0) return items[i]; }
+  return items[items.length - 1];
+};
+export function mePickInjury(rng) {
+  const part = mePickW(rng, INJ_PART, INJ_PART_W);
+  const ex = INJ_PART_SEV_EXCLUDE[part] || [];
+  const sev = mePickW(rng, INJ_SEV.filter(v => !ex.includes(v.id)),
+                           INJ_SEV_W.filter((_, i) => !ex.includes(INJ_SEV[i].id)));
+  return { sev, part };
+}

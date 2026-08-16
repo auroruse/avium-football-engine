@@ -14,7 +14,7 @@ import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClo
 // what succeeds, so every setting costs something somewhere -- turn the press up and the space
 // behind it is really there for someone to run into. That is the whole reason for the rewrite.
 export { ME_HZ, ME_DT, ME_TPM } from "./config";
-import { ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute } from "./config";
+import { ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_RED_SAID, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute, mePickInjury } from "./config";
 
 // ---- setup ------------------------------------------------------------------------------
 // Positions live ON the player records, not in a side table, so cloneState already deep-copies them
@@ -743,6 +743,20 @@ const mePenRes = (out, sh, mp) => {
                 `${sh.full || sh.name} misses the penalty`);
 };
 
+// EVERY DISMISSAL GOES THROUGH HERE. There were three sites writing the flag, the counter, the
+// ledger entry and the caption by hand, and they had already drifted once -- one said "is off" and
+// one said "is sent off", which is how a time-wasting second yellow fell out of the feed. Two of
+// them also forgot _offAt, so a man sent off in the twentieth minute was rated over ninety.
+export function meRed(s, out, side, q, why, x, y) {
+  q.rc = true; q.off = true; q.rcVariant = why;
+  q.y = -6; q.vx = 0; q.vy = 0; q._offAt = s.mePos.tick;
+  (out.reds = out.reds || { home: 0, away: 0 })[side]++;
+  (out.sendOff = out.sendOff || { home: [], away: [] })[side].push(
+    { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: why === "second", why });
+  meEvt(out, "red", side, x, y, x, y,
+        `${q.fullName || q.name} is sent off, ${ME_RED_SAID[why] || "serious foul play"}`, { why });
+}
+
 export function meTackle(s, rng, out) {
   const mp = s.mePos;
   if (mp.sp || mp.idx < 0) return;
@@ -804,6 +818,7 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   inn._runT = 0; inn._run = null; inn._cool = 0; inn._cut = 0;
   inn._track = false; inn._closing = false; inn._avgV = 0;
   inn.knock = 0; inn.off = false; inn.inj = false; inn.rc = false;
+  inn.injSev = undefined; inn.injPart = undefined; inn.rcVariant = undefined;
   if (inn.stamina === undefined) inn.stamina = 100;
   // Minutes played, for the shrink in meFinalise. Without it a substitute who came on for the last
   // five and touched nothing is rated as confidently as a man who played the whole match.
@@ -1007,16 +1022,22 @@ export function meTick(s, rng, out) {
           // tick, so anything reading it back sees whatever was written last and reports zero.
           out.wasteYc = (out.wasteYc || 0) + 1;
           meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.fullName || q.name} booked for time-wasting`);
-          if (q.yc >= 2) {
-            q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0; q._offAt = mp.tick; q._offAt = mp.tick;
-            (out.reds = out.reds || { home: 0, away: 0 })[wS]++;
-            (out.sendOff = out.sendOff || { home: [], away: [] })[wS].push(
-              { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: true });
-            // Worded the same as the other dismissal: the feed reads the reason off this caption, and
-            // "is off" against "is sent off" meant a time-wasting second yellow fell through it.
-            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.fullName || q.name} is sent off, second yellow`);
-          }
+          if (q.yc >= 2) meRed(s, out, wS, q, "second", wX, wY);
         }
+      }
+      // TEMPERS AT A DEAD BALL. Every other card in this engine comes out of a challenge, so
+      // violent conduct and dissent -- the two offences that happen with the ball nowhere near --
+      // could not happen at all, and the competition's three-match bans never got handed out. A
+      // stoppage is when they happen: twenty-two men standing next to each other with nothing to
+      // do, and a referee being told what he is.
+      if (rng.u() < CFG.flashP) {
+        const fS = rng.u() < 0.5 ? "home" : "away";
+        // Not the keeper. Nothing in the engine puts an outfield man in the gloves, so a dismissed
+        // keeper is an empty net for the rest of the match -- which is a bigger thing to build than
+        // a flashpoint, and not one to smuggle in behind this.
+        const on = s.players[fS].filter(z => z && !z.off && z.pos !== "GK");
+        const z = on[Math.floor(rng.u() * on.length)];
+        if (z) meRed(s, out, fS, z, rng.u() < CFG.flashViolent ? "violent" : "abusive", mp.bx, mp.by);
       }
     }
     return;
@@ -1848,9 +1869,18 @@ export function meTick(s, rng, out) {
       // the same challenge on a man running at goal is a card.
       const sev = Math.min(1, closeV / CFG.cardPaceFull) * CFG.cardPaceW
                 + meDanger(side, p.x, p.y) * CFG.cardDangerW;
-      let card = "";
-      if (rng.u() < CFG.cardStraightRed * sev) card = "red";
-      else if (rng.u() < CFG.cardYellow * (0.4 + sev)) card = "yellow";
+      // WAS THERE A GOAL IN IT. Judged before the card, because the two questions are different:
+      // this one is about what the foul took away -- a run at goal with nobody but the keeper left
+      // to stop it -- and the one below is about how hard he went in.
+      const gx = meGoalX(side), dirG = gx > p.x ? 1 : -1;
+      let cover = 0;
+      for (const d of opp)
+        if (d && d !== q && !d.off && d.pos !== "GK" && (d.x - p.x) * dirG > 0) cover++;
+      const clear = cover <= CFG.dogsoCover && meDanger(side, p.x, p.y) > CFG.dogsoDanger;
+      let card = "", dogso = false;
+      if (clear && rng.u() < CFG.dogsoRed) { card = "red"; dogso = true; }
+      else if (rng.u() < CFG.cardStraightRed * sev) card = "red";
+      else if (rng.u() < CFG.cardYellow * (0.4 + sev) * ((q.yc || 0) ? CFG.cardBooked : 1)) card = "yellow";
       meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
       // Giving a penalty away is its own thing, separate from whatever card came with it, and the
       // man who drew it gets the credit for it.
@@ -1861,17 +1891,12 @@ export function meTick(s, rng, out) {
         if (q.yc >= 2) card = "red2";
       }
       if (card === "red" || card === "red2") {
+        const why = card === "red2" ? "second" : dogso ? "dogso" : "sfp";
         // OFF. He cannot be spliced out of the squad: mp.idx, _mk, mp.fj and mp.desig are all array
         // indices into it, so removing him would silently repoint every one of them at the wrong
         // man. He is flagged instead, parked off the touchline and skipped everywhere he could act.
         // He keeps his slot in the shape and nobody fills it, which is exactly what a man down is.
-        q.rc = true; q.off = true;
-        q.x = q.x; q.y = -6; q.vx = 0; q.vy = 0;
-        (out.reds = out.reds || { home: 0, away: 0 })[fSide]++;
-        (out.sendOff = out.sendOff || { home: [], away: [] })[fSide].push(
-          { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: card === "red2" });
-        meEvt(out, "red", fSide, p.x, p.y, p.x, p.y,
-              card === "red2" ? `${q.fullName || q.name} is sent off, second yellow` : `${q.fullName || q.name} is sent off`);
+        meRed(s, out, fSide, q, why, p.x, p.y);
       } else {
         meEvt(out, card === "yellow" ? "yellow" : "foul", fSide, p.x, p.y, p.x, p.y,
               card === "yellow" ? `${q.fullName || q.name} is booked` : `Foul by ${q.fullName || q.name}`);
@@ -1879,14 +1904,20 @@ export function meTick(s, rng, out) {
       // IN THE BOX IT IS A PENALTY. Same challenge, same card, different restart.
       // INJURY. A man who has just been gone through at pace is the one who gets hurt, so it hangs
       // off the same closing speed that made it a foul. Most of it is a knock he runs off; a small
-      // share of it he cannot continue with. NOTE: with no substitutions in the engine yet, a man
-      // who goes off leaves his side playing on with ten, so serious injuries are deliberately rare
-      // until subs exist to answer them.
-      if (rng.u() < CFG.injP * (1 + closeV * CFG.injPace)) {
+      // share of it he cannot continue with, and meAutoSubs treats that as a forced change at the
+      // next dead ball -- so a side only finishes with ten if the bench is already spent.
+      if (s.injuriesOn !== false && rng.u() < CFG.injP * (1 + closeV * CFG.injPace)) {
         (out.injuries = out.injuries || { home: 0, away: 0 })[side]++;
         if (rng.u() < CFG.injSerious) {
-          p.rc = false; p.off = true; p.inj = true; p.y = -6; p.vx = 0; p.vy = 0;
-          meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.fullName || p.name} cannot continue`);
+          // WHAT HE DID AND HOW LONG IT KEEPS HIM OUT. "Cannot continue" was the whole diagnosis,
+          // so every injury cost the same guessed one-to-five matches downstream. A knee that tears
+          // is not an ankle he rolled, and the competition's injury counter spends the difference.
+          const { sev, part } = mePickInjury(rng);
+          p.rc = false; p.off = true; p.inj = true; p.injSev = sev.id; p.injPart = part;
+          p.y = -6; p.vx = 0; p.vy = 0; p._offAt = s.mePos.tick;
+          meEvt(out, "injury", side, p.x, p.y, p.x, p.y,
+                `${p.fullName || p.name} cannot continue, ${part} ${sev.label.toLowerCase()}`,
+                { sev: sev.id, part });
         } else {
           p.knock = CFG.injKnockT;                 // he runs it off
           meEvt(out, "injury", side, p.x, p.y, p.x, p.y, `${p.fullName || p.name} is hurt but carries on`);
@@ -2065,10 +2096,16 @@ export function meTick(s, rng, out) {
 }
 
 // Published for the viewer: the last thing that happened and where, plus a rolling commentary.
-export function meEvt(out, k, side, x0, y0, x1, y1, txt) {
+export function meEvt(out, k, side, x0, y0, x1, y1, txt, extra) {
   if (!out) return;
   out.evt = { k, side, x0, y0, x1, y1, age: 0 };
-  if (out.feed && txt) { out.feed.unshift({ min: out.min || 0, side, k, txt }); if (out.feed.length > 60) out.feed.pop(); }
+  // extra is for what the caption cannot carry structurally -- which offence the red was for, which
+  // part of him went. Reading those back out of the wording is how the feed used to do it, and a
+  // reworded caption silently broke it.
+  if (out.feed && txt) {
+    out.feed.unshift(extra ? { min: out.min || 0, side, k, txt, ...extra } : { min: out.min || 0, side, k, txt });
+    if (out.feed.length > 60) out.feed.pop();
+  }
 }
 
 

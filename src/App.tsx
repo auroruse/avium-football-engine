@@ -16,7 +16,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, INJ_SEV, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, meShootout, meSub, meTick } from "./engine";
 
 // ═══ RNG ═════════════════════════════════════════════════════════════════════
 class RNG {
@@ -25,23 +25,11 @@ class RNG {
   u() { return this.next(); }
 }
 const pick = (rng, a) => a[Math.floor(rng.u() * a.length)];
-const pickWeighted = (rng, items, weights) => { const t = weights.reduce((a,b)=>a+b,0); let r = rng.u() * t; for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r <= 0) return items[i]; } return items[items.length-1]; };
 const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? k);
-const INJ_SEV = [{id:"bruise",label:"Bruise",dur:[1,1]},{id:"sprain",label:"Sprain",dur:[1,2]},{id:"fracture",label:"Fracture",dur:[3,5]},{id:"tear",label:"Tear",dur:[4,7]}];
-const INJ_SEV_W = [40,30,15,15];
-const INJ_PART = ["upper leg","knee","lower leg","groin","foot","head","shoulder","ribs"];
-const INJ_PART_W = [22,20,20,12,8,8,5,5];
-// Sprains and tears need a joint/long muscle to injure — the head and ribs don't have
-// either in footballing terms, so those two severities are excluded for those parts.
-const INJ_PART_SEV_EXCLUDE = { head: ["sprain", "tear"], ribs: ["sprain", "tear"] };
-function pickInjury(rng) {
-  const part = pickWeighted(rng, INJ_PART, INJ_PART_W);
-  const exclude = INJ_PART_SEV_EXCLUDE[part] || [];
-  const sevItems = INJ_SEV.filter(s => !exclude.includes(s.id));
-  const sevWeights = INJ_SEV_W.filter((_, i) => !exclude.includes(INJ_SEV[i].id));
-  const sev = pickWeighted(rng, sevItems, sevWeights);
-  return { sev, part };
-}
+// The injury tables live in the engine now -- it is the thing that hurts people, and two copies
+// of a severity table is two answers to how long a torn hamstring keeps a man out. pickInjury is
+// mePickInjury, imported above; the abstract sim below still calls it.
+const pickInjury = mePickInjury;
 // DOGSO (denying an obvious goalscoring opportunity) is almost always the last line of
 // defence — defenders and keepers commit it far more than midfielders, and forwards
 // almost never end up as the last man back.
@@ -433,7 +421,12 @@ const xiSkill = (players, fallback) => {
   return n ? t / n : fallback;
 };
 const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
-const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3) : variant === "abusive" ? 2 + Math.floor(r * 3) : 1;
+// What the offence costs him. Violent conduct is the long one, serious foul play the next, and
+// DOGSO and a second yellow are a single match -- which is also the fallback, so an unlabelled red
+// from anywhere is treated as the cheapest thing it could have been rather than the dearest.
+const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3)
+                                  : variant === "abusive" ? 2 + Math.floor(r * 3)
+                                  : variant === "sfp" ? 2 + Math.floor(r * 2) : 1;
 // Every 5th accumulated yellow this tournament adds a 1-match ban — mirrors how real
 // competitions reset the "on a booking" clock after each ban rather than compounding
 // further per additional card. tPlayerStats.yellows is a monotonically increasing counter
@@ -2341,10 +2334,10 @@ function quickPenShootout(rng) {
   while (h === a) { if (rng.u() < 0.75) h++; else a++; if (h !== a) break; if (rng.u() < 0.75) a++; else h++; }
   return { home: h, away: a };
 }
-function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg) {
-  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg);
+function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn);
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg));
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway;
   const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
@@ -2357,13 +2350,13 @@ function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeFor
   return result;
 }
 
-function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg) {
-  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg);
+function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, injuriesOn) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn);
   return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, playerData:{leg1:l1.playerData} };
 }
-function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg) {
+function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg));
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
   const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
@@ -5565,9 +5558,11 @@ const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
 // tournament will eventually call instead of simInstantMatch.
 // homeAdv is optional and names the side playing at its own ground, or null for a neutral venue,
 // which is what the balance harnesses want and therefore what they get by leaving it off.
-export function runPositionalMatch(hT, aT, seed, homeAdv) {
+export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
   const st = createMatchState();
   st.homeAdv = homeAdv || null;
+  // Default on, like every other caller: the harnesses that leave it off want a normal match.
+  st.injuriesOn = injuriesOn !== false;
   st.players.home = meSide(hT); st.players.away = meSide(aT);
   st.bench = { home: meBench(hT), away: meBench(aT) };
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
@@ -5600,7 +5595,7 @@ export function runPositionalMatch(hT, aT, seed, homeAdv) {
 //     st.homeAdv and applied to the instructions, not to anybody's numbers.
 function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm,
                             awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad,
-                            matchUrg, teamForm) {
+                            matchUrg, teamForm, injuriesOn) {
   const hT = { skill: homeSkill, style: homeStyle || "balanced", formation: homeForm || "4-3-3",
                strategy: homeStrat, squad: homeSquad };
   const aT = { skill: awaySkill, style: awayStyle || "balanced", formation: awayForm || "4-3-3",
@@ -5614,6 +5609,7 @@ function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, a
   st.styles = { home: hT.style, away: aT.style };
   st.teamSkill = { home: homeSkill, away: awaySkill };
   st.homeAdv = homeAdv || null;
+  st.injuriesOn = injuriesOn !== false;
   if (matchUrg) st.matchUrg = matchUrg;
   if (teamForm) st.teamForm = teamForm;
   st.possession = "home";
@@ -6403,6 +6399,9 @@ export default function App() {
     // lmMatch, which is the ABSTRACT engine's state object -- a different thing from the st the
     // positional engine actually runs on, so they were set and then never read by anybody.
     st.homeAdv = tn ? (tn.homeAdv || null) : (lmHomeAdv || null);
+    // The tournament's own switch. It gated the abstract sim and nothing else, so turning injuries
+    // off left every fixture still producing them.
+    st.injuriesOn = tConfig.injuries !== false;
     // Two sources, because there are two ways in. The Venue Selector on the Live Match tab writes
     // lmNeutralVenueName/Loc; the tournament's Play Live writes the venue onto lmMatch instead. This
     // builder was reading neither, so a positional match had no venue at all.
@@ -6455,7 +6454,8 @@ export default function App() {
         ovr: Math.round(p.ovr0 ?? p.ovr ?? 70),
         goals: p.goals || 0, assists: p.assists || 0,
         rating: +(p.rating ?? 6.5).toFixed(1),
-        yc: p.yc || 0, rc: p.rc ? 1 : 0, inj: p.inj ? 1 : 0,
+        yc: p.yc || 0, rc: p.rc ? 1 : 0, rcVariant: p.rcVariant,
+        inj: p.inj ? 1 : 0, injSev: p.injSev, injPart: p.injPart,
         passOk: p.passOk || 0, defActs: p.defActs || 0, saves: p.saves || 0,
         stamina: p.stamina,
         // _onAt is stamped only on a man who came on, so it answers "did he start" for the live
@@ -8275,9 +8275,12 @@ export default function App() {
     if (simPlayers) {
       const keyOf = (pName) => playerKey(teamObj.name, pName);
       const rng2 = new RNG(Date.now() + Math.random() * 99999);
-      const redP = simPlayers.find(p => p.rc);
-      const injP = simPlayers.find(p => p.inj);
-      const injDur = injP ? ((() => { const sev = INJ_SEV.find(s => s.id === injP.injSev); if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1)); const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()) : 0;
+      // PER MAN. This took the FIRST injured player's lay-off and gave it to everybody hurt in the
+      // match, and recorded only his diagnosis -- so two injuries in one game came out as one
+      // knee and one guess. A torn hamstring and a bruised foot are not the same number of weeks.
+      const injDurOf = (p) => { const sev = INJ_SEV.find(v => v.id === p.injSev);
+        if (sev) return sev.dur[0] + Math.floor(rng2.u() * (sev.dur[1] - sev.dur[0] + 1));
+        const r = rng2.u(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; };
       const staminaOf = {};
       simPlayers.forEach(p => { staminaOf[keyOf(p.name)] = p.stamina; });
       const diffs = {};
@@ -8293,8 +8296,11 @@ export default function App() {
         d.defActs += p.defActs || 0;
         d.saves += p.saves || 0;
         if (p.rc) { d.reds++; if (tConfig.suspensions !== false) d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
-        if (p.inj) d.injOut += injDur;
+        if (p.inj) d.injOut += injDurOf(p);
       });
+      const bans = Object.entries(diffs)
+        .filter(([, d]) => d.suspended || d.injOut)
+        .map(([k, d]) => ({ key: k, suspended: d.suspended || 0, injOut: d.injOut || 0 }));
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
@@ -8335,10 +8341,15 @@ export default function App() {
           for (const [k, d] of Object.entries(diffs)) { if (next[k]) next[k].consecutiveStarts = d.matches > 0 ? (next[k].consecutiveStarts||0) + 1 : 0; }
           teamObj.squad.forEach(p => { const k = keyOf(p.name); if (!diffs[k] && next[k]) next[k].consecutiveStarts = 0; });
         }
-        if (injP) { const ik = keyOf(injP.name); next[ik].injSev = injP.injSev; next[ik].injPart = injP.injPart; }
+        for (const p of simPlayers) if (p.inj && p.injSev) {
+          const ik = keyOf(p.name); if (next[ik]) { next[ik].injSev = p.injSev; next[ik].injPart = p.injPart; } }
         return next;
       });
-      return { redKey: redP ? keyOf(redP.name) : null, injKey: injP ? keyOf(injP.name) : null, injDur, diffs };
+      // WHAT THIS RESULT DOES TO THE REST OF THE ROUND. One red and one injury per match was the
+      // whole model, and a red was always worth exactly one game -- so a violent-conduct dismissal
+      // in a simmed round banned the man for a single fixture while the same red in a watched match
+      // banned him for three. Taken straight off the diffs above, so the two can no longer disagree.
+      return { bans, diffs };
     }
     return null;
   };
@@ -8396,7 +8407,7 @@ export default function App() {
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
     const _stamD = tConfig.staminaCarry ? tPlayerStats : null;
     const _hSq = filterSquad(gm.home.squad, gm.home.name, mUnavail, _stamD), _aSq = filterSquad(gm.away.squad, gm.away.name, mUnavail, _stamD);
-    const _sr = simPositionalMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm);
+    const _sr = simPositionalMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm, tConfig.injuries !== false);
     const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
     const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
@@ -8450,7 +8461,7 @@ export default function App() {
         const _hSq2 = km?.home ? filterSquad(km.home.squad, km.home.name, koUnavail, _stamD2) : null;
         const _aSq2 = km?.away ? filterSquad(km.away.squad, km.away.name, koUnavail, _stamD2) : null;
         const _haKey = bracket === "lb" ? `lb_${ri}_${mi}` : bracket === "gf" ? "gf" : bracket === "reset" ? "reset" : bracket === "tp" ? "tp" : `ko_${ri}_${mi}`;
-        const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2) : null;
+        const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2, null, null, tConfig.injuries !== false) : null;
         const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
       if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
     };
@@ -8501,7 +8512,11 @@ export default function App() {
       if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { team: v.team, suspended: v.suspended||0, injOut: v.injOut||0 };
     }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
-    const applyBan = (info) => { if (info?.redKey && tConfig.suspensions !== false) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    // Suspensions are already gated and already sized by accumulateMatchStats; this only mirrors
+    // them into the round's local ledger so a later fixture in the same round sees the man is out.
+    const applyBan = (info) => { for (const b of (info?.bans || [])) {
+      const e = localBans[b.key] || (localBans[b.key] = { suspended: 0, injOut: 0 });
+      e.suspended += b.suspended; e.injOut += b.injOut; } };
     for (let ri = 0; ri < maxRds; ri++) {
       if (targetRi !== -1 && targetRi !== ri) continue;
       const teams = new Set();
@@ -8524,7 +8539,7 @@ export default function App() {
         const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
         m.result = simPositionalMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
-          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) });
+          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false);
         const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
         const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
         applyBan(rH); applyBan(rA);
@@ -8778,14 +8793,14 @@ export default function App() {
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
     const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
-    if (tConfig.koLegs === 1) return simPositionalMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
+    if (tConfig.koLegs === 1) return simPositionalMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false);
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
-    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg);
-    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg);
-    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg);
+    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, tConfig.injuries !== false);
+    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false);
+    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false);
     return m.result;
   };
   const tScorinateKO = (targetRi, targetMi, legTarget, bracket) => {
@@ -8796,7 +8811,11 @@ export default function App() {
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
-    const applyBan = (info) => { if (info?.redKey && tConfig.suspensions !== false) { if (!localBans[info.redKey]) localBans[info.redKey] = {suspended:0,injOut:0}; localBans[info.redKey].suspended += 1; } if (info?.injKey) { if (!localBans[info.injKey]) localBans[info.injKey] = {suspended:0,injOut:0}; localBans[info.injKey].injOut += info.injDur; } };
+    // Suspensions are already gated and already sized by accumulateMatchStats; this only mirrors
+    // them into the round's local ledger so a later fixture in the same round sees the man is out.
+    const applyBan = (info) => { for (const b of (info?.bans || [])) {
+      const e = localBans[b.key] || (localBans[b.key] = { suspended: 0, injOut: 0 });
+      e.suspended += b.suspended; e.injOut += b.injOut; } };
     const decLocal = (tms) => { for (const k of Object.keys(localBans)) { const tn = k.substring(0, k.indexOf("|")); if (tms.has(tn)) { if (localBans[k].suspended > 0) localBans[k].suspended--; if (localBans[k].injOut > 0) localBans[k].injOut--; } } };
     const accumStats = (m, unavailSet) => {
       if (!m.result || m.result.partial) return;
@@ -13173,7 +13192,11 @@ export default function App() {
                         yellow:  { icon: YCARD, clr: "var(--ui-warn)" },
                         injury:  { icon: "🏥", clr: "var(--ui-injury)" },
                       };
-                      const RED_WHY = (second) => `RED CARD (${second ? "2nd Yellow" : "Serious Foul"})`;
+                      // The offence, off the event rather than out of the wording. Reading it back
+                      // from the caption is how this worked before, and rewording the caption broke
+                      // it silently -- a time-wasting second yellow read as a serious foul.
+                      const RED_WHY = (why, second) =>
+                        `RED CARD (${ME_RED_WHY[why] || (second ? "2nd Yellow" : "Serious Foul Play")})`;
                       const row = (i, min, side, k, body, headOver) => {
                         const md = META[k] || {};
                         const cl = side === "away" ? aClr : hClr;
@@ -13205,7 +13228,7 @@ export default function App() {
                           for (const q of (out.penMiss?.[sd] || []))
                             key.push({ min: q.min, side: sd, k: "penmiss", name: q.name, full: q.full });
                           for (const r of (out.sendOff?.[sd] || []))
-                            key.push({ min: r.min, side: sd, k: "red", name: r.name, full: r.full, second: r.second });
+                            key.push({ min: r.min, side: sd, k: "red", name: r.name, full: r.full, second: r.second, why: r.why });
                         }
                         key.sort((u, v) => v.min - u.min);
                         if (!key.length) return (
@@ -13214,7 +13237,7 @@ export default function App() {
                           <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
                           {(f.k === "goal" || f.k === "pen") && f.assist
                             ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
-                        </>), f.k === "red" ? RED_WHY(f.second) : null));
+                        </>), f.k === "red" ? RED_WHY(f.why, f.second) : null));
                       }
                       const all = out.feed || [];
                       if (!all.length) return (
@@ -13235,7 +13258,7 @@ export default function App() {
                           const mt = /^(.*?) is sent off(?:,\s*(.+))?$/.exec(f.txt || "");
                           return row(i, f.min, f.side, f.k,
                             <b style={{ fontWeight: 700 }}>{mt ? mt[1] : f.txt}</b>,
-                            RED_WHY(/second yellow/i.test(f.txt || "")));
+                            RED_WHY(f.why, /second yellow/i.test(f.txt || "")));
                         }
                         return row(i, f.min, f.side, f.k, feedRich(f.txt));
                       });
