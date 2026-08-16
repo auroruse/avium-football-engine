@@ -10100,7 +10100,7 @@ export default function App() {
                       what stops the short right-hand column reading as a box floating in the gap. */}
                   <div style={SECTION_RULE} />
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5, tableLayout: "fixed" }}>
                     <colgroup>
                       <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
                     </colgroup>
@@ -12534,7 +12534,7 @@ export default function App() {
                                             transition: "width .3s" }} />
                             </div>);
                           return (
-                            <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0" }}>
+                            <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "3px 0" }}>
                               <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12,
                                              fontWeight: hi ? 700 : 400, color: hi ? HC : "var(--chrome-muted)" }}>{f(h)}</span>
                               {seg(h, hi, HC, false)}
@@ -12662,14 +12662,14 @@ export default function App() {
                           const on = (m.s.players[side] || []).map(q => ({ q, off: false }));
                           const gone = (m.s.subbedOff?.[side] || []).map(q => ({ q, off: true }));
                           const rows = [...on, ...gone];
-                          const cell = { padding: "3px 4px", borderBottom: "1px solid var(--chrome-border-33)" };
+                          const cell = { padding: "1.5px 4px", borderBottom: "1px solid var(--chrome-border-33)" };
                           return (
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                              <colgroup><col style={{ width: 26 }} /><col /><col style={{ width: 28 }} />
+                              <colgroup><col style={{ width: 26 }} /><col /><col style={{ width: 30 }} />
                                 <col style={{ width: 20 }} /><col style={{ width: 20 }} /><col style={{ width: 22 }} />
-                                <col style={{ width: 30 }} /><col style={{ width: 34 }} /></colgroup>
+                                <col style={{ width: 34 }} /></colgroup>
                               <thead><tr style={{ fontSize: 8.5, letterSpacing: ".08em", color: "var(--chrome-muted)" }}>
-                                {["", "PLAYER", "OVR", "G", "A", "SV", "STA", "RTG"].map((h, i) =>
+                                {["", "PLAYER", "OVR", "G", "A", "SV", "RTG"].map((h, i) =>
                                   <th key={i} style={{ ...cell, textAlign: i === 1 ? "left" : i === 0 ? "left" : "center",
                                                        fontWeight: 600 }}>{h}</th>)}
                               </tr></thead>
@@ -12696,9 +12696,6 @@ export default function App() {
                                     <td style={{ ...cell, textAlign: "center", ...mono,
                                                  color: q.saves ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>
                                       {q.pos === "GK" ? (q.saves || 0) : "-"}</td>
-                                    <td style={{ ...cell, textAlign: "center", ...mono, fontSize: 10,
-                                                 color: (q.stamina ?? 100) < 70 ? "var(--ui-warn)" : "var(--chrome-muted)" }}>
-                                      {Math.round(q.stamina ?? 100)}</td>
                                     <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: 700,
                                                  color: ratingColor(q.rating ?? 6.5) }}>{(q.rating ?? 6.5).toFixed(1)}</td>
                                   </tr>))}
@@ -12712,6 +12709,14 @@ export default function App() {
                             <span style={{ fontSize: 12, fontWeight: 700, color: clr, whiteSpace: "nowrap",
                                            overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name}</span>
                           </div>);
+                        // Three weights, because the breaks are not equal: a hairline inside a
+                        // section, a normal rule between sections, and a heavy one before the goals,
+                        // which are the part you scroll to rather than the part you read.
+                        const rule = (w) => (
+                          <div style={{ height: w === 3 ? 2 : 1, background: w === 3 ? "var(--chrome-border)"
+                                        : w === 2 ? "var(--chrome-border)" : "var(--chrome-border-33)",
+                                        opacity: w === 3 ? 1 : w === 2 ? 0.7 : 1,
+                                        margin: w === 3 ? "34px 0 26px" : w === 2 ? "26px 0 20px" : "14px 0" }} />);
                         const sect = (label) => (
                           <div style={{ fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
                                         color: "var(--chrome-muted)", textAlign: "center", padding: "0 0 10px" }}>{label}</div>);
@@ -12766,8 +12771,9 @@ export default function App() {
                             <span style={{ color: AC, fontWeight: 700 }}>{pcA}%</span>
                           </div>
 
+                          {rule(1)}
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                        gap: 46, alignItems: "start", marginBottom: 30 }}>
+                                        gap: 46, alignItems: "start", marginBottom: 4 }}>
                             <div>
                               {sect("With The Ball")}
                               {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
@@ -12795,6 +12801,7 @@ export default function App() {
                             </div>
                           </div>
 
+                          {rule(2)}
                           {sect("Players")}
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                         gap: 40, alignItems: "start", marginBottom: 30 }}>
@@ -12803,6 +12810,7 @@ export default function App() {
                           </div>
 
                           {clips.length > 0 && (<>
+                            {rule(3)}
                             {sect(clips.length === 1 ? "The Goal" : "The Goals")}
                             {/* Three strokes need saying once, not on every card. */}
                             <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: -4,
@@ -12966,26 +12974,54 @@ export default function App() {
                   {/* The feed is the only thing here that grows, so it takes the slack and everything
                       else keeps its natural height. out.feed is unshifted, newest first. */}
                   <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 15px" }}>
-                    {/* AT FULL TIME THE FEED BECOMES A SUMMARY. During a match you want the running
-                        commentary; afterwards you want the three things that decided it, and sixty
-                        lines of "so-and-so wins it off so-and-so" buries them. Goals and red cards
-                        only once the whistle has gone -- which is also where the match report gets
-                        its who-scored from, now that the scoreboard has left the stats panel. */}
+                    {/* AT FULL TIME THE FEED BECOMES A SUMMARY, and it is built from the permanent
+                        records rather than from the feed itself. out.feed is a rolling SIXTY-entry
+                        commentary buffer -- meEvt pops the tail -- so in a busy match the early
+                        goals have already fallen off the end by the whistle, which is why a 6-0
+                        summarised as three second-half goals. out.scorers keeps every goal for the
+                        whole match and out.sendOff now does the same for dismissals. Coloured by the
+                        side it belongs to, so you can read the story off the colours alone. */}
                     {(() => {
-                      const all = out.feed || [];
-                      const shown = m.ftDone ? all.filter(f => f.k === "goal" || f.k === "red") : all;
-                      return (<>
-                        {!shown.length && (
+                      if (m.ftDone) {
+                        const key = [];
+                        for (const sd of ["home", "away"]) {
+                          for (const g of (out.scorers?.[sd] || []))
+                            key.push({ min: g.min, side: sd, k: "goal", name: g.name, assist: g.assist });
+                          for (const r of (out.sendOff?.[sd] || []))
+                            key.push({ min: r.min, side: sd, k: "red", name: r.name, second: r.second });
+                        }
+                        key.sort((u, v) => v.min - u.min);
+                        if (!key.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
-                            {m.ftDone ? "No goals." : "Nothing yet."}</div>)}
-                        {shown.map((f, i) => (
-                      <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
-                                            lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
-                                       color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
-                        <span style={{ minWidth: 0, color: f.k === "goal" ? "var(--ui-ok)" : "var(--chrome-muted)",
-                                       fontWeight: f.k === "goal" ? 700 : 400 }}>{feedRich(f.txt)}</span>
-                      </div>))}
+                            No goals.</div>);
+                        return key.map((f, i) => (
+                          <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
+                                                lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
+                                           color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
+                            <span style={{ minWidth: 0, fontWeight: 700,
+                                           color: f.side === "away" ? aClr : hClr }}>
+                              {f.k === "goal" ? "GOAL" : f.second ? "RED (2nd)" : "RED"}
+                            </span>
+                            <span style={{ minWidth: 0, color: "var(--chrome-muted)" }}>
+                              {shortName(f.name)}{f.k === "goal" && f.assist ? ` (${shortName(f.assist)})` : ""}
+                            </span>
+                          </div>));
+                      }
+                      const all = out.feed || [];
+                      return (<>
+                        {!all.length && (
+                          <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
+                            Nothing yet.</div>)}
+                        {all.map((f, i) => (
+                          <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
+                                                lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
+                                           color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
+                            <span style={{ minWidth: 0, fontWeight: f.k === "goal" ? 700 : 400,
+                                           color: f.k === "goal" ? (f.side === "away" ? aClr : hClr)
+                                                                 : "var(--chrome-muted)" }}>{feedRich(f.txt)}</span>
+                          </div>))}
                       </>);
                     })()}
                   </div>
