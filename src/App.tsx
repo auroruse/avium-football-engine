@@ -726,7 +726,14 @@ const STYLE_PRESET = {
   // everything else, while dropping dribbling was worth +0.54 goals and 4.9 m of territory. The rest
   // of the vector measured as working: sitting deeper IS the style, and 33 m up the pitch is a
   // mid-block behaving like one rather than a fault.
-  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1, width: -1 },
+  // tackling +1, measured once the drill equilibrium was fixed: +0.46 goals against a twelve-style
+  // field on paired seeds -- and it earned that while still being CHARGED for the old clash rule
+  // that called a low press with hard tackling a contradiction. A mid-block that bites when you
+  // enter it is the whole brand; the rule was wrong, not the stamp, and it is gated one-way in
+  // engine/config.ts now. possWon +1 was measured alongside and rejected at -0.51: a mid-block
+  // that sends breakers the moment it wins it leaks the shape it just defended with.
+  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1, width: -1,
+                   tackling: 1 },
   // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
   // nothing else in the list does. possLost Counter-Press is the whole point rather than a
   // trimming: swarming the second ball IS the style, and without it this was two axes from

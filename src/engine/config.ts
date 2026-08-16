@@ -692,6 +692,32 @@ export const CFG = {
   // Twice measured, twice refuted, both before and after the decision it was supposedly waiting on.
   // Do not try a third dose; whatever possession is missing here, it is not defensive inertia.
   chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
+  // THE STIR, tried and reverted in one night: bank "disorganisation" while the other side holds
+  // the ball, decay it on a clock, spend it as deterministic positional error on every man in the
+  // block (worse for a poor position attribute), so lanes that do not exist against a set block
+  // exist against a stirred one and the existing scorers price the gaps. The SPEND was sound and
+  // cheap; the CURRENCY refused to point at possession five times, paired probes at 15 fixtures a
+  // cell, TT / Control Poss / Route One vs four blocks, bank quoted as inflicted-vs-eaten:
+  //   commanded slide |d wantCy|          2.5 vs 8.9   backwards: proportional to ball speed, one
+  //                                                    cleared diagonal banked 27 m in two seconds
+  //   performed slide |d bs.cy|           2.5 vs 9.3   backwards: transitions chase at the slew
+  //                                                    ceiling, eight-metre passing barely moves
+  //   + settled gate (possT > 24)         2.8 vs 5.4   still backwards, goals clean -- the gate
+  //                                                    fixed the drift, not the direction
+  //   pressed completions (mePressure)    2.8 vs 1.9   right way at last, and inert: bank ~3 of 16
+  //   ...dosed 9.0 / tau 14               2.6 vs 3.4   levels would not rise, CP backwards again --
+  //                                                    mePressure is PROXIMITY, so a compact block
+  //                                                    "presses" every pass played near it by
+  //                                                    standing there, and beats-a-press cannot be
+  //                                                    read off it
+  // Two structural reasons it kept failing, both worth keeping: every metres-per-second currency
+  // crowns whoever moves the ball FASTEST, and the shortest-passing side in the game is by
+  // construction the slowest; and at any bank level the styles actually reach, ~1 m of per-man
+  // error is small against 8.5 m of band spacing, so the spend never opened a lane a scorer could
+  // take. Do not re-attempt a bank-and-jitter stir without first building a probe that separates a
+  // Tiki-Taka settled spell from a Balanced one in the engine's own texture -- the one channel
+  // measured to move possession arrival remains the patterns (ME_PATTERN, +89% ground progression,
+  // +104% box entries), and that is where the next attempt belongs.
   // Metres between adjacent men in a band, and how much wider the bands in front space out. The
   // whole band is capped at blkWidthMax so a seven-man midfield does not span the touchlines.
   blkSpacing: 8.5, blkSpaceStep: 2.0, blkWidthMax: 44,
@@ -1822,7 +1848,12 @@ export const ME_CLASH = [
   // contradiction. Direct-and-expressive is not: getting it wide for a winger to beat his man is
   // Wing Play, and the ungated rule charged it three rating points for having wingers.
   ["passingDir", "creativity", -1, "neg"],
-  ["pressingLOE", "tackling", 1],     // a side that presses has to go and win it
+  // Gated to HIGH press only. Pressing high while staying on your feet is the contradiction -- you
+  // arrive and then decline to win it. The mirror is not a contradiction, it is Cholismo: a
+  // mid-to-low block that bites the moment you enter it is how Simeone's football works, and the
+  // ungated rule charged that style three rating points for its own signature. Measured with the
+  // charge still on: tackling +1 was worth +0.46 goals to Cholismo across a twelve-style field.
+  ["pressingLOE", "tackling", 1, "pos"],
 ];
 // REMOVED, both of them my error rather than the stamps':
 //   approachPlay vs dribbling -- the single largest clash in the table at -3.00, charged to Park The
