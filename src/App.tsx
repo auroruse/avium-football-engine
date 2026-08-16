@@ -5512,6 +5512,29 @@ export const meClipFrom = (tape, side) => {
   return Math.max(0, from);
 };
 
+// THE TOUCH CHAIN: who actually had the ball during the move, in order, and where he was standing
+// when he got it. Walked straight off the same tape the replay uses -- mp.idx names the man in
+// possession, so a change of (side, index) IS a touch -- which means the path painted on the
+// highlights is the move that genuinely happened. The old abstract engine had to invent a plausible
+// one after the fact, because it never had positions at all; this one only has to read them back.
+// Resolved when the clip is CUT rather than at full time: by the ninetieth minute the man who
+// scored in the twentieth may be sitting on the bench with his index reused by whoever replaced him.
+export const meChain = (s, frames) => {
+  const chain = [];
+  let last = "";
+  for (const f of frames) {
+    if (f.ix < 0 || !f.sd) continue;                   // loose ball, or in flight: nobody has it
+    const k = f.sd + ":" + f.ix;
+    if (k === last) continue;
+    last = k;
+    const b = (f.sd === "away" ? 22 : 0) + f.ix * 2;
+    if (f.xy[b] < -50) continue;
+    const p = s.players[f.sd]?.[f.ix];
+    chain.push({ name: p ? shortName(p.name) : "", side: f.sd, x: f.xy[b], y: f.xy[b + 1] });
+  }
+  return chain;
+};
+
 const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
   onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
   passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0,
@@ -5857,10 +5880,6 @@ export default function App() {
   // same match view parked on the stats panel for a screenshot. Kept separate from meRef so pausing
   // a match does not drop you back to team selection.
   const [meView, setMeView] = useState("setup");
-  // Whether the engine's own instruments are drawn on top of the football. The reach ring was built
-  // to debug the touch radius, and it fuzzes all twenty-two dots for anybody just watching a match,
-  // so it is off unless asked for.
-  const [meDebug, setMeDebug] = useState(false);
   // Whether this fixture is allowed to end level. A league match is; a knockout is not, and that is
   // the only thing extra time and a shootout are conditional on. The tournament will set this per
   // fixture when the engine is hooked up; in the lab it is a toggle.
@@ -6398,8 +6417,11 @@ export default function App() {
     const frames = m.tape.slice(meClipFrom(m.tape, side));
     if (frames.length < 2) return;
     const ev = m.out.feed?.[0];                            // meEvt unshifts, so the goal is at the top
+    const last = frames[frames.length - 1];
     const clip = { min: m.out.min, side, frames, txt: ev && ev.k === "goal" ? ev.txt : null,
-                   score: `${m.out.goals.home}-${m.out.goals.away}` };
+                   score: `${m.out.goals.home}-${m.out.goals.away}`,
+                   // resolved now, while the names still line up with the indices -- see meChain
+                   chain: meChain(m.s, frames), end: { x: last.bx, y: last.by } };
     m.clips.push(clip);
     // Skipping to the end asks for a result, not for theatre -- but the clip is still banked, because
     // the highlights on the post-match screen are built from exactly these.
@@ -12147,14 +12169,20 @@ export default function App() {
           // What it gets instead is contrast: brighter, and a heavier outline behind it, so an
           // overlap stays legible rather than turning to mush.
           const gk = (p) => p.pos === "GK";
-          const dot = (p, fill, key) => {
+          const dot = (p, fill, key, carrier) => {
             const x = ix(p), y = iy(p);
             // The keeper is the one man a viewer has to pick out instantly, and the one man whose
             // colour genuinely is different in real football.
             const face = gk(p) ? "#f5e663" : fill;
             return (
               <g key={key}>
-                {meDebug && <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill} strokeOpacity={0.22} strokeWidth={0.05} />}
+                {/* HIS TOUCH REACH, and only his. Drawn round all twenty-two it was twenty-two fuzzy
+                    haloes and pure noise; drawn round the man on the ball it is the one thing on the
+                    pitch it was ever telling you -- how far he can actually get a foot to it, which
+                    is what decides whether he keeps it. It doubles as the carrier marker, so the
+                    separate highlight ring is not needed and is not missed. */}
+                {carrier && <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill}
+                                    strokeOpacity={0.5} strokeWidth={0.09} />}
                 <circle cx={x} cy={y} r={R_MAN} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} />
                 <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.88}
                       fontSize={0.74} stroke="rgba(0,0,0,.8)" strokeWidth={0.2} paintOrder="stroke"
@@ -12250,8 +12278,10 @@ export default function App() {
         already resolving both sides' real strips a few hundred lines up -- home or away by fixture,
         with a clash detector that switches one side, and readableClr/ensureMaxLum keeping whatever
         it lands on legible. All of that was being computed and thrown away here. */}
-    {st && st.players.home.map((p, i) => dot(p, hPitchClr, "h" + i))}
-    {st && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i))}
+    {st && st.players.home.map((p, i) => dot(p, hPitchClr, "h" + i,
+      st.mePos?.side === "home" && st.mePos?.idx === i))}
+    {st && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i,
+      st.mePos?.side === "away" && st.mePos?.idx === i))}
     {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
         it sits in pitch coordinates and scales with the pitch for free, at any window size. The
         match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
@@ -12473,44 +12503,178 @@ export default function App() {
                     <div style={{ position: "absolute", inset: 0, background: "var(--chrome-bg)",
                                   overflowY: "auto", padding: "18px 22px" }}>
                       {mePanel === "stats" && (() => {
+                        // THE MATCH REPORT. Built from the old abstract screen's content -- mirrored
+                        // comparison bars, real xG, cards, a per-player table with more than four
+                        // columns in it -- but not its shape. That one was two scrolling columns,
+                        // 3fr against 2fr, which suits a screen you read WHILE a match runs. This one
+                        // is read afterwards and it gets screenshotted, so it stacks: what happened,
+                        // then how the goals were scored, then the numbers, then the people.
+                        // The columns are NOT copied wholesale either. The abstract screen carried C
+                        // (chances) and D (defensive actions); the positional engine populates
+                        // neither, and a column of zeroes is worse than no column. What it does know
+                        // that the old one never did is stamina, so that takes the slot.
                         const pt = (out.poss.home + out.poss.away) || 1;
-                        const pc = (v) => Math.round(100 * v / pt) + "%";
-                        const line = (label, h, a) => (
-                          <div key={label} style={{ display: "flex", alignItems: "center", padding: "6px 0",
-                                                    borderBottom: "1px solid var(--chrome-border-33)", fontSize: 12 }}>
-                            <span style={{ width: 70, textAlign: "right", fontWeight: 700, ...mono }}>{h}</span>
-                            <span style={{ flex: 1, textAlign: "center", color: "var(--chrome-muted)",
-                                           letterSpacing: ".06em", fontSize: 10, textTransform: "uppercase" }}>{label}</span>
-                            <span style={{ width: 70, fontWeight: 700, ...mono }}>{a}</span>
+                        const pcH = Math.round(100 * out.poss.home / pt), pcA = 100 - pcH;
+                        const HC = hPitchClr, AC = aPitchClr;
+                        const num = (v) => (v == null ? 0 : v);
+                        // value | bar | LABEL | bar | value, the two bars growing away from the
+                        // middle so the comparison is the shape rather than the arithmetic.
+                        const bar = (label, h, a, dp) => {
+                          h = num(h); a = num(a);
+                          const mx = Math.max(h, a, 1), f = (v) => dp ? v.toFixed(dp) : v;
+                          const hi = h > a, ai = a > h;
+                          const seg = (v, lead, clr, right) => (
+                            <div style={{ flex: 1, display: "flex", justifyContent: right ? "flex-start" : "flex-end" }}>
+                              <div style={{ width: `${100 * v / mx}%`, minWidth: v ? 2 : 0, height: 5,
+                                            borderRadius: 2, background: lead ? clr : "var(--chrome-muted-33)",
+                                            transition: "width .3s" }} />
+                            </div>);
+                          return (
+                            <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0" }}>
+                              <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12,
+                                             fontWeight: hi ? 700 : 400, color: hi ? HC : "var(--chrome-muted)" }}>{f(h)}</span>
+                              {seg(h, hi, HC, false)}
+                              <span style={{ width: 104, textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
+                                             textTransform: "uppercase", color: "var(--chrome-muted)" }}>{label}</span>
+                              {seg(a, ai, AC, true)}
+                              <span style={{ width: 46, ...mono, fontSize: 12,
+                                             fontWeight: ai ? 700 : 400, color: ai ? AC : "var(--chrome-muted)" }}>{f(a)}</span>
+                            </div>);
+                        };
+                        // ── HOW EACH GOAL WAS SCORED ──────────────────────────────────────────
+                        // Every goal is drawn attacking left to right whichever way the side was
+                        // really kicking, because a highlights reel that alternates ends is a
+                        // highlights reel nobody can read.
+                        const goalCard = (c, gi) => {
+                          const flip = meGoalX(c.side) < 52.5;
+                          const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
+                          const ch = (c.chain || []).filter(t => t.side === c.side);
+                          const pts = ch.map(t => [X(t.x), Y(t.y)]);
+                          const gx = X(meGoalX(c.side)), gy = Y(c.end?.y ?? 34);
+                          // THE LINE IS THE BALL, NOT THE TOUCHES. Joining touch to touch was the
+                          // obvious thing and it is close to useless: mp.idx is -1 for every slice the
+                          // ball is travelling, so a tick-sampled chain catches a man only when the
+                          // ball happens to be at his feet as the slice lands. Measured over 107 real
+                          // goals it averaged 1.5 touches and 25 of them came back with NOTHING to
+                          // draw at all. The ball has a position in every single frame, so its own
+                          // path is dense, always present, and is in any case the truer picture of a
+                          // move -- the touches then mark who was involved along it.
+                          const path = (c.frames || []).map(f => [X(f.bx), Y(f.by)]);
+                          const clr = c.side === "home" ? HC : AC;
+                          const W = 105, H = 68;
+                          return (
+                            <div key={gi} style={{ flex: "1 1 300px", minWidth: 260, maxWidth: 420,
+                                                   background: "var(--chrome-panel)", borderRadius: 8,
+                                                   border: "1px solid var(--chrome-border)", overflow: "hidden" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px",
+                                            borderBottom: "1px solid var(--chrome-border-33)" }}>
+                                <span style={{ width: 7, height: 7, borderRadius: 4, background: clr, flexShrink: 0 }} />
+                                <span style={{ ...mono, fontSize: 12, fontWeight: 700 }}>{c.min}'</span>
+                                <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap",
+                                               overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
+                                  {ch.length ? ch[ch.length - 1].name : "Goal"}</span>
+                                <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.score}</span>
+                              </div>
+                              <svg viewBox="-1 -1 107 70" style={{ width: "100%", display: "block", background: "#16301c" }}>
+                                {Array.from({ length: 8 }, (_, i) => (
+                                  <rect key={i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
+                                        fill={i % 2 ? "#1b3823" : "#17311d"} />))}
+                                <g stroke="rgba(255,255,255,.34)" strokeWidth={0.3} fill="none">
+                                  <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+                                  <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+                                  <circle cx={52.5} cy={34} r={9.15} />
+                                  <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+                                  <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+                                  <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
+                                  <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
+                                </g>
+                                {/* the move, then the finish picked out of it */}
+                                {path.length > 1 && (
+                                  <polyline points={path.map(q => q.join(",")).join(" ")} fill="none"
+                                            stroke={clr} strokeOpacity={0.9} strokeWidth={0.6}
+                                            strokeLinejoin="round" strokeLinecap="round" />)}
+                                {path.length > 1 && (
+                                  <line x1={path[path.length - 2][0]} y1={path[path.length - 2][1]}
+                                        x2={gx} y2={gy} stroke="#ffd166" strokeWidth={1} strokeLinecap="round" />)}
+                                {path.length > 0 && (
+                                  <circle cx={path[0][0]} cy={path[0][1]} r={1} fill="none"
+                                          stroke={clr} strokeOpacity={0.8} strokeWidth={0.4} />)}
+                                {pts.map((q, i) => (
+                                  <circle key={i} cx={q[0]} cy={q[1]} r={i === pts.length - 1 ? 1.7 : 1.15}
+                                          fill={clr} stroke="rgba(0,0,0,.6)" strokeWidth={0.25} />))}
+                                <circle cx={gx} cy={gy} r={1.5} fill="none" stroke="#ffd166" strokeWidth={0.5} />
+                                {pts.map((q, i) => ch[i]?.name ? (
+                                  <text key={"n" + i} x={Math.max(9, Math.min(96, q[0]))} y={q[1] - 2.4}
+                                        textAnchor="middle" fontSize={3.1} fill="#fff" fillOpacity={0.9}
+                                        stroke="rgba(0,0,0,.8)" strokeWidth={0.7} paintOrder="stroke">
+                                    {ch[i].name}</text>) : null)}
+                              </svg>
+                            </div>);
+                        };
+                        // ── THE PEOPLE ────────────────────────────────────────────────────────
+                        const men = (side, clr) => {
+                          const on = (m.s.players[side] || []).map(q => ({ q, off: false }));
+                          const gone = (m.s.subbedOff?.[side] || []).map(q => ({ q, off: true }));
+                          const rows = [...on, ...gone];
+                          const cell = { padding: "3px 4px", borderBottom: "1px solid var(--chrome-border-33)" };
+                          return (
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                              <colgroup><col style={{ width: 26 }} /><col /><col style={{ width: 28 }} />
+                                <col style={{ width: 20 }} /><col style={{ width: 20 }} /><col style={{ width: 22 }} />
+                                <col style={{ width: 30 }} /><col style={{ width: 34 }} /></colgroup>
+                              <thead><tr style={{ fontSize: 8.5, letterSpacing: ".08em", color: "var(--chrome-muted)" }}>
+                                {["", "PLAYER", "OVR", "G", "A", "SV", "STA", "RTG"].map((h, i) =>
+                                  <th key={i} style={{ ...cell, textAlign: i === 1 ? "left" : i === 0 ? "left" : "center",
+                                                       fontWeight: 600 }}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>
+                                {rows.map(({ q, off }, i) => (
+                                  <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)",
+                                                       opacity: off ? 0.62 : 1 }}>
+                                    <td style={{ ...cell, color: POS_CLR[q.pos] || "var(--chrome-muted)",
+                                                 fontSize: 8.5, fontWeight: 700, ...mono }}>{q.pos}</td>
+                                    <td style={{ ...cell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      {shortName(q.name)}
+                                      {q.rc ? <span style={{ color: "var(--ui-danger)", marginLeft: 4 }}>&#9632;</span>
+                                            : q.yc ? <span style={{ color: "var(--ui-warn)", marginLeft: 4 }}>&#9632;</span> : null}
+                                      {off && <span style={{ color: "var(--ui-danger)", marginLeft: 4, fontSize: 8 }}>&#9660;</span>}
+                                      {!off && q._onAt !== undefined && <span style={{ color: "var(--ui-ok)", marginLeft: 4, fontSize: 8 }}>&#9650;</span>}
+                                      {q.inj && <span style={{ color: "var(--ui-warn)", marginLeft: 4, fontSize: 7.5 }}>INJ</span>}
+                                    </td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono, fontSize: 10,
+                                                 color: ovrColor(q.ovr ?? 70) }}>{Math.round(q.ovr ?? 70)}</td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: q.goals ? 700 : 400,
+                                                 color: q.goals ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{q.goals || "-"}</td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: q.assists ? 700 : 400,
+                                                 color: q.assists ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{q.assists || "-"}</td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono,
+                                                 color: q.saves ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>
+                                      {q.pos === "GK" ? (q.saves || 0) : "-"}</td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono, fontSize: 10,
+                                                 color: (q.stamina ?? 100) < 70 ? "var(--ui-warn)" : "var(--chrome-muted)" }}>
+                                      {Math.round(q.stamina ?? 100)}</td>
+                                    <td style={{ ...cell, textAlign: "center", ...mono, fontWeight: 700,
+                                                 color: ratingColor(q.rating ?? 6.5) }}>{(q.rating ?? 6.5).toFixed(1)}</td>
+                                  </tr>))}
+                              </tbody>
+                            </table>);
+                        };
+                        const teamHead = (t, clr, right) => (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7,
+                                        flexDirection: right ? "row-reverse" : "row" }}>
+                            <TeamCrest team={t} size={20} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: clr, whiteSpace: "nowrap",
+                                           overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name}</span>
                           </div>);
-                        const squad = (side) => [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])];
-                        const men = (side) => (
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                            <thead><tr>
-                              {["", "Player", "Rat", "G", "A"].map((h, i) =>
-                                <th key={i} style={{ ...thCell, textAlign: i > 1 ? "center" : "left" }}>{h}</th>)}
-                            </tr></thead>
-                            <tbody>
-                              {squad(side).map((q, i) => (
-                                <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                                  <td style={{ ...tdCell, width: 30, color: POS_CLR[q.pos] || "var(--chrome-muted)",
-                                               fontSize: 9, fontWeight: 700, ...mono }}>{q.pos}</td>
-                                  <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden",
-                                               textOverflow: "ellipsis" }}>{q.name}
-                                    {q.rc ? <span style={{ color: "var(--ui-danger)", marginLeft: 5 }}>&#9632;</span>
-                                          : q.yc ? <span style={{ color: "var(--ui-warn)", marginLeft: 5 }}>&#9632;</span> : null}</td>
-                                  <td style={{ ...tdCell, textAlign: "center", ...mono, fontWeight: 700,
-                                               color: ovrColor((q.rating ?? 6.5) * 10) }}>{(q.rating ?? 6.5).toFixed(2)}</td>
-                                  <td style={{ ...tdCell, textAlign: "center", ...mono }}>{q.goals || ""}</td>
-                                  <td style={{ ...tdCell, textAlign: "center", ...mono }}>{q.assists || ""}</td>
-                                </tr>))}
-                            </tbody>
-                          </table>);
+                        const sect = (label) => (
+                          <div style={{ fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
+                                        color: "var(--chrome-muted)", textAlign: "center", padding: "0 0 10px" }}>{label}</div>);
+                        const clips = m.clips || [];
                         return (<>
                           {/* The scoreboard spans the screen: this panel is the match report, and it
                               is what gets screenshotted. */}
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
-                                        gap: 26, padding: "6px 0 20px" }}>
+                                        gap: 26, padding: "6px 0 22px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
                               <span style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
                                              textOverflow: "ellipsis" }}>{m.hT?.name}</span>
@@ -12528,24 +12692,61 @@ export default function App() {
                                              textOverflow: "ellipsis" }}>{m.aT?.name}</span>
                             </div>
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,340px) minmax(0,1fr)",
-                                        gap: 24, alignItems: "start" }}>
-                            <div>{men("home")}</div>
-                            <div>
-                              {line("Possession", pc(out.poss.home), pc(out.poss.away))}
-                              {line("Shots", out.shots.home, out.shots.away)}
-                              {line("On target", out.onTarget.home, out.onTarget.away)}
-                              {line("Saves", out.saves.home, out.saves.away)}
-                              {line("Corners", out.corners.home, out.corners.away)}
-                              {line("Fouls", out.fouls.home, out.fouls.away)}
-                              {out.offside && line("Offsides", out.offside.home, out.offside.away)}
-                              <div style={{ marginTop: 14, fontSize: 11, color: "var(--chrome-muted)", lineHeight: 1.9 }}>
-                                <div>Passes {out.passes} at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}%</div>
-                                <div>Carries {out.carries} &middot; clearances {out.clears}</div>
-                                <div>Blocked shots {out.blocked}</div>
+
+                          {clips.length > 0 && (<>
+                            {sect(clips.length === 1 ? "The Goal" : "The Goals")}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center",
+                                          marginBottom: 26 }}>
+                              {clips.map(goalCard)}
+                            </div>
+                          </>)}
+
+                          {sect("Match Stats")}
+                          <div style={{ maxWidth: 620, margin: "0 auto 26px" }}>
+                            {/* Possession keeps the old screen's split bar: it is one quantity shared
+                                between two teams, not two quantities being compared. */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 0 6px" }}>
+                              <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12, fontWeight: 700,
+                                             color: pcH >= pcA ? HC : "var(--chrome-muted)" }}>{pcH}%</span>
+                              <div style={{ flex: 1, display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{ width: `${pcH}%`, background: HC }} />
+                                <div style={{ width: `${pcA}%`, background: AC }} />
+                              </div>
+                              <span style={{ width: 46, ...mono, fontSize: 12, fontWeight: 700,
+                                             color: pcA > pcH ? AC : "var(--chrome-muted)" }}>{pcA}%</span>
+                            </div>
+                            <div style={{ textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
+                                          textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>Possession</div>
+                            {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
+                            {bar("Shots", out.shots.home, out.shots.away)}
+                            {bar("On target", out.onTarget.home, out.onTarget.away)}
+                            {bar("Saves", out.saves.home, out.saves.away)}
+                            {bar("Corners", out.corners.home, out.corners.away)}
+                            {bar("Fouls", out.fouls.home, out.fouls.away)}
+                            {out.offside && bar("Offsides", out.offside.home, out.offside.away)}
+                            {out.yellows && bar("Yellows", out.yellows.home, out.yellows.away)}
+                            {out.reds && bar("Reds", out.reds.home, out.reds.away)}
+                            <div style={{ marginTop: 12, fontSize: 10.5, color: "var(--chrome-muted)",
+                                          textAlign: "center", lineHeight: 1.85 }}>
+                              {/* These four are match totals rather than per-side counters in the
+                                  engine (out.blocked/tackleWon/tackleTry/woodwork are plain numbers),
+                                  so they read as one line instead of pretending to be a comparison. */}
+                              <div>{out.passes} passes at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}% &middot; {out.carries} carries &middot; {out.clears} clearances</div>
+                              <div>
+                                {out.tackleTry ? `${out.tackleWon || 0} tackles won of ${out.tackleTry}` : ""}
+                                {out.tackleTry && out.blocked ? " \u00b7 " : ""}
+                                {out.blocked ? `${out.blocked} shots blocked` : ""}
+                                {(out.tackleTry || out.blocked) && out.woodwork ? " \u00b7 " : ""}
+                                {out.woodwork ? `${out.woodwork} off the woodwork` : ""}
                               </div>
                             </div>
-                            <div>{men("away")}</div>
+                          </div>
+
+                          {sect("Players")}
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                                        gap: 26, alignItems: "start" }}>
+                            <div>{teamHead(m.hT, HC)}{men("home", HC)}</div>
+                            <div>{teamHead(m.aT, AC)}{men("away", AC)}</div>
                           </div>
                         </>);
                       })()}
@@ -12741,15 +12942,6 @@ export default function App() {
                       <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
                              onChange={e => setMeSpeedIx(+e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                       <span style={{ width: 30, fontWeight: 700, textAlign: "right", ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
-                    </label>
-                    {/* The engine's own instruments. Off by default -- the touch-reach ring is a
-                        developer's tool and it fuzzes all twenty-two dots for anybody just watching
-                        the match -- but kept one click away, because it is how the interaction
-                        radius was made visible in the first place. */}
-                    <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex",
-                                    alignItems: "center", gap: 6, cursor: "pointer" }}>
-                      <input type="checkbox" checked={meDebug} onChange={e => setMeDebug(e.target.checked)} />
-                      Show touch radius
                     </label>
                     <div style={{ display: "flex", gap: 6 }}>
                       {tabBtn("stats", "Stats")}
