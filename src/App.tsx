@@ -12430,8 +12430,13 @@ export default function App() {
             // only way to know which words are a person is to match against the people on the pitch.
             // Longest first, or "Sato" inside "Satoshi Sato" would match the wrong half.
             const feedWho = (() => {
+              // ...INCLUDING THE MEN WHO HAVE LEFT THE PITCH. meSub moves a player out of s.players
+              // and into s.subbedOff, so from the moment he came off his name stopped matching and
+              // every line he was in reverted to plain unbolded body text -- which is why the older
+              // half of the feed looked like a different feed.
               const all = [...(st?.players?.home || []), ...(st?.players?.away || []),
-                           ...(st?.bench?.home || []), ...(st?.bench?.away || [])];
+                           ...(st?.bench?.home || []), ...(st?.bench?.away || []),
+                           ...(st?.subbedOff?.home || []), ...(st?.subbedOff?.away || [])];
               const by = new Map();
               for (const p of all) { const f = p?.fullName || p?.name; if (f && !by.has(f)) by.set(f, p); }
               const keys = [...by.keys()].sort((a, b) => b.length - a.length);
@@ -12700,16 +12705,23 @@ export default function App() {
                         // neither of those, so it is not in there.
                         const COLS = "20px 26px 1fr 15px 15px 26px 24px 18px 26px 11px";
                         const men = (side, clr) => {
-                          const start = (m.s.players[side] || []).filter(q => q._onAt === undefined);
-                          const came = (m.s.players[side] || []).filter(q => q._onAt !== undefined);
-                          const gone = (m.s.subbedOff?.[side] || []);
+                          // WHO STARTED IS A FACT ABOUT THE TEAM SHEET, not about who happens to be on
+                          // the pitch at the whistle. Splitting on the live array put a starter who
+                          // was taken off down among the substitutes and left the man who replaced
+                          // him up in the XI -- the two of them swapped sections. _onAt is only ever
+                          // stamped on a man who came ON, so it answers the question directly for
+                          // both arrays at once.
+                          const all = [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])];
+                          const bd = (q) => q._bd0 ?? q._bd ?? 0;
+                          const start = all.filter(q => q._onAt === undefined).sort((u, v) => bd(u) - bd(v));
+                          const came = all.filter(q => q._onAt !== undefined).sort((u, v) => bd(u) - bd(v));
                           const cellBase = { padding: "1.5px 0", minWidth: 0, overflow: "hidden" };
                           const val = (v, bold) => (
                             <span style={{ ...cellBase, textAlign: "center", ...mono,
                                            fontWeight: v && bold ? 700 : 400,
                                            color: v ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{v || "-"}</span>);
                           const row = (q, i, benched) => {
-                            const played = !benched || q._onAt !== undefined;
+                            const played = true;
                             return (
                               <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: COLS,
                                           alignItems: "center", fontSize: 9.5, gap: 2,
@@ -12735,8 +12747,8 @@ export default function App() {
                                                color: played ? ratingColor(q.rating ?? 6.5) : "var(--chrome-muted-66)" }}>
                                   {played ? (q.rating ?? 6.5).toFixed(1) : "-"}</span>
                                 <span style={{ ...cellBase, fontSize: 7, textAlign: "center",
-                                               color: q._onAt !== undefined ? "var(--ui-ok)" : "var(--ui-danger)" }}>
-                                  {q._onAt !== undefined ? "▲" : benched ? "▼" : ""}</span>
+                                               color: q._offAt !== undefined ? "var(--ui-danger)" : "var(--ui-ok)" }}>
+                                  {q._offAt !== undefined ? "▼" : benched ? "▲" : ""}</span>
                               </div>);
                           };
                           return (
@@ -12748,10 +12760,9 @@ export default function App() {
                                   <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
                               </div>
                               <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>
-                              {(came.length || gone.length) ? (
+                              {came.length ? (
                                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border)" }}>
                                   {came.map((q, i) => row(q, i, true))}
-                                  {gone.map((q, i) => row(q, 100 + i, true))}
                                 </div>) : null}
                             </div>);
                         };
@@ -12798,7 +12809,8 @@ export default function App() {
                         };
                         const clips = m.clips || [];
                         return (
-                        <div style={{ maxWidth: 1560, margin: "0 auto" }}>
+                        <div style={{ maxWidth: 1560, margin: "0 auto", minHeight: "100%",
+                                      display: "flex", flexDirection: "column" }}>
                           {/* THE SCOREBOARD IS GONE FROM HERE. It restated the crests, the clubs
                               and the score -- all three of which are already across the top of the
                               screen in the scorebug that never leaves -- and it cost the stats half
@@ -12855,11 +12867,17 @@ export default function App() {
                           </div>
 
                           {rule(2)}
-                          {sect("Players")}
-                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                        gap: 40, alignItems: "start", marginBottom: 30 }}>
-                            <div>{teamHead(m.hT, HC)}{men("home", HC)}</div>
-                            <div>{teamHead(m.aT, AC)}{men("away", AC)}</div>
+                          {/* The squads take whatever height is left, so the rule below them lands on
+                              the bottom edge of the screen rather than halfway up it -- the goals
+                              start under the fold and you have to scroll to find them, which is the
+                              right order to read a match report in. */}
+                          <div style={{ flex: "1 0 auto" }}>
+                            {sect("Players")}
+                            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                                          gap: 40, alignItems: "start" }}>
+                              <div>{teamHead(m.hT, HC)}{men("home", HC)}</div>
+                              <div>{teamHead(m.aT, AC)}{men("away", AC)}</div>
+                            </div>
                           </div>
 
                           {clips.length > 0 && (<>
@@ -13046,19 +13064,28 @@ export default function App() {
                         if (!key.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
                             No goals.</div>);
-                        return key.map((f, i) => (
-                          <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
-                                                lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
-                                           color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
-                            <span style={{ minWidth: 0, fontWeight: 700,
-                                           color: f.side === "away" ? aClr : hClr }}>
-                              {f.k === "goal" ? "GOAL" : f.second ? "RED (2nd)" : "RED"}
-                            </span>
-                            <span style={{ minWidth: 0, color: "var(--chrome-muted)" }}>
-                              {shortName(f.name)}{f.k === "goal" && f.assist ? ` (${shortName(f.assist)})` : ""}
-                            </span>
-                          </div>));
+                        return key.map((f, i) => {
+                          const cl = f.side === "away" ? aClr : hClr;
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "7px 0",
+                                                  fontSize: 11, lineHeight: 1.4,
+                                                  borderBottom: "1px solid var(--chrome-border-33)" }}>
+                              <span style={{ ...mono, fontSize: 9.5, width: 24, flexShrink: 0, textAlign: "right",
+                                             color: "var(--chrome-muted)" }}>{f.min}'</span>
+                              <span style={{ width: 5, height: 5, borderRadius: 3, flexShrink: 0, marginTop: 1,
+                                             background: f.k === "goal" ? cl : "var(--ui-danger)" }} />
+                              <span style={{ minWidth: 0, color: "var(--ui-text)" }}>
+                                {boldSurname(f.name, f.name)}
+                                {f.k === "goal" && f.assist
+                                  ? <span style={{ color: "var(--chrome-muted)" }}> {shortName(f.assist)}</span>
+                                  : null}
+                                {f.k === "red"
+                                  ? <span style={{ color: "var(--ui-danger)", fontSize: 8.5, marginLeft: 5,
+                                                   letterSpacing: ".08em" }}>{f.second ? "2ND YELLOW" : "RED"}</span>
+                                  : null}
+                              </span>
+                            </div>);
+                        });
                       }
                       const all = out.feed || [];
                       return (<>
