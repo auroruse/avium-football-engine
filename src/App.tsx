@@ -12077,7 +12077,9 @@ export default function App() {
             const rows = bestXi.template.map((t, i) => { const player = bestXi.players[i]; return { spos: t.bench && player ? player.pos : bestXi.reqs[i], bench: t.bench, player }; });
             const starters = rows.filter(x => !x.bench);
             const bench = rows.filter(x => x.bench);
-            const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr || 0), 0) / starters.length;
+            // The listed rating, not the one this match nudged: meInit folds the drill penalty and
+            // home advantage into p.ovr, and neither belongs on a squad average.
+            const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr0 ?? x.player?.ovr ?? 0), 0) / starters.length;
             // Preset rows always give every player an explicit "(NN)" and store the surname/mononym
             // in caps — unlike exportTeamsText's suppress-if-default convention, this always shows
             // the rating and re-caps the surname. An unfilled slot exports as an empty column, not
@@ -12729,7 +12731,7 @@ export default function App() {
                                 <span style={{ ...cellBase, ...mono, fontSize: 8, fontWeight: 700,
                                                color: POS_CLR[q.pos] || "var(--chrome-muted)" }}>{q.pos}</span>
                                 <span style={{ ...cellBase, ...mono, fontSize: 9, textAlign: "center",
-                                               color: ovrColor(q.ovr ?? 70) }}>{Math.round(q.ovr ?? 70)}</span>
+                                               color: ovrColor(q.ovr0 ?? q.ovr ?? 70) }}>{Math.round(q.ovr0 ?? q.ovr ?? 70)}</span>
                                 <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                                   {boldSurname(q.fullName || q.name, q.name)}
                                   {q.rc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
@@ -13120,7 +13122,7 @@ export default function App() {
                         const key = [];
                         for (const sd of ["home", "away"]) {
                           for (const g of (out.scorers?.[sd] || []))
-                            key.push({ min: g.min, side: sd, k: "goal", name: g.name, assist: g.assist });
+                            key.push({ min: g.min, side: sd, k: "goal", name: g.name, full: g.full, assist: g.assist });
                           for (const r of (out.sendOff?.[sd] || []))
                             key.push({ min: r.min, side: sd, k: "red", name: r.name, second: r.second });
                         }
@@ -13128,17 +13130,30 @@ export default function App() {
                         if (!key.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
                         return key.map((f, i) => row(i, f.min, f.side, f.k, (<>
-                          {boldSurname(f.name, f.name)}
+                          <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
                           {f.k === "goal" && f.assist
-                            ? <span style={{ color: "var(--chrome-muted)" }}> {shortName(f.assist)}</span> : null}
+                            ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
                           {f.k === "red" && f.second
-                            ? <span style={{ color: "var(--chrome-muted)" }}> second yellow</span> : null}
+                            ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> second yellow</span> : null}
                         </>)));
                       }
                       const all = out.feed || [];
                       if (!all.length) return (
                         <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>Nothing yet.</div>);
-                      return all.map((f, i) => row(i, f.min, f.side, f.k, feedRich(f.txt)));
+                      return all.map((f, i) => {
+                        // A goal caption arrives as "Scorer Full Name (Assister Full Name)". The
+                        // scorer is the headline and the assist is a footnote, so they are set as
+                        // two different things rather than run together in one weight.
+                        if (f.k === "goal") {
+                          const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(f.txt);
+                          const who = mt ? mt[1] : f.txt, ast = mt ? mt[2] : null;
+                          return row(i, f.min, f.side, f.k, (<>
+                            <b style={{ fontWeight: 700 }}>{who}</b>
+                            {ast ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(ast)}</span> : null}
+                          </>));
+                        }
+                        return row(i, f.min, f.side, f.k, feedRich(f.txt));
+                      });
                     })()}
                   </div>
                   <div style={DIV} />

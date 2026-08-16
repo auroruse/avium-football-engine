@@ -53,6 +53,15 @@ export function meInit(s, slotsFor, rng) {
   // design: no plan is the floor, rather than the safest option it used to be.
   // Applied BEFORE the home-advantage nudge below so the two simply add, and before _att is ever
   // read, since meAttrs memoises off ovr the first time anybody asks.
+  // THE RATING THE CLUB LISTS, kept before anything bends it. meInit adds the drill penalty below
+  // and the home-advantage nudge after it, both properties of THIS MATCH -- so a side carrying no
+  // instructions showed every player about ten points under the number on his own page, and the
+  // squad average with him. Taken for EVERY side before the loop that applies the penalty, because
+  // that loop returns early when a side has none to apply, and a fully committed side needs its
+  // base rating just as much. The engine goes on playing at p.ovr; the report reads ovr0.
+  for (const side of ME_SIDES)
+    for (const p of [...(s.players[side] || []), ...(s.bench?.[side] || [])])
+      if (p.ovr0 === undefined) p.ovr0 = p.ovr ?? 70;
   for (const side of ME_SIDES) {
     const d = meDrill(s.strategy?.[side]);
     if (!d) continue;
@@ -1084,12 +1093,13 @@ export function meTick(s, rng, out) {
           // team-mate who made it, and a true own goal -- which leaves nobody on the scoring side and
           // is named off the last man of the CONCEDING side to have touched it, exactly as the
           // own-goal rating is.
-          if (gp) goalTxt = `GOAL - ${gp.fullName || gp.name}`
+          if (gp) goalTxt = `${gp.fullName || gp.name}`
                           + (ast && ast !== gp ? ` (${ast.fullName || ast.name})` : "");
           else { const og = s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i];
                  if (og) goalTxt = `Own goal - ${og.fullName || og.name}`; }
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
-            { name: gp.name, assist: ast ? ast.name : null, min: out.min ?? 0 });
+            { name: gp.name, full: gp.fullName || gp.name, assist: ast ? ast.name : null,
+              min: out.min ?? 0 });
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
           // winner is scored as the goal that won it rather than as the one that made it 2-1.
           const gm = out.min ?? 0, xg = sh ? sh.xg : CFG.rateGoalXgDef;
@@ -1435,7 +1445,7 @@ export function meTick(s, rng, out) {
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
             meRate(q, meSaveBonus(shp.xg));
-                     meEvt(out, "save", shp.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} parries it`); }
+                     meEvt(out, "save", bs, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} parries it`); }
           // Whose goal it still is, if this parry ends up in the net. One touch off the keeper is a
           // deflected shot and the goal belongs to the man who hit it; only a ball that comes off him
           // and then off him AGAIN is an own goal.
@@ -1485,7 +1495,10 @@ export function meTick(s, rng, out) {
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meRate(q, meSaveBonus(mp.shot.xg));
-          meEvt(out, "save", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} saves`);
+          // The SIDE on an event is whose event it is, and a save is the keeper's. Tagged with the
+          // shooter it drew the wrong club badge and the wrong colour in the feed, so a goalkeeper
+          // keeping his side in it read as something the other lot had done.
+          meEvt(out, "save", bs, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} saves`);
           mp.shot = null;
         }
         // OFFSIDE. Given when he plays it, not when it was struck: a ball rolled into an offside man
@@ -1719,7 +1732,7 @@ export function meTick(s, rng, out) {
       const gk = opp[gki], gd = Math.hypot(gk.x - p.x, gk.y - p.y);
       if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR) * (0.6 + meAttrs(gk).reflex / 99 * 0.6)) {
         out.tackles++; meBump(out, "gkStopSide", meSideOfP(s, gk)); gk.saves = (gk.saves || 0) + 1;
-        meEvt(out, "save", side, p.x, p.y, p.x, p.y, `${gk.fullName || gk.name} smothers it`);
+        meEvt(out, "save", meOther(side), p.x, p.y, p.x, p.y, `${gk.fullName || gk.name} smothers it`);
         // In his hands, held out in front of him. Placing it at gk.x, gk.y put the ball at his exact
         // centre, which is the ball drawn INSIDE the keeper.
         const sx2 = p.x - gk.x, sy2 = p.y - gk.y, sl2 = Math.hypot(sx2, sy2) || 1;

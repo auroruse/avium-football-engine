@@ -557,7 +557,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // open-play only, so a side that won or conceded dead balls was invisible to the balance table.
     if (out.xgS) out.xgS[side] += CFG.spPenXg;
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spPenXg;
-    mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;
+    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick }; mp.fj = -1;   // `full` or the miss
+                                                                            // caption abbreviates him
     gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
@@ -574,7 +575,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // and a dead ball is struck from wherever the foul happened.
     if (out.xgS) out.xgS[side] += CFG.spFkXg;
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spFkXg;
-    mp.shot = { side, name: taker.name, i: sp.ti, t0: mp.tick };
+    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick };
     mp.fj = -1;
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
     // stood and watched every free kick struck at his goal.
