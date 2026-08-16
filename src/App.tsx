@@ -5857,6 +5857,10 @@ export default function App() {
   // same match view parked on the stats panel for a screenshot. Kept separate from meRef so pausing
   // a match does not drop you back to team selection.
   const [meView, setMeView] = useState("setup");
+  // Whether the engine's own instruments are drawn on top of the football. The reach ring was built
+  // to debug the touch radius, and it fuzzes all twenty-two dots for anybody just watching a match,
+  // so it is off unless asked for.
+  const [meDebug, setMeDebug] = useState(false);
   // Whether this fixture is allowed to end level. A league match is; a knockout is not, and that is
   // the only thing extra time and a shootout are conditional on. The tournament will set this per
   // fixture when the engine is hooked up; in the lab it is a toggle.
@@ -12114,14 +12118,26 @@ export default function App() {
           const R_MAN = ME_CFG.bodyR, R_BALL = ME_CFG.ballR, R_REACH = ME_CFG.reach;
           // How high a ball has to get to be drawn at its biggest, and how much bigger that is.
           const BALL_LIFT_H = 6, BALL_LIFT = 1.1;
+          // A label sits above its dot and stays there. Tried and rejected: planning all twenty-two as
+          // boxes and flipping a colliding one underneath its dot, the way the old abstract painter
+          // does. It removes the overprinting and replaces it with something worse -- a label that
+          // flips sides as its owner drifts past a team-mate, so half the names on screen twitch up
+          // and down while you are trying to watch the football. Two names briefly overlapping is a
+          // thing you read past; a name that will not hold still is not. Static wins.
+          // What it gets instead is contrast: brighter, and a heavier outline behind it, so an
+          // overlap stays legible rather than turning to mush.
+          const gk = (p) => p.pos === "GK";
           const dot = (p, fill, key) => {
             const x = ix(p), y = iy(p);
+            // The keeper is the one man a viewer has to pick out instantly, and the one man whose
+            // colour genuinely is different in real football.
+            const face = gk(p) ? "#f5e663" : fill;
             return (
               <g key={key}>
-                <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill} strokeOpacity={0.22} strokeWidth={0.05} />
-                <circle cx={x} cy={y} r={R_MAN} fill={fill} stroke="rgba(0,0,0,.55)" strokeWidth={0.07} />
-                <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.5}
-                      fontSize={0.8} stroke="rgba(0,0,0,.55)" strokeWidth={0.14} paintOrder="stroke"
+                {meDebug && <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill} strokeOpacity={0.22} strokeWidth={0.05} />}
+                <circle cx={x} cy={y} r={R_MAN} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} />
+                <text x={x} y={y - R_MAN - 0.5} textAnchor="middle" fill="#fff" fillOpacity={0.88}
+                      fontSize={0.9} stroke="rgba(0,0,0,.8)" strokeWidth={0.24} paintOrder="stroke"
                       style={{ pointerEvents: "none" }}>
                   {shortName(p.name)}
                 </text>
@@ -12162,9 +12178,20 @@ export default function App() {
           // wants it to fill what is left under the scoreboard.
           const pitchSvg = (fill) => (
   <svg viewBox="-1 -2.4 107 72.8" preserveAspectRatio="xMidYMid meet"
-       style={fill ? { width: "100%", height: "100%", display: "block", background: "#1d3a24" }
-                   : { width: "100%", display: "block", borderRadius: 6, background: "#1d3a24" }}>
-    <g stroke="rgba(255,255,255,.32)" strokeWidth={0.28} fill="none">
+       style={fill ? { width: "100%", height: "100%", display: "block", background: "#16301c" }
+                   : { width: "100%", display: "block", borderRadius: 6, background: "#16301c" }}>
+    {/* THE GRASS. Eight mown bands, which is the thing that reads as a football pitch before any
+        marking does -- a flat green rectangle reads as a diagram however good the lines on it are.
+        Two tones a shade apart, so it is texture rather than stripes you look at, and drawn only
+        inside the touchlines so the run-off stays plain. */}
+    {Array.from({ length: 8 }, (_, i) => (
+      <rect key={"mow" + i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
+            fill={i % 2 ? "#1b3823" : "#17311d"} />
+    ))}
+    {/* The markings, and all of them. What was here had no penalty spots, no D-arcs and no corner
+        arcs -- and the D especially is what makes a pitch instantly legible as a pitch rather than
+        as boxes on green. Lifted to 44% white from 32%: real markings are painted, not suggested. */}
+    <g stroke="rgba(255,255,255,.44)" strokeWidth={0.24} fill="none">
       <rect x={0.6} y={0.6} width={103.8} height={66.8} />
       <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
       <circle cx={52.5} cy={34} r={9.15} />
@@ -12172,8 +12199,25 @@ export default function App() {
       <rect x={87.9} y={13.85} width={16.5} height={40.3} />
       <rect x={0.6} y={24.85} width={5.5} height={18.3} />
       <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-      <rect x={-0.9} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
-      <rect x={104.4} y={30.34} width={1.5} height={7.32} stroke="rgba(255,255,255,.6)" />
+      {/* The D: the arc of the ten-yard circle that falls OUTSIDE the box, which is all of it you
+          ever see. Centred on the penalty spot and swept between where r=9.15 crosses the box line
+          -- the box front sits 5.5 m from the spot, so the crossings are 34 +/- sqrt(9.15^2 - 5.5^2)
+          = 34 +/- 7.31, and the arc bulges away from goal in each case. */}
+      <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
+      <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
+      <path d="M 0.6 1.6 A 1 1 0 0 0 1.6 0.6" />
+      <path d="M 103.4 0.6 A 1 1 0 0 0 104.4 1.6" />
+      <path d="M 104.4 66.4 A 1 1 0 0 0 103.4 67.4" />
+      <path d="M 1.6 67.4 A 1 1 0 0 0 0.6 66.4" />
+    </g>
+    <g fill="rgba(255,255,255,.44)">
+      <circle cx={52.5} cy={34} r={0.34} />
+      <circle cx={11.6} cy={34} r={0.34} />
+      <circle cx={93.4} cy={34} r={0.34} />
+    </g>
+    <g stroke="rgba(255,255,255,.72)" strokeWidth={0.3} fill="none">
+      <rect x={-0.9} y={30.34} width={1.5} height={7.32} />
+      <rect x={104.4} y={30.34} width={1.5} height={7.32} />
     </g>
     {ev && (ev.k === "pass" || ev.k === "cut" || ev.k === "shot" || ev.k === "goal" || ev.k === "save" || ev.k === "miss" || ev.k === "tackle" || ev.k === "clear" || ev.k === "head") && (
       <line x1={fx(ev.x0)} y1={ev.y0} x2={fx(ev.x1)} y2={ev.y1} stroke={EVC[ev.k]} strokeOpacity={evFade}
@@ -12182,8 +12226,12 @@ export default function App() {
     )}
     {ev && ev.k !== "pass" && <circle cx={fx(ev.x0)} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
                    stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
-    {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
-    {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
+    {/* THE ACTUAL KITS. These were hardcoded to a generic blue and a generic red while the app was
+        already resolving both sides' real strips a few hundred lines up -- home or away by fixture,
+        with a clash detector that switches one side, and readableClr/ensureMaxLum keeping whatever
+        it lands on legible. All of that was being computed and thrown away here. */}
+    {st && st.players.home.map((p, i) => dot(p, hClr, "h" + i))}
+    {st && st.players.away.map((p, i) => dot(p, aClr, "a" + i))}
     {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
         it sits in pitch coordinates and scales with the pitch for free, at any window size. The
         match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
@@ -12221,7 +12269,7 @@ export default function App() {
               if (A.xy[k] < -50 || B.xy[k] < -50) return null;
               return <circle key={"rp" + sd + i}
                              cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
-                             r={1.45} fill={sd ? "#ff6b5a" : "#4da3ff"}
+                             r={1.45} fill={sd ? aClr : hClr}
                              stroke="rgba(0,0,0,.55)" strokeWidth={sw * 0.8} />;
             }))}
             <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={1.05}
@@ -12662,6 +12710,15 @@ export default function App() {
                       <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
                              onChange={e => setMeSpeedIx(+e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                       <span style={{ width: 30, fontWeight: 700, textAlign: "right", ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
+                    </label>
+                    {/* The engine's own instruments. Off by default -- the touch-reach ring is a
+                        developer's tool and it fuzzes all twenty-two dots for anybody just watching
+                        the match -- but kept one click away, because it is how the interaction
+                        radius was made visible in the first place. */}
+                    <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex",
+                                    alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input type="checkbox" checked={meDebug} onChange={e => setMeDebug(e.target.checked)} />
+                      Show touch radius
                     </label>
                     <div style={{ display: "flex", gap: 6 }}>
                       {tabBtn("stats", "Stats")}
