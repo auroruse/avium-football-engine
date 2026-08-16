@@ -957,8 +957,10 @@ export function meTick(s, rng, out) {
             q.rc = true; q.off = true; q.y = -6; q.vx = 0; q.vy = 0; q._offAt = mp.tick; q._offAt = mp.tick;
             (out.reds = out.reds || { home: 0, away: 0 })[wS]++;
             (out.sendOff = out.sendOff || { home: [], away: [] })[wS].push(
-              { name: q.name, min: out.min ?? 0, second: true });
-            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.fullName || q.name} is off, second yellow`);
+              { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: true });
+            // Worded the same as the other dismissal: the feed reads the reason off this caption, and
+            // "is off" against "is sent off" meant a time-wasting second yellow fell through it.
+            meEvt(out, "red", wS, wX, wY, wX, wY, `${q.fullName || q.name} is sent off, second yellow`);
           }
         }
       }
@@ -1800,7 +1802,7 @@ export function meTick(s, rng, out) {
         q.x = q.x; q.y = -6; q.vx = 0; q.vy = 0;
         (out.reds = out.reds || { home: 0, away: 0 })[fSide]++;
         (out.sendOff = out.sendOff || { home: [], away: [] })[fSide].push(
-          { name: q.name, min: out.min ?? 0, second: card === "red2" });
+          { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: card === "red2" });
         meEvt(out, "red", fSide, p.x, p.y, p.x, p.y,
               card === "red2" ? `${q.fullName || q.name} is sent off, second yellow` : `${q.fullName || q.name} is sent off`);
       } else {

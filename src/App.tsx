@@ -13104,7 +13104,8 @@ export default function App() {
                         yellow:  { icon: YCARD, clr: "var(--ui-warn)" },
                         injury:  { icon: "🏥", clr: "var(--ui-injury)" },
                       };
-                      const row = (i, min, side, k, body) => {
+                      const RED_WHY = (second) => `RED CARD (${second ? "2nd Yellow" : "Serious Foul"})`;
+                      const row = (i, min, side, k, body, headOver) => {
                         const md = META[k] || {};
                         const cl = side === "away" ? aClr : hClr;
                         return (
@@ -13115,9 +13116,9 @@ export default function App() {
                             {mCell(min)}
                             {iCell(md.icon, md.big ? 13 : 10)}
                             <div style={{ flex: 1, minWidth: 0, padding: "0 6px", lineHeight: 1.4 }}>
-                              {md.head && (
+                              {(headOver || md.head) && (
                                 <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em",
-                                              color: k === "goal" ? cl : md.clr }}>{md.head}</div>)}
+                                              color: k === "goal" ? cl : md.clr }}>{headOver || md.head}</div>)}
                               <div style={{ fontSize: md.big ? 10.5 : 9.5,
                                             color: md.big ? "var(--ui-text)" : (md.clr || "var(--chrome-muted)") }}>{body}</div>
                             </div>
@@ -13130,7 +13131,7 @@ export default function App() {
                           for (const g of (out.scorers?.[sd] || []))
                             key.push({ min: g.min, side: sd, k: "goal", name: g.name, full: g.full, assist: g.assist });
                           for (const r of (out.sendOff?.[sd] || []))
-                            key.push({ min: r.min, side: sd, k: "red", name: r.name, second: r.second });
+                            key.push({ min: r.min, side: sd, k: "red", name: r.name, full: r.full, second: r.second });
                         }
                         key.sort((u, v) => v.min - u.min);
                         if (!key.length) return (
@@ -13139,9 +13140,7 @@ export default function App() {
                           <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
                           {f.k === "goal" && f.assist
                             ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
-                          {f.k === "red" && f.second
-                            ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> second yellow</span> : null}
-                        </>)));
+                        </>), f.k === "red" ? RED_WHY(f.second) : null));
                       }
                       const all = out.feed || [];
                       if (!all.length) return (
@@ -13157,6 +13156,12 @@ export default function App() {
                             <b style={{ fontWeight: 700 }}>{who}</b>
                             {ast ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(ast)}</span> : null}
                           </>));
+                        }
+                        if (f.k === "red") {
+                          const mt = /^(.*?) is sent off(?:,\s*(.+))?$/.exec(f.txt || "");
+                          return row(i, f.min, f.side, f.k,
+                            <b style={{ fontWeight: 700 }}>{mt ? mt[1] : f.txt}</b>,
+                            RED_WHY(/second yellow/i.test(f.txt || "")));
                         }
                         return row(i, f.min, f.side, f.k, feedRich(f.txt));
                       });
