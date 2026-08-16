@@ -6302,6 +6302,12 @@ export default function App() {
     // lmMatch, which is the ABSTRACT engine's state object -- a different thing from the st the
     // positional engine actually runs on, so they were set and then never read by anybody.
     st.homeAdv = lmHomeAdv || null;
+    // Two sources, because there are two ways in. The Venue Selector on the Live Match tab writes
+    // lmNeutralVenueName/Loc; the tournament's Play Live writes the venue onto lmMatch instead. This
+    // builder was reading neither, so a positional match had no venue at all.
+    st.venue = (lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()))
+      ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() }
+      : (lmMatch?.venue || null);
     st.matchUrg = lmMatch?.matchUrg || { home: 0, away: 0 };
     st.teamForm = lmMatch?.teamForm || { home: 0, away: 0 };
     st.possession = "home";
@@ -8816,10 +8822,18 @@ export default function App() {
   // — a fixture with no HA (or a set-piece neutral venue name) shows that instead, rather than
   // defaulting to whichever team happens to sit in the "home" slot. Lifted out of the scoreboard
   // so the overview's meta block reads the identical chain and the two can never disagree.
+  // WHICH ENGINE'S STATE THE VENUE COMES FROM. lmMatch is the ABSTRACT engine's object and the
+  // positional engine keeps its own in meRef, never writing lmMatch. Both display sites below read
+  // venue and homeAdv off lmMatch, so a positional match showed either NOTHING -- the Venue Selector
+  // calls setLmMatch(null) on every pick -- or whatever a previous abstract kickoff left behind.
+  // That is the same class of bug as the venue not reaching the engine: two state objects for one
+  // match, and the newer engine wired to neither.
+  const lmVenueState = () => (meView !== "setup" && meRef.current?.s) ? meRef.current.s : lmMatch;
   const lmVenue = () => {
-    const host = lmMatch?.homeAdv === "away" ? teamById(lmA) : lmMatch?.homeAdv === "home" ? teamById(lmH) : null;
+    const lm = lmVenueState();
+    const host = lm?.homeAdv === "away" ? teamById(lmA) : lm?.homeAdv === "home" ? teamById(lmH) : null;
     // Either the explicit venue or the host's ground, never a field-by-field mix of the two.
-    const src = (lmMatch?.venue?.city || lmMatch?.venue?.stadium) ? lmMatch.venue : host;
+    const src = (lm?.venue?.city || lm?.venue?.stadium) ? lm.venue : host;
     const stadium = src?.stadium || "", city = src?.city || "";
     return { stadium, city, text: [stadium, city].filter(Boolean).join(", ") || "Neutral Venue" };
   };
@@ -9168,11 +9182,12 @@ export default function App() {
     // Stadium images live at /stadiums/<exact stadium name>.jpg or .jpeg (tries both —
     // a missing/wrong-extension file just renders no photo, background-image 404s
     // are silent, so this isn't hunted down as a JS error).
-    const hostTeam = lmMatch.homeAdv === "away" ? teamById(lmA) : lmMatch.homeAdv === "home" ? teamById(lmH) : null;
+    const _lmv = lmVenueState();
+    const hostTeam = _lmv?.homeAdv === "away" ? teamById(lmA) : _lmv?.homeAdv === "home" ? teamById(lmH) : null;
     // stripVenue here (not at each input site) because a team's own .stadium field is
     // free-typed in the team editor, unlike the bulk-import/host-pool parsers which
     // already strip population/capacity suffixes before they ever reach this point.
-    const venueStadium = stripVenue(lmMatch.venue?.stadium || hostTeam?.stadium || "") || null;
+    const venueStadium = stripVenue(_lmv?.venue?.stadium || hostTeam?.stadium || "") || null;
     // Accented names (Chūkyō, etc.) can round-trip through Unicode normalization
     // differently than the file was saved with — macOS Finder/drag-drop commonly writes
     // NFD (decomposed: u + combining macron) while typed/pasted text is usually NFC
