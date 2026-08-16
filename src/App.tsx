@@ -5466,6 +5466,52 @@ const T_PRESETS = {
 // and every measurement quietly aimed there. They are pure (team in, players out), so they lift
 // without ceremony. Lifted rather than copied: a second copy in a harness drifts, and then the
 // harness is measuring an engine the app does not run.
+// THE TAPE. Where the twenty-two and the ball actually were, every slice, kept on a ring.
+// Recorded in the APP rather than in the engine, for the same reason the half-time walk-off is:
+// no tick is consumed, no counter moves, and the headless harnesses that drive meTick directly
+// never allocate a byte of it. A goal then freezes the match and plays the build-up back
+// picture-in-picture. Nothing ticks while a replay is up, so "positions preserved" is not something
+// that has to be implemented -- the pitch behind the inset is still the instant the ball crossed the
+// line, because the match genuinely has not moved.
+const ME_TAPE = 64;                            // slices kept: eighty seconds, longer than any move
+// max/min: how much build-up a replay may show. rate: real frames spent on each slice, so it runs at
+// a third pace like a television replay. tail: how long it holds on the goal before play resumes.
+const ME_CLIP = { max: 26, min: 8, rate: 3, tail: 14 };
+export const meSnap = (s) => {
+  const mp = s.mePos, xy = new Float32Array(44);
+  let k = 0;
+  for (const sd of ["home", "away"]) {
+    const ps = s.players[sd];
+    for (let i = 0; i < 11; i++) {
+      const p = ps[i];
+      xy[k++] = p && !p.off ? p.x : -99;       // sent off or injured: no dot to draw
+      xy[k++] = p && !p.off ? p.y : -99;
+    }
+  }
+  return { xy, bx: mp.bx, by: mp.by, bz: mp.bz, sd: mp.side, ix: mp.idx };
+};
+// WHERE THE MOVE STARTED: walk back from the goal to the last slice the other side held the ball.
+// That is the build-up by the only definition the engine can actually answer, and it is the honest
+// one -- a worked move gets a long clip and a tap-in gets a short one. A ball in flight belongs to
+// nobody, so a null possessor does not end the walk.
+// THE MINIMUM DELIBERATELY OVERRIDES THAT BOUNDARY, and it is not the clamps fighting: a goal four
+// slices after an interception is a counter-attack, and a replay of a counter-attack that opens
+// after the interception has cut off the only interesting thing in it. Reaching back through the
+// turnover is what television does, so the floor is allowed to win and the opponent's last touches
+// ride along. Only as far as the minimum needs -- never further.
+// The two clamps do not commute with a short tape, which is why the floor is asserted last: in the
+// opening seconds `length - min` is negative, and a replay of frame minus six is not a thing.
+export const meClipFrom = (tape, side) => {
+  let from = tape.length - 1;
+  for (let i = tape.length - 1; i >= 0; i--) {
+    if (tape[i].sd && tape[i].sd !== side) break;
+    from = i;
+  }
+  from = Math.max(from, tape.length - ME_CLIP.max);        // no sixty-second replays
+  from = Math.min(from, tape.length - ME_CLIP.min);        // ...and never a two-frame flicker
+  return Math.max(0, from);
+};
+
 const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, goals:{home:0,away:0},
   onTarget:{home:0,away:0}, saves:{home:0,away:0}, corners:{home:0,away:0}, fouls:{home:0,away:0},
   passes:0, passOk:0, passFail:0, tackles:0, carries:0, clears:0, inplay:0, blocked:0,
@@ -6340,8 +6386,32 @@ export default function App() {
     // in-match "Must Have A Winner" button -- so the checkbox you ticked before kick-off governed
     // one engine and silently did nothing to the other. It governs both now; the button stays as an
     // in-match override for a tie you decide to settle after the fact.
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: lmForce };
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: lmForce,
+             // the replay tape, the goals cut from it, and the one playing right now
+             tape: [], clips: [], cel: null, gH: 0, gA: 0 };
   };
+  const meCelebrate = (m, side) => {
+    const frames = m.tape.slice(meClipFrom(m.tape, side));
+    if (frames.length < 2) return;
+    const ev = m.out.feed?.[0];                            // meEvt unshifts, so the goal is at the top
+    const clip = { min: m.out.min, side, frames, txt: ev && ev.k === "goal" ? ev.txt : null,
+                   score: `${m.out.goals.home}-${m.out.goals.away}` };
+    m.clips.push(clip);
+    // Skipping to the end asks for a result, not for theatre -- but the clip is still banked, because
+    // the highlights on the post-match screen are built from exactly these.
+    if (!m.fast) m.cel = { t: 0, i: 0, a: 0, hold: 0, clip };
+  };
+  // Driven off the wall clock rather than off match time, so a replay looks the same at 0.25x as it
+  // does at 4x. Match speed governs the match; it has no business governing a replay.
+  const meCelStep = (m) => {
+    const c = m.cel; if (!c) return;
+    c.t++;
+    const last = c.clip.frames.length - 1, pos = c.t / ME_CLIP.rate;
+    c.i = Math.min(last, Math.floor(pos));
+    c.a = c.i >= last ? 1 : Math.min(1, pos - c.i);
+    if (c.i >= last && ++c.hold >= ME_CLIP.tail) m.cel = null;
+  };
+
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
   // engine: no tick is consumed, no counter moves, and every harness sees exactly the match it saw
@@ -6404,6 +6474,9 @@ export default function App() {
                          if (meRef.current) { setMeView("live"); setMePanel(null); } setMeFrame(f => f + 1); };
   const meStep = (n) => {
     const m = meRef.current; if (!m) return;
+    // A replay is up: nothing behind it moves. The celebration is advanced by the interval in mePlay
+    // rather than here, because it runs on the wall clock and not on match time.
+    if (m.cel) return;
     // Walking off, standing about, or walking back on: the match does not advance while they are.
     if (m.brk) { for (let i = 0; i < n && m.brk; i++) meBreakStep(m); setMeFrame(f => f + 1); return; }
     // ...plus stoppage. meAdded grows as the ball spends time dead, so the finish line moves out
@@ -6433,6 +6506,16 @@ export default function App() {
     };
     for (let i = 0; i < n && m.t < end; i++) {
       m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; drain();
+      m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
+      // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
+      // disagree with itself. Breaks out of the slice loop so the freeze lands on the instant it went
+      // in, not several slices into the restart.
+      if (m.out.goals.home !== m.gH || m.out.goals.away !== m.gA) {
+        const side = m.out.goals.home !== m.gH ? "home" : "away";
+        m.gH = m.out.goals.home; m.gA = m.out.goals.away;
+        meCelebrate(m, side);
+        if (m.cel) break;
+      }
       // The interval, taken at the first dead ball at or after the halfway point rather than in the
       // middle of a move -- which is how a referee does it too.
       if (m.t >= half && !m[halfKey] && (m.s.mePos.sp || m.s.mePos.idx < 0)) {
@@ -6461,6 +6544,10 @@ export default function App() {
   const meSimEnd = () => {
     meStop();
     const m = meRef.current; if (!m) return;
+    // Asking to skip to the end is asking for a result, not for theatre. Clips are still cut -- the
+    // highlights are built from them -- but no replay is staged, and any replay already up is
+    // dropped, or the guard at the top of meStep would spin this loop against a frozen match.
+    m.fast = true; m.cel = null;
     for (let g = 0; g < 40 && !m.ftDone; g++) meStep(ME_MATCH_TICKS + 800);
   };
   const mePlay = () => {
@@ -6469,6 +6556,11 @@ export default function App() {
     setMeRunning(true);
     meAcc.current = 0;
     meTimer.current = setInterval(() => {
+      // A goal replay owns the clock while it is up, and it advances on the WALL clock: a replay has
+      // to look the same at quarter pace as it does at four times, because it is television rather
+      // than football. Match time does not move here at all.
+      const mc = meRef.current;
+      if (mc?.cel) { meCelStep(mc); setMeFrame(f => f + 1); return; }
       // Carry the fraction over between frames instead of rounding it away, so 0.25x really is
       // quarter pace rather than the fastest the frame rate happens to allow.
       meAcc.current += ME_SPEEDS[meSpeedIx] * 0.04 / ME_DT;
@@ -12092,6 +12184,52 @@ export default function App() {
                    stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
     {st && st.players.home.map((p, i) => dot(p, "#4da3ff", "h" + i))}
     {st && st.players.away.map((p, i) => dot(p, "#ff6b5a", "a" + i))}
+    {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
+        it sits in pitch coordinates and scales with the pitch for free, at any window size. The
+        match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
+        thing moving on screen. Ball trail included: the whole point is to show the move, and a line
+        through where the ball has been says it better than a dot arriving does. */}
+    {m?.cel && (() => {
+      const c = m.cel, F = c.clip.frames;
+      const A = F[c.i], B = F[Math.min(F.length - 1, c.i + 1)], a = c.a;
+      const L = (u, v) => u + (v - u) * a;
+      const S = 0.40, OX = 2.4, OY = 1.6, W = 105 * S, H = 68 * S;
+      const sw = 0.30 / S;                       // strokes drawn in the inset's own scaled units
+      const trail = F.slice(0, c.i + 1).map(f => `${fx(f.bx).toFixed(1)},${f.by.toFixed(1)}`).join(" ");
+      return (
+        <g style={{ pointerEvents: "none" }}>
+          <rect x={OX - 1} y={OY - 1} width={W + 2} height={H + 5.2} rx={1}
+                fill="rgba(6,12,8,.88)" stroke="rgba(255,255,255,.5)" strokeWidth={0.28} />
+          <circle cx={OX + 1.5} cy={OY + H + 2.5} r={0.85} fill="#ff4444" />
+          <text x={OX + 3.2} y={OY + H + 3.3} fontSize={2.4} fill="#fff" fillOpacity={0.9}
+                style={{ letterSpacing: "0.14em" }}>REPLAY</text>
+          <text x={OX + W} y={OY + H + 3.3} fontSize={2.4} fill="#fff" fillOpacity={0.65}
+                textAnchor="end">{c.clip.min}' {c.clip.score}</text>
+          <g transform={`translate(${OX} ${OY}) scale(${S})`}>
+            <rect x={0} y={0} width={105} height={68} fill="#16301c" />
+            <g stroke="rgba(255,255,255,.28)" strokeWidth={sw} fill="none">
+              <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+              <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+              <circle cx={52.5} cy={34} r={9.15} />
+              <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+              <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+            </g>
+            {c.i > 0 && <polyline points={trail} fill="none" stroke="#ffd166"
+                                  strokeOpacity={0.55} strokeWidth={sw * 1.6} />}
+            {[0, 1].map(sd => Array.from({ length: 11 }, (_, i) => {
+              const k = sd * 22 + i * 2;
+              if (A.xy[k] < -50 || B.xy[k] < -50) return null;
+              return <circle key={"rp" + sd + i}
+                             cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
+                             r={1.45} fill={sd ? "#ff6b5a" : "#4da3ff"}
+                             stroke="rgba(0,0,0,.55)" strokeWidth={sw * 0.8} />;
+            }))}
+            <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={1.05}
+                    fill="#fff" stroke="#000" strokeWidth={sw * 0.8} />
+          </g>
+        </g>
+      );
+    })()}
     {st && (() => {
       const bx = fx((st.mePos._bpx ?? st.mePos.bx) + (st.mePos.bx - (st.mePos._bpx ?? st.mePos.bx)) * al);
       const by = (st.mePos._bpy ?? st.mePos.by) + (st.mePos.by - (st.mePos._bpy ?? st.mePos.by)) * al;
