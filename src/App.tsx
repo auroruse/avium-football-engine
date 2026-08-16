@@ -13044,14 +13044,78 @@ export default function App() {
                   {/* The feed is the only thing here that grows, so it takes the slack and everything
                       else keeps its natural height. out.feed is unshifted, newest first. */}
                   <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 15px" }}>
-                    {/* AT FULL TIME THE FEED BECOMES A SUMMARY, and it is built from the permanent
-                        records rather than from the feed itself. out.feed is a rolling SIXTY-entry
-                        commentary buffer -- meEvt pops the tail -- so in a busy match the early
-                        goals have already fallen off the end by the whistle, which is why a 6-0
-                        summarised as three second-half goals. out.scorers keeps every goal for the
-                        whole match and out.sendOff now does the same for dismissals. Coloured by the
-                        side it belongs to, so you can read the story off the colours alone. */}
+                    {/* THE MATCH EVENTS, on the old abstract feed's anatomy: a minute cell, an icon
+                        cell, the body, and a team badge -- fixed widths so every row lines up down
+                        the column instead of the text starting wherever the minute happened to end.
+                        Three weights, as before. A goal or a sending off gets an icon, a header and
+                        a tinted background; a card or an injury gets an icon and ordinary body text;
+                        everything else is a small muted line. What is NOT carried over is the
+                        click-through chance card -- this engine has no chance object to reveal, and
+                        the build-up it would have drawn is on the goal diagrams in the report.
+                        FULL TIME condenses to goals and reds, and it uses this same renderer, so the
+                        summary is the feed with the noise removed rather than a second design. */}
                     {(() => {
+                      const code = (t) => t?.code || (t?.name || "").slice(0, 3).toUpperCase();
+                      const mCell = (min) => (
+                        <div style={{ width: 34, minWidth: 34, display: "flex", alignItems: "center",
+                                      justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min}'</span>
+                        </div>);
+                      const iCell = (content, sz) => (
+                        <div style={{ width: 22, minWidth: 22, display: "flex", alignItems: "center",
+                                      justifyContent: "center", flexShrink: 0, fontSize: sz || 12 }}>{content || " "}</div>);
+                      const tCell = (side) => {
+                        const isH = side !== "away", cl = isH ? hClr : aClr;
+                        return (
+                          <div style={{ width: 34, minWidth: 34, display: "flex", alignItems: "center",
+                                        justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ padding: "1px 4px", borderRadius: 5, background: cl + "22",
+                                           border: "1px solid " + cl + "33", fontSize: 7.5, fontWeight: 700,
+                                           letterSpacing: ".06em", color: cl, ...mono }}>
+                              {code(isH ? m.hT : m.aT)}</span>
+                          </div>);
+                      };
+                      const YCARD = <span style={{ display: "inline-block", width: 7, height: 10, borderRadius: 1.5,
+                                                   background: "var(--ui-warn)" }} />;
+                      const RCARD = <span style={{ display: "inline-block", width: 7, height: 10, borderRadius: 1.5,
+                                                   background: "var(--ui-danger)" }} />;
+                      // kind -> icon, header, colour, and whether it is a headline event
+                      const META = {
+                        goal:    { icon: "⚽", head: "GOAL", clr: "var(--ui-text)", big: true },
+                        red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
+                        sub:     { icon: "⇄", head: "SUB", clr: "var(--chrome-muted)", big: true },
+                        save:    { icon: "🧤", clr: "var(--ui-info)" },
+                        miss:    { icon: "💨", clr: "var(--chrome-muted)" },
+                        shot:    { icon: "🎯", clr: "var(--chrome-muted)" },
+                        block:   { icon: "🛡️", clr: "var(--ui-info)" },
+                        tackle:  { icon: "🛡️", clr: "var(--ui-info)" },
+                        clear:   { icon: "🛡️", clr: "var(--ui-info)" },
+                        cut:     { icon: "🛡️", clr: "var(--ui-info)" },
+                        foul:    { icon: "⚠️", clr: "var(--ui-warn)" },
+                        offside: { icon: "🚩", clr: "var(--ui-warn)" },
+                        yellow:  { icon: YCARD, clr: "var(--ui-warn)" },
+                        injury:  { icon: "🏥", clr: "var(--ui-injury)" },
+                      };
+                      const row = (i, min, side, k, body) => {
+                        const md = META[k] || {};
+                        const cl = side === "away" ? aClr : hClr;
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", padding: md.big ? "6px 0" : "3px 0",
+                                                background: md.big ? (k === "goal" ? cl + "14" : "var(--chrome-bg-08)") : "transparent",
+                                                borderRadius: md.big ? 4 : 0,
+                                                borderBottom: "1px solid var(--chrome-border-33)" }}>
+                            {mCell(min)}
+                            {iCell(md.icon, md.big ? 13 : 10)}
+                            <div style={{ flex: 1, minWidth: 0, padding: "0 6px", lineHeight: 1.4 }}>
+                              {md.head && (
+                                <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em",
+                                              color: k === "goal" ? cl : md.clr }}>{md.head}</div>)}
+                              <div style={{ fontSize: md.big ? 10.5 : 9.5,
+                                            color: md.big ? "var(--ui-text)" : (md.clr || "var(--chrome-muted)") }}>{body}</div>
+                            </div>
+                            {tCell(side)}
+                          </div>);
+                      };
                       if (m.ftDone) {
                         const key = [];
                         for (const sd of ["home", "away"]) {
@@ -13062,46 +13126,19 @@ export default function App() {
                         }
                         key.sort((u, v) => v.min - u.min);
                         if (!key.length) return (
-                          <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
-                            No goals.</div>);
-                        return key.map((f, i) => {
-                          const cl = f.side === "away" ? aClr : hClr;
-                          return (
-                            <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "7px 0",
-                                                  fontSize: 11, lineHeight: 1.4,
-                                                  borderBottom: "1px solid var(--chrome-border-33)" }}>
-                              <span style={{ ...mono, fontSize: 9.5, width: 24, flexShrink: 0, textAlign: "right",
-                                             color: "var(--chrome-muted)" }}>{f.min}'</span>
-                              <span style={{ width: 5, height: 5, borderRadius: 3, flexShrink: 0, marginTop: 1,
-                                             background: f.k === "goal" ? cl : "var(--ui-danger)" }} />
-                              <span style={{ minWidth: 0, color: "var(--ui-text)" }}>
-                                {boldSurname(f.name, f.name)}
-                                {f.k === "goal" && f.assist
-                                  ? <span style={{ color: "var(--chrome-muted)" }}> {shortName(f.assist)}</span>
-                                  : null}
-                                {f.k === "red"
-                                  ? <span style={{ color: "var(--ui-danger)", fontSize: 8.5, marginLeft: 5,
-                                                   letterSpacing: ".08em" }}>{f.second ? "2ND YELLOW" : "RED"}</span>
-                                  : null}
-                              </span>
-                            </div>);
-                        });
+                          <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
+                        return key.map((f, i) => row(i, f.min, f.side, f.k, (<>
+                          {boldSurname(f.name, f.name)}
+                          {f.k === "goal" && f.assist
+                            ? <span style={{ color: "var(--chrome-muted)" }}> {shortName(f.assist)}</span> : null}
+                          {f.k === "red" && f.second
+                            ? <span style={{ color: "var(--chrome-muted)" }}> second yellow</span> : null}
+                        </>)));
                       }
                       const all = out.feed || [];
-                      return (<>
-                        {!all.length && (
-                          <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
-                            Nothing yet.</div>)}
-                        {all.map((f, i) => (
-                          <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
-                                                lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
-                                           color: f.side === "away" ? aClr : hClr }}>{f.min}'</span>
-                            <span style={{ minWidth: 0, fontWeight: f.k === "goal" ? 700 : 400,
-                                           color: f.k === "goal" ? (f.side === "away" ? aClr : hClr)
-                                                                 : "var(--chrome-muted)" }}>{feedRich(f.txt)}</span>
-                          </div>))}
-                      </>);
+                      if (!all.length) return (
+                        <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>Nothing yet.</div>);
+                      return all.map((f, i) => row(i, f.min, f.side, f.k, feedRich(f.txt)));
                     })()}
                   </div>
                   <div style={DIV} />
