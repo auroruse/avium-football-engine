@@ -1634,6 +1634,32 @@ Object.assign(CFG, {
 export const NO_INSTRUCTIONS = { passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0,
   approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0,
   dlBehavior:0, tackling:0 };
+
+// COHERENCE: BUILT, MEASURED, NOT SHIPPED. The real bug it was aimed at is still here and is worth
+// restating, because it explains most of the balance table. This engine's rule is that instructions
+// move the SCORES and never the success rolls, and the engine then takes the highest-scoring option
+// -- so if the evaluation is honest, the UNMODIFIED choice is already the best one available and
+// every instruction by construction makes it pick something it rated worse. The rule was written to
+// stop instructions being free buffs and it overshot into making them guaranteed debuffs. That is
+// why an all-zero stamp finished mid-table against thirteen designed systems, why damping a weak
+// style toward zero improved it by 0.2 to 0.5 goals, and why squad fit -- whose only effect is
+// damping toward zero -- measured as a REWARD for not having the players for your system.
+//
+// The attempt: score each stamp for internal consistency over nine authored axis pairs (a high line
+// wants a high press; sit deep and BREAK or hold high and keep it; direct passing wants width and
+// early shots), then spend that as its own term in meKickBall's aim cone beside pressure and tempo.
+// A side with no instructions scores exactly zero and is byte-identical, which would have made "no
+// plan" the floor by construction instead of by being nerfed into one.
+//
+// Why it is not in the tree: measured blocked, 80 fixtures a style, coherence on against off with
+// identical seeds. Correlation between how coherent a style is and what coherence was worth to it
+// came out 0.53 with a slope of 0.61 goals -- but exactly ONE style moved in the predicted direction
+// above two standard errors (Catenaccio, +0.76), one moved AGAINST it above two (Zona Mista, -0.53),
+// and the least coherent style in the game gained nearly as much as the most coherent (Park The Bus,
+// +0.45 on a coherence of 0.125). Balanced did not sink, which was the entire point.
+// The idea is probably right and the aim cone is probably the wrong channel to spend it through.
+// Re-attempt it somewhere with more leverage than pass accuracy, and keep the blocked design.
+
 export const DEFAULT_OVR = 60;
 
 // THE MANAGER ON THE TOUCHLINE. Every instruction in this engine is read fresh off s.strategy on
