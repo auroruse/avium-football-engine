@@ -630,16 +630,15 @@ const STYLE_PRESET = {
   // (STRAT_EDITABLE, excluded from fit damping) and it costs about 0.08 whichever way it is set.
   // What a control side IS survives intact -- shortest passing outside Tiki-Taka, plays out from the
   // back, holds shape rather than countering, stays on its feet, and presses at nobody.
-  // possWon -1 -> +1, worth +0.49 goals against the field (se 0.16). A side that wins the ball back
-  // and then HOLDS it is what was killing this style, and its other three axes all measure as
-  // earning, so there was nothing to remove -- only this to reverse. It is still the shortest,
-  // most patient passing side in the game; it just goes somewhere when it gets the ball.
-  // It does NOT clear Balanced on its own (-0.70 to -0.22 in the same run). Four separate
-  // measurements now say this style cannot be lifted above an all-zero stamp by stamp surgery:
-  // every instruction off measures -0.07, best single removal -0.11, this -0.22. What it needs is
-  // for the engine to pay for keeping the ball, which it does not.
+  // REVERTED to possWon -1. Flipping it measured +0.49 goals against the field, the largest gain
+  // anyone found for this style -- and it still did not clear Balanced (-0.70 to -0.22), so it paid
+  // distinctness for a result it did not achieve. The reason it looked like a gain is the same
+  // reason every style below Balanced looked fixable by deletion: an all-zero stamp IS the engine's
+  // unconstrained optimum, so ANY instruction reads as a cost. That is an engine problem, not a
+  // stamp problem, and it is being fixed at the source. Do not re-apply this without re-measuring
+  // once instruction coherence is in.
   possession:    { pressingLOE: 0, passingDir: -1, approachPlay: -1, possLost: 0,
-                   possWon: 1, tackling: -1 },
+                   possWon: -1, tackling: -1 },
   // Width, overlaps, and licence to take a man on.
   wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
   // Sit off, then hurt them the moment it breaks.
