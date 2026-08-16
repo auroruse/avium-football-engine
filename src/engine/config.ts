@@ -1931,10 +1931,29 @@ export function meZone(dGoal, y) {
   return depth * 3 + lat;
 }
 // [fromZone, toZone, worth 0..1]. Zones: 0-2 own L/C/R, 3-5 middle L/C/R, 6-8 final L/C/R.
+// EXTENDED FOR CONTROL POSSESSION ALONE, and the two reversions are the finding. The extension
+// was authored for all three circulation styles -- deeper sequences being the one channel with a
+// positive record (+89% progression, +104% box entries on the first pattern pass) -- and the
+// paired probes kept exactly one third of it:
+//   Control Possession: the carousel legs (3->6, 5->8 advances, 6->7, 8->7 half-space entries)
+//     bought 12% more box entries at +0.02 goal difference, arrival for free. Kept.
+//   Tiki-Taka: the identical legs read -0.21 to -0.35 in two doses. It is the narrowest style in
+//     the game and width -1 pulls its men off the very wings the patterns aimed at, so the balls
+//     went to nobody. Do not hand the narrow style wide patterns; its shipped table already IS
+//     its optimum. Reverted whole.
+//   Zona Mista: seam releases (3->7, 5->7) read -0.03 against a se of 0.10. A knob that reads as
+//     noise is a knob that should not exist. Reverted whole.
+//   All three: the own-third play-out legs (1->4, 0->3, 2->5) at 0.5-0.6 gained CP 36% forward
+//     metres and cost 0.22 a match -- ambition out of the defensive third flips marginal balls
+//     under the press, and a turnover there feeds the transition economy at 0.167 xG a shot.
+//     Ambition is priced only where its failures are cheap: the opponent's half.
+// The outward halves 4->3 and 4->5 stay absent everywhere, because pricing both directions of the
+// carousel pays perpetual ping-pong, and that is a bribe to the objective rather than a plan.
 export const ME_PATTERN = {
   // Combine through the middle, and switch to move them before you do.
   tikitaka:      [[4,7,1.0],[3,5,0.6],[5,3,0.6],[3,4,0.5],[5,4,0.5]],
-  possession:    [[4,7,0.9],[3,5,0.7],[5,3,0.7],[3,4,0.5],[5,4,0.5]],
+  possession:    [[4,7,0.9],[3,5,0.7],[5,3,0.7],[3,4,0.5],[5,4,0.5],
+                  [3,6,0.5],[5,8,0.5],[6,7,0.8],[8,7,0.8]],
   lanuestra:     [[4,7,0.9],[3,4,0.6],[5,4,0.6],[6,7,0.6],[8,7,0.6]],
   // Straight through the seam, fast.
   verticaltiki:  [[4,7,1.0],[3,7,0.8],[5,7,0.8],[1,4,0.5]],
