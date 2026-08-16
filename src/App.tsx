@@ -12031,7 +12031,7 @@ export default function App() {
                 <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.5}
                       fontSize={0.8} stroke="rgba(0,0,0,.55)" strokeWidth={0.14} paintOrder="stroke"
                       style={{ pointerEvents: "none" }}>
-                  {String(p.name || "").trim().split(/\s+/).pop()}
+                  {shortName(p.name)}
                 </text>
               </g>
             );
