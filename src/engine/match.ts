@@ -14,7 +14,7 @@ import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClo
 // what succeeds, so every setting costs something somewhere -- turn the press up and the space
 // behind it is really there for someone to run into. That is the whole reason for the rewrite.
 export { ME_HZ, ME_DT, ME_TPM } from "./config";
-import { ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meMinute } from "./config";
+import { ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute } from "./config";
 
 // ---- setup ------------------------------------------------------------------------------
 // Positions live ON the player records, not in a side table, so cloneState already deep-copies them
@@ -47,6 +47,19 @@ export const ME_DEF_FORM = {
 // already varied properly -- 40 of 40 distinct eight-touch openings, 19 distinct scorelines -- which
 // is why this is deliberately confined to the kickoff and adds no noise anywhere else.
 export function meInit(s, slotsFor, rng) {
+  // WHAT THE SIDE HAS DRILLED. Read off the instructions as stamped and fit-damped, and spent as
+  // effective rating on everyone who plays -- bench included, since a substitute has been at the
+  // same training ground. A side with no instructions gets exactly nothing here, which is the whole
+  // design: no plan is the floor, rather than the safest option it used to be.
+  // Applied BEFORE the home-advantage nudge below so the two simply add, and before _att is ever
+  // read, since meAttrs memoises off ovr the first time anybody asks.
+  for (const side of ME_SIDES) {
+    const d = meDrill(s.strategy?.[side]);
+    if (!d) continue;
+    for (const p of [...(s.players[side] || []), ...(s.bench?.[side] || [])]) {
+      p.ovr = (p.ovr ?? 70) + d; p._att = null;
+    }
+  }
   // WHERE THE TWO SIDES PLAY FROM, applied before anything else reads an instruction so it lands on
   // the baseline stamped into mp.stratBase below. s.homeAdv names the side WITH the advantage rather
   // than the fixture's home slot: a tie played at the away team's ground sets it to "away".

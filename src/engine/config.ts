@@ -538,6 +538,12 @@ export const CFG = {
   // where it ships: both are resolved by the ball physics rather than by a roll, so there is no
   // reason to assume the estimate should differ until it is measured.
   headXg: 1,
+  // Rating points per unit of instruction set, and per unit of contradiction. At 0.077 goals a
+  // rating point, drillCap 5 makes a fully committed plan worth about 0.39 goals -- roughly the
+  // bottom half of the style spread, which is what has to be crossed for every style to clear a
+  // stamp containing nothing. clashOvr is deliberately steeper than drillOvr so a contradictory
+  // build can go net negative rather than merely earning less.
+  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0,
   lineADefL: 7,
   //
   // FOUR THINGS THAT DO NOT FIX PARK THE BUS. It sits at -0.28 against the field where Balanced is
@@ -1659,6 +1665,77 @@ export const NO_INSTRUCTIONS = { passingDir:0, chanceCreation:0, pressingLOE:0, 
 // +0.45 on a coherence of 0.125). Balanced did not sink, which was the entire point.
 // The idea is probably right and the aim cone is probably the wrong channel to spend it through.
 // Re-attempt it somewhere with more leverage than pass accuracy, and keep the blocked design.
+
+// A SIDE THAT DRILLS SOMETHING GETS GOOD AT IT.
+// This reverses the engine's oldest rule, deliberately. That rule -- instructions move the SCORES
+// and never the success rolls -- was written to stop instructions being free buffs, and it worked so
+// well that it made them guaranteed debuffs: the engine takes the highest-scoring option, so if its
+// evaluation is honest then the UNMODIFIED choice is already the best available and every
+// instruction makes it pick something it rated worse. Measured, that is exactly what happened. An
+// all-zero stamp finished mid-table against thirteen designed systems, damping a weak style toward
+// zero improved it by 0.2 to 0.5 goals, and squad fit -- whose only effect is damping toward zero --
+// came out as a REWARD for not having the players for your system.
+//
+// The design now is the other way round. Setting an instruction is a small competence gain in the
+// thing you set, because a side that has drilled something is better at it. Nothing is earned for
+// agreeing with yourself, so there is no stacking bonus; what a contradiction does is take some of
+// it back. A side with no instructions collects nothing and is therefore the floor by construction,
+// which is the point -- "no plan" should be the worst plan, not the safest one.
+//
+// Spent as effective rating rather than through the aim cone. The first attempt spent it on pass
+// accuracy and it had nowhere near enough leverage: blocked over 80 fixtures a style, exactly one
+// style of fourteen moved in the predicted direction above two standard errors, one moved against
+// it, and Balanced did not sink at all. Rating is the channel this engine actually turns into
+// goals, it is already measured at 0.077 goals a point, and meInit already applies a rating nudge
+// for home advantage, so it is the same code path.
+export const ME_AXIS_MAX = { defLine: 2, pressingLOE: 2, passingDir: 2, width: 2, tempo: 2,
+  approachPlay: 1, chanceCreation: 1, creativity: 1, dribbling: 1, possLost: 1, possWon: 1,
+  tackling: 1, timeWasting: 2, gkDist: 1, dlBehavior: 2 };
+
+// WHICH INSTRUCTIONS FIGHT EACH OTHER. This is an opinion and the only one in the engine -- it says
+// what this game thinks good football is, and it is the right thing to argue about. It is used for
+// the PENALTY ONLY: a pair that agrees earns nothing, because the two instructions were already
+// each paid for on their own.
+//   +1  the two agree when they point the SAME way, so opposite directions are the contradiction
+//   -1  the two agree when they point OPPOSITE ways
+export const ME_CLASH = [
+  ["defLine", "pressingLOE", 1],      // press where you defend from, or do neither
+  ["defLine", "possLost", 1],         // a high line counter-presses; a deep one drops off
+  // Gated to deep blocks only. A side that sits in and then KEEPS the ball is the contradiction --
+  // measured on Park The Bus, which wins it in the best counter-attacking position in football and
+  // takes 39.6% of its shots from turnovers against a neutral line's 44.1%. The mirror is not true:
+  // winning it high and going straight at them is what a high press IS, not a contradiction, and
+  // an ungated rule charged Vertical Tiki-Taka three rating points for pressing properly.
+  ["defLine", "possWon", -1, "deep"],
+  ["passingDir", "approachPlay", 1],  // direct wants the ball into space, short wants to play out
+  ["passingDir", "chanceCreation", 1],// hit it long and shoot early, or work it in patiently
+  ["passingDir", "creativity", -1],   // short passing needs licence; direct football needs shape
+  ["pressingLOE", "tackling", 1],     // a side that presses has to go and win it
+];
+// REMOVED, both of them my error rather than the stamps':
+//   approachPlay vs dribbling -- the single largest clash in the table at -3.00, charged to Park The
+//     Bus and Second Ball for playing into space with disciplined dribbling. Balls into space are
+//     for RUNNERS. Hit it into the channel, run onto it, do not try to beat a man. Coherent.
+//   passingDir vs width -- charged for being direct and narrow, which is a long ball through the
+//     middle to a target man. That is Route One, not a contradiction.
+
+// Rating points a side earns for how far it commits, minus what its contradictions cost. Positive
+// for any consistent plan, zero for no plan, and negative only for a genuinely self-defeating one.
+export function meDrill(st) {
+  if (!st) return 0;
+  let commit = 0, clash = 0;
+  for (const k in ME_AXIS_MAX) {
+    const v = (st[k] || 0) / ME_AXIS_MAX[k];
+    commit += Math.abs(v);
+  }
+  for (const [a, b, w, gate] of ME_CLASH) {
+    const va = (st[a] || 0) / (ME_AXIS_MAX[a] || 1), vb = (st[b] || 0) / (ME_AXIS_MAX[b] || 1);
+    if (!va || !vb) continue;
+    if (gate === "deep" && va >= 0) continue;  // the rule only runs one way; see the note above
+    clash += Math.max(0, -w * va * vb);        // only the disagreements; agreeing pays nothing
+  }
+  return Math.min(CFG.drillCap, commit * CFG.drillOvr) - clash * CFG.clashOvr;
+}
 
 export const DEFAULT_OVR = 60;
 
