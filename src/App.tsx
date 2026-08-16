@@ -12550,7 +12550,13 @@ export default function App() {
                           const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
                           const ch = (c.chain || []).filter(t => t.side === c.side);
                           const pts = ch.map(t => [X(t.x), Y(t.y)]);
-                          const gx = X(meGoalX(c.side)), gy = Y(c.end?.y ?? 34);
+                          // A GOAL CROSSES BETWEEN THE POSTS. c.end is the last recorded ball
+                          // position, and by that slice the engine has already set the restart up, so
+                          // it drifts toward the centre spot and dragged the marker into the corner
+                          // of the card with a shot line pointing at nothing. Clamped to the mouth,
+                          // which is where a goal physically is.
+                          const gx = X(meGoalX(c.side));
+                          const gy = Math.max(31.2, Math.min(36.8, Y(c.end?.y ?? 34)));
                           // THE LINE IS THE BALL, NOT THE TOUCHES. Joining touch to touch was the
                           // obvious thing and it is close to useless: mp.idx is -1 for every slice the
                           // ball is travelling, so a tick-sampled chain catches a man only when the
@@ -12560,10 +12566,42 @@ export default function App() {
                           // path is dense, always present, and is in any case the truer picture of a
                           // move -- the touches then mark who was involved along it.
                           const path = (c.frames || []).map(f => [X(f.bx), Y(f.by)]);
+                          // CARRY, PASS, SHOT -- three different things, and the tape already knows
+                          // which is which. mp.idx names the man in possession, so a slice with a
+                          // carrier means the ball was at somebody's FEET and moved with him, and a
+                          // slice without one means it was travelling on its own. The strike is the
+                          // last slice anybody had it: everything after that is the ball on its way
+                          // in. Drawn as dashes for the carry, a thin line for a pass and a heavy
+                          // yellow one for the finish, so a solo run and a passing move do not come
+                          // out as the same picture.
+                          const held = (c.frames || []).map(f => f.ix >= 0);
+                          let strike = -1;
+                          for (let i = held.length - 1; i >= 0; i--) if (held[i]) { strike = i; break; }
+                          const shotPts = [...path.slice(strike < 0 ? Math.max(0, path.length - 2) : strike), [gx, gy]];
                           const clr = c.side === "home" ? HC : AC;
-                          const W = 105, H = 68;
+                          // CROP TO THE MOVE. Every card drew the whole 105 m pitch, so a tap-in
+                          // off a cutback was three dots in the corner of a mostly empty rectangle.
+                          // The frame is fitted to the path instead -- with a floor, so a six-yard
+                          // finish still shows enough pitch to place it, and a common aspect, so a
+                          // row of cards does not look like a row of different-shaped cards.
+                          const allPts = [...path, [gx, gy]];
+                          const AR = 1.55, MINW = 54, MINH = 35, PAD = 7;
+                          let x0 = Math.min(...allPts.map(q => q[0])) - PAD;
+                          let x1 = Math.max(...allPts.map(q => q[0])) + PAD;
+                          let y0 = Math.min(...allPts.map(q => q[1])) - PAD;
+                          let y1 = Math.max(...allPts.map(q => q[1])) + PAD;
+                          let vw = Math.max(x1 - x0, MINW), vh = Math.max(y1 - y0, MINH);
+                          if (vw / vh < AR) vw = vh * AR; else vh = vw / AR;
+                          const PX0 = -2.5, PX1 = 107.5, PY0 = -1.5, PY1 = 69.5;
+                          vw = Math.min(vw, PX1 - PX0); vh = Math.min(vh, PY1 - PY0);
+                          const vx = Math.max(PX0, Math.min(PX1 - vw, (x0 + x1) / 2 - vw / 2));
+                          const vy = Math.max(PY0, Math.min(PY1 - vh, (y0 + y1) / 2 - vh / 2));
+                          // Zoomed in, a user-unit stays the same size on screen but covers less
+                          // grass, so text and strokes have to come down with the crop or a close-up
+                          // arrives in enormous lettering.
+                          const k = vw / 105;
                           return (
-                            <div key={gi} style={{ flex: "1 1 300px", minWidth: 260, maxWidth: 420,
+                            <div key={gi} style={{ minWidth: 0,
                                                    background: "var(--chrome-panel)", borderRadius: 8,
                                                    border: "1px solid var(--chrome-border)", overflow: "hidden" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px",
@@ -12575,11 +12613,12 @@ export default function App() {
                                   {ch.length ? ch[ch.length - 1].name : "Goal"}</span>
                                 <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.score}</span>
                               </div>
-                              <svg viewBox="-1 -1 107 70" style={{ width: "100%", display: "block", background: "#16301c" }}>
+                              <svg viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="xMidYMid meet"
+                                   style={{ width: "100%", aspectRatio: String(AR), display: "block", background: "#16301c" }}>
                                 {Array.from({ length: 8 }, (_, i) => (
                                   <rect key={i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
                                         fill={i % 2 ? "#1b3823" : "#17311d"} />))}
-                                <g stroke="rgba(255,255,255,.34)" strokeWidth={0.3} fill="none">
+                                <g stroke="rgba(255,255,255,.34)" strokeWidth={0.3 * k} fill="none">
                                   <rect x={0.6} y={0.6} width={103.8} height={66.8} />
                                   <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
                                   <circle cx={52.5} cy={34} r={9.15} />
@@ -12588,25 +12627,28 @@ export default function App() {
                                   <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
                                   <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
                                 </g>
-                                {/* the move, then the finish picked out of it */}
-                                {path.length > 1 && (
-                                  <polyline points={path.map(q => q.join(",")).join(" ")} fill="none"
-                                            stroke={clr} strokeOpacity={0.9} strokeWidth={0.6}
-                                            strokeLinejoin="round" strokeLinecap="round" />)}
-                                {path.length > 1 && (
-                                  <line x1={path[path.length - 2][0]} y1={path[path.length - 2][1]}
-                                        x2={gx} y2={gy} stroke="#ffd166" strokeWidth={1} strokeLinecap="round" />)}
+                                {/* the build-up, segment by segment, then the finish over the top */}
+                                {path.slice(0, -1).map((q, i) => (strike >= 0 && i >= strike) ? null : (
+                                  <line key={"s" + i} x1={q[0]} y1={q[1]} x2={path[i + 1][0]} y2={path[i + 1][1]}
+                                        stroke={clr} strokeOpacity={held[i] ? 0.95 : 0.7}
+                                        strokeWidth={(held[i] ? 0.85 : 0.45) * k}
+                                        strokeDasharray={held[i] ? `${1.5 * k} ${1.1 * k}` : undefined}
+                                        strokeLinecap="round" />))}
+                                <polyline points={shotPts.map(q => q.join(",")).join(" ")} fill="none"
+                                          stroke="#ffd166" strokeWidth={1.1 * k} strokeLinecap="round"
+                                          strokeLinejoin="round" />
                                 {path.length > 0 && (
-                                  <circle cx={path[0][0]} cy={path[0][1]} r={1} fill="none"
-                                          stroke={clr} strokeOpacity={0.8} strokeWidth={0.4} />)}
+                                  <circle cx={path[0][0]} cy={path[0][1]} r={1 * k} fill="none"
+                                          stroke={clr} strokeOpacity={0.8} strokeWidth={0.4 * k} />)}
                                 {pts.map((q, i) => (
-                                  <circle key={i} cx={q[0]} cy={q[1]} r={i === pts.length - 1 ? 1.7 : 1.15}
-                                          fill={clr} stroke="rgba(0,0,0,.6)" strokeWidth={0.25} />))}
-                                <circle cx={gx} cy={gy} r={1.5} fill="none" stroke="#ffd166" strokeWidth={0.5} />
+                                  <circle key={i} cx={q[0]} cy={q[1]} r={(i === pts.length - 1 ? 1.7 : 1.15) * k}
+                                          fill={clr} stroke="rgba(0,0,0,.6)" strokeWidth={0.25 * k} />))}
+                                <circle cx={gx} cy={gy} r={1.5 * k} fill="none" stroke="#ffd166" strokeWidth={0.5 * k} />
                                 {pts.map((q, i) => ch[i]?.name ? (
-                                  <text key={"n" + i} x={Math.max(9, Math.min(96, q[0]))} y={q[1] - 2.4}
-                                        textAnchor="middle" fontSize={3.1} fill="#fff" fillOpacity={0.9}
-                                        stroke="rgba(0,0,0,.8)" strokeWidth={0.7} paintOrder="stroke">
+                                  <text key={"n" + i} x={Math.max(vx + 8 * k, Math.min(vx + vw - 8 * k, q[0]))}
+                                        y={q[1] - 2.6 * k}
+                                        textAnchor="middle" fontSize={3.2 * k} fill="#fff" fillOpacity={0.92}
+                                        stroke="rgba(0,0,0,.85)" strokeWidth={0.75 * k} paintOrder="stroke">
                                     {ch[i].name}</text>) : null)}
                               </svg>
                             </div>);
@@ -12669,86 +12711,147 @@ export default function App() {
                         const sect = (label) => (
                           <div style={{ fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
                                         color: "var(--chrome-muted)", textAlign: "center", padding: "0 0 10px" }}>{label}</div>);
+                        // WHO SCORED, flanking the score. The old scoreboard put the two lists
+                        // either side of the number and it is still the right place for them: the
+                        // header had empty flanks, and a match report whose first line does not say
+                        // who scored is not a match report. Grouped by man, so a hat-trick is one
+                        // line with three minutes on it rather than three near-identical rows.
+                        const scorerList = (side, align) => {
+                          const list = out.scorers?.[side] || [];
+                          if (!list.length) return null;
+                          const by = new Map();
+                          for (const g of list) {
+                            const n = shortName(g.name || "");
+                            if (!by.has(n)) by.set(n, []);
+                            by.get(n).push(g.min);
+                          }
+                          return (
+                            <div style={{ marginTop: 5, fontSize: 10.5, lineHeight: 1.65, textAlign: align,
+                                          color: "var(--chrome-muted)" }}>
+                              {[...by].map(([n, mins]) => (
+                                <div key={n} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {n} <span style={{ ...mono, opacity: 0.75 }}>{mins.map(x => x + "'").join(", ")}</span>
+                                </div>))}
+                            </div>);
+                        };
                         const clips = m.clips || [];
-                        return (<>
-                          {/* The scoreboard spans the screen: this panel is the match report, and it
-                              is what gets screenshotted. */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
-                                        gap: 26, padding: "6px 0 22px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
-                              <span style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
-                                             textOverflow: "ellipsis" }}>{m.hT?.name}</span>
-                              <TeamCrest team={m.hT} size={42} />
-                            </div>
-                            <div style={{ textAlign: "center", flexShrink: 0 }}>
-                              <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: ".04em", ...mono }}>
-                                {out.goals.home}&ndash;{out.goals.away}</div>
-                              <div style={{ fontSize: 10, letterSpacing: ".18em", color: "var(--chrome-muted)" }}>
-                                {m.ftDone ? "FULL TIME" : `${minute}'`}</div>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-                              <TeamCrest team={m.aT} size={42} />
-                              <span style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
-                                             textOverflow: "ellipsis" }}>{m.aT?.name}</span>
-                            </div>
-                          </div>
+                        return (
+                        <div style={{ maxWidth: 1560, margin: "0 auto" }}>
+                          {/* THE REPORT USES THE WIDTH IT HAS. Everything was stacked down a centre
+                              column with a 620px cap on the stats, which on a full-screen match view
+                              left most of the window empty either side. Scoreboard and stats share
+                              the top row, the two squads share the second, and the goals -- which
+                              want to be wide and are the last thing you look at -- have the bottom. */}
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                                        gap: 40, alignItems: "start", marginBottom: 30 }}>
 
-                          {clips.length > 0 && (<>
-                            {sect(clips.length === 1 ? "The Goal" : "The Goals")}
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center",
-                                          marginBottom: 26 }}>
-                              {clips.map(goalCard)}
+                            {/* ── the scoreboard ─────────────────────────────────────────────
+                                Three columns on a fixed-height first row. The height is the point:
+                                the scorers hang UNDER that row rather than living inside the same
+                                block as the club name, so a side that scores four does not have its
+                                name shunted upward while the other side's stays put. */}
+                            <div>
+                              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+                                            gap: 18, alignItems: "start" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ height: 46, display: "flex", alignItems: "center",
+                                                justifyContent: "flex-end", gap: 11, minWidth: 0 }}>
+                                    <span style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap",
+                                                   overflow: "hidden", textOverflow: "ellipsis" }}>{m.hT?.name}</span>
+                                    <TeamCrest team={m.hT} size={40} />
+                                  </div>
+                                  {scorerList("home", "right")}
+                                </div>
+                                <div style={{ textAlign: "center", flexShrink: 0 }}>
+                                  <div style={{ height: 46, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: ".04em", ...mono }}>
+                                      {out.goals.home}&ndash;{out.goals.away}</span>
+                                  </div>
+                                  <div style={{ fontSize: 9.5, letterSpacing: ".18em", color: "var(--chrome-muted)" }}>
+                                    {m.ftDone ? "FULL TIME" : `${minute}'`}</div>
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ height: 46, display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                                    <TeamCrest team={m.aT} size={40} />
+                                    <span style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap",
+                                                   overflow: "hidden", textOverflow: "ellipsis" }}>{m.aT?.name}</span>
+                                  </div>
+                                  {scorerList("away", "left")}
+                                </div>
+                              </div>
+                              <div style={{ marginTop: 18, fontSize: 10.5, color: "var(--chrome-muted)",
+                                            textAlign: "center", lineHeight: 1.9 }}>
+                                <div>{out.passes} passes at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}% &middot; {out.carries} carries &middot; {out.clears} clearances</div>
+                                <div>
+                                  {out.tackleTry ? `${out.tackleWon || 0} tackles won of ${out.tackleTry}` : ""}
+                                  {out.tackleTry && out.blocked ? " · " : ""}
+                                  {out.blocked ? `${out.blocked} shots blocked` : ""}
+                                  {(out.tackleTry || out.blocked) && out.woodwork ? " · " : ""}
+                                  {out.woodwork ? `${out.woodwork} off the woodwork` : ""}
+                                </div>
+                              </div>
                             </div>
-                          </>)}
 
-                          {sect("Match Stats")}
-                          <div style={{ maxWidth: 620, margin: "0 auto 26px" }}>
-                            {/* Possession keeps the old screen's split bar: it is one quantity shared
-                                between two teams, not two quantities being compared. */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 0 6px" }}>
-                              <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12, fontWeight: 700,
-                                             color: pcH >= pcA ? HC : "var(--chrome-muted)" }}>{pcH}%</span>
-                              <div style={{ flex: 1, display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
-                                <div style={{ width: `${pcH}%`, background: HC }} />
-                                <div style={{ width: `${pcA}%`, background: AC }} />
+                            {/* ── the numbers ────────────────────────────────────────────────── */}
+                            <div>
+                              {sect("Match Stats")}
+                              <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 0 6px" }}>
+                                <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12, fontWeight: 700,
+                                               color: pcH >= pcA ? HC : "var(--chrome-muted)" }}>{pcH}%</span>
+                                <div style={{ flex: 1, display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
+                                  <div style={{ width: `${pcH}%`, background: HC }} />
+                                  <div style={{ width: `${pcA}%`, background: AC }} />
+                                </div>
+                                <span style={{ width: 46, ...mono, fontSize: 12, fontWeight: 700,
+                                               color: pcA > pcH ? AC : "var(--chrome-muted)" }}>{pcA}%</span>
                               </div>
-                              <span style={{ width: 46, ...mono, fontSize: 12, fontWeight: 700,
-                                             color: pcA > pcH ? AC : "var(--chrome-muted)" }}>{pcA}%</span>
-                            </div>
-                            <div style={{ textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
-                                          textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>Possession</div>
-                            {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
-                            {bar("Shots", out.shots.home, out.shots.away)}
-                            {bar("On target", out.onTarget.home, out.onTarget.away)}
-                            {bar("Saves", out.saves.home, out.saves.away)}
-                            {bar("Corners", out.corners.home, out.corners.away)}
-                            {bar("Fouls", out.fouls.home, out.fouls.away)}
-                            {out.offside && bar("Offsides", out.offside.home, out.offside.away)}
-                            {out.yellows && bar("Yellows", out.yellows.home, out.yellows.away)}
-                            {out.reds && bar("Reds", out.reds.home, out.reds.away)}
-                            <div style={{ marginTop: 12, fontSize: 10.5, color: "var(--chrome-muted)",
-                                          textAlign: "center", lineHeight: 1.85 }}>
-                              {/* These four are match totals rather than per-side counters in the
-                                  engine (out.blocked/tackleWon/tackleTry/woodwork are plain numbers),
-                                  so they read as one line instead of pretending to be a comparison. */}
-                              <div>{out.passes} passes at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}% &middot; {out.carries} carries &middot; {out.clears} clearances</div>
-                              <div>
-                                {out.tackleTry ? `${out.tackleWon || 0} tackles won of ${out.tackleTry}` : ""}
-                                {out.tackleTry && out.blocked ? " \u00b7 " : ""}
-                                {out.blocked ? `${out.blocked} shots blocked` : ""}
-                                {(out.tackleTry || out.blocked) && out.woodwork ? " \u00b7 " : ""}
-                                {out.woodwork ? `${out.woodwork} off the woodwork` : ""}
-                              </div>
+                              <div style={{ textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
+                                            textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>Possession</div>
+                              {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
+                              {bar("Shots", out.shots.home, out.shots.away)}
+                              {bar("On target", out.onTarget.home, out.onTarget.away)}
+                              {bar("Saves", out.saves.home, out.saves.away)}
+                              {bar("Corners", out.corners.home, out.corners.away)}
+                              {bar("Fouls", out.fouls.home, out.fouls.away)}
+                              {out.offside && bar("Offsides", out.offside.home, out.offside.away)}
+                              {out.yellows && bar("Yellows", out.yellows.home, out.yellows.away)}
+                              {out.reds && bar("Reds", out.reds.home, out.reds.away)}
                             </div>
                           </div>
 
                           {sect("Players")}
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                        gap: 26, alignItems: "start" }}>
+                                        gap: 40, alignItems: "start", marginBottom: 30 }}>
                             <div>{teamHead(m.hT, HC)}{men("home", HC)}</div>
                             <div>{teamHead(m.aT, AC)}{men("away", AC)}</div>
                           </div>
-                        </>);
+
+                          {clips.length > 0 && (<>
+                            {sect(clips.length === 1 ? "The Goal" : "The Goals")}
+                            {/* Three strokes need saying once, not on every card. */}
+                            <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: -4,
+                                          marginBottom: 12, fontSize: 9.5, color: "var(--chrome-muted)",
+                                          letterSpacing: ".05em", textTransform: "uppercase" }}>
+                              {[["Carry", HC, true], ["Pass", HC, false], ["Shot", "#ffd166", false]].map(([lb, cl, dash]) => (
+                                <span key={lb} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <svg width={20} height={6} style={{ display: "block" }}>
+                                    <line x1={0} y1={3} x2={20} y2={3} stroke={cl}
+                                          strokeWidth={dash ? 2.2 : lb === "Shot" ? 2.6 : 1.3}
+                                          strokeDasharray={dash ? "3.5 2.5" : undefined} strokeLinecap="round" />
+                                  </svg>{lb}
+                                </span>))}
+                            </div>
+                            {/* A GRID, not a wrapping flex row. With flex-grow the last row's cards
+                                stretched to fill it, so a lone fourth goal came out half again as
+                                big as the three above it and centred under them. Grid tracks are the
+                                same width whether the row is full or not, and they start at the left. */}
+                            <div style={{ display: "grid", gap: 14, marginTop: 4,
+                                          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+                                          justifyContent: "start" }}>
+                              {clips.map(goalCard)}
+                            </div>
+                          </>)}
+                        </div>);
                       })()}
                       {mePanel === "subs" && (() => {
                         const q = mePending.current;
