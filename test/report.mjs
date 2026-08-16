@@ -37,3 +37,14 @@ console.log(`2. save events tagged to the wrong side: ${saveWrong} of ${saveN}`)
 console.log(`3. captions with an abbreviated name: ${abbrev.length}` + (abbrev.length ? "  e.g. " + abbrev[0] : ""));
 console.log(`4. scorers missing a full name: ${noFull} of ${goals} goals`);
 console.log(`   goal captions: ${goalFmt.join(" | ")}`);
+
+// The scorebug average: base vs live, so the difference is visible rather than asserted.
+{
+  const H = { ...pool[0], style: "balanced", strategy: {} };
+  const A = { ...pool[5], style: "gegenpress", strategy: { ...eng.STYLE_PRESET.gegenpress } };
+  const { s } = eng.runPositionalMatch(H, A, 4242, "home");
+  const avg = (side, key) => { const ps = s.players[side];
+    return ps.reduce((a, p) => a + (key === "base" ? (p.ovr0 ?? p.ovr) : p.ovr), 0) / ps.length; };
+  console.log(`\nscorebug average, home (Balanced, at home):  base ${avg("home","base").toFixed(1)}   live ${avg("home","live").toFixed(1)}`);
+  console.log(`scorebug average, away (Gegenpress):         base ${avg("away","base").toFixed(1)}   live ${avg("away","live").toFixed(1)}`);
+}

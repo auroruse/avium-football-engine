@@ -12397,9 +12397,15 @@ export default function App() {
             // substitute comes on and when a man is sent off -- which is the only reason to put it on
             // a live scoreboard rather than showing the team's static rating. One decimal, because
             // rounding to whole numbers hides exactly the change a substitution makes.
+            // ...at the rating each man is LISTED at, not the one this match is playing him at.
+            // meInit folds the drill penalty and the home-advantage nudge into p.ovr, so a side with
+            // no instructions had its whole scorebug average sitting ten points low, and the same
+            // fixture read differently at home and away. ovr0 is the snapshot taken before either.
+            // It still moves with a substitution -- which is the reason this is computed live at all
+            // -- because a different man on the pitch is a different base rating.
             const xiOvr = (side) => {
               const ps = st?.players?.[side] || [];
-              return ps.length ? ps.reduce((a, p) => a + (p.ovr || 0), 0) / ps.length : 0;
+              return ps.length ? ps.reduce((a, p) => a + (p.ovr0 ?? p.ovr ?? 0), 0) / ps.length : 0;
             };
             const sbSide = (t, side) => (
               <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13,
