@@ -8930,6 +8930,26 @@ export default function App() {
     if (!colorsClash(hClr2, aOther2)) aClr2 = aOther2;
     else aClr2 = ensureMaxLum(lightenUntil(aClr2, hClr2, 0.35));
   }
+  // ...AND THE SAME TWO KITS ON THE GRASS, which is a third question again. hClr/aClr ask whether a
+  // colour reads as TEXT against the app's near-black panel, and a dot on a pitch is not text.
+  // Nichirin's #0b1134 correctly fails that test, so the scoreboard falls through to its pale away
+  // kit and then dims it to #bac9de -- and that arrived on the pitch as a grey-blue smudge next to
+  // Aphirica del Nord's grey away kit, two sides you genuinely could not tell apart.
+  // hClr2/aClr2 are already the right starting point: the real kits, with a clash resolved between
+  // the two of THEM and no panel-contrast swap. All the pitch has to add is a floor, because dark
+  // navy on dark grass is its own kind of invisible. ensureMinLum scales the channels instead of
+  // blending toward white, so a navy comes out as a brighter navy rather than as a pale nothing.
+  let hPitchClr = ensureMinLum(hClr2), aPitchClr = ensureMinLum(aClr2);
+  // Two dark kits can be distinct at their own luminance and land on top of each other once both
+  // are lifted -- Kogelland's and Aphirica del Nord's blues arrive eight apart on a threshold of
+  // sixty -- so the separation is re-checked AFTER the lift rather than assumed to survive it.
+  // Same order as the two resolutions above: the away side's other kit first, because a real
+  // change of strip beats a smeared one, and only then lighten.
+  if (colorsClash(hPitchClr, aPitchClr)) {
+    const aOther = ensureMinLum(ensureMaxLum(aClr2 === aHomeClr ? aAwayClr : aHomeClr));
+    aPitchClr = !colorsClash(hPitchClr, aOther) ? aOther
+              : ensureMinLum(lightenUntil(aPitchClr, hPitchClr, 0.35));
+  }
 
   // Venue only reflects a real team's stadium when that team was actually assigned home advantage
   // — a fixture with no HA (or a set-piece neutral venue name) shows that instead, rather than
@@ -12136,8 +12156,8 @@ export default function App() {
               <g key={key}>
                 {meDebug && <circle cx={x} cy={y} r={R_REACH} fill="none" stroke={fill} strokeOpacity={0.22} strokeWidth={0.05} />}
                 <circle cx={x} cy={y} r={R_MAN} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} />
-                <text x={x} y={y - R_MAN - 0.5} textAnchor="middle" fill="#fff" fillOpacity={0.88}
-                      fontSize={0.9} stroke="rgba(0,0,0,.8)" strokeWidth={0.24} paintOrder="stroke"
+                <text x={x} y={y - R_MAN - 0.42} textAnchor="middle" fill="#fff" fillOpacity={0.88}
+                      fontSize={0.74} stroke="rgba(0,0,0,.8)" strokeWidth={0.2} paintOrder="stroke"
                       style={{ pointerEvents: "none" }}>
                   {shortName(p.name)}
                 </text>
@@ -12230,8 +12250,8 @@ export default function App() {
         already resolving both sides' real strips a few hundred lines up -- home or away by fixture,
         with a clash detector that switches one side, and readableClr/ensureMaxLum keeping whatever
         it lands on legible. All of that was being computed and thrown away here. */}
-    {st && st.players.home.map((p, i) => dot(p, hClr, "h" + i))}
-    {st && st.players.away.map((p, i) => dot(p, aClr, "a" + i))}
+    {st && st.players.home.map((p, i) => dot(p, hPitchClr, "h" + i))}
+    {st && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i))}
     {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
         it sits in pitch coordinates and scales with the pitch for free, at any window size. The
         match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
@@ -12269,7 +12289,7 @@ export default function App() {
               if (A.xy[k] < -50 || B.xy[k] < -50) return null;
               return <circle key={"rp" + sd + i}
                              cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
-                             r={1.45} fill={sd ? aClr : hClr}
+                             r={1.45} fill={sd ? aPitchClr : hPitchClr}
                              stroke="rgba(0,0,0,.55)" strokeWidth={sw * 0.8} />;
             }))}
             <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={1.05}
@@ -12299,8 +12319,19 @@ export default function App() {
           // know about a second layout mode.
           if (m && meView !== "setup") {
             const brk = m.brk ? (m.brk.kind === "ft" ? "FULL TIME" : "HALF TIME") : null;
-            const venue = stripVenue(m.hT?.stadium || "") || "";
-            const venueNat = m.hT?.league === "Avium International" ? m.hT?.name : leagueNation(m.hT?.league)?.name;
+            // WHOSE GROUND IT IS, not whoever sits in the home slot. This read m.hT.stadium flat,
+            // so the Venue Selector was honoured by the engine -- meBuild sets st.venue and the
+            // home-advantage shape off it -- and then contradicted on screen by the one line the
+            // viewer actually reads. A tie played at the away side's ground, and every neutral
+            // final, named team one's stadium regardless.
+            // lmVenue() is the chain that already answers this correctly for the scoreboard and the
+            // overview: it reads the POSITIONAL engine's own state while a match is live, picks the
+            // host off homeAdv, and prefers an explicit venue over either club's ground.
+            const _v = lmVenue();
+            const venue = stripVenue(_v.stadium || "") || "";
+            const _vHost = m.s?.homeAdv === "away" ? m.aT : m.s?.homeAdv === "home" ? m.hT : null;
+            const venueNat = _vHost ? (_vHost.league === "Avium International"
+              ? _vHost.name : leagueNation(_vHost.league)?.name) : "";
             const tabBtn = (id, label) => (
               <button key={id} onClick={() => setMePanel(mePanel === id ? null : id)}
                 style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer",
@@ -12646,8 +12677,8 @@ export default function App() {
                                     textOverflow: "ellipsis" }}>{venue || "Neutral Venue"}</div>
                       <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 2, whiteSpace: "nowrap",
                                     overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {m.hT?.city && <CityLink name={m.hT.city} />}
-                        {m.hT?.city && venueNat ? " · " : ""}{venueNat || ""}</div>
+                        {_v.city && <CityLink name={_v.city} />}
+                        {_v.city && venueNat ? " · " : ""}{venueNat || ""}</div>
                     </div>
                   </div>
                   <div style={DIV} />
