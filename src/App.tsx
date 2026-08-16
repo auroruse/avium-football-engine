@@ -12549,6 +12549,7 @@ export default function App() {
                         // Every goal is drawn attacking left to right whichever way the side was
                         // really kicking, because a highlights reel that alternates ends is a
                         // highlights reel nobody can read.
+                        const SHOT_CLR = "#d8b45f";        // muted gold: the finish should read last, not shout
                         const goalCard = (c, gi) => {
                           const flip = meGoalX(c.side) < 52.5;
                           const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
@@ -12589,15 +12590,17 @@ export default function App() {
                           // finish still shows enough pitch to place it, and a common aspect, so a
                           // row of cards does not look like a row of different-shaped cards.
                           const allPts = [...path, [gx, gy]];
-                          const AR = 1.55, MINW = 54, MINH = 35, PAD = 7;
+                          const PXW = 110, PXH = 71;                    // the drawable envelope
+                          const AR = PXW / PXH, MINW = 54, MINH = MINW / (PXW / PXH), PAD = 7;
                           let x0 = Math.min(...allPts.map(q => q[0])) - PAD;
                           let x1 = Math.max(...allPts.map(q => q[0])) + PAD;
                           let y0 = Math.min(...allPts.map(q => q[1])) - PAD;
                           let y1 = Math.max(...allPts.map(q => q[1])) + PAD;
                           let vw = Math.max(x1 - x0, MINW), vh = Math.max(y1 - y0, MINH);
                           if (vw / vh < AR) vw = vh * AR; else vh = vw / AR;
-                          const PX0 = -2.5, PX1 = 107.5, PY0 = -1.5, PY1 = 69.5;
-                          vw = Math.min(vw, PX1 - PX0); vh = Math.min(vh, PY1 - PY0);
+                          const PX0 = -2.5, PX1 = PX0 + PXW, PY0 = -1.5, PY1 = PY0 + PXH;
+                          const cap = Math.min(1, PXW / vw, PXH / vh);   // shrink BOTH, never one
+                          vw *= cap; vh *= cap;
                           const vx = Math.max(PX0, Math.min(PX1 - vw, (x0 + x1) / 2 - vw / 2));
                           const vy = Math.max(PY0, Math.min(PY1 - vh, (y0 + y1) / 2 - vh / 2));
                           // Zoomed in, a user-unit stays the same size on screen but covers less
@@ -12622,7 +12625,7 @@ export default function App() {
                                 {Array.from({ length: 8 }, (_, i) => (
                                   <rect key={i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
                                         fill={i % 2 ? "#1b3823" : "#17311d"} />))}
-                                <g stroke="rgba(255,255,255,.34)" strokeWidth={0.3 * k} fill="none">
+                                <g stroke="rgba(255,255,255,.26)" strokeWidth={0.26 * k} fill="none">
                                   <rect x={0.6} y={0.6} width={103.8} height={66.8} />
                                   <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
                                   <circle cx={52.5} cy={34} r={9.15} />
@@ -12634,25 +12637,26 @@ export default function App() {
                                 {/* the build-up, segment by segment, then the finish over the top */}
                                 {path.slice(0, -1).map((q, i) => (strike >= 0 && i >= strike) ? null : (
                                   <line key={"s" + i} x1={q[0]} y1={q[1]} x2={path[i + 1][0]} y2={path[i + 1][1]}
-                                        stroke={clr} strokeOpacity={held[i] ? 0.95 : 0.7}
-                                        strokeWidth={(held[i] ? 0.85 : 0.45) * k}
-                                        strokeDasharray={held[i] ? `${1.5 * k} ${1.1 * k}` : undefined}
+                                        stroke={clr} strokeOpacity={held[i] ? 0.8 : 0.4}
+                                        strokeWidth={(held[i] ? 0.5 : 0.3) * k}
                                         strokeLinecap="round" />))}
                                 <polyline points={shotPts.map(q => q.join(",")).join(" ")} fill="none"
-                                          stroke="#ffd166" strokeWidth={1.1 * k} strokeLinecap="round"
-                                          strokeLinejoin="round" />
+                                          stroke={SHOT_CLR} strokeOpacity={0.85} strokeWidth={0.62 * k}
+                                          strokeLinecap="round" strokeLinejoin="round" />
                                 {path.length > 0 && (
-                                  <circle cx={path[0][0]} cy={path[0][1]} r={1 * k} fill="none"
-                                          stroke={clr} strokeOpacity={0.8} strokeWidth={0.4 * k} />)}
+                                  <circle cx={path[0][0]} cy={path[0][1]} r={0.75 * k} fill="none"
+                                          stroke={clr} strokeOpacity={0.5} strokeWidth={0.26 * k} />)}
                                 {pts.map((q, i) => (
-                                  <circle key={i} cx={q[0]} cy={q[1]} r={(i === pts.length - 1 ? 1.7 : 1.15) * k}
-                                          fill={clr} stroke="rgba(0,0,0,.6)" strokeWidth={0.25 * k} />))}
-                                <circle cx={gx} cy={gy} r={1.5 * k} fill="none" stroke="#ffd166" strokeWidth={0.5 * k} />
+                                  <circle key={i} cx={q[0]} cy={q[1]} r={(i === pts.length - 1 ? 1.15 : 0.8) * k}
+                                          fill={clr} fillOpacity={i === pts.length - 1 ? 1 : 0.75}
+                                          stroke="rgba(0,0,0,.5)" strokeWidth={0.18 * k} />))}
+                                <circle cx={gx} cy={gy} r={1.05 * k} fill="none" stroke={SHOT_CLR}
+                                        strokeOpacity={0.9} strokeWidth={0.34 * k} />
                                 {pts.map((q, i) => ch[i]?.name ? (
                                   <text key={"n" + i} x={Math.max(vx + 8 * k, Math.min(vx + vw - 8 * k, q[0]))}
                                         y={q[1] - 2.6 * k}
-                                        textAnchor="middle" fontSize={3.2 * k} fill="#fff" fillOpacity={0.92}
-                                        stroke="rgba(0,0,0,.85)" strokeWidth={0.75 * k} paintOrder="stroke">
+                                        textAnchor="middle" fontSize={2.7 * k} fill="#fff" fillOpacity={0.85}
+                                        stroke="rgba(0,0,0,.8)" strokeWidth={0.6 * k} paintOrder="stroke">
                                     {ch[i].name}</text>) : null)}
                               </svg>
                             </div>);
@@ -12845,12 +12849,11 @@ export default function App() {
                             <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: -4,
                                           marginBottom: 12, fontSize: 9.5, color: "var(--chrome-muted)",
                                           letterSpacing: ".05em", textTransform: "uppercase" }}>
-                              {[["Carry", HC, true], ["Pass", HC, false], ["Shot", "#ffd166", false]].map(([lb, cl, dash]) => (
+                              {[["Carry", HC, 2.1, 0.8], ["Pass", HC, 1.2, 0.4], ["Shot", SHOT_CLR, 2.6, 0.85]].map(([lb, cl, w, op]) => (
                                 <span key={lb} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <svg width={20} height={6} style={{ display: "block" }}>
-                                    <line x1={0} y1={3} x2={20} y2={3} stroke={cl}
-                                          strokeWidth={dash ? 2.2 : lb === "Shot" ? 2.6 : 1.3}
-                                          strokeDasharray={dash ? "3.5 2.5" : undefined} strokeLinecap="round" />
+                                    <line x1={0} y1={3} x2={20} y2={3} stroke={cl} strokeOpacity={op}
+                                          strokeWidth={w} strokeLinecap="round" />
                                   </svg>{lb}
                                 </span>))}
                             </div>
