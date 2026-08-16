@@ -12517,11 +12517,15 @@ export default function App() {
                         const pcH = Math.round(100 * out.poss.home / pt), pcA = 100 - pcH;
                         const HC = hPitchClr, AC = aPitchClr;
                         const num = (v) => (v == null ? 0 : v);
+                        // A rate, not a count: 0 attempts reads as 0 rather than as NaN%.
+                        const pctOf = (ok, tries) => tries ? Math.round(100 * (ok || 0) / tries) : 0;
                         // value | bar | LABEL | bar | value, the two bars growing away from the
                         // middle so the comparison is the shape rather than the arithmetic.
                         const bar = (label, h, a, dp) => {
                           h = num(h); a = num(a);
-                          const mx = Math.max(h, a, 1), f = (v) => dp ? v.toFixed(dp) : v;
+                          const pc = /%$/.test(label);
+                          const mx = pc ? 100 : Math.max(h, a, 1);
+                          const f = (v) => (dp ? v.toFixed(dp) : v) + (pc ? "%" : "");
                           const hi = h > a, ai = a > h;
                           const seg = (v, lead, clr, right) => (
                             <div style={{ flex: 1, display: "flex", justifyContent: right ? "flex-start" : "flex-end" }}>
@@ -12737,85 +12741,57 @@ export default function App() {
                         const clips = m.clips || [];
                         return (
                         <div style={{ maxWidth: 1560, margin: "0 auto" }}>
-                          {/* THE REPORT USES THE WIDTH IT HAS. Everything was stacked down a centre
-                              column with a 620px cap on the stats, which on a full-screen match view
-                              left most of the window empty either side. Scoreboard and stats share
-                              the top row, the two squads share the second, and the goals -- which
-                              want to be wide and are the last thing you look at -- have the bottom. */}
-                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                        gap: 40, alignItems: "start", marginBottom: 30 }}>
-
-                            {/* ── the scoreboard ─────────────────────────────────────────────
-                                Three columns on a fixed-height first row. The height is the point:
-                                the scorers hang UNDER that row rather than living inside the same
-                                block as the club name, so a side that scores four does not have its
-                                name shunted upward while the other side's stays put. */}
-                            <div>
-                              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
-                                            gap: 18, alignItems: "start" }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ height: 46, display: "flex", alignItems: "center",
-                                                justifyContent: "flex-end", gap: 11, minWidth: 0 }}>
-                                    <span style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap",
-                                                   overflow: "hidden", textOverflow: "ellipsis" }}>{m.hT?.name}</span>
-                                    <TeamCrest team={m.hT} size={40} />
-                                  </div>
-                                  {scorerList("home", "right")}
-                                </div>
-                                <div style={{ textAlign: "center", flexShrink: 0 }}>
-                                  <div style={{ height: 46, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: ".04em", ...mono }}>
-                                      {out.goals.home}&ndash;{out.goals.away}</span>
-                                  </div>
-                                  <div style={{ fontSize: 9.5, letterSpacing: ".18em", color: "var(--chrome-muted)" }}>
-                                    {m.ftDone ? "FULL TIME" : `${minute}'`}</div>
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ height: 46, display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
-                                    <TeamCrest team={m.aT} size={40} />
-                                    <span style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap",
-                                                   overflow: "hidden", textOverflow: "ellipsis" }}>{m.aT?.name}</span>
-                                  </div>
-                                  {scorerList("away", "left")}
-                                </div>
-                              </div>
-                              <div style={{ marginTop: 18, fontSize: 10.5, color: "var(--chrome-muted)",
-                                            textAlign: "center", lineHeight: 1.9 }}>
-                                <div>{out.passes} passes at {out.passes ? Math.round(100 * out.passOk / out.passes) : 0}% &middot; {out.carries} carries &middot; {out.clears} clearances</div>
-                                <div>
-                                  {out.tackleTry ? `${out.tackleWon || 0} tackles won of ${out.tackleTry}` : ""}
-                                  {out.tackleTry && out.blocked ? " · " : ""}
-                                  {out.blocked ? `${out.blocked} shots blocked` : ""}
-                                  {(out.tackleTry || out.blocked) && out.woodwork ? " · " : ""}
-                                  {out.woodwork ? `${out.woodwork} off the woodwork` : ""}
-                                </div>
-                              </div>
+                          {/* THE SCOREBOARD IS GONE FROM HERE. It restated the crests, the clubs
+                              and the score -- all three of which are already across the top of the
+                              screen in the scorebug that never leaves -- and it cost the stats half
+                              the width to do it. Who scored moved to the match feed in the sidebar,
+                              which condenses to goals and red cards the moment the whistle goes.
+                              So the numbers get the whole width, in two groups: what each side did
+                              with the ball, and what it did without it. */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
+                            <TeamCrest team={m.hT} size={22} />
+                            <span style={{ fontSize: 13, fontWeight: 700, color: HC }}>{m.hT?.name}</span>
+                            <div style={{ flex: 1, display: "flex", height: 7, borderRadius: 4, overflow: "hidden" }}>
+                              <div style={{ width: `${pcH}%`, background: HC }} />
+                              <div style={{ width: `${pcA}%`, background: AC }} />
                             </div>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: AC }}>{m.aT?.name}</span>
+                            <TeamCrest team={m.aT} size={22} />
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11,
+                                        ...mono, marginBottom: 22 }}>
+                            <span style={{ color: HC, fontWeight: 700 }}>{pcH}%</span>
+                            <span style={{ fontSize: 9.5, letterSpacing: ".18em", color: "var(--chrome-muted)",
+                                           textTransform: "uppercase", ...ui }}>Possession</span>
+                            <span style={{ color: AC, fontWeight: 700 }}>{pcA}%</span>
+                          </div>
 
-                            {/* ── the numbers ────────────────────────────────────────────────── */}
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                                        gap: 46, alignItems: "start", marginBottom: 30 }}>
                             <div>
-                              {sect("Match Stats")}
-                              <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 0 6px" }}>
-                                <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12, fontWeight: 700,
-                                               color: pcH >= pcA ? HC : "var(--chrome-muted)" }}>{pcH}%</span>
-                                <div style={{ flex: 1, display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
-                                  <div style={{ width: `${pcH}%`, background: HC }} />
-                                  <div style={{ width: `${pcA}%`, background: AC }} />
-                                </div>
-                                <span style={{ width: 46, ...mono, fontSize: 12, fontWeight: 700,
-                                               color: pcA > pcH ? AC : "var(--chrome-muted)" }}>{pcA}%</span>
-                              </div>
-                              <div style={{ textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
-                                            textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>Possession</div>
+                              {sect("With The Ball")}
                               {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
                               {bar("Shots", out.shots.home, out.shots.away)}
                               {bar("On target", out.onTarget.home, out.onTarget.away)}
-                              {bar("Saves", out.saves.home, out.saves.away)}
+                              {bar("Woodwork", out.woodworkSide?.home, out.woodworkSide?.away)}
                               {bar("Corners", out.corners.home, out.corners.away)}
+                              {bar("Passes", out.passSide?.home, out.passSide?.away)}
+                              {bar("Pass %", pctOf(out.passOkSide?.home, out.passSide?.home),
+                                            pctOf(out.passOkSide?.away, out.passSide?.away))}
+                              {bar("Carries", out.carriesSide?.home, out.carriesSide?.away)}
+                              {bar("Offsides", out.offside?.home, out.offside?.away)}
+                            </div>
+                            <div>
+                              {sect("Without It")}
+                              {bar("Saves", out.saves.home, out.saves.away)}
+                              {bar("Blocks", out.blockedSide?.home, out.blockedSide?.away)}
+                              {bar("Clearances", out.clearsSide?.home, out.clearsSide?.away)}
+                              {bar("Tackles won", out.tackleWonSide?.home, out.tackleWonSide?.away)}
+                              {bar("Tackle %", pctOf(out.tackleWonSide?.home, out.tackleTrySide?.home),
+                                               pctOf(out.tackleWonSide?.away, out.tackleTrySide?.away))}
                               {bar("Fouls", out.fouls.home, out.fouls.away)}
-                              {out.offside && bar("Offsides", out.offside.home, out.offside.away)}
-                              {out.yellows && bar("Yellows", out.yellows.home, out.yellows.away)}
-                              {out.reds && bar("Reds", out.reds.home, out.reds.away)}
+                              {bar("Yellows", out.yellows?.home, out.yellows?.away)}
+                              {bar("Reds", out.reds?.home, out.reds?.away)}
                             </div>
                           </div>
 
@@ -12990,10 +12966,19 @@ export default function App() {
                   {/* The feed is the only thing here that grows, so it takes the slack and everything
                       else keeps its natural height. out.feed is unshifted, newest first. */}
                   <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 15px" }}>
-                    {!(out.feed || []).length && (
-                      <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
-                        Nothing yet.</div>)}
-                    {(out.feed || []).map((f, i) => (
+                    {/* AT FULL TIME THE FEED BECOMES A SUMMARY. During a match you want the running
+                        commentary; afterwards you want the three things that decided it, and sixty
+                        lines of "so-and-so wins it off so-and-so" buries them. Goals and red cards
+                        only once the whistle has gone -- which is also where the match report gets
+                        its who-scored from, now that the scoreboard has left the stats panel. */}
+                    {(() => {
+                      const all = out.feed || [];
+                      const shown = m.ftDone ? all.filter(f => f.k === "goal" || f.k === "red") : all;
+                      return (<>
+                        {!shown.length && (
+                          <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>
+                            {m.ftDone ? "No goals." : "Nothing yet."}</div>)}
+                        {shown.map((f, i) => (
                       <div key={i} style={{ ...mono, display: "flex", gap: 9, padding: "5px 0", fontSize: 10,
                                             lineHeight: 1.45, borderBottom: "1px solid var(--chrome-border-33)" }}>
                         <span style={{ fontSize: 9, fontWeight: 700, width: 26, flexShrink: 0,
@@ -13001,6 +12986,8 @@ export default function App() {
                         <span style={{ minWidth: 0, color: f.k === "goal" ? "var(--ui-ok)" : "var(--chrome-muted)",
                                        fontWeight: f.k === "goal" ? 700 : 400 }}>{feedRich(f.txt)}</span>
                       </div>))}
+                      </>);
+                    })()}
                   </div>
                   <div style={DIV} />
 

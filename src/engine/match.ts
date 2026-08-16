@@ -725,7 +725,7 @@ export function meTackle(s, rng, out) {
     const go = CFG.tkGo - (a.tackle - 60) / 99 * CFG.tkGoSkill
                         - (s.strategy?.[def]?.tackling || 0) * CFG.tkGoInstr;
     if (angle < go) continue;
-    out.tackleTry = (out.tackleTry || 0) + 1;
+    out.tackleTry = (out.tackleTry || 0) + 1; meBump(out, "tackleTrySide", def);
     p._tkCool = CFG.tkCool;
     const win = rng.u() < Math.min(0.92, Math.max(0.05,
       CFG.tkBase + angle * CFG.tkAngleW + (a.tackle - meAttrs(c).pace) / 99 * CFG.tkSkillW));
@@ -734,7 +734,8 @@ export function meTackle(s, rng, out) {
       // the app print saves under the word tackles. Kept for compatibility, but the honest count of
       // tackles WON is its own field.
       out.tackles++; meBump(out, "tacklesSide", meSideOfP(s, p));
-      out.tackleWon = (out.tackleWon || 0) + 1; meRate(p, CFG.rateTackle);
+      out.tackleWon = (out.tackleWon || 0) + 1; meBump(out, "tackleWonSide", def);
+      meRate(p, CFG.rateTackle);
       meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
     } else {
@@ -1134,7 +1135,7 @@ export function meTick(s, rng, out) {
       }
       if (cross.kind === "woodwork") {
         // Off the frame and back into play: a live ball, not a stoppage.
-        out.woodwork = (out.woodwork || 0) + 1;
+        out.woodwork = (out.woodwork || 0) + 1; meBump(out, "woodworkSide", scorer);
         meEvt(out, "block", scorer, mp.bx, mp.by, mp.bx, mp.by, sh ? `${sh.full || sh.name} hits the frame` : "Off the woodwork");
         mp.bvx = -mp.bvx * 0.55; mp.bvy = mp.bvy * 0.55 + (rng.u() - 0.5) * 3; mp.bvz = Math.abs(mp.bvz) * 0.4 + 1;
         mp.bx += mp.bvx * 0.05;
@@ -1492,6 +1493,7 @@ export function meTick(s, rng, out) {
         if (v2d > CFG.controlV + meTech(qa.pass) * CFG.controlVSkill) {
           // A deflection. If a shot was live, that was a block.
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
+            meBump(out, "blockedSide", bs);
             meRate(q, CFG.rateBlock);
             meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
             // Same rule as a parry: a shot that goes in off a DEFENDER is a deflected goal for the
@@ -1513,7 +1515,7 @@ export function meTick(s, rng, out) {
         // drawn from that number, including three rounds of work on defensive positioning that was
         // not actually broken, was drawn from a stat that was undercounting by four times.
         if (mp.shot && bs !== mp.shot.side) {
-          out.blocked = (out.blocked || 0) + 1;
+          out.blocked = (out.blocked || 0) + 1; meBump(out, "blockedSide", bs);
           meRate(q, CFG.rateBlock);
           meEvt(out, "block", mp.shot.side, mp.bx, mp.by, mp.bx, mp.by, `${q.fullName || q.name} blocks it`);
           mp.deflect = { side: mp.shot.side, t: mp.tick,
