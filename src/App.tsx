@@ -1164,16 +1164,13 @@ function applyStyleFit(mod, fit) {
   const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
   return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
 }
-// TOURNAMENTS ARE OFF until the positional engine drives them. Every tournament result still comes
-// from the abstract instant-sim -- simInstantMatch, at four call sites in tScorinate/tScorinateKO
-// and the two-leg helpers -- so a tournament and a Live Match were being scored by two different
-// games with different balance, different instructions and different physics. Leaving both on is
-// worse than turning one off.
-// It is not a flag flip to bring back. Measured, one positional match takes 1.46 s: a 20-team double
-// round robin is 380 matches and 9.3 minutes of blocked UI, and a 1000-run Monte Carlo of a single
-// six-match group is 146 minutes. Tournaments need the positional engine off the main thread --
-// workers, or a coarse mode for bulk rounds with the full engine reserved for watched matches --
-// before this comes back. Flip this to true once that exists.
+// TOURNAMENTS RUN THE POSITIONAL ENGINE. Every fixture goes through simPositionalMatch -- the four
+// scoring call sites in tScorinate/tScorinateKO and the two-leg helpers, and Play Live, which builds
+// the same match on screen through meBuild rather than off-thread. One game, one set of physics.
+// The cost is real and unfixed: a positional match takes about 1.46 s, so a 20-team double round
+// robin is 380 matches and better than nine minutes of blocked interface. Sim All on a full league
+// season is a coffee. What would fix it is the engine off the main thread, or a coarse mode for
+// bulk rounds with the full one kept for watched matches; neither exists yet.
 const TOURNAMENTS_ENABLED = true;
 const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 const STRAT_LABELS = {
@@ -5883,10 +5880,6 @@ export default function App() {
   // Whether this fixture is allowed to end level. A league match is; a knockout is not, and that is
   // the only thing extra time and a shootout are conditional on. The tournament will set this per
   // fixture when the engine is hooked up; in the lab it is a toggle.
-  // THE OLD ENGINE, still here. Tournament fixtures run the abstract simulation, so it cannot go
-  // until they are wired to the positional one -- but it no longer deserves a tab of its own. It
-  // opens over the top from Utilities, and from the tournament's own Play Live.
-  const [absim, setAbsim] = useState(false);
   const [mePanel, setMePanel] = useState(null);      // null = watch the pitch; "stats" | "subs" | "tactics"
   // QUEUED, NOT IMMEDIATE. A substitution or a tactical change is made at the next dead ball, the
   // way a real one is -- meAutoSubs already drains at mp.sp.t === 1 and these go through the same
@@ -5896,6 +5889,10 @@ export default function App() {
   const mePending = useRef({ subs: [], strategy: {} });
   const meSubPick = useRef(null);        // the man taken off, waiting for his replacement
   const meRef = useRef(null), meTimer = useRef(null);
+  // A TOURNAMENT FIXTURE'S CONTEXT, handed from the tournament tab to the match. Who was
+  // available after suspensions and injuries, what the tie is worth, which ground, what leg
+  // one finished. Null for a friendly kicked off from the setup screen.
+  const meTourn = useRef(null);
 
   // The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
   // players synthesised at the team's own rating so an unfilled preset is still testable.
@@ -6368,33 +6365,52 @@ export default function App() {
   );
 
 
+  // A tournament fixture brings its own team sheet: suspensions, injuries and carried stamina
+  // decided the eleven before this screen opened. Rewrapped as a squad so meSide and meBench read
+  // it exactly as they read a club's own -- meSide would otherwise put a banned man straight back
+  // in, since it just takes the first eleven who are not flagged bench.
+  const meTeamFor = (t, sq) => sq
+    ? { ...t, squad: [...sq.starters.map(p => ({ ...p, bench: false })),
+                      ...sq.bench.map(p => ({ ...p, bench: true }))] }
+    : t;
   const meBuild = () => {
-    const hT = teamById(lmH) || teams[0], aT = teamById(lmA) || teams[1];
+    const tn = meTourn.current;
+    const hT = teamById(tn?.hId ?? lmH) || teams[0], aT = teamById(tn?.aId ?? lmA) || teams[1];
     if (!hT || !aT) return null;
+    const hTm = meTeamFor(hT, tn?.squads?.home), aTm = meTeamFor(aT, tn?.squads?.away);
     const st = createMatchState();
-    st.players.home = meSide(hT); st.players.away = meSide(aT);
+    st.players.home = meSide(hTm); st.players.away = meSide(aTm);
     // A BENCH, or meSub has nobody to bring on. meSide keeps the eleven and drops everyone else, so
     // until now a match built here had s.bench empty and substitution was impossible -- meAutoSubs
     // included, which is why it has never once fired in this tab.
-    st.bench = { home: meBench(hT), away: meBench(aT) };
+    st.bench = { home: meBench(hTm), away: meBench(aTm) };
     // subCap is what subLimit reads, and it is set from the bench each side actually named -- an
     // eleven-man bench is an international squad and plays to five, everything else keeps three.
     st.subCap = { home: subCapFor(st.bench.home), away: subCapFor(st.bench.away) };
     st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
-    st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+    // STYLE, WHICH THIS BUILDER NEVER SET. createMatchState defaults both sides to balanced, and
+    // the engine reads s.styles in two places that matter -- Control Possession's passing patterns
+    // and how hard a side chases the game -- so every match kicked off from this tab was played by
+    // two balanced teams whatever their preset said. The tournament's own instant sim has always
+    // passed it, which is exactly the pair of engines disagreeing about one fixture.
+    st.styles = { home: hT.style || "balanced", away: aT.style || "balanced" };
+    // Squad fit off the eleven that is actually available, the way the instant sim computes it: a
+    // system suits the players you can pick, not the ones serving a ban.
+    st.strategy = { home: meStrategyFor(hTm), away: meStrategyFor(aTm) };
     // THE VENUE AND THE STAKES, which this builder never carried. Everything above is about the two
     // squads; these three are about the match, and without them the ground you pick on the setup
     // screen did nothing at all to a live match. The values were being computed and written onto
     // lmMatch, which is the ABSTRACT engine's state object -- a different thing from the st the
     // positional engine actually runs on, so they were set and then never read by anybody.
-    st.homeAdv = lmHomeAdv || null;
+    st.homeAdv = tn ? (tn.homeAdv || null) : (lmHomeAdv || null);
     // Two sources, because there are two ways in. The Venue Selector on the Live Match tab writes
     // lmNeutralVenueName/Loc; the tournament's Play Live writes the venue onto lmMatch instead. This
     // builder was reading neither, so a positional match had no venue at all.
-    st.venue = (lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()))
+    st.venue = tn ? (tn.venue || null)
+      : (lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()))
       ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() }
       : (lmMatch?.venue || null);
-    st.matchUrg = lmMatch?.matchUrg || { home: 0, away: 0 };
+    st.matchUrg = tn ? tn.matchUrg : (lmMatch?.matchUrg || { home: 0, away: 0 });
     st.teamForm = lmMatch?.teamForm || { home: 0, away: 0 };
     st.possession = "home";
     // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
@@ -6409,10 +6425,50 @@ export default function App() {
     // in-match "Must Have A Winner" button -- so the checkbox you ticked before kick-off governed
     // one engine and silently did nothing to the other. It governs both now; the button stays as an
     // in-match override for a tie you decide to settle after the fact.
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: lmForce,
+    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: tn ? tn.needWin : lmForce,
+             tourn: tn,
              // the replay tape, the goals cut from it, and the one playing right now
              tape: [], clips: [], cel: null, gH: 0, gA: 0 };
   };
+  // Whether this match is still a draw. Aggregate for a two-legged tie, the scoreline for
+  // everything else, and away goals settle a level aggregate where the competition uses them --
+  // agg[0] is this home side's goals from leg one, which for the visitors is their away tally.
+  const meLevel = (m) => {
+    const g = m.out.goals, tn = m.tourn;
+    if (!tn?.agg) return g.home === g.away;
+    if (g.home + tn.agg[0] !== g.away + tn.agg[1]) return false;
+    return !(tn.awayGoalsRule && g.away !== tn.agg[0]);
+  };
+
+  // THE RESULT GOES BACK TO THE TOURNAMENT. importLiveToMatch is what writes a scoreline into the
+  // group table or the bracket, banks every man's match and folds in the suspensions -- it took
+  // the abstract engine's result shape, so this is that shape built from the positional match.
+  // The result is passed in rather than left to setLastLiveResult, which would not have landed
+  // by the time the import reads it.
+  const meReport = (m) => {
+    const tn = m.tourn; if (!tn?.target) return;
+    const men = (side) => [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])]
+      .filter(Boolean).map(p => ({
+        name: p.name, pos: p.pos,
+        // BASE RATING, not the live one. A man is not a worse player at full time for having run
+        // ninety minutes, and the tournament's tables are read as who these players are.
+        ovr: Math.round(p.ovr0 ?? p.ovr ?? 70),
+        goals: p.goals || 0, assists: p.assists || 0,
+        rating: +(p.rating ?? 6.5).toFixed(1),
+        yc: p.yc || 0, rc: p.rc ? 1 : 0, inj: p.inj ? 1 : 0,
+        passOk: p.passOk || 0, defActs: p.defActs || 0, saves: p.saves || 0,
+        stamina: p.stamina,
+        // _onAt is stamped only on a man who came on, so it answers "did he start" for the live
+        // array and the subbed-off array at once.
+        sub: p._onAt !== undefined,
+      }));
+    importLiveToMatch(tn.target, {
+      homeScore: m.out.goals.home, awayScore: m.out.goals.away,
+      homePlayers: men("home"), awayPlayers: men("away"),
+      penalties: m.pens ? { homeScore: m.pens.home ?? 0, awayScore: m.pens.away ?? 0 } : null,
+    });
+  };
+
   const meCelebrate = (m, side) => {
     const frames = m.tape.slice(meClipFrom(m.tape, side));
     if (frames.length < 2) return;
@@ -6552,7 +6608,10 @@ export default function App() {
     // toward par by the minutes he actually played and applies the positional par itself. Without
     // this call the numbers are the un-normalised running total and forwards sit half a point clear.
     if (m.t >= end && !m.ftDone) {
-      const level = m.out.goals.home === m.out.goals.away;
+      // LEVEL ON AGGREGATE, not level tonight. A second leg carries the first one's goals, so a
+      // 1-0 that makes it 2-2 over the tie is a draw and a 1-0 that makes it 2-1 is not -- and if
+      // the competition counts away goals, a tie level on aggregate can still already be settled.
+      const level = meLevel(m);
       // A fixture that must produce a winner goes to extra time, and then to kicks. Everything else
       // is allowed to be a draw, which is most football.
       if (m.needWin && level && !m.et) {
@@ -6562,6 +6621,9 @@ export default function App() {
         // stopped the moment it cannot be caught -- so there is nothing to tick here.
         if (m.needWin && level) m.pens = meShootout(m.s, m.rng, m.out, 40);
         m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
+        // meFinalise first: the tournament stores each man's rating and the running total is not
+        // one until it has been normalised for minutes played and for what his position is worth.
+        if (m.tourn) meReport(m);
         setMeView("post"); setMePanel("stats");
       }
     }
@@ -7212,9 +7274,9 @@ export default function App() {
   }, [lmPhase]);
 
   // Import live result into a tournament match
-  const importLiveToMatch = (target) => {
-    if (!lastLiveResult) return;
-    const lr = lastLiveResult;
+  const importLiveToMatch = (target, result) => {
+    const lr = result || lastLiveResult;
+    if (!lr) return;
     const hg = lr.homeScore, ag = lr.awayScore;
     const isFlipped = target.flipped;
     const hPlayers = isFlipped ? lr.awayPlayers : lr.homePlayers;
@@ -7228,7 +7290,7 @@ export default function App() {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, chances: p.chances||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, passOk: p.passOk||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
       });
       return entries;
     };
@@ -7279,7 +7341,7 @@ export default function App() {
       const buildDiffs = (entries) => {
         const diffs = {};
         for (const [k, v] of Object.entries(entries)) {
-          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,chances:v.chances||0,defActs:v.defActs||0,saves:v.saves||0};
+          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,defActs:v.defActs||0,saves:v.saves||0};
           if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
           if (v.inj) { const sev = v.injSev ? INJ_SEV.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
@@ -7294,7 +7356,7 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, chances:0, defActs:0, saves:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, defActs:0, saves:0 };
           const d = homeDiffs[k] || awayDiffs[k];
           next[k].goals += d.goals;
           next[k].assists += d.assists;
@@ -7304,7 +7366,7 @@ export default function App() {
           if (d.matches || d.subApp) next[k].form = playerFormFrom(next[k].form, d.totalRating / Math.max(1, d.matches + d.subApp));
           const prevYc = next[k].yellows||0;
           next[k].yellows += d.yellows;
-          next[k].chances = (next[k].chances||0) + d.chances;
+          next[k].passOk = (next[k].passOk||0) + d.passOk;
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
           // Fold into d.suspended itself (not a separate addend on next[k]) so the stored
@@ -7448,7 +7510,13 @@ export default function App() {
     setLmA(vc.isL2 ? teams[vc.hi].id : teams[vc.ai].id);
     setLmForce(tForceResult(target)); setLm2ndLeg(vc.isL2); setLmStartScore(tStartScore(vc));
     setTPendingPlayLive(target);
-    setAbsim(true);
+    // setAbsim(true) set a flag whose only reader -- the abstract engine's overlay -- was
+    // deleted, so this button did nothing at all. A fixture opens the positional Live Match
+    // on its setup screen with the tie locked; Start Match calls tConfirmPlayLive, which is
+    // what commits the tournament's own context to the engine.
+    meStop(); meRef.current = null; meTourn.current = null;
+    setMeView("setup"); setMePanel(null); setMeFrame(f => f + 1);
+    setTab("live");
   };
 
   const tConfirmPlayLive = (target) => {
@@ -7510,41 +7578,37 @@ export default function App() {
     const aCtx = { stakes: isL2 ? homeStakes : awayStakes, ourSkill: aSkill, oppSkill: hSkill, nextOppSkill: isL2 ? homeNextOpp : awayNextOpp, horizon: isL2 ? homeHor : awayHor, totalGames: liveTotal, isKnockout: liveIsKO, isFinal: liveIsFinal, isThirdPlace: liveIsTP, isLastGroupGame: isL2 ? liveRemH === 0 : liveRemA === 0, remainingGames: isL2 ? liveRemH : liveRemA };
     const hSquad = buildLiveSquad(teamById(liveHId).name, liveHId, hCtx);
     const aSquad = buildLiveSquad(teamById(liveAId).name, liveAId, aCtx);
-    const _tsk = tConfig.testMode ? TEST_SKILL : null;
-    // One shift per team, over starters and bench together, so a substitute keeps their standing
-    // relative to the player they come on for. Passed in rather than closed over: mapP/mapB serve
-    // both sides, and each side has its own mean.
+    // TEST MODE shifts every rating toward the team's own skill, one shift per side over starters
+    // and bench together so a substitute keeps his standing relative to the man he replaces. Baked
+    // into the squad here rather than carried as a function, because what goes downstream is a
+    // team sheet and nothing else.
     const shiftFor = (sq, id) => tConfig.testMode ? testOvrShift([...sq.starters, ...sq.bench], teamById(id).skill) : (p) => p.ovr;
-    const hOvr = shiftFor(hSquad, liveHId), aOvr = shiftFor(aSquad, liveAId);
-    const mapP = (ovrOf) => (p) => ({name:p.name,pos:p.pos,ovr:ovrOf(p),rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-    const mapB = (ovrOf) => (p) => ({name:p.name,pos:p.pos,ovr:ovrOf(p),rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0});
+    const shiftSq = (sq, f) => ({ ...sq, starters: sq.starters.map(p => ({ ...p, ovr: f(p) })),
+                                         bench: sq.bench.map(p => ({ ...p, ovr: f(p) })) });
 
-    lmRng.current = new RNG(Date.now());
-    const init = createMatchState();
-    init.forceResult = forceResult;
-    init.testMode = !!tConfig.testMode;
-    init.teamSkill = { home: _tsk ?? teamById(liveHId).skill, away: _tsk ?? teamById(liveAId).skill };
-    init.styles = { home: teamById(liveHId).style || "balanced", away: teamById(liveAId).style || "balanced" };
-    init.formations = { home: teamById(liveHId).formation || "4-3-3", away: teamById(liveAId).formation || "4-3-3" };
-    initMatchEnhancements(init);
-    init.allowTacChange = {home:true, away:true};
-    init.autoSubs = {home:true, away:true};
-    init.homeAdv = homeAdv;
-    init.venue = venue;
-    init.strategy = { home: { ...STRAT_DEF, ...(teamById(liveHId).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(liveAId).strategy || {}) } };
-    init.score = [0, 0];
-    init.startScore = startScore;
-    init.isSecondLeg = isL2;
-    init.players = { home: hSquad.starters.map(mapP(hOvr)), away: aSquad.starters.map(mapP(aOvr)) };
-    init.bench = { home: hSquad.bench.map(mapB(hOvr)), away: aSquad.bench.map(mapB(aOvr)) };
-    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
-    init.matchUrg = { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 };
-    ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
+    // THE POSITIONAL ENGINE RUNS THE FIXTURE. Everything above is the tournament's context -- who
+    // is banned, who is carrying a knock, what the tie is worth, which ground -- and it used to be
+    // packed into an abstract-engine state object that nothing renders any more. It goes here
+    // instead, and meBuild reads it at kick-off.
+    meTourn.current = {
+      target: { ...target, flipped: isL2 },
+      hId: liveHId, aId: liveAId,
+      squads: { home: shiftSq(hSquad, shiftFor(hSquad, liveHId)),
+                away: shiftSq(aSquad, shiftFor(aSquad, liveAId)) },
+      venue, homeAdv, needWin: forceResult,
+      // Leg one's goals, already turned round for this leg's home side. A tie is level on
+      // AGGREGATE rather than on the ninety minutes in front of you, and that -- not this
+      // scoreline -- is what sends a match to extra time and to kicks.
+      agg: isL2 ? [startScore[0] || 0, startScore[1] || 0] : null,
+      awayGoalsRule: !!tConfig.koAwayGoals,
+      matchUrg: { home: hSquad.matchIntensity ?? 0, away: aSquad.matchIntensity ?? 0 },
+    };
 
     setLmH(liveHId); setLmA(liveAId);
     setLmForce(forceResult); setLmStartScore(startScore); setLmHomeAdv(homeAdv); setLm2ndLeg(isL2);
-    setTLiveTarget({...target, flipped: isL2});
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setTPendingPlayLive(null); setChanceStep({}); setAbsim(true);
+    setTLiveTarget({ ...target, flipped: isL2 });
+    setTPendingPlayLive(null);
+    setMeView("prematch"); setMePanel(null); setMeFrame(f => f + 1);
   };
 
   // Auto-save tournament state to persistent storage
@@ -8219,13 +8283,13 @@ export default function App() {
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
-        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,chances:0,defActs:0,saves:0});
+        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,defActs:0,saves:0});
         if (p.sub === 'on') d.subApp++; else d.matches++;
         d.goals += p.goals || 0;
         d.assists += p.assists || 0;
         d.totalRating += p.rating || 6.5;
         d.yellows += p.yc || 0;
-        d.chances += p.chances || 0;
+        d.passOk += p.passOk || 0;
         d.defActs += p.defActs || 0;
         d.saves += p.saves || 0;
         if (p.rc) { d.reds++; if (tConfig.suspensions !== false) d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
@@ -8234,7 +8298,7 @@ export default function App() {
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:p.ovr,goals:0,assists:0,matches:0,subApp:0,totalRating:0,chances:0,defActs:0,saves:0});
+        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,totalRating:0,passOk:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
@@ -8254,7 +8318,7 @@ export default function App() {
           next[k].reds = (next[k].reds||0) + d.reds;
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
-          next[k].chances = (next[k].chances||0) + d.chances;
+          next[k].passOk = (next[k].passOk||0) + d.passOk;
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
         }
@@ -8290,7 +8354,7 @@ export default function App() {
     const merged = {};
     diffsSets.filter(Boolean).forEach(diffs => {
       for (const [k, d] of Object.entries(diffs)) {
-        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,chances:0,defActs:0,saves:0});
+        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,defActs:0,saves:0});
         for (const f of Object.keys(m)) m[f] += d[f] || 0;
       }
     });
@@ -8309,7 +8373,7 @@ export default function App() {
         next[k].reds = Math.max(0, (next[k].reds||0) - d.reds);
         next[k].suspended = Math.max(0, (next[k].suspended||0) - d.suspended);
         next[k].injOut = Math.max(0, (next[k].injOut||0) - d.injOut);
-        next[k].chances = Math.max(0, (next[k].chances||0) - d.chances);
+        next[k].passOk = Math.max(0, (next[k].passOk||0) - d.passOk);
         next[k].defActs = Math.max(0, (next[k].defActs||0) - d.defActs);
         next[k].saves = Math.max(0, (next[k].saves||0) - d.saves);
       }
@@ -9051,24 +9115,24 @@ export default function App() {
                     })}
                     </tbody></table>
                   </div>
-                  {/* Chances Created */}
+                  {/* Passes completed */}
                   <div style={{ minWidth: 0 }}>
-                    <div onClick={() => setTLeaderboard("chances")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <div onClick={() => setTLeaderboard("passOk")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>PASSES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>p.passOk>0).sort((a,b)=>b.passOk-a.passOk||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
                         <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                         <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.chances}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.passOk}</td>
                       </tr>
                     ))}
                     </tbody></table>
                   </div>
-                  {/* Defensive Actions */}
+                  {/* Tackles won plus clearances -- what the engine resolves per man */}
                   <div style={{ minWidth: 0 }}>
-                    <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TACKLES + CLEARANCES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                     {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
@@ -9154,7 +9218,7 @@ export default function App() {
                 })()}
               </div>
             {tLeaderboard && (() => {
-              const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "chances" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
+              const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "passOk" ? "PASSES COMPLETED" : tLeaderboard === "defActs" ? "TACKLES + CLEARANCES" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
               const all = Object.values(tPlayerStats);
               const tApp = p => p.matches + (p.subApp||0);
               // Stats recorded before fullName was kept fall back to the team's own squad. Matching
@@ -9168,8 +9232,8 @@ export default function App() {
                 ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
                 : tLeaderboard === "assists"
                 ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
-                : tLeaderboard === "chances"
-                ? all.filter(p=>p.chances>0).sort((a,b)=>b.chances-a.chances||(tApp(a)-tApp(b)))
+                : tLeaderboard === "passOk"
+                ? all.filter(p=>p.passOk>0).sort((a,b)=>b.passOk-a.passOk||(tApp(a)-tApp(b)))
                 : tLeaderboard === "defActs"
                 ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
                 : tLeaderboard === "saves"
@@ -9187,7 +9251,7 @@ export default function App() {
                       {sorted.map((p, i) => {
                         const ap = p.matches + (p.subApp||0);
                         const avg = ap ? (p.totalRating/ap) : 0;
-                        const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "chances" ? p.chances : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
+                        const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "passOk" ? p.passOk : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
                         return (
                           <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
                             <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
@@ -12061,8 +12125,8 @@ export default function App() {
               The CODE stays. simInstantMatch is what .claude/skills/avium-tactics/scripts/lib.mjs
               runs full double round-robin seasons through, and it is the only thing in the project
               that can score a season in less than the nine minutes the positional engine needs. The
-              `absim` overlay is unreachable dead UI now -- safe to delete, not worth the risk of
-              doing it blind. */}
+              overlay and the `absim` flag that gated it are both gone -- nothing in the app can
+              reach the abstract simulation any more. */}
           <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -12505,6 +12569,10 @@ export default function App() {
                     {!m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
                                                       letterSpacing: ".16em", opacity: 0.75 }}>
                       {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
+                    {/* A second leg is not played against the scoreline in front of you. */}
+                    {m.tourn?.agg && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
+                                                   letterSpacing: ".14em", opacity: 0.75 }}>
+                      AGG {out.goals.home + m.tourn.agg[0]}&ndash;{out.goals.away + m.tourn.agg[1]}</div>}
                   </div>
                   {sbSide(m.aT, "away")}
                 </div>
@@ -12523,9 +12591,9 @@ export default function App() {
                         // is read afterwards and it gets screenshotted, so it stacks: what happened,
                         // then how the goals were scored, then the numbers, then the people.
                         // The columns are NOT copied wholesale either. The abstract screen carried C
-                        // (chances) and D (defensive actions); the positional engine populates
-                        // neither, and a column of zeroes is worse than no column. What it does know
-                        // that the old one never did is stamina, so that takes the slot.
+                        // (chances created), which needs a key-pass model this engine does not have,
+                        // and a column of zeroes is worse than no column. What it does know that the
+                        // old one never did is stamina, so that takes the slot.
                         const pt = (out.poss.home + out.poss.away) || 1;
                         const pcH = Math.round(100 * out.poss.home / pt), pcA = 100 - pcH;
                         const HC = hPitchClr, AC = aPitchClr;
@@ -13262,9 +13330,12 @@ export default function App() {
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignItems: "start",
                               gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 20, padding: 20 }}>
-                  {[[hT, "HOME"], [aT, "AWAY"]].map(([t, label], k) => {
+                  {[[hT, "HOME", "home"], [aT, "AWAY", "away"]].map(([t, label, sd], k) => {
                     if (!t) return <div key={k} />;
-                    const xi = meSide(t);
+                    // The tournament's eleven, not the club's default one -- a suspended man is not
+                    // on this team sheet, and the screen before kick-off is the wrong place to
+                    // learn that from the pitch.
+                    const xi = meSide(meTeamFor(t, meTourn.current?.squads?.[sd]));
                     const avg = xi.length ? xi.reduce((x, q) => x + (q.ovr ?? t.skill ?? 0), 0) / xi.length : t.skill;
                     return (
                       <div key={k} style={{ ...panelBox, padding: "16px 8px 10px", marginBottom: 0, minWidth: 0 }}>
@@ -13313,8 +13384,14 @@ export default function App() {
                   const notReady = !teamById(lmH) || !teamById(lmA);
                   const m0 = meRef.current;
                   const done = !!m0?.ftDone;
+                  // A FIXTURE OR A FRIENDLY. tPendingPlayLive means the tournament sent you here,
+                  // and tConfirmPlayLive is what turns the tie into a team sheet, a ground and a
+                  // rule about draws. Anything else is a friendly, and has to CLEAR the last
+                  // fixture's context or it would inherit its bans and its aggregate.
+                  const arm = () => { if (tPendingPlayLive) { tConfirmPlayLive(tPendingPlayLive); return true; }
+                                      meTourn.current = null; setTLiveTarget(null); return false; };
                   const go = (then) => { if (notReady) return;
-                                         if (!m0 || done) { meKick(); } else { setMeView("live"); }
+                                         if (!m0 || done) { arm(); meKick(); } else { setMeView("live"); }
                                          setTimeout(then, 0); };
                   const b = (label, onClick, dis, extra) => (
                     <button onClick={onClick} disabled={dis} className="tick-btn"
@@ -13324,7 +13401,8 @@ export default function App() {
                   return (
                     <div style={{ display: "flex", gap: 8 }}>
                       {b(!m0 || done ? "\u26BD Start Match" : "\u25B6 Resume",
-                         () => { if (!m0 || done) setMeView("prematch"); else setMeView("live"); }, notReady)}
+                         () => { if (!m0 || done) { if (!arm()) setMeView("prematch"); }
+                                 else setMeView("live"); }, notReady)}
                       {b("\u23E9 Sim to End", () => go(meSimEnd), notReady)}
                     </div>);
                 })()}

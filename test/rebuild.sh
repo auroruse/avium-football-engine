@@ -13,7 +13,9 @@ export { FORMATIONS, FPOS2, GK_STOP, GL, LEAGUE_NAT, LEAGUE_ORDER, LM_CONTROLS_H
 XEOF
 cat "$SP/prelude.js" "$SP/engine.tsx" > "$SP/e2.tsx" && mv "$SP/e2.tsx" "$SP/engine.tsx"
 # Re-attach the engine: one import for App.tsx's own use, and a re-export so tests can reach it.
-printf 'import { ME_DT, ME_TPM, meInit, meTick } from "%s";\n' "$ENGDIR" > "$SP/e3.tsx"
+# Mirror App.tsx's own engine import exactly -- a symbol missing here is a ReferenceError that
+# only shows up when a harness runs the function that uses it.
+printf 'import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_MATCH_TICKS, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, meShootout, meSub, meTick } from "%s";\n' "$ENGDIR" > "$SP/e3.tsx"
 cat "$SP/engine.tsx" >> "$SP/e3.tsx"
 printf '\nexport * from "%s";\n' "$ENGDIR" >> "$SP/e3.tsx"
 mv "$SP/e3.tsx" "$SP/engine.tsx"
