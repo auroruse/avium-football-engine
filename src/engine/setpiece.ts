@@ -605,7 +605,9 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const label = sp.kind === "corner" ? `${taker.fullName || taker.name} swings it in`
     : sp.kind === "throw" ? `${taker.fullName || taker.name} takes the throw`
     : sp.kind === "goalkick" ? `${taker.fullName || taker.name} goes ${high ? "long" : "short"}`
-    : sp.kind === "kickoff" ? "Kick off" : `${taker.fullName || taker.name} plays it`;
+    // A free kick simply played on is not commentary -- the foul that won it already reported, and
+    // whatever comes of the delivery reports on its own. Null caption: meEvt still marks the pitch.
+    : sp.kind === "kickoff" ? "Kick off" : null;
   // The taker gets credited for it like any other pass. Left off, every corner, throw, goal kick
   // and free kick completed into the match total and onto nobody's name -- about twenty-five passes
   // a match, which is where the per-player column stopped reconciling with the team's.

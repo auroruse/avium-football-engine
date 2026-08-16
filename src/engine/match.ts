@@ -741,7 +741,9 @@ export function meTackle(s, rng, out) {
     } else {
       p._beat = CFG.tkBeatT;
       out.beaten = (out.beaten || 0) + 1;
-      meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, `${c.fullName || c.name} goes past ${p.fullName || p.name}`);
+      // A failed tackle is not news -- it happens dozens of times a match and reads as a man
+      // being praised for beating somebody who barely engaged him. Still drawn on the pitch.
+      meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, null);
     }
     return;                                   // one challenge a slice, not a scrum
   }
@@ -1362,7 +1364,9 @@ export function meTick(s, rng, out) {
               const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
               mp.shot.readY = okH ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
             }
-            meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, `${q.fullName || q.name} heads it goalwards`);
+            // Headers goalwards are frequent and mostly speculative; the ones that matter
+            // arrive as a save, a miss or a goal a moment later and those still report.
+            meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, null);
             meKnock(mp, rng, gxA, aimY, CFG.headV * power, 0.35);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
@@ -1382,8 +1386,11 @@ export function meTick(s, rng, out) {
             const tx = q.x - ax / al * CFG.headOut, ty = q.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
             if (relief) { out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); meRate(q, CFG.rateClear);
                           q.defActs = (q.defActs || 0) + 1; }
+            // A flick-on is a header and it fires ten times a match; a defensive header away is a
+            // real clearance and keeps its line. Measured, captioned events run 142 a match against
+            // a feed that holds 60, so the noisy kinds were pushing the goals off the end.
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty,
-                  `${q.fullName || q.name} ${relief ? "heads it clear" : "heads it on"}`);
+                  relief ? `${q.fullName || q.name} heads it clear` : null);
             meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
           }
           return true;
