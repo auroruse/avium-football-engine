@@ -19,9 +19,21 @@ export const meDir = (side) => side === "home" ? 1 : -1;
 // Probability this possession yields a goal from here. Scaled to reality: a possession starting in
 // midfield is worth a few percent, one in the six-yard box a good deal more. The old surface sat at
 // 0.44 in midfield, which flattened every option to about the same score and made the choice random.
+// A STRETCHED exponential, not a plain one. exp(-d/13) halves the value of a position every nine
+// metres AT EVERY DISTANCE EQUALLY, and that is wrong at both ends of the pitch. In midfield it says
+// carrying eight metres forward nearly doubles what you are worth, which is why a shooter received
+// the ball 27 m out and struck it at 12, walking through a defence rather than passing through it.
+// Near goal it says the opposite: getting from eleven metres into the six-yard box is worth barely
+// more than the same eight metres gained at halfway, so nobody works for the close chance and the
+// engine took 19% of its shots from inside eleven metres against a real 38%.
+// Real possession value is steep in front of goal and nearly flat a long way from it. exp(-(d/L)^p)
+// with p below 1 is exactly that shape: at p = 0.7 the gradient over the last six metres is a fifth
+// steeper than it was and the gradient from 25 m to 17 m is a quarter shallower. Same value at
+// d = L either way, so the surface is pinned where it was calibrated and only its shape moves.
+// valP = 1 reproduces the old surface exactly, so this is sweepable rather than a rewrite.
 export function meVal(side, x, y) {
   const d = Math.hypot(meGoalX(side) - x, (y - ME_HALF_W) * 1.35);
-  return 0.26 * Math.exp(-d / 13);
+  return 0.26 * Math.exp(-Math.pow(d / 13, CFG.valP));
 }
 
 // meVal in goal-probability units peaks at 0.26, so anything that wants "how dangerous is this, 0 to

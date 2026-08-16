@@ -442,9 +442,21 @@ export const CFG = {
   // was travelling, which is why a clear sight from twenty-five metres still read as a free carry:
   // the lane was empty NOW and nothing modelled it closing.
   carryReach: 1.6,
+  // Shape of the positional value surface, exp(-(d/13)^valP). SWEPT AND LEFT AT 1.0, the plain
+  // exponential. 0.7 was tried on the reasoning that real possession value is steep in front of goal
+  // and flat far from it, which is true, and that a stretched exponential delivers it, which is not:
+  // p below 1 flattens the GRADIENT far out but also lifts the LEVEL there -- 0.038 to 0.054 at 25 m
+  // -- so midfield became a comfortable place to stand, the drive to progress fell, and goals a
+  // match went 2.90 -> 2.61 while the carry before a shot got LONGER, 13.1 m -> 13.9.
+  // The algebra says no single exponential can do it. Steep near goal and flat far out are in
+  // tension: the curve has to get from high to low, so steepening one stretch flattens another, and
+  // p above 1 steepens the near range and the midfield together. A knee -- flat outside the box,
+  // sharp inside it -- needs a different function, not a different exponent, and it re-prices every
+  // pass, carry and clearance in the engine at once. Do not retry this as a one-line change.
+  valP: 1.0,
   // Metres of extra range a completely unobstructed sight of goal buys.
   shotClearRange: 8,
-  shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6, shotSight: 0.8,
+  shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6, shotSight: 1.8,
   // A clear sight of goal is worth a great deal at ten metres and very little at twenty-five: past
   // that the keeper, not the bodies in front of him, is what stops it. Flat, it made a clean look
   // from twenty-two metres score like a chance and he shot instead of running at the goal.
@@ -1442,7 +1454,11 @@ Object.assign(CFG, {
   // Real xG is steeper than one exponential close in and flatter far out; 0.135 splits that, so
   // six-yard chances are slightly under-valued and twenty-five yard ones slightly over. That is the
   // right way round for a model that has to pick ONE curve.
-  xgK: 0.135, xgBase: 0.68, shotWorth: 1.0,
+  // shotWorth scales the shot in the DECISION only -- act.p, the recorded xG and the resolution are
+  // untouched -- so it buys willingness to have a go without making any shot better than it is. That
+  // separation is what lets the mix and the goal level be set independently: this decides how often
+  // the ball is struck, xgBase decides what the strikes are worth.
+  xgK: 0.135, xgBase: 0.68, shotWorth: 1.6,
   // Below this chance it is not a shot worth taking at all. Set to clear hopeless efforts from
   // 35 m+ (worth about 0.001) without touching real long-range attempts from 20-25 m (about 0.007).
   // What a missed shot costs against what an open-play giveaway costs. It has to sit well under a
