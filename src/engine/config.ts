@@ -456,7 +456,12 @@ export const CFG = {
   valP: 1.0,
   // Metres of extra range a completely unobstructed sight of goal buys.
   shotClearRange: 8,
-  shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6, shotSight: 1.8,
+  shotRange: 14, shotRangeSkill: 9, shotRangeFade: 7, shotLaneClear: 1.6,
+  // 0.8 -> 1.8. What a clear sight of goal is worth to a man's appetite, and the knob that decides
+  // how many efforts come from range. TRIED AND REVERTED at 1.15: long-range shots fell to 13.8%,
+  // under the real 15-20% band, and goals a match went 2.83 -> 3.16 because the shots that survived
+  // were closer and better. Fewer long efforts is not a free saving; it concentrates the mix.
+  shotSight: 1.8,
   // A clear sight of goal is worth a great deal at ten metres and very little at twenty-five: past
   // that the keeper, not the bodies in front of him, is what stops it. Flat, it made a clean look
   // from twenty-two metres score like a chance and he shot instead of running at the goal.
@@ -604,6 +609,10 @@ export const CFG = {
   // simply keeping the ball and 0.04 for twenty metres of ground, so 0.045 is decisive without being
   // overwhelming -- enough to make a square ball that starts a switch beat a square ball that does
   // not, which is the entire point.
+  // What a pass is paid for the shot it creates, in the same units and the same role as carryShotW,
+  // which ships at 0.45. Same starting value for the same reason: the two are the same idea applied
+  // to the two ways a man can move the ball.
+  passShotW: 0.45,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate

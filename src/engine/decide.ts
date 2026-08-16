@@ -293,7 +293,20 @@ export function meDecide(s, rng, side, i, dwell) {
     const fwd = (aimX - p.x) * meDir(side);
     // Never backwards from a shooting position. Square and forward balls stay available -- a
     // team-mate better placed is a real reason to pass; turning round is not.
-    if (fwd < -CFG.noBackDist && (sp > CFG.noBackShot || runAtGoal)) continue;
+    // WHAT THIS PASS CREATES, which nothing has ever asked. The carry branch knows that moving the
+    // ball changes the chance (carryShotW, shipped, +36% worked chances); the pass branch is scored
+    // on possession value alone, so a ball squared to a man with an open goal reads the same as one
+    // played backwards out of the area -- and backwards wins, because it is safer.
+    // Measured, that is what a box entry does: 39-46% of them end with the ball simply played back
+    // OUT, against about 20% in the real game, while only 2-5% win a set piece against a real 10%.
+    // The cutback is the most valuable ball in football and this engine could not see it.
+    const spq = meShotP(s, side, q, aimX, aimY);
+    // ...and the backward veto has to know about it too, or the cutback is thrown out of the menu
+    // before it can be scored. noBackShot is 0.035, which anywhere inside about seventeen metres is
+    // every passer alive, so a man who could shoot was forbidden from squaring it to someone better
+    // placed. The comment on this rule always said a team-mate better placed is a real reason to
+    // pass; it just used ground gained as the proxy for it.
+    if (fwd < -CFG.noBackDist && (sp > CFG.noBackShot || runAtGoal) && spq <= sp) continue;
     // ...and when he is through, a SQUARE ball has to be earned as well. Rolling it across to a man
     // who is no better placed is handing off a chance for nothing -- the only reasons to pass from
     // there are that he has a better sight of goal or fewer bodies on him, so those are the only two
@@ -422,6 +435,10 @@ export function meDecide(s, rng, side, i, dwell) {
     // taking; the same ground into a body is not, so the two are multiplied rather than added.
     const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull);
     val += room * Math.max(0, fwd) * CFG.roomFwd;
+    // The mirror of carryShotW. Floored at zero, so a recycle to a man with no shot is byte-identical
+    // and this can only ever re-rank, never inflate. It sits inside val, so the completion chance
+    // multiplies it: you are paid for the chance you create only if the ball actually arrives.
+    val += Math.max(0, spq - sp) * CFG.passShotW;
     // THE PATTERN. Everything above prices this pass on its own; this prices what it SETS UP. A
     // square ball that begins a switch and a square ball that begins nothing score identically to a
     // one-move utility, and the first is how possession football actually moves a defence. The style
