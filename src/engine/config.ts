@@ -584,7 +584,25 @@ export const CFG = {
   // At 2.0 a side with no instructions plays 6.7 points below its squad, worth about 0.62 goals,
   // while every designed style sits within 0.1 of its true rating. Cutting it to 1.0 handed Balanced
   // back 0.31 goals -- five times the margin that separated it from the styles below it.
-  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0, indecision: 2.0,
+  // (That 6.7 was measured on the contaminated harness whose "Balanced" carried the pool clubs'
+  // own instructions. Built the way the app builds a side, a no-instruction side pays the full cap
+  // and it converts at the rating slope: the pure ladder read Balanced at -10.00 applied, -1.02
+  // goals against the field, dead last.)
+  //
+  // THE CAP RESIZED, 5 -> 4, WITH INDECISION RAISED TO KEEP THE FLOOR EXACTLY WHERE IT WAS. A cap
+  // of 5 demanded ~4.5 normalized axes before a plan counted as fully drilled, which defined
+  // "complete system" as "big system": Control Possession's four live instructions ARE a complete
+  // football identity and were paying -2.89 applied for compactness, Wing Play -1.16, and both sat
+  // in the ladder's bottom half carrying a tax their football never earned. At cap 4 a coherent
+  // eight-notch identity is a full system. The arithmetic that matters:
+  //   Balanced:      (0 - 4) x 2.5 = -10.0, unchanged to the decimal -- the floor does not move.
+  //   Full commit:   still 0. Nothing is lifted above its squad, same as always.
+  //   Compact plans: Control Possession -2.3 -> -0.4 nominal, Wing Play and Zona Mista similar
+  //                  relief in proportion. This is the whole intent of the change.
+  //   Contradictions: a unit of clash now costs 2.5 rating points of penalty instead of 2.0, since
+  //                  indecision multiplies it. Deliberate -- no shipped stamp carries a clash, so
+  //                  only a hand-authored contradiction pays, and it should.
+  drillOvr: 1.1, drillCap: 4, clashOvr: 3.0, indecision: 2.5,
   lineADefL: 7,
   //
   // FOUR THINGS THAT DO NOT FIX PARK THE BUS. It sits at -0.28 against the field where Balanced is
