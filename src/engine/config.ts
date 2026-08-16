@@ -574,13 +574,17 @@ export const CFG = {
   // At 0.077 goals a rating point, drillCap 5 and indecision 2.0 means a side with no instructions
   // at all plays 10 points below its squad -- about 0.77 goals -- while every designed style in the
   // game sits within 1.2 points of its true rating. That asymmetry is the entire mechanism.
-  // indecision was pushed to 2.0 on arithmetic that turned out to be wrong, and measured blocked at
-  // 80 fixtures a style it bought -0.18 goals for a TEN point penalty -- inside its own error, and a
-  // slope of 0.018 goals a rating point rather than the 0.09 the home-advantage sweep reported for
-  // the same quantity. Those two blocked measurements disagree by five times and the disagreement is
-  // unresolved; until it is, rating is not a channel to push anything through. Back to 1.0, which is
-  // the magnitude that measured as closing the squad-fit inversion (+0.427 -> -0.069).
-  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0, indecision: 1.0,
+  // RESTORED to 2.0. It was cut to 1.0 on a blocked run that read 0.018 goals a rating point, and
+  // that reading was wrong: it came from a regression across fourteen styles of which nine carried a
+  // penalty of exactly zero and contributed only noise, so the line was anchored flat. Measured
+  // properly afterwards -- the home-advantage shape emptied so only rating moved, 250 fixtures a
+  // rung, five rungs, paired -- a rating point is worth 0.092 goals, and +10 came out at +0.920
+  // against a standard error of 0.159. Five and a half sigma, and dead on what the home-advantage
+  // calibration had assumed all along.
+  // At 2.0 a side with no instructions plays 6.7 points below its squad, worth about 0.62 goals,
+  // while every designed style sits within 0.1 of its true rating. Cutting it to 1.0 handed Balanced
+  // back 0.31 goals -- five times the margin that separated it from the styles below it.
+  drillOvr: 1.1, drillCap: 5, clashOvr: 3.0, indecision: 2.0,
   lineADefL: 7,
   //
   // FOUR THINGS THAT DO NOT FIX PARK THE BUS. It sits at -0.28 against the field where Balanced is
