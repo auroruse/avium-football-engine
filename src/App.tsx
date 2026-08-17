@@ -6469,6 +6469,30 @@ export default function App() {
     });
   };
 
+  // ── AFTER THE WHISTLE ───────────────────────────────────────────────────────────────────────
+  // Three ways out of a fixture you have just watched, and the tournament only hears about the one
+  // you pick. Leaving the match behind is the same three lines every time, so it is written once.
+  const meLeave = (toTournament) => {
+    meStop(); meRef.current = null; meTourn.current = null;
+    setTLiveTarget(null); setMeView("setup"); setMePanel(null);
+    if (toTournament) setTab("tournament");
+    setMeFrame(f => f + 1);
+  };
+  const meImport = () => {
+    const m = meRef.current; if (!m || m._sent) return;
+    m._sent = 1;                                   // the button is gone a frame later; belt and braces
+    meReport(m);
+    meLeave(true);
+  };
+  // Same fixture, same team sheet, same ground, new afternoon. meBuild reads meTourn, which is
+  // still set, and seeds itself off the clock -- so nothing has to be rebuilt to play it again.
+  const meReplay = () => {
+    const m = meRef.current;
+    const key = m?.tourn?.replayKey;
+    if (key) { _rc.inc(key); _setRcV(v => v + 1); }
+    meStop(); meKick();
+  };
+
   const meCelebrate = (m, side) => {
     const frames = m.tape.slice(meClipFrom(m.tape, side));
     if (frames.length < 2) return;
@@ -6621,9 +6645,10 @@ export default function App() {
         // stopped the moment it cannot be caught -- so there is nothing to tick here.
         if (m.needWin && level) m.pens = meShootout(m.s, m.rng, m.out, 40);
         m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
-        // meFinalise first: the tournament stores each man's rating and the running total is not
-        // one until it has been normalised for minutes played and for what his position is worth.
-        if (m.tourn) meReport(m);
+        // The result is NOT written here. A fixture you watched is one you might want to play
+        // again, and importing it the instant the whistle goes takes that decision away -- so full
+        // time offers it instead: Import, Replay, Abandon. meFinalise still runs now, because a
+        // rating is not one until it has been normalised for minutes played.
         setMeView("post"); setMePanel("stats");
       }
     }
@@ -7592,7 +7617,7 @@ export default function App() {
     // instead, and meBuild reads it at kick-off.
     meTourn.current = {
       target: { ...target, flipped: isL2 },
-      hId: liveHId, aId: liveAId,
+      hId: liveHId, aId: liveAId, replayKey,
       squads: { home: shiftSq(hSquad, shiftFor(hSquad, liveHId)),
                 away: shiftSq(aSquad, shiftFor(aSquad, liveAId)) },
       venue, homeAdv, needWin: forceResult,
@@ -13311,12 +13336,30 @@ export default function App() {
 
                   <div style={{ flexShrink: 0, padding: "12px 15px 14px", display: "flex",
                                 flexDirection: "column", gap: 9 }}>
+                    {/* WHILE IT IS ON, the two controls are the match. Once it is over they are
+                        the decision: what happens to the result. A tournament fixture can be taken,
+                        played again, or thrown away; a friendly has no result to take. */}
                     <div style={{ display: "flex", gap: 7 }}>
-                      <button onClick={() => meRunning ? meStop() : mePlay()}
-                        style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
-                                 background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
-                        {meRunning ? "Pause" : "Start"}</button>
-                      <button onClick={meSimEnd} style={{ ...addBtn, flex: 1 }} disabled={!!m.ftDone}>Sim to End</button>
+                      {!m.ftDone ? (<>
+                        <button onClick={() => meRunning ? meStop() : mePlay()}
+                          style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
+                                   background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
+                          {meRunning ? "Pause" : "Start"}</button>
+                        <button onClick={meSimEnd} style={{ ...addBtn, flex: 1 }}>Sim to End</button>
+                      </>) : m.tourn ? (<>
+                        <button onClick={meImport}
+                          style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
+                                   background: "var(--chrome-brand)" }}>Import</button>
+                        <button onClick={meReplay} style={{ ...addBtn, flex: 1 }}>Replay</button>
+                        <button onClick={() => meLeave(true)}
+                          style={{ ...addBtn, flex: 1, color: "var(--ui-danger)",
+                                   borderColor: "var(--ui-danger-44)" }}>Abandon</button>
+                      </>) : (<>
+                        <button onClick={() => meLeave(false)}
+                          style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
+                                   background: "var(--chrome-brand)" }}>New</button>
+                        <button onClick={meReplay} style={{ ...addBtn, flex: 1 }}>Replay</button>
+                      </>)}
                     </div>
                     <label style={{ fontSize: 10, color: "var(--chrome-muted)", display: "flex",
                                     alignItems: "center", gap: 8 }}>
@@ -13324,18 +13367,12 @@ export default function App() {
                              onChange={e => setMeSpeedIx(+e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                       <span style={{ width: 30, fontWeight: 700, textAlign: "right", ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
                     </label>
+                    {/* Three panels and nothing else. New and Close used to sit on the end of this
+                        row, which put "what happens to this result" in among "what am I looking at". */}
                     <div style={{ display: "flex", gap: 6 }}>
                       {tabBtn("stats", "Stats")}
                       {tabBtn("subs", "Subs")}
                       {tabBtn("tactics", "Tactics")}
-                      {m.ftDone
-                        ? <button onClick={() => { meStop(); meRef.current = null; setMeView("setup");
-                                                   setMePanel(null); setMeFrame(f => f + 1); }}
-                            style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer",
-                                     background: "var(--chrome-brand)", color: "var(--ui-on-accent)",
-                                     border: "none" }}>New</button>
-                        : <button onClick={() => { meStop(); setMeView("setup"); setMePanel(null); }}
-                            style={{ ...smBtn, fontSize: 10, padding: "7px 0", flex: 1, cursor: "pointer" }}>Close</button>}
                     </div>
                   </div>
                 </aside>
