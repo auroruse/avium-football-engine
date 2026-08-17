@@ -7144,6 +7144,10 @@ export default function App() {
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
   const [simProg, setSimProg] = useState(null);   // {done,total} while a bulk sim is running
+  // A bulk sim used to be a single blocking call, so a second one could not start inside it. Now it
+  // awaits a pool for minutes at a time, and two of them would each clone the tournament from the
+  // same state and the slower one would win -- silently throwing away a whole round of results.
+  const simBusy = useRef(false);
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
   const [tChampOpen, setTChampOpen] = useState(false);
   const [tKoGroupsOpen, setTKoGroupsOpen] = useState(false);
@@ -7629,7 +7633,7 @@ export default function App() {
     _rc.inc(replayKey); _setRcV(v => v + 1);
 
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
-    // Same stakes math as the bulk instasim paths (tScorinate/tSimKOMatch), just scoped to
+    // Same stakes math as the bulk instasim paths (tScorinate/tKOJob), just scoped to
     // this one fixture instead of a whole round — see computeGroupUrg/computeKOStakes.
     let homeStakes, awayStakes, homeNextOpp = null, awayNextOpp = null, homeHor = null, awayHor = null, liveTotal = 0;
     let liveIsKO = false, liveIsFinal = false, liveIsTP = false, liveRemH = 0, liveRemA = 0;
@@ -8665,7 +8669,10 @@ export default function App() {
     ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
     setTGroups(ng); setSimProg(null); if (bulk) setLoading(false);
     };
-    const _timed = async () => { const _t0=performance.now(); await run(); console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
+    if (simBusy.current) return;                   // one at a time; see simBusy
+    const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
+      try { await run(); } finally { simBusy.current = false; }
+      console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
   // Which knockout rounds the user asked to be drawn, keyed by how many teams contest the round so
@@ -8887,7 +8894,10 @@ export default function App() {
     propagateKO(ko); setTKO(ko);
     setTPhase("knockout"); setTKOManual(null);
   };
-  const tSimKOMatch = (rng, m, legTarget, haKey, unavailSet) => {
+  // DESCRIBES the tie rather than playing it. Everything above the return was always the same
+  // work -- who is banned, what the tie is worth, which ground -- and only the last line touched
+  // the engine, so that line becomes a job and the caller decides which thread runs it.
+  const tKOJob = (m, legTarget, haKey, unavailSet, seed) => {
     const haDefault = resolveKOHomeAdv(m, tConfig);
     const ov = tHomeAdvOverrides[haKey] || null;
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
@@ -8909,21 +8919,30 @@ export default function App() {
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
     const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
-    if (tConfig.koLegs === 1) return simPositionalMatch(rng, m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false);
+    if (tConfig.koLegs === 1) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false] };
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
-    if (legTarget === 1 || (!m.result && legTarget !== 0)) return simFirstLeg(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, tConfig.injuries !== false);
-    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return simSecondLeg(rng, m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false);
-    if (legTarget === 0) return simTwoLegMatch(rng, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false);
-    return m.result;
+    if (legTarget === 1 || (!m.result && legTarget !== 0)) return { kind: "leg1", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, tConfig.injuries !== false] };
+    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return { kind: "leg2", seed, a: [m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false] };
+    if (legTarget === 0) return { kind: "twoLeg", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false] };
+    return null;                                   // nothing to play: the tie already stands
   };
   const tScorinateKO = (targetRi, targetMi, legTarget, bracket) => {
     const bulk = targetRi === -1 || targetMi === -1;
-    const run = () => {
-    const rng = new RNG(Date.now());
+    const run = async () => {
+    // Per-tie seeds off the fixture's own key, for the same reason the group sim uses them: a
+    // shared generator makes a result depend on which order the ties were reached in, and eight
+    // cores have no order. It was clock-seeded before, so nothing reproducible is being lost.
+    const baseSeed = Date.now() >>> 0;
     const ko = structuredClone(tKO);
+    // What the bar counts. A round's ties are not all known up front once byes and partial legs
+    // are in play, so this is an upper bound the progress call clamps against rather than a promise.
+    const totalTies = (ko.rounds || []).reduce((a, r) => a + (r.matches || []).filter(m => m.home && m.away && (!m.result || m.result.partial)).length, 0)
+                    + (ko.losers || []).reduce((a, r) => a + (r.matches || []).filter(m => m.home && m.away && (!m.result || m.result.partial)).length, 0);
+    let seen = 0;
+    setSimProg(totalTies > 1 ? { done: 0, total: totalTies } : null);
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
@@ -8950,29 +8969,44 @@ export default function App() {
         m.result.statDiffs = { home:rH?.diffs, away:rA?.diffs };
       }
     };
-    const simRound = (matches, haPrefix, ri, tRi, tMi) => {
+    const simRound = async (matches, haPrefix, ri, tRi, tMi) => {
       const tms = new Set();
       matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (tRi!==-1&&tRi!==ri) return; if (tMi!==-1&&tMi!==mi) return; tms.add(m.home.name); tms.add(m.away.name); });
       if (tms.size > 0) { decrementBans(tms); decLocal(tms); }
       const unavailSet = buildUnavail();
-      matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (tRi!==-1&&tRi!==ri) return; if (tMi!==-1&&tMi!==mi) return; m.result = tSimKOMatch(rng, m, legTarget, `${haPrefix}_${ri}_${mi}`, unavailSet); accumStats(m, unavailSet); });
+      // Every tie in a knockout round is played on the same night against the same suspension
+      // list, exactly like a league matchday, so the same barrier applies.
+      const jobs = [], slot = [];
+      matches.forEach((m, mi) => { if (!m.home||!m.away) return; if (m.result&&!m.result.partial) return; if (m.result&&m.result.partial&&legTarget===1) return; if (!m.result&&legTarget===2) return; if (tRi!==-1&&tRi!==ri) return; if (tMi!==-1&&tMi!==mi) return;
+        const key = `${haPrefix}_${ri}_${mi}`;
+        const j = tKOJob(m, legTarget, key, unavailSet, jobSeed(baseSeed, key));
+        if (j) { slot.push(m); jobs.push(j); } });
+      const res = await simPool.run(jobs, (d) => setSimProg({ done: seen + d, total: Math.max(totalTies, seen + jobs.length) }));
+      seen += jobs.length;
+      for (let i = 0; i < slot.length; i++) { slot[i].result = res[i]; accumStats(slot[i], unavailSet); }
     };
-    const simOne = (m, haKey) => { if (!m?.home||!m?.away) return; if (m.result&&!m.result.partial) return; const tms=new Set([m.home.name,m.away.name]); decrementBans(tms); decLocal(tms); const u=buildUnavail(); m.result=tSimKOMatch(rng,m,legTarget,haKey,u); accumStats(m,u); };
+    const simOne = (m, haKey) => { if (!m?.home||!m?.away) return; if (m.result&&!m.result.partial) return; const tms=new Set([m.home.name,m.away.name]); decrementBans(tms); decLocal(tms); const u=buildUnavail();
+      const j = tKOJob(m, legTarget, haKey, u, jobSeed(baseSeed, haKey)); if (!j) return;
+      m.result = simJob(j); accumStats(m, u); };
     const isDE = !!ko.losers;
     const simAll = targetRi === -1;
-    if (!bracket || bracket === "wb" || simAll) { for (let ri = 0; ri < ko.rounds.length; ri++) { simRound(ko.rounds[ri].matches, "ko", ri, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
-    if (isDE && (bracket === "lb" || simAll)) { for (let lr = 0; lr < ko.losers.length; lr++) { simRound(ko.losers[lr].matches, "lb", lr, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
+    if (!bracket || bracket === "wb" || simAll) { for (let ri = 0; ri < ko.rounds.length; ri++) { await simRound(ko.rounds[ri].matches, "ko", ri, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
+    if (isDE && (bracket === "lb" || simAll)) { for (let lr = 0; lr < ko.losers.length; lr++) { await simRound(ko.losers[lr].matches, "lb", lr, simAll?-1:targetRi, simAll?-1:targetMi); propagateKO(ko); } }
     if (isDE && (bracket === "gf" || simAll)) { simOne(ko.grandFinal, "gf"); propagateKO(ko); }
     if (isDE && (bracket === "reset" || simAll)) { simOne(ko.reset, "reset"); propagateKO(ko); }
     if (!isDE && (simAll || targetRi === -2)) { simOne(ko.thirdPlace, "tp"); }
     setTKO(ko);
     // A finished round may owe the next one a draw. Checked after the results are in and before the
     // completion check, so the tournament does not skip straight past a draw it was configured for.
-    if (tMaybeDrawNextKO(ko)) { setTKO(ko); if (bulk) setLoading(false); return; }
+    if (tMaybeDrawNextKO(ko)) { setTKO(ko); setSimProg(null); if (bulk) setLoading(false); return; }
     if (isKOComplete(ko)) setTPhase("complete");
+    setSimProg(null);
     if (bulk) setLoading(false);
     };
-    const _timed = () => { const _t0=performance.now(); run(); console.log(`[perf] tScorinateKO: ${(performance.now()-_t0).toFixed(1)}ms`); };
+    if (simBusy.current) return;                   // one at a time; see simBusy
+    const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
+      try { await run(); } finally { simBusy.current = false; }
+      console.log(`[perf] tScorinateKO: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
   const tDeleteKoResult = (ri, mi, bracket) => {
@@ -9047,7 +9081,7 @@ export default function App() {
   // opts.initialLeg preserves a genuine pre-existing quirk found while unifying these 6
   // blocks: WB/3rd-place/Final's own sim button omits the leg argument (simFirstLeg only),
   // while LB/GF/Reset's pass an explicit 0 (simTwoLegMatch, both legs at once) — a real
-  // difference in tScorinateKO/tSimKOMatch's dispatch, not something to silently normalize.
+  // difference in tScorinateKO/tKOJob's dispatch, not something to silently normalize.
   const renderKoMatchRow = (m, ref, opts = {}) => {
     const haKey = fixtureKey({ type: "ko", ...ref });
     const haVal = tHomeAdvOverrides[haKey] || null;
