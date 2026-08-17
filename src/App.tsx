@@ -15,6 +15,7 @@ import shiTSV from "./presets/SHI.tsv?raw";
 import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
+import { makePool, jobSeed, poolSize } from "./sim/pool";
 import participantsTSV from "./participants.tsv?raw";
 import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, meShootout, meSub, meTick } from "./engine";
 
@@ -5688,6 +5689,27 @@ function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, a
            playerData: { home: allP("home"), away: allP("away") } };
 }
 
+// THE ONE DOOR INTO THE ENGINE FROM ANOTHER THREAD. Everything a fixture needs arrives as plain
+// data and a result goes back as plain data, so the same call works on this thread or on a worker
+// and there is exactly one implementation of a football match in the project.
+export function simJob(job) {
+  const rng = new RNG(job.seed >>> 0 || 7), a = job.a;
+  switch (job.kind) {
+    case "twoLeg": return simTwoLegMatch(rng, ...a);
+    case "leg1":   return simFirstLeg(rng, ...a);
+    case "leg2":   return simSecondLeg(rng, ...a);
+    default:       return simPositionalMatch(rng, ...a);
+  }
+}
+
+// Built once and kept warm for the life of the page. `new Worker` is guarded because App.tsx is
+// also imported by the headless harnesses, which have no such thing -- and the pool falls back to
+// running everything on this thread when it is missing, so the behaviour is identical either way.
+const simPool = makePool(
+  typeof Worker === "undefined" ? null
+    : () => new Worker(new URL("./sim/match.worker.ts", import.meta.url), { type: "module" }),
+  simJob);
+
 export default function App() {
   const [tab, setTab] = useState("teams");
   const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
@@ -7121,6 +7143,7 @@ export default function App() {
   const tournamentTeams = tournamentTeamIds.map(id => teamById(id)).filter(Boolean);
   const [tPlayerStats, setTPlayerStats] = useState({});
   const [tLeaderboard, setTLeaderboard] = useState(null);
+  const [simProg, setSimProg] = useState(null);   // {done,total} while a bulk sim is running
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
   const [tChampOpen, setTChampOpen] = useState(false);
   const [tKoGroupsOpen, setTKoGroupsOpen] = useState(false);
@@ -8570,8 +8593,11 @@ export default function App() {
 
   const tScorinate = (targetGi, targetRi, targetMi) => {
     const bulk = targetGi === -1 || targetRi === -1 || targetMi === -1;
-    const run = () => {
-    const rng = new RNG(Date.now());
+    const run = async () => {
+    // The bulk sim used to thread one generator through the whole run, so a fixture's numbers
+    // depended on the order it was reached in. That cannot survive eight of them at once, and it
+    // was seeded off the clock anyway -- so each fixture derives its own from its key instead.
+    const baseSeed = Date.now() >>> 0;
     const ng = structuredClone(tGroups);
     const maxRds = Math.max(...ng.map(g => g.schedule.length));
     const stamData = tConfig.staminaCarry ? tPlayerStats : null;
@@ -8585,6 +8611,14 @@ export default function App() {
     const applyBan = (info) => { for (const b of (info?.bans || [])) {
       const e = localBans[b.key] || (localBans[b.key] = { suspended: 0, injOut: 0 });
       e.suspended += b.suspended; e.injOut += b.injOut; } };
+    // What the bar is counting: every fixture this call is going to play, known before it starts.
+    let totalJobs = 0, seen = 0;
+    ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return;
+      g.schedule.forEach((rd, ri) => { if (targetRi !== -1 && targetRi !== ri) return;
+        rd.forEach((m, mi) => { if (m.result || (targetMi !== -1 && targetMi !== mi)) return;
+          if (m.home?.name && m.away?.name) totalJobs++; }); }); });
+    setSimProg(totalJobs > 1 ? { done: 0, total: totalJobs } : null);
+
     for (let ri = 0; ri < maxRds; ri++) {
       if (targetRi !== -1 && targetRi !== ri) continue;
       const teams = new Set();
@@ -8598,6 +8632,9 @@ export default function App() {
       ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const qc = tConfig.advPerGroup || 1; rd.forEach((m, mi) => { if (m.result || !m.home?.name || !m.away?.name) return; const remH = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.home.name || x.away.name === m.home.name)).length, 0) - 1; const remA = g.schedule.slice(ri).reduce((a, r) => a + r.filter(x => !x.result && (x.home.name === m.away.name || x.away.name === m.away.name)).length, 0) - 1; urgCache[`${gi}_${mi}`] = { home: computeGroupUrg(g.standings, m.home.name, qc, remH), away: computeGroupUrg(g.standings, m.away.name, qc, remA), remH, remA }; }); });
       // Form as it stood before this round, computed once per group: a matchday's fixtures are
       // simultaneous, so the first result of the round must not feed the last one's form.
+      // PASS ONE: every fixture in the round becomes a job, and none of them is played yet. A
+      // matchday is simultaneous -- that is the whole reason a round can go wide.
+      const jobs = [], slot = [];
       ng.forEach((g, gi) => { if (targetGi !== -1 && targetGi !== gi) return; const rd = g.schedule[ri]; if (!rd) return; const _gForms = computeForm(g); rd.forEach((m, mi) => {
         if (m.result) return;
         if (targetMi !== -1 && targetMi !== mi) return;
@@ -8606,18 +8643,29 @@ export default function App() {
         const hCtx = { stakes: _ug?.home, ourSkill: m.home.skill, oppSkill: m.away.skill, nextOppSkill: _hHor[0]?.skill ?? null, horizon: _hHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remH ?? 0) === 0, remainingGames: _ug?.remH ?? 0 };
         const aCtx = { stakes: _ug?.away, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: _aHor[0]?.skill ?? null, horizon: _aHor, totalGames: g.schedule.length, isKnockout: false, isFinal: false, isThirdPlace: false, isLastGroupGame: (_ug?.remA ?? 0) === 0, remainingGames: _ug?.remA ?? 0 };
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
-        m.result = simPositionalMatch(rng, m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
-          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false);
+        slot.push(m);
+        jobs.push({ seed: jobSeed(baseSeed, `g_${gi}_${ri}_${mi}`), a: [m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
+          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false] });
+      }); });
+
+      // THE BARRIER. The cores play the matchday; nothing below moves until every one of it is in.
+      const res = await simPool.run(jobs, (d) => setSimProg({ done: seen + d, total: totalJobs }));
+      seen += jobs.length;
+
+      // PASS TWO, in fixture order. The suspension ledger and the player tables have to see the
+      // round in the sequence they always did, whatever order the cores happened to finish in.
+      for (let i = 0; i < slot.length; i++) {
+        const m = slot[i]; m.result = res[i];
         const rH = accumulateMatchStats(m.home, m.result.ftHome, m.result.ftAway, m.result.ftHome>m.result.ftAway, m.result.ftHome===m.result.ftAway, m.result.cards?.home, unavailSet, m.result.playerData?.home);
         const rA = accumulateMatchStats(m.away, m.result.ftAway, m.result.ftHome, m.result.ftAway>m.result.ftHome, m.result.ftHome===m.result.ftAway, m.result.cards?.away, unavailSet, m.result.playerData?.away);
         applyBan(rH); applyBan(rA);
         m.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
-      }); });
+      }
     }
     ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
-    setTGroups(ng); if (bulk) setLoading(false);
+    setTGroups(ng); setSimProg(null); if (bulk) setLoading(false);
     };
-    const _timed = () => { const _t0=performance.now(); run(); console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms`); };
+    const _timed = async () => { const _t0=performance.now(); await run(); console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
   // Which knockout rounds the user asked to be drawn, keyed by how many teams contest the round so
@@ -10373,7 +10421,12 @@ export default function App() {
         </div>
       </div>
       <div className="app-body">
-      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>SIMULATING…</span></div>}
+      {loading && <div style={{ position: "fixed", inset: 0, background: "var(--chrome-bg-dd)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}><div style={{ width: 28, height: 28, border: "3px solid var(--chrome-panel)", borderTop: "3px solid var(--chrome-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /><span style={{ fontSize: 10, color: "var(--chrome-muted)", letterSpacing: "0.16em" }}>
+          {simProg ? `${simProg.done} / ${simProg.total}` : "SIMULATING\u2026"}</span>
+        {simProg && <><div style={{ width: 200, height: 3, background: "var(--chrome-panel)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ width: `${Math.round(simProg.done / Math.max(1, simProg.total) * 100)}%`, height: "100%", background: "var(--chrome-brand)", transition: "width .15s linear" }} /></div>
+        <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", letterSpacing: ".14em" }}>
+          {poolSize() >= 2 ? `${poolSize()} THREADS` : "ONE THREAD"}</span></>}</div>}
       {/* The roster warning lists. Rendered out here rather than inside the Nationalities panel so
           the panel's own overflow:hidden has nothing to say about them. Gated on the tab, so
           leaving the Players tab with one open does not strand it over another. */}

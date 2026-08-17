@@ -19,6 +19,9 @@ cat "$SP/prelude.js" "$SP/engine.tsx" > "$SP/e2.tsx" && mv "$SP/e2.tsx" "$SP/eng
 # symbol list by hand is how this broke twice: a symbol added to App.tsx but not here is a
 # ReferenceError that only appears when a harness runs the function that needs it.
 grep -m1 '^import .* from "./engine";$' src/App.tsx | sed "s#\"./engine\"#\"$ENGDIR\"#" > "$SP/e3.tsx"
+# ...and the worker pool, same trick. It is a real import in App.tsx, so stripping it without
+# putting it back leaves makePool undefined at module scope and every harness dies on load.
+grep -m1 '^import .* from "./sim/pool";$' src/App.tsx | sed "s#\"./sim/pool\"#\"$SP/../src/sim/pool\"#" >> "$SP/e3.tsx"
 cat "$SP/engine.tsx" >> "$SP/e3.tsx"
 printf '\nexport * from "%s";\n' "$ENGDIR" >> "$SP/e3.tsx"
 mv "$SP/e3.tsx" "$SP/engine.tsx"
