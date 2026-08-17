@@ -4577,6 +4577,49 @@ const PRESET_CATALOG = [
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
+
+// ── HOW MANY TIMES THIS FIXTURE HAS BEEN KICKED OFF ─────────────────────────────────────────
+// PAINTED, NOT WRITTEN. The old counter was a <span>, and a span is a thing you retype in the
+// element inspector in four seconds before you screenshot the scoreline -- which defeats the only
+// purpose the count has, which is to say how many attempts that scoreline took. Pixels have no
+// text node to edit. This is not proof against a determined console and nothing in a browser is;
+// it is proof against the tampering that actually happens.
+// Colours come off the live stylesheet through the canvas itself, so it follows the theme like
+// every other element rather than carrying its own hardcoded pair.
+function RcBadge({ n, theme }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const g = cv.getContext("2d"); if (!g) return;
+    const H = 15, GAP = 9;
+    const LBL = "600 9px var(--chrome-font), system-ui, sans-serif";
+    const VAL = "700 10px 'JetBrains Mono','Fira Code',monospace";
+    const label = "PLAYED LIVE", val = "\u00D7" + n;
+    // Measured first, because setting canvas.width to fit the text is also what wipes the context
+    // state -- so the fonts have to be set again afterwards or everything draws in 10px sans.
+    g.font = LBL; const wl = g.measureText(label).width + label.length * 1.6;
+    g.font = VAL; const wv = g.measureText(val).width;
+    const W = Math.ceil(wl + GAP + wv);
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const cs = getComputedStyle(cv);
+    const muted = cs.getPropertyValue("--chrome-muted").trim() || "#8a8a8a";
+    const warn = cs.getPropertyValue("--ui-warn").trim() || "#d9a441";
+    g.textBaseline = "middle";
+    // letterSpacing is ignored where it is unsupported, which costs the label its tracking and
+    // nothing else -- the width above already allowed for it either way.
+    try { g.letterSpacing = "1.6px"; } catch {}
+    g.font = LBL; g.fillStyle = muted; g.fillText(label, 0, H / 2 + 0.5);
+    try { g.letterSpacing = "0px"; } catch {}
+    // A fixture played once is a fixture; played twice it is a result somebody went back for.
+    g.font = VAL; g.fillStyle = n > 1 ? warn : muted; g.fillText(val, wl + GAP, H / 2 + 0.5);
+  }, [n, theme]);
+  return <canvas ref={ref} aria-label={"Played live " + n + " times"}
+                 style={{ display: "block", height: 15 }} />;
+}
 const ui = { fontFamily: "var(--chrome-font)" };
 const lbl = { display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6, ...ui };
 const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
@@ -12960,12 +13003,26 @@ export default function App() {
                             <TeamCrest team={m.aT} size={22} />
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11,
-                                        ...mono, marginBottom: 22 }}>
+                                        ...mono, marginBottom: m.tourn ? 9 : 22 }}>
                             <span style={{ color: HC, fontWeight: 700 }}>{pcH}%</span>
                             <span style={{ fontSize: 9.5, letterSpacing: ".18em", color: "var(--chrome-muted)",
                                            textTransform: "uppercase", ...ui }}>Possession</span>
                             <span style={{ color: AC, fontWeight: 700 }}>{pcA}%</span>
                           </div>
+                          {/* A fixture only; a friendly has nothing to go back for. _rc lives
+                              outside React and survives a reload, and it is read straight in render
+                              rather than mirrored into state because the only two things that move
+                              it -- kicking a fixture off from the tournament tab, and Replay --
+                              both leave this screen before the next paint. */}
+                          {m.tourn && (() => {
+                            const key = m.tourn.replayKey
+                              || (fixtureKey(m.tourn.target) + (m.tourn.target?.flipped ? "_L2" : ""));
+                            return (
+                              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}
+                                   title="Live kickoffs recorded for this fixture, across reloads">
+                                <RcBadge n={_rc.get(key)} theme={uiTheme} />
+                              </div>);
+                          })()}
 
                           {rule(1)}
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
