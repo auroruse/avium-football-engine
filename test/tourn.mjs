@@ -9,7 +9,10 @@
 //   3. meReport  -- every man in the match reaches the tournament's stat tables exactly once.
 import fs from "node:fs";
 
-const SRC = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+// Two files now: the sim moved into src/sim/core.ts so a worker could import it without dragging
+// Vite's HMR client along, and half of what this test slices went with it.
+const SRC = [new URL("../src/App.tsx", import.meta.url), new URL("../src/sim/core.ts", import.meta.url)]
+  .map((u) => fs.readFileSync(u, "utf8")).join("\n");
 
 // Pull a declaration out by its opening line: run to the end of the statement, which is the first
 // semicolon or closing brace outside every bracket. Balancing only braces cuts an arrow whose body
