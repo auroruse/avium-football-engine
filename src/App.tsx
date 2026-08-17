@@ -3721,20 +3721,63 @@ const showOvr = (v) => (v == null || v === "" || !isFinite(Number(v))) ? "–" :
 // than copied, so editing one can never leave the other behind. Two separate scales meant an 86 was
 // blue as text and cyan as a block, and the low end was flat grey where a bad match rating is red.
 const ovrHex = (v) => ratingColor((Number(v) || 0) / 10);
-// Solid blocks for the squad columns. A filled box reads as a grade at a glance where bare digits
-// have to be compared one column at a time. The label colour comes off each block's own luminance,
-// so it stays legible on the pale yellow as well as the dark red.
-const ovrBlock = (v, sm) => {
-  // Band the number the reader can SEE, not the one behind it. Colouring from the raw value put a
-  // 79.6 in the green band while it printed as 80, so two cells reading 80 sat side by side in two
-  // different colours. showOvr rounds the same way, so the two can no longer disagree.
-  const bg = ovrHex(Math.round(Number(v) || 0)), c = hexToRgb(bg);
-  return { display: "inline-block", minWidth: sm ? 21 : 30, padding: sm ? "2px 4px" : "3px 7px",
-           borderRadius: sm ? 4 : 5, background: bg,
-           color: c && percLum(c.r, c.g, c.b) > 0.5 ? "#101a12" : "#f4f7fa",
-           fontWeight: 700, fontSize: sm ? 10 : 11, lineHeight: 1.3, textAlign: "center" };
+// METAL. Six tiers, and the tier is the thing the reader is actually reading -- a continuous colour
+// ramp made 84 and 85 near-identical when they sit on opposite sides of the only line that matters.
+// Each is a struck badge rather than a flat fill: hi is the lit edge, mid the face, lo the shadow
+// the sheen runs through. ink is fixed per tier rather than derived from luminance, because a
+// gradient has no one luminance to derive from -- the middle of gold is dark and its edges are not.
+// The ladder is materials the whole way up: copper, silver, gold, emerald, ruby, and then something
+// that is not a material at all. Platinum is the obvious rung above gold and it is the one thing
+// that cannot go here -- it is a grey, silver already owns grey down at 65, and at badge size a 70
+// and an 82 would have read as the same thing. So above gold it leaves the metals entirely, which
+// is also what makes those three tiers feel earned rather than merely next.
+// THE LABEL IS ALWAYS WHITE, which is a constraint on the metal rather than on the label: gold and
+// silver were pale enough that white text disappeared into their lit edge, so both faces are struck
+// darker here than the metal they are named after. A badge you cannot read is not a badge.
+const OVR_METAL = [
+  { min: 90, obs: 1 },                                       // obsidian
+  { min: 85, hi: "#ff7189", mid: "#b01430", lo: "#56041a" }, // ruby
+  { min: 80, hi: "#55dfa0", mid: "#127a4a", lo: "#05361f" }, // emerald
+  { min: 75, hi: "#f2d067", mid: "#b5860f", lo: "#5f4405" }, // gold
+  { min: 65, hi: "#cdd5dd", mid: "#8b949c", lo: "#4d555c" }, // silver
+  { min: -Infinity, hi: "#e0a071", mid: "#a05f2c", lo: "#4f2a12" }, // copper
+];
+const OVR_INK = "#ffffff", OVR_TSHADOW = "0 1px 2px rgba(0,0,0,0.5)";
+// NINETY AND UP. Volcanic glass: black, but never flatly black, because a flat black badge reads as
+// a disabled control rather than as the rarest thing on the table. Two layers, and the order matters
+// -- CSS paints the first listed on top, so a cool sheen sweeps ACROSS the stone rather than tinting
+// it. The sheen is faint on purpose: obsidian catches light in a narrow band and stays dark
+// everywhere else, and that narrow band is the whole read.
+const OVR_OBSIDIAN =
+  "linear-gradient(140deg, rgba(255,255,255,0) 26%, rgba(150,196,255,0.30) 43%, rgba(214,180,255,0.22) 52%, rgba(255,255,255,0) 68%), " +
+  "linear-gradient(145deg, #4a4f5e 0%, #23262f 30%, #0c0d12 52%, #23262f 74%, #464c5c 100%)";
+// ROUNDED, ALWAYS. A team carries a decimal for ordering and prints as a whole number, so banding
+// the raw value put an 84.6 side badged as 84's colour while the badge itself read 85. showOvr
+// rounds the same way, so the number and its metal can no longer disagree.
+const ovrMetal = (v) => { const n = Math.round(Number(v) || 0); return OVR_METAL.find(m => n >= m.min); };
+const ovrSheen = (m) => m.obs ? OVR_OBSIDIAN
+  : `linear-gradient(145deg, ${m.hi} 0%, ${m.mid} 26%, ${m.lo} 50%, ${m.mid} 74%, ${m.hi} 100%)`;
+// A filled badge reads as a grade at a glance where bare digits have to be compared one column at a
+// time. The inset lifts the top edge and darkens the bottom, which is what makes it read as struck
+// metal rather than a gradient rectangle.
+// A BADGE HAS TO FIT THE ROW IT SITS IN. It is taller than the bare digits it replaced -- padding
+// and a struck edge cost vertical space -- so a table built around 9.5px text does not simply absorb
+// one. The match-report squad list is the case that proved it: at sm the badge stood 20px in a row
+// whose text cells are 14, and twenty-two rows of that pushed the list clean out of its panel.
+// xs is sized so the badge is SHORTER than the row text it sits beside and cannot drive the height.
+const OVR_SIZE = {
+  lg: { minW: 30, pad: "3px 7px", r: 5, fs: 11,  lh: 1.3  },
+  sm: { minW: 21, pad: "2px 4px", r: 4, fs: 10,  lh: 1.3  },
+  xs: { minW: 19, pad: "0 3px",   r: 3, fs: 8.5, lh: 1.45 },
 };
-const ovrColor = (v) => v == null || v === "" ? "var(--chrome-muted)" : ovrHex(v);
+const ovrBlock = (v, size) => {
+  const m = ovrMetal(v), z = OVR_SIZE[size === true ? "sm" : (size || "lg")];
+  return { display: "inline-block", minWidth: z.minW, padding: z.pad,
+           borderRadius: z.r, background: ovrSheen(m), color: OVR_INK,
+           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)",
+           textShadow: OVR_TSHADOW,
+           fontWeight: 700, fontSize: z.fs, lineHeight: z.lh, textAlign: "center" };
+};
 // City and stadium are one "Location" field in the UI, written "Stadium, City". Split on the FIRST
 // comma so a stadium whose own name contains one keeps it and only the tail becomes the city.
 // Cities link out to the map app. Unconditional on purpose: no copy of the map's city list lives
@@ -4104,6 +4147,18 @@ const PRESET_CATALOG = [
 
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
+// EVERY rating wears its badge. This used to be split: the squad columns got a block and everywhere
+// else got coloured digits, so the same 86 looked like two different things depending on which
+// screen you were on. `text` is for the few places that print a decimal on purpose -- the badge
+// still bands on the rounded value, which is the point of it.
+// No value is a muted dash and NOT a badge: a copper rectangle with a dash in it reads as a rating
+// of nothing rather than as an absence.
+const OvrBadge = ({ v, sm, xs, text, style }) => {
+  const s = text != null ? text : showOvr(v), size = xs ? "xs" : sm ? "sm" : "lg";
+  return s === "\u2013"
+    ? <span style={{ ...mono, fontSize: OVR_SIZE[size].fs, color: "var(--chrome-muted)", ...style }}>{s}</span>
+    : <span style={{ ...ovrBlock(v, size), ...mono, ...style }}>{s}</span>;
+};
 
 // ── HOW MANY TIMES THIS FIXTURE HAS BEEN KICKED OFF ─────────────────────────────────────────
 // PAINTED, NOT WRITTEN. The old counter was a <span>, and a span is a thing you retype in the
@@ -5369,7 +5424,7 @@ export default function App() {
                         const [sx, sy] = pitchToken(sp[0] / 100, sp[1] / 100);
                         const side = sideOf(p), clr = POS_CLR[p.pos] || "var(--chrome-border)";
                         const { first, last } = splitSurname(p.fullName || p.name, p.name);
-                        const ovr = p.ovr ?? t.skill, ovrBg = ovrHex(Math.round(Number(ovr) || 0)), ovrRgb = hexToRgb(ovrBg);
+                        const ovr = p.ovr ?? t.skill, ovrM = ovrMetal(ovr);
                         const chip = { position: "absolute", top: cq(TOKEN.chipTop), ...mono, fontSize: cq(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
                                        minWidth: cq(TOKEN.chipMin), padding: `${cq(TOKEN.chipPadY)} ${cq(TOKEN.chipPadX)}`, borderRadius: cq(TOKEN.chipR), textAlign: "center" };
                         return (
@@ -5389,10 +5444,12 @@ export default function App() {
                                 that says WHO this is rather than what he is. */}
                             <PlayerShot name={p.fullName || p.name} size="100%" />
                           </div>
-                          <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrBg, color: ovrRgb && percLum(ovrRgb.r, ovrRgb.g, ovrRgb.b) > 0.5 ? "#101a12" : "#f4f7fa" }}>{showOvr(ovr)}</span>
+                          <span style={{ ...chip, left: cq(-TOKEN.chipOut), background: ovrSheen(ovrM), color: OVR_INK,
+                                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)",
+                                        textShadow: OVR_TSHADOW }}>{showOvr(ovr)}</span>
                           {/* Opaque. --chrome-bg-dd is the page colour at 87% alpha, so the grass
                               came through the position chip while the OVR chip beside it -- which
-                              takes a solid ovrBg -- did not. Two chips on the same token reading
+                              takes an opaque metal fill -- did not. Two chips on the same token reading
                               differently is the whole of it. */}
                           <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
                         </div>); })}
@@ -5483,7 +5540,7 @@ export default function App() {
                 <div key={lbl}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
                     <span style={{ ...mono, fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>{lbl}</span>
-                    <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: ovrColor(av) }}>{m.length ? showOvr(av) : "–"}</span>
+                    <OvrBadge v={m.length ? av : null} />
                   </div>
                   <div style={{ height: 4, borderRadius: 2, background: "var(--chrome-border)", overflow: "hidden" }}>
                     <div style={{ width: `${m.length ? pct : 0}%`, height: "100%", background: ovrHex(Math.round(av)) }} />
@@ -5624,7 +5681,7 @@ export default function App() {
                           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
                             <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: ovrColor(t.skill), ...mono }}>{showOvr(t.skill)}</span>
+                            <OvrBadge v={t.skill} />
                           </div>
                         </div>); })}
                     </div>
@@ -9905,7 +9962,7 @@ export default function App() {
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(leagueAvgSkill(ts)), ...mono }}>{showOvr(leagueAvgSkill(ts))}</span>
+                  <OvrBadge v={leagueAvgSkill(ts)} />
                 </div>); })}</Fragment>))}
             </div>
           </div>
@@ -9934,7 +9991,7 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(avg), ...mono }}>{showOvr(avg)}</div>
+                      <div><OvrBadge v={avg} /></div>
                     </div>
                     {/* Bulk import only ever creates Custom teams, so save/load lives on that league. */}
                     {customTab && <div style={{ display: "flex", gap: 6 }}>
@@ -10075,7 +10132,7 @@ export default function App() {
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label || n.name}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{n.players.length} {n.players.length === 1 ? "player" : "players"}</div>
                   </div>
-                  {!n.label && <span style={{ fontSize: 11, fontWeight: 600, color: ovrColor(n.natSkill), ...mono }}>{showOvr(n.natSkill)}</span>}
+                  {!n.label && <OvrBadge v={n.natSkill} />}
                 </div>); })}
             </div>
           </div>
@@ -10113,7 +10170,7 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Nat Team OVR</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: ovrColor(headAvg), ...mono }}>{showOvr(headAvg)}</div>
+                      <div><OvrBadge v={headAvg} /></div>
                     </div></>}
                   </div>
                 </div>); })()}
@@ -10594,7 +10651,9 @@ export default function App() {
                     const e = c.entries[si];
                     const latest = !!e && !!justPlaced && e.name === justPlaced.name;
                     return drawSlot(si, e, e ? teamOf.get(e.name) : null, latest,
-                      e && <span style={{ ...mono, fontSize: 9, color: e.pinned ? "var(--chrome-muted)" : ovrColor(e.skill), flexShrink: 0 }}>{e.pinned ? "PIN" : showOvr(e.skill)}</span>);
+                      e && (e.pinned
+                        ? <span style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0 }}>PIN</span>
+                        : <OvrBadge v={e.skill} xs style={{ flexShrink: 0 }} />));
                   }) }))}
               </div>),
               panelA: live ? (<>
@@ -10605,7 +10664,7 @@ export default function App() {
                       <div key={ballCard.name} className="draw-ball-out" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                         {ballTeam && <TeamCrest team={ballTeam} size={38} />}
                         <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>{ballCard.name}</div>
-                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>POT {ballCard.pot} · <span style={{ color: ovrColor(ballCard.skill) }}>{showOvr(ballCard.skill)}</span></div>
+                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>POT {ballCard.pot} · <OvrBadge v={ballCard.skill} xs /></div>
                       </div>
                       {cur
                         ? <div className="draw-await" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginTop: 4 }}>AWAITING GROUP</div>
@@ -10729,7 +10788,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(tConfig.numGroups, 4)}, 1fr)`, gap: 10, marginBottom: 16 }}>
               {tManual.grps.map((g, gi) => (<div key={gi} style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "12px 10px", boxShadow: "0 1px 6px var(--ui-shadow-1)" }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "var(--chrome-muted)", textAlign: "center", marginBottom: 8 }}>GROUP {g.label}</div>
-                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><span style={{ ...mono, fontSize: 10, color: ovrColor(t.skill) }}>{showOvr(t.skill)}</span></div>))}
+                {g.teams.map((t, ti) => (<div key={ti} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid var(--chrome-panel)", display: "flex", justifyContent: "space-between" }}><span>{t.name}</span><OvrBadge v={t.skill} sm /></div>))}
                 {g.teams.length < (gi < ((tManual.pool.length + tManual.grps.reduce((s,g2) => s + g2.teams.length, 0)) % tConfig.numGroups) ? tPerGroupMax : tPerGroup) && (<div style={{ marginTop: 4 }}><select onChange={e => { if (e.target.value !== "") { tManualAssign(+e.target.value, gi); e.target.value = ""; } }} style={{ ...sel, width: "100%", fontSize: 10 }}><option value="">+ Assign team...</option>{tManual.pool.map((t, ti) => <option key={ti} value={ti}>{t.name} ({showOvr(t.skill)})</option>)}</select></div>)}
               </div>))}
             </div>
@@ -10874,7 +10933,7 @@ export default function App() {
                         </div>}
                         {drawSlot(si, e, e ? teamOf.get(e.name) : null, latest, (<>
                           {e && e.group && <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)", flexShrink: 0 }}>{e.group}</span>}
-                          {e && <span style={{ ...mono, fontSize: 9, color: ovrColor(e.skill), flexShrink: 0 }}>{showOvr(e.skill)}</span>}
+                          {e && <OvrBadge v={e.skill} xs style={{ flexShrink: 0 }} />}
                         </>))}
                       </Fragment>);
                     }) });
@@ -10888,7 +10947,7 @@ export default function App() {
                       <div key={ballCard.name} className="draw-ball-out" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                         {ballTeam && <TeamCrest team={ballTeam} size={38} />}
                         <div style={{ fontSize: 15, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>{ballCard.name}</div>
-                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ballCard.group ? ballCard.group + " · " : ""}<span style={{ color: ovrColor(ballCard.skill) }}>{showOvr(ballCard.skill)}</span></div>
+                        <div style={{ ...mono, fontSize: 9, color: "var(--chrome-muted)" }}>{ballCard.group ? ballCard.group + " · " : ""}<OvrBadge v={ballCard.skill} xs /></div>
                       </div>
                       {cur
                         ? <div className="draw-await" style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--chrome-muted)", marginTop: 4 }}>AWAITING TIE</div>
@@ -11130,7 +11189,7 @@ export default function App() {
               <div style={{ textAlign: "center", background: "linear-gradient(145deg, var(--chrome-panel) 0%, var(--chrome-champion-glow) 50%, var(--chrome-panel) 100%)", border: "1px solid var(--chrome-gold-44)", borderRadius: 10, padding: 28, flexShrink: 0, boxShadow: "0 4px 24px var(--chrome-gold-22), 0 0 40px var(--chrome-gold-11)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 6, color: "var(--chrome-gold)", marginBottom: 10, textShadow: "0 0 8px var(--chrome-gold-66)" }}>🏆 CHAMPION</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: "var(--chrome-gold)", textShadow: "0 0 12px var(--chrome-gold-44)" }}>{tKO.champion.name}</div>
-                <div style={{ fontSize: 11, color: ovrColor(tKO.champion.skill), marginTop: 6, ...mono }}>{showOvr(tKO.champion.skill)}</div>
+                <div style={{ marginTop: 6 }}><OvrBadge v={tKO.champion.skill} /></div>
               </div>
             )}
             {!tKO.losers && (() => {
@@ -11699,7 +11758,7 @@ export default function App() {
               <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                 <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
                 <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "var(--chrome-muted-66)" }}>—</span>}</td>
-                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap", ...mono, fontWeight: 600, color: ovrColor(x.player?.ovr) }}>{showOvr(x.player?.ovr)}</td>
+                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap" }}><OvrBadge v={x.player?.ovr} sm /></td>
                 <td style={{ ...tdS, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
               </tr>
             );
@@ -11710,7 +11769,7 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
                 <PanelTitle accent="var(--chrome-muted)" sub={bestXi.formation}>Starting XI</PanelTitle>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <span style={{ color: ovrColor(avgOvr), fontWeight: 600, ...mono }}>{avgOvr.toFixed(1)}</span></span>
+                  <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <OvrBadge v={avgOvr} sm text={avgOvr.toFixed(1)} /></span>
                   <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
                 </div>
               </div>
@@ -12351,10 +12410,9 @@ export default function App() {
                                     like his fault as a defender. His real rating is untouched
                                     underneath; only what he is playing at changes. */}
                                 <span title={q.inGoal ? "Outfield player in goal" : undefined}
-                                      style={{ ...cellBase, ...mono, fontSize: 9, textAlign: "center",
-                                               fontStyle: q.inGoal ? "italic" : "normal",
-                                               color: ovrColor(q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)) }}>
-                                  {Math.round(q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70))}</span>
+                                      style={{ ...cellBase, padding: 0, textAlign: "center",
+                                               fontStyle: q.inGoal ? "italic" : "normal" }}>
+                                  <OvrBadge v={q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)} xs /></span>
                                 <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                                   {boldSurname(q.fullName || q.name, q.name)}
                                   {q.rc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
