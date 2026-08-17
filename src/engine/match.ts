@@ -554,7 +554,12 @@ export function meBallTo(s, side, i, x, y) {
 // WHO HAS BEEN ON IT. kickBy is the lock that stops a man re-winning a ball he has just played; it
 // is overwritten every kick and remembers nothing. An assist needs the touch BEFORE the shot, so the
 // same event is also pushed onto a short history. Bounded, because nothing needs the first half.
-export const meKickedBy = (mp, side, i) => {
+// `deflect` marks a touch the man did not choose: the ball was moving too fast to control and came
+// off him. He still locks out of re-winning it and he still owns it for last-touch bookkeeping, but
+// the assist chain reads past him, because football does not credit a defender for a ricochet. Only
+// the caller can know this -- by the time the log sees a touch, a block and a deflection look the
+// same -- so it is passed in rather than inferred here.
+export const meKickedBy = (mp, side, i, deflect) => {
   mp._carryBy = null;                          // a deliberate play ends the carry episode
   mp.kickBy = [{ s: side, i, t: mp.tick }];
   // A deliberate play supersedes any earlier deflection: he has the ball now, so whatever it last
@@ -563,7 +568,8 @@ export const meKickedBy = (mp, side, i) => {
   const g = (mp.tlog = mp.tlog || []);
   // ...and where. mp.bx/mp.by at the moment of the kick IS where he played it, so an error can be
   // located without threading a position through every call site.
-  g.push({ s: side, i, t: mp.tick, x: mp.bx, y: mp.by });
+  g.push(deflect ? { s: side, i, t: mp.tick, x: mp.bx, y: mp.by, d: 1 }
+                 : { s: side, i, t: mp.tick, x: mp.bx, y: mp.by });
   if (g.length > CFG.tlogMax) g.shift();
 };
 export const meAlsoKicked = (mp, side, i) => { (mp.kickBy = mp.kickBy || []).push({ s: side, i, t: mp.tick }); };
@@ -646,7 +652,13 @@ export function meFinalise(s) {
       if (!p || p.rating == null) continue;
       const on = p._onAt ?? 0, off = p._offAt ?? total;
       const frac = Math.max(0, Math.min(1, (off - on) / total));
-      const shrink = Math.min(1, frac / CFG.rateFullFrac);
+      // ...EXCEPT WHERE THE SHORT APPEARANCE IS THE POINT. A red card is not a cameo, it is the
+      // reason the cameo happened, and it is the most emphatic thing he did all afternoon. Shrinking
+      // his deviation for having played twenty minutes forgives him for precisely the thing being
+      // punished: a man dismissed in the twentieth had -1.5 scaled down to -0.45 and finished on
+      // 6.05, a better afternoon than most of the men who stayed on the pitch. He is rated in full.
+      // An injury keeps the shrink -- going off hurt is not something he did.
+      const shrink = p.rc ? 1 : Math.min(1, frac / CFG.rateFullFrac);
       const dev = (p.rating - 6.5) + (CFG.ratePos[p.pos] ?? 0);
       p.rating = Math.max(3, Math.min(10, +((6.5 + dev * shrink).toFixed(2))));
     }
@@ -734,8 +746,16 @@ const meCarry = (s, out, p) => {
   out.carries++; meBump(out, "carriesSide", meSideOfP(s, p));
 };
 const mePenRes = (out, sh, mp) => {
-  if (!sh || !sh.pen || sh._pd) return;
+  if (!sh || sh._pd) return;
   sh._pd = 1;
+  // A BIG CHANCE SPURNED. This function is reached by every ending a shot can have except the one
+  // where it goes in -- saved, blocked, wide, off the frame, whistle -- so it is the honest place to
+  // charge it, and the guard above means the several sites that call it twice only charge once.
+  // Scaled by how good the chance was, because a tap-in missed is not a half-volley missed.
+  if (sh.p && (sh.xg || 0) >= CFG.bigChanceXg)
+    meRate(sh.p, -CFG.rateBigMiss * Math.min(CFG.rateBigMissCap, (sh.xg || 0) / CFG.bigChanceXg));
+  if (!sh.pen) return;
+  if (sh.p) meRate(sh.p, -CFG.ratePenMiss);
   (out.penMiss = out.penMiss || { home: [], away: [] })[sh.side].push(
     { name: sh.name, full: sh.full || sh.name, min: out.min ?? 0 });
   // The silent endings still get a line -- a defender collecting a weak penalty is a missed
@@ -775,13 +795,16 @@ export function meTackle(s, rng, out) {
     const d = Math.hypot(p.x - c.x, p.y - c.y);
     if (d > CFG.tkRange) continue;
     const cv = Math.hypot(c.vx || 0, c.vy || 0) / ME_DT;
+    // Hoisted out of the angle sum below, unchanged, because it is also the question "is there
+    // anybody behind me" -- which is what makes a tackle a last-man tackle.
+    const covered = us.some((q, j) => j !== i && q && !q.off && q.pos !== "GK" && (c.x - q.x) * dir > 0
+                  && Math.hypot(q.x - c.x, q.y - c.y) < CFG.tkCoverR);
     const angle = Math.min(1,
         Math.max(0, 1 - d / CFG.tkRange) * CFG.tkwNear
       + ((c.x - p.x) * dir > 0 ? CFG.tkwSide : 0)
       + Math.max(0, 1 - cv / 7) * CFG.tkwSlow
       + (Math.min(c.y, PITCH_W - c.y) < CFG.tkEdge ? CFG.tkwEdge : 0)
-      + (us.some((q, j) => j !== i && q && !q.off && q.pos !== "GK" && (c.x - q.x) * dir > 0
-                  && Math.hypot(q.x - c.x, q.y - c.y) < CFG.tkCoverR) ? CFG.tkwCover : 0));
+      + (covered ? CFG.tkwCover : 0));
     const a = meAttrs(p);
     const go = CFG.tkGo - (a.tackle - 60) / 99 * CFG.tkGoSkill
                         - (s.strategy?.[def]?.tackling || 0) * CFG.tkGoInstr
@@ -799,12 +822,20 @@ export function meTackle(s, rng, out) {
       // tackles WON is its own field.
       out.tackles++; meBump(out, "tacklesSide", meSideOfP(s, p));
       out.tackleWon = (out.tackleWon || 0) + 1; meBump(out, "tackleWonSide", def);
-      meRate(p, CFG.rateTackle); p.defActs = (p.defActs || 0) + 1;
+      // Nobody behind him and it mattered where he did it: that is the tackle a defender is for.
+      const lastMan = !covered && Math.abs(meGoalX(atk) - c.x) < CFG.tkLastManR;
+      meRate(p, CFG.rateTackle + CFG.rateDuelWon + (lastMan ? CFG.rateLastMan : 0));
+      p.defActs = (p.defActs || 0) + 1; p.duelWon = (p.duelWon || 0) + 1;
+      // ...and the man he took it off lost it.
+      meRate(c, -CFG.rateDuelLost); c.duelLost = (c.duelLost || 0) + 1;
       meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
     } else {
       p._beat = CFG.tkBeatT;
       out.beaten = (out.beaten || 0) + 1;
+      // He went past him. Worth something to the carrier and something off the man he left.
+      meRate(c, CFG.rateDribble); c.dribbles = (c.dribbles || 0) + 1;
+      meRate(p, -CFG.rateBeaten); p.beaten = (p.beaten || 0) + 1;
       // A failed tackle is not news -- it happens dozens of times a match and reads as a man
       // being praised for beating somebody who barely engaged him. Still drawn on the pitch.
       meEvt(out, "tackle", atk, p.x, p.y, c.x, c.y, null);
@@ -1170,13 +1201,22 @@ export function meTick(s, rng, out) {
     // with 261 passes. Airtime is not control. A pass that reaches a team-mate was your possession
     // the whole way; a hoof that gets headed clear never was.
     if (okSide === pp.side) { out.passOk++; if (out.passOkSide) out.passOkSide[pp.side]++;
-                              if (pp.byP) pp.byP.passOk = (pp.byP.passOk || 0) + 1;
+                              if (pp.byP) { pp.byP.passOk = (pp.byP.passOk || 0) + 1;
+                                // What it was worth: a completed pass, plus what it gained. Only
+                                // forward progress pays, and it is capped so one long ball out of
+                                // defence cannot outscore a passage of play.
+                                const _fwd = pp.sx === undefined ? 0
+                                           : (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx);
+                                meRate(pp.byP, CFG.ratePass
+                                  + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg); }
                               out.poss[pp.side] += (pp.t || 0);
                               // Ground actually gained by a pass that found a team-mate. A side can
                               // complete 160 passes a game and be no nearer the goal at the end of it.
                               if (out.passFwd && pp.sx !== undefined)
                                 out.passFwd[pp.side] += (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx); }
-    else { out.passFail++; meEvt(out, "cut", pp.side, mp.bx, mp.by, mp.bx, mp.by, null); }
+    else { out.passFail++;
+           if (pp.byP) { pp.byP.passFail = (pp.byP.passFail || 0) + 1; meRate(pp.byP, -CFG.ratePassFail); }
+           meEvt(out, "cut", pp.side, mp.bx, mp.by, mp.bx, mp.by, null); }
   };
   if (mp.by < 0 || mp.by > PITCH_W) { resolvePending(null); mePenRes(out, mp.shot, mp); mp.shot = null; meDead(s, "throw", meOther(mp.touchSide), 76, out); return; }
   // Crossing your own goal line is the same event whether you dribbled it there or shot it.
@@ -1231,6 +1271,12 @@ export function meTick(s, rng, out) {
           if (gp && !(sh && sh.pen)) for (let k = lg.length - 1; k >= 0; k--) {
             const e = lg[k];
             if (e.t > gt) continue;                    // touches after the strike are deflections
+            // A ricochet off an opponent is not him having the ball, so it does not end the move he
+            // was not part of. Measured over 240 matches: every OTHER thing that ends the chain here
+            // is a real football reason to deny an assist -- he passed it and the scorer won it off
+            // him, the keeper parried, a tackle, a block -- and only this one was a bookkeeping
+            // artefact, worth 3 points of assist rate on its own.
+            if (e.s !== scorer && e.d) continue;
             if (e.s !== scorer) break;                 // they had it: no assist
             if (e.i !== gi) { ast = s.players[e.s]?.[e.i] || null; break; }
           }
@@ -1308,6 +1354,7 @@ export function meTick(s, rng, out) {
         return;
       }
       if (sh) { out.offTarget = (out.offTarget || 0) + 1;
+                if (sh.p) meRate(sh.p, -CFG.rateShotOff);
                 mePenRes(out, sh);
                 meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
                       sh.pen ? `${sh.full || sh.name} misses the penalty` : `${sh.full || sh.name} drags it wide`); }
@@ -1496,6 +1543,7 @@ export function meTick(s, rng, out) {
           const dGoalA = Math.hypot(gxA - q.x, ME_HALF_W - q.y);
           const power = CFG.headLo + meAttrs(q).strength / 99 * (1 - CFG.headLo);
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
+          q.aerials = (q.aerials || 0) + 1; meRate(q, CFG.rateAerial);
           mp.idx = -1; mp.flight = true; mp.fside = bs; mp.fj = -1; mp.passPending = null;
           if (dGoalA < CFG.headShotR && !mp.shot) {
             // Close enough to attack it: a header at goal, and it counts as a shot like any strike.
@@ -1519,7 +1567,7 @@ export function meTick(s, rng, out) {
               if (out.shotDist) { out.shotDist[Math.min(9, Math.floor(dGoalA / 5))]++;
                                   out.xg = (out.xg || 0) + hp; } }
             const aimY = ME_HALF_W + (q.y < ME_HALF_W ? 1 : -1) * GOAL_HALF_W * CFG.headAim;
-            mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick };
+            mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick, p: q };
             const gkH = s.players[meOther(bs)].find(z => z.pos === "GK");
             if (gkH) {
               const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
@@ -1595,7 +1643,8 @@ export function meTick(s, rng, out) {
           // Too hot to hold: parried away, still live. This is where rebounds come from.
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
-            meRate(q, meSaveBonus(shp.xg));
+            meRate(q, meSaveBonus(shp.xg) + (shp.pen ? CFG.ratePenSave : 0));
+            if (shp.p) meRate(shp.p, CFG.rateShotOn);
             mePenRes(out, shp);
                      meEvt(out, shp.pen ? "penmiss" : "save", shp.pen ? shp.side : bs, mp.bx, mp.by, mp.bx, mp.by,
                            shp.pen ? `${q.fullName || q.name} saves the penalty` : `${q.fullName || q.name} parries it`); }
@@ -1647,7 +1696,8 @@ export function meTick(s, rng, out) {
         }
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
-          meRate(q, meSaveBonus(mp.shot.xg));
+          meRate(q, meSaveBonus(mp.shot.xg) + (mp.shot.pen ? CFG.ratePenSave : 0));
+          if (mp.shot.p) meRate(mp.shot.p, CFG.rateShotOn);
           mePenRes(out, mp.shot);
           // The SIDE on an event is whose event it is, and a save is the keeper's. Tagged with the
           // shooter it drew the wrong club badge and the wrong colour in the feed, so a goalkeeper
@@ -1673,6 +1723,9 @@ export function meTick(s, rng, out) {
         // it kills most of the pace and it counts as a touch for last-man bookkeeping.
         if (v2d > CFG.controlV + meTech(qa.pass) * CFG.controlVSkill) {
           // A deflection. If a shot was live, that was a block.
+          // Which of the two it was decides whether an assist survives it, and the block branch
+          // below clears mp.shot -- so the question has to be asked here, before the answer is gone.
+          const wasBlock = !!(mp.shot && bs !== mp.shot.side);
           if (mp.shot && bs !== mp.shot.side) { out.blocked = (out.blocked || 0) + 1;
             meBump(out, "blockedSide", bs);
             meRate(q, CFG.rateBlock);
@@ -1683,7 +1736,9 @@ export function meTick(s, rng, out) {
             mp.deflect = { side: mp.shot.side, t: mp.tick,
               n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
             mePenRes(out, mp.shot); mp.shot = null; }
-          mp.lastSide = bs; meKickedBy(mp, bs, bi);
+          // A block ends the move: a goal off the rebound is nobody's assist. A deflection of a pass
+          // does not, so the chain reads through it to the man who played the ball.
+          mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlock);
           meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * 8, mp.by + (rng.u() - 0.5) * 8,
                   v2d * CFG.deflectKeep, 0);
           return;
@@ -2086,7 +2141,7 @@ export function meTick(s, rng, out) {
     const shooter = mp.idx;
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
-    mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: act.p, t0: mp.tick };
+    mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: act.p, t0: mp.tick, p };
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted
@@ -2094,8 +2149,11 @@ export function meTick(s, rng, out) {
     { const lg = mp.tlog || [];
       for (let k = lg.length - 1; k >= 0; k--) {
         const e = lg[k];
+        // Same rule as the assist: a ricochet off an opponent did not end the move he started.
+        if (e.s !== side && e.d) continue;
         if (e.s !== side) break;
-        if (e.i !== shooter) { meRate(s.players[side]?.[e.i], CFG.rateKeyPass); break; }
+        if (e.i !== shooter) { meRate(s.players[side]?.[e.i],
+            CFG.rateKeyPass + (act.p >= CFG.bigChanceXg ? CFG.rateBigChance : 0)); break; }
       } }
     // THE READ. A keeper cannot wait to see a shot. From twelve metres it is past him before his
     // reaction and his travel have both been paid for, so waiting is being beaten by geometry every

@@ -1132,11 +1132,41 @@ export const CFG = {
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
   rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.05, rateKeyPass: 0.15,
+  // PHASE D: THE ROUTINE. Everything above is a moment -- a goal, a card, an error -- and a match
+  // is mostly not moments. A full-back who played ninety composed minutes and a midfielder who
+  // completed eighty passes both finished on exactly 6.50, because nothing either of them did all
+  // afternoon was on the list. Measured over a full season, every rated player in the division fell
+  // between 6.29 and 7.08: a 0.79 band standing in for the difference between the best footballer
+  // in the league and the worst.
+  // These are the contributions that happen dozens of times a match. They are what makes two men
+  // who neither scored nor conceded rate differently, which is the whole job.
+  //
+  // THE SHAPE IS DELIBERATELY ASYMMETRIC, because the real distribution is: the mode sits just
+  // ABOVE the 6.5 start, the left tail is thin, and the right tail is long and reaches 10. So the
+  // routine positives are small and frequent, the routine punishments are smaller still, and only
+  // goals, saves, errors and dismissals reach far from par.
+  ratePass: 0.023, ratePassProg: 0.0016, ratePassProgCap: 26, ratePassFail: 0.046,
+  rateDuelWon: 0.066, rateDuelLost: 0.052, rateDribble: 0.094, rateBeaten: 0.062,
+  rateAerial: 0.052, rateShotOn: 0.05, rateShotOff: 0.018,
+  // A chance is big when the model says roughly a third of them go in. Creating one is worth more
+  // than the key pass it already scores; spurning one is a real cost, and it is charged whether the
+  // keeper saved it or it went wide, exactly as it is in the systems this is modelled on.
+  bigChanceXg: 0.30, rateBigChance: 0.30, rateBigMiss: 0.28, rateBigMissCap: 1.7,
+  // The moments that were missing. A penalty saved and a tackle made with nobody behind you are two
+  // of the biggest single things a keeper or a defender can do in a match, and neither existed.
+  ratePenSave: 0.85, ratePenMiss: 0.80, rateLastMan: 0.28, tkLastManR: 34,
   // PHASE C. rateFullFrac is the share of a match a man has to play before his rating is taken at
   // face value; below it he is pulled back toward par. ratePos is the positional par itself,
   // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
   rateFullFrac: 0.667,
-  ratePos: { GK: 0.10, DEF: -0.05, MID: -0.22, FWD: -0.42 },
+  // RE-DERIVED once the routine contributions above existed, by running a half-season with this
+  // set to zero and reading the raw per-position means straight off it. It has shrunk a long way,
+  // which is the point: it was 0.42 for a forward because the only things the rating could see were
+  // things forwards do, and a defender had no way to earn. With passing, duels, aerials and being
+  // beaten all counted, the raw means came in at GK 6.82, DEF 6.76, MID 6.88, FWD 6.98 -- a 0.22
+  // spread where it used to be 0.52 -- so what is left is a genuine positional par rather than a
+  // correction for a blind spot. Re-derive it the same way if any delta above moves.
+  ratePos: { GK: -0.067, DEF: -0.008, MID: -0.125, FWD: -0.232 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
