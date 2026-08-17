@@ -654,7 +654,10 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   if (matchUrg) st.matchUrg = matchUrg;
   if (teamForm) st.teamForm = teamForm;
   st.possession = "home";
-  const r = new RNG(((rng?.next?.() ?? Math.floor(Math.random() * 2 ** 31)) >>> 0) || 7);
+  // RNG.next() returns a FLOAT in [0,1). `float >>> 0` is always 0, and `0 || 7` is 7 -- so every
+  // jobbed sim played from seed 7 and a knockout tie produced the same score on every re-run.
+  // Scale the float to a 31-bit int instead: the job's seed stream reaches the match again.
+  const r = new RNG((Math.floor((rng?.next?.() ?? Math.random()) * 2 ** 31) >>> 0) || 7);
   meInit(st, pitchSlots, r);
   const out = meFreshOut();
   for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, r, out);
