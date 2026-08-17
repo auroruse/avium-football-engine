@@ -13346,6 +13346,11 @@ export default function App() {
                                    background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
                           {meRunning ? "Pause" : "Start"}</button>
                         <button onClick={meSimEnd} style={{ ...addBtn, flex: 1 }}>Sim to End</button>
+                        {/* Parks it rather than ends it. meRef is left alone, so the setup screen
+                            offers Resume and the match is exactly where you left it -- which is the
+                            only way out of a fixture you do not want to sit through right now. */}
+                        <button onClick={() => { meStop(); setMeView("setup"); setMePanel(null); }}
+                          style={{ ...addBtn, flex: 1 }}>Close</button>
                       </>) : m.tourn ? (<>
                         <button onClick={meImport}
                           style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
