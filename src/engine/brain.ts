@@ -656,6 +656,10 @@ function attackingRing(s, side, cx, cy) {
   if (d >= CFG.orbitLo && d <= CFG.orbitHi) return 1;
   return Math.max(0, 1 - Math.min(Math.abs(d - CFG.orbitLo), Math.abs(d - CFG.orbitHi)) / 8);
 }
+// The ring is eight fixed compass points and it has always been eight fixed compass points, but
+// the sine and the cosine of each were taken fresh on every candidate, of every player, of every
+// tick -- a million and a half trig calls a match for sixteen numbers that never change.
+const RING = Array.from({ length: 8 }, (_, k) => [Math.cos(k * Math.PI / 4), Math.sin(k * Math.PI / 4)]);
 export function meFindSpace(s, side, p, baseX, baseY, off) {
   const mp = s.mePos, dir = meDir(side);
   // HOW CLOSE THE SIDE IS WILLING TO STAND. A flat radius here is a MINIMUM SPACING nothing can
@@ -694,11 +698,16 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
   // ...and how hard the base pulls is now a property of WHY he is standing there. A man on his
   // formation's own slot is cheap to move; one an instruction has deliberately placed is not.
   const hold = CFG.basePullW * (1 + CFG.holdDev * (p._dev || 0));
+  // Two terms in the score below depend on the MAN and not on the candidate, and both were being
+  // worked out again for every one of the seventeen -- including a square root of a distance from
+  // a point that cannot move inside this loop. Same arithmetic, same order, computed once.
+  const mindK = (2.2 - 1.2 * (p._mind ?? 0.5)) / 2.2;
+  const awayK = 0.3 + 0.7 * Math.min(1, Math.hypot(p.x - baseX, p.y - baseY) / 20);
   let bx = baseX, by = baseY, best = -Infinity;
   for (let k = 0; k <= 16; k++) {
-    const ang = (k % 8) * Math.PI / 4, rad = k >= 8 ? ME_SPACE_R : ME_SPACE_R * CFG.spaceInner;
-    const cx = k === 16 ? baseX : baseX + Math.cos(ang) * rad;
-    const cy = k === 16 ? baseY : baseY + Math.sin(ang) * rad;
+    const ring = RING[k % 8], rad = k >= 8 ? ME_SPACE_R : ME_SPACE_R * CFG.spaceInner;
+    const cx = k === 16 ? baseX : baseX + ring[0] * rad;
+    const cy = k === 16 ? baseY : baseY + ring[1] * rad;
     if (cx < 2 || cx > PITCH_L - 2 || cy < 2 || cy > PITCH_W - 2) continue;
     if ((cx - off) * dir > 0 && (cx - mp.bx) * dir > 0) continue;          // would be offside
     let crowd = 0;
@@ -709,12 +718,12 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
              - meLaneBlock(s, side, mp.bx, mp.by, cx, cy) * 0.30 // can the ball reach me
              + meSpaceGain(s, side, cx, cy) * ME_SPACE_W          // would we newly own ground here
              - crowd * 0.55                                      // is somebody already there
-             - (2.2 - 1.2 * (p._mind ?? 0.5)) / 2.2 * Math.max(0, 1 - meOppDist(s, side, cx, cy) / 8) * CFG.oppAvoidW
+             - mindK * Math.max(0, 1 - meOppDist(s, side, cx, cy) / 8) * CFG.oppAvoidW
              // The carrier orbit band: an ideal 12-21 m ring for a supporting man -- without it a
              // spot on the carrier's shoulder and one forty metres away scored identically.
              + (attackingRing(s, side, cx, cy)) * CFG.orbitW
              // The further out of shape you already are, the harder the base pulls you back.
-             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * (0.3 + 0.7 * Math.min(1, Math.hypot(p.x - baseX, p.y - baseY) / 20)) * hold;
+             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * awayK * hold;
     if (sc > best) { best = sc; bx = cx; by = cy; }
   }
   return [bx, by];

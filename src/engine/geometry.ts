@@ -33,7 +33,12 @@ export const meDir = (side) => side === "home" ? 1 : -1;
 // valP = 1 reproduces the old surface exactly, so this is sweepable rather than a rewrite.
 export function meVal(side, x, y) {
   const d = Math.hypot(meGoalX(side) - x, (y - ME_HALF_W) * 1.35);
-  return 0.26 * Math.exp(-Math.pow(d / 13, CFG.valP));
+  const u = d / 13, e = CFG.valP;
+  // pow(x, 1) IS x -- the spec returns the base unchanged for an exponent of exactly +1, so this
+  // branch is not an approximation of the call it skips, it is the same number. valP was swept and
+  // left at 1.0, and the branch keeps it live for anyone who sweeps it again; it just stops the
+  // engine paying for a general power function a few million times a match to get its input back.
+  return 0.26 * Math.exp(-(e === 1 ? u : Math.pow(u, e)));
 }
 
 // meVal in goal-probability units peaks at 0.26, so anything that wants "how dangerous is this, 0 to
@@ -78,27 +83,46 @@ export const meValHere = (s, side, x, y) => {
 // After Fernandez & Bornn: every player owns an area of the pitch, stretched along the way he is
 // running and widened the further he is from the ball. Sum the two sides and you have a number for
 // "who would get there first", which is the only honest way to score a place to stand.
-export function meInfluence(p, x, y, ballDist) {
+// Reach grows with distance from the ball -- close to it you control almost nothing but your feet.
+// Hoisted out of meInfluence because it depends on the SAMPLE POINT and not on the man: every
+// caller asks about one point and then walks twenty-two players past it, so this was being
+// recomputed twenty-two times for one answer. Four and a half million times a match.
+export const meInfR = (ballDist) => 4.5 + Math.min(1, ballDist / 55) * 9.5;
+
+// The half of meInfluence that depends only on the man: how fast he is going, which way, and how
+// far the ellipse is pulled out in front of him. Stamped on him and keyed on the EXACT velocity
+// that produced it, so it is reused only while that velocity is bit-for-bit unchanged -- a tick
+// counter would be a guess about when he last moved, and this is not a guess.
+function meInfPrep(p) {
+  const vx = p.vx || 0, vy = p.vy || 0;
+  if (p._ivx === vx && p._ivy === vy) return;
+  p._ivx = vx; p._ivy = vy;
+  const sp = Math.hypot(vx, vy);
+  if (sp > 0.02) { p._iux = vx / sp; p._iuy = vy / sp; }
+  else { p._iux = 0; p._iuy = 0; }                   // flagged by _iux === 0: no rotation
+  p._istr = 1 + Math.min(1.1, sp * 3.4);             // an ellipse pulled out in front of him
+}
+
+// r is meInfR(ballDist) -- the caller works it out once for the point and hands it over.
+export function meInfluence(p, x, y, r) {
+  meInfPrep(p);
   const dx = x - p.x, dy = y - p.y;
-  // Reach grows with distance from the ball -- close to it you control almost nothing but your feet.
-  const r = 4.5 + Math.min(1, ballDist / 55) * 9.5;
-  const sp = Math.hypot(p.vx || 0, p.vy || 0);
   let along = dx, across = dy;
-  if (sp > 0.02) {                                   // rotate into his direction of travel
-    const ux = p.vx / sp, uy = p.vy / sp;
+  const ux = p._iux;
+  if (ux !== 0 || p._iuy !== 0) {                    // rotate into his direction of travel
+    const uy = p._iuy;
     along = dx * ux + dy * uy; across = -dx * uy + dy * ux;
   }
-  const stretch = 1 + Math.min(1.1, sp * 3.4);       // an ellipse pulled out in front of him
-  const a = along / (r * stretch), b = across / r;
+  const a = along / (r * p._istr), b = across / r;
   return Math.exp(-(a * a + b * b));
 }
 
 // Positive means this side owns the space, negative means the opposition does.
 export function meCtrl(s, side, x, y) {
-  const mp = s.mePos, bd = Math.hypot(x - mp.bx, y - mp.by);
+  const mp = s.mePos, r = meInfR(Math.hypot(x - mp.bx, y - mp.by));
   let us = 0, them = 0;
-  for (const p of s.players[side]) if (p.pos !== "GK") us += meInfluence(p, x, y, bd);
-  for (const q of s.players[meOther(side)]) if (q.pos !== "GK") them += meInfluence(q, x, y, bd);
+  for (const p of s.players[side]) if (p.pos !== "GK") us += meInfluence(p, x, y, r);
+  for (const q of s.players[meOther(side)]) if (q.pos !== "GK") them += meInfluence(q, x, y, r);
   return (us - them) / (us + them + 0.35);
 }
 
@@ -121,19 +145,49 @@ export function meBuildMap(s, side) {
   return m;
 }
 
+// BOTH MAPS AT ONCE. The two sides were built in separate passes over the same grid, at the same
+// instant, with the same twenty-two men standing in the same places -- so every cell had all
+// twenty-two influences worked out, and then worked out again for the other side's copy. Home's
+// `us` IS away's `them`; there was never a second answer to compute. Two million calls a match.
+// Bit for bit the same: each side's sum is still accumulated over its own players in array order,
+// and addition commutes exactly even where it does not associate, so h + a is a + h to the last
+// bit of the mantissa.
+export function meBuildMaps(s) {
+  const mp = s.mePos;
+  const H = s.players.home, A = s.players.away;
+  let mh = mp.map.home, ma = mp.map.away;
+  if (!mh) mh = mp.map.home = new Float32Array(ME_GRID_X * ME_GRID_Y);
+  if (!ma) ma = mp.map.away = new Float32Array(ME_GRID_X * ME_GRID_Y);
+  for (let j = 0; j < ME_GRID_Y; j++) {
+    const y = meCellY(j);
+    for (let i = 0; i < ME_GRID_X; i++) {
+      const x = meCellX(i);
+      const r = meInfR(Math.hypot(x - mp.bx, y - mp.by));
+      let h = 0, a = 0;
+      for (const p of H) if (p.pos !== "GK") h += meInfluence(p, x, y, r);
+      for (const q of A) if (q.pos !== "GK") a += meInfluence(q, x, y, r);
+      const k = j * ME_GRID_X + i, den = h + a + 0.35;
+      mh[k] = (h - a) / den;
+      ma[k] = (a - h) / den;
+    }
+  }
+}
+
 // How much of the pitch this side would newly own by putting a man here. Cells we already control
 // score nothing, which is what stops everybody crowding the same good area.
+const _ghost = { x: 0, y: 0, vx: 0, vy: 0 };
 export function meSpaceGain(s, side, x, y) {
   const m = s.mePos.map[side]; if (!m) return 0;
-  const mp = s.mePos, bd = Math.hypot(x - mp.bx, y - mp.by);
-  const ghost = { x, y, vx: 0, vy: 0 };
+  const mp = s.mePos, r = meInfR(Math.hypot(x - mp.bx, y - mp.by));
+  // One ghost, reused. It stands still by definition, so its prepared terms never change either.
+  const ghost = _ghost; ghost.x = x; ghost.y = y;
   let gain = 0;
   const i0 = Math.max(0, Math.floor((x - 14) / PITCH_L * ME_GRID_X)), i1 = Math.min(ME_GRID_X - 1, Math.ceil((x + 14) / PITCH_L * ME_GRID_X));
   const j0 = Math.max(0, Math.floor((y - 14) / PITCH_W * ME_GRID_Y)), j1 = Math.min(ME_GRID_Y - 1, Math.ceil((y + 14) / PITCH_W * ME_GRID_Y));
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const c = m[j * ME_GRID_X + i];
     if (c > 0.30) continue;                                    // already ours; nothing to win
-    const inf = meInfluence(ghost, meCellX(i), meCellY(j), bd);
+    const inf = meInfluence(ghost, meCellX(i), meCellY(j), r);
     gain += inf * (0.30 - c);
   }
   return gain;

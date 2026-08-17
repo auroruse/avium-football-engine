@@ -205,14 +205,19 @@ export function meBallStep(mp, seconds, players, ctrl, skip) {
 }
 
 /** Rebuild the forecast: PRED_SLOTS entries of [x, y, z], one per engine slice. */
+// One scratch ball and thirteen scratch triples, written over in place. This ran several times a
+// tick and allocated fourteen objects each time -- and every reader of mp.pred consumes it inside
+// the same tick it was built, so there is nothing alive to invalidate by writing over it.
+const _pg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
 export function meBallPredict(mp) {
-  const g = { bx: mp.bx, by: mp.by, bz: mp.bz, bvx: mp.bvx, bvy: mp.bvy, bvz: mp.bvz };
+  const g = _pg;
+  g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz;
   const pred = mp.pred && mp.pred.length === PRED_SLOTS ? mp.pred : (mp.pred = []);
-  pred[0] = [g.bx, g.by, g.bz];
   const per = Math.round(ME_DT / BALL_SUB);
-  for (let s = 1; s < PRED_SLOTS; s++) {
-    for (let i = 0; i < per; i++) stepOnce(g);
-    pred[s] = [g.bx, g.by, g.bz];
+  for (let s = 0; s < PRED_SLOTS; s++) {
+    if (s) for (let i = 0; i < per; i++) stepOnce(g);
+    const a = pred[s] || (pred[s] = [0, 0, 0]);
+    a[0] = g.bx; a[1] = g.by; a[2] = g.bz;
   }
 }
 

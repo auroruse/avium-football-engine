@@ -949,11 +949,16 @@ export const CFG = {
   // ceiling -- and parity costs goals a match 2.95 -> 2.67. A 30-fixture pass at the same values DID
   // show an inversion; it was noise, and it is only recorded here so nobody chases it again.
   carryAhead: 1.0,
-};
-export type EngineConfig = typeof CFG;
+  // ── GameplayFootball ports below ─────────────────────────────────────────────────────────
+  // These used to arrive through Object.assign(CFG, {...}) after the literal was closed, and
+  // that one call was costing more than any algorithm in the engine: adding eight hundred
+  // properties to a finished object drops it out of fast properties into a hash dictionary, so
+  // every CFG read anywhere -- and this engine does millions a match -- became a hash lookup.
+  // Measured on the same object with the same contents: 7 ms for five million reads as one
+  // literal, 97 ms as a dictionary. Folded in here, where a later duplicate key overrides an
+  // earlier one exactly as Object.assign did, so the values are unchanged.
 
 // ---- GameplayFootball ports (constants verified against the C++; see docs/gameplayfootball-gap-report.md)
-Object.assign(CFG, {
   // GetLazyVelocity (elizacontroller.cpp:437-474). start/end are the distances from the action
   // between which effort falls off; both shrink as a player tires so a tired side stays compact.
   lazyStart: 20, lazyEnd: 65, breathExp: 0.7, lazyFloor: 3.5,
@@ -1808,7 +1813,9 @@ Object.assign(CFG, {
   // A keeper smothers. He was excluded from the challenge loop entirely, so a carrier could dribble
   // the ball past him into the six-yard box unopposed -- which is where every shot was coming from.
   gkSmotherR: 2.6, gkSmotherP: 0.34,
-});
+};
+
+export type EngineConfig = typeof CFG;
 
 // A side with no instructions set. The engine owns this rather than importing the app's STRAT_DEF,
 // which is what keeps the dependency one-way: the UI imports the engine, never the reverse.

@@ -5,7 +5,7 @@ import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, me
 import { meBlock, meDuties, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meDecide, meShotP } from "./decide";
-import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMap, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
+import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
 // Twenty-two players on a 105x68 pitch, advanced in quarter-second slices. No team rating appears
@@ -118,6 +118,10 @@ export function meInit(s, slotsFor, rng) {
     for (const p of ps) {
       p._mind = p.pos === "GK" ? 0 : Math.max(0, Math.min(1, (p._bd0 - mn) / Math.max(1, mx - mn)));
       p._avgV = 0;
+      // meInfluence's per-man terms. Declared HERE, at kickoff, rather than stamped on first use:
+      // a property added to an object later gives it a new hidden class, and these five would have
+      // reshaped all twenty-two of them in the middle of the hottest loop in the engine.
+      p._ivx = NaN; p._ivy = NaN; p._iux = 0; p._iuy = 0; p._istr = 1;
     }
   }
   // THE KICKOFF SET. A formation scaled by 0.7 is not a kickoff position. At 105 m a forward's slot
@@ -1810,7 +1814,7 @@ export function meTick(s, rng, out) {
     mp.bal[sd] = (mp.fading[sd] - 1) * 2;
     for (const q of s.players[sd]) q._poss = (mp.ttbBest[meOther(sd)] + 200) / ((q._ttbMs ?? 9999) + 200);
   }
-  if (mp.tick % ME_MAP_STRIDE === 0) for (const side of ME_SIDES) meBuildMap(s, side);
+  if (mp.tick % ME_MAP_STRIDE === 0) meBuildMaps(s);
   if (mp.tick % 8 === 0) for (const side of ME_SIDES) meSlots(s, side);
   if (mp.tick % 2 === 0) meTactical(s);
   // Every tick, not every other one. Possession changes between runs, and a stale duty means a man
