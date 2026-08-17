@@ -87,6 +87,39 @@ console.log("\nthe pool");
   p2.dispose();
 
   // Seeds: same key, same seed; different key, different seed.
+  // THE ONE THAT WAS MISSING, and the reason a real run stopped dead on 8/8. A worker whose script
+  // fails to load gets exactly ONE error event from the browser and is silent forever after. The
+  // stub above errored on every message, so it never modelled a worker that dies -- it modelled a
+  // worker that is merely unreliable, which is a much kinder thing.
+  const deadWorker = () => {
+    const w = { ls: {}, sent: 0,
+      addEventListener(k, f) { (w.ls[k] = w.ls[k] || []).push(f); },
+      removeEventListener(k, f) { w.ls[k] = (w.ls[k] || []).filter(x => x !== f); },
+      postMessage() { w.sent++;
+        // One error, ever. Every later job vanishes into the void, exactly as it does in a browser.
+        if (w.sent === 1) setTimeout(() => { for (const f of [...(w.ls.error || [])]) f({ message: "load failed" }); }, 2);
+      },
+      terminate() {} };
+    return w;
+  };
+  const p3 = P.makePool(deadWorker, inline);
+  const t0 = Date.now();
+  const r3 = await Promise.race([
+    p3.run(jobs, (d) => { last = d; }),
+    new Promise(r => setTimeout(() => r("TIMEOUT"), 4000)),
+  ]);
+  ok("dead workers do not hang the run", r3 !== "TIMEOUT", r3 === "TIMEOUT" ? "hung" : (Date.now() - t0) + "ms");
+  if (r3 !== "TIMEOUT") {
+    ok("every job still came back", r3.length === jobs.length && r3.every((r, i) => r && r.at === i),
+       r3.filter(Boolean).length + "/" + jobs.length);
+  }
+  p3.dispose();
+
+  // ...and a pool whose workers cannot even be constructed.
+  const p4 = P.makePool(() => { throw new Error("no Worker here"); }, inline);
+  const r4 = await Promise.race([p4.run(jobs), new Promise(r => setTimeout(() => r("TIMEOUT"), 4000))]);
+  ok("unconstructable workers fall back", r4 !== "TIMEOUT" && r4.every((r, i) => r.at === i));
+
   ok("seeds are reproducible", P.jobSeed(5, "g_0_1_2") === P.jobSeed(5, "g_0_1_2"));
   const keys = [];
   for (let g = 0; g < 4; g++) for (let r = 0; r < 10; r++) for (let m = 0; m < 6; m++)

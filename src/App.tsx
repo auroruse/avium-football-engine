@@ -10459,8 +10459,11 @@ export default function App() {
           {simProg ? `${simProg.done} / ${simProg.total}` : "SIMULATING\u2026"}</span>
         {simProg && <><div style={{ width: 200, height: 3, background: "var(--chrome-panel)", borderRadius: 2, overflow: "hidden" }}>
           <div style={{ width: `${Math.round(simProg.done / Math.max(1, simProg.total) * 100)}%`, height: "100%", background: "var(--chrome-brand)", transition: "width .15s linear" }} /></div>
+        {/* What it is ACTUALLY running on, not what it hoped for. simPool.size() counts workers
+            that are alive: if they failed to load, this reads ONE THREAD and the run is still
+            correct, just as slow as it always was. */}
         <span style={{ fontSize: 9, color: "var(--chrome-muted-66)", letterSpacing: ".14em" }}>
-          {poolSize() >= 2 ? `${poolSize()} THREADS` : "ONE THREAD"}</span></>}</div>}
+          {simPool.size() >= 2 ? `${simPool.size()} THREADS` : `ONE THREAD${poolSize() >= 2 ? " \u00B7 WORKERS UNAVAILABLE" : ""}`}</span></>}</div>}
       {/* The roster warning lists. Rendered out here rather than inside the Nationalities panel so
           the panel's own overflow:hidden has nothing to say about them. Gated on the tab, so
           leaving the Players tab with one open does not strand it over another. */}

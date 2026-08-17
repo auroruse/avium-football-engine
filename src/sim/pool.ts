@@ -12,8 +12,11 @@
 // cores, and this workload gets almost nothing from the latter.
 //
 // The pool knows nothing about football. It is handed plain job objects and a function that can do
-// one inline, and it guarantees two things: the results come back in the order the jobs went in,
-// and a job that a worker cannot do gets done on this thread instead rather than lost.
+// one inline, and it guarantees three things: results come back in the order the jobs went in, a
+// job a worker cannot do gets done on this thread instead, and IT ALWAYS FINISHES. That last one
+// is not a nicety. The first version fed each worker a job, and when a worker failed to load, the
+// browser fired one `error` at it and then went quiet forever -- so the run stopped dead on
+// exactly poolSize completed jobs with a progress bar that never moved again.
 
 export type PoolJob = { seed: number; [k: string]: unknown };
 
@@ -26,17 +29,16 @@ const HW = (() => {
 // usable cores the pool declines to exist and everything runs inline.
 export const poolSize = () => Math.max(0, Math.min(8, (HW || 1) - 2));
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: unknown) => void; i: number };
-
 export function makePool(makeWorker: (() => Worker) | null, inline: (job: PoolJob) => unknown) {
   let workers: Worker[] = [];
-  let broken = false;
+  const dead = new WeakSet<Worker>();
+  let noWorkers = !makeWorker;
 
   const spin = (n: number) => {
-    if (!makeWorker || broken) return;
+    if (noWorkers) return;
     while (workers.length < n) {
-      try { workers.push(makeWorker()); }
-      catch { broken = true; for (const w of workers) w.terminate(); workers = []; return; }
+      try { workers.push(makeWorker!()); }
+      catch (e) { console.warn("[sim] no workers, running on this thread:", e); noWorkers = true; return; }
     }
   };
 
@@ -44,60 +46,101 @@ export function makePool(makeWorker: (() => Worker) | null, inline: (job: PoolJo
   // otherwise pay that 38 times.
   const dispose = () => { for (const w of workers) w.terminate(); workers = []; };
 
-  const runInline = async (jobs: PoolJob[], onProgress?: (d: number, t: number) => void) => {
-    const out = new Array(jobs.length);
-    for (let i = 0; i < jobs.length; i++) {
-      out[i] = inline(jobs[i]);
-      onProgress?.(i + 1, jobs.length);
-      // Hand the frame back so a progress bar can actually paint. Without this the "parallel"
-      // fallback is the old frozen tab with extra steps.
-      if (i % 2 === 1) await new Promise((r) => setTimeout(r, 0));
+  const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
+
+  const run = async (jobs: PoolJob[], onProgress?: (d: number, t: number) => void) => {
+    const total = jobs.length;
+    if (!total) return [];
+    const out = new Array(total);
+    let next = 0, done = 0;
+
+    const finish = (i: number, v: unknown) => {
+      out[i] = v;
+      onProgress?.(++done, total);
+    };
+
+    spin(Math.min(poolSize(), total));
+    const live = () => workers.filter((w) => !dead.has(w));
+
+    if (live().length >= 2) {
+      await new Promise<void>((resolve) => {
+        let flying = 0;
+        const settle = () => { if (done >= total) resolve(); };
+        const feed = (w: Worker) => {
+          if (dead.has(w)) { pump(); return; }
+          if (next >= total) { settle(); return; }
+          const i = next++;
+          let over = false;
+          const clear = () => {
+            w.removeEventListener("message", onMsg);
+            w.removeEventListener("error", onErr);
+          };
+          const onMsg = (e: MessageEvent) => {
+            if (over || (e.data as any)?.i !== i) return;
+            over = true; clear(); flying--;
+            finish(i, (e.data as any).r);
+            if (done >= total) return resolve();
+            feed(w);
+          };
+          // A WORKER THAT ERRORS IS GONE. The browser reports a failed script load exactly once, so
+          // treating this as "retry the next job on the same worker" is how the run stalls: eight
+          // workers report once, eight jobs fall back, and then nobody is left to say anything ever
+          // again. Do this job here, strike the worker off, and let pump() find the work a home.
+          const onErr = (e: unknown) => {
+            if (over) return;
+            over = true; clear(); flying--;
+            dead.add(w);
+            if (live().length === 0 && !reported) {
+              reported = true;
+              console.warn("[sim] every worker failed; falling back to this thread.", e);
+            }
+            finish(i, inline(jobs[i]));
+            if (done >= total) return resolve();
+            pump();
+          };
+          w.addEventListener("message", onMsg);
+          w.addEventListener("error", onErr);
+          flying++;
+          try { w.postMessage({ i, job: jobs[i] }); }
+          catch (e) { onErr(e); }                 // a job that will not clone is a job for this thread
+        };
+        let reported = false;
+        // Whatever happens to the workers, the remaining jobs get done. If any are still alive they
+        // are fed; if none are, the rest is drained here, a couple at a time so the bar still moves.
+        const pump = () => {
+          const ws = live();
+          if (ws.length) {
+            for (const w of ws) if (flying < ws.length && next < total) feed(w);
+            if (flying === 0 && next < total) drain();
+            else settle();
+            return;
+          }
+          drain();
+        };
+        const drain = async () => {
+          while (next < total) {
+            const i = next++;
+            finish(i, inline(jobs[i]));
+            if (i % 2 === 1) await yieldFrame();
+          }
+          settle();
+        };
+        for (const w of live()) feed(w);
+        if (next === 0) drain();                  // nothing got fed at all
+      });
+      return out;
+    }
+
+    // No usable pool: straight through on this thread, handing the frame back often enough that a
+    // progress bar can actually paint. Without that the fallback is the old frozen tab.
+    for (let i = 0; i < total; i++) {
+      finish(i, inline(jobs[i]));
+      if (i % 2 === 1) await yieldFrame();
     }
     return out;
   };
 
-  const run = async (jobs: PoolJob[], onProgress?: (d: number, t: number) => void) => {
-    if (!jobs.length) return [];
-    const want = Math.min(poolSize(), jobs.length);
-    if (want < 2) return runInline(jobs, onProgress);
-    spin(want);
-    if (!workers.length) return runInline(jobs, onProgress);
-
-    const out = new Array(jobs.length);
-    let next = 0, done = 0;
-    const total = jobs.length;
-
-    await new Promise<void>((resolve) => {
-      const feed = (w: Worker) => {
-        if (next >= total) { if (done >= total) resolve(); return; }
-        const i = next++;
-        const onMsg = (e: MessageEvent) => {
-          if ((e.data as any)?.i !== i) return;
-          w.removeEventListener("message", onMsg);
-          w.removeEventListener("error", onErr);
-          out[i] = (e.data as any).r;
-          onProgress?.(++done, total);
-          if (done >= total) resolve(); else feed(w);
-        };
-        // A worker that dies takes its job with it. Do that one here rather than drop a fixture --
-        // a missing result is a tournament with a hole in it, which is far worse than a slow one.
-        const onErr = () => {
-          w.removeEventListener("message", onMsg);
-          w.removeEventListener("error", onErr);
-          out[i] = inline(jobs[i]);
-          onProgress?.(++done, total);
-          if (done >= total) resolve(); else feed(w);
-        };
-        w.addEventListener("message", onMsg);
-        w.addEventListener("error", onErr);
-        w.postMessage({ i, job: jobs[i] });
-      };
-      for (const w of workers) feed(w);
-    });
-    return out;
-  };
-
-  return { run, dispose, size: () => workers.length };
+  return { run, dispose, size: () => workers.filter((w) => !dead.has(w)).length };
 }
 
 // Fixture seeds. The bulk sim used to thread ONE generator through a whole round, so which numbers
