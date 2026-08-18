@@ -1,4 +1,4 @@
-@	#	TEAM	OVR	PLAYSTYLE	FORMATION	TIME WASTING	GK PASSING	DL BEHAVIOR	#1	#2	#3	#4	#5	#6	#7	#8	#9	#10	#11	#12	#13	#14	#15	#16	Home	Away	LOCATION	STADIUM	LEAGUE
+@	#	TEAM	OVR	PLAYSTYLE	FORMATION	TIME WASTING	GK PASSING	DL BEHAVIOR	#1	#2	#3	#4	#5	#6	#7	#8	#9	#10	#11	#12	#13	#14	#15	#16	Home	Away	LOCATION	STADIUM / UNIVERSITY	LEAGUE
 	DYM	Dynamo Mizuhara	82.6	Second Ball	4-4-2	Never	Long	Offside Trap	(83) Magnus ANDERSSON [SKJ]	(88) Kōzō FUJISE	(83) Yoshikazu TAKANEN	(81) Timur OORZHAK [RUD]	(83) Akira NAGUMO	(79) Hiro OSHIRO	(89) Gijs DREESENS [ALE]	(87) Rui ŌE	(90) Octave DESJARDINS [ARV]	(89) Taiga BASHIRA	(90) Kenichi MITSUI	(78) Teppei ARAGAKI	(76) Teppei MOTOHASHI	(75) Kengo OKITSU	(74) Igor NOVIKOV [RUD]	(77) Ryland NASH [ESU]	#233368	#c75b28	Mizuhara (8,111,000)	Tadamune Kuronami National Stadium (105,000)	Nichirin League One
 	SPK	Spartak Kanagawa	82.6	La Nuestra	4-4-2	Never	No Instruction	No Instruction	(87) Jordan STANFORD [ELV]	(83) Kazuyoshi HIRANUMA	(83) Daigo TAKANASHI	(86) Filippo CASTIGLIONE [VIC]	(84) Kiyoshi MURANDIN [NKI]	(79) Nuno GOUVEIA [REI]	(83) Sixten KARLSSON [SKJ]	(91) Péter SZABÓ [TUR]	(80) Marcello LA BARCA [VIC]	(87) Shō ITOSHI	(86) Denis KUZNETSOV [RUD]	(78) Shūsaku OGINOME	(82) Arthur KOHLBERG [ALE]	(77) Katsuyoshi ENDŌ	(76) Reito FUYUTSUKI	(79) Yōhei TAKIGAWA	#a8232b	#f2e6d0	Shinkeisei (36,955,000)	Spartak Coliseum (82,000)	Nichirin League One
 	ISS	Imperial Sports Society	80.1	Cholismo	4-1-4-1	Never	No Instruction	No Instruction	(88) Miklós NAGY [TUR]	(78) Jacinto VALENCIA [AUR]	(80) Nicolas BELLAMY [ARV]	(84) Olof SJÖBERG [SKJ]	(80) Keigo MACHIDA	(80) Iilmari TORJALASTEN [KAR]	(80) Yerrin CHINDURA [NHO]	(82) Kiyoshi TORIGOE	(85) Masaru JAKAMARRA [NKI]	(82) Raffaele LUCCHESE [VIC]	(91) Trent HAWTHORNE [ESU]	(70) Wataru TERASAKI	(75) Riki ŌZONO	(76) Serafim CORREIA [REI]	(74) Takanori KAJIWARA	(77) Kyōsuke KOMINE	#cea348	#1a1a30	Takarazuka (18,922,000)	Hikari Heliodrome @ TIU (70,000)	Nichirin League One
@@ -29,3 +29,35 @@
 	MAT	Matsuumi Horikawa	70.6	Second Ball	4-1-4-1	Never	No Instruction	No Instruction	(72) Shōichi UMEDA	(70) Katsunori HANEDA	(71) Yūsuke SHIOTA	(69) Tomoki KAMEYAMA	(70) Nobuyuki SAKURAI	(71) Rostam KHALILI [VAR]	(71) Ryōta MIYAZAWA	(72) Sanat BARUA [NHO]	(73) Yëría KACHÉ [NMZ]	(72) Minoru ANDŌ [NKI]	(68) Sōta MIZOGUCHI	(67) Kazuya TSUCHIYAMA	(69) Susumu UEHARA [NHO]	(71) Hiroshi TSUBAKI	(70) Tōru HIRAGA	(73) Jatin SUDATTA [NHO]	#2a7494	#d4c090	Matsuumi (819,000)		Nichirin League Two
 	SHR	AC Shirasagi	69.9	Second Ball	4-3-2-1	Never	No Instruction	No Instruction	(70) Sibö KURBLI [NMZ]	(72) Keigo IKEDA [NKI]	(69) Anirban GOSWAMI [NHO]	(72) Hengbo LIU [FUR]	(71) Tarran NYARUGURU [NKI]	(70) Nirrim BIRYARA [NKI]	(72) Mircea IONESCU [TUR]	(71) Naoki ONIZUKA	(69) Hiroto NAKATSUKA	(67) Naoki HIGASHINO	(73) Pradip CHOWDHURY [NHO]	(65) Toshiki YANAI	(67) Provat ADHIKARI [NHO]	(70) Daichi NAGAOKA	(69) Kentarō FUKUHARA	(72) Nyilan SHIKISHIMA [NKI]	#f0f0f0	#1a4a38	Sagimino (465,000)		Nichirin League Two
 	IFK	IFK Korihama	69.8	Route One	3-4-3	Never	Short	No Instruction	(72) Bilan TERAUCHI [NKI]	(68) Kazutoshi HŌJŌ	(66) Nobuhiro AZUSAWA	(67) Takahiro CHIKARAISHI	(72) Phani KYAITHANG [NHO]	(71) Hidenori NISHIZAWA	(73) Genki TOBA	(71) Itsuki TSUKAHARA	(71) Kōhei SAHARA	(72) Fumiya HABIRO	(72) Shūhei OZAKI	(70) Arun PAL [NHO]	(70) Baluk CHERAGA [NKI]	(68) Shun OKUDA	(68) Yasushi KOBAYAKAWA	(66) Yūma HAYAMI	#6aafe6	#1a2030	Kōrihama (7,189,000)		Nichirin League Two
+	AFA	Air Force Goshawks	#DIV/0!																								Shinkeisei (36,955,000)	Sen'ninhara Academy of Aeronautics	All-Nichirin Collegiate Championship
+	AOB	Aoba Lumberjacks	#DIV/0!																								Shikisen (1,745,000)	Aoba College	All-Nichirin Collegiate Championship
+	DCN	Diocesan Saints	#DIV/0!																								Kōrihama (7,189,000)	Diocesan College of the Northern Mission	All-Nichirin Collegiate Championship
+	DPI	Daikei Black Gold	#DIV/0!																								Daikei (2,124,000)	Daikei Petroleum Institute	All-Nichirin Collegiate Championship
+	ECH	Echigoya Argosies	#DIV/0!																								Kamabuchi (7,700,000)	Echigoya University	All-Nichirin Collegiate Championship
+	HKR	Hakkōran Peacocks	#DIV/0!																								Hakkōran (2,185,000)	Hakkōran College	All-Nichirin Collegiate Championship
+	IIU	Itakeyaki Northern Lights	#DIV/0!																								Itakeyaki (2,331,000)	Itakeyaki Imperial University	All-Nichirin Collegiate Championship
+	TIU	Imperial Sports Society II	#DIV/0!																								Takarazuka (18,922,000)	Takarazuka Imperial University	All-Nichirin Collegiate Championship
+	KNU	Kanagawa Grenadiers	#DIV/0!																								Shinkeisei (36,955,000)	Kanagawa National University	All-Nichirin Collegiate Championship
+	KYW	Kyōwa Apothecaries	#DIV/0!																								Naginomiya (25,811,000)	Kyōwa University	All-Nichirin Collegiate Championship
+	MET	Metropolitan Caryatids	#DIV/0!																								Shinkeisei (36,955,000)	Metropolitan Academy of Fine Arts	All-Nichirin Collegiate Championship
+	MNS	Manshu Carmine Hearth	#DIV/0!																								Mizuhara (8,111,000)	Manshu Institute of Mining and Metallurgy	All-Nichirin Collegiate Championship
+	MRN	Meirin Magnetos	#DIV/0!																								Makinohara (2,922,000)	Meirin Institute	All-Nichirin Collegiate Championship
+	MZH	Mizuhara Mastiffs	#DIV/0!																								Mizuhara (8,111,000)	University of Mizuhara	All-Nichirin Collegiate Championship
+	MZS	Mizushima Leviathans	#DIV/0!																								Ayanami (317,000)	Mizushima College	All-Nichirin Collegiate Championship
+	NVY	Navy Bluejackets	#DIV/0!																								Chūkyō (9,512,000)	Chūkyō Naval Academy	All-Nichirin Collegiate Championship
+	OTA	Ōtase Threshers	#DIV/0!																								Ōtase (2,468,000)	Ōtase Higher School of Agriculture and Fisheries	All-Nichirin Collegiate Championship
+	RYM	Ryūmon Wyrmwind	#DIV/0!																								Harushige (5,491,000)	Ryūmon University	All-Nichirin Collegiate Championship
+	SHK	Shinkeisei Herons	#DIV/0!																								Shinkeisei (36,955,000)	University of Shinkeisei	All-Nichirin Collegiate Championship
+	SHM	Shimonosaki Scrappers	#DIV/0!																								Shimonosaki (6,467,000)	Shimonosaki University of Technology	All-Nichirin Collegiate Championship
+	SHZ	Shizuku Puddlers	#DIV/0!																								Tetsuhachi (1,764,000)	Shizuku University	All-Nichirin Collegiate Championship
+	SIU	Seitou Kinshūans	#DIV/0!																								Seitou (5,312,000)	Seitou Imperial University	All-Nichirin Collegiate Championship
+	SMM	Sumerajima Windjammers	#DIV/0!																								Sumerajima (1,799,000)	Sumerajima Mercantile Marine College	All-Nichirin Collegiate Championship
+	ST	Shinkeisei Tech Giant Hornets	#DIV/0!																								Shinkeisei (36,955,000)	Shinkeisei Polytechnical University	All-Nichirin Collegiate Championship
+	SU	Senpan Gargoyles	#DIV/0!																								Shinkeisei (36,955,000)	Senpan University	All-Nichirin Collegiate Championship
+	USIC	USIC Cormorants	#DIV/0!																								Izuminone (1,743,000)	University of Serica, Izuminone-Chikuzen	All-Nichirin Collegiate Championship
+	USNA	USNA Ironclads	#DIV/0!																								Naginomiya (25,811,000)	University of Serica, Naginomiya	All-Nichirin Collegiate Championship
+	UST	UST Kilnmen	#DIV/0!																								Tōhara (4,111,000)	University of Serica, Tōhara	All-Nichirin Collegiate Championship
+	UWN	Western Black Grizzlies	#DIV/0!																								Satsuno (2,646,000)	University of Western Nichirin	All-Nichirin Collegiate Championship
+	WAR	War College Sabres	#DIV/0!																								Shinkeisei (36,955,000)	War College	All-Nichirin Collegiate Championship
+	AMP	Amarapura Mendicants	#DIV/0!																								Hinatachi (416,000)	Amarapura Mahavihara	All-Nichirin Collegiate Championship
+	HSH	Hoshizuru Stargazers	#DIV/0!																								Tōgen (646,000)	Hoshizuru Astrological Institute	All-Nichirin Collegiate Championship
