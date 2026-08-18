@@ -18,7 +18,7 @@ import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_KEY_ROLE, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeRoleFit, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
@@ -3735,27 +3735,33 @@ const ovrHex = (v) => ratingColor((Number(v) || 0) / 10);
 // silver were pale enough that white text disappeared into their lit edge, so both faces are struck
 // darker here than the metal they are named after. A badge you cannot read is not a badge.
 const OVR_METAL = [
-  { min: 90, obs: 1 },                                       // obsidian
-  { min: 85, hi: "#ff7189", mid: "#b01430", lo: "#56041a" }, // ruby
+  { min: 90, iri: 1 },                                       // iridescent
+  // AMETHYST, and struck darker than the stone. White has to survive on the LIT EDGE of the
+  // gradient, which is the brightest part of the chip and the only part that can fail: a true
+  // amethyst highlight like #c9a0f0 carries white at 2.15:1. This edge is 3.35:1 and the face
+  // beneath it 9.02:1, which with the text shadow reads cleanly at eight and a half pixels.
+  { min: 85, hi: "#a878d0", mid: "#5d3096", lo: "#240d3c" }, // amethyst
   { min: 80, hi: "#55dfa0", mid: "#127a4a", lo: "#05361f" }, // emerald
   { min: 75, hi: "#f2d067", mid: "#b5860f", lo: "#5f4405" }, // gold
   { min: 65, hi: "#cdd5dd", mid: "#8b949c", lo: "#4d555c" }, // silver
   { min: -Infinity, hi: "#e0a071", mid: "#a05f2c", lo: "#4f2a12" }, // copper
 ];
 const OVR_INK = "#ffffff", OVR_TSHADOW = "0 1px 2px rgba(0,0,0,0.5)";
-// NINETY AND UP. Volcanic glass: black, but never flatly black, because a flat black badge reads as
-// a disabled control rather than as the rarest thing on the table. Two layers, and the order matters
-// -- CSS paints the first listed on top, so a cool sheen sweeps ACROSS the stone rather than tinting
-// it. The sheen is faint on purpose: obsidian catches light in a narrow band and stays dark
-// everywhere else, and that narrow band is the whole read.
-const OVR_OBSIDIAN =
-  "linear-gradient(140deg, rgba(255,255,255,0) 26%, rgba(150,196,255,0.30) 43%, rgba(214,180,255,0.22) 52%, rgba(255,255,255,0) 68%), " +
-  "linear-gradient(145deg, #4a4f5e 0%, #23262f 30%, #0c0d12 52%, #23262f 74%, #464c5c 100%)";
+// NINETY AND UP. Two layers, and the ORDER IS THE WHOLE TRICK: CSS paints the first listed on top,
+// so the dark sweep sits OVER the spectrum. Without it the label is unreadable -- white on the cyan
+// stop is 1.5:1 and on the amber 1.4:1, and a rainbow is exactly the background that defeats a
+// single text colour.
+// The overlay never thins past 0.42, which is where the brightest stop still carries white at
+// 4.40:1; the ends close to 0.66 so the chip reads as a solid object rather than a sticker. Inside
+// that budget the spectrum is free to be as loud as it likes, which is the point of the tier.
+const OVR_IRIDESCENT =
+  "linear-gradient(160deg, rgba(0,0,0,0.66) 0%, rgba(0,0,0,0.44) 30%, rgba(0,0,0,0.42) 52%, rgba(0,0,0,0.48) 72%, rgba(0,0,0,0.68) 100%), " +
+  "linear-gradient(115deg, #00e5ff 0%, #7c5cff 20%, #ff4fa3 38%, #ffb02e 56%, #35e08a 74%, #2fa8ff 100%)";
 // ROUNDED, ALWAYS. A team carries a decimal for ordering and prints as a whole number, so banding
 // the raw value put an 84.6 side badged as 84's colour while the badge itself read 85. showOvr
 // rounds the same way, so the number and its metal can no longer disagree.
 const ovrMetal = (v) => { const n = Math.round(Number(v) || 0); return OVR_METAL.find(m => n >= m.min); };
-const ovrSheen = (m) => m.obs ? OVR_OBSIDIAN
+const ovrSheen = (m) => m.iri ? OVR_IRIDESCENT
   : `linear-gradient(145deg, ${m.hi} 0%, ${m.mid} 26%, ${m.lo} 50%, ${m.mid} 74%, ${m.hi} 100%)`;
 // A filled badge reads as a grade at a glance where bare digits have to be compared one column at a
 // time. The inset lifts the top edge and darkens the bottom, which is what makes it read as struck
@@ -3950,8 +3956,12 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kf
 // Karjanian Secondary joins them for a different reason: its players ARE rated, but only four or
 // five per club, so a side's OVR is the mean of a third of a team and reads far higher than the
 // eleven that would actually take the field. Tentative — put the names in and take it off this list.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Frederikka Cup", "Kullanmaan Cup",
-                             "Karjanian Secondary League"]);
+// THE TWO CUPS CAME BACK, on exactly the condition written above: both sheets now carry a full
+// sixteen rated players per club, so nobody in them inherits a team default any more. They are four
+// clubs and two clubs, well under MIN_DIVISION, so they sort themselves into Miscellaneous Clubs
+// without being told to -- and at 38 to 45 they are nowhere near displacing anyone in national
+// selection, which was the other half of the original objection.
+const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Karjanian Secondary League"]);
 function nationLeagues(raw) {
   const out = new Map();
   const _lines = raw.split("\n");
@@ -4153,6 +4163,126 @@ const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariant
 // still bands on the rounded value, which is the point of it.
 // No value is a muted dash and NOT a badge: a copper rectangle with a dash in it reads as a rating
 // of nothing rather than as an absence.
+// THE PLAYSTYLE TABLE. Fourteen styles against eleven axes, which as fourteen separate panels ran
+// to most of a screen each and could not be compared -- and comparing them is the only reason to
+// read it. One row per style makes the differences fall out vertically: the two columns Route One
+// and Counter disagree on are visible at a glance, which no amount of prose achieves.
+// The prose is not gone, it is on hover, in a fixed panel under the table rather than a tooltip.
+// A tooltip inside a scrolling pane gets clipped, and a panel that is always the same height
+// cannot make the page jump as the pointer moves across rows.
+// Written against the stamp each style actually carries, not against its name. If a
+// stamp changes, the panel underneath the prose changes with it and the two will visibly
+// disagree -- which is the point, and is how this document is meant to be kept honest.
+const STYLE_DOC = {
+  gegenpress: "Win it back high and go again. The only style in the game that maxes both the press and the defensive line at once, and it counter-presses the instant the ball is lost. Everything is pointed at making the turnover happen in a dangerous area, which is why it also gets stuck in. The cost is the space behind a line that high, and the legs it takes to press like that for a whole match.",
+  verticaltiki: "Tiki-Taka pointed at the goal. The same short, narrow passing, but the opposite intent once the ball moves: it runs at defences, plays into space rather than around it, counters when it wins the ball and counter-presses when it loses it. The highest line outside Gegenpress.",
+  lanuestra: "Short passing and a high press, with the handbrake off. Players are told to carry the ball and to express themselves, and the side both counters and counter-presses. Less structured than Tiki-Taka and less frantic than Gegenpress: a possession side that wants its individuals to decide games.",
+  wingplay: "Width, overlaps and licence to take a man on. The widest side in the game by some distance, playing more directly into the channels and giving its wide players freedom to dribble. Nothing is sacrificed defensively on paper; what it gives up is central control.",
+  secondball: "Direct, narrow, and built to live off the knock-down. It goes long and quick into the front men, squeezes narrow to win what drops, presses, counters, counter-presses and gets stuck in. Dribbling and freedom are actively suppressed: this is not a side that wants anyone holding the ball, it wants the next contest.",
+  routeone: "Skip the middle third entirely. The most direct passing in the game, shooting on sight, with dribbling and creative freedom both switched off and the tackling turned up. Distinct from Counter by not sitting deep to earn the ball first: it simply does not use midfield.",
+  balanced: "No instructions in any direction, and genuinely the engine’s unconstrained baseline rather than a compromise between others. Everything is decided by the players and the formation. Every other style is a departure from this one, and a departure always costs something somewhere.",
+  tikitaka: "Keep it, move it, never hurry. The shortest passing in the game, narrow, working the ball into the box rather than shooting, holding shape instead of countering, and pressing to restart possession rather than to score off the turnover. A high line to squeeze the pitch, and expression on the ball.",
+  possession: "Patient without the press. Plays out from the back, passes shorter than standard, holds its shape when it wins the ball and stays on its feet rather than diving in. It presses at nobody. Control through the ball rather than through territory.",
+  cholismo: "A narrow, compact block that funnels everything inside and hits you on the break. Sits off, plays more directly when it does go, and regroups rather than counter-pressing when the ball is lost. Freedom is switched off: this is a side that does its job rather than its own thing.",
+  counterattack: "Sit off, then hurt them the moment it breaks. The lowest press in the game paired with a deep line, the most direct passing, and instructions to counter the instant the ball is won and to shoot on sight when the chance arrives. It regroups rather than counter-pressing, because getting the shape back is the point.",
+  zonamista: "A deep, quiet side that defends space rather than men and breaks when it can. Lower press and a lower line, short and patient on the ball, regrouping when it loses it but countering when it wins it. The most restrained set of instructions of any non-Balanced style.",
+  catenaccio: "The deep block that still intends to score. It absorbs like Park The Bus and breaks like Counter, but narrower, more disciplined and more willing to shoot when the moment comes. Stays on its feet rather than diving in, because a block that fouls is a block with ten men.",
+  parkthebus: "Everyone behind the ball. Deep, narrow, direct when it clears its lines, with dribbling and freedom both switched off and instructions to stay on their feet. It will counter if the chance falls, but the shape is the plan and the shape does not move.",
+};
+// FIVE STEPS, NOT TWO. An axis runs -2 to +2, and the difference between More Direct and
+// Much More Direct is the difference between a style and a caricature of it, so the two
+// cannot share a colour. Intensity carries it: the full notch is the solid hue, one notch
+// is the same hue held back, and an axis the style says nothing about is grey.
+// EVERY AXIS IS SHOWN, including the ones a style leaves alone, because what a style does
+// NOT instruct is as much a part of what it is as what it does. Filtering the zeroes out
+// rendered Balanced as an empty box and hid the fact that Route One has no opinion at all
+// about its own defensive line.
+// THE APP ALREADY HAS A COLOUR LANGUAGE FOR THESE and this table has to speak it, or the
+// documentation contradicts the Tactics panel two clicks away. The rule is set where the panel
+// draws them: positive is the aggressive end and takes attacking red, negative is the cautious
+// end and takes defending blue -- the same two colours the pitch gives a striker and a centre-half.
+// (Time-wasting inverts, being the one axis where doing more of it is the defensive choice. It is
+// not an identity axis, so it never appears here.)
+// INTENSITY IS CARRIED BY THE FILL, not by fading the text. A one-notch instruction is a real
+// instruction and has to read as one: it gets a pale but solid chip with its colour at full
+// strength. Two notches gets the saturated fill and reverses out in white. Nothing at all gets
+// grey. Dimming the tier-one label made "More Direct" look like a weaker fact than "Much More
+// Direct" rather than a smaller quantity of the same one.
+// THE TOP TIER IS DARKENED, and it has to be. Both position colours are Nord tones and deliberately
+// soft -- white on #d08770 is 2.84:1 and on #81a1c1 is 2.69:1, against the 4.5:1 a label this small
+// needs. A solid chip in the raw token with white text is simply not readable. Mixed 70% toward
+// black it clears at 5.29:1 and 5.06:1, and doing it with color-mix rather than a hardcoded pair of
+// hexes means an alternate theme that restyles the position colours darkens with it instead of
+// keeping two stale browns.
+const DEEP = (v) => `color-mix(in srgb, var(${v}) 70%, #000)`;
+const AXIS_CLR = {
+  "2":  { bg: DEEP("--ui-attack"),      fg: "#fff",                 w: 700 },
+  "1":  { bg: "var(--ui-attack-22)",    fg: "var(--ui-attack)",     w: 600 },
+  "0":  { bg: "var(--chrome-muted-22)", fg: "var(--chrome-muted)",  w: 400 },
+  "-1": { bg: "var(--ui-info-33)",      fg: "var(--ui-info)",       w: 600 },
+  "-2": { bg: DEEP("--ui-info"),        fg: "#fff",                 w: 700 },
+};
+
+const PlaystyleTable = () => {
+  const [hov, setHov] = useState(null);
+  const shown = hov || STYLES[0];
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ overflowX: "auto", background: "var(--chrome-panel)", borderRadius: 8,
+                    border: "1px solid var(--chrome-border)" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 9 }}>
+          <thead>
+            <tr>
+              <th style={{ position: "sticky", left: 0, zIndex: 1, background: "var(--chrome-panel)",
+                           textAlign: "left", padding: "7px 10px", fontSize: 8.5, fontWeight: 700,
+                           letterSpacing: ".1em", color: "var(--chrome-muted)", whiteSpace: "nowrap",
+                           borderBottom: "1px solid var(--chrome-border)" }}>PLAYSTYLE</th>
+              {IDENTITY_KEYS.map(k => (
+                <th key={k} style={{ padding: "7px 6px", fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em",
+                                     color: "var(--chrome-muted)", whiteSpace: "nowrap", textAlign: "center",
+                                     borderBottom: "1px solid var(--chrome-border)" }}>
+                  {(STRAT_LABELS[k] ? STRAT_LABELS[k].name : k).toUpperCase()}</th>))}
+            </tr>
+          </thead>
+          <tbody>
+            {STYLES.map(sk => {
+              const sp = STYLE_PRESET[sk] || {}, on = shown === sk;
+              return (
+                <tr key={sk} onMouseEnter={() => setHov(sk)}
+                    style={{ background: on ? "var(--chrome-bg-08)" : "transparent", cursor: "default" }}>
+                  <td style={{ position: "sticky", left: 0, zIndex: 1, whiteSpace: "nowrap",
+                               background: on ? "var(--chrome-bg2)" : "var(--chrome-panel)",
+                               padding: "5px 10px", fontWeight: on ? 700 : 600, fontSize: 10,
+                               color: on ? "var(--ui-text)" : "var(--chrome-muted)",
+                               borderBottom: "1px solid var(--chrome-border-33)",
+                               borderLeft: "2px solid " + (on ? "var(--ui-info)" : "transparent") }}>
+                    {STYLE_LBL[sk]}</td>
+                  {IDENTITY_KEYS.map(k => {
+                    const v = sp[k] || 0, L = STRAT_LABELS[k];
+                    const label = ((L && L.vals.find(([n]) => n === v)) || [0, String(v)])[1];
+                    const c = AXIS_CLR[String(v)] || AXIS_CLR["0"];
+                    return (
+                      <td key={k} style={{ padding: "3px 4px", textAlign: "center", whiteSpace: "nowrap",
+                                           borderBottom: "1px solid var(--chrome-border-33)" }}>
+                        <span style={{ ...mono, fontSize: 8.5, fontWeight: c.w, color: c.fg,
+                                       background: c.bg, padding: "3px 7px", borderRadius: 4,
+                                       display: "inline-block", width: "100%" }}>{label}</span></td>);
+                  })}
+                </tr>);
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: 8, padding: "10px 12px", minHeight: 74, background: "var(--chrome-panel)",
+                    border: "1px solid var(--chrome-border)", borderLeft: "2px solid var(--ui-info)",
+                    borderRadius: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ui-text)", marginBottom: 3 }}>
+          {STYLE_LBL[shown]}</div>
+        <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--chrome-muted)" }}>{STYLE_DOC[shown]}</div>
+      </div>
+    </div>);
+};
+
 const OvrBadge = ({ v, sm, xs, text, style }) => {
   const s = text != null ? text : showOvr(v), size = xs ? "xs" : sm ? "sm" : "lg";
   return s === "\u2013"
@@ -5049,7 +5179,7 @@ const T_PRESETS = {
 const ME_TAPE = 64;                            // slices kept: eighty seconds, longer than any move
 // max/min: how much build-up a replay may show. rate: real frames spent on each slice, so it runs at
 // a third pace like a television replay. tail: how long it holds on the goal before play resumes.
-const ME_CLIP = { max: 26, min: 8, rate: 3, tail: 14 };
+const ME_CLIP = { max: 26, min: 8, rate: 3 };   // tail is gone: the viewer decides when it ends
 export const meSnap = (s) => {
   const mp = s.mePos, xy = new Float32Array(44);
   let k = 0;
@@ -5975,25 +6105,35 @@ export default function App() {
     if (frames.length < 2) return;
     const ev = m.out.feed?.[0];                            // meEvt unshifts, so the goal is at the top
     const last = frames[frames.length - 1];
-    const clip = { min: m.out.min, side, frames, txt: ev && ev.k === "goal" ? ev.txt : null,
+    // "pen" as well as "goal": a penalty IS a goal and the engine tags it separately, so every
+    // penalty in the game reached the highlights with a blank caption.
+    const clip = { min: m.out.min, side, frames, txt: ev && (ev.k === "goal" || ev.k === "pen") ? ev.txt : null,
                    score: `${m.out.goals.home}-${m.out.goals.away}`,
                    // resolved now, while the names still line up with the indices -- see meChain
                    chain: meChain(m.s, frames), end: { x: last.bx, y: last.by } };
     m.clips.push(clip);
     // Skipping to the end asks for a result, not for theatre -- but the clip is still banked, because
     // the highlights on the post-match screen are built from exactly these.
-    if (!m.fast) m.cel = { t: 0, i: 0, a: 0, hold: 0, clip };
+    if (!m.fast) m.cel = { t: 0, i: 0, a: 0, done: 0, clip };
   };
   // Driven off the wall clock rather than off match time, so a replay looks the same at 0.25x as it
   // does at 4x. Match speed governs the match; it has no business governing a replay.
+  // IT DOES NOT DISMISS ITSELF. It used to close after a fixed count of frames past the end, which
+  // meant the one thing you might actually want to look at twice was the one thing you could not --
+  // and if you glanced away you missed it entirely. It now freezes on the last frame and waits.
+  // The match is frozen behind it either way (meStep refuses to tick while m.cel is set), so the
+  // cost of waiting is nothing, and closing it is one click.
   const meCelStep = (m) => {
-    const c = m.cel; if (!c) return;
+    const c = m.cel; if (!c || c.done) return;
     c.t++;
     const last = c.clip.frames.length - 1, pos = c.t / ME_CLIP.rate;
     c.i = Math.min(last, Math.floor(pos));
     c.a = c.i >= last ? 1 : Math.min(1, pos - c.i);
-    if (c.i >= last && ++c.hold >= ME_CLIP.tail) m.cel = null;
+    if (c.i >= last) c.done = 1;
   };
+  const meCelReplay = (m) => { const c = m?.cel; if (!c) return;
+    c.t = 0; c.i = 0; c.a = 0; c.done = 0; setMeFrame(f => f + 1); };
+  const meCelClose = (m) => { if (!m) return; m.cel = null; setMeFrame(f => f + 1); };
 
   // HALF TIME AND FULL TIME. Twenty-two men do not vanish on the whistle; they walk off, and they
   // walk off down the tunnel. This is theatre and nothing else, so it lives here rather than in the
@@ -6003,12 +6143,86 @@ export default function App() {
   // Walk off, stand about, walk back on. off x step has to be enough ground to actually GET there --
   // at 0.30 m a slice over 34 slices a man covers ten metres and turns round in the centre circle.
   // 0.55 is a brisk walk, 2.2 m/s, and ninety slices of it crosses fifty metres of pitch.
-  const ME_BRK = { off: 90, hold: 30, on: 90, step: 0.55 };
-  const meTunnel = [52.5, 71];                       // the mouth of it, below the touchline
+  // WALK OFF, WAIT TO BE SENT BACK, WALK ON. The middle phase used to be thirty slices of standing
+  // about and then the second half started whether you were ready or not, which is not what an
+  // interval is: it is the one moment in a match where nothing should happen until somebody says so.
+  // off/on are CAPS rather than durations -- the phase ends when the last man is actually through
+  // the tunnel or actually back on his mark, so nobody is teleported off a walk half-finished.
+  const ME_BRK = { off: 200, on: 150, step: 0.55, gone: 69.4 };
+  // WHEN A REFEREE ACTUALLY BLOWS. Not on the stroke of the tick the clock runs out: he lets the
+  // phase finish. So the period ends at the first moment nobody is being robbed of anything -- the
+  // ball dead, or in open play with no shot live and nobody inside the last thirty-five metres of
+  // the goal they are attacking. ME_END_WAIT caps it, because a side that camps in your box for
+  // a minute does eventually get blown up anyway.
+  const ME_END_WAIT = 220, ME_END_THIRD = 35;
+  const meCanWhistle = (s) => {
+    const mp = s.mePos;
+    if (mp.shot) return false;                       // never while a shot is in the air
+    if (mp.sp) return true;                          // ball already dead: the natural moment
+    const side = mp.idx >= 0 ? mp.side : mp.lastSide;
+    if (!side) return true;
+    return Math.abs(meGoalX(side) - mp.bx) > ME_END_THIRD;
+  };
+  // ...AND THE BALL DOES NOT STOP WITH HIM. A whistle ends the period, not the physics: the ball
+  // rolls on, slows and settles while the players walk. Physics only -- no player is passed in, so
+  // nobody controls it, nobody chases it and no engine state moves. It is the last thing on the
+  // pitch still doing anything, which is exactly how it looks in real life.
+  const ME_ROLL = 60;
+  const meRollBall = (m) => {
+    const mp = m.s.mePos;
+    mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+    if (mp.sp) return;                               // a dead ball is already still
+    meBallStep(mp, ME_DT, [], null, 0);
+  };
+  // Far enough past the touchline that they are out of the frame entirely rather than a row of
+  // half-clipped dots resting on the bottom edge. The viewBox ends at 70.4.
+  const meTunnel = [52.5, 78];
+  // What each break is called and what the button that ends it says. "ht" is the interval, "et" is
+  // the whistle that sends a level tie to extra time, "etht" is the turnaround inside it, and "ft"
+  // is the end of the match and has no way back.
+  const ME_BRK_LBL = {
+    ht:   ["HALF TIME", "Start second half"],
+    et:   ["FULL TIME", "Start extra time"],
+    etht: ["EXTRA TIME \u00b7 HALF TIME", "Start second period"],
+    ft:   ["FULL TIME", null],
+  };
+  const meBreakResume = (m) => { const b = m?.brk; if (!b || b.phase !== "wait") return;
+    b.phase = "on"; b.t = 0; setMeFrame(f => f + 1); };
+  // THE BREAK, TAKEN IN ONE STEP. Everything the interval does to the match -- the ball on the spot,
+  // the kickoff, the marks, the change of ends -- with none of the walking, for the case where
+  // nobody is watching it happen.
+  const meBreakFinishNow = (m) => {
+    const b = m.brk, st = m.s; if (!b) return;
+    if (b.kind !== "ft") {
+      const ko = meOther(st.possession);
+      st.mePos.bx = PITCH_L / 2; st.mePos.by = ME_HALF_W;
+      st.mePos.bvx = 0; st.mePos.bvy = 0; st.mePos.bvz = 0;
+      st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
+      meDead(st, "kickoff", ko, 40, m.out);
+      meSPShape(st);
+      m.h2 = !m.h2;
+      for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
+        p._hx = undefined; p._hy = undefined;
+        if (p.off) continue;
+        if (p._tx !== undefined) { p.x = p._tx; p.y = p._ty; }
+        p._px = p.x; p._py = p.y; p.vx = 0; p.vy = 0;
+      }
+    }
+    m.brk = null;
+    if (b.kind === "ft") meStop();
+  };
   const meBreakStep = (m) => {
     const b = m.brk; if (!b) return;
+    if (!b.phase) b.phase = "off";
+    // THE LAST EVENT LINE GOES WITH THE WHISTLE. out.evt is drawn as a line across the pitch and
+    // faded by ev.age, and age only ever advances inside meTick -- which does not run during a
+    // break. So the final pass or shot of the half stayed painted on the grass for the whole
+    // interval at full strength. The ball rolling on is the realism; a frozen streak is not.
+    if (m.out) m.out.evt = null;
+    if (b.phase === "wait") return;                  // the viewer owns the clock now
     b.t++;
-    const st = m.s, back = b.t > ME_BRK.off + ME_BRK.hold;
+    const st = m.s, back = b.phase === "on";
+    let settled = true;
     // Where he came from, so he has somewhere to come back to.
     for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
       if (p.off) continue;                          // sent off or injured: already gone
@@ -6019,7 +6233,9 @@ export default function App() {
       // the whole match, so the kickoff shape is recoverable here without re-running init or touching
       // anything else it does -- no fresh toss, no re-jitter, no reset of what the match has become.
       if (p._hx === undefined) {
-        if (b.kind === "ht") {
+        // Every restart period walks back to the KICKOFF shape, not to the yard of grass the whistle
+        // caught them on -- extra time included, which keying this on "ht" alone quietly excluded.
+        if (b.kind !== "ft") {
           const own = meGoalX(meOther(sd)), dr = meDir(sd);
           p._hx = own + dr * (p._bd ?? 30) * 0.7; p._hy = p._bw ?? p.y;
         } else { p._hx = p.x; p._hy = p.y; }
@@ -6029,27 +6245,429 @@ export default function App() {
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
       if (d > 0.02) { const k = Math.min(d, ME_BRK.step) / d; p.x += dx * k; p.y += dy * k; }
       p.vx = 0; p.vy = 0;
+      // Walking off is finished when the last man is out of sight, not when a counter says so.
+      if (back ? d > 0.02 : p.y < ME_BRK.gone) settled = false;
     }
-    const mp = st.mePos;
-    mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
-    if (b.t >= ME_BRK.off + ME_BRK.hold + ME_BRK.on) {
-      for (const sd of ["home", "away"]) for (const p of st.players[sd]) { p._hx = undefined; p._hy = undefined; }
-      if (b.kind === "ht") {
-        // THE OTHER SIDE KICKS OFF, which is the half of "switch sides" that changes the football.
-        // meDead is what every other restart in the match goes through, so the second half begins as
-        // a kickoff rather than as play simply resuming wherever the ball was left.
+    // The ball is still live for a beat after the whistle, and only while they are walking OFF --
+    // once they are coming back out it has been collected and spotted for the restart.
+    if (!back && b.t <= ME_ROLL) meRollBall(m); else { const q = st.mePos; q._bpx = q.bx; q._bpy = q.by; q._bpz = q.bz; }
+    if (!back) {
+      if (!settled && b.t < ME_BRK.off) return;
+      // Full time is the one break nobody walks back out of.
+      if (b.kind === "ft") { /* fall through and finish */ }
+      else {
+        // EVERYTHING THAT JUMPS, JUMPS NOW, while the pitch is empty and there is nobody to see it.
+        // All of this used to happen after they had walked back out, and two of the three were
+        // visible: swapping the view mirrored all twenty-two men and the ball across the halfway
+        // line in a single frame -- they walked out to one set of positions and were instantly
+        // somewhere else -- and the ball was teleported to the centre spot from wherever it had
+        // rolled to. The third, the kickoff shape, was the reason they never quite walked to the
+        // right marks in the first place.
         const ko = meOther(st.possession);
         st.mePos.bx = PITCH_L / 2; st.mePos.by = ME_HALF_W;
         st.mePos.bvx = 0; st.mePos.bvy = 0; st.mePos.bvz = 0;
         st.mePos._bpx = st.mePos.bx; st.mePos._bpy = st.mePos.by;
+        // meDead is what every other restart in the match goes through, so the second half begins as
+        // a kickoff rather than as play resuming wherever the ball was left. It assigns targets
+        // rather than positions, which is exactly what makes it usable here: the marks exist before
+        // anybody starts walking to them.
         meDead(st, "kickoff", ko, 40, m.out);
+        // ...AND THEN ASK WHERE EVERYONE GOES. meDead only opens the set piece; the marks are laid
+        // out by meSPShape, which normally runs a line later inside meTick. Reading _tx straight
+        // after meDead therefore read the marks from BEFORE the whistle -- so they jogged back out
+        // to wherever the 45th minute had left them and were moved again the moment play restarted.
+        // One call fills them in properly, and it is the same call the tick would make anyway.
+        meSPShape(st);
         // ...and the other half is only ever drawn. Actually swapping ends means flipping meDir under
         // fifty-two call sites; mirroring the VIEW is the same picture for none of the risk, and the
         // engine keeps the one coordinate convention every calibrated number was measured in.
         m.h2 = !m.h2;
+        // WALK TO THE REAL MARK. _hx was meInit's opening shape, which is near the kickoff shape but
+        // not it -- so they arrived, and then shuffled again once play resumed. The set piece has
+        // just published where each man is actually wanted; walk him there instead.
+        for (const sd of ["home", "away"]) for (const p of st.players[sd]) {
+          if (p.off) continue;
+          if (p._tx !== undefined) p._hx = p._tx;
+          if (p._ty !== undefined) p._hy = p._ty;
+        }
+        b.phase = "wait"; b.t = 0; return;
       }
+    } else if (!settled && b.t < ME_BRK.on) return;
+    {
+      for (const sd of ["home", "away"]) for (const p of st.players[sd]) { p._hx = undefined; p._hy = undefined; }
       m.brk = null;
       if (b.kind === "ft") meStop();
+    }
+  };
+  // SUBSTITUTIONS, WALKED. meSub swaps the two men in the same instant: the one coming off vanishes
+  // from the pitch and the one coming on appears standing exactly where he stood. Both are true of
+  // the state and neither is true of football.
+  //
+  // Nothing is paired up here, deliberately. meSub has already put the incoming man on the outgoing
+  // man's spot, so each walk is independent: he goes back to the touchline and comes in again to the
+  // place he was given, while the man he replaced leaves from where the whistle found him. Two subs
+  // in the same stoppage therefore need no matching at all, which is the part that would otherwise
+  // go wrong -- both are stamped with the same tick and the squad is ordered by shirt, not by who
+  // was swapped first.
+  const ME_SUB = { step: 1.05, line: 70.8, park: -6, gone: 69.4, max: 48 };
+  const meSubScan = (m) => {
+    const s = m.s, tick = s.mePos.tick;
+    m.subSeen = m.subSeen || { home: 0, away: 0 };
+    const A = (m.subAnim = m.subAnim || { off: [], on: [] });
+    for (const sd of ["home", "away"]) {
+      const dir = sd === "home" ? -1 : 1;
+      const arr = s.subbedOff?.[sd] || [];
+      for (let k = m.subSeen[sd]; k < arr.length; k++) {
+        const p = arr[k];
+        A.off.push({ p, sd, t: 0, ex: 52.5 + dir * (2.5 + 3 * (A.off.length % 3)) });
+      }
+      m.subSeen[sd] = arr.length;
+      // A MAN SENT OFF WALKS TOO. He is not in s.subbedOff -- only meSub writes that -- so the
+      // walk never saw him and he snapped from wherever he stood to six metres past the
+      // touchline in a single frame. He stays in s.players flagged off, so he is already being
+      // drawn: put him back on his spot and hand him to the same animation, then park him where
+      // the engine wants him once he is gone.
+      for (const p of s.players[sd]) {
+        if (!p.off || p._offAt !== tick || p._subWalk) continue;
+        p._subWalk = 1;
+        if (p._offX === undefined) continue;          // parked before this ever ran; leave him
+        p.x = p._offX; p.y = p._offY; p._px = p.x; p._py = p.y;
+        A.off.push({ p, sd, t: 0, ex: p.x, park: 1 });
+      }
+      for (const p of s.players[sd]) {
+        if (p._onAt !== tick || p._subWalk) continue;
+        p._subWalk = 1;
+        const ex = 52.5 + dir * (2.5 + 3 * (A.on.length % 3));
+        // t STARTS AT ZERO OR THE CAP BELOW IS DEAD. Left undefined, w.t++ is NaN and every
+        // `w.t > ME_SUB.max` is false forever: the walk never gave up, and because an unfinished
+        // walk pins his velocity each tick, a man the restart was waiting on could never reach
+        // the spot. Play stopped and the clock ran on.
+        A.on.push({ p, sd, t: 0, tx: p.x, ty: p.y });
+        p.x = ex; p.y = ME_SUB.line;              // he starts at the touchline, not at his mark
+        // ...AND HE IS DRAWN THERE FROM THE FIRST FRAME. The renderer tweens _px -> x, and meSub
+        // had already put him on the man he replaced, so the opening frame slid him from that mark
+        // out to the touchline before he walked back in. Reading as a teleport was exactly right:
+        // it was one frame of travel across half the pitch.
+        p._px = ex; p._py = ME_SUB.line;
+      }
+    }
+  };
+  const meSubStep = (m) => {
+    const A = m.subAnim; if (!A || (!A.off.length && !A.on.length)) return;
+    const toward = (p, tx, ty, step) => {
+      const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+      if (d > 0.05) { const k = Math.min(d, step) / d; p.x += dx * k; p.y += dy * k; }
+      return d <= 0.05;
+    };
+    // NOBODY IS STILL WALKING AT 48. A flat 1.05 m a slice covers 50 m and the pitch is 68 wide, so
+    // a man leaving from the far touchline ran out of slices and had to be snapped the rest of the
+    // way -- and while he walked he was on the pitch, in the way. Jogging pace is the floor; whoever
+    // has further to go than the slices left simply goes quicker, which is what a player being
+    // waved off actually does.
+    const paceFor = (p, tx, ty, t) =>
+      Math.max(ME_SUB.step, Math.hypot(tx - p.x, ty - p.y) / Math.max(1, ME_SUB.max - t));
+    // The man walking off is not in s.players, so nothing else moves him -- which also means nothing
+    // else maintains the position the renderer interpolates FROM. He needs it set here or he smears.
+    for (const w of A.off) {
+      w.t++; w.p._px = w.p.x; w.p._py = w.p.y;
+      // A substitute walks off the bottom and out of the way; a sent-off man leaves by the side the
+      // engine parks him on, rather than crossing the pitch to the other one and snapping back.
+      const ty = w.park ? ME_SUB.park : ME_SUB.line;
+      toward(w.p, w.ex, ty, paceFor(w.p, w.ex, ty, w.t));
+      const gone = w.park ? w.p.y < ME_SUB.park + 1.4 : w.p.y > ME_SUB.gone;
+      if (gone || w.t >= ME_SUB.max) { w.p.y = ty; w.p._py = ty; w.p._px = w.p.x; w.done = 1; }
+    }
+    // THE MAN COMING ON IS ALREADY THE ENGINE'S, and that is what broke this. He sits in s.players,
+    // so meTick moves him every tick toward whatever mark the set piece has given him -- while this
+    // dragged him toward the spot he was standing on at the instant of the swap. Two different
+    // destinations, one player, every tick: he never arrived at either, the walk never finished, and
+    // because an unfinished walk pinned his velocity at zero he stayed broken for the rest of the
+    // match. That is the stutter.
+    // Fixed twice over. Follow the engine's OWN target when it has published one, so both are pulling
+    // the same way and the walk converges; and cap it regardless, because a walk that cannot finish
+    // has to end anyway. After the cap he is simply the engine's, which is what he always was.
+    // _px is deliberately NOT touched here: meTick already set it before it moved him, and resetting
+    // it would throw away that half of the frame and show up as judder.
+    for (const w of A.on) {
+      w.t++;
+      const tx = w.p._tx ?? w.tx, ty = w.p._ty ?? w.ty;
+      const there = toward(w.p, tx, ty, paceFor(w.p, tx, ty, w.t));
+      if (!there) { w.p.vx = 0; w.p.vy = 0; }
+      if (there || w.t >= ME_SUB.max) w.done = 1;
+    }
+    A.off = A.off.filter(w => !w.done);
+    A.on = A.on.filter(w => !w.done);
+    // NOTE: play no longer waits for the man to be off. Two attempts at that -- a flag in
+    // meSPReady, then pushing the restart's own minimum -- both delayed restarts in ways that
+    // showed up as penalties hanging. The walk is cosmetic; a restart that fires on time is not.
+    // If it goes back in, it belongs in the engine beside meSPReady's own timing, not bolted on
+    // from a loop that returns early on goals, intervals and shootouts.
+  };
+  // THE SHOOTOUT, WATCHED. meShootout resolves every kick inside one call, which is right for a
+  // tournament and useless on screen: by the time control came back the thing had happened. The
+  // engine now exposes the same sequence a kick at a time, so this drives it -- walk up, kick,
+  // let it land, walk up again -- and the ticks it feeds the engine are the ticks meShootout would
+  // have fed it itself.
+  // Theatre, in slices at four a second. Every one of these is dead time between kicks, so they
+  // are the shortest that still reads as a sequence rather than a cut.
+  // pace is metres a slice: 0.66 is a purposeful walk with the ball, pass is a rolled ball.
+  // carryMax and backMax are failsafes, not deadlines -- both phases end on arrival.
+  const ME_PK = { gather: 64, settle: 8, hold: 14, back: 22, backMax: 45, carryMax: 110,
+                  steps: 9, pace: 0.66, pass: 3.0 };
+  const mePkPin = (m) => {
+    // Nobody but the taker and the two keepers moves. The set piece would otherwise send all twenty
+    // trooping toward the penalty arc, which is what a penalty in open play looks like and is not
+    // what a shootout looks like at all -- they wait on the halfway line and watch.
+    for (const w of m.pk.wait) { w.q.x = w.x; w.q.y = w.y; w.q.vx = 0; w.q.vy = 0; }
+  };
+  // Between kicks everyone is put back on the line and the ball back on the spot, which is a cut,
+  // not a movement. The renderer tweens from _px/_py, so without this the whole field is dragged
+  // across the pitch over the next frame and the ball flies back out of the net.
+  const mePkSnap = (s) => {
+    for (const sd of ["home", "away"]) for (const q of s.players[sd]) { q._px = q.x; q._py = q.y; }
+    const mp = s.mePos; mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+  };
+  // EVERY MAN IS GIVEN HIS PLACE ONCE. mePkLineUp spaces the waiting players by index across the
+  // line, so each time a taker stepped out of it the other seventeen shuffled sideways to close the
+  // gap, and each time he rejoined they shuffled back. Re-running it per kick is what made the line
+  // twitch and jump. Placed once here and remembered, the line is identical from kick to kick and
+  // the only man who ever moves is the one taking it.
+  const mePkSlots = (m) => {
+    // COMPUTED, NOT PERFORMED. The line-up is run to find out where everyone's place is, the maps
+    // are read off it, and then every man is put back where the match left him -- the gather phase
+    // walks them in. Entering the lineup used to be a 22-man teleport, which is the roughest cut
+    // the shootout had.
+    const before = new Map();
+    for (const sd of ["home", "away"]) for (const q of m.s.players[sd])
+      before.set(q, { x: q.x, y: q.y });
+    mePkLineUp(m.s, m.pk.st, "home");
+    const slot = new Map(), gkAt = new Map();
+    for (const sd of ["home", "away"]) for (const q of m.s.players[sd])
+      (q.pos === "GK" ? gkAt : slot).set(q, { x: q.x, y: q.y });
+    for (const [q, at] of before) { q.x = at.x; q.y = at.y; }
+    m.pk.slot = slot;
+    // The keepers' line marks, from the same one-time layout. NOT for pinning -- pinning a keeper
+    // fights meTick during the kick, which is the one thing that may never come back. These are
+    // walk-home targets for the phases where meTick is dormant and nothing else moves him.
+    m.pk.gkAt = gkAt;
+    // The ball is not touched here: it rolls to the centre spot during the gather, from wherever
+    // the final whistle left it.
+    const mp = m.s.mePos;
+    mp.bvx = 0; mp.bvy = 0; mp.bvz = 0; mp.bz = Math.min(mp.bz, 0.3);
+  };
+  // WHO IS NEXT. Picks the side and the man, pins everyone else to his place, and starts him on
+  // his way to the ball. The engine is not involved yet: the walk to the spot is theatre, and the
+  // kick is not armed until the ball has been placed and he has stepped back off it.
+  const mePkNextUp = (m) => {
+    const p = m.pk, s = m.s;
+    p.side = mePkNext(p.st, 40);
+    if (!p.side) return false;
+    p.taker = mePkTaker(s, p.st, p.side);
+    p.wait = [];
+    // NEITHER KEEPER IS PINNED OR WALKED HERE. Both are the engine's during the kick; between kicks
+    // they are walked home in hold/back. Pinning one fights meTick, which is where the sliding on
+    // the goal line came from. The outfield is pinned because it must stand still; a keeper never must.
+    for (const [q, at] of p.slot) {
+      if (q === p.taker || q.off) continue;
+      q.x = at.x; q.y = at.y; q.vx = 0; q.vy = 0;
+      p.wait.push({ q, x: at.x, y: at.y });
+    }
+    // THE IDLE KEEPER IS A WAITER TOO. The engine's penalty shape empties the box by marking all
+    // twenty remaining men onto the arc -- the taker's own keeper included, so every kick marched
+    // him up the pitch, and when his end next hosted one the line-up yanked him from midfield back
+    // into his goal. Pinned on his line he never wanders, so there is never anything to yank. The
+    // DEFENDING keeper stays free: the engine owns his dive, and pinning him is the old slide bug.
+    const idle = s.players[p.side]?.find(q => q.pos === "GK");
+    const idleAt = idle && p.gkAt.get(idle);
+    if (idle && idleAt && !idle.off && idle !== p.taker)
+      p.wait.push({ q: idle, x: idleAt.x, y: idleAt.y });
+    mePkSnap(s);
+    p.has = 0; p.tkAt = null; p.phase = "carry"; p.t = 0; p.last = null;
+    return true;
+  };
+  // HAND THE STAGED KICK TO THE ENGINE. mePkSetup would re-run the line-up on its way to placing
+  // the ball, which would teleport the taker from the run-up mark he just walked to back onto the
+  // halfway line -- so his position is saved across it and put back. The ball is already on the
+  // spot; setup putting it there again is a no-op.
+  const mePkArm = (m) => {
+    const p = m.pk, s = m.s, tk = p.taker;
+    const kx = tk.x, ky = tk.y;
+    mePkSetup(s, m.out, p.st, p.side);
+    tk.x = kx; tk.y = ky; tk.vx = 0; tk.vy = 0;
+    mePkPin(m);
+    mePkSnap(s);
+    p.phase = "kick"; p.t = 0;
+  };
+  const mePkFinish = (m) => {
+    m.pens = mePkResult(m.pk.st); m.pk = null;
+    m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
+    setMeView("post"); setMePanel("stats");
+  };
+  // Walk a man toward a spot fast enough to be there in the slices remaining, like the sub walk.
+  const mePkWalk = (q, tx, ty, left, pace = 0.85) => {
+    q._px = q.x; q._py = q.y;
+    const dx = tx - q.x, dy = ty - q.y, d = Math.hypot(dx, dy);
+    if (d <= 0.05) return true;
+    // pace is the floor; the deadline only ever speeds a man up. Pass left = 999 for a walk that
+    // takes as long as it takes.
+    const k = Math.min(d, Math.max(pace, d / Math.max(1, left))) / d;
+    q.x += dx * k; q.y += dy * k; q.vx = 0; q.vy = 0;
+    return false;
+  };
+  const mePkStep = (m) => {
+    const p = m.pk; if (!p) return;
+    // THE INVARIANT, ENFORCED ONCE. Every theatre slice begins with every body's interpolation
+    // origin set to where it stands. Whoever a walk or a coast moves re-syncs as it moves; whoever
+    // nothing moves renders exactly still. Every glitch in this saga -- the keeper slide, the ball
+    // flicker in the net, the twitch after placement, the stutter rejoining the line -- was one
+    // body left straddling a stale origin by some path that stopped moving it. This closes the
+    // class, not the case: a future phase that forgets a sync no longer matters. The kick itself
+    // is exempt because the engine keeps its own books there.
+    if (p.phase !== "kick") mePkSnap(m.s);
+    // THE GATHER. Everyone walks from wherever the match ended to his place in the lineup, and
+    // the ball rolls to the centre spot, so the shootout is walked into rather than cut to.
+    if (p.phase === "gather") {
+      p.t++;
+      const mp = m.s.mePos, left = ME_PK.gather - p.t + 1;
+      for (const [q, at] of [...p.slot, ...p.gkAt]) {
+        if (q.off) continue;
+        mePkWalk(q, at.x, at.y, left, ME_PK.pace);
+      }
+      mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+      const dx = PITCH_L / 2 - mp.bx, dy = ME_HALF_W - mp.by, d = Math.hypot(dx, dy);
+      if (d > 0.3) { const k = Math.min(d, ME_PK.pass) / d; mp.bx += dx * k; mp.by += dy * k; }
+      mp.bz = 0; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
+      if (p.t < ME_PK.gather) return;
+      if (!mePkNextUp(m)) mePkFinish(m); return;
+    }
+    // THE BALL IS BROUGHT UP. The next taker collects it from the centre spot, carries it to the
+    // penalty spot at his end, and places it. meTick is dormant, so the carry cannot be fought.
+    if (p.phase === "carry") {
+      p.t++;
+      const mp = m.s.mePos, tk = p.taker;
+      const spotX = meGoalX(p.side) - meDir(p.side) * 11, spotY = ME_HALF_W;
+      mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+      // At walking pace the whole way -- carryMax is a failsafe, not a deadline, so the walk no
+      // longer speeds up to fit a budget. He collects, turns, and brings it up.
+      if (!p.has && Math.hypot(tk.x - mp.bx, tk.y - mp.by) > 0.9) {
+        mePkWalk(tk, mp.bx, mp.by, 999, ME_PK.pace);
+      } else {
+        p.has = 1;
+        mePkWalk(tk, spotX, spotY, 999, ME_PK.pace);
+        const dx = spotX - tk.x, dy = spotY - tk.y, d = Math.hypot(dx, dy) || 1;
+        mp.bx = tk.x + (dx / d) * 0.55; mp.by = tk.y + (dy / d) * 0.55;
+      }
+      mp.bz = 0; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
+      mePkPin(m);
+      if (Math.hypot(tk.x - spotX, tk.y - spotY) > 0.8 && p.t < ME_PK.carryMax) return;
+      // Placed -- and the interpolation origin placed WITH it, or the renderer spends the whole
+      // step-back sweeping the ball between its last carried position and the spot.
+      mp.bx = spotX; mp.by = spotY; mp._bpx = spotX; mp._bpy = spotY; mp._bpz = 0;
+      p.phase = "steps"; p.t = 0; return;
+    }
+    // ...AND HE STEPS OFF IT, back to the top of his run-up. Only then is the engine's kick armed,
+    // so its wind-up begins from a man already stood over a placed ball.
+    if (p.phase === "steps") {
+      p.t++;
+      const mp = m.s.mePos, tk = p.taker;
+      mePkWalk(tk, mp.bx - meDir(p.side) * 3.8, ME_HALF_W + (tk.y >= ME_HALF_W ? 0.9 : -0.9),
+               ME_PK.steps - p.t + 1);
+      mePkPin(m);
+      if (p.t < ME_PK.steps) return;
+      mePkArm(m); return;
+    }
+    if (p.phase === "kick") {
+      const wasStruck = p.st.struck >= 0;
+      const how = mePkTick(m.s, m.rng, m.out, p.st, p.side);
+      if (!wasStruck && p.st.struck >= 0 && p.taker) p.tkAt = { x: p.taker.x, y: p.taker.y };
+      // ONE TOUCH. The kick is over for him the moment he strikes it, whatever happens next -- no
+      // rebounds in a shootout -- so he gets his follow-through and nothing more. The engine would
+      // otherwise send him chasing a parried ball he is not permitted to play.
+      if (p.tkAt && p.taker) {
+        const dx = p.taker.x - p.tkAt.x, dy = p.taker.y - p.tkAt.y, d = Math.hypot(dx, dy);
+        if (d > 2.5) { const k = 2.5 / d;
+          p.taker.x = p.tkAt.x + dx * k; p.taker.y = p.tkAt.y + dy * k;
+          p.taker.vx = 0; p.taker.vy = 0; }
+      }
+      mePkPin(m);
+      if (!how) return;
+      mePkTally(m.s, m.out, p.st, p.side);
+      p.last = (m.out.pens || []).slice(-1)[0];
+      p.gkHas = 0; p.phase = "settle"; p.t = 0; return;
+    }
+    // THE MOMENT AFTER. The outcome is known the instant the ball crosses the line or the keeper
+    // touches it, and freezing the frame right there stopped a ball mid-flight and a keeper
+    // mid-dive -- which is what made every save look wrong. Physics coasts for a few slices
+    // instead: the ball finishes its travel on the same step the whistle roll-on uses, the dive
+    // finishes its slide, and only then does the result hold begin, from stillness.
+    if (p.phase === "settle") {
+      p.t++;
+      meRollBall(m);
+      const mp = m.s.mePos;
+      if (mp.bx < -2 || mp.bx > 107) { mp.bvx = 0; mp.bx = Math.max(-2, Math.min(107, mp.bx)); }
+      if (mp.by < -2 || mp.by > 70) { mp.bvy = 0; mp.by = Math.max(-2, Math.min(70, mp.by)); }
+      for (const sd of ["home", "away"]) for (const q of m.s.players[sd]) {
+        if (q.off) continue;
+        q._px = q.x; q._py = q.y;
+        q.x += q.vx; q.y += q.vy;
+        q.vx *= 0.62; q.vy *= 0.62;
+      }
+      mePkPin(m);
+      if (p.t < ME_PK.settle) return;
+      mePkSnap(m.s);
+      p.phase = "hold"; p.t = 0; return;
+    }
+    // HELD ON THE RESULT, and nobody stands still for it: the scorer turns for his own half, and
+    // the keeper goes straight for the ball -- into the net if that is where it finished -- so the
+    // beat after the flash is him collecting it rather than a man frozen beside it.
+    if (p.phase === "hold") {
+      p.t++;
+      const mp = m.s.mePos, left = ME_PK.hold + ME_PK.back - p.t;
+      // Scored or not, he turns for his own half: the jog of a celebration or the trudge of a
+      // miss is the same walk, and the story does the work. Meanwhile the keeper collects.
+      const home = p.taker && (p.slot.get(p.taker) || p.gkAt.get(p.taker));
+      if (home) mePkWalk(p.taker, home.x, home.y, left);
+      const gk = m.s.players[meOther(p.side)]?.find(q => q.pos === "GK");
+      // Arrival syncs his origin. The walk keeps _px in step only while it is being CALLED, and the
+      // has-the-ball flag is what stops the calls -- flagged without the sync, he stood one stride
+      // wide of his own origin and the renderer swept him across it until the pass launched.
+      if (gk && !p.gkHas
+          && (mePkWalk(gk, mp.bx, mp.by, 999, ME_PK.pace)
+              || Math.hypot(gk.x - mp.bx, gk.y - mp.by) < 0.9)) {
+        p.gkHas = 1; gk._px = gk.x; gk._py = gk.y;
+      }
+      mePkPin(m);
+      if (p.t < ME_PK.hold) return;
+      p.phase = "back"; p.t = 0; return;
+    }
+    // THE KEEPER RETURNS IT. Once he has reached the ball it is passed back to the centre spot -- a
+    // rolled ball, quicker than any walk -- and he turns for his line as it travels. The taker is
+    // rejoining his team the whole time, and the phase ends when the ball is home, not on a timer.
+    if (p.phase === "back") {
+      p.t++;
+      const mp = m.s.mePos, left = ME_PK.back - p.t + 1;
+      const gk = m.s.players[meOther(p.side)]?.find(q => q.pos === "GK");
+      if (!p.gkHas) {
+        if (!gk || mePkWalk(gk, mp.bx, mp.by, 999, ME_PK.pace)
+            || Math.hypot(gk.x - mp.bx, gk.y - mp.by) < 0.9) {
+          p.gkHas = 1;
+          if (gk) { gk._px = gk.x; gk._py = gk.y; }
+        }
+      } else {
+        mp._bpx = mp.bx; mp._bpy = mp.by; mp._bpz = mp.bz;
+        const dx = PITCH_L / 2 - mp.bx, dy = ME_HALF_W - mp.by, d = Math.hypot(dx, dy);
+        if (d > 0.3) { const k = Math.min(d, ME_PK.pass) / d; mp.bx += dx * k; mp.by += dy * k; }
+        mp.bz = 0; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
+        const gkHome = gk && p.gkAt.get(gk);
+        if (gkHome) mePkWalk(gk, gkHome.x, gkHome.y, left);
+      }
+      const home = p.taker && (p.slot.get(p.taker) || p.gkAt.get(p.taker));
+      if (home) mePkWalk(p.taker, home.x, home.y, left);
+      mePkPin(m);
+      const ballHome = Math.hypot(mp.bx - PITCH_L / 2, mp.by - ME_HALF_W) < 0.6;
+      if ((p.t < ME_PK.back || !ballHome) && p.t < ME_PK.backMax) return;
+      if (!ballHome) { mp.bx = PITCH_L / 2; mp.by = ME_HALF_W; mp._bpx = mp.bx; mp._bpy = mp.by; }
+      if (!mePkNextUp(m)) mePkFinish(m);
     }
   };
   const meStop = () => { if (meTimer.current) clearInterval(meTimer.current); meTimer.current = null; meAcc.current = 0; setMeRunning(false); };
@@ -6061,18 +6679,46 @@ export default function App() {
     // rather than here, because it runs on the wall clock and not on match time.
     if (m.cel) return;
     // Walking off, standing about, or walking back on: the match does not advance while they are.
-    if (m.brk) { for (let i = 0; i < n && m.brk; i++) meBreakStep(m); setMeFrame(f => f + 1); return; }
+    // The shootout owns the match while it is on: no clock, no break, no ordinary ticking.
+    if (m.pk) { mePkStep(m); setMeFrame(f => f + 1); return; }
+    if (m.brk) {
+      // SIM TO END DOES NOT STOP FOR THEATRE. The walk-off and the interval exist to be watched, and
+      // the interval deliberately waits for a click -- so asking for a result used to get you as far
+      // as half time and no further, the loop spinning against a break that would never lift itself.
+      // Asked for the result, the break is taken whole and play continues inside the same call.
+      if (m.fast) meBreakFinishNow(m);
+      else if (m.brk.phase === "wait") return;       // held: nothing to advance and nothing to redraw
+      else { for (let i = 0; i < n && m.brk; i++) meBreakStep(m);
+             setMeFrame(f => f + 1); return; } }
     // ...plus stoppage. meAdded grows as the ball spends time dead, so the finish line moves out
     // during the match exactly as the board going up at ninety does -- it is not known in advance.
     // EXTRA TIME is thirty minutes on the same scale, in two halves, with the interval the ordinary
     // half-time break already animates. Nothing else about the match changes: same tick, same shape,
     // same fatigue -- which is the point, because a side that spent its legs chasing a winner in
     // normal time is exactly who extra time is supposed to punish.
-    const ET = m.et ? ME_ET_TICKS : 0;
-    const end = ME_MATCH_TICKS + ET + meAdded(m.s);
+    // BOTH EXTRA-TIME BOUNDARIES HANG OFF THE TICK IT BEGAN ON, which is the same origin the
+    // scoreboard measures from. They used to hang off ME_MATCH_TICKS -- the end of REGULATION,
+    // before stoppage -- while the clock was re-based to m.etAt, so the two disagreed by exactly
+    // however long normal time's stoppage ran: two added minutes put the interval at 103:00 rather
+    // than 105:00, and full time drifted past 120 by the difference between the two stoppage reads.
+    // Anchored here, the halves are a flat fifteen minutes each and land on 105:00 and 120:00.
+    const etOn = !!(m.et && m.etAt != null);
+    // ...and extra time takes no added time of its own: its stoppage is absorbed inside the fifteen,
+    // which is what makes the interval land on the minute. Normal time still runs past 90:00, which
+    // is the one place the clock SHOULD keep counting.
+    // EXTRA TIME KEEPS ITS OWN STOPPAGE, like every other period: fifteen minutes and then whatever
+    // is added, so the whistle goes at 105+2 rather than on the number. meAdded is cumulative across
+    // the whole match, so each ET period measures from a snapshot taken when it began -- otherwise
+    // the first half's stoppage is served twice and the second half ends early.
+    const etAdd = etOn ? Math.max(0, meAdded(m.s) - (m[m.etHtDone ? "etAdd1" : "etAdd0"] || 0)) : 0;
+    // ...and normal time the same. The first half used to end dead on 45:00 with its stoppage only
+    // ever appearing at the end of the match, so half time could never show a +N. Each period now
+    // measures its own added time from the snapshot taken when the previous one closed.
+    const end = etOn ? m.etAt + ME_ET_TICKS + etAdd
+                     : ME_MATCH_TICKS + Math.max(0, meAdded(m.s) - (m.htAdd || 0));
     // In extra time the interval moves to ITS midpoint, and it gets its own done-flag so the first
     // one having fired at 45 does not swallow the second.
-    const half = m.et ? ME_MATCH_TICKS + (ME_ET_TICKS >> 1) : (ME_MATCH_TICKS >> 1);
+    const half = etOn ? m.etAt + (ME_ET_TICKS >> 1) + etAdd : (ME_MATCH_TICKS >> 1) + meAdded(m.s);
     const halfKey = m.et ? "etHtDone" : "htDone";
     // Anything the manager asked for is applied HERE, on the first slice of a stoppage, which is
     // where meAutoSubs already does its work. A change made while the ball is running waits.
@@ -6087,8 +6733,13 @@ export default function App() {
       mePending.current = { subs: [], strategy: {} };
       setMeFrame(f => f + 1);
     };
-    for (let i = 0; i < n && m.t < end; i++) {
+    // The referee's grace: play may run this far past the clock while he waits for a fair moment,
+    // and no further. The loop bound has to carry it -- the ticks are what "playing on" IS.
+    const hardEnd = end + ME_END_WAIT;
+    const blowNow = () => m.t >= end && (meCanWhistle(m.s) || m.t >= hardEnd);
+    for (let i = 0; i < n && !blowNow() && m.t < hardEnd; i++) {
       m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; drain();
+      if (!m.fast) { meSubScan(m); meSubStep(m); }
       m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
       // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
       // disagree with itself. Breaks out of the slice loop so the freeze lands on the instant it went
@@ -6102,13 +6753,22 @@ export default function App() {
       // The interval, taken at the first dead ball at or after the halfway point rather than in the
       // middle of a move -- which is how a referee does it too.
       if (m.t >= half && !m[halfKey] && (m.s.mePos.sp || m.s.mePos.idx < 0)) {
-        m[halfKey] = true; m.brk = { t: 0, kind: "ht" }; break;
+        // The clock has passed the halfway point; the referee has not blown yet. Play on until the
+        // phase belongs to nobody, and count the grace in TICKS from the half rather than in dead
+        // balls -- counting opportunities meant a scrappy passage could postpone the interval for
+        // minutes while a flowing one ended it at once.
+        if (!meCanWhistle(m.s) && m.t - half < ME_END_WAIT) continue;
+        // Snapshot the stoppage served so far, so the second period's added time counts from here.
+        if (m.et) m.etAdd1 = meAdded(m.s); else m.htAdd = meAdded(m.s);
+        m[halfKey] = true; m.brk = { t: 0, kind: m.et ? "etht" : "ht" }; break;
       }
     }
     // Full time. meFinalise is what turns raw event deltas into a rating: it shrinks a substitute's
     // toward par by the minutes he actually played and applies the positional par itself. Without
     // this call the numbers are the un-normalised running total and forwards sit half a point clear.
-    if (m.t >= end && !m.ftDone) {
+    // Same at the end of a period as at the interval: the clock reaching zero is permission to blow,
+    // not an instruction to blow now. blowNow() is the referee looking up and deciding.
+    if (blowNow() && !m.ftDone) {
       // LEVEL ON AGGREGATE, not level tonight. A second leg carries the first one's goals, so a
       // 1-0 that makes it 2-2 over the tie is a draw and a 1-0 that makes it 2-1 is not -- and if
       // the competition counts away goals, a tie level on aggregate can still already be settled.
@@ -6116,10 +6776,21 @@ export default function App() {
       // A fixture that must produce a winner goes to extra time, and then to kicks. Everything else
       // is allowed to be a draw, which is most football.
       if (m.needWin && level && !m.et) {
-        m.et = 1; m.brk = { t: 0, kind: "ht" };            // off, back on, and kick off again
+        // WHERE THE EXTRA-TIME CLOCK STARTS. The scoreboard runs off the tick counter, and the
+        // counter does not reset -- so a match that ran to 94:00 of stoppage began extra time at
+        // 94:00. Recording the tick it began on lets the clock be re-based to a flat 90:00.
+        m.et = 1; m.etAt = m.t; m.etAdd0 = meAdded(m.s); m.brk = { t: 0, kind: "et" };
       } else {
-        // meShootout drives itself to a conclusion in one call -- five each, then sudden death,
-        // stopped the moment it cannot be caught -- so there is nothing to tick here.
+        // WATCHED, OR RESOLVED. Sim to end wants the number and meShootout still hands it over in
+        // one call; a match somebody is actually watching gets the phase instead, and full time is
+        // not declared until the kicks are done.
+        if (m.needWin && level && !m.fast) {
+          m.pk = { st: mePkInit(m.s), phase: "gather", t: 0, side: null, wait: [], last: null };
+          mePkSlots(m);
+          mePkSnap(m.s);
+          setMeFrame(f => f + 1);
+          return;
+        }
         if (m.needWin && level) m.pens = meShootout(m.s, m.rng, m.out, 40);
         m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
         // The result is NOT written here. A fixture you watched is one you might want to play
@@ -6138,6 +6809,16 @@ export default function App() {
     // highlights are built from them -- but no replay is staged, and any replay already up is
     // dropped, or the guard at the top of meStep would spin this loop against a frozen match.
     m.fast = true; m.cel = null;
+    // Mid-shootout, "skip" means finish the kicks, not abandon them: hand the remaining rota back
+    // to the one-call version and take its number.
+    if (m.pk) { const p = m.pk; m.pk = null;
+      for (;;) { const side = mePkNext(p.st, 40); if (!side) break;
+        mePkSetup(m.s, m.out, p.st, side);
+        while (!mePkTick(m.s, m.rng, m.out, p.st, side)) { /* one attempt */ }
+        mePkTally(m.s, m.out, p.st, side); }
+      m.pens = mePkResult(p.st);
+      m.ftDone = true; meFinalise(m.s); m.brk = { t: 0, kind: "ft" };
+      setMeView("post"); setMePanel("stats"); setMeFrame(f => f + 1); return; }
     for (let g = 0; g < 40 && !m.ftDone; g++) meStep(ME_MATCH_TICKS + 800);
   };
   const mePlay = () => {
@@ -6150,7 +6831,10 @@ export default function App() {
       // to look the same at quarter pace as it does at four times, because it is television rather
       // than football. Match time does not move here at all.
       const mc = meRef.current;
-      if (mc?.cel) { meCelStep(mc); setMeFrame(f => f + 1); return; }
+      if (mc?.cel) { const i0 = mc.cel.i, d0 = mc.cel.done;
+        meCelStep(mc);
+        if (!mc.cel.done || mc.cel.i !== i0 || mc.cel.done !== d0) setMeFrame(f => f + 1);
+        return; }
       // Carry the fraction over between frames instead of rounding it away, so 0.25x really is
       // quarter pace rather than the fastest the frame rate happens to allow.
       meAcc.current += ME_SPEEDS[meSpeedIx] * 0.04 / ME_DT;
@@ -11832,6 +12516,9 @@ export default function App() {
           const gk = (p) => p.pos === "GK";
           const dot = (p, fill, key, carrier) => {
             const x = ix(p), y = iy(p);
+            // GONE IS GONE. A man walking down the tunnel should leave the picture, not sit as a
+            // half-clipped dot on the bottom edge of it.
+            if (y > 69.4) return null;
             // The keeper is the one man a viewer has to pick out instantly, and the one man whose
             // colour genuinely is different in real football.
             const face = gk(p) ? "#f5e663" : fill;
@@ -11943,6 +12630,9 @@ export default function App() {
       st.mePos?.side === "home" && st.mePos?.idx === i))}
     {st && st.players.away.map((p, i) => dot(p, aPitchClr, "a" + i,
       st.mePos?.side === "away" && st.mePos?.idx === i))}
+    {/* THE MAN COMING OFF. meSub has already moved him into s.subbedOff, which the pitch has never
+        drawn -- so without this he simply blinks out of existence at the moment of the change. */}
+    {m?.subAnim?.off.map((w, i) => dot(w.p, w.sd === "home" ? hPitchClr : aPitchClr, "sub" + i, false))}
     {/* THE REPLAY, picture-in-picture. Drawn inside the pitch SVG rather than as a floating div so
         it sits in pitch coordinates and scales with the pitch for free, at any window size. The
         match behind it is frozen -- meStep refuses to tick while m.cel is set -- so this is the only
@@ -11952,40 +12642,100 @@ export default function App() {
       const c = m.cel, F = c.clip.frames;
       const A = F[c.i], B = F[Math.min(F.length - 1, c.i + 1)], a = c.a;
       const L = (u, v) => u + (v - u) * a;
-      const S = 0.40, OX = 2.4, OY = 1.6, W = 105 * S, H = 68 * S;
-      const sw = 0.30 / S;                       // strokes drawn in the inset's own scaled units
-      const trail = F.slice(0, c.i + 1).map(f => `${fx(f.bx).toFixed(1)},${f.by.toFixed(1)}`).join(" ");
+      // ALIGNED TO THE PITCH, not floated near it. The panel used to sit at an arbitrary offset and
+      // read as a sticker dropped on top; its corner now lands on the touchline corner with one
+      // uniform margin, so it belongs to the same rectangle as everything else on screen.
+      const PAD = 1.6, S = 0.335, PW = 105 * S, PH = 68 * S;
+      // The chrome is deliberately thin. A replay is the picture; the furniture around it should be
+      // legible and then get out of the way, and at the old 4.2 the header alone was a sixth of the
+      // panel and set in type taller than the centre circle.
+      const HEAD = 2.8, FOOT = 3.1, W = PW, H = HEAD + PH + FOOT;
+      const sw = 0.26 / S;                       // strokes drawn in the inset's own scaled units
+      const pt = (f) => `${fx(f.bx).toFixed(1)},${f.by.toFixed(1)}`;
+      const seen = F.slice(0, c.i + 1);
+      const trail = seen.map(pt).join(" ");
+      const recent = seen.slice(-7).map(pt).join(" ");
+      // CLAMPED, because the last frame counts itself twice: meCelStep pins a to 1 when it reaches
+      // the final index, so (i + a) runs one whole frame past the end. On a short clip that is a
+      // scrubber 14% longer than the panel it lives in, drawn straight out across the pitch.
+      const prog = F.length < 2 ? 1 : Math.max(0, Math.min(1, (c.i + a) / (F.length - 1)));
+      const btn = (x, on, kids) => (
+        <g transform={`translate(${x} ${PAD + HEAD + PH + 1.85})`} onClick={on}
+           style={{ cursor: "pointer", pointerEvents: "auto" }}>
+          <circle r={0.98} fill="rgba(255,255,255,.09)" stroke="rgba(255,255,255,.28)" strokeWidth={0.12} />
+          {kids}
+        </g>);
       return (
         <g style={{ pointerEvents: "none" }}>
-          <rect x={OX - 1} y={OY - 1} width={W + 2} height={H + 5.2} rx={1}
-                fill="rgba(6,12,8,.88)" stroke="rgba(255,255,255,.5)" strokeWidth={0.28} />
-          <circle cx={OX + 1.5} cy={OY + H + 2.5} r={0.85} fill="#ff4444" />
-          <text x={OX + 3.2} y={OY + H + 3.3} fontSize={2.4} fill="#fff" fillOpacity={0.9}
-                style={{ letterSpacing: "0.14em" }}>REPLAY</text>
-          <text x={OX + W} y={OY + H + 3.3} fontSize={2.4} fill="#fff" fillOpacity={0.65}
-                textAnchor="end">{c.clip.min}' {c.clip.score}</text>
-          <g transform={`translate(${OX} ${OY}) scale(${S})`}>
-            <rect x={0} y={0} width={105} height={68} fill="#16301c" />
-            <g stroke="rgba(255,255,255,.28)" strokeWidth={sw} fill="none">
+          {/* the body of the panel, one piece, so the header and footer are bands inside it rather
+              than separate boxes that can drift out of line */}
+          <rect x={PAD + 0.3} y={PAD + 0.38} width={W} height={H} rx={0.9} fill="rgba(0,0,0,.34)" />
+          <rect x={PAD} y={PAD} width={W} height={H} rx={0.9}
+                fill="#070c09" stroke="rgba(255,255,255,.26)" strokeWidth={0.14} />
+          {/* hairlines instead of filled bands: the bands read as three stacked boxes rather than
+              one object, and the panel is small enough that a rule is all the separation it needs */}
+          <line x1={PAD + 0.5} y1={PAD + HEAD} x2={PAD + W - 0.5} y2={PAD + HEAD}
+                stroke="rgba(255,255,255,.13)" strokeWidth={0.1} />
+
+          {/* the tally light. It pulses in SVG rather than in React so a held frame costs nothing. */}
+          <circle cx={PAD + 1.45} cy={PAD + HEAD / 2} r={0.48} fill="#ff3b30">
+            <animate attributeName="opacity" values="1;0.28;1" dur="1.4s" repeatCount="indefinite" />
+          </circle>
+          <text x={PAD + 2.45} y={PAD + HEAD / 2 + 0.5} fontSize={1.42} fill="#fff" fillOpacity={0.88}
+                fontWeight={700} style={{ letterSpacing: "0.17em" }}>REPLAY</text>
+          <text x={PAD + W - 1.1} y={PAD + HEAD / 2 + 0.5} fontSize={1.38} fill="#fff" fillOpacity={0.5}
+                textAnchor="end" style={{ letterSpacing: "0.04em" }}>{c.clip.min}&#39; &#183; {c.clip.score}</text>
+
+          <g transform={`translate(${PAD} ${PAD + HEAD}) scale(${S})`}>
+            <rect x={0} y={0} width={105} height={68} fill="#142c1a" />
+            {Array.from({ length: 6 }, (_, i) => (
+              <rect key={"rm" + i} x={i * 17.5} y={0} width={17.5} height={68}
+                    fill={i % 2 ? "#173119" : "#142c17"} />))}
+            <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
               <rect x={0.6} y={0.6} width={103.8} height={66.8} />
               <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
               <circle cx={52.5} cy={34} r={9.15} />
               <rect x={0.6} y={13.85} width={16.5} height={40.3} />
               <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+              <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+              <rect x={98.9} y={24.85} width={5.5} height={18.3} />
             </g>
+            {/* WHERE THE BALL HAS BEEN, twice: the whole move faint underneath and the last stretch
+                bright on top. One flat line says the ball travelled; two say which way it is going. */}
             {c.i > 0 && <polyline points={trail} fill="none" stroke="#ffd166"
-                                  strokeOpacity={0.55} strokeWidth={sw * 1.6} />}
+                                  strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
+            {c.i > 0 && <polyline points={recent} fill="none" stroke="#ffd166"
+                                  strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round"
+                                  strokeLinejoin="round" />}
             {[0, 1].map(sd => Array.from({ length: 11 }, (_, i) => {
               const k = sd * 22 + i * 2;
               if (A.xy[k] < -50 || B.xy[k] < -50) return null;
               return <circle key={"rp" + sd + i}
                              cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
-                             r={1.45} fill={sd ? aPitchClr : hPitchClr}
-                             stroke="rgba(0,0,0,.55)" strokeWidth={sw * 0.8} />;
+                             r={1.02} fill={sd ? aPitchClr : hPitchClr}
+                             stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
             }))}
-            <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={1.05}
-                    fill="#fff" stroke="#000" strokeWidth={sw * 0.8} />
+            <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={0.78}
+                    fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
           </g>
+
+          {/* HOW FAR THROUGH, sat flush against the bottom of the picture the way a scrubber does.
+              Floating it in the middle of the footer left it competing with the caption for the
+              same strip of space and winning neither. */}
+          <rect x={PAD} y={PAD + HEAD + PH} width={W} height={0.26} fill="rgba(255,255,255,.14)" />
+          <rect x={PAD} y={PAD + HEAD + PH} width={W * prog} height={0.26} fill="#ffd166" />
+          {c.clip.txt && <text x={PAD + 1.1} y={PAD + HEAD + PH + 2.3} fontSize={1.34} fill="#fff"
+                               fillOpacity={0.58}>{c.clip.txt.length > 40 ? c.clip.txt.slice(0, 39) + "\u2026" : c.clip.txt}</text>}
+          {/* A play triangle, not a circular arrow. At a radius of one unit an arrowhead is three
+              pixels and turns to mush; a triangle stays a triangle at any size, and after the clip
+              has stopped "play" and "play again" are the same instruction. */}
+          {btn(PAD + W - 3.9, () => meCelReplay(m), (
+            <path d="M -0.3 -0.46 L 0.44 0 L -0.3 0.46 Z" fill="#fff" fillOpacity={0.85} />))}
+          {btn(PAD + W - 1.5, () => meCelClose(m), (
+            <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.19} strokeLinecap="round">
+              <line x1={-0.36} y1={-0.36} x2={0.36} y2={0.36} />
+              <line x1={0.36} y1={-0.36} x2={-0.36} y2={0.36} />
+            </g>))}
         </g>
       );
     })()}
@@ -12001,6 +12751,69 @@ export default function App() {
       return <circle cx={bx} cy={by} r={R_BALL * (1 + lift * BALL_LIFT)} fill="#fff"
                      stroke="#111" strokeWidth={0.05} strokeOpacity={0.85 - lift * 0.35} />;
     })()}
+    {/* THE INTERVAL. Drawn last so it sits over everything, and only once the last man is actually
+        down the tunnel -- walking off behind a modal defeats the point of walking off. Nothing here
+        is on a timer: the break holds until this button is pressed, which is the whole change. */}
+    {m?.brk?.phase === "wait" && (() => {
+      const L = ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht;
+      if (!L[1]) return null;
+      const BW = 62, BH = 27, BX = 52.5 - BW / 2, BY = 34 - BH / 2;
+      const hC = m.hT?.code || m.hT?.name || "", aC = m.aT?.code || m.aT?.name || "";
+      // The two sides read off their own kits, either side of the score, so the panel says WHO is
+      // winning and not merely what the numbers are.
+      const side = (code, clr, x, anchor) => (<g>
+        <circle cx={anchor === "end" ? x - 1.3 : x + 1.3} cy={BY + 14.1} r={1.15} fill={clr} />
+        <text x={anchor === "end" ? x - 3.6 : x + 3.6} y={BY + 15.1} fontSize={3.3} fill="#fff"
+              fillOpacity={0.9} fontWeight={800} textAnchor={anchor}
+              style={{ letterSpacing: ".08em" }}>{String(code).slice(0, 3).toUpperCase()}</text>
+      </g>);
+      return (
+        <g>
+          <rect x={-1} y={-2.4} width={107} height={72.8} fill="rgba(3,8,5,.72)" />
+          <rect x={BX + 0.5} y={BY + 0.6} width={BW} height={BH} rx={1.6} fill="rgba(0,0,0,.45)" />
+          <rect x={BX} y={BY} width={BW} height={BH} rx={1.6}
+                fill="#080d0a" stroke="rgba(255,255,255,.24)" strokeWidth={0.18} />
+          <rect x={BX} y={BY} width={BW} height={0.55} rx={0.28} fill="var(--ui-warn)" fillOpacity={0.9} />
+          <text x={52.5} y={BY + 5.9} fontSize={2.4} fill="var(--ui-warn)" fillOpacity={0.95}
+                fontWeight={700} textAnchor="middle" style={{ letterSpacing: ".3em" }}>{L[0]}</text>
+          <line x1={BX + 8} y1={BY + 8.2} x2={BX + BW - 8} y2={BY + 8.2}
+                stroke="#fff" strokeOpacity={0.12} strokeWidth={0.14} />
+          {side(hC, hPitchClr, 52.5 - 9, "end")}
+          <text x={52.5} y={BY + 15.6} fontSize={6.4} fill="#fff" fillOpacity={0.96} fontWeight={800}
+                textAnchor="middle" style={{ ...mono, letterSpacing: ".02em" }}>
+            {out.goals.home}&#8211;{out.goals.away}</text>
+          {side(aC, aPitchClr, 52.5 + 9, "start")}
+          <g onClick={() => meBreakResume(m)} style={{ cursor: "pointer", pointerEvents: "auto" }}>
+            <rect x={52.5 - 15} y={BY + 19.4} width={30} height={5.6} rx={2.8}
+                  fill="var(--chrome-brand)" />
+            <text x={52.5} y={BY + 23.2} fontSize={2.5} fill="var(--ui-on-accent)" fontWeight={800}
+                  textAnchor="middle" style={{ letterSpacing: ".14em" }}>{L[1].toUpperCase()}</text>
+          </g>
+        </g>);
+    })()}
+    {m?.brk?.phase === "wait" && (() => {
+      const L = ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht;
+      if (!L[1]) return null;
+      const BW = 54, BH = 23, BX = 52.5 - BW / 2, BY = 34 - BH / 2;
+      return (
+        <g>
+          <rect x={-1} y={-2.4} width={107} height={72.8} fill="rgba(3,8,5,.66)" />
+          <rect x={BX + 0.45} y={BY + 0.55} width={BW} height={BH} rx={1.5} fill="rgba(0,0,0,.42)" />
+          <rect x={BX} y={BY} width={BW} height={BH} rx={1.5}
+                fill="#070c09" stroke="rgba(255,255,255,.3)" strokeWidth={0.2} />
+          <text x={52.5} y={BY + 6.6} fontSize={3.1} fill="#fff" fillOpacity={0.92} fontWeight={700}
+                textAnchor="middle" style={{ letterSpacing: "0.22em" }}>{L[0]}</text>
+          <text x={52.5} y={BY + 13.2} fontSize={5} fill="#fff" fillOpacity={0.9} fontWeight={800}
+                textAnchor="middle" style={{ ...mono, letterSpacing: "0.04em" }}>
+            {out.goals.home}&#8211;{out.goals.away}</text>
+          <g onClick={() => meBreakResume(m)} style={{ cursor: "pointer", pointerEvents: "auto" }}>
+            <rect x={52.5 - 17} y={BY + 16.2} width={34} height={5.2} rx={2.6}
+                  fill="rgba(255,255,255,.13)" stroke="rgba(255,255,255,.42)" strokeWidth={0.18} />
+            <text x={52.5} y={BY + 19.75} fontSize={2.35} fill="#fff" fillOpacity={0.95} fontWeight={700}
+                  textAnchor="middle" style={{ letterSpacing: "0.12em" }}>{L[1].toUpperCase()}</text>
+          </g>
+        </g>);
+    })()}
   </svg>
           );
           // FULL VIEWPORT. A match is watched, not inspected through a 660 px panel, so once one
@@ -12009,7 +12822,7 @@ export default function App() {
           // Everything else in the app keeps its fixed height, so this is the only place that has to
           // know about a second layout mode.
           if (m && meView !== "setup") {
-            const brk = m.brk ? (m.brk.kind === "ft" ? "FULL TIME" : "HALF TIME") : null;
+            const brk = m.pk ? "PENALTIES" : m.brk ? (ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht)[0] : null;
             // WHOSE GROUND IT IS, not whoever sits in the home slot. This read m.hT.stadium flat,
             // so the Venue Selector was honoured by the engine -- meBuild sets st.venue and the
             // home-advantage shape off it -- and then contradicted on screen by the one line the
@@ -12090,8 +12903,19 @@ export default function App() {
             // clock read straight off the tick counter MUST drop one second in every four. `al` is
             // the same fraction-of-a-tick the pitch uses to draw players between slices; running the
             // clock on it means every second gets shown instead of three out of four.
-            const secTot = Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400));
-            const clock = `${Math.floor(secTot / 60)}:${String(secTot % 60).padStart(2, "0")}`;
+            // Extra time is its own half-hour and starts at a flat 90:00 however long stoppage ran,
+            // exactly as the fourth official resets it. Normal time keeps counting past 90:00 into
+            // added time, which is the one place the clock SHOULD run on.
+            const secTot = m.et && m.etAt != null
+              ? Math.max(0, Math.floor(5400 + (m.t + al - m.etAt) / ME_ET_TICKS * 1800))
+              : Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400));
+            // STOPPAGE SHOWN SEPARATELY, the way a broadcast does it: the clock holds at the period's
+            // number and the time played beyond it runs alongside as +N:NN. Which number it holds at
+            // depends on the period, and the done-flags are what say which one is running.
+            const capSec = m.et ? (m.etHtDone ? 7200 : 6300) : (m.htDone ? 5400 : 2700);
+            const shown = Math.min(secTot, capSec), over = Math.max(0, secTot - capSec);
+            const clock = `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, "0")}`;
+            const added = over > 0 ? `+${Math.floor(over / 60)}:${String(over % 60).padStart(2, "0")}` : null;
             const DIV = { height: 1, background: "var(--chrome-border)", flexShrink: 0 };
             // NAMES BOLD IN THE COMMENTARY. The engine writes each line as a flat sentence, so the
             // only way to know which words are a person is to match against the people on the pitch.
@@ -12156,12 +12980,24 @@ export default function App() {
                       {out.goals.home}&ndash;{out.goals.away}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".12em", ...mono,
                                   color: brk ? "var(--ui-warn)" : "var(--ui-on-accent)", opacity: brk ? 1 : 0.85 }}>
-                      {brk || clock}</div>
-                    {/* A shootout is not part of the scoreline -- meShootout puts the goals back --
-                        so the kicks are reported beside it rather than added to it. */}
-                    {m.pens && <div style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: ".1em",
-                                             opacity: 0.9 }}>{m.pens.home}&ndash;{m.pens.away} pens</div>}
-                    {!m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
+                      {brk || clock}
+                      {/* Added time alongside, not folded into the clock: the number the period
+                          is played to stays legible and what is being played beyond it reads as
+                          the separate thing it is. */}
+                      {!brk && added && <span style={{ marginLeft: 6, color: "var(--ui-warn)",
+                        fontSize: 11, letterSpacing: ".08em" }}>{added}</span>}</div>
+                    {/* A shootout is not part of the scoreline -- the goals are put back -- so the
+                        kicks are reported beside it rather than added to it. One line for both
+                        states: it counts up live off the shootout's own tally and then stands as
+                        the result, so it never changes shape or place on the board. Amber is the
+                        colour the phase is labelled in everywhere else. */}
+                    {(m.pk || m.pens) && (() => {
+                      const sc = m.pk ? m.pk.st.sc : m.pens;
+                      return <div style={{ ...mono, fontSize: 11, fontWeight: 800, letterSpacing: ".14em",
+                                           color: "var(--ui-warn)" }}>
+                        {sc.home}&ndash;{sc.away} PENS</div>;
+                    })()}
+                    {!m.pk && !m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
                                                       letterSpacing: ".16em", opacity: 0.75 }}>
                       {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
                     {/* A second leg is not played against the scoreline in front of you. */}
@@ -12777,6 +13613,9 @@ export default function App() {
                         penmiss: { icon: "🥅", head: "PENALTY MISSED", clr: "var(--ui-danger)", big: true,
                                    tint: "var(--ui-danger)" },
                         red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
+                        og:      { icon: "\u26BD", head: "OWN GOAL", clr: "var(--ui-danger)", big: true,
+                                   tint: "var(--ui-danger)" },
+                        pk:      { icon: "\uD83E\uDD45", clr: "var(--chrome-muted)" },
                         sub:     { icon: "⇄", head: "SUB", clr: "var(--chrome-muted)", big: true },
                         save:    { icon: "🧤", clr: "var(--ui-info)" },
                         miss:    { icon: "💨", clr: "var(--chrome-muted)" },
@@ -12830,15 +13669,39 @@ export default function App() {
                             key.push({ min: q.min, side: sd, k: "penmiss", name: q.name, full: q.full });
                           for (const r of (out.sendOff?.[sd] || []))
                             key.push({ min: r.min, side: sd, k: "red", name: r.name, full: r.full, second: r.second, why: r.why });
+                          // An own goal counts for the OTHER side, so it is listed against them --
+                          // with the name of the man who put it in, which is whose event it is.
+                          for (const o of (out.owns?.[sd] || []))
+                            key.push({ min: o.min, side: sd === "home" ? "away" : "home", k: "og",
+                                       name: o.name, full: o.full });
                         }
                         key.sort((u, v) => v.min - u.min);
-                        if (!key.length) return (
+                        // THE SHOOTOUT, which until now appeared nowhere at all. meShootout strips its
+                        // kicks out of the scorers and penalty-miss lists -- correctly, since a
+                        // shootout is not part of the scoreline -- and those two lists are exactly
+                        // what this panel is built from, so the whole thing vanished. It is kept
+                        // separately and reported separately, in the order the kicks were taken.
+                        const pens = (out.pens || []).map((p, i) => row("pk" + i, "", p.side, "pk", (<>
+                          <b style={{ fontWeight: 700, color: p.scored ? "var(--ui-ok)" : "var(--ui-danger)" }}>
+                            {p.scored ? "SCORED" : "MISSED"}</b>
+                          <span style={{ color: "var(--chrome-muted)" }}> {p.full || p.name}</span>
+                          <span style={{ ...mono, color: "var(--chrome-muted-66)", fontSize: 9 }}>
+                            {"  " + p.sc.home + "-" + p.sc.away}</span>
+                        </>)));
+                        if (!key.length && !pens.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
-                        return key.map((f, i) => row(i, f.min, f.side, f.k, (<>
-                          <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
-                          {(f.k === "goal" || f.k === "pen") && f.assist
-                            ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
-                        </>), f.k === "red" ? RED_WHY(f.why, f.second) : null));
+                        return (<>
+                          {key.map((f, i) => row(i, f.min, f.side, f.k, (<>
+                            <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
+                            {(f.k === "goal" || f.k === "pen") && f.assist
+                              ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
+                          </>), f.k === "red" ? RED_WHY(f.why, f.second) : null))}
+                          {pens.length ? (
+                            <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".12em", padding: "8px 0 3px",
+                                          color: "var(--chrome-muted)", borderTop: "1px solid var(--chrome-border)",
+                                          marginTop: 5 }}>PENALTY SHOOTOUT</div>) : null}
+                          {pens}
+                        </>);
                       }
                       const all = out.feed || [];
                       if (!all.length) return (
@@ -13065,24 +13928,11 @@ export default function App() {
             const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="var(--ui-info)">{children}</PanelTitle></div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
-            const Stat = ({text}) => {
-              const items = text.split(" \u00b7 ").map(s => {
-                const tempo = s.match(/^(Max|Min) tempo: (.+)$/);
-                if (tempo) return { name: tempo[1] + " tempo", value: tempo[2], neutral: false, positive: false, isTempo: true };
-                const m = s.match(/^(.+?)\s+([\+\-]?\d+\.?\d*x?)$/);
-                if (!m) return { name: s, value: "", neutral: true };
-                const isM = m[2].endsWith("x"); const n = parseFloat(m[2]);
-                const neut = isM ? n === 1 : n === 0;
-                return { name: m[1], value: m[2], neutral: neut, positive: isM ? n > 1 : n > 0, isMulti: isM };
-              });
-              return <details style={{ marginBottom: 12 }}><summary style={{ fontSize: 10, color: "var(--chrome-muted)", cursor: "pointer" }}><span className="dta">▶</span>View modifiers</summary>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "3px 6px", padding: "8px 10px", background: "var(--chrome-panel)", borderRadius: 6, marginTop: 6, border: "1px solid var(--chrome-border)" }}>
-                {items.map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 8px", borderRadius: 3, background: it.neutral ? "transparent" : it.positive ? "var(--ui-qual-direct-0a)" : it.isTempo ? "var(--ui-attack-0a)" : "var(--ui-danger-0a)", borderLeft: it.neutral ? "2px solid transparent" : it.positive ? "2px solid var(--ui-qual-direct-33)" : it.isTempo ? "2px solid var(--ui-attack-33)" : "2px solid var(--ui-danger-33)" }}>
-                  <span style={{ color: "var(--chrome-muted)", fontSize: 10 }}>{it.name}</span>
-                  <span style={{ ...mono, fontSize: 10, fontWeight: it.neutral ? 400 : 600, color: it.neutral ? "var(--chrome-muted)" : it.positive ? "var(--ui-qual-direct)" : it.isTempo ? "var(--ui-attack)" : "var(--ui-danger)" }}>{it.value}</span>
-                </div>)}
-              </div></details>;
-            };
+            // A PLAYSTYLE'S INSTRUCTIONS, READ OFF THE ENGINE RATHER THAN TYPED OUT HERE. The old
+            // documentation printed modifier tables by hand, which is why it went stale the moment
+            // the engine stopped having modifier tables: every number in it was a copy. This reads
+            // STYLE_PRESET and names each value with the same label the Tactics panel uses, so it
+            // cannot describe a style the engine is not actually playing.
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "var(--ui-text)" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
             const tocLink = (id, label) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<div style={{ height: ROSTER_PANEL_H, display: "grid", gridTemplateColumns: "minmax(0, 250px) minmax(0, 1fr)", gap: 16, minHeight: 0 }}>
@@ -13090,27 +13940,18 @@ export default function App() {
               <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Contents</PanelTitle></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {tocLink("doc-overview", "Overview")}
-                {tocLink("doc-engine", "How Matches Play Out")}
+                {tocLink("doc-engine", "How A Match Is Simulated")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-pitch","The Pitch"],["doc-minute","Minute Cycle"],["doc-buildup","Buildup & Long-range"],["doc-shooting","Shooting Zone"],["doc-shots","Shot Resolution"],["doc-xg","Expected Goals"],["doc-counters","Counter-attacks"],["doc-corners","Corners"],["doc-fouls","Fouls, Cards & Offsides"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tick","The Tick"],["doc-scale","Match Length & Stat Scale"],["doc-decide","How A Player Decides"],
+                    ["doc-shots","Shots & Expected Goals"],["doc-setpieces","Set Pieces"],["doc-discipline","Fouls, Cards & Injuries"],
+                    ["doc-stoppage","Stoppage, Extra Time & Kicks"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
-                {tocLink("doc-dynamics", "Match Dynamics")}
-                <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tempo","Tempo"],["doc-momentum","Momentum"],["doc-stamina","Stamina & Fatigue"],["doc-subs","Substitutions"],["doc-injuries","Injuries"],["doc-homeadv","Home Advantage"],["doc-stoppage","Stoppage Time"],["doc-extra","Extra Time & Penalties"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                </div>
-                {tocLink("doc-modifiers", "Modifiers")}
-                {tocLink("doc-skill", "Skill")}
+                {tocLink("doc-skill", "Ratings & Team Strength")}
                 {tocLink("doc-playstyles", "Playstyles")}
+                {tocLink("doc-fit", "Squad Fit")}
                 {tocLink("doc-formations", "Formations")}
-                {tocLink("doc-tactics", "Tactics")}
-                <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 8, marginBottom: 2 }}>IN POSSESSION</span>
-                  {[["doc-tac-approach","Approach Play"],["doc-tac-passing","Passing Direction"],["doc-tac-chances","Chance Creation"],["doc-tac-dribbling","Dribbling"],["doc-tac-creativity","Creative Freedom"],["doc-tac-setpieces","Set Pieces"],["doc-tac-timewasting","Time Wasting"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>TRANSITION</span>
-                  {[["doc-tac-posslost","On Possession Lost"],["doc-tac-posswon","On Possession Won"],["doc-tac-gkdist","GK Distribution"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                  <span style={{ color: "var(--chrome-muted)", fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, marginTop: 10, marginBottom: 2 }}>DEFENSE</span>
-                  {[["doc-tac-pressing","Pressing LOE"],["doc-tac-defline","Defensive Line"],["doc-tac-dlbehavior","DL Behavior"],["doc-tac-tackling","Tackling"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
-                </div>
+                {tocLink("doc-tactics", "Instructions You Can Set")}
+                {tocLink("doc-matchrating", "Match Ratings")}
                 {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
                   {[["doc-tourney-modes","Modes"],["doc-tourney-draw","The Draw"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
@@ -13121,289 +13962,155 @@ export default function App() {
             <div style={{ minWidth: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", paddingRight: 4 }}>
 
             <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-overview"><H1>Overview</H1>
-            <P>Match outcomes are determined by three layers. Skill sets the baseline: a higher-skilled team wins more often, creates more chances, presses more effectively, and converts at a higher rate. Tactical setup (playstyle, formation, and tactics) modifies the probabilities that govern each minute of play, trading strength in one area for weakness in another. The engine then simulates minute by minute, resolving possession, movement, shots, fouls, and set pieces through those modified probabilities.</P>
-
+            <P>A match here is played rather than rolled. Twenty-two men and a ball occupy a full-size
+            pitch &mdash; 105 by 68 metres, a 7.32 metre goal &mdash; and move under ordinary physics four
+            times a second. No result is decided by comparing two team ratings. A goal happens because
+            somebody got into a position, struck the ball, and beat a keeper who was where he was
+            standing. Team strength reaches the pitch only through the players who carry it.</P>
+            <P>That is the whole design, and everything below is a consequence of it. A playstyle cannot
+            add a goal; it can only change where men stand and what they try. A squad that does not suit
+            its system does not lose a multiplier, it carries its instructions out badly.</P>
             </div>
 
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-skill"><H1>Skill</H1>
-            <P>A number from 25 to 100 representing overall team quality. Skill feeds into every probability calculation in the engine: pressing effectiveness, advance rate, shot conversion, save probability, counter-attack success, and penalty conversion. Most formulas use the ratio between the two teams' effective skill, so a 90 vs 70 matchup produces the same relative advantage as 60 vs 47. Effective skill is the base number modified at runtime by red cards (each reduces it by 15%, compounding), momentum (up to +12%, from goals, cards, penalty misses, and big chances), stamina (up to -25% when exhausted), home advantage (+3% when enabled), and extra-time fatigue (-0.4% per minute past 90').</P>
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-engine"><H1>How A Match Is Simulated</H1>
 
+            <H3 id="doc-tick">The Tick</H3>
+            <P>Four times every simulated second the engine advances the world once. The ball integrates
+            under gravity and drag, in metres and metres per second. Every player re-reads the game and
+            moves. Any contest for the ball &mdash; a tackle, an interception, a header, a keeper's hands
+            &mdash; is resolved against the path the ball actually swept during that slice, not against
+            where it happened to end up. A match is 4,320 of those slices.</P>
+
+            <H3 id="doc-scale">Match Length &amp; Stat Scale</H3>
+            <P>A match is eighteen simulated minutes, not ninety, and it is played at full physical scale:
+            distances, speeds, shot power and stamina are real, there is simply less of the match. This
+            matters when you read a stat sheet. <b>Counting stats come out about a fifth of a real
+            match's and are reported unscaled</b> &mdash; roughly 70 completed passes a side is about 350
+            in ninety-minute terms, and a player's 500-pass season is 2,500. Goals, expected goals and
+            match ratings are tuned to real per-match values and need no conversion at all.</P>
+
+            <H3 id="doc-decide">How A Player Decides</H3>
+            <P>A man on the ball scores every option available to him and takes the best one. Keeping
+            possession is worth something on its own; a pass is worth the ground it gains, weighted
+            against the chance it is cut out; a shot is worth the chance it goes in. There is no table
+            of outcomes anywhere and no dice roll deciding whether an attack &ldquo;succeeds&rdquo;.
+            Instructions do not overrule this &mdash; they change what the options are worth to him, which
+            is why a side told to play shorter passes does not simply pass shorter, it stops finding the
+            longer ball worth attempting.</P>
+
+            <H3 id="doc-shots">Shots &amp; Expected Goals</H3>
+            <P>Every shot carries its own probability of scoring, and that number is its expected goals.
+            The keeper commits to a side as the ball leaves the foot, because from twelve metres a struck
+            ball is past him before his reaction and his dive have both been paid for &mdash; reading it
+            right is what goalkeeping is, and reading it wrong leaves the goal open. A shot he gets a
+            firm hand to is pushed clear; fingertips barely change its line. Rebounds come from exactly
+            there, and so does the occasional parry that ends up in his own net.</P>
+
+            <H3 id="doc-setpieces">Set Pieces</H3>
+            <P>A stoppage is a phase with a shape, not a pause. The ball is placed, a taker walks to it,
+            every other man is given a job, and play restarts when they are actually ready. Corners,
+            free kicks, throws, goal kicks and penalties all run through the same machinery, which is why
+            a corner produces a crowded box and a throw-in does not.</P>
+
+            <H3 id="doc-discipline">Fouls, Cards &amp; Injuries</H3>
+            <P>A dismissal names its offence &mdash; violent conduct, denying a goalscoring opportunity, a
+            second booking and the rest &mdash; and the offence decides the ban. A booked man jockeys
+            rather than diving in, which costs his side tackles and is the handicap of playing on a
+            yellow. Injuries carry a body part and a severity, and the pair decides how long he is out,
+            up to season-ending.</P>
+            <P>A sent-off keeper is replaced by the reserve keeper at the cost of an outfield man. If that
+            keeper goes too, an outfield player pulls the gloves on and plays in goal at half his rating,
+            visibly, because that is what it is.</P>
+
+            <H3 id="doc-stoppage">Stoppage, Extra Time &amp; Kicks</H3>
+            <P>Every slice the ball spends dead is counted and a share of it added back, so the amount of
+            added time is not known in advance &mdash; it is a property of how the match was played.
+            Extra time is a further half hour on the same scale, in two halves, and its clock starts at a
+            flat 90:00 however long stoppage ran. A shootout is five each and then sudden death, with the
+            keeper kicking last of all; its kicks are reported separately because a shootout is not part
+            of the scoreline.</P>
+            </div>
+
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-skill"><H1>Ratings &amp; Team Strength</H1>
+            <P>A player's OVR runs 1 to 99 and is the only strength number the engine has. A team's rating
+            is simply the mean of its squad, bench included, and it is <i>derived</i> &mdash; nothing reads
+            it during a match. Two sides on 80 can play nothing alike, because the eleven who take the
+            pitch, the positions they fill and the system they are asked to play are all separate
+            questions from the average.</P>
+            <P>Individual attributes decide individual contests. Pace decides who reaches a loose ball,
+            technique how cleanly it is controlled under pressure, strength who wins the shoulder-to-
+            shoulder and how high he gets to a header, tackling how far a foot reaches in. There is no
+            step where two team numbers are compared.</P>
             </div>
 
             <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-playstyles"><H1>Playstyles</H1>
+            <P>Fourteen of them, and a playstyle is an <b>identity stamp</b>: choosing it sets eleven
+            behaviour axes at once, and the side plays that way. These are not per-team sliders you tune
+            separately any more &mdash; the style is the instruction set, which is what stops every club
+            converging on the same hand-assembled best-of-everything build.</P>
+            <P>The table is read live from the engine, so it is what each style actually plays rather
+            than a description of it. Hover a row for what the style is trying to do.</P>
+            <PlaystyleTable />
+            </div>
 
-            <H2>Offensive</H2>
-
-            <H3>Gegenpress</H3>
-            <P>High-intensity press designed to win the ball in dangerous areas and immediately attack. The pressing multiplier (1.3x) is the highest in the game, and it's the main reason this style comes with a real stamina cost — winning the ball back more often than anyone else means playing more of the match as the team in possession, driving forward, and every one of those extra possessions costs individual stamina even before a shot is ever taken. The advance bonus is modest (+0.04) and the transition conversion (0.50x counter, +0.03 counter shot) trails a dedicated counter-attacking side by design — the press already forces more turnovers than any other style, so it doesn't also need every one of them converting into a shot to be dangerous. The trade-off is defensive exposure: committing players forward leaves the backline thin, and when the press is beaten the team is vulnerable. Possession retention is lower than neutral styles but not catastrophic, reflecting a system that prioritizes regaining the ball through pressing rather than keeping it through passing.</P>
-            <Stat text="Press 1.3x · Advance +0.04 · Hold -0.02 · Long ball +0 · Box shot +0.04 · Goal prob +0 · Counter 0.50x · Counter shot +0.03 · Defense -0.01 · Long-range +0 · Corners 1.0x" />
-
-            <H3>Wing Play</H3>
-            <P>Width-oriented system that attacks through the flanks. The long ball bonus is the highest in the game, reflecting direct balls into wide channels, and the corner multiplier (1.4x) is the game's highest, representing the volume of crosses and cutbacks that produce set pieces. Long-range shooting is encouraged because wide play creates angles at the edge of the box. The advance bonus (+0.03) pushes the team forward through the wings. The cost is modest but real: defensive solidity takes a minor hit because full-backs push forward, and hold drops because the team progresses through width rather than short combinations. A good choice for teams that want to generate set-piece volume and shoot from range, weaker for teams that need to control the middle.</P>
-            <Stat text="Press 1.0x · Advance +0.03 · Hold -0.01 · Long ball +0.04 · Box shot +0.02 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense +0 · Long-range +0.04 · Corners 1.4x" />
-
-            <H2>Neutral</H2>
-
-            <H3>Balanced</H3>
-            <P>No modifiers in any direction. The team's skill rating determines everything. A good default when the skill gap is large enough that tactical amplification is unnecessary, or when flexibility matters more than specialization.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0 · Long ball +0 · Box shot +0 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense +0 · Long-range +0 · Corners 1.0x" />
-
-            <H3>Tiki-Taka</H3>
-            <P>Possession-dominant system that holds the ball and waits for the right moment. The hold modifier (+0.10) is the highest in the game, meaning extended spells of midfield control and high possession percentages. When shots do come, they convert well because the system creates high-quality chances through patient buildup. Controlling the ball is itself a defensive act — opponents cannot score without it — reflected in a modest defensive bonus (+0.02). The cost is volume: advance rate is negative, box shot probability drops, long-range is suppressed, and counter-attacking is weak because the team recycles possession rather than transitioning quickly. Corner generation is slightly low because the style avoids wasteful crosses. Tiki-Taka teams dominate the ball but can struggle to break packed defenses.</P>
-            <Stat text="Press 1.1x · Advance -0.01 · Hold +0.10 · Long ball -0.02 · Box shot -0.01 · Goal prob +0.02 · Counter 0.80x · Counter shot +0 · Defense +0.02 · Long-range -0.02 · Corners 0.95x" />
-
-            <H2>Defensive</H2>
-
-            <H3>Counter</H3>
-            <P>Built to absorb pressure and punish opponents on the break. The counter multiplier (2.0x) and counter shot bonus (+0.10) are both the highest in the game, meaning the team is lethal in transition. Defensive solidity is strong, and goal conversion is elevated because the chances that do come tend to be high-quality breakaways. The cost is territorial: the team concedes possession, rarely presses, advances slowly, and generates few chances from open play. The box shot penalty means the team relies almost entirely on counters and set pieces for goals. Tempo caps at Offensive to prevent the system from abandoning its defensive shape.</P>
-            <Stat text="Press 0.40x · Advance -0.04 · Hold -0.01 · Long ball +0.02 · Box shot -0.02 · Goal prob +0.02 · Counter 2.0x · Counter shot +0.10 · Defense +0.08 · Long-range +0 · Corners 1.0x" />
-
-            <H3>Park the Bus</H3>
-            <P>Maximum defensive solidity at the expense of everything else. The defense modifier (+0.10) is the highest in the game, reducing the opponent's shooting opportunities substantially. Counter ability is elevated, providing an outlet on the break. The cost is across the board: pressing is nearly nonexistent, advance rate is deeply negative, hold drops, box shot probability craters, and corners are rare. The tempo system enforces a minimum of Defensive, meaning a Park the Bus team will never play balanced or higher regardless of scoreline. Effective when protecting a lead or when a massive skill gap needs to be neutralized, but the team will struggle to score if it falls behind.</P>
-            <Stat text="Press 0.20x · Advance -0.08 · Hold -0.03 · Long ball +0.02 · Box shot -0.04 · Goal prob +0 · Counter 1.3x · Counter shot +0.05 · Defense +0.10 · Long-range -0.02 · Corners 0.80x · Min tempo: Defensive" />
-
-            <H2>Chance Creation Profiles</H2>
-            <P>Beyond the modifier parameters above, each playstyle shapes how chances are built. When a team enters the box or creates an opportunity, the engine generates a passing chain of 1 to 5 hops before the shot. The distribution across those chain lengths differs by style — direct styles weight heavily toward 1-2 hop sequences (quick, simple chances), while possession styles produce longer chains (intricate, multi-pass buildups). Formations and tactics further adjust these values on top of the style baseline (see below).</P>
-            <P>Dribble probability controls how often a player in the chain beats a man instead of passing (clamped 5-50%). Solo breakaway rate adds a flat chance per minute of a single player skipping the buildup entirely to create a 1v1 — this stacks with the Expressive creativity tactic's moment-of-magic chance but fires independently.</P>
-            <Stat text="Balanced: chains 15/35/30/14/6%, dribble 25%, solo 0% · Gegenpress: chains 25/35/25/10/5%, dribble 20%, solo 2% · Tiki-Taka: chains 5/20/35/25/15%, dribble 15%, solo 0% · Counter: chains 35/35/20/8/2%, dribble 35%, solo 3% · Wing Play: chains 10/30/35/18/7%, dribble 30%, solo 1% · Park the Bus: chains 40/35/18/5/2%, dribble 20%, solo 0%" />
-            <P>Formations apply additive adjustments to the style's chain weights, dribble probability, and solo rate. Offensive formations (4-2-4, 3-4-3) shift toward shorter chains and more dribbling — four attackers create direct, physical chances. Defensive formations (4-3-2-1, 4-1-4-1) shift toward longer chains — more midfielders mean more passing before the shot arrives. The 5-3-2 is an exception: its chances are direct (short chains, +1% solo) because the team attacks on the counter rather than building through midfield.</P>
-            <P>Tactics also adjust the profile. Work Ball In lengthens chains; Shoot On Sight shortens them. Into Space shortens chains (direct play into gaps); Play Out lengthens them (patient buildup). Counter (possession won) shortens chains and adds +1% solo rate; Hold Shape lengthens them. Run At Defence adds +6% dribble probability; Disciplined dribbling subtracts 4%. All adjustments are additive and stack with style and formation values.</P>
-
-            <H2>Defensive Action Pools</H2>
-            <P>When the engine assigns a defensive action (a block, interception, clearance, or tackle) to a specific player, it draws from position-weighted pools that reflect where each position group realistically operates. A box clearance is overwhelmingly a defender's job; a turnover recovery in midfield is where pressing forwards contribute. Playstyles provide the first layer of shifts; formations and tactics add further adjustments on top (see those sections for details).</P>
-            <P>Gegenpress pushes forwards into turnover recoveries (DEF -10, FWD +6) and slightly into box defending (DEF -3, FWD +1), reflecting how a high press commits attackers to defensive work. Park the Bus does the opposite: defenders dominate box defending (DEF +8), clearances (DEF +5), and turnovers (DEF +5), with midfielders and forwards contributing less across the board. Counter-Attack reinforces box defending with extra defender weight (DEF +5). Wing Play shifts corner defending toward defenders (DEF +3). Tiki-Taka nudges turnover recoveries slightly toward midfielders (DEF -5, MID +3). Balanced applies no shifts.</P>
-
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-fit"><H1>Squad Fit</H1>
+            <P>A playstyle is a claim about what your players can do, and squad fit is the engine checking
+            it. Each behaviour axis is carried out by particular men &mdash; width by the wide players,
+            the press by whoever does the pressing, the defensive line by the back four &mdash; so fit is
+            measured per role rather than as one number for the team. An axis whose men are not good
+            enough is scaled back toward doing nothing.</P>
+            <P>This is deliberately not a volume knob. What a squad without wingers cannot do is play
+            wide; it can still press perfectly well, and an earlier version that damped every axis by a
+            single team-wide number said otherwise. Fit runs from 0.30 to 1.25, so a badly-suited side
+            drifts toward the neutral baseline while a genuinely suited one carries its system out
+            slightly harder than written.</P>
+            <P>The three instructions you set yourself are never damped. Whether you waste time, how the
+            keeper distributes and how the line behaves are execution choices a manager makes; they are
+            not claims about whether the squad suits the system, so squad suitability has no business
+            touching them.</P>
             </div>
 
             <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-formations"><H1>Formations</H1>
-
-            <H2>Offensive</H2>
-
-            <H3>4-2-4</H3>
-            <P>Four attackers. The most extreme offensive formation in the game, with strong box shot, goal probability, and advance numbers. The defensive vacuum is equally extreme: two midfielders cannot control the middle, and the backline is constantly exposed. Press is weakened because the formation pushes bodies forward rather than maintaining a pressing structure. Teams using 4-2-4 will score and concede in volume. Effective when you need goals and can afford to leak them.</P>
-            <Stat text="Press 0.8x · Advance +0.04 · Hold -0.08 · Long ball +0.03 · Box shot +0.04 · Goal prob +0.01 · Counter 0.9x · Counter shot +0 · Defense -0.08 · Long-range +0 · Corners 1.1x" />
-
-            <H3>3-4-3</H3>
-            <P>Aggressive three-back. Three forwards provide strong advance and box shot numbers with a slightly elevated press. Four midfielders are stretched between attack and defense, reducing hold. Three at the back is the thinnest defensive line available. Less extreme than 4-2-4 because the midfield four provides some structure, but the defensive exposure is still significant.</P>
-            <Stat text="Press 1.05x · Advance +0.04 · Hold -0.02 · Long ball +0 · Box shot +0.04 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense -0.05 · Long-range +0 · Corners 1.0x" />
-
-            <H3>4-1-2-1-2</H3>
-            <P>The diamond. Narrow and central, with two strikers and an attacking midfielder creating chances through the middle. Long-range shooting gets a boost from the central overload. The absence of wingers is the defining trade-off: corner generation collapses to the lowest in the game (0.75x) because there is no natural width, and the flanks are exposed defensively. Strong against teams that play through the middle; vulnerable against teams that attack down the wings.</P>
-            <Stat text="Press 1.0x · Advance +0.01 · Hold +0.01 · Long ball +0 · Box shot +0.02 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense -0.03 · Long-range +0.03 · Corners 0.75x" />
-
-            <H2>Neutral</H2>
-
-            <H3>4-3-3</H3>
-            <P>Near-baseline formation. Marginal bonuses to box shot and defense. Everything else at zero. Neither amplifies nor restricts any tactical approach. The safest default.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0 · Long ball +0 · Box shot +0.01 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense +0.01 · Long-range +0 · Corners 1.0x" />
-
-            <H3>4-4-2</H3>
-            <P>Two strikers provide box presence. Four across midfield generates width and supports direct play, producing high corner rates. The flat midfield four lacks the triangles of a three-man midfield, and long-range shooting is slightly reduced because the shape encourages crosses over shots from distance. Counter-attacking is slightly dampened because the structure sustains attacks rather than transitioning quickly. A solid all-round choice that favors direct play and set pieces.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0 · Long ball +0.02 · Box shot +0.04 · Goal prob +0 · Counter 0.95x · Counter shot +0 · Defense +0.01 · Long-range -0.02 · Corners 1.15x" />
-
-            <H3>4-2-3-1</H3>
-            <P>Double pivot screens the defence, producing one of the stronger defensive modifiers among four-back formations. Five midfielders dominate possession with the highest hold bonus in the neutral tier. The attacking midfielder creates from deep, encouraging long-range efforts. The lone striker is isolated, reducing box shot probability, and the structured build-up discourages counter-attacking. Best for teams that want to control games through possession and defensive solidity; weaker when chasing goals.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0.04 · Long ball -0.01 · Box shot -0.03 · Goal prob +0 · Counter 0.9x · Counter shot +0 · Defense +0.03 · Long-range +0.03 · Corners 1.0x" />
-
-            <H3>3-5-2</H3>
-            <P>Wing-backs provide width and high corner rates. Five midfielders offer some territorial advantage and hold. Two strikers give box presence with a slight counter bonus. The trade-off is at the back: three centre-backs leave space when wing-backs push forward. A versatile formation that offers a bit of everything but has clear defensive vulnerability against teams that exploit the flanks.</P>
-            <Stat text="Press 1.0x · Advance +0.02 · Hold +0.01 · Long ball +0 · Box shot +0.02 · Goal prob +0 · Counter 1.05x · Counter shot +0 · Defense -0.04 · Long-range +0 · Corners 1.15x" />
-
-            <H3>3-4-1-2</H3>
-            <P>Narrow three-back with an attacking midfielder feeding two strikers. Central long-range shooting gets a boost. Modest advance and hold bonuses. The narrow shape limits corner generation and exposes the flanks defensively. Similar to the diamond in its central focus, but trades the extra defender for an additional midfielder and slightly better hold.</P>
-            <Stat text="Press 1.0x · Advance +0.01 · Hold +0.02 · Long ball +0 · Box shot +0 · Goal prob +0 · Counter 1.0x · Counter shot +0 · Defense -0.03 · Long-range +0.03 · Corners 0.95x" />
-
-            <H2>Defensive</H2>
-
-            <H3>4-1-4-1</H3>
-            <P>Single defensive midfielder anchors four across the middle. Strong defensive modifier and the highest corner rate among four-back formations from maximum width. Moderate hold. The lone striker suffers, and the cautious structure limits counter-attacking ability. Good for grinding out results; limited when needing to score.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0.03 · Long ball +0 · Box shot +0 · Goal prob +0 · Counter 0.85x · Counter shot +0 · Defense +0.05 · Long-range +0 · Corners 1.2x" />
-
-            <H3>4-3-2-1</H3>
-            <P>The Christmas tree. Three central midfielders screen the defence. Two attacking midfielders shoot from the edge of the box, producing the highest long-range modifier in the game. Possession-friendly with good hold. The narrow shape reduces corner opportunities and limits counter-attacking. A formation that creates chances from distance rather than inside the box; effective when the opponent packs their area.</P>
-            <Stat text="Press 1.0x · Advance +0 · Hold +0.03 · Long ball -0.01 · Box shot +0 · Goal prob +0 · Counter 0.9x · Counter shot +0 · Defense +0.03 · Long-range +0.04 · Corners 0.85x" />
-
-            <H3>5-3-2</H3>
-            <P>The most defensive formation. Five at the back produces the highest defensive modifier in the game. Two strikers wait for the break with the strongest counter multiplier among formations (1.30x) and a counter shot bonus. Long ball gets a boost for direct transitions. The cost is everywhere else: press is weak, advance is negative, and corner generation is low. This formation concedes few chances and creates fewer, relying on counters for goals. Effective when protecting a lead or absorbing pressure from a stronger team.</P>
-            <Stat text="Press 0.8x · Advance -0.02 · Hold +0 · Long ball +0.03 · Box shot +0 · Goal prob +0 · Counter 1.30x · Counter shot +0.02 · Defense +0.07 · Long-range +0 · Corners 0.85x" />
-
-            <H2>Player Selection Weights</H2>
-            <P>Beyond the modifier parameters, formations change which players the engine picks for goals, assists, defensive actions, and other events. A baseline of 4-3-3 defines standard position weights (e.g., forwards score 70% of goals, midfielders 25%, defenders 5%). Other formations scale these weights based on how many players occupy each line, using square-root scaling to avoid over-amplification.</P>
-            <P>Square-root scaling means a formation with 1 forward (like 4-2-3-1) doesn't drop forward goal involvement to a third of normal — instead it drops to about 58% (the square root of 1/3). This keeps solo strikers involved without making them score at the same rate as a front three. Conversely, a 4-2-4 with 4 forwards gets a modest boost (square root of 4/3, about 115%) rather than a linear 133%. The scaling applies to every selection pool: goalscorers, long-range shooters, corner scorers, assist providers, penalty takers, foul drawers, and all five defensive action pools.</P>
-            <P>The formation-scaled weights are further adjusted by playstyle defensive pool shifts (documented under Playstyles), formation-specific defensive pool shifts (below), and tactic-driven shifts (documented under Tactics), then renormalized. The combined result determines who appears in match events — a 5-3-2 Counter-Attack side will see its defenders dominate box clearances even more than their numbers suggest, while a 3-4-3 Gegenpress side will see forwards winning the ball back in turnover situations.</P>
-
-            <H2>Chance Creation Profiles</H2>
-            <P>Formations also adjust chance creation on top of the playstyle baseline. Offensive formations produce shorter, more direct passing chains: a 4-2-4 shifts heavily toward 1-2 hop sequences (+8/+4 to short chains) with elevated dribble probability (+5%) and solo breakaway rate (+1%). A 5-3-2 is similarly direct (+6/+3 short, +1% solo) because its rare attacks come on the counter. Defensive and midfield-heavy formations produce longer chains: a 4-3-2-1 shifts toward 4-5 hop sequences (-4/-2 short, +3/+2/+1 long) with reduced dribble probability (-2%), reflecting patient buildup through the Christmas tree midfield.</P>
-
-            <H2>Momentum</H2>
-            <P>Formations shape momentum independently of playstyle. The formation's momentum multiplier and decay combine multiplicatively with the style's values. Offensive formations are emotionally volatile: a 4-2-4 amplifies momentum bumps by 1.2x and loses them at 1.2 decay (fast swings, fast fades). A 3-4-3 is slightly less extreme (1.15x bump, 1.1 decay). Defensive formations are stoic: a 5-3-2 dampens bumps to 0.8x with 0.7 decay (small swings that stick), and a 4-1-4-1 sits at 0.85x/0.8. The 4-2-3-1 and 4-3-2-1 are both patient (0.9x bump, 0.85 decay). Baseline formations (4-3-3, 4-4-2) apply no adjustment (1.0x/1.0).</P>
-            <Stat text="4-2-4: 1.2× bump, 1.2 decay · 3-4-3: 1.15×, 1.1 · 4-1-2-1-2: 1.05×, 1.0 · 4-3-3/4-4-2: 1.0×, 1.0 · 3-5-2: 1.0×, 0.9 · 3-4-1-2: 0.95×, 0.9 · 4-2-3-1/4-3-2-1: 0.9×, 0.85 · 4-1-4-1: 0.85×, 0.8 · 5-3-2: 0.8×, 0.7" />
-
-            <H2>Defensive Action Pools</H2>
-            <P>Formations shift who gets credited with defensive actions based on how many bodies each line contributes. These adjustments stack additively on top of the playstyle shifts. Formations with extra forwards push them into turnover recoveries; formations with packed midfields shift midfielders into every defensive pool; formations with extra defenders reinforce box defending and clearances.</P>
-            <P>A 4-2-4 pushes forwards heavily into turnovers (DEF -4, MID -2, FWD +6) and slightly into box defending (DEF -3, FWD +2) — four attackers press high and engage. A 3-5-2 shifts midfielders into turnovers (DEF -3, MID +5), long ball defending (DEF -2, MID +4), and clearances (MID +3) — five midfielders dominate the middle third. A 5-3-2 does the opposite: defenders dominate box defending (DEF +5), clearances (DEF +4), and turnovers (DEF +3). Baseline formations (4-3-3) apply no shifts.</P>
-            <Stat text="4-2-4: turnover DEF -4/FWD +6, box DEF -3/FWD +2 · 3-4-3: turnover DEF -2/FWD +4 · 3-5-2: turnover MID +5, long ball MID +4, clear MID +3 · 5-3-2: box DEF +5, clear DEF +4, turnover DEF +3 · 4-1-4-1: turnover MID +4/FWD -4" />
-
+            <P>Eleven to choose from. A formation is a set of real positions on the grass, hand-placed so
+            the shape reads as that formation rather than as evenly spaced rows, and it decides who is
+            near what &mdash; which is most of football.</P>
+            <P><b>A side does not defend in the shape it attacks in.</b> When it loses the ball it drops
+            into the shape that formation actually becomes: a 3-4-3 defends as a 5-4-1, a 3-5-2 as a
+            5-3-2, a 4-3-3 as a 4-1-4-1, a 4-2-3-1 as a 4-4-1-1. Those defensive shapes are not
+            selectable and never appear in a team sheet, because no side is ever set up in one &mdash; it
+            arrives in one.</P>
+            <P>Changing a formation re-picks the eleven. Slots are positional, so every player is moved to
+            the slot closest to his natural position rather than left to inherit whatever role now sits at
+            his old index.</P>
             </div>
 
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tactics"><H1>Tactics</H1>
-            <P>Fourteen individual instructions that fine-tune behavior on top of playstyle and formation. Grouped into three categories. All default to "No Instruction" (zero effect). Each instruction also affects stamina drain; aggressive settings tire the team faster, conservative settings preserve energy.</P>
-
-            <H2>In Possession</H2>
-
-            <H3 id="doc-tac-approach">Approach Play</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Play Out</strong> — The team builds from the back with short passes, retaining the ball in deeper areas. Improves hold because the team recycles possession rather than forcing it forward. Advance drops slightly because the team waits for gaps rather than pushing into them. Lower stamina cost. Best paired with possession-heavy playstyles that want extended spells of control. Weak when the team needs to progress the ball urgently.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Into Space</strong> — The team plays direct passes into space behind the opponent's defensive line. Advance increases because the team pushes forward more aggressively. Hold drops because the team prioritizes progression over retention. Higher stamina cost. Best paired with systems that want to attack quickly and exploit space. Weak against deep-sitting opponents who leave no space behind.</P>
-            <Stat text="Play Out: advance -0.01, hold +0.02 · Into Space: advance +0.02, hold -0.02" />
-
-            <H3 id="doc-tac-passing">Passing Direction</H3>
-            <P>Five levels from Much Shorter to Much More Direct. Each level increases advance and long ball probability while decreasing hold. More direct passing gets the ball forward faster but loses it more often. Shorter passing keeps the ball but progresses slowly. Extreme values in either direction drain stamina faster. Much More Direct paired with a high line and counter-press is intense and exhausting. Much Shorter paired with Tiki-Taka is almost impossible to dispossess but equally hard to score with.</P>
-            <Stat text="Per level: advance +0.015, hold -0.02, long ball +0.015" />
-
-            <H3 id="doc-tac-chances">Chance Creation</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Work Ball In</strong> — The team passes around the edge of the box looking for a clear opening rather than shooting early. Box shot probability increases because the team creates better chances through patience. Long-range shots are suppressed because the system discourages speculative efforts. Retains possession in the box more often. Best when dominating territory and wanting to convert pressure into goals. Weak when time is short.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Shoot On Sight</strong> — Players take shots from any position, including long range. Long-range shot rate increases significantly, but goal conversion per shot drops because more speculative attempts dilute quality. Good for generating volume when precision is not available. Weak against teams that clear well from distance.</P>
-            <Stat text="Work Ball In: box shot +0.03, long-range -0.04, box retention +4% · Shoot On Sight: goal prob -0.01, long-range +0.04" />
-
-            <H3 id="doc-tac-dribbling">Dribbling</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Disciplined</strong> — Players avoid taking on defenders, passing early instead of running. Advance drops marginally. The opponent's foul rate decreases because fewer tackles are attempted. Lower stamina cost. Safer and more controlled but less direct.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Run At Defence</strong> — Players dribble at defenders, drawing fouls and creating chaos. Advance increases. The opponent's foul rate rises significantly, generating more free kicks in dangerous areas and more penalties. Higher stamina cost. Best for teams that want to win set pieces and put pressure on booked defenders. The risk is that aggressive dribbling can lose the ball in dangerous positions.</P>
-            <Stat text="Disciplined: advance -0.01, foul rate 0.9x · Run At Defence: advance +0.02, foul rate 1.25x" />
-
-            <H3 id="doc-tac-creativity">Creative Freedom</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Disciplined</strong> — Players stick to the system. Goal conversion drops marginally because predictable patterns are easier to defend. Safer and more consistent.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Expressive</strong> — Players improvise. Goal conversion rises because unexpected movements create better chances. Additionally, there is a 4% chance per minute of a "moment of magic" where a player beats the system entirely and skips straight to a shooting opportunity. The risk is inconsistency and higher stamina cost.</P>
-            <Stat text="Disciplined: goal prob -0.005 · Expressive: goal prob +0.01, 4% skip-to-shot chance" />
-
-            <H3 id="doc-tac-setpieces">Set Pieces</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Play For</strong> — The team deliberately plays for corner kicks by putting crosses in and challenging the keeper. Corner multiplier increases by 1.2x. No other effects. A simple, low-cost choice for teams that want more set-piece opportunities.</P>
-            <Stat text="Play For: corners 1.2x" />
-
-            <H3 id="doc-tac-timewasting">Time Wasting</H3>
-            <P>Only active when leading. The team slows the game down through delayed restarts and ball retention in non-threatening areas, adding stoppage time (though less than the minutes it eats) and reducing stamina drain since the team isn't exerting itself. It doesn't freeze play, though — the same minute still falls through to normal pressing, shooting, and buildup play afterward, so a chance or a concession is still possible; time-wasting just costs the dead-minute chance on top, it doesn't remove the rest of the minute. Constantly time-wasting risks yellow cards (2.5% per dead minute). Useful for closing out matches, not a guaranteed way to kill the clock.</P>
-            <Stat text="Sometimes: 25% dead minute chance, +15s stoppage · Constantly: 45% dead minute chance, +25s stoppage, 2.5% card risk" />
-
-            <H2>Transition</H2>
-
-            <H3 id="doc-tac-posslost">On Possession Lost</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Regroup</strong> — The team drops back into defensive shape after losing the ball. Press effectiveness drops because players retreat rather than challenging. Defensive solidity improves marginally. Low stamina cost. Best for teams that cannot afford to be caught out of position. Weak against teams that are slow to transition, since regrouping concedes territory that could have been recovered.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Counter-Press</strong> — The team immediately presses to win the ball back after losing it. Press effectiveness jumps by 1.2x, applied on top of all other pressing modifiers. High stamina cost (+0.10/min, the single most expensive individual tactic). Best for high-intensity systems that want to keep the opponent under constant pressure. Dangerous in the last 20 minutes because the stamina drain can leave the team exhausted.</P>
-            <Stat text="Regroup: press 0.85x, defense +0.02 · Counter-Press: press 1.2x" />
-
-            <H3 id="doc-tac-posswon">On Possession Won</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Hold Shape</strong> — The team keeps its defensive shape after winning the ball, building slowly. Hold increases because the team does not rush forward. Counter-attack probability is halved because the system suppresses fast transitions. Best for teams that want to control games and avoid being caught on a failed counter. Weak when the opponent is out of position and a fast break would be more effective.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Counter</strong> — The team launches forward immediately after winning the ball. Counter multiplier jumps by 1.4x, and counter shot probability gets a significant bonus. Hold drops because the team prioritizes speed over retention. Best for teams with a high counter multiplier already (the bonuses stack multiplicatively with the Counter playstyle). Weak when the team wins the ball in its own half and does not have the legs to cover the distance.</P>
-            <Stat text="Hold Shape: hold +0.03, counter 0.5x · Counter: hold -0.02, counter 1.4x, counter shot +0.04" />
-
-            <H3 id="doc-tac-gkdist">GK Distribution</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Short</strong> — After saves and goal kicks, the ball goes to the defending team's own half. The team retains possession but starts deep. Best for possession-oriented teams that build from the back.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Long</strong> — The keeper launches it. The attacking team has a 60% chance of retaining possession in midfield; 40% the ball goes to the defending team's half. Gives up possession control for territorial gain. Best for direct teams that want to skip the buildup phase.</P>
-            <Stat text="Short: ball to own half · Long: 60% retain in midfield, 40% to defending half" />
-
-            <H2>Defense</H2>
-
-            <H3 id="doc-tac-pressing">Pressing Line of Engagement</H3>
-            <P>Five levels from Much Lower to Much Higher. The press multiplier scales from 0.5x to 1.5x. This stacks multiplicatively with playstyle and formation press modifiers: a Gegenpress team at Much Higher presses at 1.5 x 1.5 = 2.25x. Higher pressing wins the ball back more often and higher up the pitch, but drains stamina proportionally and leaves space behind when beaten. Lower pressing concedes territory but conserves energy and maintains defensive shape.</P>
-            <Stat text="Much Lower: 0.5x · Lower: 0.7x · Standard: 1.0x · Higher: 1.3x · Much Higher: 1.5x" />
-
-            <H3 id="doc-tac-defline">Defensive Line</H3>
-            <P>Five levels from Much Lower to Much Higher. Each level shifts the defense modifier by -0.015 (higher lines are less solid in the box) and increases the base offside rate by 20% (higher lines catch more attackers offside). A high line compresses the pitch, which supports pressing and forces offsides, but leaves space behind for through balls and long passes. A low line is harder to beat in the box but concedes territory and lets the opponent play in front of it.</P>
-            <Stat text="Per level: defense -0.015, offside rate +20%" />
-
-            <H3 id="doc-tac-dlbehavior">Defensive Line Behavior</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Drop Off</strong> — The defensive line retreats when the ball approaches. Defense improves marginally because the backline is deeper and harder to beat. Concedes territory. Low stamina cost.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Step Up</strong> — The defensive line holds its ground or pushes forward. Offside rate increases by 15%. More aggressive than Drop Off but less risky than the full trap.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Offside Trap</strong> — The defensive line pushes up sharply when the ball is played forward, attempting to catch attackers offside. Offside rate increases by 40%, which is significant. The risk: 15% of triggered offsides are beaten through, producing a 1v1 with a 1.25x attacker skill boost. When it works, it kills attacks dead. When it fails, it creates the best scoring opportunity in the game.</P>
-            <Stat text="Drop Off: defense +0.015 · Step Up: offside rate +15% · Offside Trap: offside rate +40%, 15% beaten-through risk (1.25x skill boost)" />
-
-            <H3 id="doc-tac-tackling">Tackling</H3>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Stay On Feet</strong> — Players jockey rather than diving in. Press effectiveness drops marginally. Foul rate drops significantly, and card chance drops even more. Best for teams with booked players or teams that cannot afford to give away free kicks in dangerous areas. The cost is that the opponent retains the ball more easily.</P>
-            <P><strong style={{color:"var(--ui-text)",fontSize:10}}>Get Stuck In</strong> — Players commit to tackles aggressively. Press effectiveness increases. Foul rate rises substantially, and card chance rises even more. Generates more turnovers but also more fouls, more cards, and more penalties. Best for teams that need to disrupt the opponent's rhythm and are willing to risk the disciplinary consequences.</P>
-            <Stat text="Stay On Feet: press 0.95x, foul rate 0.75x, card chance 0.65x · Get Stuck In: press 1.08x, foul rate 1.3x, card chance 1.4x" />
-
-            <H2>Defensive Action Pools</H2>
-            <P>Four tactical settings shift who gets credited with defensive actions, stacking additively on top of playstyle and formation shifts. Higher pressing pushes forwards into turnover recoveries (per level: DEF -2, FWD +2) — a team pressing at Much Higher commits its attackers to winning the ball back. Lower pressing pulls defenders in (DEF +2/level, FWD -2/level). Defensive line height shifts box defending: a higher line moves midfielders into the box pool (DEF -2/level, MID +2/level); a lower line reinforces defenders. Get Stuck In tackling adds defenders and midfielders to box defending (DEF +3, MID +2, FWD -3). Counter-Press pushes forwards into turnovers (DEF -3, FWD +3); Regroup does the opposite (DEF +3, FWD -3).</P>
-            <Stat text="Pressing: per level DEF ∓2, FWD ±2 in turnovers · Def. Line: per level DEF ∓2, MID ±2 in box · Get Stuck In: box DEF +3, MID +2, FWD -3 · Counter-Press: turnover DEF -3, FWD +3 · Regroup: turnover DEF +3, FWD -3" />
-
-            <H2>Momentum</H2>
-            <P>Two tactical settings adjust momentum, multiplied on top of playstyle and formation values. Time Wasting dampens momentum because the team is slowing the game down rather than building intensity — Sometimes reduces bumps to 0.9x with 0.85 decay; Constantly reduces bumps to 0.75x with 0.7 decay. Counter-Press amplifies momentum (1.1x bump, 1.1 decay) because aggressive ball recovery creates emotional swings; Regroup dampens it (0.9x bump, 0.9 decay) because the team absorbs pressure calmly.</P>
-            <Stat text="Time Wasting (Sometimes): 0.9× bump, 0.85 decay · Time Wasting (Constantly): 0.75× bump, 0.7 decay · Counter-Press: 1.1× bump, 1.1 decay · Regroup: 0.9× bump, 0.9 decay" />
-
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tactics"><H1>Instructions You Can Set</H1>
+            <P>Everything else is the playstyle's. These four are yours, because none of them is part of
+            what a system <i>is</i> &mdash; they are decisions a manager makes on the night.</P>
+            <Mod name="Time Wasting" desc="&mdash; Never, Sometimes, Constantly. Game management: it burns clock and earns added time in return." />
+            <Mod name="GK Distribution" desc="&mdash; Short or Long. Where a restart lands, and therefore where the game is played from." />
+            <Mod name="DL Behaviour" desc="&mdash; Drop Off, Step Up or Offside Trap. Not where the line sits, which the style decides, but how it runs." />
+            <Mod name="Tempo" desc="&mdash; in-match only, from the Tactics panel. Quick tempo buys a firmer ball and less time on it, and is paid for in stamina later." />
+            <P>The first three are the only instruction columns a saved team carries. Tempo has no column
+            because it is a decision you make during a match, not a property of a squad.</P>
             </div>
 
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-engine"><H1>How Matches Play Out</H1>
-
-            <H2 id="doc-pitch">The pitch</H2>
-            <P>The engine models the pitch as five zones numbered 0 through 4. Zone 0 is the home team's box, zone 4 is the away team's box, zone 2 is midfield. The ball starts in midfield at kickoff. Each minute, the engine resolves one cycle of play based on the ball's current zone.</P>
-
-            <H2 id="doc-minute">The minute cycle</H2>
-            <P>Each minute follows a fixed sequence. First, the opponent attempts to press the ball carrier; if successful, possession switches and the minute ends. If the press fails, the possessing team acts from four possible outcomes: advance (move the ball one zone forward), hold (retain possession in place), long ball (skip a zone), or turnover (lose the ball). The probabilities are set by base rates modified by skill, tempo, and the combined playstyle/formation/tactics modifiers.</P>
-            <P>Turnovers can trigger counter-attacks. Fouls can occur on any action, and fouls in the box become penalties. Each minute also drains stamina and can trigger substitutions or injuries.</P>
-
-            <H2 id="doc-buildup">Buildup and long-range shots</H2>
-            <P>From the zone just outside the opponent's box (distance-to-goal 1), long-range shots fire at a base 24% rate (modified by the long-range parameter, floored at 4%). Long-range shots convert at approximately 5%, scaled by the skill ratio. Save rate is 23%. Saves and misses generate corners at 40% and 25% respectively.</P>
-            <P>Crosses from attacking territory (distance-to-goal 2 or less) produce standalone corners at a 4% rate, scaled by the corners multiplier.</P>
-
-            <H2 id="doc-shooting">Shooting zone</H2>
-            <P>When a team reaches the opponent's box, an immediate shot fires at approximately 42.5% for equal teams. If no immediate shot, the team enters sustained pressure. Shot probability in the box starts at 65% for equal teams (with no modifiers) and increases by 3% per minute of sustained pressure, capped at +12%. Defensive tempo and the opponent's defense modifier reduce this.</P>
-            <P>If no shot is generated, the defending team may clear the ball: partially (staying near the box, possible corner), fully (back to midfield), or long (possible counter-attack for the clearing team).</P>
-
-            <H2 id="doc-shots">Shot resolution</H2>
-            <P>Three outcomes per shot. Goal probability: approximately 16% base, modified by the goal probability parameter and the skill ratio. Save probability: approximately 28% for equal teams. Everything else is a miss. Total on-target rate is approximately 44%, matching modern Premier League averages. Saves produce a corner 45% of the time; misses produce a corner 30% of the time.</P>
-
-            <H2 id="doc-xg">Expected goals (xG)</H2>
-            <P>Every shot attempt accumulates its goal probability into a running xG total. Box shots add their computed goalP (approximately 16% base, scaled by skill ratio and modifiers). Long-range shots add approximately 5%. Corners add approximately 4%. The xG total is displayed in match stats alongside actual goals, providing a measure of chance quality independent of finishing luck.</P>
-
-            <H2 id="doc-counters">Counter-attacks</H2>
-            <P>Counters trigger when the defending team clears long from the box or when the possessing team turns the ball over in attacking territory. Counter probability scales with the counter multiplier (14% base in attacking zones, 6% deeper). A successful counter carries an elevated shot probability of approximately 45% for equal teams, boosted by the counter shot modifier.</P>
-
-            <H2 id="doc-corners">Corners</H2>
-            <P>Corners resolve through a full outcome system. Goal: 4% (skill-scaled). Save: 6% (skill-scaled), with a 25% chance of producing another corner (resolved recursively). Miss: 8%. Retained possession: 25%. Clearance: remaining percentage.</P>
-
-            <H2 id="doc-fouls">Fouls, cards, and offsides</H2>
-            <P>Fouls occur at a 15% base rate, modified by dribbling and tackling tactics. Fouls in the box become penalties 35% of the time. Card chances vary by context: 55% on penalty fouls, 28% on regular fouls, 22% on turnover fouls. Tackling tactics scale these rates further.</P>
-            <P>1.5% of card events are straight reds. Players already on a yellow receive a second yellow and are sent off. Booked players are cautious: 92% of the time, an unbooked teammate commits the foul instead. Each red card reduces effective skill by 15%, compounding.</P>
-            <P>Offsides trigger at a 6% base rate when advancing into the final third or box, modified by the opponent's defensive line and defensive line behavior settings.</P>
-            <P>Penalties convert at a base 78% rate, scaled by the skill ratio (floored at 55%, capped at 90%). 7% miss entirely. The rest are saved, with a 30% chance of producing a corner from the rebound.</P>
-
-            </div>
-
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-dynamics"><H1>Match Dynamics</H1>
-
-            <H2 id="doc-tempo">Tempo</H2>
-            <P>The automatic tempo system adjusts based on scoreline, time remaining, and playstyle. Transitions are probabilistic with random jitter and hysteresis (resistance to flip-flopping), so two identical game states won't always produce the same response. The range: Ultra Defensive, Defensive, Balanced, Offensive, Ultra Offensive.</P>
-            <P>Playstyle shapes tempo behavior through four parameters. Defensive shift controls how early a team drops back when leading (counter and park-the-bus teams protect leads 15-20 minutes earlier than gegenpress teams, which resist going defensive). Attacking shift controls urgency when trailing. A ceiling caps maximum attacking intensity (counter teams cap at Offensive; tiki-taka at Ultra Offensive). A floor caps maximum defensive intensity (gegenpress teams never park the bus).</P>
-            <P>In 2nd-leg matches with a starting aggregate deficit, an urgency factor compresses the remaining-time thresholds: 20 minutes per aggregate goal behind. A team starting 0-2 on aggregate plays attacking from kickoff. Trailing by 3+ goals with under 12 minutes left, teams have a 35% chance of accepting the result and reverting to balanced.</P>
-            <P>Offensive tempo adds 5% to advance probability; Ultra Offensive adds 10%. Defensive and Ultra Defensive reduce opponent shot probability in the box by 8% and 18% respectively. Changing tempo manually disables automatic adjustment for the rest of the match.</P>
-
-            <H2 id="doc-momentum">Momentum</H2>
-            <P>Momentum is a decaying counter (0-6 per side) that adds 2% effective skill per point — up to +12% at the cap. Both the size of momentum swings and how fast they fade are shaped by playstyle, formation, and tactics (all multiplied together).</P>
-            <P>Triggers: a goal (+4, +3 for a corner own goal), a red or second yellow card (+3 to the opponent), a missed or saved penalty (+3 to the defending side), a big chance — a shot built up over 3+ hops, a header from a corner, or a direct free kick — saved or put wide (+2 to the defending side), and a shot cannoning off the woodwork (+1 to the attacking side, +1 for a header off the frame from a corner). Routine, low-buildup efforts that are comfortably saved or missed don't trigger anything. The raw trigger value is multiplied by the style's momentum multiplier before being added to the counter, so the same goal gives a Gegenpress team +5 (4 × 1.3, rounded) but a Park the Bus team only +3 (4 × 0.7).</P>
-            <P>Decay is also style-dependent. Each minute, every point of momentum has a chance to fade. A decay of 1.0 (Balanced, Wing Play) loses exactly 1 point per minute. Decay above 1.0 (Gegenpress at 1.3) always loses 1 and has a 30% chance of losing a second — momentum spikes hard but burns out fast. Decay below 1.0 (Tiki-Taka at 0.6, Park the Bus at 0.5) only loses a point with that probability — momentum builds slowly but sticks. Counter-Attack sits between: big swings (1.2×) that fade at a measured pace (0.8 decay).</P>
-            <Stat text="Balanced: 1.0× bump, 1.0 decay · Gegenpress: 1.3× bump, 1.3 decay · Tiki-Taka: 0.75× bump, 0.6 decay · Counter: 1.2× bump, 0.8 decay · Wing Play: 1.1× bump, 1.0 decay · Park the Bus: 0.7× bump, 0.5 decay" />
-            <P>The momentum graph blends this counter with the live ball-position/possession signal: the graph's own territorial reading is smoothed minute to minute, but the momentum counter is added on top unsmoothed, so a goal or red card shows up as an immediate jump rather than fading in over a few minutes.</P>
-
-            <H2 id="doc-stamina">Stamina and fatigue</H2>
-            <P>There's no separate team stamina pool — every player carries their own, starting at 100, and the team-wide figure shown elsewhere is just the average of whoever's currently on the pitch. Base ambient drain is 0.75/min, and it's the same for every playstyle — Gegenpress does not carry its own ambient penalty. Only tactical tempo and strategy sliders move it from there, adding up to 1.6x the baseline combined and never discounting below it: a team playing it safe (low press, defensive tactic, passive sliders) still drains at the full baseline rate, since the players are out there running for 45 minutes regardless of how much they press. A standard player who never touches the ball is still down to around 75 by half time. On top of that shared ambient cost, actually taking part in a chance costs more: every player touched by its build-up loses a chunk for the run, and whoever takes the shot loses more again for the sprint and the strike, win or lose — and that's the only thing that separates a high-press team's players from anyone else's now. A team that wins the ball back more plays more of the match in dangerous positions and naturally racks up more of this involvement cost on its own, with no explicit multiplier needed; stacking an extra ambient penalty on top of that on earlier tuning passes kept overshooting badly (real matches saw a Gegenpress side into the 40s while a Balanced side sat near 70), so the ambient side of the formula no longer tries to differentiate by press at all. Once that ambient premium was removed, the involvement cost itself turned out to still be tuned for a world where ambient drain was a much smaller trickle and involvement needed to carry the whole differentiation — with ambient now providing a real baseline on its own, the per-event build-up and shot costs were trimmed down to match, so a heavily-involved player's total burden stays proportionate instead of stacking two generations of tuning on top of each other.</P>
-            <P>Half-time restores 20 stamina per player, and both the start of extra time and ET half-time restore 10 each. A substitute comes on at 100 by default, or at their carried-over stamina from a previous match if Stamina Carry-Over is enabled for the tournament — either way, that's what lifts the team average when tired legs go off. Between-match recovery under Stamina Carry-Over isn't a flat number — it restores three-quarters of the gap back to full fitness, so a player who finished completely gassed recovers more in absolute terms than one who barely broke a sweat, rather than both getting the same top-up regardless of how the match went. That fraction is tuned to keep a typical squad mostly fresh across a long season — only the most heavily-involved players should be meaningfully tired on a regular basis, not the whole team.</P>
-            <P>Low stamina degrades performance two ways. Averaged across the pitch, it feeds the team's effective skill directly: at 50 average stamina, skill drops roughly 9%; at 20, roughly 18%. Individually, below 75 stamina a player's own effective rating starts falling below their nominal OVR, worth up to 8 points at 0 stamina — a real but modest dent, felt everywhere an individual player's OVR matters (shot conversion, goalkeeper saves, defensive contests, penalties), not enough on its own to turn a genuine talent into a liability.</P>
-            <P>A tired player is also weighted more heavily both as an injury risk and as a candidate for automatic substitution — that same current, fatigue-adjusted rating (not just nominal OVR) is what the automatic substitution logic weighs when deciding who to bring off. It's visible directly in the substitution panel so a manual sub can be made on the same information.</P>
-
-            <H2 id="doc-subs">Substitutions</H2>
-            <P>Three per team per match, made automatically unless Auto Subs is switched off in match setup. Trailing teams sub earlier (windows at minutes 50-55, 60-65, 70-75) and leading/drawing teams sub later (58-62, 68-72, 78-82). The player coming off is weighted toward whoever's underperforming their match rating, below their team-relative current (fatigue-adjusted) OVR, gassed, or booked; the replacement is the bench's best-OVR player in the same position group. If the team has a booked player, the sub preferentially removes them, clearing the yellow card risk.</P>
-
-            <H2 id="doc-injuries">Injuries</H2>
-            <P>Approximately 0.14 per game. The base rate scales with fatigue (tired teams get injured more). If subs remain, the injured player is replaced. If no subs remain, the team plays a man down.</P>
-
-            <H2 id="doc-homeadv">Home advantage</H2>
-            <P>When enabled, the home team receives a flat 3% boost to effective skill. In tournament mode, home advantage can be configured per match (via the H toggle) and globally via group/knockout settings (off, first-listed, weak-skill, host nation).</P>
-
-            <H2 id="doc-stoppage">Stoppage time</H2>
-            <P>Match events contribute to a stoppage bank: 45 seconds per goal, 90 per penalty awarded, 15 per foul, 30 per yellow, 60 per red card and per injury. The bank converts to stoppage minutes at each half's end. First half caps at 5 added minutes, second half at 8.</P>
-
-            <H2 id="doc-extra">Extra time and penalties</H2>
-            <P>Knockout matches drawn at full time proceed to extra time: two 15-minute halves. Effective skill degrades by 0.4% per minute past the 90th (capped at -12% by minute 120). If still level, a penalty shootout: five kicks per side, then sudden death. Each kick resolves individually. A winner is declared the moment the outcome is mathematically decided.</P>
-
+            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-matchrating"><H1>Match Ratings</H1>
+            <P>Every player starts a match on 6.50 and finishes between 3 and 10. Around twenty-five
+            different things move the number, and the important half of them are the routine ones: a
+            completed pass is worth a little, and more if it gained ground; a misplaced one costs more
+            than a completed one earns; duels won and lost, beating a man and being beaten, headers,
+            interceptions, blocks and clearances all count. Goals, assists, big chances created and
+            spurned, saves, penalties won, conceded, saved and missed, errors leading to a goal and
+            dismissals are the moments on top.</P>
+            <P>Rating both halves matters because a match is mostly not moments. A full-back who played
+            ninety composed minutes and a midfielder who completed eighty passes used to finish on exactly
+            6.50, since nothing either of them did all afternoon was on the list.</P>
+            <P>Two corrections land at the whistle. A substitute's deviation from par is shrunk toward it
+            in proportion to the minutes he actually played, so a cameo has to be emphatic to register
+            &mdash; a red card is exempt, because a dismissal is the reason the appearance was short
+            rather than a reason to forgive it. And each position is scored against its own par, so a
+            forward who did nothing has failed at his job while a defender who did nothing has done his.</P>
             </div>
 
             <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-tournaments"><H1>Tournaments</H1>
@@ -13446,47 +14153,21 @@ export default function App() {
 
             </div>
 
-            <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-modifiers"><H1>Modifiers</H1>
-            <P>Playstyles, formations, and tactics all modify the same set of parameters. Additive parameters sum, multiplicative parameters multiply. Tactics apply on top of the combined playstyle + formation values.</P>
-            <div style={{ background: "var(--chrome-panel)", borderRadius: 10, border: "1px solid var(--chrome-border)", overflow: "hidden", marginBottom: 10 }}>
-              <table className="wide-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
-                <thead><tr style={{ borderBottom: "1px solid var(--chrome-border)" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em" }}>PARAMETER</th>
-                  <th style={{ padding: "8px 10px", textAlign: "center", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em", width: 50 }}>TYPE</th>
-                  <th style={{ padding: "8px 12px", textAlign: "left", color: "var(--chrome-muted)", fontWeight: 600, fontSize: 9, letterSpacing: "0.12em" }}>EFFECT</th>
-                </tr></thead>
-                <tbody>
-                {[
-                  ["Press", "×", "Pressing effectiveness when winning the ball back"],
-                  ["Advance", "+", "Probability of moving the ball forward one zone"],
-                  ["Hold", "+", "Probability of retaining possession without advancing"],
-                  ["Long ball", "+", "Probability of skipping a zone with a direct pass"],
-                  ["Box shot", "+", "Generating a shot inside the box — primary driver of shot volume"],
-                  ["Goal prob", "+", "Base conversion rate per shot — small changes compound"],
-                  ["Counter", "×", "Launching a counter-attack after winning the ball"],
-                  ["Counter shot", "+", "Shot probability during counter-attacks"],
-                  ["Defense", "+", "Reduces opponent shot probability — primary driver of solidity"],
-                  ["Long-range", "+", "Long-range shot frequency from outside the box"],
-                  ["Corners", "×", "Corner frequency from crosses in attacking territory"],
-                  ["Tactic clamp", "⌐", "Restricts the automatic tempo range (maxT/minT)"],
-                ].map(([name, type, desc], i) => (
-                  <tr key={i} style={{ borderBottom: i < 11 ? "1px solid var(--ui-pitch-rule)" : "none" }}>
-                    <td style={{ padding: "7px 12px", color: "var(--ui-text)", fontWeight: 600, fontSize: 11 }}>{name}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "center" }}><span style={{ display: "inline-block", width: 22, height: 18, lineHeight: "18px", borderRadius: 3, fontSize: 10, fontWeight: 700, textAlign: "center", background: type === "×" ? "var(--chrome-muted-22)" : type === "+" ? "var(--ui-qual-pool-22)" : "var(--ui-attack-22)", color: type === "×" ? "var(--ui-qual-direct)" : type === "+" ? "var(--ui-qual-pool)" : "var(--ui-attack)", border: "1px solid " + (type === "×" ? "var(--ui-qual-direct-33)" : type === "+" ? "var(--ui-qual-pool-33)" : "var(--ui-attack-33)") }}>{type}</span></td>
-                    <td style={{ padding: "7px 12px", color: "#888" }}>{desc}</td>
-                  </tr>
-                ))}
-                </tbody>
-              </table>
-            </div>
-            <P>Multiplier parameters (×) scale the base value. A press of 1.5× means 50% more effective pressing. Additive parameters (+) shift the probability directly. A box shot of +0.04 adds 4 percentage points to the chance of generating a shot in the box each minute.</P>
-
-            </div>
-
             <div style={{ marginTop: 16, marginBottom: 8 }} id="doc-bulkimport"><H1>Bulk Import</H1>
             <P>Tab-separated, one team per line. Columns in order:</P>
-            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 6, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, 3 letters) · Name · Skill · Playstyle · Formation · Approach · Passing · Chances · Dribbling · Creativity · Set Pieces · Time Wasting · Pos. Lost · Pos. Won · GK Dist · Pressing · Def. Line · DL Behavior · Tackling</div>
-            <P>Only Name is required. Skill defaults to 50, playstyle to Balanced, formation to 4-3-3, all tactics to No Instruction. Tactic values accept label text from the UI (e.g., "Into Space", "Much Shorter", "Get Stuck In"). Player names can end with (NN) to set an individual rating (1-99) — this affects selection weight, conversion rate, GK saves, and defensive impact. Unrated players default to team skill.</P>
+            <div style={{ fontSize: 10, color: "#888", padding: "6px 12px", background: "var(--chrome-panel)", borderRadius: 6, marginBottom: 10, lineHeight: 1.8, ...mono }}>Code (optional, up to 4 letters) &middot; Name &middot; Rating &middot; Playstyle &middot; Formation &middot; Time Wasting &middot; GK Passing &middot; DL Behavior &middot; 16 players &middot; Home colour &middot; Away colour &middot; City &middot; Stadium</div>
+            <P>Only Name is required. Rating defaults to 50, playstyle to Balanced, formation to 4-3-3, and all
+            three instructions to No Instruction. Values accept the same label text the Tactics panel
+            shows &mdash; &ldquo;Short&rdquo;, &ldquo;Offside Trap&rdquo;, &ldquo;Constantly&rdquo;.</P>
+            <P><b>There are only three instruction columns</b>, because the other eleven axes are the
+            playstyle&rsquo;s and are stamped from it on import. A registry that still carries the old
+            fourteen will load as whatever style it names, and its hand-tuned columns are discarded
+            &mdash; which is the point of identity living in the style.</P>
+            <P>A player cell is <span style={{ ...mono }}>(87) Rui \u014cE</span>: rating in brackets,
+            then the name. A trailing <span style={{ ...mono }}>[SKJ]</span> marks a foreign nationality
+            and a trailing <span style={{ ...mono }}>[*]</span> or <span style={{ ...mono }}>[+]</span> a
+            performance tier. Slots are positional, so an empty one is a squad place nobody fills rather
+            than a gap to close up. Team rating is recomputed from the squad on import.</P>
 
             </div>
             </div>

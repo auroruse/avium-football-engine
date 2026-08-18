@@ -101,11 +101,19 @@ export function meSPBegin(s, kind, side, out) {
       if (best < 0 || meAttrs(p).shoot > meAttrs(us[best]).shoot) best = i; } ti = best; }
   else if (kind === "goalkick") ti = meKeeperIx(us);
   else if (kind === "kickoff") { let best = -1; for (let i = 0; i < us.length; i++)
-      if (us[i].pos !== "GK" && (best < 0 || (us[i]._bd0 || 0) > (us[best]._bd0 || 0))) best = i; ti = best; }
+      if (us[i].pos !== "GK" && !us[i].off
+          && (best < 0 || (us[i]._bd0 || 0) > (us[best]._bd0 || 0))) best = i; ti = best; }
+  // A SENT-OFF MAN IS NOT AVAILABLE TO RESTART. He is parked at y = -6, six metres beyond the
+  // touchline, and this branch picks whoever is NEAREST the ball -- so at a throw-in on his side he
+  // was routinely the closest man to a spot sitting on the line, nearer than anyone still playing.
+  // Nominated, he could never reach it: the restart hung, the players stood, and the clock ran on.
+  // The penalty branch above has always had this guard; the branch that takes every throw, corner
+  // and free kick did not. Measured before the fix: a throw still live after 2809 slices.
   else { let bd = Infinity; for (let i = 0; i < us.length; i++) { const p = us[i];
-      if (p.pos === "GK") continue; const d = Math.hypot(p.x - x, p.y - y);
+      if (p.pos === "GK" || p.off) continue; const d = Math.hypot(p.x - x, p.y - y);
       if (d < bd) { bd = d; ti = i; } } }
-  if (ti < 0) ti = 0;
+  // ...and the fallback cannot be slot 0 either: that is the keeper, and he may be the man off.
+  if (ti < 0) ti = Math.max(0, us.findIndex(p => p && !p.off));
   // IS ANYTHING ON? A restart is either a set piece or a chance to get on with it, and this decides
   // which. Not a dice roll: it is played quickly when there is somebody to play it TO -- a team-mate
   // within range with daylight around him -- because that is the only reason anybody ever does.
@@ -463,6 +471,14 @@ export function meSPReady(s) {
   if (sp.t < (sp.minT ?? CFG.spMinT)) return false;
   const taker = s.players[sp.side][sp.ti];
   if (!taker) return true;
+  // NOTHING MAY HANG A RESTART. meSPTake has a capT meant to force one when the players cannot
+  // arrange themselves, but it sits BEHIND this gate and so could never be reached -- a restart
+  // this refused was refused forever. Measured: a quick throw still live after 2809 slices
+  // against a cap of 52, because the taker is marked BEHIND the touchline where a throw is taken
+  // from, while the quick test measures him against a ball sitting on the line. He stood 6.3 m
+  // outside a 1.75 m tolerance and the game stopped. The mark is arguably the bug, but the gate
+  // having no ceiling is what turned it into a frozen match, and that is true of every kind.
+  if (sp.t > (sp.maxT ?? CFG.spMaxTBy[sp.kind] ?? CFG.spMaxT) + 20) return true;
   // Taken quickly: the only man who has to be anywhere is the one taking it. Everybody else is
   // wherever the whistle left them, which is exactly the point of playing it before they set.
   if (sp.quick) return Math.hypot(taker.x - sp.x, taker.y - sp.y) < CFG.spTakerTol * 2.5;
@@ -485,6 +501,12 @@ export function meSPReady(s) {
   if (sp.t > capT) { if (struck) { sp.run = 1; return false; } return true; }
   // First phase: he has to be on his mark, and so does everyone whose job is near this restart.
   if (Math.hypot(taker.x - (taker._tx ?? sp.x), taker.y - (taker._ty ?? sp.y)) > CFG.spTakerTol) return false;
+  // A SHOOTOUT KICK WAITS FOR NOBODY BUT THE TAKER. The check below wants most of the outfield
+  // on its penalty-arc marks, and in a shootout the other eighteen are deliberately stood on the
+  // halfway line -- so it could never pass and every kick sat out the full 140-slice ceiling
+  // before being forced through. Measured at 144 slices a kick, thirty-six seconds of nothing.
+  // The two men who matter are already checked: the taker here, the keeper on his line.
+  if (mp._pk) return true;
   let set = 0, n = 0;
   for (const sd of ME_SIDES) for (const p of s.players[sd]) {
     if (p === taker) continue;
@@ -568,7 +590,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // scored and a penalty missed are their own events, not a goal and a shot off target.
     mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti,
                 t0: mp.tick, pen: true }; mp.fj = -1;
-    gkRead(away, CFG.spPenRead, CFG.spPenReadSkill);
+    gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
+                 mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
     meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
     return;

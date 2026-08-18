@@ -1712,6 +1712,14 @@ export const CFG = {
   // throw-ins a match against a real 40-50 -- the ball simply never got near the line.
   deflectKeep: 0.35,
   deflectWin: 12,
+  // HOW RECENTLY AN ATTACKER HAD TO HAVE TOUCHED IT for a goal off a defender to be his rather than
+  // an own goal. Without this the test was only "was the last touch theirs", which made every box
+  // scramble an own goal: 10.5% of all goals against a real 2-3%.
+  // Measured at 400 matches a value, ~1,160 goals each: 3 -> 6.45%, 5 -> 3.51%, 6 -> 2.66%,
+  // 8 -> 2.33%, standard error under 0.5pp. Six sits in the middle of the real-football 2-3% band.
+  // Every goal is accounted for at all four settings -- each one is either credited to a scorer or
+  // recorded as an own goal, never dropped.
+  ogWin: 6,
   gkParryFloor: 0.55, gkLiveV: 8,
   // A keeper at full stretch, fingertip to toe, is about 1.9 m: gkSpan is the half of that either
   // side of his middle. It opens up with how hard he is going -- nothing at a standstill, all of it
@@ -1765,6 +1773,26 @@ export const CFG = {
   // Note this is not "which way he dives" -- with the capsule, a correct read is very nearly a
   // certain save, so this number is really his chance of getting it right AND reaching it.
   spPenBack: 10, spPenSpread: 12, spPenAim: 0.72, spPenRead: 0.10, spPenReadSkill: 0.25,
+  // A SHOOTOUT KICK READS DIFFERENTLY, and the reason is positional rather than psychological.
+  // The numbers above are right for open play and measurably so -- pensim puts an in-match penalty
+  // at 73.6% scored and 19.8% saved against a real 76/19 -- but they are right there partly by
+  // accident: meSPShape gives the keeper his spot as a TARGET and the kick often arrives while he is
+  // still travelling to it, so a read that is too strong is paid for by a keeper who is not set.
+  // A shootout removes that. Everyone is reset, the pre-kick is long, and he is stood exactly on his
+  // line dead centre every single time -- perfectly set, which is also what the laws require of him.
+  // With the same read that produced 28% saves and 63% scored, against a real shootout's 19 and 73.
+  // Swept over ~400 kicks a cell: skill 0.25 -> 63.0%, 0.16 -> 66.5%, 0.10 -> 68.3%, 0.05 -> 72.7%.
+  spPenReadPk: 0.10, spPenReadSkillPk: 0.05,
+  // A shootout kick is walked up to and struck; it does not need the full pre-kick an open-play
+  // penalty gets, and at 470 each one cost about thirty-six seconds of real time before anyone
+  // touched the ball. Shorter here only -- in-match penalties keep their ceremony.
+  // 470 is the open-play ceremony. This is shorter but not absent: it sets the minimum before
+  // anyone may strike, which is the pause and the run-up. Cut to 150 there was no wind-up at
+  // all -- he arrived and it was already gone.
+  // ...and shorter again now the app stages the kick: the carry to the spot and the step-back
+  // happen on screen before the engine is armed, so this is pure wind-up from a placed ball --
+  // about nine seconds from placement to strike.
+  spPenTicksPk: 220,
   // How much of open play's elevation error a SET strike carries. A penalty is a stationary kick at
   // a known target with nobody near him and it should be the most accurate shot in the game; a free
   // kick is struck from further out and over a wall, so it sits between the two.
