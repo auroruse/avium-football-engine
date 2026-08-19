@@ -7345,6 +7345,38 @@ export default function App() {
   // from uneven drop-in seeding (a bye that never gets an opponent), WB rounds don't.
   const wbRoundDone = (r) => r.matches.every(m => m.result && !m.result.partial);
   const lbRoundDone = (r) => r.matches.every(m => (m.result && !m.result.partial) || (!m.home && !m.away));
+  // THE ROUND YOU ARE PLAYING IS THE ROUND THAT IS OPEN. Every fixture list started collapsed and
+  // stayed collapsed, so finishing a round meant scrolling down and clicking the next one open --
+  // every round, every tournament. The first unfinished round in each section opens itself and the
+  // section follows along as rounds are played.
+  // It ADDS rather than replaces, so a round opened by hand to look something up stays open, and a
+  // round closed by hand stays closed until the tournament actually moves on -- the effect only
+  // fires when the live round CHANGES, not on every render.
+  const koFirstOpen = useMemo(() => {
+    if (!tKO?.rounds) return -1;
+    for (let ri = 0; ri < tKO.rounds.length; ri++) if (!wbRoundDone(tKO.rounds[ri])) return ri;
+    return -1;
+  }, [tKO]);
+  const lbFirstOpen = useMemo(() => {
+    if (!tKO?.losers) return -1;
+    for (let lr = 0; lr < tKO.losers.length; lr++) {
+      const r = tKO.losers[lr];
+      if (r.matches.every(m => !m.home && !m.away && !m.result && !m.bye)) continue;
+      if (!lbRoundDone(r)) return lr;
+    }
+    return -1;
+  }, [tKO]);
+  useEffect(() => {
+    const want = [];
+    if (groupFirstOpen >= 0) want.push(`group_${groupFirstOpen}`);
+    if (koFirstOpen >= 0) want.push(`wb_${koFirstOpen}`);
+    if (lbFirstOpen >= 0) want.push(`lb_${lbFirstOpen}`);
+    if (!want.length) return;
+    setExpandedRounds(s => {
+      if (want.every(k => s.has(k))) return s;      // already open: do not churn the set
+      const ns = new Set(s); for (const k of want) ns.add(k); return ns;
+    });
+  }, [groupFirstOpen, koFirstOpen, lbFirstOpen]);
   const koActionable = useMemo(() => {
     if (!tKO) return { wbRi: -1, lbRi: -1, tpReady: false, gfReady: false, resetReady: false };
     const isDE = !!tKO.losers;
