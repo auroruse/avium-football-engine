@@ -168,6 +168,11 @@
      theme — unlike --ui-text, which follows the surface and goes dark in a light theme. */
   --ui-on-accent: #ffffff;
   --ui-on-accent-cc: #ffffffcc;
+  /* Text drawn ON THE PITCH. The pitch is dark green in every theme, including the light one, so
+     anything sitting on the grass has to stay light — --ui-text follows the surface and goes dark
+     under a light chrome, which put black player names on black turf. */
+  --ui-on-pitch: #ffffff;
+  --ui-on-pitch-cc: #ffffffcc;
   --ui-text-33: #ffffff33;
   --ui-text-66: #ffffff66;
   --ui-text-cc: #ffffffcc;
@@ -265,4 +270,117 @@
   --chrome-gold-44: #c8cdf044;
   --chrome-gold-66: #c8cdf066;
   --chrome-champion-glow: #131347;
+}
+
+/* Nichirin League One — the league's own crest: vermillion on paper. The one light theme, so it
+   overrides the text and semantic tokens the dark themes inherit, not just the chrome. The paper
+   is deliberately a step DOWN from white — parchment, not gallery walls — because a bright field
+   around a dark pitch glares; ink is warm near-black, and every semantic colour is redrawn darker
+   so it still reads on a light panel. The pitch keeps its dark green: the match is watched on
+   grass, whatever the chrome around it wears. --ui-on-accent stays white — it sits on vermillion. */
+[data-theme="nl1"] {
+  --chrome-bg: #e9dfcd;
+  --chrome-bg-08: #e9dfcd08;
+  --chrome-bg-dd: #e9dfcddd;
+  --chrome-bg2: #dfd2bc;
+  --chrome-bg3: #efe6d6;
+  --chrome-panel: #f4ecdc;
+  --chrome-panel-08: #f4ecdc08;
+  --chrome-panel-66: #f4ecdc66;
+  --chrome-border: #c8b89e;
+  --chrome-border-33: #c8b89e33;
+  --chrome-border-66: #c8b89e66;
+  --chrome-border-88: #c8b89e88;
+  --chrome-muted: #82725c;
+  --chrome-muted-22: #82725c22;
+  --chrome-muted-33: #82725c33;
+  --chrome-muted-44: #82725c44;
+  --chrome-muted-66: #82725c66;
+  --chrome-muted-80: #82725c80;
+  --chrome-muted-88: #82725c88;
+  --chrome-brand: #b0432a;
+  --chrome-brand-11: #b0432a11;
+  --chrome-brand-14: #b0432a14;
+  --chrome-brand-1a: #b0432a1a;
+  --chrome-brand-20: #b0432a20;
+  --chrome-brand-22: #b0432a22;
+  --chrome-brand-33: #b0432a33;
+  --chrome-brand-44: #b0432a44;
+  --chrome-brand-66: #b0432a66;
+  --chrome-brand-88: #b0432a88;
+  --chrome-gold: #9d701f;
+  --chrome-gold-11: #9d701f11;
+  --chrome-gold-22: #9d701f22;
+  --chrome-gold-44: #9d701f44;
+  --chrome-gold-66: #9d701f66;
+  --chrome-champion-glow: #ecdcb8;
+
+  --ui-text: #2a2016;
+  --ui-text-08: #2a201608;
+  --ui-text-33: #2a201633;
+  --ui-text-66: #2a201666;
+  --ui-text-cc: #2a2016cc;
+
+  --ui-attack: #a84d2c;
+  --ui-attack-0a: #a84d2c0a;
+  --ui-attack-22: #a84d2c22;
+  --ui-attack-33: #a84d2c33;
+  --ui-attack-44: #a84d2c44;
+  --ui-captain: #2f6484;
+  --ui-danger: #a53a43;
+  --ui-danger-08: #a53a4308;
+  --ui-danger-0a: #a53a430a;
+  --ui-danger-1a: #a53a431a;
+  --ui-danger-22: #a53a4322;
+  --ui-danger-33: #a53a4333;
+  --ui-danger-44: #a53a4344;
+  --ui-danger-66: #a53a4366;
+  --ui-danger-deep: #892c38;
+  --ui-danger-edge: #e9d0c8;
+  --ui-form-d-bg: #e7dcb8;
+  --ui-form-defensive: #2c5aa6;
+  --ui-form-l: #a23e42;
+  --ui-form-l-bg: #edd1cb;
+  --ui-form-w: #3b7340;
+  --ui-form-w-bg: #d5e4c9;
+  --ui-info: #38648c;
+  --ui-info-08: #38648c08;
+  --ui-info-1a: #38648c1a;
+  --ui-info-22: #38648c22;
+  --ui-info-33: #38648c33;
+  --ui-info-44: #38648c44;
+  --ui-injury: #9c453d;
+  --ui-nat-override: #715492;
+  --ui-ok: #45773f;
+  --ui-ok-22: #45773f22;
+  --ui-ok-66: #45773f66;
+  --ui-ok-edge: #d4e2c5;
+  --ui-qual-direct: #3a7247;
+  --ui-qual-direct-0a: #3a72470a;
+  --ui-qual-direct-33: #3a724733;
+  --ui-qual-pool: #2f5c96;
+  --ui-qual-pool-22: #2f5c9622;
+  --ui-qual-pool-33: #2f5c9633;
+  --ui-scrim: rgba(44, 28, 16, 0.55);
+  --ui-scrollbar: #c6b69c;
+  --ui-sub: #6f6050;
+  --ui-shadow-1: #45320a12;
+  --ui-shadow-2: #45320a1a;
+  --ui-shadow-3: #45320a2e;
+  --ui-shadow-4: #45320a48;
+  --ui-style-catenaccio: #71519e;
+  --ui-style-cholismo: #4c6a82;
+  --ui-style-lanuestra: #b23555;
+  --ui-style-secondball: #97621a;
+  --ui-style-zonamista: #357766;
+  --ui-style-counter: #27807e;
+  --ui-style-parkbus: #6d5234;
+  --ui-style-possession: #416ea2;
+  --ui-style-routeone: #55499e;
+  --ui-style-tikitaka: #9b4d7d;
+  --ui-style-vertical: #9e4242;
+  --ui-warn: #8c680d;
+  --ui-warn-08: #8c680d08;
+  --ui-warn-33: #8c680d33;
+  --ui-zone-none: #8b7d66;
 }

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fra
 import headerImg from "./header.png";
 import wc1933HeaderImg from "./1933-wc-banner.png";
 import wc1934HeaderImg from "./1934-wc-banner.png";
+import nl1HeaderImg from "./nl1-banner.png";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
@@ -3158,7 +3159,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
+const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
@@ -4340,7 +4341,7 @@ const chip = { border: "1px solid var(--chrome-border)", borderRadius: 6, paddin
 const inp = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "var(--ui-text)", outline: "none", fontFamily: "inherit" };
 const sel = { ...inp, cursor: "pointer" };
 const addBtn = { background: "transparent", border: "1px solid var(--chrome-border)", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer", fontFamily: "var(--chrome-font)", fontWeight: 500, letterSpacing: "0.08em" };
-const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "var(--ui-text)", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
+const scBtn = { width: "100%", background: "var(--chrome-brand)", border: "none", borderRadius: 10, padding: "14px", fontSize: 14, fontWeight: 600, color: "var(--ui-on-accent)", cursor: "pointer", letterSpacing: "0.08em", fontFamily: "var(--chrome-font)", boxShadow: "0 2px 8px var(--chrome-brand-33)" };
 const POS_CLR = {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)",CB:"var(--ui-info)",LB:"var(--ui-info)",RB:"var(--ui-info)",LWB:"var(--ui-info)",RWB:"var(--ui-info)",DM:"var(--ui-ok)",CM:"var(--ui-ok)",AM:"var(--ui-ok)",LM:"var(--ui-ok)",RM:"var(--ui-ok)",LW:"var(--ui-attack)",RW:"var(--ui-attack)",ST:"var(--ui-attack)"};
 // The pitch as seen from behind your own goal. Real one-point perspective, not a squash: at depth d
 // everything scales by s = 1/(1+K·d) and the ground plane's screen height follows the same s, so the
@@ -5567,8 +5568,8 @@ export default function App() {
                           <div title={p.fullName || p.name} style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cq(TOKEN.gap), textAlign: "center", maxWidth: cq(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
                             {/* Same colour as the surname: over grass, muted grey lost the given name entirely. Size and
                                 weight still carry the hierarchy. */}
-                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-text)", ...ellip }}>{first}</div>}
-                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-text)", ...ellip }}>{last}</div>
+                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-on-pitch-cc)", ...ellip }}>{first}</div>}
+                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-on-pitch)", ...ellip }}>{last}</div>
                           </div>
                           <div title={side.label || undefined} onClick={() => openTeam(side.team)}
                             style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
@@ -10595,7 +10596,7 @@ export default function App() {
       })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
-          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
+          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
             {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"],
               ...(TOURNAMENTS_ENABLED ? [["tournament", "Tournament"]] : []),
@@ -12931,7 +12932,7 @@ export default function App() {
                     <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: ".06em", lineHeight: 1.05, ...mono }}>
                       {out.goals.home}&ndash;{out.goals.away}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".12em", ...mono,
-                                  color: brk ? "var(--ui-warn)" : "var(--ui-on-accent)", opacity: brk ? 1 : 0.85 }}>
+                                  color: "var(--ui-on-pitch)", opacity: brk ? 1 : 0.85 }}>
                       {brk || clock}
                       {/* Added time alongside, not folded into the clock: the number the period
                           is played to stays legible and what is being played beyond it reads as
@@ -12942,11 +12943,12 @@ export default function App() {
                         kicks are reported beside it rather than added to it. One line for both
                         states: it counts up live off the shootout's own tally and then stands as
                         the result, so it never changes shape or place on the board. Amber is the
-                        colour the phase is labelled in everywhere else. */}
+                        same white as the score: the shootout is part of the result, not a footnote
+                        beside it. */}
                     {(m.pk || m.pens) && (() => {
                       const sc = m.pk ? m.pk.st.sc : m.pens;
                       return <div style={{ ...mono, fontSize: 11, fontWeight: 800, letterSpacing: ".14em",
-                                           color: "var(--ui-warn)" }}>
+                                           color: "var(--ui-on-pitch)" }}>
                         {sc.home}&ndash;{sc.away} PENS</div>;
                     })()}
                     {!m.pk && !m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
