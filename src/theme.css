@@ -173,6 +173,21 @@
      under a light chrome, which put black player names on black turf. */
   --ui-on-pitch: #ffffff;
   --ui-on-pitch-cc: #ffffffcc;
+  /* THE TURF, and its two mown bands. Hardcoded until now, which is why no theme could touch the
+     one surface that fills half the screen. Kept dark by default; a light theme may lift it, but
+     never past the point where --ui-on-pitch stops reading on it. */
+  --ui-turf-out: #16301c;
+  --ui-turf-a: #1b3823;
+  --ui-turf-b: #17311d;
+  /* The match-rating ramp, and by derivation the OVR ramp -- see ovrHex. Blue, cyan, green, gold,
+     amber, red, deep red. Unchanged from the hexes these replaced. */
+  --rate-9: #4a90d9;
+  --rate-8: #5bbcd6;
+  --rate-7: #4caf50;
+  --rate-65: #e6c619;
+  --rate-6: #e89a3c;
+  --rate-5: #d55b4a;
+  --rate-lo: #cc3333;
   --ui-text-33: #ffffff33;
   --ui-text-66: #ffffff66;
   --ui-text-cc: #ffffffcc;
@@ -383,4 +398,20 @@
   --ui-warn-08: #8c680d08;
   --ui-warn-33: #8c680d33;
   --ui-zone-none: #8b7d66;
+  /* A warmer, lighter pitch. Beside a parchment sidebar the standard near-black green read as a
+     hole cut in the page; this is a sunlit olive that belongs to the same afternoon. Held dark
+     enough that white names and markings still carry -- 4.6:1 on the lighter band. */
+  --ui-turf-out: #3f5a37;
+  --ui-turf-a: #4a6a40;
+  --ui-turf-b: #43613a;
+  /* The same seven steps, restated for paper. The dark ramp is built to glow on near-black and
+     three of its steps -- gold especially, at 1.7:1 -- disappear on parchment. Same hues, same
+     order, dropped in lightness until every one clears 4.5:1 on the panel. */
+  --rate-9: #1f68b8;
+  --rate-8: #17798f;
+  --rate-7: #2f7d38;
+  --rate-65: #8a6b00;
+  --rate-6: #9a5a12;
+  --rate-5: #b1382c;
+  --rate-lo: #a51f1f;
 }

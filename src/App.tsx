@@ -1,8 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
-import wc1933HeaderImg from "./1933-wc-banner.png";
-import wc1934HeaderImg from "./1934-wc-banner.png";
-import nl1HeaderImg from "./nl1-banner.png";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
@@ -3713,7 +3710,14 @@ function ratePlayer(players, name, delta) {
   if (!p) return;
   p.rating = Math.max(3, Math.min(10, +(p.rating + delta).toFixed(1)));
 }
-const ratingColor = (r) => r >= 9 ? "#4a90d9" : r >= 8 ? "#5bbcd6" : r >= 7 ? "#4caf50" : r >= 6.5 ? "#e6c619" : r >= 6 ? "#e89a3c" : r >= 5 ? "#d55b4a" : "#cc3333";
+// THE RATING RAMP, as tokens. It was seven hardcoded hexes -- a data encoding rather than chrome,
+// which is why it lived outside the theme system -- and that held until the first LIGHT theme:
+// #e6c619 is 1.7:1 on parchment, so every average performance in the league vanished. The scale
+// is still one scale and still means the same thing; a theme may only restate it in inks that
+// read on its own paper. Every consumer is a DOM style, so var() resolves everywhere it is used.
+const ratingColor = (r) => r >= 9 ? "var(--rate-9)" : r >= 8 ? "var(--rate-8)" : r >= 7 ? "var(--rate-7)"
+                         : r >= 6.5 ? "var(--rate-65)" : r >= 6 ? "var(--rate-6)"
+                         : r >= 5 ? "var(--rate-5)" : "var(--rate-lo)";
 // Ratings carry a decimal now, and the decimal is for ORDERING, not for reading: two sides a third
 // of a point apart sort correctly while both still read as 84. Every display of a rating goes
 // through here so none of them leak "84.5" into the UI.
@@ -4426,11 +4430,13 @@ const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), 
 const STADIUM_IMAGES = [
   "1st of October Arena", "Arena Tsukumo", "Baker Stadium", "Bankoku Concourse", "Bay Field",
   "Chūkyō Metropolitano", "Cromsine Bowl", "Foundry Municipal Stadium", "Fudō Stadium",
-  "Fūchumachi Power Park", "Hatsudako Stadium", "Hikari Heliodrome @ TIU", "IzuArena", "Kyōwa Stadium",
-  "Kōraku Stadium", "Legionnaire Stadium", "Mugen-dai Stadium", "Muscovite Stadium", "Nagisa Stadium",
-  "Oshima-Nakayama Stadium", "Sahara Stadium", "Sekiringaku Community Stadium", "Skandario Field",
-  "Spartak Coliseum", "Starfield", "Tadamune Kuronami National Stadium", "Tenshukaku Stadium Kōgai",
-  "The Cauldron", "Trekker Stadium", "Uguisu Park", "Yanagihara Stadium"];
+  "Fūchumachi Power Park", "Hatsudako Stadium", "Hikari Heliodrome @ TIU", "IzuArena",
+  "Kyōwa Stadium", "Kōraku Stadium", "Legionnaire Stadium", "Mugen-dai Stadium",
+  "Muscovite Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium", "Sahara Stadium",
+  "Sekiringaku Community Stadium", "SIPG Stadium", "Skandario Field", "Spartak Coliseum",
+  "Starfield", "Tadamune Kuronami National Stadium", "Tenshukaku Stadium Kōgai", "The Cauldron",
+  "Trekker Stadium", "Uguisu Park", "Yanagihara Stadium"
+];
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
 // rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
 // (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
@@ -10596,7 +10602,8 @@ export default function App() {
       })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
-          <img src={uiTheme === "wc1933" ? wc1933HeaderImg : uiTheme === "wc1934" ? wc1934HeaderImg : uiTheme === "nl1" ? nl1HeaderImg : headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
+          <img src={`${import.meta.env.BASE_URL}banners/app/${uiTheme}.png`}
+               onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = headerImg; } }} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
             {[["teams", "Teams"], ["players", "Players"], ["live", "Live Match"],
               ...(TOURNAMENTS_ENABLED ? [["tournament", "Tournament"]] : []),
@@ -12587,15 +12594,15 @@ export default function App() {
           // wants it to fill what is left under the scoreboard.
           const pitchSvg = (fill) => (
   <svg viewBox="-1 -2.4 107 72.8" preserveAspectRatio="xMidYMid meet"
-       style={fill ? { width: "100%", height: "100%", display: "block", background: "#16301c" }
-                   : { width: "100%", display: "block", borderRadius: 6, background: "#16301c" }}>
+       style={fill ? { width: "100%", height: "100%", display: "block", background: "var(--ui-turf-out)" }
+                   : { width: "100%", display: "block", borderRadius: 6, background: "var(--ui-turf-out)" }}>
     {/* THE GRASS. Eight mown bands, which is the thing that reads as a football pitch before any
         marking does -- a flat green rectangle reads as a diagram however good the lines on it are.
         Two tones a shade apart, so it is texture rather than stripes you look at, and drawn only
         inside the touchlines so the run-off stays plain. */}
     {Array.from({ length: 8 }, (_, i) => (
       <rect key={"mow" + i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
-            fill={i % 2 ? "#1b3823" : "#17311d"} />
+            fill={i % 2 ? "var(--ui-turf-a)" : "var(--ui-turf-b)"} />
     ))}
     {/* The markings, and all of them. What was here had no penalty spots, no D-arcs and no corner
         arcs -- and the D especially is what makes a pitch instantly legible as a pitch rather than
@@ -13087,10 +13094,10 @@ export default function App() {
                                 <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.score}</span>
                               </div>
                               <svg viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="xMidYMid meet"
-                                   style={{ width: "100%", aspectRatio: String(AR), display: "block", background: "#16301c" }}>
+                                   style={{ width: "100%", aspectRatio: String(AR), display: "block", background: "var(--ui-turf-out)" }}>
                                 {Array.from({ length: 8 }, (_, i) => (
                                   <rect key={i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
-                                        fill={i % 2 ? "#1b3823" : "#17311d"} />))}
+                                        fill={i % 2 ? "var(--ui-turf-a)" : "var(--ui-turf-b)"} />))}
                                 <g stroke="rgba(255,255,255,.26)" strokeWidth={0.26 * k} fill="none">
                                   <rect x={0.6} y={0.6} width={103.8} height={66.8} />
                                   <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
@@ -13510,6 +13517,23 @@ export default function App() {
                     <div style={{ height: 108, backgroundColor: "var(--chrome-bg)", backgroundSize: "cover",
                                   backgroundPosition: "center",
                                   backgroundImage: venue && STADIUM_IMAGES.includes(venue) ? stadiumBg(venue) : "none" }} />
+                    {/* THE THEME'S OWN BAND, between the photograph and the venue's name -- the
+                        competition sits above the ground it is played at. Theme-exclusive by
+                        design: resolved from the theme id, so the standard theme has no file and
+                        therefore no band, and the sidebar is exactly what it always was. A theme
+                        shipping no match banner behaves the same -- the whole well removes itself
+                        on load failure rather than leaving a padded empty box.
+                        contain, not cover: the banner is artwork with its own margins, and cropping
+                        it to the sidebar's width ate the end of the wordmark. No band and no rules:
+                        the art is transparent, so it sits straight on the sidebar and the card reads
+                        as one surface from the photograph down to the city. */}
+                    {uiTheme !== "default" && (
+                      <div style={{ padding: "12px 15px 2px" }}>
+                        <img src={`${import.meta.env.BASE_URL}banners/match/${uiTheme}.png`} alt=""
+                             onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                             style={{ display: "block", width: "100%", height: "auto", maxHeight: 56,
+                                      objectFit: "contain" }} />
+                      </div>)}
                     <div style={{ padding: "11px 15px 13px", minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden",
                                     textOverflow: "ellipsis" }}>{venue || "Neutral Venue"}</div>
