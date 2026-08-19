@@ -7376,7 +7376,23 @@ export default function App() {
       if (want.every(k => s.has(k))) return s;      // already open: do not churn the set
       const ns = new Set(s); for (const k of want) ns.add(k); return ns;
     });
-  }, [groupFirstOpen, koFirstOpen, lbFirstOpen]);
+    // ...AND THE LIST IS SCROLLED TO IT. Opening the round is not enough: these panes are fixed-
+    // height scroll boxes, so on any tournament past a few rounds the live one sits below the fold
+    // and a refresh puts you back at round one. Two frames of delay because the round has to be
+    // expanded and laid out before its offset means anything.
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      for (const k of want) {
+        const el = document.querySelector(`[data-round="${k}"]`);
+        if (!el) continue;
+        // Walk to the scrolling ancestor rather than calling scrollIntoView, which also scrolls
+        // every parent -- including the page -- and yanks the whole layout around.
+        let box = el.parentElement;
+        while (box && box.scrollHeight <= box.clientHeight) box = box.parentElement;
+        if (box) box.scrollTop = Math.max(0, el.offsetTop - box.offsetTop - 8);
+      }
+    }));
+    return () => cancelAnimationFrame(id);
+  }, [groupFirstOpen, koFirstOpen, lbFirstOpen, tab]);
   const koActionable = useMemo(() => {
     if (!tKO) return { wbRi: -1, lbRi: -1, tpReady: false, gfReady: false, resetReady: false };
     const isDE = !!tKO.losers;
@@ -11837,7 +11853,7 @@ export default function App() {
                   const rdDone = tGroups.every(g => (g.schedule[ri] || []).every(m => m.result));
                   const key = `group_${ri}`;
                   const isOpen = expandedRounds.has(key);
-                  return (<div key={ri} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
+                  return (<div key={ri} data-round={key} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
                     <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                         <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
@@ -12328,7 +12344,7 @@ export default function App() {
               </div>
               <div style={{ padding: "10px 16px 16px", height: ROUNDS_VISIBLE * ROUND_ROW_H, overflowY: "auto", scrollbarGutter: "stable" }}>
               {tKO.rounds.map((round, ri) => { if (ri === tKO.rounds.length - 1 && !tKO.losers) return null; const rdDone = wbRoundDone(round); const key = `wb_${ri}`; const isOpen = expandedRounds.has(key); return (
-                <div key={ri} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "var(--chrome-brand-33)" : "var(--chrome-border)"), borderRadius: 6, overflow: "hidden" }}>
+                <div key={ri} data-round={key} style={{ marginBottom: 6, border: "1px solid " + (ri === tKO.rounds.length - 1 && tKO.losers ? "var(--chrome-brand-33)" : "var(--chrome-border)"), borderRadius: 6, overflow: "hidden" }}>
                   <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
@@ -12365,7 +12381,7 @@ export default function App() {
                 </div>
               ); })()}
               {tKO.losers && tKO.losers.map((lbRound, lr) => { if (lbRound.matches.every(m => !m.home && !m.away && !m.result && !m.bye)) return null; const lbDone = lbRoundDone(lbRound); const key = `lb_${lr}`; const isOpen = expandedRounds.has(key); return (
-                <div key={"lb"+lr} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
+                <div key={"lb"+lr} data-round={key} style={{ marginBottom: 6, border: "1px solid var(--chrome-border)", borderRadius: 6, overflow: "hidden" }}>
                   <div onClick={() => toggleRound(key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", userSelect: "none", background: isOpen ? "var(--chrome-bg3)" : "transparent", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                       <span style={{ fontSize: 8, color: "var(--chrome-muted)", flexShrink: 0, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
