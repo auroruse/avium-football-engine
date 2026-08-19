@@ -486,12 +486,6 @@ export function meMove(s, rng) {
   }
 }
 
-// Stamina per metre run. Lives on CFG so it can be swept -- as a module const it never was, and it
-// had drifted a long way out: the comment here claimed a full match left a busy midfielder near 70
-// and the measured figure was 87.6, with the most-run outfielder in the game finishing on 85. A
-// match that costs twelve stamina cannot make anybody tired, so no manager ever had a reason to use
-// his bench. Kept as an alias because it is exported and read elsewhere.
-export const ME_DRAIN = CFG.drain;
 
 // ---- the tick ---------------------------------------------------------------------------
 export function meBallTo(s, side, i, x, y) {
@@ -572,18 +566,9 @@ export const meKickedBy = (mp, side, i, deflect) => {
                  : { s: side, i, t: mp.tick, x: mp.bx, y: mp.by });
   if (g.length > CFG.tlogMax) g.shift();
 };
-export const meAlsoKicked = (mp, side, i) => { (mp.kickBy = mp.kickBy || []).push({ s: side, i, t: mp.tick }); };
 export const meLockedOut = (mp, sd, i) =>
   !!mp.kickBy && mp.kickBy.some(k => k.s === sd && k.i === i && mp.tick - k.t < CFG.kickLock);
 
-// Compatibility shims over the physical ball. A "flight" is now a real kick; a "loose" ball is a
-// nudge. Both leave the ball to the integrator and the pickup logic in meTick.
-export function meLoose(s, x, y) { const mp = s.mePos; mp.idx = -1; mp.flight = true; meKnock(mp, { u: () => 0.5 }, x, y, 6, 0); }
-export function meFlight(s, side, j, x, y, ticks) {
-  const mp = s.mePos;
-  mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = j; mp.fx = x; mp.fy = y;
-  meKnock(mp, { u: () => 0.5 }, x, y, Math.max(4, Math.hypot(x - mp.bx, y - mp.by) / Math.max(1, ticks) / ME_DT), 0);
-}
 
 // Whoever is nearest a loose ball takes it, better positional players slightly favoured.
 export function meScramble(s, rng) {

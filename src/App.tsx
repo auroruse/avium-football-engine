@@ -4825,9 +4825,32 @@ const boldSurname = (n, abbrev) => {
   const { first, last } = splitSurname(n, abbrev);
   return first ? <>{first} <b>{last}</b></> : <b>{last}</b>;
 };
+// THE GOAL MOUTH ITSELF -- turf, net grid, frame and posts. It was written out twice,
+// identically, in the resolved-outcome view and in the chance preview; the two differ only
+// in what they draw ON it. The geometry is fixed, so it takes no arguments, and the
+// constants are shared so a change to the mouth cannot move one view and not the other.
+const GV_W = 220, GV_L = 25, GV_R = 195, GV_T = 10, GV_B = 82;
+function gvGoalFrame() {
+  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B;
+  return (<g>
+      <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
+      <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
+      <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
+      {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+      {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
+      <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
+      <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+      <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+      <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
+      <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+      <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+      <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+  </g>);
+}
+
 // Front-on goal mouth: ball animates from the grass to its zone, keeper dives. Used for all goals and penalty misses.
 function gvGoalMouth(gv, delay) {
-  const W=220, gL=25, gR=195, gT=10, gB=82;
+  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B;
   const zone = gv.goalZone ?? 4, dive = gv.dive ?? 1, result = gv.result || "goal";
   const zPos = [[gL+26,gT+20],[gL+85,gT+16],[gR-26,gT+20],[gL+26,gB-18],[gL+85,gB-14],[gR-26,gB-18]];
   // Pushed outside the frame so a miss reads as unambiguously off target rather than
@@ -4845,18 +4868,7 @@ function gvGoalMouth(gv, delay) {
   const saved = result === "save";
   const d = Math.max(0, delay || 0);
   return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
-    <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
-    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
-    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    {gvGoalFrame()}
     <g className="gv-anim" style={{ "--gv-kdx": (dX[1]-dX[dive])+"px", animation: "gvKeep 0.3s ease-out "+(d+0.12).toFixed(2)+"s both" }}>
       <text x={dX[dive]} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" style={{opacity: saved ? 1 : 0.25}}>🧤</text>
     </g>
@@ -4986,20 +4998,10 @@ function gvChancePitch(chain, clr, step, shotGv, replay) {
 // no ball, no result. Deliberately not gvGoalMouth: that component's whole visual grammar is
 // built around showing an already-resolved outcome, which a chance, by definition, isn't yet.
 function gvChanceGoalPreview() {
-  const W=220, gL=25, gR=195, gT=10, gB=82, dX=(gL+gR)/2, dY=(gT+gB)/2+4;
+  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B,
+        dX = (gL + gR) / 2, dY = (gT + gB) / 2 + 4;
   return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
-    <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
-    {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-    {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-    <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
-    <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-    <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-    <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
+    {gvGoalFrame()}
     <text x={dX} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" opacity="0.35">🧤</text>
   </svg>);
 }

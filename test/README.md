@@ -1,23 +1,37 @@
 # Match engine test harness
 
-`bash test/rebuild.sh` bundles `src/App.tsx` (asset imports stubbed by `prelude.js`) together with
-the real `src/engine` modules into `test/engine.mjs`, which every harness imports.
-
-The ones that matter for the positional engine:
+`zsh test/rebuild.sh` bundles `src/App.tsx` (asset imports stubbed by `prelude.js`) together with
+the real `src/engine` modules into `test/engine.mjs`, which every harness imports. Rebuild it after
+**any** change to `App.tsx` or `src/engine` — a stale bundle silently tests the old engine.
 
 | harness | what it answers |
 |---|---|
-| `mecal.mjs`   | does a match look like football? shots, goals, passing, corners, fouls, in-play minutes, xG per shot, shot-distance histogram, all against real-world targets |
-| `mespace.mjs` | is the side shaped like a team? nearest team-mate, stretch index, convex-hull surface area, % of players inside 3m — the units sports science uses |
-| `megap.mjs`   | does a rating gap turn into a rout? goal difference by OVR gap (the old abstract engine gave +8 1.07, +29 3.31) |
-| `meduty.mjs`  | duty distribution, and how many players press the ball at once (should be ~0.5, not 6) |
-| `mepress.mjs` | pressing intensity and stamina cost by `pressingLOE` setting |
-| `mediag.mjs`  | the pass-to-shot funnel: passes per shot, turnovers, where completed passes end up by third |
-| `merun.mjs`   | off-ball runs started, by kind, and how many players are running at any moment |
-| `meshape.mjs` | formation spread in metres, and jitter (% of slices where a player reverses direction) |
-| `mebench.mjs` | ms per match |
+| `golden.mjs`  | is the engine byte-for-byte what it was? 24 fixtures hashed tick-for-tick — scoreline, the whole event feed with coordinates, every counter, every player's own numbers. The safety net for engine work. |
+| `tourn.mjs`   | does a tournament run start to finish, with stats carried per player? |
+| `pool.mjs`    | does the worker pool wire up and play a fixture? |
+| `cards.mjs`   | do suspensions outlast the right things — second yellow, violent conduct, DOGSO? |
+| `import.mjs`  | does a bracket import land each side on its own club? |
+| `rcbadge.mjs` | does the red-card badge render and count? |
 
-Run any of them with `node test/<name>.mjs` after `rebuild.sh`.
+```bash
+zsh test/rebuild.sh
+node test/golden.mjs            # check against the baseline
+node test/golden.mjs write      # re-baseline, once you can name why every diverging fixture moved
+```
 
-Every tuning number is on `CFG` in `src/engine/config.ts`; sweeps patch that object rather than
-editing source.
+## The probes are gone
+
+Around 195 one-off harnesses used to live here — the working-out behind the numbers quoted
+throughout the engine's comments (`mecal`, `megap`, `gksweep`, and so on). They were investigation
+scripts, not tests: nothing ran them, several had rotted against a retired loader, and they held
+26 config keys and 7 engine exports alive that the app itself never read.
+
+They are in git history. To re-run an old calibration, restore the one you want rather than
+carrying all of them:
+
+```bash
+git log --oneline --diff-filter=D -- test/mecal.mjs
+git checkout <commit>^ -- test/mecal.mjs
+```
+
+Write new probes in the session scratchpad, not here. This directory is the suite.

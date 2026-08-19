@@ -198,13 +198,10 @@ export const CFG = {
   // A carry is a RUN, not a jump. Moving him four metres in one slice is a teleport, and that is what
   // it looked like. It now sets a drive lasting several slices, during which he runs with the ball at
   // carrying pace and can be tackled the whole way.
-  driveTicks: 5,
   // How long a player dwells on the ball before doing anything. It used to be SEVEN slices -- nearly
   // two seconds -- for a player in space and two for a player under pressure, so the commonest sight
   // in the match was an unmarked man standing still until a defender arrived. A touch and a look is
   // half a second; being closed down makes you quicker, not slower.
-  dwellFree: 4,
-  dwellMax: 6,
   // Floors. A positional engine resolves a few hundred duels a match in sequence, so a 1.2x edge per
   // duel compounds to 200:1 over a chain -- measured, a 29-point gap produced a 9.75 goal difference
   // against the old engine's 3.31. Real football has floors everywhere: the best side in the country
@@ -221,21 +218,18 @@ export const CFG = {
   // side from 2.3 shots to 20. The cause is that this is rolled every tick a defender is in reach, so
   // whatever edge it carries is raised to the power of the ticks in contact -- a 1.28x per-tick edge
   // became 1.5x per possession and a rout over a match. Hence a deliberately narrow band.
-  tackleLo: 0.170,
-  tackleHi: 0.200,
-  tackleK: 26,
   // A tackle is CONTACT, not a transfer of ownership. Winning the duel used to teleport the ball to
   // the tackler's feet with no event emitted at all, which is why it read on screen as the ball
   // simply changing colour. How often he comes away with it under control depends on how well he got
   // there: a good tackler who is properly set keeps it, a man stretching at arm's length pokes it
   // loose and it is anybody's.
-  tackleCleanBase: 0.18, tackleCleanSkill: 0.34, tackleCleanGap: 0.10, tackleLoose: 7,
+tackleCleanSkill: 0.34, tackleCleanGap: 0.10, tackleLoose: 7,
   // What "get stuck in" and "stay on feet" are actually worth. Both were dead settings in this
   // engine: more challenges won, more free kicks conceded.
   // foulAggr was 0.0014 -- the tackling instruction moved the foul rate by fourteen HUNDREDTHS of a
   // percent, which is indistinguishable from not reading it at all. A quarter either way is a real
   // difference between a side that dives in and one that stays on its feet.
-  tackleAggr: 0.16, foulAggr: 0.25,
+foulAggr: 0.25,
   // Marking distance. This is geometry, not skill, so tightening it makes the game harder for everyone
   // equally -- it lowers chance quality without touching the rating gap, which is exactly the knob to
   // reach for once the skill-dependent duels are bounded.
@@ -313,7 +307,6 @@ export const CFG = {
   // Line of engagement, in metres from your own goal: how far up the pitch you will go to close the
   // ball down. Beyond it the side just holds its shape and waits, which is what a block IS. The
   // default sits around halfway; pressingLOE pushes it into their half or drops it onto your own box.
-  loePress: false,
   loeBase: 72,
   loeStep: 15,
   // How tightly the side without the ball squeezes toward it, and how far a man will travel to close
@@ -332,11 +325,8 @@ export const CFG = {
   // meFindSpace, so an instruction defends its own slot. spaceInner is the second search ring,
   // as a fraction of ME_SPACE_R, which is what lets the search adjust instead of jump.
   holdDev: 0.35, spaceInner: 0.5,
-  engageR: 26,
   // How many defenders leave their zonal spot to pick up a man, by how deep the ball is in our half.
   // Ten was the old value and it destroyed the shape entirely; these are tuned against shots conceded.
-  markCap: [7, 5, 3],
-  markCommit: 0.80,
   laneK: 0.70,
   // Real football completes about 80% of its passes and wins maybe half its take-ons. Getting that
   // ratio wrong is what makes a side dribble instead of playing: at 66% passing and 85% carrying, the
@@ -449,12 +439,9 @@ export const CFG = {
   drain: 0.0065,
   // STOPPAGE TIME: the fraction of dead-ball time played back, and a ceiling on it.
   addedFrac: 0.55, addedMax: 900,
-  foulP: 0.9958,
   // Bodies in the way. About a third of real shots never reach the keeper, and this is the honest place
   // to put that: it depends on how many defenders are between the shooter and the goal, not on how
   // good anybody is, so it lowers scoring without touching the rating gap.
-  blockK: 0.6,
-  blockMax: 0.58,
   // How much a spot is devalued by the men standing on it. See meValHere.
   valPress: 0.30, valPressMax: 0.80,
   // A clear sight of goal is a reason to shoot in its own right. How far out that reason survives is
@@ -825,7 +812,6 @@ export const CFG = {
   // steering layer makes it look like running. The thing this fixes is the one every football game
   // gets wrong first -- six players charging the ball at once -- because "press" is now a job that
   // exactly one player holds, and everyone else has been given something better to do.
-  balLag: 0.055,
   settleTicks: 40,
   // Ticks from settled to the full step-up, and how far the whole shape climbs once a possession
   // has stopped being contested. See meAnchor: this is the only thing in the engine that converts
@@ -881,7 +867,7 @@ export const CFG = {
   tkClose: 0.10,
   // How far the ball must get past him to count as beaten, and how long he is out of the play for
   // it, per step of Get Stuck In. Zero at Stay On Feet and at no instruction: only committing costs.
-  tkBeatGap: 1.5, tkBeatT: 10, tkBeatSpd: 0.55,
+tkBeatT: 10, tkBeatSpd: 0.55,
   // THE TACKLE. tkRange is how close he must be to go at all; the tkw* weights are what "his options
   // are closed" is made of, summing to 1 at best. tkGo is the bar, lowered by his own tackle rating
   // and by Get Stuck In. tkCool stops one man lunging every slice.
@@ -1078,7 +1064,6 @@ export const CFG = {
   // teleported to a player's feet and stayed glued there, so a tackle could only ever be a
   // probability, a dribble could only ever be a status, and a defender's effective reach was the
   // 3.2 m at which that roll was allowed to fire.
-  touchR: 1.05,        // how near the ball you have to be to play it
   touchZ: 1.6,         // and how low it has to be
   touchStick: 0.55,    // head start, in metres, for the man already running with it
   // Dribbling is a CONTINUOUS force, not a series of punts. Knocking it a fixed 3.4 m ahead at his
@@ -1090,7 +1075,6 @@ export const CFG = {
   // How far behind the ball he runs. This MUST be inside contact range (bodyR + ballR = 0.39) or he
   // settles into a spot he can never touch the ball from, and pursuit then faithfully matches the
   // ball's speed of zero -- man and ball at rest, half a metre apart, which is the stall exactly.
-  dribTrail: 0.25,
   // Pursuit. How hard he closes the remaining gap, in 1/seconds: at 2.6 a metre of lag is worth
   // 2.6 m/s of extra pace. This is the term that replaces the arrival ramp for the man on the ball,
   // and it is why his speed no longer depends on how near his own target happens to be.
@@ -1104,11 +1088,6 @@ export const CFG = {
   // stuck to him. At 0.45 / 3.0, with the ball always knocked out in front, there are none -- and
   // completion and shots are unchanged, so it costs nothing.
   standoff: 0.45, recvBrake: 3.0,
-  dribLead: 1.7,       // how far in front of his feet the ball sits at a walk
-  dribLeadV: 0.24,     // and how much further per m/s of pace, so a sprinter pushes it out ahead
-  dribPull: 3.4,       // how hard the ball is drawn toward the spot in front of him
-  dribForce: 5.8,      // how much he can change the ball's velocity per second...
-  dribSkill: 7.0,      // ...plus what his technique buys him
   touchWin: 0.35,      // how much of an edge strength buys in a shoulder-to-shoulder for a loose ball
   // How much further a good tackler gets a foot in, in metres, when challenging a man in possession.
   // The carrier holds it out at touchStick + strength; this is the other half of that duel, and the
@@ -1212,7 +1191,6 @@ export const CFG = {
   // football blocks about 25-30%. At 1.55 a defender swept a 3.1 m corridor -- five times his own
   // body -- so almost nothing got through a crowded box and the shot count was inflated with efforts
   // that were never going to arrive.
-  blockReach: 1.25,
   // The man on the ball is a PLAYER, not a state machine. He steers like everyone else; having the
   // ball costs him top speed and nothing else. Before this he was excluded from the movement system
   // and could only shuffle 0.14 m per slice -- measured, 84% of all ball-possession time was
@@ -1678,7 +1656,7 @@ export const CFG = {
   // gkDiveV swept on the same test and the cliff is brutal: 3.9 converts 4.3% of one-on-ones, 2.9
   // converts 40%, 2.4 converts 51%. At 3.9 his reach from ten metres was 1.96 m against a shooter
   // aiming 2.12 m off centre -- sixteen centimetres, which execution noise ate every time.
-  gkWing: 0.85, gkDiveV: 2.9,
+gkDiveV: 2.9,
   gkReactSlow: 0.28, gkReactFast: 0.18,      // seconds, worst keeper to best
   // How often he picks the right side as it is struck, worst keeper to best.
   gkReadMin: 0.45, gkReadMax: 0.82,

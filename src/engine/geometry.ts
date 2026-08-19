@@ -136,14 +136,6 @@ export const meCellX = (i) => (i + 0.5) * PITCH_L / ME_GRID_X;
 
 export const meCellY = (j) => (j + 0.5) * PITCH_W / ME_GRID_Y;
 
-export function meBuildMap(s, side) {
-  const mp = s.mePos;
-  let m = mp.map[side];
-  if (!m) m = mp.map[side] = new Float32Array(ME_GRID_X * ME_GRID_Y);
-  for (let j = 0; j < ME_GRID_Y; j++) for (let i = 0; i < ME_GRID_X; i++)
-    m[j * ME_GRID_X + i] = meCtrl(s, side, meCellX(i), meCellY(j));
-  return m;
-}
 
 // BOTH MAPS AT ONCE. The two sides were built in separate passes over the same grid, at the same
 // instant, with the same twenty-two men standing in the same places -- so every cell had all
@@ -241,14 +233,6 @@ export function meOffsideLine(s, side) {
   return dir > 0 ? Math.max(PITCH_L / 2, Math.min(gx, line)) : Math.min(PITCH_L / 2, Math.max(gx, line));
 }
 
-// The presser and his cover.
-export function meTwoClosest(ps, x, y) {
-  let a = -1, b = -1, da = Infinity, db = Infinity;
-  for (let i = 0; i < ps.length; i++) { if (ps[i].pos === "GK") continue;
-    const d = Math.hypot(ps[i].x - x, ps[i].y - y);
-    if (d < da) { b = a; db = da; a = i; da = d; } else if (d < db) { b = i; db = d; } }
-  return [a, b];
-}
 
 // ---- time-to-ball ------------------------------------------------------------------------
 // The two-phase growing circle (AI_GetTimeNeededForDistance_ms, AIfunctions.cpp:499-598) in closed
