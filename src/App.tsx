@@ -6067,7 +6067,7 @@ export default function App() {
         rating: +(p.rating ?? 6.5).toFixed(1),
         yc: p.yc || 0, rc: p.rc ? 1 : 0, rcVariant: p.rcVariant,
         inj: p.inj ? 1 : 0, injSev: p.injSev, injPart: p.injPart,
-        passOk: p.passOk || 0, defActs: p.defActs || 0, saves: p.saves || 0,
+        passOk: p.passOk || 0, prog: p.prog || 0, cc: p.cc || 0, defActs: p.defActs || 0, saves: p.saves || 0,
         stamina: p.stamina,
         // _onAt is stamped only on a man who came on, so it answers "did he start" for the live
         // array and the subbed-off array at once.
@@ -7485,7 +7485,7 @@ export default function App() {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
           goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, totalRating: p.rating||6,
-          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, passOk: p.passOk||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
+          yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, passOk: p.passOk||0, prog: p.prog||0, cc: p.cc||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
       });
       return entries;
     };
@@ -7536,7 +7536,7 @@ export default function App() {
       const buildDiffs = (entries) => {
         const diffs = {};
         for (const [k, v] of Object.entries(entries)) {
-          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,defActs:v.defActs||0,saves:v.saves||0};
+          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,prog:v.prog||0,cc:v.cc||0,defActs:v.defActs||0,saves:v.saves||0};
           if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
           if (v.inj) { const sev = v.injSev ? ME_INJURY.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
@@ -7551,7 +7551,7 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, defActs:0, saves:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, prog:0, cc:0, defActs:0, saves:0 };
           const d = homeDiffs[k] || awayDiffs[k];
           next[k].goals += d.goals;
           next[k].assists += d.assists;
@@ -7562,6 +7562,8 @@ export default function App() {
           const prevYc = next[k].yellows||0;
           next[k].yellows += d.yellows;
           next[k].passOk = (next[k].passOk||0) + d.passOk;
+          next[k].prog = (next[k].prog||0) + (d.prog||0);
+          next[k].cc = (next[k].cc||0) + (d.cc||0);
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
           // Fold into d.suspended itself (not a separate addend on next[k]) so the stored
@@ -8481,13 +8483,15 @@ export default function App() {
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
-        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,defActs:0,saves:0});
+        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
         if (p.sub === 'on') d.subApp++; else d.matches++;
         d.goals += p.goals || 0;
         d.assists += p.assists || 0;
         d.totalRating += p.rating || 6.5;
         d.yellows += p.yc || 0;
         d.passOk += p.passOk || 0;
+        d.prog = (d.prog||0) + (p.prog || 0);
+        d.cc = (d.cc||0) + (p.cc || 0);
         d.defActs += p.defActs || 0;
         d.saves += p.saves || 0;
         if (p.rc) { d.reds++; if (tConfig.suspensions !== false) d.suspended += rcSuspGames(p.rcVariant, rng2.u()); }
@@ -8499,7 +8503,7 @@ export default function App() {
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,totalRating:0,passOk:0,defActs:0,saves:0});
+        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,totalRating:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
@@ -8520,6 +8524,8 @@ export default function App() {
           next[k].suspended = (next[k].suspended||0) + d.suspended;
           next[k].injOut = (next[k].injOut||0) + d.injOut;
           next[k].passOk = (next[k].passOk||0) + d.passOk;
+          next[k].prog = (next[k].prog||0) + (d.prog||0);
+          next[k].cc = (next[k].cc||0) + (d.cc||0);
           next[k].defActs = (next[k].defActs||0) + d.defActs;
           next[k].saves = (next[k].saves||0) + d.saves;
         }
@@ -8560,7 +8566,7 @@ export default function App() {
     const merged = {};
     diffsSets.filter(Boolean).forEach(diffs => {
       for (const [k, d] of Object.entries(diffs)) {
-        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,defActs:0,saves:0});
+        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
         for (const f of Object.keys(m)) m[f] += d[f] || 0;
       }
     });
@@ -8580,6 +8586,8 @@ export default function App() {
         next[k].suspended = Math.max(0, (next[k].suspended||0) - d.suspended);
         next[k].injOut = Math.max(0, (next[k].injOut||0) - d.injOut);
         next[k].passOk = Math.max(0, (next[k].passOk||0) - d.passOk);
+        next[k].prog = Math.max(0, (next[k].prog||0) - (d.prog||0));
+        next[k].cc = Math.max(0, (next[k].cc||0) - (d.cc||0));
         next[k].defActs = Math.max(0, (next[k].defActs||0) - d.defActs);
         next[k].saves = Math.max(0, (next[k].saves||0) - d.saves);
       }
@@ -9386,22 +9394,22 @@ export default function App() {
                   </div>
                   {/* Passes completed */}
                   <div style={{ minWidth: 0 }}>
-                    <div onClick={() => setTLeaderboard("passOk")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>PASSES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <div onClick={() => setTLeaderboard("cc")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.passOk>0).sort((a,b)=>b.passOk-a.passOk||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
                         <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.pos}</td>
                         <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 24, textAlign: "center", padding: "2px 4px 2px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.passOk}</td>
+                        <td style={{ color: "var(--ui-text)", fontWeight: 700, width: 18, textAlign: "right", padding: "2px 0", ...mono }}>{p.cc||0}</td>
                       </tr>
                     ))}
                     </tbody></table>
                   </div>
                   {/* Tackles won plus clearances -- what the engine resolves per man */}
                   <div style={{ minWidth: 0 }}>
-                    <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TACKLES + CLEARANCES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
+                    <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                     {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
@@ -9491,7 +9499,7 @@ export default function App() {
                 })()}
               </div>
             {tLeaderboard && (() => {
-              const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "passOk" ? "PASSES COMPLETED" : tLeaderboard === "defActs" ? "TACKLES + CLEARANCES" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
+              const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "cc" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
               const all = Object.values(tPlayerStats);
               const tApp = p => p.matches + (p.subApp||0);
               // Stats recorded before fullName was kept fall back to the team's own squad. Matching
@@ -9505,8 +9513,8 @@ export default function App() {
                 ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
                 : tLeaderboard === "assists"
                 ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
-                : tLeaderboard === "passOk"
-                ? all.filter(p=>p.passOk>0).sort((a,b)=>b.passOk-a.passOk||(tApp(a)-tApp(b)))
+                : tLeaderboard === "cc"
+                ? all.filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||(tApp(a)-tApp(b)))
                 : tLeaderboard === "defActs"
                 ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
                 : tLeaderboard === "saves"
@@ -9524,7 +9532,7 @@ export default function App() {
                       {sorted.map((p, i) => {
                         const ap = p.matches + (p.subApp||0);
                         const avg = ap ? (p.totalRating/ap) : 0;
-                        const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "passOk" ? p.passOk : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
+                        const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "cc" ? (p.cc||0) : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
                         return (
                           <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
                             <td style={{ color: "var(--chrome-muted)", width: 20, textAlign: "right", fontSize: 9, padding: "3px 6px 3px 0", ...mono }}>{i+1}</td>
@@ -13150,9 +13158,9 @@ export default function App() {
                         // the intended receiver it was nonsense, keyed on the passer it still put a
                         // quarter of all chances on centre-halves hitting a forward who did the rest
                         // himself. Dropped rather than shipped half-right. The slots hold the two
-                        // things this engine already resolves exactly instead: PAS is passes
-                        // COMPLETED, credited when the ball reaches a team-mate rather than when it
-                        // leaves the boot, and T+C is tackles won plus clearances. A block is
+                        // things this engine already resolves exactly instead: CC is CHANCES
+                        // CREATED -- passes that led to a shot, assists included, credited when the
+                        // shot is struck -- and DC is defensive contributions, tackles won plus clearances. A block is
                         // neither of those, so it is not in there.
                         const COLS = "20px 26px 1fr 15px 15px 26px 24px 18px 26px 11px";
                         const men = (side, clr) => {
@@ -13203,7 +13211,7 @@ export default function App() {
                                 </span>
                                 {val(q.goals, true)}
                                 {val(q.assists, true)}
-                                {val(q.passOk)}
+                                {val(q.cc)}
                                 {val(q.defActs)}
                                 {val(q.pos === "GK" ? q.saves : 0)}
                                 <span style={{ ...cellBase, textAlign: "center", ...mono, fontWeight: 700,
@@ -13219,7 +13227,7 @@ export default function App() {
                               <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 2, fontSize: 7,
                                             letterSpacing: ".08em", color: "var(--chrome-muted)",
                                             padding: "0 0 3px", borderBottom: "1px solid var(--chrome-border-33)" }}>
-                                {["", "OVR", "PLAYER", "G", "A", "PAS", "T+C", "SV", "RTG", ""].map((h, i) => (
+                                {["", "OVR", "PLAYER", "G", "A", "CC", "DC", "SV", "RTG", ""].map((h, i) => (
                                   <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
                               </div>
                               <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>

@@ -1312,7 +1312,18 @@ export function meTick(s, rng, out) {
                                 const _fwd = pp.sx === undefined ? 0
                                            : (pp.side === "home" ? 1 : -1) * (mp.bx - pp.sx);
                                 meRate(pp.byP, CFG.ratePass
-                                  + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg); }
+                                  + Math.max(0, Math.min(CFG.ratePassProgCap, _fwd)) * CFG.ratePassProg);
+                                // The table stat. Raw completions crowned the man who recycled at
+                                // the back; a pass that GAINS ground is the one worth counting, and
+                                // the gain required shrinks as play moves higher (Wyscout tiers).
+                                if (pp.sx !== undefined) {
+                                  const _gx = meGoalX(pp.side);
+                                  const _sOwn = Math.abs(pp.sx - _gx) > PITCH_L / 2;
+                                  const _eOwn = Math.abs(mp.bx - _gx) > PITCH_L / 2;
+                                  const _need = _sOwn && _eOwn ? CFG.progOwn
+                                              : _sOwn ? CFG.progCross : CFG.progOpp;
+                                  if (_fwd >= _need) pp.byP.prog = (pp.byP.prog || 0) + 1;
+                                } }
                               out.poss[pp.side] += (pp.t || 0);
                               // Ground actually gained by a pass that found a team-mate. A side can
                               // complete 160 passes a game and be no nearer the goal at the end of it.
@@ -1737,6 +1748,17 @@ export function meTick(s, rng, out) {
             // Headers goalwards are frequent and mostly speculative; the ones that matter
             // arrive as a save, a miss or a goal a moment later and those still report.
             meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, null);
+            // The delivery that made the header is a chance created too. Counted, not rated:
+            // header shots never carried the key-pass rating and changing that would move every
+            // baseline for a bookkeeping stat.
+            { const lg2 = mp.tlog || [];
+              for (let k2 = lg2.length - 1; k2 >= 0; k2--) {
+                const e2 = lg2[k2];
+                if (e2.s !== bs && e2.d) continue;
+                if (e2.s !== bs) break;
+                if (e2.i !== bi) { const kp2 = s.players[bs]?.[e2.i];
+                  if (kp2) kp2.cc = (kp2.cc || 0) + 1; break; }
+              } }
             meKnock(mp, rng, gxA, aimY, CFG.headV * power, 0.35);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
@@ -2322,8 +2344,11 @@ export function meTick(s, rng, out) {
         // Same rule as the assist: a ricochet off an opponent did not end the move he started.
         if (e.s !== side && e.d) continue;
         if (e.s !== side) break;
-        if (e.i !== shooter) { meRate(s.players[side]?.[e.i],
-            CFG.rateKeyPass + (act.p >= CFG.bigChanceXg ? CFG.rateBigChance : 0)); break; }
+        if (e.i !== shooter) { const kp = s.players[side]?.[e.i];
+          meRate(kp, CFG.rateKeyPass + (act.p >= CFG.bigChanceXg ? CFG.rateBigChance : 0));
+          // CHANCES CREATED, the table stat: every pass that led to a shot, assists included --
+          // the walk fires on the shot's creation, before anyone knows how it ends.
+          if (kp) kp.cc = (kp.cc || 0) + 1; break; }
       } }
     // THE READ. A keeper cannot wait to see a shot. From twelve metres it is past him before his
     // reaction and his travel have both been paid for, so waiting is being beaten by geometry every

@@ -1130,6 +1130,12 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // routine positives are small and frequent, the routine punishments are smaller still, and only
   // goals, saves, errors and dismissals reach far from par.
   ratePass: 0.023, ratePassProg: 0.0016, ratePassProgCap: 26, ratePassFail: 0.046,
+  // A pass is PROGRESSIVE by the Wyscout rule: the gain toward the opponent's goal that counts
+  // shrinks as play moves higher, so a defender lumping it forward from all that free grass does
+  // not out-count a midfielder threading it in traffic. Both ends in own half: 28 m. Crossing
+  // halves: 14 m. Both in the opponent's half: 9 m. Measured at a flat 10 m, DEF still topped the
+  // table (2.4/match vs MID 1.5); tiered, the table belongs to the men who play forward.
+  progOwn: 28, progCross: 14, progOpp: 9,
   rateDuelWon: 0.066, rateDuelLost: 0.052, rateDribble: 0.094, rateBeaten: 0.062,
   rateAerial: 0.052, rateShotOn: 0.05, rateShotOff: 0.018,
   // A chance is big when the model says roughly a third of them go in. Creating one is worth more
