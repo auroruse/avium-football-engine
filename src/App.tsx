@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fragment } from "react";
 import headerImg from "./header.png";
+// Read off public/stadiums at build time -- see the stadium-manifest plugin in
+// vite.config.js. Adding a photograph is the whole job; there is no list to update.
+import { STADIUM_IMAGES } from "virtual:stadium-images";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
@@ -4427,16 +4430,7 @@ const panelHead = { display: "flex", alignItems: "center", justifyContent: "spac
 const STADIUM_ROWS = stadiumsTSV.split("\n").slice(1).map(l => l.split("\t").map(c => (c || "").trim()))
   .filter(c => c[0]).map(([stadium, nation, city]) => ({ stadium, nation: nation || "", city: city || "" }));
 const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), r]));
-const STADIUM_IMAGES = [
-  "1st of October Arena", "Arena Tsukumo", "Baker Stadium", "Bankoku Concourse", "Bay Field",
-  "Chūkyō Metropolitano", "Cromsine Bowl", "Foundry Municipal Stadium", "Fudō Stadium",
-  "Fūchumachi Power Park", "Hatsudako Stadium", "Hikari Heliodrome @ TIU", "IzuArena",
-  "Kyōwa Stadium", "Kōraku Stadium", "Legionnaire Stadium", "Mugen-dai Stadium",
-  "Muscovite Stadium", "Nagisa Stadium", "Oshima-Nakayama Stadium", "Sahara Stadium",
-  "Sekiringaku Community Stadium", "SIPG Stadium", "Skandario Field", "Spartak Coliseum",
-  "Starfield", "Tadamune Kuronami National Stadium", "Tenshukaku Stadium Kōgai", "The Cauldron",
-  "Trekker Stadium", "Uguisu Park", "Yanagihara Stadium"
-];
+
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
 // rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
 // (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
