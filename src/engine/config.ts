@@ -40,6 +40,11 @@ export const SP = {
   // enough that your best header of a ball attacks the near post and your best striker of one
   // takes the edge, without anybody crossing the pitch for a spot somebody else can fill.
   spRoleW: 12,
+  // Corners: how many aerial targets are sent up REGARDLESS of distance (the big centre-halves),
+  // and how far beyond the aimed man the delivery is flighted so it crosses him at head height
+  // rather than landing at his feet -- 3.5 m puts the ball at 1.8-2.0 m over the mark at any
+  // realistic corner distance (solved from the loft profile, see meLoftFor).
+  spCornerUp: 2, spCrossOver: 2.7,
   // How far a step of the defensive-line instruction moves the block at a free kick, and how far
   // a keeper has to be out of position before the goal counts as open. gkBeatX is along the pitch
   // (behind him is behind him), gkBeatY across it.
@@ -1870,7 +1875,22 @@ export const CFG = {
   gkLineOut: 0.9, gkScramble: 1.25,
   // A keeper smothers. He was excluded from the challenge loop entirely, so a carrier could dribble
   // the ball past him into the six-yard box unopposed -- which is where every shot was coming from.
-  gkSmotherR: 2.6, gkSmotherP: 0.34,
+  // Smother success runs on the keeper's rating through the same band meGkSkill normalises over,
+  // not on reflex/99 -- ME_COMPRESS squeezes the raw attribute so badly that a 40-rated and a
+  // 90-rated keeper differed by a tenth. Measured before the change: rush episodes ended in a
+  // smother 5.6% of the time and in a shot against 55%.
+  gkSmotherR: 2.6, gkSmotherP: 0.52, gkSmotherLo: 0.62, gkSmotherSkill: 0.68,
+  // THE POUNCE. A keeper facing a carrier in his box attacks the ball the moment a heavy touch
+  // puts it outside the carrier's playable reach (gkPounceGap of it) -- but only when he judges
+  // he can win the race: his distance against the carrier's, allowed up to gkPounceLo +
+  // gkPounceMind * meMind of the gap. Judgement is the skill: a sharp keeper recognises the
+  // real chances, a dull one hesitates and stays on his feet.
+  gkPounceGap: 0.95, gkPounceLo: 0.55, gkPounceMind: 0.55,
+  // ...and when he gets there, HANDS. A keeper claiming an opponent's loose touch on the floor of
+  // his own box is diving on it, not toeing it: his reach at a ground ball there is a dive's span,
+  // where everywhere else he keeps the strict body radius a shot save demands. Without this the
+  // pounce entered races it could not win -- the carrier's re-take always beat a 0.5 m body.
+  gkClaimReach: 1.05,
 };
 
 export type EngineConfig = typeof CFG;

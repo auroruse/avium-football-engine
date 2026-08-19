@@ -12756,66 +12756,6 @@ export default function App() {
     {/* THE INTERVAL. Drawn last so it sits over everything, and only once the last man is actually
         down the tunnel -- walking off behind a modal defeats the point of walking off. Nothing here
         is on a timer: the break holds until this button is pressed, which is the whole change. */}
-    {m?.brk?.phase === "wait" && (() => {
-      const L = ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht;
-      if (!L[1]) return null;
-      const BW = 62, BH = 27, BX = 52.5 - BW / 2, BY = 34 - BH / 2;
-      const hC = m.hT?.code || m.hT?.name || "", aC = m.aT?.code || m.aT?.name || "";
-      // The two sides read off their own kits, either side of the score, so the panel says WHO is
-      // winning and not merely what the numbers are.
-      const side = (code, clr, x, anchor) => (<g>
-        <circle cx={anchor === "end" ? x - 1.3 : x + 1.3} cy={BY + 14.1} r={1.15} fill={clr} />
-        <text x={anchor === "end" ? x - 3.6 : x + 3.6} y={BY + 15.1} fontSize={3.3} fill="#fff"
-              fillOpacity={0.9} fontWeight={800} textAnchor={anchor}
-              style={{ letterSpacing: ".08em" }}>{String(code).slice(0, 3).toUpperCase()}</text>
-      </g>);
-      return (
-        <g>
-          <rect x={-1} y={-2.4} width={107} height={72.8} fill="rgba(3,8,5,.72)" />
-          <rect x={BX + 0.5} y={BY + 0.6} width={BW} height={BH} rx={1.6} fill="rgba(0,0,0,.45)" />
-          <rect x={BX} y={BY} width={BW} height={BH} rx={1.6}
-                fill="#080d0a" stroke="rgba(255,255,255,.24)" strokeWidth={0.18} />
-          <rect x={BX} y={BY} width={BW} height={0.55} rx={0.28} fill="var(--ui-warn)" fillOpacity={0.9} />
-          <text x={52.5} y={BY + 5.9} fontSize={2.4} fill="var(--ui-warn)" fillOpacity={0.95}
-                fontWeight={700} textAnchor="middle" style={{ letterSpacing: ".3em" }}>{L[0]}</text>
-          <line x1={BX + 8} y1={BY + 8.2} x2={BX + BW - 8} y2={BY + 8.2}
-                stroke="#fff" strokeOpacity={0.12} strokeWidth={0.14} />
-          {side(hC, hPitchClr, 52.5 - 9, "end")}
-          <text x={52.5} y={BY + 15.6} fontSize={6.4} fill="#fff" fillOpacity={0.96} fontWeight={800}
-                textAnchor="middle" style={{ ...mono, letterSpacing: ".02em" }}>
-            {out.goals.home}&#8211;{out.goals.away}</text>
-          {side(aC, aPitchClr, 52.5 + 9, "start")}
-          <g onClick={() => meBreakResume(m)} style={{ cursor: "pointer", pointerEvents: "auto" }}>
-            <rect x={52.5 - 15} y={BY + 19.4} width={30} height={5.6} rx={2.8}
-                  fill="var(--chrome-brand)" />
-            <text x={52.5} y={BY + 23.2} fontSize={2.5} fill="var(--ui-on-accent)" fontWeight={800}
-                  textAnchor="middle" style={{ letterSpacing: ".14em" }}>{L[1].toUpperCase()}</text>
-          </g>
-        </g>);
-    })()}
-    {m?.brk?.phase === "wait" && (() => {
-      const L = ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht;
-      if (!L[1]) return null;
-      const BW = 54, BH = 23, BX = 52.5 - BW / 2, BY = 34 - BH / 2;
-      return (
-        <g>
-          <rect x={-1} y={-2.4} width={107} height={72.8} fill="rgba(3,8,5,.66)" />
-          <rect x={BX + 0.45} y={BY + 0.55} width={BW} height={BH} rx={1.5} fill="rgba(0,0,0,.42)" />
-          <rect x={BX} y={BY} width={BW} height={BH} rx={1.5}
-                fill="#070c09" stroke="rgba(255,255,255,.3)" strokeWidth={0.2} />
-          <text x={52.5} y={BY + 6.6} fontSize={3.1} fill="#fff" fillOpacity={0.92} fontWeight={700}
-                textAnchor="middle" style={{ letterSpacing: "0.22em" }}>{L[0]}</text>
-          <text x={52.5} y={BY + 13.2} fontSize={5} fill="#fff" fillOpacity={0.9} fontWeight={800}
-                textAnchor="middle" style={{ ...mono, letterSpacing: "0.04em" }}>
-            {out.goals.home}&#8211;{out.goals.away}</text>
-          <g onClick={() => meBreakResume(m)} style={{ cursor: "pointer", pointerEvents: "auto" }}>
-            <rect x={52.5 - 17} y={BY + 16.2} width={34} height={5.2} rx={2.6}
-                  fill="rgba(255,255,255,.13)" stroke="rgba(255,255,255,.42)" strokeWidth={0.18} />
-            <text x={52.5} y={BY + 19.75} fontSize={2.35} fill="#fff" fillOpacity={0.95} fontWeight={700}
-                  textAnchor="middle" style={{ letterSpacing: "0.12em" }}>{L[1].toUpperCase()}</text>
-          </g>
-        </g>);
-    })()}
   </svg>
           );
           // FULL VIEWPORT. A match is watched, not inspected through a 660 px panel, so once one
@@ -13766,10 +13706,26 @@ export default function App() {
                         played again, or thrown away; a friendly has no result to take. */}
                     <div style={{ display: "flex", gap: 7 }}>
                       {!m.ftDone ? (<>
-                        <button onClick={() => meRunning ? meStop() : mePlay()}
-                          style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
-                                   background: meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
-                          {meRunning ? "Pause" : "Start"}</button>
+                        {/* THE BREAK LIVES ON THIS BUTTON. An interval used to stop the match behind a
+                            modal in the middle of the pitch, which is a lot of screen to say "press
+                            something to carry on" -- and it covered the walk-off it was waiting for.
+                            The scorebug already reads HALF TIME in place of the clock, so the only
+                            thing missing was somewhere to press. This is it.
+                            Full time has no resume, so ME_BRK_LBL gives it no label and the button
+                            stays on its ordinary duty. */}
+                        {(() => {
+                          const bw = m.brk?.phase === "wait"
+                            && ((ME_BRK_LBL[m.brk.kind] || ME_BRK_LBL.ht)[1] ? 1 : 0);
+                          return (
+                            <button onClick={() => {
+                                if (bw) { meBreakResume(m); if (!meRunning) mePlay(); return; }
+                                meRunning ? meStop() : mePlay();
+                              }}
+                              style={{ ...addBtn, flex: 1, border: "none", color: "var(--ui-on-accent)",
+                                       background: bw ? "var(--ui-warn)"
+                                                 : meRunning ? "var(--ui-danger-66)" : "var(--chrome-brand)" }}>
+                              {bw ? "Continue" : meRunning ? "Pause" : "Start"}</button>);
+                        })()}
                         <button onClick={meSimEnd} style={{ ...addBtn, flex: 1 }}>Sim to End</button>
                         {/* Parks it rather than ends it. meRef is left alone, so the setup screen
                             offers Resume and the match is exactly where you left it -- which is the

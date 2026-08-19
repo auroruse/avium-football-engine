@@ -340,7 +340,22 @@ export function meSPShape(s) {
     targets[k2][0] += spJ(sp, 10 + k2); targets[k2][1] += spJ(sp, 40 + k2);
   }
   const marks = [];
-  for (const t of targets) { const i = take(t[0], t[1], t[2]); if (i >= 0) marks.push([us[i], t]); }
+  // THE BIG MEN GO UP FOR CORNERS. take() weighs fitness against walking distance, and a centre-half
+  // starts forty metres from the box -- so the aerial marks always went to whichever midfielder was
+  // nearest and the side's best headers never came up at all. Measured: defenders won the first
+  // contact on corners 94-37, and 8 header shots in 339 corners. The prime aerial marks are now
+  // handed to the strongest men on the pitch outright, distance be damned, which is exactly what a
+  // real corner does; everyone else still takes marks by the normal rule.
+  if (sp.kind === "corner") {
+    const prime = targets.filter(t => t[2] === "strength").slice(0, CFG.spCornerUp);
+    const bigs = free.filter(i => !us[i]._spSet)
+      .sort((a2, b2) => meAttrs(us[b2]).strength - meAttrs(us[a2]).strength);
+    prime.forEach((t, k2) => {
+      if (bigs[k2] !== undefined) { place(bigs[k2], t[0], t[1]); marks.push([us[bigs[k2]], t]); t._up = 1; }
+    });
+  }
+  for (const t of targets) { if (t._up) continue;
+    const i = take(t[0], t[1], t[2]); if (i >= 0) marks.push([us[i], t]); }
   // Anybody left holds a sensible shape: behind the ball for a defensive restart, up for an
   // attacking one, and never all in the same place.
   let k = 0;
@@ -631,7 +646,16 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     return;
   }
   const q = ti >= 0 ? us[ti] : null;
-  const tx = q ? q.x : sp.x + dir * 20, ty = q ? q.y : ME_HALF_W;
+  let tx = q ? q.x : sp.x + dir * 20, ty = q ? q.y : ME_HALF_W;
+  // A CORNER IS FLIGHTED TO HIS HEAD, NOT HIS FEET. The loft lands where it is aimed, so aiming at
+  // the man meant the ball fell through head height metres SHORT of him -- at his marker -- and
+  // arrived at his boots at z = 0. Landing spCrossOver beyond him puts it at 1.8-2.0 m as it
+  // crosses his mark, which turns the reception into the aerial duel a corner actually is.
+  if (sp.kind === "corner" && q) {
+    const ux = tx - sp.x, uy = ty - sp.y, ul = Math.hypot(ux, uy) || 1;
+    tx += ux / ul * CFG.spCrossOver; ty += uy / ul * CFG.spCrossOver;
+    if ((gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted to land in the net
+  }
   const high = sp.kind === "corner"
     || (sp.kind === "goalkick" && (s.strategy?.[side]?.gkDist || 0) > 0)
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);

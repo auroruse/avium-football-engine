@@ -1554,7 +1554,19 @@ export function meTick(s, rng, out) {
         // he stops what he physically gets in front of, exactly like the ball bouncing off anybody
         // else. What separates a good keeper from a poor one is now entirely how quickly he reads the
         // shot and how fast he moves to it, which is where it belongs.
-        if (q.pos === "GK") return CFG.bodyR + CFG.ballR;
+        if (q.pos === "GK") {
+          // On the floor of his own box, against a ball the other side touched last, he claims with
+          // his hands -- a dive's span, not a boot. Everywhere else, and against any airborne ball,
+          // the strict body radius stands: a save is still stopped only by what he gets in front of.
+          // ...and only on a ball RUNNING LOOSE -- a dribbler's heavy touch, a spill, a scramble.
+          // A struck pass in flight keeps the body radius it always had: with hands against those
+          // too he swept every through-ball threaded into the box, and goals a match fell by a
+          // fifth. Measured: 2.91 -> 2.33 with hands against everything, 2.84 loose-only.
+          if (!mp.flight && zAt < CFG.handMinZ && mp.lastSide !== sd
+              && Math.hypot(q.x - meGoalX(meOther(sd)), q.y - ME_HALF_W) < CFG.gkBoxR)
+            return CFG.gkClaimReach;
+          return CFG.bodyR + CFG.ballR;
+        }
         // OVER HIM, or not. Every outfielder used to share a 1.6 m ceiling; now it is how high this
         // particular man gets, which is what makes an aerial ball a contest between two people
         // rather than something that passes through both of them.
@@ -2112,7 +2124,8 @@ export function meTick(s, rng, out) {
     const gki = meKeeperIx(opp);
     if (gki >= 0) {
       const gk = opp[gki], gd = Math.hypot(gk.x - p.x, gk.y - p.y);
-      if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR) * (0.6 + meAttrs(gk).reflex / 99 * 0.6)) {
+      if (gd < CFG.gkSmotherR && rng.u() < CFG.gkSmotherP * (1 - gd / CFG.gkSmotherR)
+          * (CFG.gkSmotherLo + meGkSkill(meAttrs(gk)) * CFG.gkSmotherSkill)) {
         out.tackles++; meBump(out, "gkStopSide", meSideOfP(s, gk)); gk.saves = (gk.saves || 0) + 1;
         meEvt(out, "save", meOther(side), p.x, p.y, p.x, p.y, `${gk.fullName || gk.name} smothers it`);
         // In his hands, held out in front of him. Placing it at gk.x, gk.y put the ball at his exact

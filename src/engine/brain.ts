@@ -2,7 +2,7 @@
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "./config";
 import { meHungarian } from "./assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meAttrs, meGkSkill, meSpeed } from "./attributes";
+import { meAttrs, meGkSkill, meMind, meSpeed } from "./attributes";
 import { GOAL_HALF_W } from "./ball";
 
 // The team defensive line, one depth per side per tick: the mentality default, dragged back by the
@@ -1097,6 +1097,22 @@ export function meShape(s, side) {
         // the bisector his target still sat 0.19 of the half-angle toward the far post, and all of
         // that was here. He now stands gkStand short of the ball ON the bisector, so coming out and
         // being on his angle are the same movement instead of two that fight each other.
+        // ...AND HE POUNCES ON A HEAVY TOUCH. Standing gkStand short is right while the carrier
+        // has it under control -- but gkStand is OUTSIDE his own smother radius, so a keeper who
+        // only ever set himself could never start the smother; he waited for the carrier to walk
+        // into him. The moment the touch puts the ball beyond the carrier's playable reach it is
+        // loose, his hands beat anybody's feet to a loose ball, and he goes for the ball itself.
+        // Whether he goes is judgement (meMind): the sharp keeper recognises the races he wins.
+        const carrier2 = s.players[mp.side][mp.idx];
+        if (carrier2) {
+          const bg = Math.hypot(carrier2.x - mp.bx, carrier2.y - mp.by);
+          const gb = Math.hypot(p.x - mp.bx, p.y - mp.by);
+          if (bg > CFG.reach * CFG.playReach * CFG.gkPounceGap
+              && gb < bg * (CFG.gkPounceLo + CFG.gkPounceMind * meMind(p))) {
+            p._tx = mp.bx; p._ty = mp.by; p._closing = true;
+            continue;
+          }
+        }
         const [mx3, my3] = meGkAngle(p, own, mp.bx, mp.by);
         p._tx = mp.bx + mx3 * CFG.gkStand;
         p._ty = mp.by + my3 * CFG.gkStand;

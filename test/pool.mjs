@@ -15,7 +15,14 @@ const ok = (name, cond, got) => {
 };
 
 const eng = await import("./engine.mjs");
-const { load, PROJECT } = await import("/Users/zli/Documents/NICHIRIN/.claude/skills/avium-tactics/scripts/lib.mjs");
+// The retired skill's load() throws on any preset row that yields no club, and NCH.tsv now
+// carries an in-progress collegiate division of exactly such rows. The engine's own catalog
+// parses them fine and yields the same clubs in the same order, so the pool comes from it.
+const __cat = eng.PRESET_CATALOG;
+const load = async (f) => ({ clubs: /AVIUM/.test(f)
+  ? __cat.filter(t => t.league === "Avium International")
+  : __cat.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two") });
+const PROJECT = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine";
 const { clubs } = await load(path.join(PROJECT, "src/presets/NCH.tsv"));
 
 const sig = (r) => [r.ftHome, r.ftAway, r.pen?.home ?? -1, r.pen?.away ?? -1,
