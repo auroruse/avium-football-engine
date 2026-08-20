@@ -4009,7 +4009,10 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kf
 // clubs and two clubs, well under MIN_DIVISION, so they sort themselves into Miscellaneous Clubs
 // without being told to -- and at 38 to 45 they are nowhere near displacing anyone in national
 // selection, which was the other half of the original objection.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "Karjanian Secondary League"]);
+// THE SECONDARY LEAGUE CAME BACK TOO, on the same condition: all ten of its clubs carry a full
+// sixteen rated players, so nobody in it inherits a team default. Kolmonen stays off -- its sheet
+// still lists at most one name per club, which is the whole reason the list exists.
+const LEAGUES_OFF = new Set(["Karjanian Kolmonen"]);
 function nationLeagues(raw) {
   const out = new Map();
   const _lines = raw.split("\n");
