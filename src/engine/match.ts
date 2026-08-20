@@ -980,13 +980,17 @@ export function mePkInit(s) {
            order: ["home", "away"], rota, k: 0 };
 }
 
-// Whose turn it is, or null once neither side can catch the other with the kicks it has left.
+// Whose turn it is, or null once the shootout is decided.
 export function mePkNext(pk, maxKicks) {
   if (pk.k >= (maxKicks || 40)) return null;
-  const left = (sd) => Math.max(0, 5 - pk.taken[sd]);
   const side = pk.order[pk.k % 2], other = meOther(side);
-  if (pk.taken.home >= 5 && pk.taken.away >= 5 && pk.taken.home === pk.taken.away
-      && pk.sc.home !== pk.sc.away) return null;
+  // Sudden death is a kick each, always: it can only end on level kicks. Computing "kicks left"
+  // as 5-minus-taken here made any deficit read as unwinnable and ended rounds after the FIRST
+  // kick, with the reply still owed.
+  if (pk.taken.home >= 5 && pk.taken.away >= 5)
+    return pk.taken.home === pk.taken.away && pk.sc.home !== pk.sc.away ? null : side;
+  // Best of five: over as soon as the trailing side cannot catch up with what it has in hand.
+  const left = (sd) => Math.max(0, 5 - pk.taken[sd]);
   if (pk.sc[side] + left(side) < pk.sc[other] && pk.taken[other] >= pk.taken[side]) return null;
   if (pk.sc[other] + left(other) < pk.sc[side] && pk.taken[side] > pk.taken[other]) return null;
   return side;
