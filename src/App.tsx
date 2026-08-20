@@ -3,6 +3,7 @@ import headerImg from "./header.png";
 // Read off public/stadiums at build time -- see the stadium-manifest plugin in
 // vite.config.js. Adding a photograph is the whole job; there is no list to update.
 import { STADIUM_IMAGES } from "virtual:stadium-images";
+import { PSTATS_FILES } from "virtual:pstats";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
@@ -3159,7 +3160,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
+const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
@@ -3867,6 +3868,43 @@ function fullDisplayName(raw) {
     const isC = /\p{L}/u.test(w) && w === w.toUpperCase() && w !== w.toLowerCase();
     return isC ? titleCaseWord(w) : w;
   }).join(" ") || name;
+}
+// ── Player stats archive (public/pstats) ──
+// One TSV per competition-season of side-by-side leaderboard blocks (#/PLAYER/POS/TEAM/GP/<stat>),
+// plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
+// pstats-manifest plugin; contents are fetched on first visit to the Players tab.
+const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup" };
+const PSTATS_KIND = { wc: 0, cwc: 2 };            // anything else is a league season
+const PSTATS_INTL = new Set(["wc"]);
+const PSTATS_BOARD = { G: "Top Scorers", A: "Assists", RTG: "Best Rating",
+                       CC: "Chances Created", DC: "Defensive Contributions", SV: "Saves" };
+const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
+const FORMER_TEAMS = { CAL: "Calveria", THO: "The Thorne", LEC: "Lechia" };
+const formerName = (code) => FORMER_TEAMS[code] || code;
+const PSTATS_CLR = { G: "var(--ui-attack)", A: "var(--ui-style-tikitaka)", RTG: "var(--chrome-brand)",
+                     CC: "var(--ui-ok)", DC: "var(--ui-info)", SV: "var(--ui-warn)" };
+const pFold = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function parseStatBoards(text) {
+  const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
+  const head = rows[0] || [], boards = {};
+  head.forEach((h, i) => {
+    if (h !== "PLAYER") return;
+    const stat = head[i + 4] === "S" ? "SV" : head[i + 4];
+    if (!stat) return;
+    const list = [];
+    for (const r of rows.slice(1)) {
+      if (!r[i]) continue;
+      list.push({ player: r[i], pos: r[i + 1], team: r[i + 2], gp: +r[i + 3] || 0, v: +r[i + 4] || 0 });
+    }
+    boards[stat] = list;
+  });
+  return boards;
+}
+function parseChangelog(text) {
+  const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
+  return rows.slice(1)
+    .map(r => ({ season: r[0], comp: PSTATS_COMP[r[1]] || r[1], player: r[2], team: r[3], pos: r[4], old: +r[5], neu: +r[6] }))
+    .filter(c => c.player && Number.isFinite(c.old) && Number.isFinite(c.neu));
 }
 // Natural-position model: [line, side] — line GK→DEF→WB→DM→MID→AM→FWD, side left/centre/right.
 // Side mismatches cost slightly more than line ones: a left back at right back is a worse ask
@@ -5527,7 +5565,7 @@ export default function App() {
   // the shape the lifted body reads. It came along as a free variable when this was pulled out of
   // that closure, so xiPitch threw on `starters.map` at every call site including the team view's
   // own. Named as a parameter now, so it cannot silently resolve to something else again.
-  const xiPitch = (t, starters, sideOf, isIntlTeam) => {
+  const xiPitch = (t, starters, sideOf, isIntlTeam, linkPlayer) => {
     const slots = pitchSlots(t?.formation || "4-3-3");
     const TOK = PITCH_TOKEN;
     const ellip = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -5571,9 +5609,11 @@ export default function App() {
                             {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-on-pitch-cc)", ...ellip }}>{first}</div>}
                             <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-on-pitch)", ...ellip }}>{last}</div>
                           </div>
-                          <div title={side.label || undefined} onClick={() => openTeam(side.team)}
+                          <div title={linkPlayer ? (p.fullName || p.name) : (side.label || undefined)}
+                            onClick={() => linkPlayer ? openPlayer(p.fullName || p.name) : openTeam(side.team)}
                             style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
-                                     display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`, cursor: side.team ? "pointer" : "default" }}>
+                                     display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`,
+                                     cursor: (linkPlayer ? playerByName.has(p.fullName || p.name) : side.team) ? "pointer" : "default" }}>
                             {/* His face, not his employer's badge. The crest told you the same thing
                                 for all eleven of them; the portrait is the only thing on the token
                                 that says WHO this is rather than what he is. */}
@@ -6864,6 +6904,38 @@ export default function App() {
   const [plRowH, setPlRowH] = useState(26);
   const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
   const [playerNatFilter, setPlayerNatFilter] = useState("");   // "" = all players
+  const [playerOpen, setPlayerOpen] = useState(null);            // fullName of the drilled player
+  const [tourn, setTourn] = useState(null);                      // null | {comp, season} — the drill position
+  const [tournSort, setTournSort] = useState({ k: "G", asc: false });
+  const [tournQ, setTournQ] = useState("");
+  const [tournPosF, setTournPosF] = useState("ALL");
+  const [tournTeamF, setTournTeamF] = useState("");
+  const [playerBack, setPlayerBack] = useState(null);            // tourn position to restore on close
+  // Season stats + rating changelog. null until the Players tab is first opened.
+  const [pstats, setPstats] = useState(null);
+  useEffect(() => {
+    if (tab !== "players" || pstats) return;
+    let dead = false;
+    (async () => {
+      const seasons = [], changelog = [];
+      await Promise.all(PSTATS_FILES.map(async (f) => {
+        const res = await fetch("pstats/" + f).catch(() => null);
+        if (!res || !res.ok) return;
+        const text = await res.text();
+        if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
+        const m = f.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))\.tsv$/i);
+        if (!m) return;
+        const yr = m[4] ? +m[4] : 1900 + +m[3];
+        seasons.push({ id: f, comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
+                       season: m[4] || (m[2] + "/" + m[3]),
+                       ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1), boards: parseStatBoards(text) });
+      }));
+      if (dead) return;
+      seasons.sort((a, b) => a.ord - b.ord || a.comp.localeCompare(b.comp));   // chronological, as the changelog is
+      setPstats({ seasons, changelog });
+    })();
+    return () => { dead = true; };
+  }, [tab, pstats]);
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   // Which roster warning has its list open. These were native title tooltips, which never appear
@@ -10109,6 +10181,10 @@ export default function App() {
   // Jumping to a team has to select its league too, or the Teams rail and pane disagree about
   // what is showing.
   const openTeam = (t) => { if (!t) return; setTeamLeagueFilter(t.league || "Custom"); setExpandedTeam(t.id); setTab("teams"); };
+  const openPlayer = (name, back = null) => { if (!name || !playerByName.has(name)) return;
+    setPlayerBack(back);
+    if (!back) { setPlayerNatFilter(""); setPlayerSearch(""); }
+    setTourn(null); setPlayerOpen(name); setTab("players"); };
   const natTeamByCode = useMemo(() => new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t])), [teams]);
   const teamByName = useMemo(() => new Map(teams.map(t => [t.name, t])), [teams]);
   // Roster faults, not per-nationality: a name in two squads, or one that parses as neither
@@ -10446,13 +10522,17 @@ export default function App() {
                   const side = sideOf(p);
                   const shown = p.ovr ?? t.skill;
                   const nOvr = natOvrMap.get(p.fullName || p.name);
+                  const goPlayer = !ed && playerByName.has(p.fullName || p.name)
+                    ? { className: "cell-link", onClick: () => openPlayer(p.fullName || p.name),
+                        title: `Open ${p.fullName || p.name}` } : {};
                   return (
                   <tr key={idx} style={{ background: n % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                     <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, ...mono }}>{n + 1}</td>
-                    <td style={{ ...tdCell, paddingRight: 0 }}>
+                    <td {...goPlayer} className={undefined} onClick={goPlayer.onClick}
+                        style={{ ...tdCell, paddingRight: 0, cursor: goPlayer.onClick ? "pointer" : "default" }}>
                       <PlayerShot name={p.fullName || p.name} size={24} />
                     </td>
-                    <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <td {...goPlayer} style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: goPlayer.onClick ? "pointer" : "default" }}>
                       {ed
                         ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => { const ns = [...sq]; ns[idx] = { ...ns[idx], name: e.target.value, fullName: undefined }; updateTeam(t.id, "squad", ns); }}
                             style={{ ...inp, width: "100%", padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
@@ -10488,7 +10568,7 @@ export default function App() {
                 return (<>
                   {/* Badge padding is horizontal room for the OVR and position chips, which hang off
                       the touchline tokens on both sides. */}
-                  {xiPitch(t, starters, sideOf, isIntlTeam)}
+                  {xiPitch(t, starters, sideOf, isIntlTeam, true)}
                   {/* The table never needed the full width — five short columns stretched to 1200px
                       put the nationality a screen away from the name. The rule down the middle is
                       what stops the short right-hand column reading as a box floating in the gap. */}
@@ -10863,17 +10943,32 @@ export default function App() {
                 style={{ ...addBtn, width: "100%", background: "transparent", color: playerSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-              {[{ name: "", label: "All Players", code: null, players: playerIndex, avg: allPlayersAvg, divider: true }, ...playerNations].map(n => {
-                const on = playerNatFilter === n.name;
+              {[{ name: "", label: "All Players", code: null, players: playerIndex, avg: allPlayersAvg },
+                { seasons: true, divider: true }, ...playerNations].map(n => {
+                if (n.seasons) { const nComp = new Set((pstats?.seasons || []).map(s => s.id.split("/")[0])).size; return (
+                  <div key="__tournaments" onClick={() => { setPlayerOpen(null); setTourn(v => v || { comp: null, season: null }); }}
+                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
+                             borderBottom: "1px solid var(--chrome-border)", marginBottom: 4,
+                             borderLeft: `2px solid ${tourn ? "var(--chrome-brand)" : "transparent"}`,
+                             background: tourn ? "var(--chrome-panel-66)" : "transparent" }}>
+                    <span style={{ width: 19, flexShrink: 0, textAlign: "center", fontSize: 13 }}>&#127942;</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: tourn ? 600 : 500, color: tourn ? "var(--ui-text)" : "var(--chrome-muted)" }}>Season Stats</div>
+                      <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{nComp} {nComp === 1 ? "competition" : "competitions"}</div>
+                    </div>
+                  </div>); }
+                const on = playerNatFilter === n.name && !tourn;
                 const natTeam = n.code ? teams.find(t => t.league === "Avium International" && t.code === n.code) : null;
                 return (
-                <div key={n.name} onClick={() => { setPlayerNatFilter(n.name); }}
+                <div key={n.name} onClick={() => { setPlayerNatFilter(n.name); setPlayerOpen(null); setTourn(null); setPlayerBack(null); }}
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
                            borderBottom: n.divider ? "1px solid var(--chrome-border)" : "none",
                            marginBottom: n.divider ? 4 : 0,
                            borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
                            background: on ? "var(--chrome-panel-66)" : "transparent" }}>
-                  {natTeam ? <TeamCrest team={natTeam} size={19} /> : <span style={{ width: 19, flexShrink: 0 }} />}
+                  {natTeam ? <TeamCrest team={natTeam} size={19} />
+                     : n.label ? <span style={{ width: 19, flexShrink: 0, textAlign: "center", fontSize: 13 }}>&#127760;</span>
+                     : <span style={{ width: 19, flexShrink: 0 }} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.label || n.name}</div>
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{n.players.length} {n.players.length === 1 ? "player" : "players"}</div>
@@ -10885,6 +10980,329 @@ export default function App() {
 
           {/* ── Players, or the drilled-into player ── */}
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+              {playerOpen ? (() => {
+                const p = playerIndex.find(x => (x.fullName || x.name) === playerOpen) || null;
+                const disp = fullDisplayName(playerOpen);
+                const key = pFold(disp);
+                const natT = p?.natCode ? natTeamByCode.get(p.natCode) : null;
+                const clubT = p ? teamByName.get(p.clubs[0]?.name) : null;
+                // A changelog row can name a national side as easily as a club -- a World Cup adjusts
+                // ratings too -- so the code falls through to the international list rather than
+                // rendering as a bare string. Club first, since a club competition is the common case.
+                const clubOf = (code, comp) => teams.find(tm => tm.code === code && tm.league === comp)
+                  || teams.find(tm => tm.code === code && tm.league !== "Avium International")
+                  || teams.find(tm => tm.code === code) || null;
+                // One career row per season file this player appears in. GP boards can disagree by
+                // a match or two (a board only counts games with a recorded value), so take the max.
+                const career = (pstats?.seasons || []).map(s => {
+                  const r = { season: s.season, comp: s.comp, team: null, gp: 0 };
+                  let hit = false;
+                  for (const stat of Object.keys(s.boards)) {
+                    const e = s.boards[stat].find(x => pFold(x.player) === key);
+                    if (!e) continue;
+                    hit = true; r[stat] = e.v; r.gp = Math.max(r.gp, e.gp); if (!r.team) r.team = e.team;
+                  }
+                  return hit ? r : null;
+                }).filter(Boolean);
+                // Earliest first, like the career table above it: a rating history reads as a run of
+                // old-to-new steps, which only holds together forwards. The file is already in order.
+                const log = (pstats?.changelog || []).filter(c => pFold(c.player) === key);
+                const SecHead = ({ children }) => (
+                  <div style={{ padding: `18px 20px 10px ${20 - PANEL_HEAD_INSET}px` }}>
+                    <PanelTitle accent="var(--ui-info)">{children}</PanelTitle>
+                  </div>);
+                const num = (v) => v == null ? <span style={{ color: "var(--chrome-muted-66)" }}>-</span> : v;
+                const STAT_COLS = ["G", "A", "CC", "DC", "SV"];
+                return (<>
+                <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                    <button onClick={() => { if (playerBack) setTourn(playerBack); setPlayerBack(null); setPlayerOpen(null); }}
+                      style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>
+                      &#8592; {playerBack ? ((pstats?.seasons || []).find(x => x.id === playerBack.season)?.season || "Season") : "Players"}</button>
+                    <PanelTitle>{disp}</PanelTitle>
+                  </div>
+                  {p?.ovr != null && <OvrBadge v={p.ovr} />}
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  {/* Identity strip: face, name, positions, nation and club, all as elsewhere. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px", borderBottom: "1px solid var(--chrome-border)" }}>
+                    <PlayerShot name={disp} size={84} style={{ flexShrink: 0 }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: 500, color: "var(--ui-text)", marginBottom: 6 }}>{p ? boldSurname(p.fullName || p.name, p.name) : disp}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                        {p && <span style={{ fontSize: 10, fontWeight: 600, color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", ...mono }}>{p.pos}</span>}
+                        {natT && <span className="cell-link" onClick={() => openTeam(natT)} title={`Open ${natT.name}`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer" }}>
+                          <TeamCrest team={natT} size={16} />{natT.name}</span>}
+                        {clubT && <span className="cell-link" onClick={() => openTeam(clubT)} title={`Open ${clubT.name}`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer" }}>
+                          <TeamCrest team={clubT} size={16} />{clubT.name}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Career, season by season, competition by competition. */}
+                  <SecHead>Career Statistics</SecHead>
+                  {!pstats && <div style={{ padding: "4px 20px 14px", fontSize: 10, color: "var(--chrome-muted-66)" }}>Loading&hellip;</div>}
+                  {pstats && career.length === 0 && <div style={{ padding: "4px 20px 14px", fontSize: 10, color: "var(--chrome-muted-66)" }}>No recorded stats.</div>}
+                  {career.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: 96 }} /><col /><col style={{ width: 170 }} />
+                      <col style={{ width: 48 }} /><col style={{ width: 44 }} /><col style={{ width: 44 }} /><col style={{ width: 44 }} /><col style={{ width: 44 }} /><col style={{ width: 44 }} /><col style={{ width: 52 }} />
+                    </colgroup>
+                    <thead><tr>
+                      <th style={thCell}>Season</th><th style={thCell}>Competition</th><th style={thCell}>Team</th>
+                      <th style={{ ...thCell, textAlign: "center" }}>GP</th>
+                      {STAT_COLS.map(c => <th key={c} style={{ ...thCell, textAlign: "center" }}>{c}</th>)}
+                      <th style={{ ...thCell, textAlign: "center" }}>RTG</th>
+                    </tr></thead>
+                    <tbody>
+                      {career.map((r, i) => {
+                        const ct = clubOf(r.team, r.comp);
+                        return (
+                        <tr key={r.comp + r.season} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", ...mono }}>{r.season}</td>
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--chrome-muted)" }}>{r.comp}</td>
+                          <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
+                              title={ct ? `Open ${ct.name}` : formerName(r.team)}
+                              style={{ ...tdCell, cursor: ct ? "pointer" : "default", color: "var(--chrome-muted)" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              <TeamCrest team={ct || { code: r.team }} size={15} />
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ct ? ct.name : formerName(r.team)}</span>
+                            </span></td>
+                          <td style={{ ...tdCell, textAlign: "center", ...mono }}>{r.gp || <span style={{ color: "var(--chrome-muted-66)" }}>-</span>}</td>
+                          {STAT_COLS.map(c => <td key={c} style={{ ...tdCell, textAlign: "center", ...mono }}>{num(r[c])}</td>)}
+                          <td style={{ ...tdCell, textAlign: "center", fontWeight: 600, color: r.RTG != null ? ratingColor(r.RTG) : "var(--chrome-muted-66)", ...mono }}>{r.RTG != null ? r.RTG.toFixed(1) : "-"}</td>
+                        </tr>); })}
+                    </tbody>
+                  </table>)}
+                  {/* Every post-tournament buff and nerf, newest first. */}
+                  <SecHead>Rating Changelog</SecHead>
+                  {pstats && log.length === 0 && <div style={{ padding: "4px 20px 16px", fontSize: 10, color: "var(--chrome-muted-66)" }}>No rating changes recorded.</div>}
+                  {log.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed", marginBottom: 12 }}>
+                    <colgroup>
+                      <col style={{ width: 96 }} /><col /><col style={{ width: 170 }} />
+                      <col style={{ width: 48 }} /><col style={{ width: 88 }} /><col style={{ width: 184 }} />
+                    </colgroup>
+                    <thead><tr>
+                      <th style={thCell}>Season</th><th style={thCell}>Competition</th><th style={thCell}>Team</th>
+                      <th style={{ ...thCell, textAlign: "center" }}>POS</th><th style={thCell} /><th style={thCell}>Change</th>
+                    </tr></thead>
+                    <tbody>
+                      {log.map((c, i) => {
+                        const ct = clubOf(c.team, c.comp);
+                        const d = c.neu - c.old;
+                        return (
+                        <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", ...mono }}>{c.season}</td>
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--chrome-muted)" }}>{c.comp}</td>
+                          <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
+                              style={{ ...tdCell, cursor: ct ? "pointer" : "default", color: "var(--chrome-muted)" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              <TeamCrest team={ct || { code: c.team }} size={15} />
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ct ? ct.name : formerName(c.team)}</span>
+                            </span></td>
+                          <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[c.pos] || "var(--chrome-muted)", ...mono }}>{c.pos}</td>
+                          <td style={tdCell} />
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", ...mono }}>
+                            <span style={{ color: "var(--chrome-muted)" }}>{showOvr(c.old)}</span>
+                            <span style={{ color: "var(--chrome-muted-66)", padding: "0 6px" }}>&#8594;</span>
+                            <span style={ovrBlock(c.neu)}>{showOvr(c.neu)}</span>
+                            <span style={{ marginLeft: 8, fontWeight: 700, color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>{d > 0 ? "+" + d : d}</span>
+                          </td>
+                        </tr>); })}
+                    </tbody>
+                  </table>)}
+                </div>
+                </>);
+              })() : tourn ? (() => {
+                // ── The Tournaments drill: competitions -> seasons -> the full table ──
+                const seasons = pstats?.seasons || [];
+                const groups = [...new Map(seasons.map(s => [s.id.split("/")[0], null])).keys()]
+                  .map(k => ({ key: k, comp: PSTATS_COMP[k] || k.toUpperCase(),
+                               intl: PSTATS_INTL.has(k),
+                               list: seasons.filter(s => s.id.split("/")[0] === k).sort((a, b) => b.ord - a.ord) }))
+                  .sort((a, b) => (b.intl ? 1 : 0) - (a.intl ? 1 : 0) || a.comp.localeCompare(b.comp));
+                const byCode = new Map();
+                for (const tm of teams) if (tm.code && !byCode.has(tm.code + "|" + tm.league)) byCode.set(tm.code + "|" + tm.league, tm);
+                const teamOf = (code, comp) => byCode.get(code + "|" + comp)
+                  || teams.find(tm => tm.code === code && tm.league !== "Avium International")
+                  || teams.find(tm => tm.code === code) || null;
+                const head = (back, crest, title, sub, right) => (
+                  <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                      {back && <button onClick={back[1]} style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>&#8592; {back[0]}</button>}
+                      {crest}
+                      <PanelTitle sub={sub}>{title}</PanelTitle>
+                    </div>
+                    {right || null}
+                  </div>);
+
+                // ── Level 3: one season, the whole book open ──
+                if (tourn.season) {
+                  const s = seasons.find(x => x.id === tourn.season);
+                  const g = groups.find(x => x.key === tourn.comp);
+                  if (!s || !g) return null;
+                  const m = new Map();
+                  for (const k of Object.keys(s.boards)) for (const e of s.boards[k]) {
+                    const r = m.get(e.player) || { player: e.player, pos: e.pos, team: e.team, gp: 0 };
+                    r.gp = Math.max(r.gp, e.gp); r[k] = e.v;
+                    m.set(e.player, r);
+                  }
+                  const all = [...m.values()];
+                  const kinds = PSTATS_STAT_ORDER.filter(k => s.boards[k]?.length);
+                  const key = kinds.includes(tournSort.k) || tournSort.k === "gp" ? tournSort.k : (kinds[0] || "G");
+                  const val = r => key === "gp" ? r.gp : r[key];
+                  const codes = [...new Set(all.map(r => r.team))].sort();
+                  const q = pFold(tournQ);
+                  const rows = all
+                    .filter(r => tournPosF === "ALL" || r.pos === tournPosF)
+                    .filter(r => !tournTeamF || r.team === tournTeamF)
+                    .filter(r => !q || pFold(r.player).includes(q))
+                    .sort((x, y) => {
+                      const a = val(x), b = val(y);
+                      if ((a == null) !== (b == null)) return a == null ? 1 : -1;   // absences sink regardless of direction
+                      return (tournSort.asc ? a - b : b - a) || (y.G ?? 0) - (x.G ?? 0);
+                    });
+                  const sortBy = k => setTournSort(p => p.k === k ? { k, asc: !p.asc } : { k, asc: false });
+                  const arrow = k => key === k ? (tournSort.asc ? " ▴" : " ▾") : "";
+                  // ONE colgroup for every leaderboard: all six stat columns are always present at
+                  // the same widths, and a stat the season never counted is a dash, not a missing
+                  // column. Uniform width was the brief, and it also stops the table re-flowing as
+                  // you move between seasons.
+                  return (<>
+                  {head(["Seasons", () => { setTourn({ comp: tourn.comp, season: null }); }],
+                        <LeagueCrest league={g.comp} size={26} />, g.comp, s.season,
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <input value={tournQ} onChange={e => setTournQ(e.target.value)} placeholder="&#128269; Search"
+                              style={{ ...addBtn, width: 150, background: "transparent", color: tournQ ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+                            <select value={tournPosF} onChange={e => setTournPosF(e.target.value)} style={{ ...smBtn, color: tournPosF !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}>
+                              <option value="ALL">Positions</option>
+                              {["GK", "DEF", "MID", "FWD"].map(x => <option key={x} value={x}>{x}</option>)}
+                            </select>
+                            <select value={tournTeamF} onChange={e => setTournTeamF(e.target.value)} style={{ ...smBtn, color: tournTeamF ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}>
+                              <option value="">Teams</option>
+                              {codes.map(c => { const ct = teamOf(c, g.comp); return <option key={c} value={c}>{ct ? ct.name : formerName(c)}</option>; })}
+                            </select>
+                            {(tournQ || tournPosF !== "ALL" || tournTeamF) &&
+                              <button onClick={() => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); }}
+                                style={{ ...smBtn, background: "transparent", color: "var(--ui-danger)", cursor: "pointer" }} title="Clear filters">&#10005;</button>}
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Players</div>
+                            <div style={{ fontSize: 12, color: "var(--ui-text)", ...mono }}>{rows.length === all.length ? all.length : `${rows.length}/${all.length}`}</div>
+                          </div>
+                        </div>)}
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                      <colgroup>
+                        <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} />
+                        <col style={{ width: 82 }} /><col style={{ width: "38%" }} /><col style={{ width: 56 }} />
+                        {PSTATS_STAT_ORDER.map(k => <col key={k} style={{ width: 52 }} />)}
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={thCellSticky}>#</th><th style={thCellSticky} /><th style={thCellSticky}>Player</th>
+                          <th style={{ ...thCellSticky, textAlign: "center" }}>POS</th>
+                          <th style={{ ...thCellSticky, paddingLeft: 8 }}>Team</th>
+                          <th onClick={() => sortBy("gp")} style={{ ...thCellSticky, textAlign: "center", cursor: "pointer", color: key === "gp" ? "var(--chrome-brand)" : undefined }}>GP{arrow("gp")}</th>
+                          {PSTATS_STAT_ORDER.map(k => kinds.includes(k)
+                            ? <th key={k} onClick={() => sortBy(k)} title={`Sort by ${PSTATS_BOARD[k]}`}
+                                  style={{ ...thCellSticky, textAlign: "center", cursor: "pointer", color: key === k ? "var(--chrome-brand)" : undefined }}>{k}{arrow(k)}</th>
+                            : <th key={k} title="Not recorded this season" style={{ ...thCellSticky, textAlign: "center", color: "var(--chrome-muted-66)" }}>{k}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.length === 0 && <tr><td colSpan={12} style={{ padding: 14, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>Nobody matches.</td></tr>}
+                        {rows.map((r, i) => {
+                          const ct = teamOf(r.team, g.comp), go = playerByName.has(r.player);
+                          return (
+                          <tr key={r.player} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                            <td style={{ ...tdCell, fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{i + 1}</td>
+                            <td style={{ ...tdCell, paddingRight: 0 }}><PlayerShot name={r.player} size={22} /></td>
+                            <td className={go ? "cell-link" : undefined} onClick={() => openPlayer(r.player, { comp: tourn.comp, season: tourn.season })}
+                                title={go ? `Open ${r.player}` : r.player}
+                                style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: go ? "pointer" : "default" }}>{boldSurname(r.player, r.player)}</td>
+                            <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[r.pos] || "var(--chrome-muted)", ...mono }}>{r.pos}</td>
+                            <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
+                                title={ct ? `Open ${ct.name}` : formerName(r.team)}
+                                style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default" }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                                <TeamCrest team={ct || { code: r.team }} size={15} />
+                                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ct ? ct.name : formerName(r.team)}</span>
+                              </span></td>
+                            <td style={{ ...tdCell, textAlign: "center", fontSize: 10, fontWeight: key === "gp" ? 700 : 400, color: key === "gp" ? "var(--ui-text)" : "var(--chrome-muted-66)", ...mono }}>{r.gp || "–"}</td>
+                            {PSTATS_STAT_ORDER.map(k => (
+                            <td key={k} style={{ ...tdCell, textAlign: "center", ...mono,
+                                                 fontWeight: k === key ? 700 : 400,
+                                                 color: r[k] == null ? "var(--chrome-muted-66)"
+                                                      : k === "RTG" ? ratingColor(r[k])
+                                                      : k === key ? "var(--ui-text)" : "var(--chrome-muted)" }}>
+                              {r[k] == null ? "–" : k === "RTG" ? r[k].toFixed(1) : r[k]}</td>))}
+                          </tr>); })}
+                      </tbody>
+                    </table>
+                  </div>
+                  </>);
+                }
+
+                // ── Level 2: one competition, its seasons ──
+                if (tourn.comp) {
+                  const g = groups.find(x => x.key === tourn.comp);
+                  if (!g) return null;
+                  return (<>
+                  {head(["Season Stats", () => setTourn({ comp: null, season: null })],
+                        <LeagueCrest league={g.comp} size={26} />, g.comp, `${g.list.length} season${g.list.length === 1 ? "" : "s"}`,
+                        <span style={{ fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", flexShrink: 0, ...ui }}>{g.intl ? "International" : "Domestic"}</span>)}
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", padding: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(196px, 1fr))", gap: 12 }}>
+                      {g.list.map(s => {
+                        const kinds = PSTATS_STAT_ORDER.filter(k => s.boards[k]?.length);
+                        const players = new Set();
+                        for (const k of kinds) for (const e of s.boards[k]) players.add(e.player);
+                        return (
+                        <div key={s.id} role="button" tabIndex={0} className="team-tile" title={`Open ${g.comp} ${s.season}`}
+                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                          onClick={() => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "G", asc: false }); setTourn({ comp: g.key, season: s.id }); }}
+                          style={{ borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer", padding: "16px 12px",
+                                   display: "flex", flexDirection: "column", alignItems: "center", gap: 7, background: "var(--chrome-panel)" }}>
+                          <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ui-text)", ...mono }}>{s.season}</div>
+                          <div style={{ fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{players.size} players</div>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {kinds.map(k => <span key={k} title={PSTATS_BOARD[k]} style={{ fontSize: 8, fontWeight: 700, color: PSTATS_CLR[k], border: `1px solid ${PSTATS_CLR[k]}`, borderRadius: 4, padding: "1px 5px", ...mono }}>{k}</span>)}
+                          </div>
+                        </div>); })}
+                    </div>
+                  </div>
+                  </>);
+                }
+
+                // ── Level 1: the competitions themselves, tiled like the Teams tab ──
+                return (<>
+                {head(null, null, "Season Stats", `${groups.length}`)}
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", padding: 16 }}>
+                  {groups.length === 0 && <div style={{ padding: 20, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>Nothing filed under public/pstats yet.</div>}
+                  {[["International", groups.filter(x => x.intl)], ["Domestic", groups.filter(x => !x.intl)]].map(([label, gs]) => !gs.length ? null : (
+                  <div key={label} style={{ marginBottom: 18 }}>
+                    <div style={{ ...sectionLabel, fontSize: 9, color: "var(--chrome-muted)", margin: "2px 0 8px" }}>{label}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(196px, 1fr))", gap: 12 }}>
+                      {gs.map(g => (
+                      <div key={g.key} role="button" tabIndex={0} className="team-tile" title={`Open ${g.comp}`}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                        onClick={() => setTourn({ comp: g.key, season: null })}
+                        style={{ borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer", padding: "14px 10px",
+                                 display: "flex", flexDirection: "column", alignItems: "center", gap: 9, background: "var(--chrome-panel)" }}>
+                        <LeagueCrest league={g.comp} size={52} />
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.comp}</div>
+                        <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{g.list.length} season{g.list.length === 1 ? "" : "s"}</div>
+                      </div>))}
+                    </div>
+                  </div>))}
+                </div>
+                </>);
+              })() : (<>
               {(() => {
                 const nat = playerNatFilter ? playerNations.find(n => n.name === playerNatFilter) : null;
                 const natTeam = nat?.code ? teams.find(t => t.league === "Avium International" && t.code === nat.code) : null;
@@ -10969,8 +11387,8 @@ export default function App() {
                         const natT = p.natCode ? natTeamByCode.get(p.natCode) : null, clubT = teamByName.get(p.clubs[0]?.name);
                         const capped = p.capped && !!playerNatFilter;
                         return (
-                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null}
-                          style={{ background: capped ? "var(--chrome-brand-11)" : i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null} onClick={() => setPlayerOpen(p.fullName)}
+                          style={{ cursor: "pointer", background: capped ? "var(--chrome-brand-11)" : i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                           <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono,
                                        borderLeft: `2px solid ${capped ? "var(--chrome-brand)" : "transparent"}` }}>{i + 1}</td>
                           <td style={{ ...tdStyle, paddingRight: 0 }}>
@@ -10982,14 +11400,14 @@ export default function App() {
                             {p.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
                                    : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
-                          <td className={natT ? "cell-link" : undefined} onClick={() => openTeam(natT)}
+                          <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}
                             title={natT ? `Open ${natT.name}` : undefined}
                             style={{ ...tdStyle, paddingLeft: 8, color: capped ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: capped ? 700 : 400, fontSize: 10, cursor: natT ? "pointer" : "default" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                               {natT ? <TeamCrest team={natT} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
                               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nationality || "—"}</span>
                             </span></td>
-                          <td className={clubT ? "cell-link" : undefined} onClick={() => openTeam(clubT)}
+                          <td className={clubT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(clubT); }}
                             title={p.clubs.length > 1 ? "Duplicate: " + p.clubs.map(c => c.code).join(", ") : (clubT ? `Open ${clubT.name}` : p.clubs[0]?.name)}
                             style={{ ...tdStyle, paddingLeft: 8, color: p.clubs.length > 1 ? "var(--ui-danger)" : "var(--chrome-muted)", fontWeight: p.clubs.length > 1 ? 700 : 400, fontSize: 10, cursor: clubT ? "pointer" : "default" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -11001,6 +11419,7 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>); })()}
+              </>)}
           </div>
         </div>
         </>)}

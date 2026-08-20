@@ -31,3 +31,13 @@ const STADIUM_IMAGES = (() => {
   return existsSync(d) ? readdirSync(d).filter(f => /\.(jpe?g)$/i.test(f))
     .map(f => f.replace(/\.(jpe?g)$/i, "").normalize("NFC")).sort() : [];
 })();
+
+// Same story as STADIUM_IMAGES: virtual:pstats is stripped with the imports, so the harness
+// reads the directory itself.
+const PSTATS_FILES = (() => {
+  const { readdirSync, existsSync } = require_fs_shim;
+  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/pstats";
+  return existsSync(d) ? readdirSync(d, { recursive: true })
+    .map(f => String(f).replace(/\\/g, "/")).filter(f => /\.tsv$/i.test(f))
+    .map(f => f.normalize("NFC")).sort() : [];
+})();

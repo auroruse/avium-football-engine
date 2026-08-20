@@ -39,7 +39,37 @@ const stadiumManifest = () => ({
   },
 })
 
+// Same trick for the player-stats archive: public/pstats holds one TSV per competition-season
+// plus changelog.tsv, and the app needs the file list before it can fetch any of them.
+const PID = 'virtual:pstats'
+const pstatsFiles = () => {
+  const dir = path.resolve('public/pstats')
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { recursive: true })
+    .map(f => String(f).split(path.sep).join('/'))
+    .filter(f => /\.tsv$/i.test(f))
+    .map(f => f.normalize('NFC'))
+    .sort()
+}
+const pstatsManifest = () => ({
+  name: 'pstats-manifest',
+  resolveId: (id) => (id === PID ? '\0' + PID : null),
+  load: (id) => (id === '\0' + PID
+    ? `export const PSTATS_FILES = ${JSON.stringify(pstatsFiles())};`
+    : null),
+  configureServer(server) {
+    server.watcher.add(path.resolve('public/pstats'))
+    const bust = (f) => {
+      if (!/public[/\\]pstats[/\\]/.test(f)) return
+      const mod = server.moduleGraph.getModuleById('\0' + PID)
+      if (mod) server.moduleGraph.invalidateModule(mod)
+      server.ws.send({ type: 'full-reload' })
+    }
+    server.watcher.on('add', bust); server.watcher.on('unlink', bust); server.watcher.on('change', bust)
+  },
+})
+
 export default defineConfig({
-  plugins: [react(), stadiumManifest()],
+  plugins: [react(), stadiumManifest(), pstatsManifest()],
   base: './',
 })
