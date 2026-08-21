@@ -3874,11 +3874,9 @@ function fullDisplayName(raw) {
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      kar: "Karjanian Premier League", stsc: "Sei'i Tai Shogun Cup",
-                      wcq: "World Cup Qualifiers", cwc: "AFA Club World Cup", natl: "Nations League",
-                      fcup: "Foundation Cup", eufa: "EUFA Championship", pfa: "PFA Championship",
-                      vafc: "VAFC Championship", conelaf: "CONELAF Championship",
-                      conseaf: "CONSEAF Championship" };
+                      kar: "Karjanian Premier League", cwc: "AFA Club World Cup",
+                      natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
+                      vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
 // 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
 const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
@@ -4060,6 +4058,13 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
+const INTL_COMPS = [
+  { name: "World Cup", scope: "intl" },
+  { name: "Nations League", scope: "intl" },
+  ...CONFERENCE_NAMES.map(c => ({ name: c + " Championship", scope: c })),
+  { name: "AFA Club World Cup", scope: "clubs" },
+];
+const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
 // called "All Clubs" would otherwise silently take the view over.
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
@@ -7180,7 +7185,9 @@ export default function App() {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
     setLgSub(name === LG_ALL_PLAYERS ? "players" : lgIsDir(name) ? "teams" : (sub || "teams"));
     setPlayerNatFilter(""); setPlayerLeagueFilter("");
-    setTeamLeagueFilter(name === WC_COMP || name === LG_ALL_NATS ? ALL_INTL : name === LG_ALL_CLUBS ? ALL_CLUBS : name);
+    const sc = COMP_SCOPE[name];
+    setTeamLeagueFilter(name === LG_ALL_NATS || sc === "intl" ? ALL_INTL
+                      : name === LG_ALL_CLUBS || sc === "clubs" ? ALL_CLUBS : sc || name);
     if (sub !== "teams") setExpandedTeam(null);
     setTab("leagues");
   };
@@ -7235,19 +7242,18 @@ export default function App() {
     const clubLeagues = [...new Set(teams.filter(tm => tm.league && tm.league !== "Avium International").map(tm => tm.league))]
       .sort((a, b) => (ORD.get(a) ?? 999) - (ORD.get(b) ?? 999) || a.localeCompare(b));
     const natNames = new Map(intl.map(tm => [tm.code, tm.name]));
-    const named = new Set([WC_COMP, ...clubLeagues]);
-    const archive = [...new Set((pstats?.seasons || []).map(s => s.comp))].filter(c => !named.has(c)).sort();
+    const allClubs = teams.filter(tm => tm.league !== "Avium International");
+    const scopeTeams = (sc) => sc === "intl" ? intl : sc === "clubs" ? allClubs : intl.filter(tm => railLeague(tm) === sc);
     return [
-      { name: WC_COMP, intl: true, nTeams: intl.length, avg: avgOf(intl), nSeasons: seasonsBy(WC_COMP), caption: `International (${intl.length})` },
-      ...archive.map(c => ({ name: c, intl: true, archive: true, nTeams: 0, avg: 0, nSeasons: seasonsBy(c),
-                             caption: `Archive (${seasonsBy(c)})` })),
+      ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
+        return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name),
+                 caption: c.scope === "intl" ? `International (${ts.length})`
+                        : c.scope === "clubs" ? `Clubs (${ts.length})` : `${c.scope} (${ts.length})` }; }),
       ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l),
                  caption: `${natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014")} (${ts.length})` }; }),
     ];
   }, [teams, pstats]);
-  const lgArchive = !!lgRail.find(c => c.name === lgComp)?.archive;
-  const lgSubEff = lgArchive ? "seasons" : lgSub;
   useEffect(() => {
     if (tab !== "leagues" || lgComp || !lgRail.length) return;
     const first = lgRail.find(c => c.name === "Nichirin League One") || lgRail.find(c => !c.intl) || lgRail[0];
@@ -8528,7 +8534,7 @@ export default function App() {
   // The seasons list reads every report (the winner lives in the final table), so the whole
   // competition's reports fetch as soon as the list shows.
   useEffect(() => {
-    if (tab !== "leagues" || lgSubEff !== "seasons" || !lgComp) return;
+    if (tab !== "leagues" || lgSub !== "seasons" || !lgComp) return;
     for (const s of (pstats?.seasons || []).filter(x => x.comp === lgComp && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
@@ -8536,7 +8542,7 @@ export default function App() {
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
-  }, [tab, lgSubEff, lgComp, pstats, lgMd]);
+  }, [tab, lgSub, lgComp, pstats, lgMd]);
   // A season report is fetched the first time its season opens, then cached for the session.
   useEffect(() => {
     if (!lgSeason) return;
@@ -11342,7 +11348,7 @@ export default function App() {
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>
                       {c.dir ? c.sub2 : c.caption}</div>
                   </div>
-                  {!c.dir && !c.archive && <OvrBadge v={c.avg} />}
+                  {!c.dir && <OvrBadge v={c.avg} />}
                 </div>); })}
               </Fragment>))}
             </div>
@@ -11354,7 +11360,7 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: lgIsDir(lgComp) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {!lgIsDir(lgComp) && (lgArchive ? [["seasons", "Seasons"]] : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]]).map(([id, l]) => { const on = lgSubEff === id; return (
+              {!lgIsDir(lgComp) && [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]].map(([id, l]) => { const on = lgSub === id; return (
               <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
@@ -11364,7 +11370,7 @@ export default function App() {
                          borderTop: on ? "2px solid var(--chrome-brand)" : "2px solid transparent",
                          marginBottom: on ? -1 : 0, borderBottomColor: "var(--chrome-panel)" }}>{l}</button>); })}
             </div>
-            {lgSubEff === "seasons" && (() => {
+            {lgSub === "seasons" && (() => {
           const list = (pstats?.seasons || []).filter(s => s.comp === lgComp).sort((a, b) => b.ord - a.ord);
           const s = lgSeason ? list.find(x => x.id === lgSeason) : null;
           const mdPath = s ? s.id.replace(/\.tsv$/i, ".md") : null;
@@ -11556,7 +11562,7 @@ export default function App() {
             </div>
             </>)}
           </div>); })()}
-            {lgSubEff === "teams" && (<>
+            {lgSub === "teams" && (<>
         {/* The old Teams tab, scoped: lgOpenComp set teamLeagueFilter, so `visibleTeams` and
             `customTab` keep working untouched and this pane is just their rendering. The league
             rail died with the tab -- the competition grid is the rail now. */}
@@ -11703,7 +11709,7 @@ export default function App() {
             </>)}
           </div>
             </>)}
-            {lgSubEff === "players" && (<>
+            {lgSub === "players" && (<>
         {/* The old Players tab, scoped to the open competition by the filter below. The nations
             rail died with the tab; nationality still shows on every row. */}
 
@@ -11881,7 +11887,11 @@ export default function App() {
                   // The rail selects by display name, which is what the nations list is keyed on —
                   // natCode is absent for anyone whose league has no nation mapping.
                   if (playerNatFilter && (p.nationality || "Unaffiliated") !== playerNatFilter) return false;
-                  if (lgComp && !lgIsDir(lgComp)) { if (lgComp === WC_COMP ? !p.capped : !p.clubs.some(c => (c.league || "Custom") === lgComp)) return false; }
+                  if (lgComp && !lgIsDir(lgComp)) { const sc = COMP_SCOPE[lgComp];
+                    if (sc === "intl") { if (!p.capped) return false; }
+                    else if (sc === "clubs") { if (!p.clubs.length) return false; }
+                    else if (sc) { if (!p.capped || CONF_BY_CODE.get(p.natCode) !== sc) return false; }
+                    else if (!p.clubs.some(c => (c.league || "Custom") === lgComp)) return false; }
                   if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
                   if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
                   return true;

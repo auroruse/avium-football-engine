@@ -15,10 +15,19 @@ the other. A league season is `<comp>/<YY>-<YY>` (`nl1/33-34`); a one-off tourna
 archive reaches back forty-five years, so a flat `1900 + n` filed the oldest seasons after the
 newest.
 
-A competition with no league of its own in the presets — a cup, a continental championship, a
-tournament nobody fields a standing team for — appears in the rail on the strength of its archive
-folder alone, under International, and opens straight onto Seasons. There are no squads behind it
-to put in a Teams or Players tab.
+## Competitions
+
+`INTL_COMPS` in `src/App.tsx` is the international calendar, and every entry names the **field** it
+draws on. That scope is what its Teams and Players tabs are filtered to, so a competition is a
+proper competition rather than an archive folder: the World Cup and the Nations League field every
+nation, a confederation championship fields that confederation, and the Club World Cup fields every
+club. The four championships are derived from the confederations in `AVIUM.tsv`, so adding one adds
+its competition.
+
+Two competitions were folded into their successors, which is why a 1932 report can carry an older
+name than the folder it sits in. **CONELAF became CONSEAF**, so the 1932 CONELAF Championship is
+`conseaf/1932.md`; the **Foundation Cup became the Nations League**, so the 1932 Foundation Cup is
+`natl/1932.md`. Both documents keep the title they were played under.
 
 ## Season reports
 
