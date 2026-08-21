@@ -4060,6 +4060,8 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
+const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "Liga-ye B\u0101lande": 2 };
+const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
@@ -7248,10 +7250,11 @@ export default function App() {
     return [
       ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
         return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name), nFull: fullBy(c.name),
-                 caption: c.scope === "intl" ? "International" : c.scope === "clubs" ? "Clubs" : c.scope }; }),
+                 caption: "" }; }),
       ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l), nFull: fullBy(l),
-                 caption: natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014") }; }),
+                 caption: [natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014"),
+                           leagueTier(l) ? `(D${leagueTier(l)})` : ""].filter(Boolean).join(" ") }; }),
     ];
   }, [teams, pstats]);
   useEffect(() => {
@@ -8465,9 +8468,9 @@ export default function App() {
     const sortBy = k => setTournSort(p => p.k === k ? { k, asc: !p.asc } : { k, asc: false });
     const arrow = k => key === k ? (tournSort.asc ? " ▴" : " ▾") : "";
     return (<>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "0 20px 8px" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 14px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
         <input value={tournQ} onChange={e => setTournQ(e.target.value)} placeholder="&#128269; Search"
-          style={{ ...addBtn, width: 170, background: "transparent", color: tournQ ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+          style={{ ...addBtn, flex: 1, minWidth: 0, background: "transparent", color: tournQ ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
         <select value={tournPosF} onChange={e => setTournPosF(e.target.value)} style={{ ...smBtn, color: tournPosF !== "ALL" ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer" }}>
           <option value="ALL">Positions</option>
           {["GK", "DEF", "MID", "FWD"].map(x => <option key={x} value={x}>{x}</option>)}
@@ -8479,7 +8482,6 @@ export default function App() {
         {(tournQ || tournPosF !== "ALL" || tournTeamF) &&
           <button onClick={() => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); }}
             style={{ ...smBtn, background: "transparent", color: "var(--ui-danger)", cursor: "pointer" }} title="Clear filters">&#10005;</button>}
-        <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{rows.length === all.length ? `${all.length} players` : `${rows.length}/${all.length} players`}</span>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
         <colgroup>
@@ -11637,7 +11639,7 @@ export default function App() {
                 return (<>
                   {T?.pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={T.pre} /></div>}
                   {tabs.length > 1 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
                     {tabs.map((tb, i2) => <button key={tb.name + i2} onClick={() => setLgTTab(i2)}
                       style={{ ...smBtn, cursor: i2 === tt ? "default" : "pointer", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontSize: 9,
                                background: i2 === tt ? "var(--chrome-brand)" : "transparent",
