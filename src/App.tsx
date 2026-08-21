@@ -12085,7 +12085,7 @@ export default function App() {
                     {/* Nationality is gone: the rail already fixes it, so the column read the same
                         value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 75 }} /><col style={{ width: 75 }} /><col style={{ width: 74 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -12101,9 +12101,7 @@ export default function App() {
                         <th onClick={() => S("ovr")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("ovr") }}>OVR{A("ovr")}</th>
                         <th onClick={() => S("rtg")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("rtg") }}>RTG{A("rtg")}</th>
                           </>); })()}
-                        {/* A three-position player carries "LW/ST/RW"; the cell gives its own
-                            padding back so the column can be an even third of the block. */}
-                        <th style={{ ...thStyle, textAlign: "center", padding: `${TH_PAD_Y}px 4px` }}>POS</th>
+                        <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
                       </tr>
@@ -12128,7 +12126,7 @@ export default function App() {
                             {p.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
                                    : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>
                           {rtgCell(p.fullName || p.name, tdStyle)}
-                          <td style={{ ...tdStyle, padding: "5px 4px", textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
+                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
                           <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}
                             style={{ ...tdStyle, paddingLeft: 8, color: capped ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: capped ? 700 : 400, fontSize: 10, cursor: natT ? "pointer" : "default" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
