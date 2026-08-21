@@ -41,10 +41,10 @@ standings they produced.
 **Everything else** — every tournament — is the canonical tab format: each `## Heading` renders
 as a tab inside the season, what sits above the first `##` is the preamble, and a `### Sub`
 heading captions whatever follows it. The tab sets are fixed: a group tournament is
-`Group Stage | Standings | Knockouts`, a double-elimination one is
-`Upper Bracket | Lower Bracket | Grand Final` (plus `Group Stage | Standings` when it had a group
-phase), and a championship whose group results survive only as tables is `Standings | Knockouts`.
-No Draw tabs, no Notes tabs.
+`Group Stage | Knockouts`, a double-elimination one is `Upper Bracket | Lower Bracket |
+Grand Final` (plus `Group Stage` when it had a group phase). The Group Stage tab is standings
+first, then the rounds, the same way a league season reads. No Draw tabs, no Notes tabs, no
+preamble prose, no scorer columns anywhere: title, tabs, captions, tables.
 
 The table formats are fixed too, and every file carries exactly these:
 
@@ -57,8 +57,9 @@ The table formats are fixed too, and every file carries exactly these:
   trailing where recorded. **The winner is the bolded side of the Match cell, always.** A decided
   score is bare (`2-1`); qualifiers are comma suffixes on the deciding cell: `2-2, 7-6 pens`
   (shootout, home side first), `1-2, aet`, `2-2, ag` (away goals — applied wherever a level
-  aggregate carried no note, since that is the rule the sources assumed). The app renders the
-  suffix as a small line under the score.
+  aggregate carried no note, since that is the rule the sources assumed). The app renders pens as
+  bracketed counts flanking the score and the qualifiers as coloured tags, with the bracket and
+  tag space reserved across the whole table so every row keeps one shape.
 
 The Winner column on a season's banner resolves in order: the top row of `## Final Table`; a
 `**Winner:**`/`**Champions:**` line; the bolded side of the report's last `Final`/`Grand Final`

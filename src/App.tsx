@@ -4370,36 +4370,6 @@ const dlText = (name, text, mime) => {
 };
 // One accessor for every result shape: sim returns (scorers + ogs side-keyed), live-match ledgers
 // (method-tagged entries), and two-leg results (leg-keyed, leg2 stored in second-leg orientation).
-const seasonScorersOf = (result, leg) => {
-  const pickSide = (obj, sd) => (leg ? obj?.[leg]?.[sd] : obj?.[sd]) || [];
-  const norm = (e, og) => ({ name: e.full || e.name, min: e.min,
-    pen: !!(e.pen || e.method === "pen"), og: og || e.method === "og" });
-  return (sd) => [...pickSide(result?.scorers, sd).map(e => norm(e, false)),
-                  ...pickSide(result?.ogs, sd).map(e => norm(e, true))]
-    .sort((a, b) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0));
-};
-const seasonFmtScorers = (list) => {
-  if (!list.length) return "";
-  const by = new Map();
-  for (const g of list) {
-    const k = g.name + (g.og ? "|og" : "");
-    const e = by.get(k) || { name: g.name, og: g.og, mins: [] };
-    e.mins.push(`${g.min}'` + (g.pen ? " (pen)" : ""));
-    by.set(k, e);
-  }
-  return [...by.values()].map(e => `${e.name} ${e.mins.join(", ")}${e.og ? " (OG)" : ""}`).join("; ");
-};
-// Fall-back when a result carries no scorer ledger (manual entries whose re-sim missed the score,
-// or fixtures played before this existed): who scored is still in statDiffs, minutes are not.
-const seasonScorersFromDiffs = (result, sideDiffs) => {
-  if (!sideDiffs) return "";
-  const out = [];
-  for (const [k, d] of Object.entries(sideDiffs)) {
-    const g = d?.goals || 0;
-    if (g > 0) out.push(`${k.split("|")[1] || k}${g > 1 ? ` ×${g}` : ""}`);
-  }
-  return out.join("; ");
-};
 const seasonScoreCell = (m) => {
   const r = m.result;
   if (!r) return "";
@@ -4420,23 +4390,11 @@ const seasonMdStandings = (rows) => {
   rows.forEach((s, i) => L.push(`| ${i + 1} | ${s.name} | ${s.p} | ${s.w} | ${s.d} | ${s.l} | ${s.gf} | ${s.ga} | ${s.gf - s.ga >= 0 ? "+" : ""}${s.gf - s.ga} | ${s.pts} |`));
   return L.join("\n");
 };
-const seasonFixtureRows = (matches, leg) => {
-  const L = ["| Match | Score | Scorers |", "|-------|-------|---------|"];
+const seasonFixtureRows = (matches) => {
+  const L = ["| Match | Score |", "|-------|-------|"];
   for (const m of matches) {
     if (!m || m.bye || !m.home || !m.away) continue;
-    const get = seasonScorersOf(m.result, leg);
-    let sc;
-    if ((m.result?.scorers && (!leg || m.result.scorers[leg]))) {
-      // leg2 is stored in second-leg orientation: its "home" is the tie's away side.
-      const hList = leg === "leg2" ? get("away") : get("home");
-      const aList = leg === "leg2" ? get("home") : get("away");
-      sc = [seasonFmtScorers(hList), seasonFmtScorers(aList)].filter(Boolean).join(" / ");
-    } else {
-      const d = leg ? m.result?.statDiffs?.[leg] : m.result?.statDiffs;
-      sc = [seasonScorersFromDiffs(m.result, d?.home), seasonScorersFromDiffs(m.result, d?.away)]
-        .filter(Boolean).join(" / ");
-    }
-    L.push(`| ${m.home.name} vs ${m.away.name} | ${seasonScoreCell(m)} | ${sc || ""} |`);
+    L.push(`| ${m.home.name} vs ${m.away.name} | ${seasonScoreCell(m)} |`);
   }
   return L.join("\n");
 };
@@ -4455,13 +4413,7 @@ function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
   });
   const koBlock = (label, matches) => {
     if (!matches?.some(m => m?.result)) return;
-    L.push("---", "", `## ${label}`, "", seasonFixtureRows(matches, null), "");
-    if (koLegs === 2) {
-      // Two-leg rows already print both legs in one line; per-leg scorers follow for the record.
-      const l1 = seasonFixtureRows(matches, "leg1"), l2 = seasonFixtureRows(matches, "leg2");
-      if (l1.split("\n").length > 2) L.push(`### ${label} — First Legs`, "", l1, "");
-      if (l2.split("\n").length > 2) L.push(`### ${label} — Second Legs`, "", l2, "");
-    }
+    L.push("---", "", `## ${label}`, "", seasonFixtureRows(matches), "");
   };
   if (ko?.rounds?.length) {
     ko.rounds.forEach((r, ri) => koBlock(r.name || koRoundLabel(ko.rounds.length === 1 ? 2 : 2 ** (ko.rounds.length - ri)), r.matches));
@@ -8584,6 +8536,22 @@ export default function App() {
     const l1 = hd.indexOf("leg 1"), l2 = hd.indexOf("leg 2");
     const sc = hd.indexOf("score") >= 0 ? hd.indexOf("score") : hd.indexOf("agg");
     const strip = (x) => String(x || "").replace(/\*\*/g, "").trim();
+    // ", 7-6 pens" / ", aet" / ", ag" suffixes become bracketed pen counts and coloured tags.
+    const TAGC = { PENS: "var(--chrome-brand)", AET: "var(--ui-warn)", AG: "var(--ui-info)" };
+    const parseSc = (raw) => {
+      const parts = strip(raw).split(/,\s*/);
+      let pen = null; const tags = [];
+      for (const q of parts.slice(1)) {
+        const pm = q.match(/^(\d+)-(\d+)\s*pens$/);
+        if (pm) { pen = [pm[1], pm[2]]; tags.push("PENS"); }
+        else if (q === "aet") tags.push("AET");
+        else if (q === "ag") tags.push("AG");
+      }
+      return { main: parts[0], pen, tags };
+    };
+    const parsed = tbl.body.map(r => parseSc(r[sc]));
+    // Reserved for the whole table the moment one row needs them, so no row is a different shape.
+    const anyPen = parsed.some(x => x.pen), anyTag = parsed.some(x => x.tags.length);
     const side = (raw, right) => {
       const nm = strip(raw), won = /\*\*/.test(raw || ""), tm = teamByName.get(nm);
       const name = <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: won ? 700 : 400, color: won ? "var(--ui-text)" : undefined }}>{nm}</span>;
@@ -8600,21 +8568,26 @@ export default function App() {
       <div style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
         {tbl.body.map((r, ri) => {
           const m = String(r[mi] || "").split(/\s+vs\s+/i);
-          const [scMain, ...scQual] = strip(r[sc]).split(/,\s*/);
-          const qual = scQual.join(", ").replace(/^ag$/, "away goals");
-          const legs = [l1 >= 0 && l2 >= 0 && r[l1] ? `${r[l1]} \u00b7 ${r[l2]}` : null, qual || null]
-            .filter(Boolean).join(" \u00b7 ");
+          const { main: scMain, pen, tags } = parsed[ri];
+          const legs = l1 >= 0 && l2 >= 0 && r[l1] ? `${r[l1]} \u00b7 ${r[l2]}` : null;
           return (
           <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 11,
                                  background: ri % 2 ? "transparent" : "var(--chrome-bg-08)",
                                  borderBottom: ri < tbl.body.length - 1 ? "1px solid var(--chrome-border-33)" : "none" }}>
             {gi >= 0 && <span style={{ flexShrink: 0, width: 15, textAlign: "center", fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{r[gi]}</span>}
             {side(m[0] || "", false)}
-            <span style={{ flexShrink: 0, minWidth: 52, textAlign: "center" }}>
-              <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{scMain || "vs"}</span>
-              {legs && <span style={{ display: "block", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{legs}</span>}
+            <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
+              {anyPen && <span style={{ width: 24, textAlign: "right", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[0]})` : ""}</span>}
+              <span style={{ minWidth: 52, textAlign: "center" }}>
+                <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{scMain || "vs"}</span>
+                {legs && <span style={{ display: "block", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{legs}</span>}
+              </span>
+              {anyPen && <span style={{ width: 24, textAlign: "left", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[1]})` : ""}</span>}
             </span>
             {side(m[1] || "", true)}
+            {anyTag && <span style={{ flexShrink: 0, width: 78, display: "flex", gap: 4, justifyContent: "flex-end" }}>
+              {tags.map(t => <span key={t} style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.06em", border: "1px solid " + TAGC[t], color: TAGC[t], borderRadius: 4, padding: "1px 4px", ...mono }}>{t}</span>)}
+            </span>}
             {mo >= 0 && r[mo] && <span title={r[mo]} style={{ flexShrink: 0, width: 130, fontSize: 9, color: "var(--chrome-muted-66)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>{r[mo]}</span>}
           </div>); })}
       </div>);
@@ -8678,7 +8651,7 @@ export default function App() {
     const flushRun = () => {
       if (!run.length) return;
       out.push(run.length > 1
-        ? <div key={"g" + out.length} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 18, marginBottom: 16 }}>{run.map(cell)}</div>
+        ? <div key={"g" + out.length} style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18, marginBottom: 16 }}>{run.map(cell)}</div>
         : <div key={"g" + out.length} style={{ marginBottom: 16 }}>{cell(run[0], 0)}</div>);
       run = [];
     };
@@ -11667,17 +11640,17 @@ export default function App() {
                     <button onClick={() => setLgRound(Math.min(R.rounds.length - 1, idx + 1))} disabled={idx === R.rounds.length - 1}
                       style={{ ...smBtn, cursor: idx === R.rounds.length - 1 ? "default" : "pointer", opacity: idx === R.rounds.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
                   </div>
-                  {/* Results beside the table they produced. */}
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)", gap: 20, padding: "14px 20px", alignItems: "start" }}>
-                    <div>
-                      <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">Round {rd.n}</PanelTitle></div>
-                      {rd.fixtures ? renderFixTable(rd.fixtures)
-                                   : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No results recorded.</div>}
-                    </div>
+                  {/* The table the round produced on top, the results that produced it under. */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "14px 20px" }}>
                     <div>
                       <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">{stLabel}</PanelTitle></div>
                       {standings ? renderStandTable(standings)
                                  : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No table recorded.</div>}
+                    </div>
+                    <div>
+                      <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">Round {rd.n}</PanelTitle></div>
+                      {rd.fixtures ? renderFixTable(rd.fixtures)
+                                   : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No results recorded.</div>}
                     </div>
                   </div>
                   {R.rest && <div style={{ padding: "0 20px 6px" }}><MdDoc text={R.rest} /></div>}
