@@ -38,16 +38,21 @@ table (the exporter adds `Scorers`, and a `### Table after Round N` beside it), 
 `## Final Table`. That shape drives the round stepper: pick a round, see its results next to the
 standings they produced.
 
-**Everything else** — every tournament, both domestic cups — renders as a plain document, in file
-order. A group stage carries eight tables to a round and a merged qualifier repeats rounds 1–10
-once per confederation, so the stepper has nothing to step through; the rule for keeping a report
-out of it is simply that no heading reads `## Round N`. The vault's own `## Round N` headings were
-demoted to `###` on the way in.
+**Everything else** — every tournament — is the canonical tab format: each `## Heading` renders as
+a tab inside the season (Group Stage, Standings, Knockouts, Notes…), what sits above the first
+`##` is the preamble, and a `### Sub` heading captions whatever follows it. Tables render by
+shape: a `Match` column makes a fixture list (with `Leg 1`/`Leg 2`/`Agg` for two-legged ties, a
+`Group` letter, an `MOTM` note, and a **bolded side** read as the winner), a `Team`/`Club` column
+makes a standings table with crests, and anything else prints as a plain table. Runs of captioned
+standings tables pack into a grid. The converter normalised every vault dialect into this shape:
+per-group fixture tables merged into one `Group | Match | Score` table per round, `| Group A | P |`
+headers promoted to captions, knockout headings gathered under `## Knockouts`, prose sections under
+`## Notes`.
 
-The Winner column on a season's banner reads the top row of `## Final Table`. A knockout has no
-such table, so a report may instead name its champion on a line of its own, `**Winner: X**` or
-`**Champions: X**`, which is the convention the vault documents already follow. Reports that do
-neither show a dash.
+The Winner column on a season's banner resolves in order: the top row of `## Final Table`; a
+`**Winner: X**` / `**Champions: X**` line; and finally the last `Final`/`Grand Final` fixture in
+the report — its bolded side, a `(X win … pens)` note anywhere in the row, or the score itself
+(the `Agg` for two-legged finals). Every season currently filed resolves one.
 
 The reports were converted out of `Avium/Football/` — `International/<year>/`, and
 `Nichirin League One|Two/<season>/`. Seasons older than 30/31 survive only as a final table, which

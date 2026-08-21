@@ -4270,6 +4270,50 @@ function parseSeasonReport(text) {
   const restMd = rest.filter(L => !/^---+\s*$/.test(L)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return { rounds, final, rest: restMd };
 }
+// A tournament report: every `## Heading` is a tab; what sits above the first one is the
+// preamble. The converter guarantees the shape, so this stays a dumb splitter.
+function parseTournTabs(text) {
+  const pre = [], tabs = [];
+  for (const L of String(text || "").replace(/\r\n/g, "\n").split("\n")) {
+    if (/^#\s/.test(L)) continue;
+    const m = L.match(/^##\s+([^#].*)$/);
+    if (m) { tabs.push({ name: m[1].trim(), body: [] }); continue; }
+    (tabs.length ? tabs[tabs.length - 1].body : pre).push(L);
+  }
+  return { pre: pre.join("\n").replace(/^---$/gm, "").trim(), tabs };
+}
+// Who won a knockout tournament, read off its last Final. Three tells, in order of trust: the
+// bolded side of the match cell, a "(X win ... pens)" note in the score, the score itself (the
+// Agg column when the tie was two-legged). "Final Standings" and "LB Final" do not match.
+function tournWinner(text) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  let best = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^#{2,4}\s+(?:Grand\s+)?Final\s*$/i.test(lines[i])) continue;
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim().startsWith("|") && !/^#/.test(lines[j])) j++;
+    const rows = [];
+    while (j < lines.length && lines[j].trim().startsWith("|")) rows.push(lines[j++].trim());
+    if (rows.length < 3) continue;
+    const cells = r => r.replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+    const head = cells(rows[0]).map(h => h.toLowerCase());
+    const body = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
+    const mi = head.indexOf("match");
+    if (mi < 0 || !body.length) continue;
+    const si = head.indexOf("agg") >= 0 ? head.indexOf("agg") : head.indexOf("score");
+    const r = body[body.length - 1];
+    const raw = r[mi] || "", sc = si >= 0 ? r[si] || "" : "";
+    const names = raw.split(/\s+vs\s+/i).map(x => x.trim());
+    const strip = x => x.replace(/\*\*/g, "").trim();
+    const bold = names.findIndex(n => /^\*\*.*\*\*$/.test(n));
+    if (bold >= 0) { best = strip(names[bold]); continue; }
+    const pw = r.join(" ").match(/\(([^)]+?)\s+win\b/i);   // pens notes sit in Leg 2 as often as in Agg
+    if (pw) { best = strip(pw[1]); continue; }
+    const m2 = sc.match(/(\d+)\s*-\s*(\d+)/);
+    if (m2 && names.length === 2 && +m2[1] !== +m2[2]) best = strip(+m2[1] > +m2[2] ? names[0] : names[1]);
+  }
+  return best;
+}
 function MdDoc({ text }) {
   const inline = (s, ki) => {
     const parts = String(s).split(/\*\*([^*]+)\*\*/g);
@@ -7174,6 +7218,7 @@ export default function App() {
   const [lgSeason, setLgSeason] = useState(null);                // pstats season id inside Seasons
   const [lgMd, setLgMd] = useState({});                          // report path -> text | false (fetched, absent)
   const [lgRound, setLgRound] = useState(null);                  // selected report round; null = the last one
+  const [lgTTab, setLgTTab] = useState(0);                       // selected tournament tab
   const WC_COMP = "World Cup";
   const LG_ALL_NATS = "::all-nations", LG_ALL_CLUBS = "::all-clubs", LG_ALL_PLAYERS = "::all-players";
   const [lgTeamSort, setLgTeamSort] = useState({ k: "ovr", asc: false });
@@ -8530,6 +8575,118 @@ export default function App() {
         </tbody>
       </table>
     </>);
+  };
+  // ── One look for a fixture table and a standings table, whether it came from a league round
+  // or a tournament tab. The classifiers key on the header: Match = fixtures, Team = standings. ──
+  const renderFixTable = (tbl) => {
+    const hd = tbl.head.map(h => String(h).trim().toLowerCase());
+    const mi = hd.indexOf("match"), gi = hd.indexOf("group"), mo = hd.indexOf("motm");
+    const l1 = hd.indexOf("leg 1"), l2 = hd.indexOf("leg 2");
+    const sc = hd.indexOf("score") >= 0 ? hd.indexOf("score") : hd.indexOf("agg");
+    const strip = (x) => String(x || "").replace(/\*\*/g, "").trim();
+    const side = (raw, right) => {
+      const nm = strip(raw), won = /\*\*/.test(raw || ""), tm = teamByName.get(nm);
+      const name = <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: won ? 700 : 400, color: won ? "var(--ui-text)" : undefined }}>{nm}</span>;
+      return (
+        <span onClick={() => tm && openTeam(tm)} className={tm ? "cell-link" : undefined} title={tm ? `Open ${nm}` : nm}
+          style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1,
+                   justifyContent: right ? "flex-start" : "flex-end", cursor: tm ? "pointer" : "default" }}>
+          {!right && name}
+          <TeamCrest team={tm || { code: "" }} size={18} />
+          {right && name}
+        </span>);
+    };
+    return (
+      <div style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
+        {tbl.body.map((r, ri) => {
+          const m = String(r[mi] || "").split(/\s+vs\s+/i);
+          const legs = l1 >= 0 && l2 >= 0 && r[l1] ? `${r[l1]} \u00b7 ${r[l2]}` : null;
+          return (
+          <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 11,
+                                 background: ri % 2 ? "transparent" : "var(--chrome-bg-08)",
+                                 borderBottom: ri < tbl.body.length - 1 ? "1px solid var(--chrome-border-33)" : "none" }}>
+            {gi >= 0 && <span style={{ flexShrink: 0, width: 15, textAlign: "center", fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{r[gi]}</span>}
+            {side(m[0] || "", false)}
+            <span style={{ flexShrink: 0, minWidth: 52, textAlign: "center" }}>
+              <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{strip(r[sc]) || "vs"}</span>
+              {legs && <span style={{ display: "block", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{legs}</span>}
+            </span>
+            {side(m[1] || "", true)}
+            {mo >= 0 && r[mo] && <span title={r[mo]} style={{ flexShrink: 0, width: 130, fontSize: 9, color: "var(--chrome-muted-66)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>{r[mo]}</span>}
+          </div>); })}
+      </div>);
+  };
+  const renderStandTable = (tbl) => {
+    const ti = tbl.head.findIndex(h => /team|club/i.test(h));
+    if (ti < 0) return <MdTable head={tbl.head} body={tbl.body} keyBase="g" />;
+    const strip = (x) => String(x).replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim();
+    return (
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+        <colgroup>{tbl.head.map((c, j) =>
+          <col key={j} style={j === ti ? undefined : String(c).trim().length <= 3 ? { width: j === 0 ? 30 : 38 } : undefined} />)}</colgroup>
+        <thead><tr>{tbl.head.map((c, j) => <th key={j} style={{ ...thCell, whiteSpace: "nowrap", overflow: "hidden" }}>{c}</th>)}</tr></thead>
+        <tbody>{tbl.body.map((r, ri) => (
+          <tr key={ri} style={{ background: ri % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+            {r.map((c, j) => {
+              if (j === ti) { const nm = strip(c); const tm = teamByName.get(nm); return (
+                <td key={j} className={tm ? "cell-link" : undefined} onClick={() => tm && openTeam(tm)}
+                    title={tm ? `Open ${nm}` : nm} style={{ ...tdCell, fontSize: 11, cursor: tm ? "pointer" : "default" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                    <TeamCrest team={tm || { code: "" }} size={18} />
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: /\*\*/.test(c) ? 700 : 400, fontStyle: /^\*[^*]/.test(String(c).trim()) ? "italic" : "normal", color: "var(--ui-text)" }}>{nm}</span>
+                  </span></td>); }
+              return <td key={j} style={{ ...tdCell, fontSize: 11, whiteSpace: "nowrap", color: j === 0 ? "var(--chrome-muted)" : undefined,
+                ...(/^[+\-]?\d+(?:[.:\-\u2013]\d+)*$/.test(String(c).trim()) ? mono : null) }}>{c}</td>; })}
+          </tr>))}</tbody>
+      </table>);
+  };
+  // A tournament tab's body: a ### caption adopts the table under it, tables render by shape,
+  // prose goes through MdDoc, and a run of captioned standings tables packs into a grid.
+  const renderTournBody = (body) => {
+    const items = []; let prose = [];
+    const flush = () => { if (prose.join("\n").trim()) items.push({ md: prose.join("\n") }); prose = []; };
+    for (let i = 0; i < body.length; i++) {
+      const L = body[i];
+      const h3 = L.match(/^###\s+(.*)$/);
+      let j = i + 1;
+      while (h3 && j < body.length && !body[j].trim()) j++;
+      if (L.trim().startsWith("|") || (h3 && body[j] && body[j].trim().startsWith("|"))) {
+        flush();
+        let k = h3 ? j : i;
+        const rows = [];
+        while (k < body.length && body[k].trim().startsWith("|")) { rows.push(body[k].trim()); k++; }
+        i = k - 1;
+        const cells = r => r.replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+        const head = cells(rows[0] || "");
+        const rest = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
+        const isFix = head.some(h => /^match$/i.test(h));
+        const isStand = !isFix && head.some(h => /team|club/i.test(h));
+        items.push({ h: h3 ? h3[1] : null, grid: isStand,
+                     el: isFix ? renderFixTable({ head, body: rest })
+                       : isStand ? renderStandTable({ head, body: rest })
+                       : <MdTable head={head} body={rest} keyBase={"tt" + items.length} /> });
+        continue;
+      }
+      prose.push(L);
+    }
+    flush();
+    const out = []; let run = [];
+    const cell = (it, k) => <div key={k}>{it.h && <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">{it.h}</PanelTitle></div>}{it.el}</div>;
+    const flushRun = () => {
+      if (!run.length) return;
+      out.push(run.length > 1
+        ? <div key={"g" + out.length} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 18, marginBottom: 16 }}>{run.map(cell)}</div>
+        : <div key={"g" + out.length} style={{ marginBottom: 16 }}>{cell(run[0], 0)}</div>);
+      run = [];
+    };
+    for (const it of items) {
+      if (it.md !== undefined) { flushRun(); out.push(<div key={"m" + out.length}><MdDoc text={it.md} /></div>); continue; }
+      if (it.grid) { run.push(it); continue; }
+      flushRun();
+      out.push(<div key={"t" + out.length} style={{ marginBottom: 16 }}>{cell(it, 0)}</div>);
+    }
+    flushRun();
+    return out;
   };
   // The seasons list reads every report (the winner lives in the final table), so the whole
   // competition's reports fetch as soon as the list shows.
@@ -11387,12 +11544,12 @@ export default function App() {
                   if (typeof text !== "string") return null;
                   const F = parseSeasonReport(text).final;
                   if (!F) { const w = text.match(/^\*\*(?:Winner|Champions?):\s*([^,*]+)|^(?:Winner|Champions?):\s*\*\*([^*]+)\*\*/m);
-                            return w ? (w[1] || w[2]).trim() : null; }
+                            return w ? (w[1] || w[2]).trim() : tournWinner(text); }
                   const ti = F.head.findIndex(h => /team|club/i.test(h));
                   if (ti < 0 || !F.body[0]) return null;
                   return String(F.body[0][ti]).replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim() || null;
                 };
-                const openSeason = (x) => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "G", asc: false }); setLgRound(null); setLgSeason(x.id); };
+                const openSeason = (x) => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "G", asc: false }); setLgRound(null); setLgTTab(0); setLgSeason(x.id); };
                 const playerCell = (x, e) => e ? (
                   <span className={playerByName.has(e.player) ? "cell-link" : undefined}
                     onClick={(ev) => { ev.stopPropagation(); openPlayer(e.player, { season: x.id }); }}
@@ -11474,7 +11631,22 @@ export default function App() {
               {s.md && report === false && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "14px 20px" }}>The report failed to load.</div>}
               {typeof report === "string" && (() => {
                 const R = parseSeasonReport(report);
-                if (!R.rounds.length) return <div style={{ padding: "14px 20px 6px" }}><MdDoc text={report} /></div>;
+                if (!R.rounds.length) {
+                  const T = parseTournTabs(report);
+                  if (!T.tabs.length) return <div style={{ padding: "14px 20px 6px" }}><MdDoc text={report} /></div>;
+                  const tt = Math.min(lgTTab, T.tabs.length - 1);
+                  return (<>
+                    {T.pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={T.pre} /></div>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
+                      {T.tabs.map((tb, i2) => <button key={tb.name + i2} onClick={() => setLgTTab(i2)}
+                        style={{ ...smBtn, cursor: i2 === tt ? "default" : "pointer", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontSize: 9,
+                                 background: i2 === tt ? "var(--chrome-brand)" : "transparent",
+                                 color: i2 === tt ? "var(--ui-on-accent)" : "var(--chrome-muted)",
+                                 border: i2 === tt ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-border)" }}>{tb.name}</button>)}
+                    </div>
+                    <div style={{ padding: "14px 20px 6px" }}>{renderTournBody(T.tabs[tt].body)}</div>
+                  </>);
+                }
                 const idx = Math.min(Math.max(lgRound ?? R.rounds.length - 1, 0), R.rounds.length - 1);
                 const rd = R.rounds[idx];
                 const standings = rd.table || R.final;
@@ -11496,57 +11668,12 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)", gap: 20, padding: "14px 20px", alignItems: "start" }}>
                     <div>
                       <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">Round {rd.n}</PanelTitle></div>
-                      {rd.fixtures ? (() => {
-                        const mi = rd.fixtures.head.findIndex(h => /^match$/i.test(h));
-                        const si = rd.fixtures.head.findIndex(h => /^score$/i.test(h));
-                        const side = (nm, right) => { const tm = teamByName.get(nm); return (
-                          <span onClick={() => tm && openTeam(tm)} className={tm ? "cell-link" : undefined}
-                            title={tm ? `Open ${nm}` : nm}
-                            style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1,
-                                     justifyContent: right ? "flex-start" : "flex-end", cursor: tm ? "pointer" : "default" }}>
-                            {!right && <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nm}</span>}
-                            <TeamCrest team={tm || { code: "" }} size={18} />
-                            {right && <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nm}</span>}
-                          </span>); };
-                        return (
-                        <div style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
-                          {rd.fixtures.body.map((r, ri) => {
-                            const m = String(r[mi] || "").split(/\s+vs\s+/i);
-                            return (
-                            <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 11,
-                                                   background: ri % 2 ? "transparent" : "var(--chrome-bg-08)",
-                                                   borderBottom: ri < rd.fixtures.body.length - 1 ? "1px solid var(--chrome-border-33)" : "none" }}>
-                              {side(m[0] || "", false)}
-                              <span style={{ flexShrink: 0, minWidth: 52, textAlign: "center", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{r[si] || "vs"}</span>
-                              {side(m[1] || "", true)}
-                            </div>); })}
-                        </div>); })()
+                      {rd.fixtures ? renderFixTable(rd.fixtures)
                                    : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No results recorded.</div>}
                     </div>
                     <div>
                       <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">{stLabel}</PanelTitle></div>
-                      {standings ? (() => {
-                        const ti = standings.head.findIndex(h => /team|club/i.test(h));
-                        const strip = (s) => String(s).replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim();
-                        return (
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                          <colgroup>{standings.head.map((c, j) =>
-                            <col key={j} style={j === ti ? undefined : { width: j === 0 ? 30 : 38 }} />)}</colgroup>
-                          <thead><tr>{standings.head.map((c, j) => <th key={j} style={{ ...thCell, whiteSpace: "nowrap", overflow: "hidden" }}>{c}</th>)}</tr></thead>
-                          <tbody>{standings.body.map((r, ri) => (
-                            <tr key={ri} style={{ background: ri % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                              {r.map((c, j) => {
-                                if (j === ti) { const nm = strip(c); const tm = teamByName.get(nm); return (
-                                  <td key={j} className={tm ? "cell-link" : undefined} onClick={() => tm && openTeam(tm)}
-                                      title={tm ? `Open ${nm}` : nm} style={{ ...tdCell, fontSize: 11, cursor: tm ? "pointer" : "default" }}>
-                                    <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                                      <TeamCrest team={tm || { code: "" }} size={18} />
-                                      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: /\*\*/.test(c) ? 700 : 400, fontStyle: /^\*[^*]/.test(String(c).trim()) ? "italic" : "normal", color: "var(--ui-text)" }}>{nm}</span>
-                                    </span></td>); }
-                                return <td key={j} style={{ ...tdCell, fontSize: 11, whiteSpace: "nowrap", color: j === 0 ? "var(--chrome-muted)" : undefined,
-                                  ...(/^[+\-]?\d+(?:[.:\-\u2013]\d+)*$/.test(String(c).trim()) ? mono : null) }}>{c}</td>; })}
-                            </tr>))}</tbody>
-                        </table>); })()
+                      {standings ? renderStandTable(standings)
                                  : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No table recorded.</div>}
                     </div>
                   </div>
