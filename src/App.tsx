@@ -4065,8 +4065,8 @@ const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiat
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
-  ...CONFERENCE_NAMES.map(c => ({ name: c + " Championship", scope: c })),
   { name: "Club World Cup", scope: "clubs" },
+  ...CONFERENCE_NAMES.map(c => ({ name: c + " Championship", scope: c })),
 ];
 const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
@@ -7250,7 +7250,7 @@ export default function App() {
     return [
       ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
         return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name), nFull: fullBy(c.name),
-                 caption: "" }; }),
+                 caption: c.scope === "intl" || c.scope === "clubs" ? "International" : c.scope }; }),
       ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l), nFull: fullBy(l),
                  caption: [natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014"),
