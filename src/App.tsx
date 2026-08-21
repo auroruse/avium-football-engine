@@ -11173,15 +11173,20 @@ export default function App() {
   const renderTeamDetail = (t) => { const ed = isEditableTeam(t); const strat = t.strategy || STRAT_DEF;
     const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100;
     const isIntlTeam = t.league === "Avium International"; return (<>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, borderBottom: "1px solid var(--chrome-border)", flexShrink: 0, display: "flex", alignItems: "center" }}>
-                    <PanelTitle sub={t.league === "Custom" ? "Custom" : t.league}>{t.code || abbr(t.name, t.code)}</PanelTitle>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {/* Custom teams are always editable, so the unlock only makes sense on presets.
-                          The warning is the whole point of the button: these edits are not saved. */}
-                      {t.league !== "Custom" && <button onClick={() => toggleUnlocked(t.id)} style={{ ...smBtn, color: unlockedTeams.has(t.id) ? "var(--ui-warn)" : "var(--chrome-muted)" }}
-                        >{unlockedTeams.has(t.id) ? "🔓 Editing" : "✎ Edit"}</button>}
-                      <span onClick={() => setExpandedTeam(null)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                  {/* The player page's header, in team colours: step back on the left, what kind
+                      of page this is beside it, and the one action this page has on the right. The
+                      crest, name, league and ratings are all on the band below. */}
+                  <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, borderBottom: "1px solid var(--chrome-border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                      <button onClick={() => setExpandedTeam(null)}
+                        style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>
+                        &#8592; {isIntlTeam ? "Nations" : "Teams"}</button>
+                      <PanelTitle>Team</PanelTitle>
                     </div>
+                    {/* Custom teams are always editable, so the unlock only makes sense on presets.
+                        The warning is the whole point of the button: these edits are not saved. */}
+                    {t.league !== "Custom" && <button onClick={() => toggleUnlocked(t.id)} style={{ ...smBtn, flexShrink: 0, background: "transparent", cursor: "pointer", color: unlockedTeams.has(t.id) ? "var(--ui-warn)" : "var(--chrome-muted)" }}
+                      >{unlockedTeams.has(t.id) ? "🔓 Editing" : "✎ Edit"}</button>}
                   </div>
                   <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
                     {/* Header band: crest and name on the left, the four ratings on the right, the
