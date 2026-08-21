@@ -7163,7 +7163,7 @@ export default function App() {
   const [lgMd, setLgMd] = useState({});                          // report path -> text | false (fetched, absent)
   const [lgRound, setLgRound] = useState(null);                  // selected report round; null = the last one
   const WC_COMP = "World Cup";
-  const LG_ALL_TEAMS = "::all-teams", LG_ALL_PLAYERS = "::all-players";
+  const LG_ALL_NATS = "::all-nations", LG_ALL_CLUBS = "::all-clubs", LG_ALL_PLAYERS = "::all-players";
   const [lgTeamSort, setLgTeamSort] = useState({ k: "ovr", asc: false });
   const [lgPlayerSort, setLgPlayerSort] = useState({ k: "ovr", asc: false });
   // One flip rule for both tables: names start ascending, numbers start descending.
@@ -7171,9 +7171,9 @@ export default function App() {
   const lgIsDir = (c) => typeof c === "string" && c.startsWith("::");
   const lgOpenComp = (name, sub) => {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
-    setLgSub(name === LG_ALL_PLAYERS ? "players" : name === LG_ALL_TEAMS ? "teams" : (sub || "teams"));
+    setLgSub(name === LG_ALL_PLAYERS ? "players" : lgIsDir(name) ? "teams" : (sub || "teams"));
     setPlayerNatFilter(""); setPlayerLeagueFilter("");
-    setTeamLeagueFilter(name === WC_COMP ? ALL_INTL : name === LG_ALL_TEAMS ? ALL_CLUBS : name);
+    setTeamLeagueFilter(name === WC_COMP || name === LG_ALL_NATS ? ALL_INTL : name === LG_ALL_CLUBS ? ALL_CLUBS : name);
     if (sub !== "teams") setExpandedTeam(null);
     setTab("leagues");
   };
@@ -11309,8 +11309,9 @@ export default function App() {
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {[["Directory", [
-                  { name: LG_ALL_TEAMS, label: "All Teams", sub2: `${teams.filter(x => x.league !== "Avium International").length} clubs`, dir: true },
-                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} players`, dir: true },
+                  { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} nations`, dir: true, icon: "\uD83C\uDF10" },
+                  { name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" },
+                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} players`, dir: true, icon: "\uD83D\uDC64" },
                 ]], ["International", lgRail.filter(c => c.intl)],
                     ["Domestic", lgRail.filter(c => !c.intl && !c.misc)],
                     ["Miscellaneous", lgRail.filter(c => c.misc)]].map(([label, cs]) => !cs.length ? null : (
@@ -11321,7 +11322,7 @@ export default function App() {
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", cursor: "pointer",
                            borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
                            background: on ? "var(--chrome-panel-66)" : "transparent" }}>
-                  {c.dir ? <span style={{ width: 19, flexShrink: 0, textAlign: "center", fontSize: 13 }}>{c.name === LG_ALL_PLAYERS ? "\uD83C\uDF10" : "\uD83C\uDFDF\uFE0F"}</span>
+                  {c.dir ? <span style={{ width: 19, flexShrink: 0, textAlign: "center", fontSize: 13 }}>{c.icon}</span>
                          : <LeagueCrest league={c.name} size={19} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label || c.name}</div>
@@ -11554,7 +11555,6 @@ export default function App() {
                 const searching = !!teamSearch.trim();
                 const lgScoped = lgComp && !lgIsDir(lgComp);
                 const lgLabel = searching ? `Search “${teamSearch.trim()}”`
-                  : lgComp === LG_ALL_TEAMS ? "All Teams"
                   : lgScoped ? lgComp : (ALL_VIEW_LABEL[teamLeagueFilter] || teamLeagueFilter);
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
@@ -11567,7 +11567,7 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{lgScoped && isIntlView ? "Nations" : isAllView || searching ? "Teams" : isConf ? "Continent" : "Nation"}</div>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isIntlView ? "Nations" : isAllView || searching ? "Teams" : isConf ? "Continent" : "Nation"}</div>
                       <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView || searching ? visibleTeams.length : isConf ? (CONFERENCE_CONTINENT[teamLeagueFilter] || "—") : (nat ? nat.name : "—")}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
@@ -11586,7 +11586,7 @@ export default function App() {
                 <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="&#128269; Search"
                   style={{ ...addBtn, flex: 1, background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
               </div>
-              {isAllView ? (
+              {lgIsDir(lgComp) ? (
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <colgroup>
@@ -11625,7 +11625,7 @@ export default function App() {
                       const ln = teamLinesById.get(t.id) || { att: 0, mid: 0, def: 0 };
                       return (
                       <tr key={t.id} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                        <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
+                        <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono, borderLeft: "2px solid transparent" }}>{i + 1}</td>
                         <td className="cell-link" onClick={() => setExpandedTeam(t.id)} title={`Open ${t.name}`}
                           style={{ ...tdCell, paddingRight: 0, cursor: "pointer" }}>
                           <TeamCrest team={t} size={24} /></td>
@@ -11893,7 +11893,7 @@ export default function App() {
                     {/* Nationality is gone: the rail already fixes it, so the column read the same
                         value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 82 }} /><col style={{ width: "28%" }} /><col style={{ width: "38%" }} />
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 168 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
                     </colgroup>
                     <thead>
                       <tr>
