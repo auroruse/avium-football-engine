@@ -1,13 +1,49 @@
-# Player statistics archive
+# The season archive
 
-The Players tab reads this folder. `vite.config.js` enumerates it at build time (and watches it in
+The Leagues tab reads this folder. `vite.config.js` enumerates it at build time (and watches it in
 dev), so adding a season is one file drop — no code change, no manifest to keep in step.
 
 ## Season files
 
-One TSV per competition-season. A league season is `<comp>/<YY>-<YY>.tsv` (`nl1/33-34.tsv`); a
-one-off tournament is `<comp>/<YYYY>.tsv` (`wc/1934.tsv`). The folder name maps to a competition in
-`PSTATS_COMP` in `src/App.tsx`; an unmapped folder shows uppercased.
+A season is up to two files sharing a name: `<season>.tsv` holding its leaderboards, and
+`<season>.md` holding its report. Either one on its own is a season; neither is required to have
+the other. A league season is `<comp>/<YY>-<YY>` (`nl1/33-34`); a one-off tournament is
+`<comp>/<YYYY>` (`wc/1934`). The folder name maps to a competition in `PSTATS_COMP` in
+`src/App.tsx`; an unmapped folder shows uppercased.
+
+**Two-digit years are read with a pivot at 50**: `88-89` is 1888/89 and `00-01` is 1900/01. The
+archive reaches back forty-five years, so a flat `1900 + n` filed the oldest seasons after the
+newest.
+
+A competition with no league of its own in the presets — a cup, a continental championship, a
+tournament nobody fields a standing team for — appears in the rail on the strength of its archive
+folder alone, under International, and opens straight onto Seasons. There are no squads behind it
+to put in a Teams or Players tab.
+
+## Season reports
+
+`<season>.md` is a markdown document and renders one of two ways.
+
+**A domestic league season** is a run of `## Round N` headings, each with a `| Match | Score |`
+table (the exporter adds `Scorers`, and a `### Table after Round N` beside it), closed by a
+`## Final Table`. That shape drives the round stepper: pick a round, see its results next to the
+standings they produced.
+
+**Everything else** — every tournament, both domestic cups — renders as a plain document, in file
+order. A group stage carries eight tables to a round and a merged qualifier repeats rounds 1–10
+once per confederation, so the stepper has nothing to step through; the rule for keeping a report
+out of it is simply that no heading reads `## Round N`. The vault's own `## Round N` headings were
+demoted to `###` on the way in.
+
+The Winner column on a season's banner reads the top row of `## Final Table`. A knockout has no
+such table, so a report may instead name its champion on a line of its own, `**Winner: X**` or
+`**Champions: X**`, which is the convention the vault documents already follow. Reports that do
+neither show a dash.
+
+The reports were converted out of `Avium/Football/` — `International/<year>/`, and
+`Nichirin League One|Two/<season>/`. Seasons older than 30/31 survive only as a final table, which
+is what their TSV in `Historical Seasons/` holds; the club and base-skill block beside it is not
+carried in, and neither are the player boards.
 
 The career table is ordered chronologically, and a year holding both a tournament and a league
 season is broken by `PSTATS_KIND`: World Cup, then league, then Club World Cup — the same order the

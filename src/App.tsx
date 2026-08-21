@@ -3874,7 +3874,14 @@ function fullDisplayName(raw) {
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      kar: "Karjanian Premier League" };
+                      kar: "Karjanian Premier League", stsc: "Sei'i Tai Shogun Cup",
+                      wcq: "World Cup Qualifiers", cwc: "AFA Club World Cup", natl: "Nations League",
+                      fcup: "Foundation Cup", eufa: "EUFA Championship", pfa: "PFA Championship",
+                      vafc: "VAFC Championship", conelaf: "CONELAF Championship",
+                      conseaf: "CONSEAF Championship" };
+// A season folder names two-digit years and the archive reaches back over a century boundary:
+// 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
+const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
 const PSTATS_KIND = { wc: 0, cwc: 2 };            // anything else is a league season
 const PSTATS_INTL = new Set(["wc"]);
 const PSTATS_BOARD = { G: "Top Scorers", A: "Assists", RTG: "Best Rating",
@@ -4084,7 +4091,7 @@ const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
   const url = (dir, x) => `${import.meta.env.BASE_URL}${dir}/${encodeURIComponent(x)}.png`;
-  return [...new Set([n, deaccent(n)])].map(x => url("leagues", x))
+  return [...new Set([n, deaccent(n), n.split(" ")[0]])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER)]);
 };
@@ -7198,7 +7205,7 @@ export default function App() {
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
         const m = f.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))\.tsv$/i);
         if (!m) return;
-        const yr = m[4] ? +m[4] : 1900 + +m[3];
+        const yr = m[4] ? +m[4] : pstatsYear(m[3]);
         seasons.push({ id: f, md: mdFiles.has(f.replace(/\.tsv$/i, "")), comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
                        season: m[4] || (m[2] + "/" + m[3]),
                        ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1), boards: parseStatBoards(text) });
@@ -7208,7 +7215,7 @@ export default function App() {
         if (seasons.some(s => s.id.replace(/\.tsv$/i, "") === base)) continue;
         const m = base.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))$/);
         if (!m) continue;
-        const yr = m[4] ? +m[4] : 1900 + +m[3];
+        const yr = m[4] ? +m[4] : pstatsYear(m[3]);
         seasons.push({ id: base + ".tsv", md: true, boards: {}, comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
                        season: m[4] || (m[2] + "/" + m[3]), ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1) });
       }
@@ -7228,13 +7235,19 @@ export default function App() {
     const clubLeagues = [...new Set(teams.filter(tm => tm.league && tm.league !== "Avium International").map(tm => tm.league))]
       .sort((a, b) => (ORD.get(a) ?? 999) - (ORD.get(b) ?? 999) || a.localeCompare(b));
     const natNames = new Map(intl.map(tm => [tm.code, tm.name]));
+    const named = new Set([WC_COMP, ...clubLeagues]);
+    const archive = [...new Set((pstats?.seasons || []).map(s => s.comp))].filter(c => !named.has(c)).sort();
     return [
       { name: WC_COMP, intl: true, nTeams: intl.length, avg: avgOf(intl), nSeasons: seasonsBy(WC_COMP), caption: `International (${intl.length})` },
+      ...archive.map(c => ({ name: c, intl: true, archive: true, nTeams: 0, avg: 0, nSeasons: seasonsBy(c),
+                             caption: `Archive (${seasonsBy(c)})` })),
       ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l),
                  caption: `${natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014")} (${ts.length})` }; }),
     ];
   }, [teams, pstats]);
+  const lgArchive = !!lgRail.find(c => c.name === lgComp)?.archive;
+  const lgSubEff = lgArchive ? "seasons" : lgSub;
   useEffect(() => {
     if (tab !== "leagues" || lgComp || !lgRail.length) return;
     const first = lgRail.find(c => c.name === "Nichirin League One") || lgRail.find(c => !c.intl) || lgRail[0];
@@ -8515,7 +8528,7 @@ export default function App() {
   // The seasons list reads every report (the winner lives in the final table), so the whole
   // competition's reports fetch as soon as the list shows.
   useEffect(() => {
-    if (tab !== "leagues" || lgSub !== "seasons" || !lgComp) return;
+    if (tab !== "leagues" || lgSubEff !== "seasons" || !lgComp) return;
     for (const s of (pstats?.seasons || []).filter(x => x.comp === lgComp && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
@@ -8523,7 +8536,7 @@ export default function App() {
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
-  }, [tab, lgSub, lgComp, pstats, lgMd]);
+  }, [tab, lgSubEff, lgComp, pstats, lgMd]);
   // A season report is fetched the first time its season opens, then cached for the session.
   useEffect(() => {
     if (!lgSeason) return;
@@ -11329,7 +11342,7 @@ export default function App() {
                     <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>
                       {c.dir ? c.sub2 : c.caption}</div>
                   </div>
-                  {!c.dir && <OvrBadge v={c.avg} />}
+                  {!c.dir && !c.archive && <OvrBadge v={c.avg} />}
                 </div>); })}
               </Fragment>))}
             </div>
@@ -11341,7 +11354,7 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: lgIsDir(lgComp) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {!lgIsDir(lgComp) && [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]].map(([id, l]) => { const on = lgSub === id; return (
+              {!lgIsDir(lgComp) && (lgArchive ? [["seasons", "Seasons"]] : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]]).map(([id, l]) => { const on = lgSubEff === id; return (
               <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
@@ -11351,7 +11364,7 @@ export default function App() {
                          borderTop: on ? "2px solid var(--chrome-brand)" : "2px solid transparent",
                          marginBottom: on ? -1 : 0, borderBottomColor: "var(--chrome-panel)" }}>{l}</button>); })}
             </div>
-            {lgSub === "seasons" && (() => {
+            {lgSubEff === "seasons" && (() => {
           const list = (pstats?.seasons || []).filter(s => s.comp === lgComp).sort((a, b) => b.ord - a.ord);
           const s = lgSeason ? list.find(x => x.id === lgSeason) : null;
           const mdPath = s ? s.id.replace(/\.tsv$/i, ".md") : null;
@@ -11367,7 +11380,8 @@ export default function App() {
                   const text = lgMd[x.id.replace(/\.tsv$/i, ".md")];
                   if (typeof text !== "string") return null;
                   const F = parseSeasonReport(text).final;
-                  if (!F) return null;
+                  if (!F) { const w = text.match(/^\*\*(?:Winner|Champions?):\s*([^,*]+)|^(?:Winner|Champions?):\s*\*\*([^*]+)\*\*/m);
+                            return w ? (w[1] || w[2]).trim() : null; }
                   const ti = F.head.findIndex(h => /team|club/i.test(h));
                   if (ti < 0 || !F.body[0]) return null;
                   return String(F.body[0][ti]).replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim() || null;
@@ -11542,7 +11556,7 @@ export default function App() {
             </div>
             </>)}
           </div>); })()}
-            {lgSub === "teams" && (<>
+            {lgSubEff === "teams" && (<>
         {/* The old Teams tab, scoped: lgOpenComp set teamLeagueFilter, so `visibleTeams` and
             `customTab` keep working untouched and this pane is just their rendering. The league
             rail died with the tab -- the competition grid is the rail now. */}
@@ -11689,7 +11703,7 @@ export default function App() {
             </>)}
           </div>
             </>)}
-            {lgSub === "players" && (<>
+            {lgSubEff === "players" && (<>
         {/* The old Players tab, scoped to the open competition by the filter below. The nations
             rail died with the tab; nationality still shows on every row. */}
 
