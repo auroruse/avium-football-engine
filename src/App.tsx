@@ -11628,7 +11628,7 @@ export default function App() {
                         <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono, borderLeft: "2px solid transparent" }}>{i + 1}</td>
                         <td className="cell-link" onClick={() => setExpandedTeam(t.id)} title={`Open ${t.name}`}
                           style={{ ...tdCell, paddingRight: 0, cursor: "pointer" }}>
-                          <TeamCrest team={t} size={24} /></td>
+                          <TeamCrest team={t} size={24} style={{ display: "block", height: 24 }} /></td>
                         <td className="cell-link" onClick={() => setExpandedTeam(t.id)} title={`Open ${t.name}`}
                           style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", ...editedStyle(t.id) }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
@@ -11645,7 +11645,7 @@ export default function App() {
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{home}</td>
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                            <LeagueCrest league={lg} size={14} />
+                            <LeagueCrest league={lg} size={15} />
                             <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{lg}</span>
                           </span>
                         </td>
