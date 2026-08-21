@@ -4206,6 +4206,161 @@ const PRESET_CATALOG = [
   id: t.league + "::" + (t.code || t.name),
 }));
 
+// ═══ SEASON EXPORT ═══════════════════════════════════════════════════════════
+// The vault's season files were assembled by hand, which is where format drift came from — three
+// World Cup files arrived in three different layouts. These write the two canonical shapes off the
+// live tournament state: a Markdown season report (rounds, scorers, running tables) and the
+// six-board player stats TSV the pstats archive reads.
+const dlText = (name, text, mime) => {
+  const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+};
+// One accessor for every result shape: sim returns (scorers + ogs side-keyed), live-match ledgers
+// (method-tagged entries), and two-leg results (leg-keyed, leg2 stored in second-leg orientation).
+const seasonScorersOf = (result, leg) => {
+  const pickSide = (obj, sd) => (leg ? obj?.[leg]?.[sd] : obj?.[sd]) || [];
+  const norm = (e, og) => ({ name: e.full || e.name, min: e.min,
+    pen: !!(e.pen || e.method === "pen"), og: og || e.method === "og" });
+  return (sd) => [...pickSide(result?.scorers, sd).map(e => norm(e, false)),
+                  ...pickSide(result?.ogs, sd).map(e => norm(e, true))]
+    .sort((a, b) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0));
+};
+const seasonFmtScorers = (list) => {
+  if (!list.length) return "";
+  const by = new Map();
+  for (const g of list) {
+    const k = g.name + (g.og ? "|og" : "");
+    const e = by.get(k) || { name: g.name, og: g.og, mins: [] };
+    e.mins.push(`${g.min}'` + (g.pen ? " (pen)" : ""));
+    by.set(k, e);
+  }
+  return [...by.values()].map(e => `${e.name} ${e.mins.join(", ")}${e.og ? " (OG)" : ""}`).join("; ");
+};
+// Fall-back when a result carries no scorer ledger (manual entries whose re-sim missed the score,
+// or fixtures played before this existed): who scored is still in statDiffs, minutes are not.
+const seasonScorersFromDiffs = (result, sideDiffs) => {
+  if (!sideDiffs) return "";
+  const out = [];
+  for (const [k, d] of Object.entries(sideDiffs)) {
+    const g = d?.goals || 0;
+    if (g > 0) out.push(`${k.split("|")[1] || k}${g > 1 ? ` ×${g}` : ""}`);
+  }
+  return out.join("; ");
+};
+const seasonScoreCell = (m) => {
+  const r = m.result;
+  if (!r) return "";
+  if (r.twoLeg) {
+    if (r.partial) return `${r.leg1.home}-${r.leg1.away} (leg 1)`;
+    let s = `${r.leg1.home}-${r.leg1.away}, ${r.leg2.away}-${r.leg2.home} (agg ${r.agg.home}-${r.agg.away})`;
+    if (r.pen) s += ` (${r.pen.home}-${r.pen.away}p)`;
+    return s;
+  }
+  let s = `${r.ftHome + (r.et?.home || 0)}-${r.ftAway + (r.et?.away || 0)}`;
+  if (r.et) s += " aet";
+  if (r.pen) s += ` (${r.pen.home}-${r.pen.away}p)`;
+  return s;
+};
+const seasonMdStandings = (rows) => {
+  const L = ["| # | Team | P | W | D | L | GF | GA | GD | Pts |",
+             "|---|------|---|---|---|---|----|----|----|-----|"];
+  rows.forEach((s, i) => L.push(`| ${i + 1} | ${s.name} | ${s.p} | ${s.w} | ${s.d} | ${s.l} | ${s.gf} | ${s.ga} | ${s.gf - s.ga >= 0 ? "+" : ""}${s.gf - s.ga} | ${s.pts} |`));
+  return L.join("\n");
+};
+const seasonFixtureRows = (matches, leg) => {
+  const L = ["| Match | Score | Scorers |", "|-------|-------|---------|"];
+  for (const m of matches) {
+    if (!m || m.bye || !m.home || !m.away) continue;
+    const get = seasonScorersOf(m.result, leg);
+    let sc;
+    if ((m.result?.scorers && (!leg || m.result.scorers[leg]))) {
+      // leg2 is stored in second-leg orientation: its "home" is the tie's away side.
+      const hList = leg === "leg2" ? get("away") : get("home");
+      const aList = leg === "leg2" ? get("home") : get("away");
+      sc = [seasonFmtScorers(hList), seasonFmtScorers(aList)].filter(Boolean).join(" / ");
+    } else {
+      const d = leg ? m.result?.statDiffs?.[leg] : m.result?.statDiffs;
+      sc = [seasonScorersFromDiffs(m.result, d?.home), seasonScorersFromDiffs(m.result, d?.away)]
+        .filter(Boolean).join(" / ");
+    }
+    L.push(`| ${m.home.name} vs ${m.away.name} | ${seasonScoreCell(m)} | ${sc || ""} |`);
+  }
+  return L.join("\n");
+};
+function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
+  const L = [`# ${title} — Season Report`, ""];
+  (groups || []).forEach((g, gi) => {
+    const gLabel = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
+    (g.schedule || []).forEach((rd, ri) => {
+      if (!rd.some(m => m?.result)) return;
+      L.push("---", "", `## Round ${ri + 1}${gLabel}`, "", seasonFixtureRows(rd), "");
+      // The table as it stood after this round: same recompute the app runs, on a truncated season.
+      const upto = { ...g, schedule: g.schedule.slice(0, ri + 1) };
+      L.push(`### Table after Round ${ri + 1}${gLabel}`, "", seasonMdStandings(recalcStandings(upto, tiebreakers)), "");
+    });
+    L.push("---", "", `## Final Table${gLabel}`, "", seasonMdStandings(recalcStandings(g, tiebreakers)), "");
+  });
+  const koBlock = (label, matches) => {
+    if (!matches?.some(m => m?.result)) return;
+    L.push("---", "", `## ${label}`, "", seasonFixtureRows(matches, null), "");
+    if (koLegs === 2) {
+      // Two-leg rows already print both legs in one line; per-leg scorers follow for the record.
+      const l1 = seasonFixtureRows(matches, "leg1"), l2 = seasonFixtureRows(matches, "leg2");
+      if (l1.split("\n").length > 2) L.push(`### ${label} — First Legs`, "", l1, "");
+      if (l2.split("\n").length > 2) L.push(`### ${label} — Second Legs`, "", l2, "");
+    }
+  };
+  if (ko?.rounds?.length) {
+    ko.rounds.forEach((r, ri) => koBlock(r.name || koRoundLabel(ko.rounds.length === 1 ? 2 : 2 ** (ko.rounds.length - ri)), r.matches));
+    (ko.losers || []).forEach((r, ri) => koBlock(`Losers Round ${ri + 1}`, r.matches));
+    if (ko.thirdPlace) koBlock("Third Place", [ko.thirdPlace]);
+    if (ko.grandFinal) koBlock("Grand Final", [ko.grandFinal]);
+    if (ko.reset) koBlock("Grand Final Reset", [ko.reset]);
+    if (ko.champion) L.push("---", "", `**${ko.champion.name} are champions.**`, "");
+  }
+  return L.join("\n");
+}
+// The archive's canonical player TSV: six ranked boards side by side, one blank column apart.
+function buildSeasonStatsTsv(tPlayerStats) {
+  const all = Object.values(tPlayerStats);
+  const gp = p => (p.matches || 0) + (p.subApp || 0);
+  const nameOf = p => p.fullName || p.name;
+  const codeOf = p => p.code || (p.team || "").slice(0, 3).toUpperCase();
+  const maxGp = Math.max(1, ...all.map(gp));
+  const minQ = Math.ceil(maxGp / 6);
+  const boards = [
+    ["G", all.filter(p => (p.goals || 0) > 0).sort((a, b) => b.goals - a.goals || gp(a) - gp(b)).map(p => [p, p.goals])],
+    ["A", all.filter(p => (p.assists || 0) > 0).sort((a, b) => b.assists - a.assists || gp(a) - gp(b)).map(p => [p, p.assists])],
+    ["RTG", (() => { const played = all.filter(p => gp(p) > 0)
+        .map(p => [p, +(p.totalRating / gp(p)).toFixed(1)]);
+      const q = played.filter(([p]) => gp(p) >= minQ).sort((a, b) => b[1] - a[1] || gp(a[0]) - gp(b[0]));
+      const rest = played.filter(([p]) => gp(p) < minQ).sort((a, b) => b[1] - a[1]);
+      return [...q, ...rest]; })()],
+    ["CC", all.filter(p => (p.cc || 0) > 0).sort((a, b) => b.cc - a.cc || gp(a) - gp(b)).map(p => [p, p.cc])],
+    ["DC", all.filter(p => (p.defActs || 0) > 0).sort((a, b) => b.defActs - a.defActs || gp(a) - gp(b)).map(p => [p, p.defActs])],
+    ["S", all.filter(p => (p.saves || 0) > 0).sort((a, b) => b.saves - a.saves || gp(a) - gp(b)).map(p => [p, p.saves])],
+  ];
+  const H = [], n = Math.max(...boards.map(([, b]) => b.length));
+  boards.forEach(([stat], bi) => { if (bi) H.push(""); H.push("#", "PLAYER", "POS", "TEAM", "GP", stat); });
+  const rows = [H.join("\t")];
+  for (let i = 0; i < n; i++) {
+    const cells = [];
+    boards.forEach(([stat, b], bi) => {
+      if (bi) cells.push("");
+      const e = b[i];
+      if (!e) { cells.push("", "", "", "", "", ""); return; }
+      const [p, v] = e;
+      cells.push(String(i + 1), nameOf(p), p.pos || "", codeOf(p), String(gp(p)), stat === "RTG" ? v.toFixed(1) : String(v));
+    });
+    rows.push(cells.join("\t"));
+  }
+  return rows.join("\n") + "\n";
+}
+
 // ═══ UI STYLES ═══════════════════════════════════════════════════════════════
 const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariantNumeric: "tabular-nums" };
 // EVERY rating wears its badge. This used to be split: the squad columns got a block and everywhere
@@ -7713,6 +7868,12 @@ export default function App() {
         if (resultObj.twoLeg && target.leg === 2) { resultObj.statDiffs = { leg1: resultObj.statDiffs?.leg1 || {home:{},away:{}}, leg2: {home:homeDiffs, away:awayDiffs} }; }
         else if (resultObj.twoLeg && target.leg === 1) { resultObj.statDiffs = { leg1: {home:homeDiffs, away:awayDiffs} }; }
         else { resultObj.statDiffs = { home: homeDiffs, away: awayDiffs }; }
+        // The live match keeps a real goalscorer ledger, minutes and all; leg-keyed the same way
+        // statDiffs is so the exporter reads both shapes with one accessor.
+        { const _gs = structuredClone(lmMatch.goalscorers || { home: [], away: [] });
+          if (resultObj.twoLeg) { const lk = target.leg === 2 ? "leg2" : "leg1";
+            resultObj.scorers = { ...(resultObj.scorers || {}), [lk]: _gs }; }
+          else resultObj.scorers = _gs; }
       };
       if (target.type === "group") {
         setTGroups(prev => { const ng = structuredClone(prev); storeDiffs(ng[target.gi].schedule[target.ri][target.mi].result); return ng; });
@@ -8097,6 +8258,109 @@ export default function App() {
       setTActiveSlot(null);
       commitSlots([], null);
     }
+  };
+  // ── Season export + the Overseer's rebalance ──
+  // The rebalance panel is the High Overseer's alone: ?overseer=1 unlocks it once and the flag
+  // persists. Everything else here is for anyone running a season.
+  const [overseer] = useState(() => { try {
+    if (new URLSearchParams(window.location.search).get("overseer") === "1") localStorage.setItem("avium-overseer", "1");
+    return localStorage.getItem("avium-overseer") === "1";
+  } catch { return false; } });
+  const [tRebalOpen, setTRebalOpen] = useState(false);
+  const [tToolsOpen, setTToolsOpen] = useState(false);
+  const renderTTools = (isKO) => (<>
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setTToolsOpen(o => !o)}
+        style={{ ...addBtn, color: tToolsOpen ? "var(--ui-text)" : "var(--chrome-muted)" }}>
+        &#128229; Export &#9662;</button>
+      {tToolsOpen && (<>
+        <div onClick={() => setTToolsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 9996 }} />
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 9997, background: "var(--chrome-panel)",
+                      border: "1px solid var(--chrome-border)", borderRadius: 8, boxShadow: "0 8px 24px var(--ui-shadow-4)",
+                      minWidth: 216, padding: 4 }}>
+          {[["Season report (.md)", "Rounds, scorers, running tables", tExportSeasonMd],
+            ["Player stats (.tsv)", "The archive's six-board format", tExportStatsTsv],
+            ...(isKO ? [["Bracket (.svg)", "The knockout tree as an image", tKO?.losers ? exportDEBracket : exportBracket]] : []),
+            ...(overseer ? [["Rebalance proposal", "Post-season OVR changes", () => setTRebalOpen(true)]] : [])]
+            .map(([label, hint, fn]) => (
+            <button key={label} onClick={() => { setTToolsOpen(false); fn(); }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 11px", background: "transparent",
+                       border: "none", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--chrome-panel-66)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+              <div style={{ fontSize: 11, color: label === "Rebalance proposal" ? "var(--ui-warn)" : "var(--ui-text)" }}>{label}</div>
+              <div style={{ fontSize: 9, color: "var(--chrome-muted-66)" }}>{hint}</div>
+            </button>))}
+        </div>
+      </>)}
+    </div>
+    <button onClick={() => setTSettingsOpen(true)} title="Settings" style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#9881;</button>
+    <button onClick={() => setTSavesOpen(true)} title="Saves" style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190;</button>
+  </>);
+  const tSlotName = () => tSlots.find(s => s.id === tActiveSlot)?.name || "Season";
+  const tExportSeasonMd = () => {
+    const md = buildSeasonMd({ title: tSlotName(), groups: tGroups, ko: tKO,
+      tiebreakers: tConfig.tiebreakers, koLegs: tConfig.koLegs });
+    dlText(`${tSlotName()}.md`, md, "text/markdown;charset=utf-8");
+  };
+  const tExportStatsTsv = () => {
+    dlText(`${tSlotName()} Player Stats.tsv`, buildSeasonStatsTsv(tPlayerStats), "text/tab-separated-values;charset=utf-8");
+  };
+  // The proposal, computed the way the rebalance method reads a season: this league's own
+  // rating-to-OVR line (not an imported table), z-scores within position, production against
+  // positional peers, and the team's finish against its expected finish. A proposal to edit,
+  // not a verdict — the numbers leave here by copy-paste.
+  const tRebalProposal = () => {
+    const all = Object.values(tPlayerStats).filter(p => p.ovr != null);
+    const gpOf = p => (p.matches || 0) + (p.subApp || 0);
+    const maxGp = Math.max(1, ...all.map(gpOf));
+    const qualGp = Math.max(3, Math.round(maxGp * 0.4));
+    // team context: expected rank by skill vs actual standings rank, per group
+    const teamZ = new Map(), teamGa = new Map();
+    for (const g of tGroups) {
+      const table = g.standings?.length ? g.standings : recalcStandings(g, tConfig.tiebreakers);
+      const bySkill = [...table].sort((a, b) => (b.skill || 0) - (a.skill || 0));
+      table.forEach((row, actual) => {
+        const expected = bySkill.findIndex(x => x.name === row.name);
+        teamZ.set(row.name, (expected - actual) / Math.max(2, table.length / 4));
+        teamGa.set(row.name, (row.ga || 0) / Math.max(1, row.p || 1));
+      });
+    }
+    const posOf = p => ["GK", "DEF", "MID", "FWD"].includes(p.pos) ? p.pos : "MID";
+    const prodOf = p => { const g = Math.max(1, gpOf(p)); switch (posOf(p)) {
+      case "GK": return (p.saves || 0) / g * 0.5 - (teamGa.get(p.team) || 1.4) * 0.6;
+      case "DEF": return ((p.defActs || 0) + (p.goals || 0) * 3) / g;
+      case "MID": return ((p.cc || 0) * 0.6 + (p.defActs || 0) * 0.35 + ((p.goals || 0) + (p.assists || 0)) * 2) / g;
+      default: return ((p.goals || 0) * 2 + (p.assists || 0) + (p.cc || 0) * 0.3) / g; } };
+    const zBy = (list, f) => { const v = list.map(f);
+      const mu = v.reduce((a, b) => a + b, 0) / Math.max(1, v.length);
+      const sd = Math.sqrt(v.reduce((a, b) => a + (b - mu) ** 2, 0) / Math.max(1, v.length)) || 1;
+      return p => (f(p) - mu) / sd; };
+    const out = [];
+    for (const pos of ["GK", "DEF", "MID", "FWD"]) {
+      const grp = all.filter(p => posOf(p) === pos && gpOf(p) > 0);
+      const q = grp.filter(p => gpOf(p) >= qualGp);
+      if (!q.length) continue;
+      const zR = zBy(q, p => p.totalRating / gpOf(p));
+      const zP = zBy(q, prodOf);
+      for (const p of grp) {
+        const scale = Math.min(1, gpOf(p) / qualGp);
+        const raw = (1.15 * zR(p) + 0.7 * zP(p) + 0.45 * (teamZ.get(p.team) || 0)) * scale;
+        const d = Math.max(-5, Math.min(5, Math.round(raw)));
+        if (d) out.push({ p, d });
+      }
+    }
+    const CAPS = s => { const w = String(s).trim().split(/\s+/);
+      return w.length > 1 ? w.slice(0, -1).join(" ") + " " + w[w.length - 1].toUpperCase() : s; };
+    const line = (x, i) => `${i + 1}. ${CAPS(x.p.fullName || x.p.name)} (${x.p.code}, ${posOf(x.p)}, ${x.p.ovr} → ${x.p.ovr + x.d}, ${x.d > 0 ? "+" : ""}${x.d})`;
+    const buffs = out.filter(x => x.d > 0).sort((a, b) => b.d - a.d || b.p.ovr - a.p.ovr);
+    const nerfs = out.filter(x => x.d < 0).sort((a, b) => a.d - b.d || b.p.ovr - a.p.ovr);
+    const byClub = {};
+    for (const x of out) byClub[x.p.code] = (byClub[x.p.code] || 0) + x.d;
+    return ["PLAYER BUFFS", "", ...buffs.map(line), "", "PLAYER NERFS", "", ...nerfs.map(line), "",
+      `# ${out.length} of ${all.length} adjusted (${buffs.length} up, ${nerfs.length} down); net ${out.reduce((a, x) => a + x.d, 0) >= 0 ? "+" : ""}${out.reduce((a, x) => a + x.d, 0)}`,
+      `# net by club: ${Object.entries(byClub).sort((a, b) => b[1] - a[1]).map(([c, v]) => `${c} ${v > 0 ? "+" : ""}${v}`).join("  ")}`,
+    ].join("\n");
   };
   const slotExport = (id) => {
     const payload = id === tActiveSlot ? buildSlotPayload() : readSlot(id);
@@ -8738,6 +9002,10 @@ export default function App() {
     const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
     const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
+    // Scorers only when the re-sim landed on the entered score: a 2-1 narrated by a 0-0 would put
+    // goals in the report that nobody scored. Bulk sims keep the whole sim return, so they carry
+    // scorers without any of this.
+    if (_sr && _sr.ftHome === hg && _sr.ftAway === ag) { gm.result.scorers = _sr.scorers; gm.result.ogs = _sr.ogs; }
     ng[gi].standings = recalcStandings(ng[gi], tConfig.tiebreakers);
     setTGroups(ng); setTEdit(null); setTScoreError("");
   };
@@ -8789,7 +9057,8 @@ export default function App() {
         const _aSq2 = km?.away ? filterSquad(km.away.squad, km.away.name, koUnavail, _stamD2) : null;
         const _haKey = bracket === "lb" ? `lb_${ri}_${mi}` : bracket === "gf" ? "gf" : bracket === "reset" ? "reset" : bracket === "tp" ? "tp" : `ko_${ri}_${mi}`;
         const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2, null, null, tConfig.injuries !== false) : null;
-        const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs }; }
+        const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs };
+        if (_sr2) { result.scorers = _sr2.scorers; result.ogs = _sr2.ogs; } }
       if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
     };
     if (isTL) {
@@ -11457,6 +11726,20 @@ export default function App() {
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
           {/* Save slots — several tournaments in flight, one open at a time. Only the setup phase
               shows the panel outright; a running tournament reaches it from the header button. */}
+            {tRebalOpen && (() => { const txt = tRebalProposal(); return (
+            <div onClick={() => setTRebalOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
+              <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 640, maxHeight: "84vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)", ...ui }}>OVR Rebalance Proposal</span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => navigator.clipboard?.writeText(txt)} style={{ ...smBtn, cursor: "pointer", color: "var(--ui-info)" }}>Copy</button>
+                    <span onClick={() => setTRebalOpen(false)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "2px 6px" }}>&#10005;</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginBottom: 8, flexShrink: 0 }}>A proposal, not a verdict: this league&#39;s own rating scale, position-relative, production-weighted, team trajectory folded in. Edit before applying.</div>
+                <textarea readOnly value={txt} style={{ flex: 1, minHeight: 320, background: "var(--chrome-bg)", color: "var(--ui-text)", border: "1px solid var(--chrome-border)", borderRadius: 8, padding: 12, fontSize: 11, lineHeight: 1.5, resize: "none", ...mono }} />
+              </div>
+            </div>); })()}
             {tSettingsOpen && (
             <div onClick={() => setTSettingsOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}>
               <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px", width: "100%", maxWidth: 640, maxHeight: "84vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
@@ -12207,8 +12490,7 @@ export default function App() {
                 {((tConfig.matchFormat === "roundRobin" && tPlayedMatches === tTotalMatches && tTotalMatches > 0) || tSwissAllDone) && (tHasKO && tHasUnresolved
                   ? <button disabled title="Teams are tied at a qualification boundary. Resolve them with the swap buttons (⇅) in the standings." style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)", cursor: "default" }}>⚠ Tiebreaker required</button>
                   : <button onClick={tHasKO ? tProceedKO : () => setTChampOpen(true)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>{tHasKO ? "▶ Proceed to Knockout Stage" : "🏆 End Tournament"}</button>)}
-                <button onClick={() => setTSettingsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#9881; Settings</button>
-                <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
+                {renderTTools(false)}
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>
@@ -12342,9 +12624,7 @@ export default function App() {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {tPhase === "knockout" && <button onClick={() => tScorinateKO(-1, -1, 0)} style={{ ...addBtn, color: "var(--ui-text)", borderColor: "var(--ui-ok-edge)" }}>▶ Sim All</button>}
                 {tGroups.length > 0 && <button onClick={() => setTKoGroupsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128202; Group Results</button>}
-                <button onClick={tKO.losers ? exportDEBracket : exportBracket} style={{ ...addBtn, color: "var(--ui-info)", borderColor: "var(--ui-info-33)" }}>&#128247; Export</button>
-                <button onClick={() => setTSettingsOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#9881; Settings</button>
-                <button onClick={() => setTSavesOpen(true)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>&#128190; Saves</button>
+                {renderTTools(true)}
                 <button onClick={resetTournament} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Reset</button>
               </div>
             </div>

@@ -53,6 +53,9 @@ const mkImport = (state) => {
     staminaRecoverFrom: (v) => Math.min(100, v + 20),
     ME_INJURY: eng.ME_INJURY,
     INJ_SEV: eng.ME_INJURY,
+    // The live writeback clones the match's goalscorer ledger onto the stored result; the harness
+    // has no live match, so it hands over an empty one.
+    lmMatch: { goalscorers: { home: [], away: [] } },
   };
   const names = Object.keys(env);
   const body = slice("const importLiveToMatch = (target, result) => {") + "\nreturn importLiveToMatch;";
