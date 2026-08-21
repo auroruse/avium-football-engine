@@ -7190,7 +7190,7 @@ export default function App() {
     if (sub !== "teams") setExpandedTeam(null);
     setTab("leagues");
   };
-  const [tournSort, setTournSort] = useState({ k: "G", asc: false });
+  const [tournSort, setTournSort] = useState({ k: "RTG", asc: false });
   const [tournQ, setTournQ] = useState("");
   const [tournPosF, setTournPosF] = useState("ALL");
   const [tournTeamF, setTournTeamF] = useState("");
@@ -8444,7 +8444,7 @@ export default function App() {
     }
     const all = [...m.values()];
     const kinds = PSTATS_STAT_ORDER.filter(k => s.boards[k]?.length);
-    const key = kinds.includes(tournSort.k) || tournSort.k === "gp" ? tournSort.k : (kinds[0] || "G");
+    const key = kinds.includes(tournSort.k) || tournSort.k === "gp" ? tournSort.k : (kinds.includes("RTG") ? "RTG" : kinds[0] || "G");
     const val = r => key === "gp" ? r.gp : r[key];
     const byCode = new Map();
     for (const tm of teams) if (tm.code && !byCode.has(tm.code + "|" + tm.league)) byCode.set(tm.code + "|" + tm.league, tm);
@@ -8553,8 +8553,8 @@ export default function App() {
       return { main: parts[0], pen, tags };
     };
     const parsed = tbl.body.map(r => parseSc(r[sc]));
-    // Reserved for the whole table the moment one row needs them, so no row is a different shape.
-    const anyPen = parsed.some(x => x.pen), anyTag = parsed.some(x => x.tags.length);
+    const TAGW = 78, MOTMW = 130;
+    const pad = (w, k) => <span key={k} style={{ flexShrink: 0, width: w }} />;
     const side = (raw, right) => {
       const nm = strip(raw), won = /\*\*/.test(raw || ""), tm = teamByName.get(nm);
       const crest = tm || { code: FORMER_BY_NAME[nm] || "" };
@@ -8578,21 +8578,24 @@ export default function App() {
           <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 11,
                                  background: ri % 2 ? "transparent" : "var(--chrome-bg-08)",
                                  borderBottom: ri < tbl.body.length - 1 ? "1px solid var(--chrome-border-33)" : "none" }}>
+            {mo >= 0 && pad(MOTMW, "lm")}
+            {pad(TAGW, "lt")}
             {gi >= 0 && <span style={{ flexShrink: 0, width: 15, textAlign: "center", fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{r[gi]}</span>}
             {side(m[0] || "", false)}
             <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
-              {anyPen && <span style={{ width: 24, textAlign: "right", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[0]})` : ""}</span>}
+              <span style={{ width: 24, textAlign: "right", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[0]})` : ""}</span>
               <span style={{ minWidth: 52, textAlign: "center" }}>
                 <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{scMain || "vs"}</span>
                 {legs && <span style={{ display: "block", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{legs}</span>}
               </span>
-              {anyPen && <span style={{ width: 24, textAlign: "left", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[1]})` : ""}</span>}
+              <span style={{ width: 24, textAlign: "left", fontSize: 9, color: "var(--chrome-muted)", ...mono }}>{pen ? `(${pen[1]})` : ""}</span>
             </span>
             {side(m[1] || "", true)}
-            {anyTag && <span style={{ flexShrink: 0, width: 78, display: "flex", gap: 4, justifyContent: "flex-end" }}>
+            {gi >= 0 && pad(15, "rg")}
+            <span style={{ flexShrink: 0, width: TAGW, display: "flex", gap: 4, justifyContent: "flex-start" }}>
               {tags.map(t => <span key={t} style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.06em", border: "1px solid " + TAGC[t], color: TAGC[t], borderRadius: 4, padding: "1px 4px", ...mono }}>{t}</span>)}
-            </span>}
-            {mo >= 0 && r[mo] && <span title={r[mo]} style={{ flexShrink: 0, width: 130, fontSize: 9, color: "var(--chrome-muted-66)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>{r[mo]}</span>}
+            </span>
+            {mo >= 0 && <span title={r[mo]} style={{ flexShrink: 0, width: MOTMW, fontSize: 9, color: "var(--chrome-muted-66)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r[mo]}</span>}
           </div>); })}
       </div>);
   };
@@ -11538,7 +11541,7 @@ export default function App() {
                   if (ti < 0 || !F.body[0]) return null;
                   return String(F.body[0][ti]).replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim() || null;
                 };
-                const openSeason = (x) => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "G", asc: false }); setLgRound(null); setLgTTab(0); setLgSeason(x.id); };
+                const openSeason = (x) => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "RTG", asc: false }); setLgRound(null); setLgTTab(0); setLgSeason(x.id); };
                 const playerCell = (x, e) => e ? (
                   <span className={playerByName.has(e.player) ? "cell-link" : undefined}
                     onClick={(ev) => { ev.stopPropagation(); openPlayer(e.player, { season: x.id }); }}
@@ -11618,63 +11621,68 @@ export default function App() {
                 No season report filed &mdash; drop {s.id.replace(/\.tsv$/i, ".md")} into public/pstats to add rounds and tables here.</div>}
               {s.md && report === undefined && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "14px 20px" }}>Loading the season report&hellip;</div>}
               {s.md && report === false && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "14px 20px" }}>The report failed to load.</div>}
-              {typeof report === "string" && (() => {
-                const R = parseSeasonReport(report);
-                if (!R.rounds.length) {
-                  const T = parseTournTabs(report);
-                  if (!T.tabs.length) return <div style={{ padding: "14px 20px 6px" }}><MdDoc text={report} /></div>;
-                  const tt = Math.min(lgTTab, T.tabs.length - 1);
-                  return (<>
-                    {T.pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={T.pre} /></div>}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
-                      {T.tabs.map((tb, i2) => <button key={tb.name + i2} onClick={() => setLgTTab(i2)}
-                        style={{ ...smBtn, cursor: i2 === tt ? "default" : "pointer", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontSize: 9,
-                                 background: i2 === tt ? "var(--chrome-brand)" : "transparent",
-                                 color: i2 === tt ? "var(--ui-on-accent)" : "var(--chrome-muted)",
-                                 border: i2 === tt ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-border)" }}>{tb.name}</button>)}
-                    </div>
-                    <div style={{ padding: "14px 20px 6px" }}>{renderTournBody(T.tabs[tt].body)}</div>
-                  </>);
-                }
-                const idx = Math.min(Math.max(lgRound ?? R.rounds.length - 1, 0), R.rounds.length - 1);
-                const rd = R.rounds[idx];
-                const standings = rd.table || R.final;
-                const stLabel = rd.table ? `Table after Round ${rd.n}` : "Final Table";
+              {/* One strip for whatever the season has: a league's rounds, a tournament's
+                  stages, and its player statistics, which are a face of the season rather than
+                  a slab bolted under it. */}
+              {(() => {
+                const R = typeof report === "string" ? parseSeasonReport(report) : null;
+                const T = R && !R.rounds.length ? parseTournTabs(report) : null;
+                const tabs = [];
+                if (R && R.rounds.length) tabs.push({ name: "Rounds", league: R });
+                else if (T && T.tabs.length) for (const tb of T.tabs) tabs.push({ name: tb.name, body: tb.body });
+                else if (R) tabs.push({ name: "Report", raw: report });
+                if (Object.keys(s.boards).length) tabs.push({ name: "Player Statistics", stats: true });
+                if (!tabs.length) return null;
+                const tt = Math.min(lgTTab, tabs.length - 1), cur = tabs[tt];
                 return (<>
-                  {/* The round bar: step through the season; it opens on the last round, so the
-                      first thing shown is the final table. */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)" }}>
-                    <button onClick={() => setLgRound(Math.max(0, idx - 1))} disabled={idx === 0}
-                      style={{ ...smBtn, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8249;</button>
-                    <select value={idx} onChange={e => setLgRound(+e.target.value)}
-                      style={{ ...smBtn, background: "transparent", color: "var(--ui-text)", cursor: "pointer", fontWeight: 600 }}>
-                      {R.rounds.map((r, i2) => <option key={r.n} value={i2}>Round {r.n}</option>)}
-                    </select>
-                    <button onClick={() => setLgRound(Math.min(R.rounds.length - 1, idx + 1))} disabled={idx === R.rounds.length - 1}
-                      style={{ ...smBtn, cursor: idx === R.rounds.length - 1 ? "default" : "pointer", opacity: idx === R.rounds.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
-                  </div>
-                  {/* The table the round produced on top, the results that produced it under. */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "14px 20px" }}>
-                    <div>
-                      <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">{stLabel}</PanelTitle></div>
-                      {standings ? renderStandTable(standings)
-                                 : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No table recorded.</div>}
-                    </div>
-                    <div>
-                      <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">Round {rd.n}</PanelTitle></div>
-                      {rd.fixtures ? renderFixTable(rd.fixtures)
-                                   : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No results recorded.</div>}
-                    </div>
-                  </div>
-                  {R.rest && <div style={{ padding: "0 20px 6px" }}><MdDoc text={R.rest} /></div>}
+                  {T?.pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={T.pre} /></div>}
+                  {tabs.length > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
+                    {tabs.map((tb, i2) => <button key={tb.name + i2} onClick={() => setLgTTab(i2)}
+                      style={{ ...smBtn, cursor: i2 === tt ? "default" : "pointer", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontSize: 9,
+                               background: i2 === tt ? "var(--chrome-brand)" : "transparent",
+                               color: i2 === tt ? "var(--ui-on-accent)" : "var(--chrome-muted)",
+                               border: i2 === tt ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-border)" }}>{tb.name}</button>)}
+                  </div>)}
+                  {cur.stats && renderLgSeasonStats(s)}
+                  {cur.raw && <div style={{ padding: "14px 20px 6px" }}><MdDoc text={cur.raw} /></div>}
+                  {cur.body && <div style={{ padding: "14px 20px 6px" }}>{renderTournBody(cur.body)}</div>}
+                  {cur.league && (() => {
+                    const RR = cur.league;
+                    const idx = Math.min(Math.max(lgRound ?? RR.rounds.length - 1, 0), RR.rounds.length - 1);
+                    const rd = RR.rounds[idx];
+                    const standings = rd.table || RR.final;
+                    const stLabel = rd.table ? `Table after Round ${rd.n}` : "Final Table";
+                    return (<>
+                      {/* The round bar: step through the season; it opens on the last round, so the
+                          first thing shown is the final table. */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderBottom: "1px solid var(--chrome-border)" }}>
+                        <button onClick={() => setLgRound(Math.max(0, idx - 1))} disabled={idx === 0}
+                          style={{ ...smBtn, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8249;</button>
+                        <select value={idx} onChange={e => setLgRound(+e.target.value)}
+                          style={{ ...smBtn, background: "transparent", color: "var(--ui-text)", cursor: "pointer", fontWeight: 600 }}>
+                          {RR.rounds.map((r, i2) => <option key={r.n} value={i2}>Round {r.n}</option>)}
+                        </select>
+                        <button onClick={() => setLgRound(Math.min(RR.rounds.length - 1, idx + 1))} disabled={idx === RR.rounds.length - 1}
+                          style={{ ...smBtn, cursor: idx === RR.rounds.length - 1 ? "default" : "pointer", opacity: idx === RR.rounds.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
+                      </div>
+                      {/* The table the round produced on top, the results that produced it under. */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "14px 20px" }}>
+                        <div>
+                          <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">{stLabel}</PanelTitle></div>
+                          {standings ? renderStandTable(standings)
+                                     : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No table recorded.</div>}
+                        </div>
+                        <div>
+                          <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--ui-info)">Round {rd.n}</PanelTitle></div>
+                          {rd.fixtures ? renderFixTable(rd.fixtures)
+                                       : <div style={{ fontSize: 10, color: "var(--chrome-muted-66)" }}>No results recorded.</div>}
+                        </div>
+                      </div>
+                      {RR.rest && <div style={{ padding: "0 20px 6px" }}><MdDoc text={RR.rest} /></div>}
+                    </>); })()}
                 </>);
               })()}
-              {Object.keys(s.boards).length > 0 && (<>
-                <div style={{ padding: `0 20px 8px ${20 - PANEL_HEAD_INSET}px`, borderTop: "1px solid var(--chrome-border)", paddingTop: 14 }}>
-                  <PanelTitle accent="var(--ui-info)">Player Statistics</PanelTitle>
-                </div>
-                {renderLgSeasonStats(s)}
-              </>)}
             </div>
             </>)}
           </div>); })()}
