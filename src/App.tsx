@@ -11465,9 +11465,9 @@ export default function App() {
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {[["Directory", [
-                  { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} nations`, dir: true, icon: "\uD83C\uDF10" },
-                  { name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" },
-                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} players`, dir: true, icon: "\uD83D\uDC64" },
+                  { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} Nations`, dir: true, icon: "\uD83C\uDF10" },
+                  { name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" },
+                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} Players`, dir: true, icon: "\uD83D\uDC64" },
                 ]], ["International", lgRail.filter(c => c.intl)],
                     ["Domestic", lgRail.filter(c => !c.intl && !c.misc)],
                     ["Miscellaneous", lgRail.filter(c => c.misc)]].map(([label, cs]) => !cs.length ? null : (
@@ -11482,13 +11482,9 @@ export default function App() {
                          : <LeagueCrest league={c.name} size={19} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label || c.name}</div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                      {c.dir ? c.sub2 : <>
-                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.caption}</span>
-                        <span title={`${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
-                          style={{ flexShrink: 0, fontSize: 8, fontWeight: 700, border: "1px solid var(--ui-info)", color: "var(--ui-info)", borderRadius: 4, padding: "0 4px" }}>
-                          {c.nSeasons} ({c.nFull})</span>
-                      </>}</div>
+                    <div title={c.dir ? undefined : `${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
+                      style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {c.dir ? c.sub2 : `${c.caption} \u00b7 ${c.nSeasons} \u00b7 ${c.nFull}`}</div>
                   </div>
                   {!c.dir && <OvrBadge v={c.avg} />}
                 </div>); })}
