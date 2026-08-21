@@ -3874,7 +3874,7 @@ function fullDisplayName(raw) {
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      kar: "Karjanian Premier League", cwc: "AFA Club World Cup",
+                      kar: "Karjanian Premier League", cwc: "Club World Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
@@ -4064,7 +4064,7 @@ const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
   ...CONFERENCE_NAMES.map(c => ({ name: c + " Championship", scope: c })),
-  { name: "AFA Club World Cup", scope: "clubs" },
+  { name: "Club World Cup", scope: "clubs" },
 ];
 const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
@@ -7235,6 +7235,8 @@ export default function App() {
   // during render, where a reference upward into the temporal dead zone is a black screen.
   const lgRail = useMemo(() => {
     const seasonsBy = (name) => (pstats?.seasons || []).filter(s => s.comp === name).length;
+    // A full season carries both halves of the record: the report and the player boards.
+    const fullBy = (name) => (pstats?.seasons || []).filter(s => s.comp === name && s.md && Object.keys(s.boards || {}).length).length;
     const ORD = new Map(LEAGUE_ORDER.filter(Boolean).map((l, i) => [l, i]));
     const avgOf = (ts) => ts.length ? Math.round(ts.reduce((a, x) => a + (Number(x.skill) || 0), 0) / ts.length) : 0;
     const intl = teams.filter(tm => tm.league === "Avium International");
@@ -7245,12 +7247,11 @@ export default function App() {
     const scopeTeams = (sc) => sc === "intl" ? intl : sc === "clubs" ? allClubs : intl.filter(tm => railLeague(tm) === sc);
     return [
       ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
-        return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name),
-                 caption: c.scope === "intl" ? `International (${ts.length})`
-                        : c.scope === "clubs" ? `Clubs (${ts.length})` : `${c.scope} (${ts.length})` }; }),
+        return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name), nFull: fullBy(c.name),
+                 caption: c.scope === "intl" ? "International" : c.scope === "clubs" ? "Clubs" : c.scope }; }),
       ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
-        return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l),
-                 caption: `${natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014")} (${ts.length})` }; }),
+        return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l), nFull: fullBy(l),
+                 caption: natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014") }; }),
     ];
   }, [teams, pstats]);
   useEffect(() => {
@@ -11481,8 +11482,13 @@ export default function App() {
                          : <LeagueCrest league={c.name} size={19} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label || c.name}</div>
-                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>
-                      {c.dir ? c.sub2 : c.caption}</div>
+                    <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                      {c.dir ? c.sub2 : <>
+                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.caption}</span>
+                        <span title={`${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
+                          style={{ flexShrink: 0, fontSize: 8, fontWeight: 700, border: "1px solid var(--ui-info)", color: "var(--ui-info)", borderRadius: 4, padding: "0 4px" }}>
+                          {c.nSeasons} ({c.nFull})</span>
+                      </>}</div>
                   </div>
                   {!c.dir && <OvrBadge v={c.avg} />}
                 </div>); })}
