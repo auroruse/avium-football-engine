@@ -11379,7 +11379,8 @@ export default function App() {
                     title={`${e.player} — ${e.v}`}
                     style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: playerByName.has(e.player) ? "pointer" : "default" }}>
                     <PlayerShot name={e.player} size={20} />
-                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boldSurname(e.player, e.player)}</span>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(() => { const { first, last } = splitFullName(e.player);
+                        return first ? <>{first[0]}. <b>{last}</b></> : <b>{last}</b>; })()}</span>
                     <span style={{ flexShrink: 0, fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{e.v}</span>
                   </span>) : <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>;
                 // Every season is a banner and, underneath it, one row of honours. The colgroup is
