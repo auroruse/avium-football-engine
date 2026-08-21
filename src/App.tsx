@@ -7242,12 +7242,20 @@ export default function App() {
       const k = pFold(e.player), a = acc.get(k) || { gp: 0, w: 0 };
       a.gp += e.gp; a.w += e.v * e.gp; acc.set(k, a);
     }
-    return new Map([...acc].filter(([, a]) => a.gp).map(([k, a]) => [k, a.w / a.gp]));
+    const out = new Map();
+    for (const [k, a] of acc) if (a.gp) out.set(k, { v: a.w / a.gp, gp: a.gp });
+    // The qualifying appearance count, on the same rule the archive's own RTG boards use: a
+    // sixth of the fullest career on record. Without it the top of a rating sort is whoever
+    // played three games in one tournament and had a good week.
+    const maxGp = Math.max(1, ...[...out.values()].map(a => a.gp));
+    return { get: (k) => out.get(k), minGp: Math.ceil(maxGp / 6) };
   }, [pstats]);
+  const careerRtgOf = (name) => careerRtg.get(pFold(name));
   // The one way a career rating is drawn: same colour ramp as a match rating, same two decimals.
-  const rtgCell = (name, st) => { const v = careerRtg.get(pFold(name));
+  // Below the gate it prints in muted grey -- the figure is real, it just does not rank.
+  const rtgCell = (name, st) => { const a = careerRtgOf(name), ok = a && a.gp >= careerRtg.minGp;
     return <td style={{ ...st, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600, ...mono,
-                        color: v == null ? "var(--chrome-muted-66)" : ratingColor(v) }}>{v == null ? "\u2013" : v.toFixed(2)}</td>; };
+                        color: !a ? "var(--chrome-muted-66)" : ok ? ratingColor(a.v) : "var(--chrome-muted)" }}>{a ? a.v.toFixed(2) : "\u2013"}</td>; };
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   // Below the states it reads: pstats and the filters are declared just above, and a memo runs
   // during render, where a reference upward into the temporal dead zone is a black screen.
@@ -7275,8 +7283,7 @@ export default function App() {
   }, [teams, pstats]);
   useEffect(() => {
     if (tab !== "leagues" || lgComp || !lgRail.length) return;
-    const first = lgRail.find(c => c.name === "Nichirin League One") || lgRail.find(c => !c.intl) || lgRail[0];
-    lgOpenComp(first.name, "teams");
+    lgOpenComp(LG_ALL_NATS);
   }, [tab, lgComp, lgRail]);
 
   const [playerSearch, setPlayerSearch] = useState("");
@@ -11901,7 +11908,7 @@ export default function App() {
                 const num = (v) => v == null ? <span style={{ color: "var(--chrome-muted-66)" }}>-</span> : v;
                 // Career aggregates for the header: the rating is GP-weighted across every season
                 // that recorded one, so a nine-game cup run cannot outvote a 36-game league year.
-                const cRtg = careerRtg.get(key) ?? null;
+                const cRtg = careerRtg.get(key)?.v ?? null;
                 const cSum = (k) => career.reduce((a, r) => a + (+r[k] || 0), 0);
                 const isGK = (p?.pos || "").split("/")[0] === "GK";
                 const STAT_COLS = ["G", "A", "CC", "DC", "SV"];
@@ -12065,8 +12072,14 @@ export default function App() {
                 // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
                 const PL_VIEW_H = 1350, PL_OVER = 12;
                 filtered.sort((a, b) => {
+                  if (lgPlayerSort.k === "rtg") {
+                    // Short careers sit below the ranked list whichever way it is sorted.
+                    const q = (x) => { const e = careerRtgOf(x.fullName || x.name); return e && e.gp >= careerRtg.minGp ? 1 : 0; };
+                    const d = q(b) - q(a);
+                    if (d) return d;
+                  }
                   const sv = (x) => lgPlayerSort.k === "name" ? fullDisplayName(x.fullName || x.name)
-                    : lgPlayerSort.k === "rtg" ? (careerRtg.get(pFold(x.fullName || x.name)) ?? -1) : (x.ovr || 0);
+                    : lgPlayerSort.k === "rtg" ? (careerRtgOf(x.fullName || x.name)?.v ?? -1) : (x.ovr || 0);
                   const va = sv(a), vb = sv(b);
                   const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
                   return lgPlayerSort.asc ? c : -c;
