@@ -7168,7 +7168,8 @@ export default function App() {
   const [playerPosFilter, setPlayerPosFilter] = useState("ALL");
   const [playerNatFilter, setPlayerNatFilter] = useState("");   // "" = all players
   const [playerOpen, setPlayerOpen] = useState(null);            // fullName of the drilled player
-  // ── THE LEAGUES TAB. One door: competition -> Seasons | Teams | Players. ──
+  // ── THE REGISTRY TAB. One door: competition -> Teams | Players | Seasons. The tab id
+  // stays `leagues`, which is what every piece of state below keys on. ──
   const [lgComp, setLgComp] = useState(null);                    // competition name, null = the grid
   const [lgSub, setLgSub] = useState("seasons");
   const [lgSeason, setLgSeason] = useState(null);                // pstats season id inside Seasons
@@ -11447,7 +11448,7 @@ export default function App() {
           <img src={`${import.meta.env.BASE_URL}banners/app/${uiTheme}.png`}
                onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = headerImg; } }} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
-            {[["leagues", "Leagues"], ["live", "Live Match"],
+            {[["leagues", "Registry"], ["live", "Live Match"],
               ...(TOURNAMENTS_ENABLED ? [["tournament", "Tournament"]] : []),
               ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
@@ -11455,7 +11456,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ═══ LEAGUES TAB ═══ */}
+        {/* ═══ REGISTRY TAB ═══ */}
         {/* The Teams tab's shape, kept: a persistent rail on the left, and everything the selected
             competition is on the right. The rail is the top layer (which competition), the chips in
             the pane header are the second (which of its three faces), and whatever those open —
