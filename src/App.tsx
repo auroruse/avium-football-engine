@@ -11482,9 +11482,16 @@ export default function App() {
                          : <LeagueCrest league={c.name} size={19} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label || c.name}</div>
+                    {/* The counts are a column, not a tail: the nation runs to whatever length it
+                        runs to and the two figures sit right-aligned in a mono block of fixed
+                        width, so every row's numbers line up down the rail. */}
                     <div title={c.dir ? undefined : `${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
-                      style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {c.dir ? c.sub2 : `${c.caption} \u00b7 ${c.nSeasons} \u00b7 ${c.nFull}`}</div>
+                      style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                      {c.dir ? c.sub2 : <>
+                        <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.caption}</span>
+                        <span style={{ flexShrink: 0, whiteSpace: "pre" }}>
+                          {`\u00b7 ${String(c.nSeasons).padStart(2)} \u00b7 ${String(c.nFull).padStart(2)}`}</span>
+                      </>}</div>
                   </div>
                   {!c.dir && <OvrBadge v={c.avg} />}
                 </div>); })}
