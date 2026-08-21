@@ -139,7 +139,11 @@ only for the two position groups that recorded any:
 DC (1933 World Cup)   DEF x1.4316   MID x1.8844
 ```
 
-1933 records **no** defensive contributions for forwards or goalkeepers — under that definition they
+The 1933 Club World Cup needed nothing at all: its rating spread already matches the World Cup
+files it sits beside, and its defensive-contributions board lists 84 forwards, so it was recorded
+under the later definition and is filed unconverted.
+
+1933's World Cup records **no** defensive contributions for forwards or goalkeepers — under that definition they
 registered none at all, where in 1934 they average 0.43 and 0.25 a game. Those are blank rather than
 scaled, since there is nothing to scale. 1932 carries no CC, DC or saves boards whatsoever.
 
