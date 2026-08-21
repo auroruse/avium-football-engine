@@ -4096,7 +4096,7 @@ const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
   const url = (dir, x) => `${import.meta.env.BASE_URL}${dir}/${encodeURIComponent(x)}.png`;
-  return [...new Set([n, deaccent(n), n.split(" ")[0]])].map(x => url("leagues", x))
+  return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER)]);
 };
@@ -8600,7 +8600,10 @@ export default function App() {
       <div style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, overflow: "hidden" }}>
         {tbl.body.map((r, ri) => {
           const m = String(r[mi] || "").split(/\s+vs\s+/i);
-          const legs = l1 >= 0 && l2 >= 0 && r[l1] ? `${r[l1]} \u00b7 ${r[l2]}` : null;
+          const [scMain, ...scQual] = strip(r[sc]).split(/,\s*/);
+          const qual = scQual.join(", ").replace(/^ag$/, "away goals");
+          const legs = [l1 >= 0 && l2 >= 0 && r[l1] ? `${r[l1]} \u00b7 ${r[l2]}` : null, qual || null]
+            .filter(Boolean).join(" \u00b7 ");
           return (
           <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 11,
                                  background: ri % 2 ? "transparent" : "var(--chrome-bg-08)",
@@ -8608,7 +8611,7 @@ export default function App() {
             {gi >= 0 && <span style={{ flexShrink: 0, width: 15, textAlign: "center", fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{r[gi]}</span>}
             {side(m[0] || "", false)}
             <span style={{ flexShrink: 0, minWidth: 52, textAlign: "center" }}>
-              <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{strip(r[sc]) || "vs"}</span>
+              <span style={{ display: "block", fontWeight: 700, color: "var(--ui-text)", ...mono }}>{scMain || "vs"}</span>
               {legs && <span style={{ display: "block", fontSize: 9, color: "var(--chrome-muted-66)", ...mono }}>{legs}</span>}
             </span>
             {side(m[1] || "", true)}

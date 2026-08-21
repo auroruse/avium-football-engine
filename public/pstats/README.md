@@ -38,21 +38,31 @@ table (the exporter adds `Scorers`, and a `### Table after Round N` beside it), 
 `## Final Table`. That shape drives the round stepper: pick a round, see its results next to the
 standings they produced.
 
-**Everything else** — every tournament — is the canonical tab format: each `## Heading` renders as
-a tab inside the season (Group Stage, Standings, Knockouts, Notes…), what sits above the first
-`##` is the preamble, and a `### Sub` heading captions whatever follows it. Tables render by
-shape: a `Match` column makes a fixture list (with `Leg 1`/`Leg 2`/`Agg` for two-legged ties, a
-`Group` letter, an `MOTM` note, and a **bolded side** read as the winner), a `Team`/`Club` column
-makes a standings table with crests, and anything else prints as a plain table. Runs of captioned
-standings tables pack into a grid. The converter normalised every vault dialect into this shape:
-per-group fixture tables merged into one `Group | Match | Score` table per round, `| Group A | P |`
-headers promoted to captions, knockout headings gathered under `## Knockouts`, prose sections under
-`## Notes`.
+**Everything else** — every tournament — is the canonical tab format: each `## Heading` renders
+as a tab inside the season, what sits above the first `##` is the preamble, and a `### Sub`
+heading captions whatever follows it. The tab sets are fixed: a group tournament is
+`Group Stage | Standings | Knockouts`, a double-elimination one is
+`Upper Bracket | Lower Bracket | Grand Final` (plus `Group Stage | Standings` when it had a group
+phase), and a championship whose group results survive only as tables is `Standings | Knockouts`.
+No Draw tabs, no Notes tabs.
+
+The table formats are fixed too, and every file carries exactly these:
+
+- **Standings** — `| # | Team | P | W | D | L | GF | GA | GD | Pts |`, numbered, GD signed,
+  **bold** = advanced. The 1932 World Cup recorded no group tables, so its Standings are computed
+  from its fixtures, sorted advancers-first then points, goal difference, goals.
+- **Group fixtures** — `| Group | Match | Score |` under `### Round N` captions (the Group column
+  is absent for a single-league phase's fixtures).
+- **Knockout fixtures** — `| Match | Score |` or `| Match | Leg 1 | Leg 2 | Agg |`, `MOTM`
+  trailing where recorded. **The winner is the bolded side of the Match cell, always.** A decided
+  score is bare (`2-1`); qualifiers are comma suffixes on the deciding cell: `2-2, 7-6 pens`
+  (shootout, home side first), `1-2, aet`, `2-2, ag` (away goals — applied wherever a level
+  aggregate carried no note, since that is the rule the sources assumed). The app renders the
+  suffix as a small line under the score.
 
 The Winner column on a season's banner resolves in order: the top row of `## Final Table`; a
-`**Winner: X**` / `**Champions: X**` line; and finally the last `Final`/`Grand Final` fixture in
-the report — its bolded side, a `(X win … pens)` note anywhere in the row, or the score itself
-(the `Agg` for two-legged finals). Every season currently filed resolves one.
+`**Winner:**`/`**Champions:**` line; the bolded side of the report's last `Final`/`Grand Final`
+fixture. Every season currently filed resolves one.
 
 The reports were converted out of `Avium/Football/` — `International/<year>/`, and
 `Nichirin League One|Two/<season>/`. Seasons older than 30/31 survive only as a final table, which
