@@ -11315,7 +11315,7 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5, tableLayout: "fixed" }}>
                     <colgroup>
-                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
+                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 62 }} /><col style={{ width: 62 }} /><col style={{ width: "34%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -11324,7 +11324,7 @@ export default function App() {
                         <th style={thCell} />
                         <th style={thCell}>Player</th>
                         <th style={{ ...thCell, textAlign: "center" }}>OVR</th>
-                        <th style={{ ...thCell, textAlign: "center" }}>AVG</th>
+                        <th style={{ ...thCell, textAlign: "center" }}>RTG</th>
                         <th style={{ ...thCell, textAlign: "center" }}>POS</th>
                         <th style={{ ...thCell, paddingLeft: 8 }}>{isIntlTeam ? "Club" : "Nationality"}</th>
                       </tr>
@@ -12065,8 +12065,9 @@ export default function App() {
                 // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
                 const PL_VIEW_H = 1350, PL_OVER = 12;
                 filtered.sort((a, b) => {
-                  const va = lgPlayerSort.k === "name" ? fullDisplayName(a.fullName || a.name) : (a.ovr || 0);
-                  const vb = lgPlayerSort.k === "name" ? fullDisplayName(b.fullName || b.name) : (b.ovr || 0);
+                  const sv = (x) => lgPlayerSort.k === "name" ? fullDisplayName(x.fullName || x.name)
+                    : lgPlayerSort.k === "rtg" ? (careerRtg.get(pFold(x.fullName || x.name)) ?? -1) : (x.ovr || 0);
+                  const va = sv(a), vb = sv(b);
                   const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
                   return lgPlayerSort.asc ? c : -c;
                 });
@@ -12084,7 +12085,7 @@ export default function App() {
                     {/* Nationality is gone: the rail already fixes it, so the column read the same
                         value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 112 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -12098,9 +12099,11 @@ export default function App() {
                           return (<>
                         <th onClick={() => S("name")} style={{ ...thStyle, cursor: "pointer", ...on("name") }}>Player{A("name")}</th>
                         <th onClick={() => S("ovr")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("ovr") }}>OVR{A("ovr")}</th>
+                        <th onClick={() => S("rtg")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("rtg") }}>RTG{A("rtg")}</th>
                           </>); })()}
-                        <th style={{ ...thStyle, textAlign: "center" }}>AVG</th>
-                        <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
+                        {/* A three-position player carries "LW/ST/RW"; the cell gives its own
+                            padding back so the column can be an even third of the block. */}
+                        <th style={{ ...thStyle, textAlign: "center", padding: `${TH_PAD_Y}px 4px` }}>POS</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
                       </tr>
@@ -12125,7 +12128,7 @@ export default function App() {
                             {p.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
                                    : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>
                           {rtgCell(p.fullName || p.name, tdStyle)}
-                          <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
+                          <td style={{ ...tdStyle, padding: "5px 4px", textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
                           <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}
                             style={{ ...tdStyle, paddingLeft: 8, color: capped ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: capped ? 700 : 400, fontSize: 10, cursor: natT ? "pointer" : "default" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
