@@ -7233,6 +7233,21 @@ export default function App() {
     })();
     return () => { dead = true; };
   }, [tab, pstats]);
+  // A player's career average rating: GP-weighted across every archive season that recorded
+  // one, so a nine-game cup run cannot outvote a thirty-six-game league year. Keyed on the
+  // folded name, which is how every other lookup into the archive is keyed.
+  const careerRtg = useMemo(() => {
+    const acc = new Map();
+    for (const s of (pstats?.seasons || [])) for (const e of (s.boards?.RTG || [])) {
+      const k = pFold(e.player), a = acc.get(k) || { gp: 0, w: 0 };
+      a.gp += e.gp; a.w += e.v * e.gp; acc.set(k, a);
+    }
+    return new Map([...acc].filter(([, a]) => a.gp).map(([k, a]) => [k, a.w / a.gp]));
+  }, [pstats]);
+  // The one way a career rating is drawn: same colour ramp as a match rating, same two decimals.
+  const rtgCell = (name, st) => { const v = careerRtg.get(pFold(name));
+    return <td style={{ ...st, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600, ...mono,
+                        color: v == null ? "var(--chrome-muted-66)" : ratingColor(v) }}>{v == null ? "\u2013" : v.toFixed(2)}</td>; };
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
   // Below the states it reads: pstats and the filters are declared just above, and a memo runs
   // during render, where a reference upward into the temporal dead zone is a black screen.
@@ -11275,6 +11290,7 @@ export default function App() {
                       {nOvr != null && nOvr !== shown &&
                         <span style={{ marginLeft: 4, fontSize: 9, color: "var(--ui-nat-override)", ...mono }}>{nOvr}</span>}
                     </td>
+                    {rtgCell(p.fullName || p.name, tdCell)}
                     {/* The XI shows its formation slot; a substitute shows his own role. */}
                     <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", fontSize: 9, fontWeight: 700, color: POS_CLR[p.pos] || "var(--chrome-muted)", ...mono }}>{p.bench ? benchSpos(p, side.pe) : (p.spos || p.pos)}</td>
                     <td className={side.team ? "cell-link" : undefined} onClick={() => openTeam(side.team)}
@@ -11286,7 +11302,7 @@ export default function App() {
                     </td>
                   </tr>); };
                 const secRow = (label, count) => (
-                  <tr><td colSpan={5} style={{ ...sectionLabel, fontSize: 9, color: "var(--chrome-muted)", padding: "14px 12px 5px" }}>{label}
+                  <tr><td colSpan={7} style={{ ...sectionLabel, fontSize: 9, color: "var(--chrome-muted)", padding: "14px 12px 5px" }}>{label}
                     <span style={{ ...mono, marginLeft: 8, letterSpacing: 0, color: "var(--chrome-muted-66)" }}>{count}</span></td></tr>);
                 return (<>
                   {/* Badge padding is horizontal room for the OVR and position chips, which hang off
@@ -11299,7 +11315,7 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5, tableLayout: "fixed" }}>
                     <colgroup>
-                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
+                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 58 }} /><col style={{ width: "34%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -11308,6 +11324,7 @@ export default function App() {
                         <th style={thCell} />
                         <th style={thCell}>Player</th>
                         <th style={{ ...thCell, textAlign: "center" }}>OVR</th>
+                        <th style={{ ...thCell, textAlign: "center" }}>AVG</th>
                         <th style={{ ...thCell, textAlign: "center" }}>POS</th>
                         <th style={{ ...thCell, paddingLeft: 8 }}>{isIntlTeam ? "Club" : "Nationality"}</th>
                       </tr>
@@ -11884,8 +11901,7 @@ export default function App() {
                 const num = (v) => v == null ? <span style={{ color: "var(--chrome-muted-66)" }}>-</span> : v;
                 // Career aggregates for the header: the rating is GP-weighted across every season
                 // that recorded one, so a nine-game cup run cannot outvote a 36-game league year.
-                const cGp = career.reduce((a, r) => a + (r.RTG != null ? r.gp : 0), 0);
-                const cRtg = cGp ? career.reduce((a, r) => a + (r.RTG != null ? r.RTG * r.gp : 0), 0) / cGp : null;
+                const cRtg = careerRtg.get(key) ?? null;
                 const cSum = (k) => career.reduce((a, r) => a + (+r[k] || 0), 0);
                 const isGK = (p?.pos || "").split("/")[0] === "GK";
                 const STAT_COLS = ["G", "A", "CC", "DC", "SV"];
@@ -12068,7 +12084,7 @@ export default function App() {
                     {/* Nationality is gone: the rail already fixes it, so the column read the same
                         value all the way down. League and club skill use the space instead. */}
                     <colgroup>
-                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 168 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 112 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -12083,14 +12099,15 @@ export default function App() {
                         <th onClick={() => S("name")} style={{ ...thStyle, cursor: "pointer", ...on("name") }}>Player{A("name")}</th>
                         <th onClick={() => S("ovr")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("ovr") }}>OVR{A("ovr")}</th>
                           </>); })()}
+                        <th style={{ ...thStyle, textAlign: "center" }}>AVG</th>
                         <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={7} style={{ padding: 0, border: "none" }} /></tr>}
-                      {filtered.length === 0 && <tr><td colSpan={7} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
+                      {plWin.top > 0 && <tr style={{ height: plWin.top }}><td colSpan={8} style={{ padding: 0, border: "none" }} /></tr>}
+                      {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
                       {plRows.map((p, wi) => { const i = plStart + wi;
                         const natT = p.natCode ? natTeamByCode.get(p.natCode) : null, clubT = teamByName.get(p.clubs[0]?.name);
                         const capped = p.capped && !!playerNatFilter;
@@ -12107,6 +12124,7 @@ export default function App() {
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
                             {p.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
                                    : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>
+                          {rtgCell(p.fullName || p.name, tdStyle)}
                           <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{p.pos}</td>
                           <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}
                             style={{ ...tdStyle, paddingLeft: 8, color: capped ? "var(--ui-text)" : "var(--chrome-muted)", fontWeight: capped ? 700 : 400, fontSize: 10, cursor: natT ? "pointer" : "default" }}>
@@ -12121,7 +12139,7 @@ export default function App() {
                               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.clubs.map(c => c.name).join(", ")}</span>
                             </span></td>
                         </tr>); })}
-                      {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={7} style={{ padding: 0, border: "none" }} /></tr>}
+                      {plWin.bottom > 0 && <tr style={{ height: plWin.bottom }}><td colSpan={8} style={{ padding: 0, border: "none" }} /></tr>}
                     </tbody>
                   </table>
                 </div>); })()}
