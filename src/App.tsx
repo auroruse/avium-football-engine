@@ -11485,21 +11485,29 @@ export default function App() {
                            background: on ? "var(--chrome-panel-66)" : "transparent" }}>
                   {c.dir ? <span style={{ width: 19, flexShrink: 0, textAlign: "center", fontSize: 13 }}>{c.icon}</span>
                          : <LeagueCrest league={c.name} size={19} />}
+                  {(() => {
+                  // The counts ride the caption line where there is one, and only stand alone on
+                  // a row that has no caption to hold them -- an empty caption line held a whole
+                  // row open for nothing.
+                  const counts = (
+                    <span title={`${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
+                      style={{ flexShrink: 0, fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "pre" }}>
+                      {String(c.nSeasons).padStart(2)}{" \u00b7 "}
+                      <b style={{ color: "var(--ui-text)" }}>{String(c.nFull).padStart(2)}</b></span>);
+                  return (<>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label || c.name}</div>
-                    {/* A competition with nothing to say under its name says nothing: an empty
-                        caption used to hold a whole line open. */}
-                    {(c.dir ? c.sub2 : c.caption) &&
-                      <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {c.dir ? c.sub2 : c.caption}</div>}
+                    {c.dir ? (c.sub2 &&
+                      <div style={{ fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.sub2}</div>)
+                      : c.caption ? (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                        <span style={{ minWidth: 0, flex: 1, fontSize: 9, color: "var(--chrome-muted-66)", ...mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.caption}</span>
+                        {counts}
+                      </div>) : null}
                   </div>
-                  {/* The counts are their own column, centred on the row rather than hanging off
-                      the caption, so they line up whether or not a row has one. */}
-                  {!c.dir && <span title={`${c.nSeasons} seasons on record, ${c.nFull} with full stats`}
-                    style={{ flexShrink: 0, fontSize: 9, color: "var(--chrome-muted-66)", ...mono, whiteSpace: "pre" }}>
-                    {String(c.nSeasons).padStart(2)}{" \u00b7 "}
-                    <b style={{ color: "var(--ui-text)" }}>{String(c.nFull).padStart(2)}</b></span>}
+                  {!c.dir && !c.caption && counts}
                   {!c.dir && <OvrBadge v={c.avg} />}
+                  </>); })()}
                 </div>); })}
               </Fragment>))}
             </div>
