@@ -7176,7 +7176,6 @@ export default function App() {
   const [lgMd, setLgMd] = useState({});                          // report path -> text | false (fetched, absent)
   const [lgRound, setLgRound] = useState(null);                  // selected report round; null = the last one
   const [lgTTab, setLgTTab] = useState(0);                       // selected tournament tab
-  const WC_COMP = "World Cup";
   const LG_ALL_NATS = "::all-nations", LG_ALL_CLUBS = "::all-clubs", LG_ALL_PLAYERS = "::all-players";
   const [lgTeamSort, setLgTeamSort] = useState({ k: "ovr", asc: false });
   const [lgPlayerSort, setLgPlayerSort] = useState({ k: "ovr", asc: false });
@@ -7185,7 +7184,7 @@ export default function App() {
   const lgIsDir = (c) => typeof c === "string" && c.startsWith("::");
   const lgOpenComp = (name, sub) => {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
-    setLgSub(name === LG_ALL_PLAYERS ? "players" : lgIsDir(name) ? "teams" : (sub || "teams"));
+    setLgSub(name === LG_ALL_PLAYERS ? "players" : COMP_SCOPE[name] ? "seasons" : lgIsDir(name) ? "teams" : (sub || "teams"));
     setPlayerNatFilter(""); setPlayerLeagueFilter("");
     const sc = COMP_SCOPE[name];
     setTeamLeagueFilter(name === LG_ALL_NATS || sc === "intl" ? ALL_INTL
@@ -7281,6 +7280,10 @@ export default function App() {
                            leagueTier(l) ? `(D${leagueTier(l)})` : ""].filter(Boolean).join(" ") }; }),
     ];
   }, [teams, pstats]);
+  // An international competition has no roster of its own -- its field is every nation, or one
+  // confederation, and both live in the directory. So it shows its seasons and nothing else.
+  const lgIntlComp = !!COMP_SCOPE[lgComp];
+  const lgSubEff = lgIntlComp ? "seasons" : lgSub;
   useEffect(() => {
     if (tab !== "leagues" || lgComp || !lgRail.length) return;
     lgOpenComp(LG_ALL_NATS);
@@ -8697,7 +8700,7 @@ export default function App() {
   // The seasons list reads every report (the winner lives in the final table), so the whole
   // competition's reports fetch as soon as the list shows.
   useEffect(() => {
-    if (tab !== "leagues" || lgSub !== "seasons" || !lgComp) return;
+    if (tab !== "leagues" || lgSubEff !== "seasons" || !lgComp) return;
     for (const s of (pstats?.seasons || []).filter(x => x.comp === lgComp && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
@@ -8705,7 +8708,7 @@ export default function App() {
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
-  }, [tab, lgSub, lgComp, pstats, lgMd]);
+  }, [tab, lgSubEff, lgComp, pstats, lgMd]);
   // A season report is fetched the first time its season opens, then cached for the session.
   useEffect(() => {
     if (!lgSeason) return;
@@ -10910,20 +10913,20 @@ export default function App() {
   useEffect(() => {
     if (!playerNations.length) return;
     // "" is the All Players row, which is always valid. Anything else must name a real nation.
-    if (playerNatFilter && !playerNations.some(n => n.name === playerNatFilter)) setPlayerNatFilter("");
+    if (playerNatFilter && !playerNatFilter.startsWith("C|") && !playerNations.some(n => n.name === playerNatFilter)) setPlayerNatFilter("");
   }, [playerNations, playerNatFilter]);
   // Jumping to a team has to select its league too, or the Teams rail and pane disagree about
   // what is showing.
   const openTeam = (t) => { if (!t) return;
-    const comp = t.league === "Avium International" ? WC_COMP : (t.league || "Custom");
+    const comp = t.league === "Avium International" ? LG_ALL_NATS : (t.league || "Custom");
     lgOpenComp(comp, "teams"); setExpandedTeam(t.id); };
   const openPlayer = (name, back = null) => { if (!name || !playerByName.has(name)) return;
     setPlayerBack(back);
     setPlayerNatFilter(""); setPlayerSearch("");
     // Stay in the competition already open; from anywhere else the player's own club decides it.
     const pp = playerByName.get(name);
-    const comp = (tab === "leagues" && lgComp) ? lgComp
-      : pp.clubs[0] ? (pp.clubs[0].league || "Custom") : WC_COMP;
+    const here = tab === "leagues" && lgComp && !COMP_SCOPE[lgComp] ? lgComp : null;
+    const comp = here || (pp.clubs[0] ? (pp.clubs[0].league || "Custom") : LG_ALL_PLAYERS);
     setLgComp(comp); setLgSub("players"); setLgSeason(null);
     setPlayerOpen(name); setTab("leagues"); };
   const natTeamByCode = useMemo(() => new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t])), [teams]);
@@ -11546,7 +11549,7 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: lgIsDir(lgComp) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {!lgIsDir(lgComp) && [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]].map(([id, l]) => { const on = lgSub === id; return (
+              {!lgIsDir(lgComp) && (lgIntlComp ? [["seasons", "Seasons"]] : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]]).map(([id, l]) => { const on = lgSubEff === id; return (
               <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
@@ -11556,7 +11559,7 @@ export default function App() {
                          borderTop: on ? "2px solid var(--chrome-brand)" : "2px solid transparent",
                          marginBottom: on ? -1 : 0, borderBottomColor: "var(--chrome-panel)" }}>{l}</button>); })}
             </div>
-            {lgSub === "seasons" && (() => {
+            {lgSubEff === "seasons" && (() => {
           const list = (pstats?.seasons || []).filter(s => s.comp === lgComp).sort((a, b) => b.ord - a.ord);
           const s = lgSeason ? list.find(x => x.id === lgSeason) : null;
           const mdPath = s ? s.id.replace(/\.tsv$/i, ".md") : null;
@@ -11721,7 +11724,7 @@ export default function App() {
             </div>
             </>)}
           </div>); })()}
-            {lgSub === "teams" && (<>
+            {lgSubEff === "teams" && (<>
         {/* The old Teams tab, scoped: lgOpenComp set teamLeagueFilter, so `visibleTeams` and
             `customTab` keep working untouched and this pane is just their rendering. The league
             rail died with the tab -- the competition grid is the rail now. */}
@@ -11868,7 +11871,7 @@ export default function App() {
             </>)}
           </div>
             </>)}
-            {lgSub === "players" && (<>
+            {lgSubEff === "players" && (<>
         {/* The old Players tab, scoped to the open competition by the filter below. The nations
             rail died with the tab; nationality still shows on every row. */}
 
@@ -12047,6 +12050,13 @@ export default function App() {
                   <optgroup label="Broad">{["GK","DEF","MID","FWD"].map(g => <option key={g} value={g}>{g}</option>)}</optgroup>
                   <optgroup label="Specific">{POS_SPECIFIC.map(g => <option key={g} value={g}>{g}</option>)}</optgroup>
                 </select>
+                {/* The nations rail died with the Players tab; a confederation was never
+                    browsable at all. One control does both -- a whole conference, or one nation. */}
+                <select value={playerNatFilter} onChange={e => setPlayerNatFilter(e.target.value)} style={{ ...smBtn, color: playerNatFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer", maxWidth: 190 }}>
+                  <option value="">Nationality</option>
+                  <optgroup label="Confederation">{CONFERENCE_NAMES.map(cf => <option key={cf} value={"C|" + cf}>{cf}</option>)}</optgroup>
+                  <optgroup label="Nation">{[...playerNations].sort((a, b) => a.name.localeCompare(b.name)).map(n => <option key={n.name} value={n.name}>{n.name}</option>)}</optgroup>
+                </select>
                 {warnChips.map(c => (
                   <button key={c.key} onClick={() => setWarnOpen(w => w === c.key ? null : c.key)}
                     style={{ fontSize: 9, color: c.color, background: "transparent", border: "1px solid " + c.color,
@@ -12059,7 +12069,8 @@ export default function App() {
                   if (playerPosFilter !== "ALL") { const pl = p.pos.split("/"); const posMatch = ["DEF","MID","FWD"].includes(playerPosFilter) ? pl.some(x => POS_GROUP[x] === playerPosFilter) : pl.includes(playerPosFilter); if (!posMatch) return false; }
                   // The rail selects by display name, which is what the nations list is keyed on —
                   // natCode is absent for anyone whose league has no nation mapping.
-                  if (playerNatFilter && (p.nationality || "Unaffiliated") !== playerNatFilter) return false;
+                  if (playerNatFilter.startsWith("C|")) { if (CONF_BY_CODE.get(p.natCode) !== playerNatFilter.slice(2)) return false; }
+                  else if (playerNatFilter && (p.nationality || "Unaffiliated") !== playerNatFilter) return false;
                   if (lgComp && !lgIsDir(lgComp)) { const sc = COMP_SCOPE[lgComp];
                     if (sc === "intl") { if (!p.capped) return false; }
                     else if (sc === "clubs") { if (!p.clubs.length) return false; }
