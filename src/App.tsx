@@ -11882,6 +11882,12 @@ export default function App() {
                     <PanelTitle accent="var(--ui-info)">{children}</PanelTitle>
                   </div>);
                 const num = (v) => v == null ? <span style={{ color: "var(--chrome-muted-66)" }}>-</span> : v;
+                // Career aggregates for the header: the rating is GP-weighted across every season
+                // that recorded one, so a nine-game cup run cannot outvote a 36-game league year.
+                const cGp = career.reduce((a, r) => a + (r.RTG != null ? r.gp : 0), 0);
+                const cRtg = cGp ? career.reduce((a, r) => a + (r.RTG != null ? r.RTG * r.gp : 0), 0) / cGp : null;
+                const cSum = (k) => career.reduce((a, r) => a + (+r[k] || 0), 0);
+                const isGK = (p?.pos || "").split("/")[0] === "GK";
                 const STAT_COLS = ["G", "A", "CC", "DC", "SV"];
                 return (<>
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
@@ -11908,6 +11914,14 @@ export default function App() {
                           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer" }}>
                           <TeamCrest team={clubT} size={16} />{clubT.name}</span>}
                       </div>
+                      {career.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
+                        {[...(cRtg != null ? [["AVG RTG", cRtg.toFixed(2)]] : []),
+                          ...(isGK ? [["CAREER SV", cSum("SV")]]
+                                   : [["CAREER G", cSum("G")], ["CAREER A", cSum("A")]])].map(([l, v]) => (
+                          <span key={l} style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>
+                            {l} <b style={{ fontSize: 11, color: "var(--ui-text)", marginLeft: 3, ...mono }}>{v}</b></span>))}
+                      </div>)}
                     </div>
                   </div>
                   {/* Career, season by season, competition by competition. */}
