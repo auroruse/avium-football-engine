@@ -11490,7 +11490,8 @@ export default function App() {
                       {c.dir ? c.sub2 : <>
                         <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.caption}</span>
                         <span style={{ flexShrink: 0, whiteSpace: "pre" }}>
-                          {`\u00b7 ${String(c.nSeasons).padStart(2)} \u00b7 ${String(c.nFull).padStart(2)}`}</span>
+                          {String(c.nSeasons).padStart(2)}{" \u00b7 "}
+                          <b style={{ color: "var(--ui-text)" }}>{String(c.nFull).padStart(2)}</b></span>
                       </>}</div>
                   </div>
                   {!c.dir && <OvrBadge v={c.avg} />}
