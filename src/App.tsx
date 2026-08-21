@@ -11890,8 +11890,9 @@ export default function App() {
                     <button onClick={() => { if (playerBack) { setLgSub("seasons"); setLgSeason(playerBack.season); } setPlayerBack(null); setPlayerOpen(null); }}
                       style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>
                       &#8592; {playerBack ? ((pstats?.seasons || []).find(x => x.id === playerBack.season)?.season || "Season") : "Players"}</button>
-                    {/* The name and the rating are both on the identity strip a few pixels below;
-                        the bar only has to say which kind of page this is. */}
+                    {/* The name is on the identity strip a few pixels below and the header's
+                        rating is gone: a career average says more about a player's record than
+                        the OVR he happens to carry today. The bar only names the kind of page. */}
                     <PanelTitle>Player</PanelTitle>
                   </div>
                 </div>
