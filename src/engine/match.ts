@@ -1452,7 +1452,11 @@ export function meTick(s, rng, out) {
           else { const og = s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i];
                  // Named the way a scorer is, with the tag after it rather than a sentence in
                  // front: the feed already says GOAL above this line.
-                 if (og) goalTxt = `${og.fullName || og.name} (OG)`; }
+                 if (og) { goalTxt = `${og.fullName || og.name} (OG)`;
+                   // A separate ledger, not an entry in out.scorers: the scorers list feeds the
+                   // golden digest and the shootout revocation, both of which count real goals.
+                   (out.ogs = out.ogs || { home: [], away: [] })[scorer].push(
+                     { name: og.name, full: og.fullName || og.name, min: out.min ?? 0 }); } }
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
             { name: gp.name, full: gp.fullName || gp.name, assist: ast ? ast.name : null,
               min: out.min ?? 0, pen: !!(sh && sh.pen) });

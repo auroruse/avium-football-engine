@@ -7,7 +7,7 @@
 //
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
-import { ME_MATCH_TICKS, meFinalise, meInit, meShootout, meTick } from "../engine";
+import { ME_MATCH_TICKS, meFinalise, meInit, meMinute, meShootout, meTick } from "../engine";
 
 export class RNG {
   constructor(seed) { this.s = seed || Date.now(); }
@@ -414,7 +414,7 @@ export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, 
   const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway;
-  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
+  const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, scorers:{leg1:l1.scorers,leg2:l2.scorers}, ogs:{leg1:l1.ogs,leg2:l2.ogs}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   // Aggregate tied (and away goals don't decide) — use L2 ET if it happened, else generate pens
@@ -426,7 +426,7 @@ export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, 
 
 export function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, injuriesOn) {
   const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn);
-  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, playerData:{leg1:l1.playerData} };
+  return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, scorers:{leg1:l1.scorers}, ogs:{leg1:l1.ogs}, playerData:{leg1:l1.playerData} };
 }
 
 export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn) {
@@ -434,7 +434,7 @@ export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, away
   const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
-  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
+  const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, scorers:{leg1:partial.scorers?.leg1,leg2:l2.scorers}, ogs:{leg1:partial.ogs?.leg1,leg2:l2.ogs}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
   if (aggH !== aggA) return result;
   if (awayGoals && awayH !== awayA) return result;
   if (l2.et) { result.et = {home:l2.et.away, away:l2.et.home}; result.agg.home += l2.et.away; result.agg.away += l2.et.home; if (result.agg.home !== result.agg.away) return result; }
@@ -664,13 +664,15 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   const r = new RNG((Math.floor((rng?.next?.() ?? Math.random()) * 2 ** 31) >>> 0) || 7);
   meInit(st, pitchSlots, r);
   const out = meFreshOut();
-  for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, r, out);
+  // out.min is what a goal stamps its minute from; without it every scorer reads 0'.
+  for (let t = 0; t < ME_MATCH_TICKS; t++) { out.min = meMinute(t); meTick(st, r, out); }
   const ftH = out.goals.home, ftA = out.goals.away;
   let et = null, pen = null;
   // Extra time is a third of a match, the same proportion thirty minutes is of ninety, and then
   // kicks. meShootout drives itself to a conclusion in one call.
   if (forceResult && ftH === ftA) {
-    for (let t = 0; t < Math.round(ME_MATCH_TICKS / 3); t++) meTick(st, r, out);
+    for (let t = 0; t < Math.round(ME_MATCH_TICKS / 3); t++) {
+      out.min = 90 + Math.floor(t / (ME_MATCH_TICKS / 90)); meTick(st, r, out); }
     if (out.goals.home !== ftH || out.goals.away !== ftA)
       et = { home: out.goals.home - ftH, away: out.goals.away - ftA };
     if (out.goals.home === out.goals.away) {
@@ -690,6 +692,8 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   });
   return { ftHome: ftH, ftAway: ftA, et, pen,
            cards: { home: cardsOf("home"), away: cardsOf("away") },
+           scorers: out.scorers || { home: [], away: [] },
+           ogs: out.ogs || { home: [], away: [] },
            playerData: { home: allP("home"), away: allP("away") } };
 }
 
