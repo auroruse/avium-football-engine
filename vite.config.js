@@ -47,7 +47,7 @@ const pstatsFiles = () => {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir, { recursive: true })
     .map(f => String(f).split(path.sep).join('/'))
-    .filter(f => /\.tsv$/i.test(f))
+    .filter(f => /\.(tsv|md)$/i.test(f) && !/README\.md$/i.test(f))
     .map(f => f.normalize('NFC'))
     .sort()
 }

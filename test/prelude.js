@@ -38,6 +38,6 @@ const PSTATS_FILES = (() => {
   const { readdirSync, existsSync } = require_fs_shim;
   const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/pstats";
   return existsSync(d) ? readdirSync(d, { recursive: true })
-    .map(f => String(f).replace(/\\/g, "/")).filter(f => /\.tsv$/i.test(f))
+    .map(f => String(f).replace(/\\/g, "/")).filter(f => /\.(tsv|md)$/i.test(f) && !/README\.md$/i.test(f))
     .map(f => f.normalize("NFC")).sort() : [];
 })();
