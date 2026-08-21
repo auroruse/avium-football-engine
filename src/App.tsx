@@ -3887,6 +3887,8 @@ const PSTATS_BOARD = { G: "Top Scorers", A: "Assists", RTG: "Best Rating",
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 const FORMER_TEAMS = { CAL: "Calveria", THO: "The Thorne", LEC: "Lechia" };
 const formerName = (code) => FORMER_TEAMS[code] || code;
+// A former side's badge outlives its preset row, so a report naming one still gets its crest.
+const FORMER_BY_NAME = Object.fromEntries(Object.entries(FORMER_TEAMS).map(([c, n]) => [n, c]));
 const PSTATS_CLR = { G: "var(--ui-attack)", A: "var(--ui-style-tikitaka)", RTG: "var(--chrome-brand)",
                      CC: "var(--ui-ok)", DC: "var(--ui-info)", SV: "var(--ui-warn)" };
 const pFold = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -8554,13 +8556,14 @@ export default function App() {
     const anyPen = parsed.some(x => x.pen), anyTag = parsed.some(x => x.tags.length);
     const side = (raw, right) => {
       const nm = strip(raw), won = /\*\*/.test(raw || ""), tm = teamByName.get(nm);
+      const crest = tm || { code: FORMER_BY_NAME[nm] || "" };
       const name = <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: won ? 700 : 400, color: won ? "var(--ui-text)" : undefined }}>{nm}</span>;
       return (
         <span onClick={() => tm && openTeam(tm)} className={tm ? "cell-link" : undefined} title={tm ? `Open ${nm}` : nm}
           style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1,
                    justifyContent: right ? "flex-start" : "flex-end", cursor: tm ? "pointer" : "default" }}>
           {!right && name}
-          <TeamCrest team={tm || { code: "" }} size={18} />
+          <TeamCrest team={crest} size={18} />
           {right && name}
         </span>);
     };
@@ -8608,7 +8611,7 @@ export default function App() {
                 <td key={j} className={tm ? "cell-link" : undefined} onClick={() => tm && openTeam(tm)}
                     title={tm ? `Open ${nm}` : nm} style={{ ...tdCell, fontSize: 11, cursor: tm ? "pointer" : "default" }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                    <TeamCrest team={tm || { code: "" }} size={18} />
+                    <TeamCrest team={tm || { code: FORMER_BY_NAME[nm] || "" }} size={18} />
                     <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: /\*\*/.test(c) ? 700 : 400, fontStyle: /^\*[^*]/.test(String(c).trim()) ? "italic" : "normal", color: "var(--ui-text)" }}>{nm}</span>
                   </span></td>); }
               return <td key={j} style={{ ...tdCell, fontSize: 11, whiteSpace: "nowrap", color: j === 0 ? "var(--chrome-muted)" : undefined,
