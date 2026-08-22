@@ -3160,7 +3160,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"]];
+const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["shoguncup", "Sei'i Tai Shogun Cup"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
@@ -3874,6 +3874,7 @@ function fullDisplayName(raw) {
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
+                      stsc: "Sei'i Tai Shogun Cup",
                       kar: "Karjanian Premier League", cwc: "Club World Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
@@ -4062,6 +4063,10 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
 const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "Liga-ye B\u0101lande": 2 };
 const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
+// Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
+// it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
+const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
+                      "Nichirin League Two": "Sei'i Tai Shogun Cup" };
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
@@ -7284,6 +7289,9 @@ export default function App() {
   // confederation, and both live in the directory. So it shows its seasons and nothing else.
   const lgIntlComp = !!COMP_SCOPE[lgComp];
   const lgSubEff = lgIntlComp ? "seasons" : lgSub;
+  // The cup tab is the seasons face pointed at the cup's own competition.
+  const lgSeasonComp = lgSubEff === "cup" ? (LEAGUE_CUPS[lgComp] || lgComp) : lgComp;
+  const lgSeasonsFace = lgSubEff === "seasons" || lgSubEff === "cup";
   useEffect(() => {
     if (tab !== "leagues" || lgComp || !lgRail.length) return;
     lgOpenComp(LG_ALL_NATS);
@@ -8700,15 +8708,15 @@ export default function App() {
   // The seasons list reads every report (the winner lives in the final table), so the whole
   // competition's reports fetch as soon as the list shows.
   useEffect(() => {
-    if (tab !== "leagues" || lgSubEff !== "seasons" || !lgComp) return;
-    for (const s of (pstats?.seasons || []).filter(x => x.comp === lgComp && x.md)) {
+    if (tab !== "leagues" || !lgSeasonsFace || !lgComp) return;
+    for (const s of (pstats?.seasons || []).filter(x => x.comp === lgSeasonComp && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
       fetch("pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
-  }, [tab, lgSubEff, lgComp, pstats, lgMd]);
+  }, [tab, lgSeasonsFace, lgSeasonComp, lgComp, pstats, lgMd]);
   // A season report is fetched the first time its season opens, then cached for the session.
   useEffect(() => {
     if (!lgSeason) return;
@@ -11549,7 +11557,9 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: lgIsDir(lgComp) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {!lgIsDir(lgComp) && (lgIntlComp ? [["seasons", "Seasons"]] : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"]]).map(([id, l]) => { const on = lgSubEff === id; return (
+              {!lgIsDir(lgComp) && (lgIntlComp ? [["seasons", "Seasons"]]
+                : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"],
+                   ...(LEAGUE_CUPS[lgComp] ? [["cup", LEAGUE_CUPS[lgComp]]] : [])]).map(([id, l]) => { const on = lgSubEff === id; return (
               <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
@@ -11559,8 +11569,8 @@ export default function App() {
                          borderTop: on ? "2px solid var(--chrome-brand)" : "2px solid transparent",
                          marginBottom: on ? -1 : 0, borderBottomColor: "var(--chrome-panel)" }}>{l}</button>); })}
             </div>
-            {lgSubEff === "seasons" && (() => {
-          const list = (pstats?.seasons || []).filter(s => s.comp === lgComp).sort((a, b) => b.ord - a.ord);
+            {lgSeasonsFace && (() => {
+          const list = (pstats?.seasons || []).filter(s => s.comp === lgSeasonComp).sort((a, b) => b.ord - a.ord);
           const s = lgSeason ? list.find(x => x.id === lgSeason) : null;
           const mdPath = s ? s.id.replace(/\.tsv$/i, ".md") : null;
           const report = mdPath ? lgMd[mdPath] : undefined;
@@ -11652,7 +11662,7 @@ export default function App() {
             </>) : (<>
             <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", gap: 11 }}>
               <button onClick={() => setLgSeason(null)} style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>&#8592; Seasons</button>
-              <PanelTitle sub={s.season}>{lgComp}</PanelTitle>
+              <PanelTitle sub={s.season}>{lgSeasonComp}</PanelTitle>
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {!s.md && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "14px 20px" }}>
