@@ -1,0 +1,319 @@
+#	PLAYER	POS	TEAM	GP	G		#	PLAYER	POS	TEAM	GP	A		#	PLAYER	POS	TEAM	GP	RTG		#	PLAYER	POS	TEAM	GP	CC		#	PLAYER	POS	TEAM	GP	DC		#	PLAYER	POS	TEAM	GP	S
+1	Matías Salcedo	FWD	WIN	35	24		1	Daulat Siregar	FWD	PCH	37	9		1	Ludovico Riggio	MID	MYH	35	7.2		1	Nándor Mészáros	MID	WE	38	52		1	Attila D'Ambrosi	DEF	BRW	37	106		1	Struan MacAllister	GK	GAL	38	185
+2	Freek Hendriks	FWD	MYH	36	22		2	Spencer Chadwick	MID	SHE	38	9		2	Joris Van Antwerp	DEF	WIN	35	7.1		2	Kent Forsberg	MID	MYH	38	46		2	Álvaro Carvalho	MID	BIX	38	98		2	Jackson Miller	GK	SCR	38	169
+3	Horace Peshlakai	FWD	SHE	38	19		3	Anton Friedeberg	MID	TYN	38	9		3	Matías Salcedo	FWD	WIN	35	7.1		3	Ludovico Riggio	MID	MYH	35	45		3	Garrison Whitacre	DEF	MNU	38	97		3	Mathieu Martin	GK	BRI	38	165
+4	Pierre Petit	FWD	GAL	38	18		4	Ludovico Riggio	MID	MYH	35	8		4	Pierre-Marie Auvray	MID	BRU	35	7.1		4	Cristian Costanza	MID	SHE	36	45		4	Nelis Harberts	DEF	PCH	38	97		4	Ryōichi Nakashima	GK	PIS	38	159
+5	Marcus Ellingham	FWD	WE	38	17		5	Jadarian Royce	MID	WIN	38	8		5	Cristian Costanza	MID	SHE	36	7.1		5	Martim Duarte	MID	BIX	38	43		5	Wolfram Eberhardt	DEF	MNU	38	95		5	Parker Turner	GK	AFC	38	157
+6	Tadhg Brennan	FWD	BRW	38	16		6	Zsolt Harmathy	MID	BRI	37	7		6	Nelis Harberts	DEF	PCH	38	7.1		6	Alden Maddox	MID	SHE	38	42		6	Olegario Pérez	MID	PCH	38	95		6	Rhys Townsend	GK	WE	38	156
+7	Dillon Heath	FWD	TYN	38	16		7	Owen Ashworth	DEF	WE	38	7		7	Nándor Mészáros	MID	WE	38	7.1		7	Axel Anderson	MID	PIS	38	41		7	Cormac Bray	MID	SCR	38	93		7	Ceferino Acosta	GK	GAE	38	151
+8	Fletcher Lancaster	FWD	BRI	37	15		8	Lokendra Bahadur	MID	WE	38	7		8	Ferruccio Noseda	MID	PIS	38	7.1		8	Anton Friedeberg	MID	TYN	38	41		8	Philip Klein	DEF	TYN	38	92		8	Sullivan Marchbank	GK	MNC	38	150
+9	Arsenio Marchetti	FWD	MNU	38	15		9	Martim Duarte	MID	BIX	38	7		9	Nélson Ferreira	FWD	BRU	38	7.1		9	Arthur Whitmore	MID	WIN	38	38		9	Arséne La Fromboise	DEF	WE	38	91		9	Axel Berg	GK	MNU	38	149
+10	Nélson Ferreira	FWD	BRU	38	15		10	Kendrick Nakai	MID	STM	38	7		10	Kent Forsberg	MID	MYH	38	7.1		10	Daulat Siregar	FWD	PCH	37	37		10	Tunç Kenaanoğlu	DEF	BRI	38	91		10	Falco Monopoli	GK	WNC	38	148
+11	Rhys Deacon	FWD	BRW	36	14		11	Eiichi Fujimori	FWD	TYN	38	7		11	Egeo Scalera	MID	AFC	38	7.1		11	Miles Cheswick	MID	WE	38	37		11	Vural Surlu	MID	PIS	38	90		11	Misael Copeland	GK	BIX	38	148
+12	Severino Guzmán	FWD	STM	34	13		12	Cristian Costanza	MID	SHE	36	6		12	Naoto Umenokōji	DEF	MYH	33	7.0		12	Antonio Sangüesa	MID	STM	38	37		12	Ashley Halliwell	MID	BRW	38	89		12	Crispin Whitfield	GK	MYH	38	148
+13	Scott Riley	FWD	PCH	37	12		13	Arthur Whitmore	MID	WIN	38	6		13	Freek Hendriks	FWD	MYH	36	7.0		13	Dirk Platz	FWD	BRU	38	35		13	Lokendra Bahadur	MID	WE	38	88		13	Ansgar Kessler	GK	TYN	38	148
+14	Reuben Ashton	FWD	WIN	38	12		14	Renato Fioravanti	FWD	WIN	38	6		14	Zsolt Harmathy	MID	BRI	37	7.0		14	Corwin Thistlewood	MID	GAE	38	35		14	Nolan Jennings	DEF	BRI	38	88		14	Pietro Borromeo	GK	STM	38	136
+15	Erik Sundqvist	FWD	TOT	38	12		15	Findlay Brodick	FWD	GAL	38	6		15	Jadarian Royce	MID	WIN	38	7.0		15	Kendrick Nakai	MID	STM	38	35		15	Giacomo Constantino	DEF	GAE	38	87		15	Maximilian Mollenhauer	GK	BRU	38	134
+16	Detlef Lorenz	FWD	BIX	38	12		16	Harrison Vose	FWD	PCH	38	6		16	Wolfram Eberhardt	DEF	MNU	38	7.0		16	Eiichi Fujimori	FWD	TYN	38	35		16	Sōichirō Fukatsu	DEF	BRW	38	87		16	Yassine Benali	GK	PCH	38	126
+17	Dietrich Kunze	FWD	PIS	38	12		17	Nándor Mészáros	MID	WE	38	6		17	Tatsuki Akagawa	FWD	WNC	38	7.0		17	Leon Vogel	FWD	WIN	38	34		17	Neizan Escribano	MID	WNC	38	86		17	Saša Radović	GK	BRW	38	115
+18	Harrison Vose	FWD	PCH	38	11		18	Marcus Ellingham	FWD	WE	38	6		18	Tyson Yazzie	DEF	GAL	38	7.0		18	Erik Sundqvist	FWD	TOT	38	34		18	Kent Forsberg	MID	MYH	38	84		18	Xavier Cienfuegos	GK	WIN	38	102
+19	Spencer Chadwick	MID	SHE	38	11		19	Axel Anderson	MID	PIS	38	6		19	Cael Cunningham	MID	GAL	38	7.0		19	Theo Moss	MID	WE	38	34		19	Tyson Yazzie	DEF	GAL	38	83		19	Massimo Visconti	GK	TOT	38	99
+20	Ferruccio Noseda	MID	PIS	38	11		20	Alfie Stokesley	MID	MYH	38	6		20	Pierre Petit	FWD	GAL	38	7.0		20	Lokendra Bahadur	MID	WE	38	34		20	Joar Berglund	MID	BIX	38	83		20	Tristan Margetts	GK	SHE	38	99
+21	Harry Caine	FWD	TOT	35	10		21	Kent Forsberg	MID	MYH	38	6		21	Olegario Pérez	MID	PCH	38	7.0		21	Emrik Halvorsen	MID	SHE	38	33		21	Don Archibald Bates	DEF	SHE	38	83		21	Sam Fairweather	GK	GAE	7	23
+22	Leon Vogel	FWD	WIN	38	10		22	Corwin Thistlewood	MID	GAE	38	6		22	Marcus Ellingham	FWD	WE	38	7.0		22	Nélson Ferreira	FWD	BRU	38	33		22	Jabari Hess	DEF	PCH	38	82		22	Vasco Madeira	GK	AFC	12	22
+23	Tatsuki Akagawa	FWD	WNC	38	10		23	Ashley Halliwell	MID	BRW	38	6		23	Lokendra Bahadur	MID	WE	38	7.0		23	Jadarian Royce	MID	WIN	38	32		23	Toby Redgrave	MID	PIS	38	82		23	Tom Norris	GK	MNC	7	20
+24	Lewis Bardsley	FWD	TOT	38	10		24	Djeferson Béliveau	MID	STM	38	6		24	Álvaro Carvalho	MID	BIX	38	7.0		24	Sōma Kirishima	FWD	GAL	38	32		24	John Clark	MID	BRW	38	82		24	Niall Birkett	GK	WNC	6	19
+25	Peter Selhorst	FWD	BIX	38	10		25	Ottavio Scarlatti	FWD	AFC	38	6		25	Martim Duarte	MID	BIX	38	7.0		25	Gavin Chapelle	MID	GAE	38	32		25	Ludovico Riggio	MID	MYH	35	81		25	Vittore Gabbiadini	GK	BRU	8	19
+26	Eiichi Fujimori	FWD	TYN	38	10		26	Augustijn Verhoeven	MID	MNU	37	5		26	Spencer Chadwick	MID	SHE	38	7.0		26	Cael Cunningham	MID	GAL	38	31		26	Zalán Váradi	DEF	GAL	37	81		26	Torquil Blythe	GK	MYH	11	18
+27	Nándor Mészáros	MID	WE	38	9		27	Emrys Lockwood	DEF	WIN	38	5		27	Tunç Kenaanoğlu	DEF	BRI	38	7.0		27	Marcus Ellingham	FWD	WE	38	31		27	Tatsuki Akagawa	FWD	WNC	38	81		27	Declan Neal	GK	TYN	8	17
+28	Pau Bermúdez	FWD	GAE	38	9		28	Arsenio Marchetti	FWD	MNU	38	5		28	Danilo Della Rocca	DEF	MYH	38	7.0		28	Detlef Lorenz	FWD	BIX	38	31		28	Rory Kincardine	DEF	GAL	38	81		28	Declan Rackham	GK	SCR	6	12
+29	Augustin Aragonés	FWD	MNC	38	9		29	Ludvig Johansson	DEF	GAL	38	5		29	John Clark	MID	BRW	38	7.0		29	Ashley Halliwell	MID	BRW	38	31		29	Maxence Beauvilliers	DEF	WE	38	81		29	Jake Thornton	GK	WIN	7	12
+30	Gunner Cannon	MID	TYN	38	9		30	Cael Price	FWD	GAL	38	5		30	Ivo Brandão	MID	STM	38	7.0		30	Tadhg Brennan	FWD	BRW	38	31		30	Cael Cunningham	MID	GAL	38	80		30	Gonzalo Medina	GK	MNU	4	11
+31	Nathan Bass	MID	PIS	32	8		31	Erik Sundqvist	FWD	TOT	38	5		31	Kendrick Nakai	MID	STM	38	7.0		31	Igor Consalvo	MID	BRW	38	31		31	Harry Brown	DEF	WE	38	80		31	Will Barrett	GK	STM	5	11
+32	Kyle Sedgwick	FWD	MNU	35	8		32	Olegario Pérez	MID	PCH	38	5		32	Anton Friedeberg	MID	TYN	38	7.0		32	Ottavio Scarlatti	FWD	AFC	38	31		32	Marcus Redfern	DEF	BRI	38	80		32	Josh Hartley	GK	TOT	7	11
+33	Miroslav Přibyl	FWD	GAE	36	8		33	Álvaro Carvalho	MID	BIX	38	5		33	Tom Norris	GK	MNC	7	6.9		33	George Smith	MID	PCH	38	30		33	Nélson Ferreira	FWD	BRU	38	80		33	Nate Whetstone	GK	PIS	6	10
+34	Augustijn Verhoeven	MID	MNU	37	8		34	Antonio Sangüesa	MID	STM	38	5		34	Haraldur Ólafsson	DEF	TYN	31	6.9		34	Olegario Pérez	MID	PCH	38	30		34	Warren Marshall	MID	BRW	38	80		34	Fraser Gibbs	GK	GAL	1	6
+35	Declan Knightley	FWD	BIX	37	8		35	Nathan Bass	MID	PIS	32	4		35	Nathan Bass	MID	PIS	32	6.9		35	Julian Bosblooms	MID	SHE	38	30		35	Wilf Carbrook	DEF	SHE	38	79		35	Callum Fothergill	GK	SHE	4	5
+36	Renato Fioravanti	FWD	WIN	38	8		36	Naoto Umenokōji	DEF	MYH	33	4		36	Séverin Barthélemy	MID	BRU	34	6.9		36	Ferruccio Noseda	MID	PIS	38	30		36	Ferruccio Noseda	MID	PIS	38	79		36	Kyle Ainsworth	GK	BRI	3	4
+37	Cael Price	FWD	GAL	38	8		37	Séverin Barthélemy	MID	BRU	34	4		37	Thomas Hargreaves	MID	TOT	35	6.9		37	Egeo Scalera	MID	AFC	38	30		37	Beckett Ashworth	DEF	GAE	38	79		37	Volkan Arslan	GK	PCH	3	3
+38	Ellis West	FWD	GAL	38	8		38	Xander Bennett	MID	AFC	35	4		38	Dario Prado	DEF	MYH	35	6.9		38	Ondřej Černý	MID	TYN	38	30		38	Kyffin Llewellyn	DEF	TYN	38	79		38	Lachlan Mowbray	GK	BRW	3	3
+39	Oisín Doolan	FWD	SCR	38	8		39	Fritz Hafer	MID	MNU	36	4		39	Mathijs Holleman	MID	MNC	35	6.9		39	Spencer Chadwick	MID	SHE	38	29		39	Conor Dale	MID	WIN	38	78							
+40	Alfie Stokesley	MID	MYH	38	8		40	Marcus Wright	MID	MYH	36	4		40	Xander Bennett	MID	AFC	35	6.9		40	John Clark	MID	BRW	38	29		40	Ellis West	FWD	GAL	38	78							
+41	Morgan Keane	FWD	STM	32	7		41	Miroslav Přibyl	FWD	GAE	36	4		41	Sander Vandevelde	MID	WNC	36	6.9		41	Ivo Brandão	MID	STM	38	29		41	Martim Duarte	MID	BIX	38	78							
+42	Fritz Hafer	MID	MNU	36	7		42	Cédric Serre	MID	MYH	37	4		42	Rhys Deacon	FWD	BRW	36	6.9		42	Pierre Petit	FWD	GAL	38	28		42	Igor Consalvo	MID	BRW	38	77							
+43	Cristian Costanza	MID	SHE	36	7		43	Conor Dale	MID	WIN	38	4		43	Alvaro Small	MID	MNU	37	6.9		43	Lewis Bardsley	FWD	TOT	38	28		43	Matías Salcedo	FWD	WIN	35	76							
+44	Cédric Serre	MID	MYH	37	7		44	Leon Vogel	FWD	WIN	38	4		44	Augustijn Verhoeven	MID	MNU	37	6.9		44	Ollie Shaw	FWD	TOT	38	28		44	Dario Moretti	DEF	BIX	38	76							
+45	Rowan Fenwick	FWD	TYN	37	7		45	Inácio Madureira	DEF	MNU	38	4		45	Harvey Payne	MID	PCH	37	6.9		45	Keiran Standish	MID	WE	38	28		45	Oisín Doolan	FWD	SCR	38	76							
+46	Sōma Kirishima	FWD	GAL	38	7		46	Barnaby Chelsworth	MID	MNU	38	4		46	Fletcher Lancaster	FWD	BRI	37	6.9		46	Warren Marshall	MID	BRW	38	28		46	Qiushi Zhang	DEF	PIS	38	76							
+47	George Smith	MID	PCH	38	7		47	Ross Doyle	MID	GAL	38	4		47	Cédric Serre	MID	MYH	37	6.9		47	Sawyer Pinkerton	FWD	MNC	38	28		47	Spencer Chadwick	MID	SHE	38	75							
+48	Keiran Standish	MID	WE	38	7		48	Sōma Kirishima	FWD	GAL	38	4		48	Attila D'Ambrosi	DEF	BRW	37	6.9		48	Augustin Aragonés	FWD	MNC	38	28		48	Duarte Vasques	MID	MYH	38	75							
+49	Jesus Halconero	FWD	BRI	38	7		49	Simphiwe Chabalala	MID	TOT	38	4		49	Mateo Calderón	MID	MNC	37	6.9		49	Dillon Heath	FWD	TYN	38	28		49	Vojtěch Novotný	DEF	TOT	37	74							
+50	Jabari Wells	FWD	BRU	38	7		50	Jonathan Fields	FWD	PCH	38	4		50	Brock Fairweather	DEF	WIN	38	6.9		50	Simo Mannerheim	MID	GAE	34	27		50	Owen Ashworth	DEF	WE	38	74							
+51	Kent Forsberg	MID	MYH	38	7		51	Arséne La Fromboise	DEF	WE	38	4		51	Conor Dale	MID	WIN	38	6.9		51	Harvey Payne	MID	PCH	37	27		51	Miles Cheswick	MID	WE	38	74							
+52	Baldomero Quintana	FWD	GAE	38	7		52	Miles Cheswick	MID	WE	38	4		52	Arthur Whitmore	MID	WIN	38	6.9		52	Cédric Serre	MID	MYH	37	27		52	Julian Bosblooms	MID	SHE	38	74							
+53	Alfie Wren	FWD	GAE	38	7		53	Theo Moss	MID	WE	38	4		53	Garrison Whitacre	DEF	MNU	38	6.9		53	Djeferson Béliveau	MID	STM	38	27		53	Axel Anderson	MID	PIS	38	74							
+54	Harvey Grieve	FWD	BRW	38	7		54	Jesus Halconero	FWD	BRI	38	4		54	Struan MacAllister	GK	GAL	38	6.9		54	Thomas Hargreaves	MID	TOT	35	26		54	Felix Hoffman	MID	BRW	38	74							
+55	Djeferson Béliveau	MID	STM	38	7		55	Nélson Ferreira	FWD	BRU	38	4		55	Ellis West	FWD	GAL	38	6.9		55	Cael Price	FWD	GAL	38	26		55	Joris Van Antwerp	DEF	WIN	35	73							
+56	Egeo Scalera	MID	AFC	38	7		56	Dirk Platz	FWD	BRU	38	4		56	Erik Sundqvist	FWD	TOT	38	6.9		56	Jonathan Fields	FWD	PCH	38	26		56	Ayato Hachikawa	MID	GAL	38	73							
+57	Ben Prewett	FWD	WE	23	6		57	Danilo Della Rocca	DEF	MYH	38	4		57	George Smith	MID	PCH	38	6.9		57	Owen Ashworth	DEF	WE	38	26		57	Kazuki Fondo	DEF	TOT	38	73							
+58	Reece Floyd	DEF	BRI	30	6		58	Baldomero Quintana	FWD	GAE	38	4		58	Rhys Townsend	GK	WE	38	6.9		58	Peter Selhorst	FWD	BIX	38	26		58	Pierre-Marie Auvray	MID	BRU	35	72							
+59	Tadhg Oakes	MID	PCH	32	6		59	Pau Bermúdez	FWD	GAE	38	4		59	Owen Ashworth	DEF	WE	38	6.9		59	Pierre-Marie Auvray	MID	BRU	35	25		59	Mátyás Szendrei	DEF	BIX	38	72							
+60	Harvey Doe	FWD	SHE	36	6		60	Warren Marshall	MID	BRW	38	4		60	Arséne La Fromboise	DEF	WE	38	6.9		60	Alvaro Small	MID	MNU	37	25		60	Wendelin Gratz	MID	SCR	38	72							
+61	Colwyn Powell	FWD	MYH	36	6		61	John Clark	MID	BRW	38	4		61	Maxence Beauvilliers	DEF	WE	38	6.9		61	Zsolt Harmathy	MID	BRI	37	25		61	Sander Vandevelde	MID	WNC	36	71							
+62	Biel Biel	FWD	WNC	37	6		62	Felix Hoffman	MID	BRW	38	4		62	Miles Cheswick	MID	WE	38	6.9		62	Rowan Fenwick	FWD	TYN	37	25		62	Jerzy Wiśniewski	DEF	STM	37	71							
+63	Daulat Siregar	FWD	PCH	37	6		63	Augustin Aragonés	FWD	MNC	38	4		63	Theo Moss	MID	WE	38	6.9		63	Conor Dale	MID	WIN	38	25		63	Brock Fairweather	DEF	WIN	38	71							
+64	Marian Bettencourt	FWD	BRU	37	6		64	Ivo Brandão	MID	STM	38	4		64	Joar Berglund	MID	BIX	38	6.9		64	Rhys Warwick	MID	BIX	38	25		64	Aldric Penhaligon	MID	SCR	38	71							
+65	Braulio Salvatierra	MID	MNU	38	6		65	Egeo Scalera	MID	AFC	38	4		65	Detlef Lorenz	FWD	BIX	38	6.9		65	Rachid Ouédraogo	MID	BRU	38	25		65	Ladislav Kučera	DEF	MYH	38	71							
+66	Jonathan Fields	FWD	PCH	38	6		66	Ondřej Černý	MID	TYN	38	4		66	Aldric Penhaligon	MID	SCR	38	6.9		66	Harvey Grieve	FWD	BRW	38	25		66	Wesley Wetherby	DEF	STM	38	71							
+67	Milan Ivanov	MID	WE	38	6		67	Theo Burrows	MID	GAE	29	3		67	Quillan Fawkes	MID	SCR	38	6.9		67	Gunner Cannon	MID	TYN	38	25		67	Thomas Hargreaves	MID	TOT	35	70							
+68	Sawyer Pinkerton	FWD	MNC	38	6		68	Haraldur Ólafsson	DEF	TYN	31	3		68	Wendelin Gratz	MID	SCR	38	6.9		68	Fritz Hafer	MID	MNU	36	24		68	Fritz Hafer	MID	MNU	36	70							
+69	Ivo Brandão	MID	STM	38	6		69	Elliot Handsworth	MID	BRW	34	3		69	Cormac Bray	MID	SCR	38	6.9		69	Rhys Deacon	FWD	BRW	36	24		69	Alvaro Small	MID	MNU	37	70							
+70	Kendrick Nakai	MID	STM	38	6		70	Finn Ashcroft	MID	MNU	35	3		70	Julian Bosblooms	MID	SHE	38	6.9		70	Marian Bettencourt	FWD	BRU	37	24		70	Danilo Della Rocca	DEF	MYH	38	70							
+71	Ottavio Scarlatti	FWD	AFC	38	6		71	Thomas Hargreaves	MID	TOT	35	3		71	Alden Maddox	MID	SHE	38	6.9		71	Maxence Beauvilliers	DEF	WE	38	24		71	Anton Friedeberg	MID	TYN	38	70							
+72	Selçuk Demirci	MID	WE	34	5		72	Dario Prado	DEF	MYH	35	3		72	Emrik Halvorsen	MID	SHE	38	6.9		72	Yoru Shirase	FWD	BRI	38	24		72	Zsolt Harmathy	MID	BRI	37	69							
+73	András Kelemen	DEF	GAL	36	5		73	Nate Entwistle	DEF	MNC	35	3		73	Horace Peshlakai	FWD	SHE	38	6.9		73	Nathan Bass	MID	PIS	32	23		73	Arthur Whitmore	MID	WIN	38	69							
+74	Max Reeves	FWD	MNC	36	5		74	Mathijs Holleman	MID	MNC	35	3		74	Nolan Jennings	DEF	BRI	38	6.9		74	Renato Fioravanti	FWD	WIN	38	23		74	Lachlan Barwick	DEF	BIX	38	69							
+75	Harvey Payne	MID	PCH	37	5		75	Connor Palliser	FWD	SCR	36	3		75	Marcus Redfern	DEF	BRI	38	6.9		75	Harrison Vose	FWD	PCH	38	23		75	Tilman Zartmann	DEF	PIS	38	69							
+76	Findlay Brodick	FWD	GAL	38	5		76	Rhys Deacon	FWD	BRW	36	3		76	Axel Anderson	MID	PIS	38	6.9		76	Joar Berglund	MID	BIX	38	23		76	Tadhg Brennan	FWD	BRW	38	69							
+77	Alden Maddox	MID	SHE	38	5		77	Isaac Pendridge	MID	STM	36	3		77	Vural Surlu	MID	PIS	38	6.9		77	Jesus Halconero	FWD	BRI	38	23		77	Egeo Scalera	MID	AFC	38	69							
+78	Yoru Shirase	FWD	BRI	38	5		78	Hadrien Deschamps	DEF	WIN	37	3		78	Rachid Ouédraogo	MID	BRU	38	6.9		78	Dietrich Kunze	FWD	PIS	38	23		78	Naoto Umenokōji	DEF	MYH	33	68							
+79	Dirk Platz	FWD	BRU	38	5		79	Harvey Payne	MID	PCH	37	3		79	Duarte Vasques	MID	MYH	38	6.9		79	Duarte Vasques	MID	MYH	38	23		79	Erdem Polat	DEF	WNC	38	68							
+80	Duarte Vasques	MID	MYH	38	5		80	Attila D'Ambrosi	DEF	BRW	37	3		80	Corwin Thistlewood	MID	GAE	38	6.9		80	Alfie Wren	FWD	GAE	38	23		80	George Smith	MID	PCH	38	68							
+81	Antonio Sangüesa	MID	STM	38	5		81	Mateo Calderón	MID	MNC	37	3		81	Warren Marshall	MID	BRW	38	6.9		81	Felix Hoffman	MID	BRW	38	23		81	Jadarian Royce	MID	WIN	38	67							
+82	Tyler Aldridge	MID	AFC	38	5		82	Brock Fairweather	DEF	WIN	38	3		82	Ashley Halliwell	MID	BRW	38	6.9		82	Xander Bennett	MID	AFC	35	22		82	Simphiwe Chabalala	MID	TOT	38	67							
+83	Ryan Cole	MID	WIN	27	4		83	Wolfram Eberhardt	DEF	MNU	38	3		83	Tadhg Brennan	FWD	BRW	38	6.9		83	Angel Castejón	DEF	WIN	38	22		83	Corwin Thistlewood	MID	GAE	38	67							
+84	Scott Blackwood	FWD	PIS	30	4		84	Braulio Salvatierra	MID	MNU	38	3		84	Íker Olabarría	MID	MNC	38	6.9		84	Braulio Salvatierra	MID	MNU	38	22		84	Gunner Cannon	MID	TYN	38	67							
+85	Ethan Blake	MID	BRU	33	4		85	Tyson Yazzie	DEF	GAL	38	3		85	Augustin Aragonés	FWD	MNC	38	6.9		85	Neizan Escribano	MID	WNC	38	22		85	Séverin Barthélemy	MID	BRU	34	66							
+86	Simo Mannerheim	MID	GAE	34	4		86	Cael Cunningham	MID	GAL	38	3		86	Antonio Sangüesa	MID	STM	38	6.9		86	Tatsuki Akagawa	FWD	WNC	38	22		86	Marcus Wright	MID	MYH	36	66							
+87	Ludovico Riggio	MID	MYH	35	4		87	Ayato Hachikawa	MID	GAL	38	3		87	Djeferson Béliveau	MID	STM	38	6.9		87	Arséne La Fromboise	DEF	WE	38	22		87	Kilian Reuther	DEF	AFC	36	66							
+88	Connor Palliser	FWD	SCR	36	4		88	Pierre Petit	FWD	GAL	38	3		88	Philip Klein	DEF	TYN	38	6.9		88	Quillan Fawkes	MID	SCR	38	22		88	Alden Maddox	MID	SHE	38	66							
+89	Charlie Grey	FWD	TYN	37	4		89	Lewis Bardsley	FWD	TOT	38	3		89	Ondřej Černý	MID	TYN	38	6.9		89	Aneurin Porter	MID	SHE	38	22		89	Tim La Greca	DEF	PIS	38	66							
+90	Arthur Whitmore	MID	WIN	38	4		90	Nelis Harberts	DEF	PCH	38	3		90	Eiichi Fujimori	FWD	TYN	38	6.9		90	Vural Surlu	MID	PIS	38	22		90	Fletcher Lancaster	FWD	BRI	37	65							
+91	Cael Cunningham	MID	GAL	38	4		91	Reuben Mendoza	DEF	PCH	38	3		91	Dillon Heath	FWD	TYN	38	6.9		91	Louis Weardale	MID	STM	38	22		91	Ivo Brandão	MID	STM	38	65							
+92	Ross Doyle	MID	GAL	38	4		92	George Smith	MID	PCH	38	3		92	Gunner Cannon	MID	TYN	38	6.9		92	Augustijn Verhoeven	MID	MNU	37	21		92	Xander Bennett	MID	AFC	35	64							
+93	Ollie Shaw	FWD	TOT	38	4		93	Keiran Standish	MID	WE	38	3		93	Sam Fairweather	GK	GAE	7	6.8		93	Mateo Calderón	MID	MNC	37	21		93	Theo Moss	MID	WE	38	64							
+94	Olegario Pérez	MID	PCH	38	4		94	Rhys Warwick	MID	BIX	38	3		94	Niilo Virtanen	DEF	MYH	10	6.8		94	Tyson Yazzie	DEF	GAL	38	21		94	Callum Hedgecoe	DEF	STM	38	64							
+95	Jonathan Cannon	MID	PCH	38	4		95	Julian Bosblooms	MID	SHE	38	3		95	Dylan Goodacre	DEF	GAE	12	6.8		95	Simphiwe Chabalala	MID	TOT	38	21		95	Louis Weardale	MID	STM	38	64							
+96	Theo Moss	MID	WE	38	4		96	Aneurin Porter	MID	SHE	38	3		96	Simo Mannerheim	MID	GAE	34	6.8		96	Danilo Della Rocca	DEF	MYH	38	21		96	Ondřej Černý	MID	TYN	38	64							
+97	Lokendra Bahadur	MID	WE	38	4		97	Alden Maddox	MID	SHE	38	3		97	Severino Guzmán	FWD	STM	34	6.8		97	Baldomero Quintana	FWD	GAE	38	21		97	Simo Mannerheim	MID	GAE	34	63							
+98	Quillan Fawkes	MID	SCR	38	4		98	Emrik Halvorsen	MID	SHE	38	3		98	Harry Caine	FWD	TOT	35	6.8		98	Selçuk Demirci	MID	WE	34	20		98	Quillan Fawkes	MID	SCR	38	63							
+99	Aneurin Porter	MID	SHE	38	4		99	Tunç Kenaanoğlu	DEF	BRI	38	3		99	Fritz Hafer	MID	MNU	36	6.8		99	Joris Van Antwerp	DEF	WIN	35	20		99	Cameron Lyons	DEF	MNC	38	63							
+100	Niall Hayes	FWD	BRI	38	4		100	Ovidio Vico	MID	BRI	38	3		100	Prescott Hargrave	MID	WNC	36	6.8		100	Freek Hendriks	FWD	MYH	36	20		100	Harvey Quickfall	DEF	MNU	37	62							
+101	Matt Saltmarsh	MID	BRU	38	4		101	Baptiste Roux	MID	BRI	38	3		101	Marcus Wright	MID	MYH	36	6.8		101	Miroslav Přibyl	FWD	GAE	36	20		101	Eliel Klemetti	DEF	SHE	38	62							
+102	Warren Marshall	MID	BRW	38	4		102	Toby Redgrave	MID	PIS	38	3		102	Kilian Reuther	DEF	AFC	36	6.8		102	Kael Rowntree	MID	TYN	37	20		102	Kendrick Nakai	MID	STM	38	62							
+103	Ondřej Černý	MID	TYN	38	4		103	Ferruccio Noseda	MID	PIS	38	3		103	Colin Bruguiére	MID	AFC	36	6.8		103	Emrys Lockwood	DEF	WIN	38	20		103	Yūto Kanbara	DEF	TYN	38	62							
+104	Anton Friedeberg	MID	TYN	38	4		104	Vural Surlu	MID	PIS	38	3		104	Hadrien Deschamps	DEF	WIN	37	6.8		104	Arsenio Marchetti	FWD	MNU	38	20		104	Mario Hoyo	DEF	GAE	36	61							
+105	Theo Burrows	MID	GAE	29	3		105	Dietrich Kunze	FWD	PIS	38	3		105	Harvey Quickfall	DEF	MNU	37	6.8		105	Ross Doyle	MID	GAL	38	20		105	Marlow Tilbrook	MID	WNC	37	61							
+106	Sonny Horwich	DEF	BIX	33	3		106	Sawyer Pinkerton	FWD	MNC	38	3		106	Zalán Váradi	DEF	GAL	37	6.8		106	Milan Ivanov	MID	WE	38	20		106	Harvey Payne	MID	PCH	37	61							
+107	Thomas Hargreaves	MID	TOT	35	3		107	Philip Klein	DEF	TYN	38	3		107	Alejandro Varga	DEF	PCH	37	6.8		107	Álvaro Carvalho	MID	BIX	38	20		107	Emrik Halvorsen	MID	SHE	38	61							
+108	Marcus Wright	MID	MYH	36	3		108	Gunner Cannon	MID	TYN	38	3		108	Daulat Siregar	FWD	PCH	37	6.8		108	Jabari Wells	FWD	BRU	38	20		108	Dirk Platz	FWD	BRU	38	61							
+109	Kieran Frost	MID	TOT	37	3		109	Dylan Goodacre	DEF	GAE	12	2		109	Fionn Larraghy	MID	SCR	37	6.8		109	Pau Bermúdez	FWD	GAE	38	20		109	Rachid Ouédraogo	MID	BRU	38	61							
+110	Alejandro Varga	DEF	PCH	37	3		110	Tadhg Oakes	MID	PCH	32	2		110	Callum Davies	DEF	BRI	37	6.8		110	Mario Hoyo	DEF	GAE	36	19		110	Gavin Chapelle	MID	GAE	38	61							
+111	Fionn Larraghy	MID	SCR	37	3		111	Kazimierz Wójcik	DEF	SCR	33	2		111	Jerzy Wiśniewski	DEF	STM	37	6.8		111	Fletcher Lancaster	FWD	BRI	37	19		111	Ludvig Johansson	DEF	GAL	38	60							
+112	Miles Marsh	MID	PIS	37	3		112	Kymani Hewitt	FWD	AFC	33	2		112	Angel Castejón	DEF	WIN	38	6.8		112	Brock Fairweather	DEF	WIN	38	19		112	Rhys Warwick	MID	BIX	38	60							
+113	Mateo Calderón	MID	MNC	37	3		113	Yakov Sorokin	MID	MYH	34	2		113	Leon Vogel	FWD	WIN	38	6.8		113	Wolfram Eberhardt	DEF	MNU	38	19		113	Ovidio Vico	MID	BRI	38	60							
+114	Jadarian Royce	MID	WIN	38	3		114	Simo Mannerheim	MID	GAE	34	2		114	Inácio Madureira	DEF	MNU	38	6.8		114	Ludvig Johansson	DEF	GAL	38	19		114	Freek Hendriks	FWD	MYH	36	59							
+115	Simphiwe Chabalala	MID	TOT	38	3		115	Harry Caine	FWD	TOT	35	2		115	Barnaby Chelsworth	MID	MNU	38	6.8		115	Ellis West	FWD	GAL	38	19		115	Augustijn Verhoeven	MID	MNU	37	59							
+116	Maxence Beauvilliers	DEF	WE	38	3		116	Pierre-Marie Auvray	MID	BRU	35	2		116	Braulio Salvatierra	MID	MNU	38	6.8		116	Nelis Harberts	DEF	PCH	38	19		116	Alejandro Varga	DEF	PCH	37	59							
+117	Miles Cheswick	MID	WE	38	3		117	Colwyn Powell	FWD	MYH	36	2		117	Arsenio Marchetti	FWD	MNU	38	6.8		117	Cormac Bray	MID	SCR	38	19		117	Fionn Larraghy	MID	SCR	37	59							
+118	Álvaro Carvalho	MID	BIX	38	3		118	Marco Perono	DEF	GAE	36	2		118	Erdem Polat	DEF	WNC	38	6.8		118	Horace Peshlakai	FWD	SHE	38	19		118	Lorenzo Squillaci	DEF	TOT	38	59							
+119	Cormac Bray	MID	SCR	38	3		119	Mario Hoyo	DEF	GAE	36	2		119	Sterling Caulfield	DEF	WNC	38	6.8		119	Toby Redgrave	MID	PIS	38	19		119	Reuben Mendoza	DEF	PCH	38	59							
+120	Marcus Redfern	DEF	BRI	38	3		120	Harvey Quickfall	DEF	MNU	37	2		120	Neizan Escribano	MID	WNC	38	6.8		120	Alfie Stokesley	MID	MYH	38	19		120	Horace Peshlakai	FWD	SHE	38	59							
+121	Danilo Della Rocca	DEF	MYH	38	3		121	Alvaro Small	MID	MNU	37	2		121	Rory Kincardine	DEF	GAL	38	6.8		121	Íker Olabarría	MID	MNC	38	19		121	Prescott Hargrave	MID	WNC	36	58							
+122	Giacomo Constantino	DEF	GAE	38	3		122	Marlow Tilbrook	MID	WNC	37	2		122	Ludvig Johansson	DEF	GAL	38	6.8		122	Nicanor Arandia	FWD	MNC	38	19		122	Rhys Deacon	FWD	BRW	36	58							
+123	Jake Croft	MID	GAE	38	3		123	Zalán Váradi	DEF	GAL	37	2		123	Ayato Hachikawa	MID	GAL	38	6.8		123	Sander Vandevelde	MID	WNC	36	18		123	Hadrien Deschamps	DEF	WIN	37	58							
+124	Ashley Halliwell	MID	BRW	38	3		124	Kieran Frost	MID	TOT	37	2		124	Sōma Kirishima	FWD	GAL	38	6.8		124	Isaac Pendridge	MID	STM	36	18		124	Reese Guerra	DEF	BRW	38	58							
+125	John Clark	MID	BRW	38	3		125	Giacomo Russo	DEF	TOT	37	2		125	Lorenzo Squillaci	DEF	TOT	38	6.8		125	Charlie Grey	FWD	TYN	37	18		125	Antonio Sangüesa	MID	STM	38	58							
+126	Felix Hoffman	MID	BRW	38	3		126	Scott Riley	FWD	PCH	37	2		126	Simphiwe Chabalala	MID	TOT	38	6.8		126	Rory Kincardine	DEF	GAL	38	18		126	Severino Guzmán	FWD	STM	34	57							
+127	Nicanor Arandia	FWD	MNC	38	3		127	Marian Bettencourt	FWD	BRU	37	2		127	Lewis Bardsley	FWD	TOT	38	6.8		127	Findlay Brodick	FWD	GAL	38	18		127	Cédric Serre	MID	MYH	37	57							
+128	Louis Weardale	MID	STM	38	3		128	Charlie Grey	FWD	TYN	37	2		128	Jabari Hess	DEF	PCH	38	6.8		128	Jabari Hess	DEF	PCH	38	18		128	Angel Castejón	DEF	WIN	38	57							
+129	Jedidiah Wanamaker	DEF	AFC	38	3		129	Reuben Ashton	FWD	WIN	38	2		129	Reuben Mendoza	DEF	PCH	38	6.8		129	Eliel Klemetti	DEF	SHE	38	18		129	Bobby Croxteth	DEF	WNC	38	57							
+130	Owen Bramley	MID	MNU	30	2		130	Tatsuki Akagawa	FWD	WNC	38	2		130	Harrison Vose	FWD	PCH	38	6.8		130	Ladislav Kučera	DEF	MYH	38	18		130	Baptiste Roux	MID	BRI	38	57							
+131	Kymani Hewitt	FWD	AFC	33	2		131	Rory Kincardine	DEF	GAL	38	2		131	Harry Brown	DEF	WE	38	6.8		131	Charles Lagarde	DEF	STM	38	18		131	Curtis Haversham	DEF	BRU	38	57							
+132	Ross Dent	MID	AFC	34	2		132	Ellis West	FWD	GAL	38	2		132	Keiran Standish	MID	WE	38	6.8		132	Finn Sutton	MID	STM	33	17		132	Djeferson Béliveau	MID	STM	38	57							
+133	Joris Van Antwerp	DEF	WIN	35	2		133	Lorenzo Squillaci	DEF	TOT	38	2		133	Mátyás Szendrei	DEF	BIX	38	6.8		133	Séverin Barthélemy	MID	BRU	34	17		133	Dario Prado	DEF	MYH	35	56							
+134	Pierre-Marie Auvray	MID	BRU	35	2		134	Ollie Shaw	FWD	TOT	38	2		134	Dario Moretti	DEF	BIX	38	6.8		134	Kyle Sedgwick	FWD	MNU	35	17		134	Braulio Salvatierra	MID	MNU	38	56							
+135	Xander Bennett	MID	AFC	35	2		135	Mátyás Szendrei	DEF	BIX	38	2		135	Lachlan Barwick	DEF	BIX	38	6.8		135	Colwyn Powell	FWD	MYH	36	17		135	Pierre Petit	FWD	GAL	38	56							
+136	Mario Hoyo	DEF	GAE	36	2		136	Joar Berglund	MID	BIX	38	2		136	Peter Selhorst	FWD	BIX	38	6.8		136	Marcus Wright	MID	MYH	36	17		136	Detlef Lorenz	FWD	BIX	38	56							
+137	Isaac Pendridge	MID	STM	36	2		137	Peter Selhorst	FWD	BIX	38	2		137	Tanjin Tsukahara	DEF	SCR	38	6.8		137	Scott Riley	FWD	PCH	37	17		137	Nathan Hughes	DEF	BRU	38	56							
+138	Harvey Quickfall	DEF	MNU	37	2		138	Detlef Lorenz	FWD	BIX	38	2		138	Oisín Doolan	FWD	SCR	38	6.8		138	Inácio Madureira	DEF	MNU	38	17		138	Chris Hadleigh	DEF	SCR	38	55							
+139	Rafferty Cross	MID	TOT	37	2		139	Aldric Penhaligon	MID	SCR	38	2		139	Don Archibald Bates	DEF	SHE	38	6.8		139	Barnaby Chelsworth	MID	MNU	38	17		139	Thatcher Grimsby	DEF	AFC	38	55							
+140	Kai Stratton	MID	SCR	37	2		140	Quillan Fawkes	MID	SCR	38	2		140	Wilf Carbrook	DEF	SHE	38	6.8		140	Ayato Hachikawa	MID	GAL	38	17		140	Kieran Frost	MID	TOT	37	54							
+141	Kael Rowntree	MID	TYN	37	2		141	Wendelin Gratz	MID	SCR	38	2		141	Ovidio Vico	MID	BRI	38	6.8		141	Giacomo Constantino	DEF	GAE	38	17		141	Sterling Caulfield	DEF	WNC	38	54							
+142	Conor Dale	MID	WIN	38	2		142	Eliel Klemetti	DEF	SHE	38	2		142	Jesus Halconero	FWD	BRI	38	6.8		142	Severino Guzmán	FWD	STM	34	16		142	Harrison Vose	FWD	PCH	38	54							
+143	Emrys Lockwood	DEF	WIN	38	2		143	Wilf Carbrook	DEF	SHE	38	2		143	Qiushi Zhang	DEF	PIS	38	6.8		143	Harry Caine	FWD	TOT	35	16		143	Nándor Mészáros	MID	WE	38	54							
+144	Garrison Whitacre	DEF	MNU	38	2		144	Dan Hobbs	MID	BRI	38	2		144	Tilman Zartmann	DEF	PIS	38	6.8		144	Biel Biel	FWD	WNC	37	16		144	Tanjin Tsukahara	DEF	SCR	38	54							
+145	Barnaby Chelsworth	MID	MNU	38	2		145	Niall Hayes	FWD	BRI	38	2		145	Tim La Greca	DEF	PIS	38	6.8		145	Kieran Frost	MID	TOT	37	16		145	Domenico Vivaldi	DEF	MNC	34	53							
+146	Liam Copley	FWD	WNC	38	2		146	Yoru Shirase	FWD	BRI	38	2		146	Dietrich Kunze	FWD	PIS	38	6.8		146	Reuben Ashton	FWD	WIN	38	16		146	Biel Biel	FWD	WNC	37	53							
+147	Harry Brown	DEF	WE	38	2		147	Qiushi Zhang	DEF	PIS	38	2		147	Curtis Haversham	DEF	BRU	38	6.8		147	Harry Brown	DEF	WE	38	16		147	Callum Davies	DEF	BRI	37	53							
+148	Lachlan Barwick	DEF	BIX	38	2		148	Karl Hauschka	DEF	BRU	38	2		148	Dirk Platz	FWD	BRU	38	6.8		148	Oisín Doolan	FWD	SCR	38	16		148	Barnaby Chelsworth	MID	MNU	38	53							
+149	Joar Berglund	MID	BIX	38	2		149	Matt Saltmarsh	MID	BRU	38	2		149	Crispin Whitfield	GK	MYH	38	6.8		149	Yūto Kanbara	DEF	TYN	38	16		149	Lewis Bardsley	FWD	TOT	38	53							
+150	Wilf Carbrook	DEF	SHE	38	2		150	Jabari Wells	FWD	BRU	38	2		150	Ladislav Kučera	DEF	MYH	38	6.8		150	Kyffin Llewellyn	DEF	TYN	38	16		150	Peter Selhorst	FWD	BIX	38	53							
+151	Emrik Halvorsen	MID	SHE	38	2		151	Ladislav Kučera	DEF	MYH	38	2		151	Ceferino Acosta	GK	GAE	38	6.8		151	Haraldur Ólafsson	DEF	TYN	31	15		151	Jake Croft	MID	GAE	38	53							
+152	Tunç Kenaanoğlu	DEF	BRI	38	2		152	Giacomo Constantino	DEF	GAE	38	2		152	Beckett Ashworth	DEF	GAE	38	6.8		152	Matías Salcedo	FWD	WIN	35	15		152	Íker Olabarría	MID	MNC	38	53							
+153	Dan Hobbs	MID	BRI	38	2		153	Gavin Chapelle	MID	GAE	38	2		153	Giacomo Constantino	DEF	GAE	38	6.8		153	Mathijs Holleman	MID	MNC	35	15		153	Mathijs Holleman	MID	MNC	35	52							
+154	Tim La Greca	DEF	PIS	38	2		154	Sōichirō Fukatsu	DEF	BRW	38	2		154	Pau Bermúdez	FWD	GAE	38	6.8		154	Harvey Doe	FWD	SHE	36	15		154	Marco Perono	DEF	GAE	36	52							
+155	Toby Redgrave	MID	PIS	38	2		155	Igor Consalvo	MID	BRW	38	2		155	Sōichirō Fukatsu	DEF	BRW	38	6.8		155	Harvey Quickfall	DEF	MNU	37	15		155	Cristian Costanza	MID	SHE	36	51							
+156	Axel Anderson	MID	PIS	38	2		156	Nicanor Arandia	FWD	MNC	38	2		156	Reese Guerra	DEF	BRW	38	6.8		156	Zalán Váradi	DEF	GAL	37	15		156	Mateo Calderón	MID	MNC	37	51							
+157	Vural Surlu	MID	PIS	38	2		157	Charles Lagarde	DEF	STM	38	2		157	Felix Hoffman	MID	BRW	38	6.8		157	Jonathan Cannon	MID	PCH	38	15		157	Charlie Grey	FWD	TYN	37	51							
+158	Corwin Thistlewood	MID	GAE	38	2		158	Fergus Dunbroch	DEF	AFC	38	2		158	Igor Consalvo	MID	BRW	38	6.8		158	Sōichirō Fukatsu	DEF	BRW	38	15		158	Findlay Brodick	FWD	GAL	38	51							
+159	Gustav Gyllenhaal	DEF	MNC	38	2		159	Yūto Kanbara	DEF	TYN	38	2		159	Théo Lachapelle	DEF	MNC	38	6.8		159	Hadrien Deschamps	DEF	WIN	37	14		159	Emrys Lockwood	DEF	WIN	38	50							
+160	Jamie Baines	DEF	AFC	9	1		160	Rupert Walsh	DEF	SHE	9	1		160	Gustav Gyllenhaal	DEF	MNC	38	6.8		160	Marlow Tilbrook	MID	WNC	37	14		160	Sōma Kirishima	FWD	GAL	38	50							
+161	Kai Hunt	MID	TYN	10	1		161	Niilo Virtanen	DEF	MYH	10	1		161	Cameron Lyons	DEF	MNC	38	6.8		161	Jerzy Wiśniewski	DEF	STM	37	14		161	Jesus Halconero	FWD	BRI	38	50							
+162	Alain Saffron	MID	WIN	11	1		162	Alain Saffron	MID	WIN	11	1		162	Sawyer Pinkerton	FWD	MNC	38	6.8		162	Baptiste Roux	MID	BRI	38	14		162	Charles Lagarde	DEF	STM	38	50							
+163	Dylan Goodacre	DEF	GAE	12	1		163	Owen Bramley	MID	MNU	30	1		163	Jedidiah Wanamaker	DEF	AFC	38	6.8		163	Beckett Ashworth	DEF	GAE	38	14		163	Jedidiah Wanamaker	DEF	AFC	38	50							
+164	Liam Stone	DEF	TYN	30	1		164	Liam Stone	DEF	TYN	30	1		164	Thatcher Grimsby	DEF	AFC	38	6.8		164	Ben Prewett	FWD	WE	23	13		164	Eiichi Fujimori	FWD	TYN	38	50							
+165	Haraldur Ólafsson	DEF	TYN	31	1		165	Ethan Dunmore	MID	SCR	31	1		165	Ansgar Kessler	GK	TYN	38	6.8		165	Martino Marrese	MID	AFC	34	13		165	Martino Marrese	MID	AFC	34	49							
+166	Naoto Umenokōji	DEF	MYH	33	1		166	Ethan Blake	MID	BRU	33	1		166	Yūto Kanbara	DEF	TYN	38	6.8		166	Finn Ashcroft	MID	MNU	35	13		166	Marcus Ellingham	FWD	WE	38	49							
+167	Finn Sutton	MID	STM	33	1		167	Sonny Horwich	DEF	BIX	33	1		167	Kyffin Llewellyn	DEF	TYN	38	6.8		167	Alejandro Varga	DEF	PCH	37	13		167	Théo Lachapelle	DEF	MNC	38	49							
+168	Changming Zhao	MID	PIS	34	1		168	Finn Sutton	MID	STM	33	1		168	Jake Thornton	GK	WIN	7	6.7		168	Attila D'Ambrosi	DEF	BRW	37	13		168	Arsenio Marchetti	FWD	MNU	38	48							
+169	Yakov Sorokin	MID	MYH	34	1		169	Selçuk Demirci	MID	WE	34	1		169	Conor Dawson	DEF	PCH	7	6.7		169	Reuben Mendoza	DEF	PCH	38	13		169	Keiran Standish	MID	WE	38	48							
+170	Elliot Handsworth	MID	BRW	34	1		170	Domenico Vivaldi	DEF	MNC	34	1		170	Jamie Baines	DEF	AFC	9	6.7		170	Mátyás Szendrei	DEF	BIX	38	13		170	Sawyer Pinkerton	FWD	MNC	38	48							
+171	Domenico Vivaldi	DEF	MNC	34	1		171	Severino Guzmán	FWD	STM	34	1		171	Alain Saffron	MID	WIN	11	6.7		171	Tunç Kenaanoğlu	DEF	BRI	38	13		171	Nathan Bass	MID	PIS	32	47							
+172	Martino Marrese	MID	AFC	34	1		172	Martino Marrese	MID	AFC	34	1		172	Ben Prewett	FWD	WE	23	6.7		172	Qiushi Zhang	DEF	PIS	38	13		172	Marian Bettencourt	FWD	BRU	37	47							
+173	Finn Ashcroft	MID	MNU	35	1		173	Joris Van Antwerp	DEF	WIN	35	1		173	Reece Floyd	DEF	BRI	30	6.7		173	Reese Guerra	DEF	BRW	38	13		173	Teddy Varnham	MID	AFC	37	47							
+174	Nate Entwistle	DEF	MNC	35	1		174	Matías Salcedo	FWD	WIN	35	1		174	Liam Stone	DEF	TYN	30	6.7		174	Liam Stone	DEF	TYN	30	12		174	Inácio Madureira	DEF	MNU	38	47							
+175	Mathijs Holleman	MID	MNC	35	1		175	Kyle Sedgwick	FWD	MNU	35	1		175	Kazimierz Wójcik	DEF	SCR	33	6.7		175	Naoto Umenokōji	DEF	MYH	33	12		175	Erik Sundqvist	FWD	TOT	38	47							
+176	Marco Perono	DEF	GAE	36	1		176	Alceste Derocles	DEF	SHE	35	1		176	Domenico Vivaldi	DEF	MNC	34	6.7		176	Elliot Handsworth	MID	BRW	34	12		176	Dietrich Kunze	FWD	PIS	38	47							
+177	Dylan Webb	MID	MNC	36	1		177	Sander Vandevelde	MID	WNC	36	1		177	Martino Marrese	MID	AFC	34	6.7		177	András Kelemen	DEF	GAL	36	12		177	Izan Santander	DEF	TOT	38	46							
+178	Colin Bruguiére	MID	AFC	36	1		178	András Kelemen	DEF	GAL	36	1		178	András Kelemen	DEF	GAL	36	6.7		178	Max Reeves	FWD	MNC	36	12		178	Colin Bruguiére	MID	AFC	36	45							
+179	Alvaro Small	MID	MNU	37	1		179	Harvey Doe	FWD	SHE	36	1		179	Marco Perono	DEF	GAE	36	6.7		179	Callum Davies	DEF	BRI	37	12		179	Haraldur Ólafsson	DEF	TYN	31	44							
+180	Zalán Váradi	DEF	GAL	37	1		180	Freek Hendriks	FWD	MYH	36	1		180	Miroslav Přibyl	FWD	GAE	36	6.7		180	Aldric Penhaligon	MID	SCR	38	12		180	Sean Ramsey	MID	BRW	38	44							
+181	Giacomo Russo	DEF	TOT	37	1		181	Max Reeves	FWD	MNC	36	1		181	Mario Hoyo	DEF	GAE	36	6.7		181	Wilf Carbrook	DEF	SHE	38	12		181	Dillon Heath	FWD	TYN	38	44							
+182	Kacper Dembiński	MID	BIX	37	1		182	Kilian Reuther	DEF	AFC	36	1		182	Marlow Tilbrook	MID	WNC	37	6.7		182	Ovidio Vico	MID	BRI	38	12		182	Leon Vogel	FWD	WIN	38	43							
+183	Zsolt Harmathy	MID	BRI	37	1		183	Colin Bruguiére	MID	AFC	36	1		183	Kieran Frost	MID	TOT	37	6.7		183	Niall Hayes	FWD	BRI	38	12		183	Axel Berg	GK	MNU	38	43							
+184	Angel Castejón	DEF	WIN	38	1		184	Vojtěch Novotný	DEF	TOT	37	1		184	Marian Bettencourt	FWD	BRU	37	6.7		184	Imre Kárpáti	DEF	PIS	38	12		184	Rhys Townsend	GK	WE	38	43							
+185	Brock Fairweather	DEF	WIN	38	1		185	Rafferty Cross	MID	TOT	37	1		185	Teddy Varnham	MID	AFC	37	6.7		185	Owen Bramley	MID	MNU	30	11		185	Misael Copeland	GK	BIX	38	43							
+186	Sterling Caulfield	DEF	WNC	38	1		186	Alejandro Varga	DEF	PCH	37	1		186	Xavier Cienfuegos	GK	WIN	38	6.7		186	Josh Peel	MID	SHE	32	11		186	Pau Bermúdez	FWD	GAE	38	43							
+187	Stellan Hjorth	MID	WNC	38	1		187	Kacper Dembiński	MID	BIX	37	1		187	Reuben Ashton	FWD	WIN	38	6.7		187	Morgan Keane	FWD	STM	32	11		187	Gustav Gyllenhaal	DEF	MNC	38	43							
+188	Tyson Yazzie	DEF	GAL	38	1		188	Declan Knightley	FWD	BIX	37	1		188	Emrys Lockwood	DEF	WIN	38	6.7		188	Yakov Sorokin	MID	MYH	34	11		188	Harry Caine	FWD	TOT	35	42							
+189	Rory Kincardine	DEF	GAL	38	1		189	Fionn Larraghy	MID	SCR	37	1		189	Renato Fioravanti	FWD	WIN	38	6.7		189	Marco Perono	DEF	GAE	36	11		189	András Kelemen	DEF	GAL	36	42							
+190	Ludvig Johansson	DEF	GAL	38	1		190	Callum Davies	DEF	BRI	37	1		190	Axel Berg	GK	MNU	38	6.7		190	Rafferty Cross	MID	TOT	37	11		190	Ryōichi Nakashima	GK	PIS	38	42							
+191	Ayato Hachikawa	MID	GAL	38	1		191	Miles Marsh	MID	PIS	37	1		191	Bobby Croxteth	DEF	WNC	38	6.7		191	Declan Knightley	FWD	BIX	37	11		191	Alfie Wren	FWD	GAE	38	41							
+192	Kazuki Fondo	DEF	TOT	38	1		192	Jerzy Wiśniewski	DEF	STM	37	1		192	Merritt Foxley	DEF	WNC	38	6.7		192	Fionn Larraghy	MID	SCR	37	11		192	Achille Colasuonno	DEF	BRU	38	40							
+193	Reuben Mendoza	DEF	PCH	38	1		193	Rowan Fenwick	FWD	TYN	37	1		193	Cael Price	FWD	GAL	38	6.7		193	Miles Marsh	MID	PIS	37	11		193	Ceferino Acosta	GK	GAE	38	40							
+194	Arséne La Fromboise	DEF	WE	38	1		194	Angel Castejón	DEF	WIN	38	1		194	Ross Doyle	MID	GAL	38	6.7		194	Teddy Varnham	MID	AFC	37	11		194	Augustin Aragonés	FWD	MNC	38	40							
+195	Rhys Warwick	MID	BIX	38	1		195	Garrison Whitacre	DEF	MNU	38	1		195	Massimo Visconti	GK	TOT	38	6.7		195	Lorenzo Squillaci	DEF	TOT	38	11		195	Alceste Derocles	DEF	SHE	35	39							
+196	Martim Duarte	MID	BIX	38	1		196	Neizan Escribano	MID	WNC	38	1		196	Kazuki Fondo	DEF	TOT	38	6.7		196	Jake Croft	MID	GAE	38	11		196	Giacomo Russo	DEF	TOT	37	39							
+197	Tanjin Tsukahara	DEF	SCR	38	1		197	Izan Santander	DEF	TOT	38	1		197	Izan Santander	DEF	TOT	38	6.7		197	Sean Ramsey	MID	BRW	38	11		197	Struan MacAllister	GK	GAL	38	39							
+198	Eliel Klemetti	DEF	SHE	38	1		198	Jabari Hess	DEF	PCH	38	1		198	Jonathan Fields	FWD	PCH	38	6.7		198	Philip Klein	DEF	TYN	38	11		198	Yassine Benali	GK	PCH	38	39							
+199	Julian Bosblooms	MID	SHE	38	1		199	Maxence Beauvilliers	DEF	WE	38	1		199	Milan Ivanov	MID	WE	38	6.7		199	Alceste Derocles	DEF	SHE	35	10		199	Harvey Grieve	FWD	BRW	38	39							
+200	Ovidio Vico	MID	BRI	38	1		200	Milan Ivanov	MID	WE	38	1		200	Misael Copeland	GK	BIX	38	6.7		200	Colin Bruguiére	MID	AFC	36	10		200	Nicanor Arandia	FWD	MNC	38	39							
+201	Baptiste Roux	MID	BRI	38	1		201	Dominic De Coco	DEF	BIX	38	1		201	Rhys Warwick	MID	BIX	38	6.7		201	Kai Stratton	MID	SCR	37	10		201	Ottavio Scarlatti	FWD	AFC	38	39							
+202	Tilman Zartmann	DEF	PIS	38	1		202	Tanjin Tsukahara	DEF	SCR	38	1		202	Chris Hadleigh	DEF	SCR	38	6.7		202	Garrison Whitacre	DEF	MNU	38	10		202	Harvey Doe	FWD	SHE	36	38							
+203	Nathan Hughes	DEF	BRU	38	1		203	Osbert Crowe	DEF	SCR	38	1		203	Osbert Crowe	DEF	SCR	38	6.7		203	Matt Saltmarsh	MID	BRU	38	10		203	Xavier Cienfuegos	GK	WIN	38	36							
+204	Rachid Ouédraogo	MID	BRU	38	1		204	Cormac Bray	MID	SCR	38	1		204	Eliel Klemetti	DEF	SHE	38	6.7		204	Wesley Wetherby	DEF	STM	38	10		204	Elliot Handsworth	MID	BRW	34	35							
+205	Beckett Ashworth	DEF	GAE	38	1		205	Nolan Jennings	DEF	BRI	38	1		205	Aneurin Porter	MID	SHE	38	6.7		205	Theo Burrows	MID	GAE	29	9		205	Ross Doyle	MID	GAL	38	35							
+206	Gavin Chapelle	MID	GAE	38	1		206	Tim La Greca	DEF	PIS	38	1		206	Mathieu Martin	GK	BRI	38	6.7		206	Dario Prado	DEF	MYH	35	9		206	Imre Kárpáti	DEF	PIS	38	35							
+207	Sōichirō Fukatsu	DEF	BRW	38	1		207	Imre Kárpáti	DEF	PIS	38	1		207	Baptiste Roux	MID	BRI	38	6.7		207	Kacper Dembiński	MID	BIX	37	9		207	Reuben Ashton	FWD	WIN	38	34							
+208	Reese Guerra	DEF	BRW	38	1		208	Rachid Ouédraogo	MID	BRU	38	1		208	Yoru Shirase	FWD	BRI	38	6.7		208	Stellan Hjorth	MID	WNC	38	9		208	Jonathan Fields	FWD	PCH	38	34							
+209	Sean Ramsey	MID	BRW	38	1		209	Duarte Vasques	MID	MYH	38	1		209	Ryōichi Nakashima	GK	PIS	38	6.7		209	Liam Copley	FWD	WNC	38	9		209	Alfie Stokesley	MID	MYH	38	34							
+210	Igor Consalvo	MID	BRW	38	1		210	Beckett Ashworth	DEF	GAE	38	1		210	Imre Kárpáti	DEF	PIS	38	6.7		210	Nolan Jennings	DEF	BRI	38	9		210	Reece Floyd	DEF	BRI	30	33							
+211	Théo Lachapelle	DEF	MNC	38	1		211	Alfie Wren	FWD	GAE	38	1		211	Toby Redgrave	MID	PIS	38	6.7		211	Dan Hobbs	MID	BRI	38	9		211	Daulat Siregar	FWD	PCH	37	33							
+212	Íker Olabarría	MID	MNC	38	1		212	Reese Guerra	DEF	BRW	38	1		212	Nathan Hughes	DEF	BRU	38	6.7		212	Ryan Cole	MID	WIN	27	8		212	Ollie Shaw	FWD	TOT	38	33							
+213	Charles Lagarde	DEF	STM	38	1		213	Sean Ramsey	MID	BRW	38	1		213	Karl Hauschka	DEF	BRU	38	6.7		213	Scott Blackwood	FWD	PIS	30	8		213	Dominic De Coco	DEF	BIX	38	33							
+214	Thatcher Grimsby	DEF	AFC	38	1		214	Tadhg Brennan	FWD	BRW	38	1		214	Jabari Wells	FWD	BRU	38	6.7		214	Sonny Horwich	DEF	BIX	33	8		214	Karl Hauschka	DEF	BRU	38	33							
+							215	Harvey Grieve	FWD	BRW	38	1		215	Alfie Stokesley	MID	MYH	38	6.7		215	Domenico Vivaldi	DEF	MNC	34	8		215	Baldomero Quintana	FWD	GAE	38	33							
+							216	Íker Olabarría	MID	MNC	38	1		216	Gavin Chapelle	MID	GAE	38	6.7		216	Prescott Hargrave	MID	WNC	36	8		216	Fergus Dunbroch	DEF	AFC	38	33							
+							217	Callum Hedgecoe	DEF	STM	38	1		217	Baldomero Quintana	FWD	GAE	38	6.7		217	Connor Palliser	FWD	SCR	36	8		217	Ansgar Kessler	GK	TYN	38	33							
+							218	Louis Weardale	MID	STM	38	1		218	Alfie Wren	FWD	GAE	38	6.7		218	Vojtěch Novotný	DEF	TOT	37	8		218	Kazimierz Wójcik	DEF	SCR	33	32							
+							219	Jedidiah Wanamaker	DEF	AFC	38	1		219	Sullivan Marchbank	GK	MNC	38	6.7		219	Izan Santander	DEF	TOT	38	8		219	Miles Marsh	MID	PIS	37	32							
+							220	Dillon Heath	FWD	TYN	38	1		220	Nicanor Arandia	FWD	MNC	38	6.7		220	Wendelin Gratz	MID	SCR	38	8		220	Renato Fioravanti	FWD	WIN	38	32							
+														221	Charles Lagarde	DEF	STM	38	6.7		221	Karl Hauschka	DEF	BRU	38	8		221	Jonathan Cannon	MID	PCH	38	32							
+														222	Callum Hedgecoe	DEF	STM	38	6.7		222	Théo Lachapelle	DEF	MNC	38	8		222	Osbert Crowe	DEF	SCR	38	32							
+														223	Wesley Wetherby	DEF	STM	38	6.7		223	Ethan Dunmore	MID	SCR	31	7		223	Aneurin Porter	MID	SHE	38	32							
+														224	Louis Weardale	MID	STM	38	6.7		224	Tadhg Oakes	MID	PCH	32	7		224	Yoru Shirase	FWD	BRI	38	32							
+														225	Fergus Dunbroch	DEF	AFC	38	6.7		225	Kymani Hewitt	FWD	AFC	33	7		225	Liam Stone	DEF	TYN	30	31							
+														226	Ottavio Scarlatti	FWD	AFC	38	6.7		226	Nate Entwistle	DEF	MNC	35	7		226	Selçuk Demirci	MID	WE	34	31							
+														227	Parker Turner	GK	AFC	38	6.7		227	Giacomo Russo	DEF	TOT	37	7		227	Kael Rowntree	MID	TYN	37	31							
+														228	Jean-Luc Moreau	DEF	SCR	7	6.6		228	Kazuki Fondo	DEF	TOT	38	7		228	Cael Price	FWD	GAL	38	31							
+														229	Declan Neal	GK	TYN	8	6.6		229	Dario Moretti	DEF	BIX	38	7		229	Mathieu Martin	GK	BRI	38	31							
+														230	Rupert Walsh	DEF	SHE	9	6.6		230	Don Archibald Bates	DEF	SHE	38	7		230	Milan Ivanov	MID	WE	38	30							
+														231	Kai Hunt	MID	TYN	10	6.6		231	Cameron Lyons	DEF	MNC	38	7		231	Theo Burrows	MID	GAE	29	29							
+														232	Torquil Blythe	GK	MYH	11	6.6		232	Callum Hedgecoe	DEF	STM	38	7		232	Miroslav Přibyl	FWD	GAE	36	29							
+														233	Vasco Madeira	GK	AFC	12	6.6		233	Jedidiah Wanamaker	DEF	AFC	38	7		233	Declan Knightley	FWD	BIX	37	29							
+														234	Jamie Butterworth	DEF	STM	13	6.6		234	Kazimierz Wójcik	DEF	SCR	33	6		234	Pietro Borromeo	GK	STM	38	29							
+														235	Sam Kelly	DEF	WE	19	6.6		235	Ethan Blake	MID	BRU	33	6		235	Kacper Dembiński	MID	BIX	37	28							
+														236	Theo Burrows	MID	GAE	29	6.6		236	Kilian Reuther	DEF	AFC	36	6		236	Kai Stratton	MID	SCR	37	28							
+														237	Owen Bramley	MID	MNU	30	6.6		237	Merritt Foxley	DEF	WNC	38	6		237	Falco Monopoli	GK	WNC	38	28							
+														238	Tadhg Oakes	MID	PCH	32	6.6		238	Tyler Aldridge	MID	AFC	38	6		238	Sonny Horwich	DEF	BIX	33	27							
+														239	Sonny Horwich	DEF	BIX	33	6.6		239	Alain Saffron	MID	WIN	11	5		239	Dan Hobbs	MID	BRI	38	27							
+														240	Selçuk Demirci	MID	WE	34	6.6		240	Leofric Swindell	DEF	MNU	15	5		240	Tyler Aldridge	MID	AFC	38	27							
+														241	Elliot Handsworth	MID	BRW	34	6.6		241	Sam Kelly	DEF	WE	19	5		241	Owen Bramley	MID	MNU	30	26							
+														242	Kyle Sedgwick	FWD	MNU	35	6.6		242	Reece Floyd	DEF	BRI	30	5		242	Finn Ashcroft	MID	MNU	35	26							
+														243	Alceste Derocles	DEF	SHE	35	6.6		243	Bobby Croxteth	DEF	WNC	38	5		243	Stellan Hjorth	MID	WNC	38	26							
+														244	Nate Entwistle	DEF	MNC	35	6.6		244	Tilman Zartmann	DEF	PIS	38	5		244	Saša Radović	GK	BRW	38	26							
+														245	Colwyn Powell	FWD	MYH	36	6.6		245	Fergus Dunbroch	DEF	AFC	38	5		245	Merritt Foxley	DEF	WNC	38	25							
+														246	Max Reeves	FWD	MNC	36	6.6		246	Kai Hunt	MID	TYN	10	4		246	Kyle Sedgwick	FWD	MNU	35	24							
+														247	Isaac Pendridge	MID	STM	36	6.6		247	Dylan Goodacre	DEF	GAE	12	4		247	Scott Riley	FWD	PCH	37	24							
+														248	Biel Biel	FWD	WNC	37	6.6		248	Dylan Webb	MID	MNC	36	4		248	Liam Copley	FWD	WNC	38	24							
+														249	Vojtěch Novotný	DEF	TOT	37	6.6		249	Dominic De Coco	DEF	BIX	38	4		249	Josh Peel	MID	SHE	32	23							
+														250	Giacomo Russo	DEF	TOT	37	6.6		250	Gustav Gyllenhaal	DEF	MNC	38	4		250	Yakov Sorokin	MID	MYH	34	23							
+														251	Scott Riley	FWD	PCH	37	6.6		251	Niilo Virtanen	DEF	MYH	10	3		251	Connor Palliser	FWD	SCR	36	23							
+														252	Kai Stratton	MID	SCR	37	6.6		252	Joe Greystock	MID	WNC	28	3		252	Niall Hayes	FWD	BRI	38	23							
+														253	Miles Marsh	MID	PIS	37	6.6		253	Changming Zhao	MID	PIS	34	3		253	Ryan Cole	MID	WIN	27	22							
+														254	Charlie Grey	FWD	TYN	37	6.6		254	Lachlan Barwick	DEF	BIX	38	3		254	Isaac Pendridge	MID	STM	36	22							
+														255	Rowan Fenwick	FWD	TYN	37	6.6		255	Chris Hadleigh	DEF	SCR	38	3		255	Matt Saltmarsh	MID	BRU	38	22							
+														256	Falco Monopoli	GK	WNC	38	6.6		256	Tanjin Tsukahara	DEF	SCR	38	3		256	Tadhg Oakes	MID	PCH	32	21							
+														257	Stellan Hjorth	MID	WNC	38	6.6		257	Osbert Crowe	DEF	SCR	38	3		257	Jackson Miller	GK	SCR	38	21							
+														258	Findlay Brodick	FWD	GAL	38	6.6		258	Marcus Redfern	DEF	BRI	38	3		258	Tristan Margetts	GK	SHE	38	21							
+														259	Ollie Shaw	FWD	TOT	38	6.6		259	Tim La Greca	DEF	PIS	38	3		259	Sullivan Marchbank	GK	MNC	38	21							
+														260	Yassine Benali	GK	PCH	38	6.6		260	Achille Colasuonno	DEF	BRU	38	3		260	Massimo Visconti	GK	TOT	38	20							
+														261	Jonathan Cannon	MID	PCH	38	6.6		261	Curtis Haversham	DEF	BRU	38	3		261	Crispin Whitfield	GK	MYH	38	20							
+														262	Dominic De Coco	DEF	BIX	38	6.6		262	Thatcher Grimsby	DEF	AFC	38	3		262	Morgan Keane	FWD	STM	32	19							
+														263	Jackson Miller	GK	SCR	38	6.6		263	Jamie Butterworth	DEF	STM	13	2		263	Finn Sutton	MID	STM	33	19							
+														264	Dan Hobbs	MID	BRI	38	6.6		264	Sterling Caulfield	DEF	WNC	38	2		264	Nate Entwistle	DEF	MNC	35	19							
+														265	Niall Hayes	FWD	BRI	38	6.6		265	Maximilian Mollenhauer	GK	BRU	38	2		265	Rafferty Cross	MID	TOT	37	19							
+														266	Maximilian Mollenhauer	GK	BRU	38	6.6		266	Emilio Bianchi	MID	TOT	3	1		266	Scott Blackwood	FWD	PIS	30	18							
+														267	Achille Colasuonno	DEF	BRU	38	6.6		267	Rupert Walsh	DEF	SHE	9	1		267	Max Reeves	FWD	MNC	36	18							
+														268	Matt Saltmarsh	MID	BRU	38	6.6		268	Jamie Baines	DEF	AFC	9	1		268	Changming Zhao	MID	PIS	34	17							
+														269	Jake Croft	MID	GAE	38	6.6		269	Callum Swift	DEF	PIS	11	1		269	Rowan Fenwick	FWD	TYN	37	17							
+														270	Saša Radović	GK	BRW	38	6.6		270	Ross Dent	MID	AFC	34	1		270	Jabari Wells	FWD	BRU	38	17							
+														271	Sean Ramsey	MID	BRW	38	6.6		271	Axel Berg	GK	MNU	38	1		271	Parker Turner	GK	AFC	38	17							
+														272	Harvey Grieve	FWD	BRW	38	6.6		272	Erdem Polat	DEF	WNC	38	1		272	Niilo Virtanen	DEF	MYH	10	16							
+														273	Pietro Borromeo	GK	STM	38	6.6		273	Mathieu Martin	GK	BRI	38	1		273	Ben Prewett	FWD	WE	23	16							
+														274	Tyler Aldridge	MID	AFC	38	6.6		274	Ryōichi Nakashima	GK	PIS	38	1		274	Colwyn Powell	FWD	MYH	36	16							
+														275	Freddie Marchant	MID	BRI	8	6.5									275	Dylan Webb	MID	MNC	36	16							
+														276	Perceval Lamarque	DEF	WNC	10	6.5									276	Maximilian Mollenhauer	GK	BRU	38	15							
+														277	Callum Swift	DEF	PIS	11	6.5									277	Ross Dent	MID	AFC	34	14							
+														278	Leofric Swindell	DEF	MNU	15	6.5									278	Alain Saffron	MID	WIN	11	13							
+														279	Ryan Cole	MID	WIN	27	6.5									279	Sam Kelly	DEF	WE	19	13							
+														280	Joe Greystock	MID	WNC	28	6.5									280	Ethan Dunmore	MID	SCR	31	12							
+														281	Scott Blackwood	FWD	PIS	30	6.5									281	Kai Hunt	MID	TYN	10	11							
+														282	Ethan Dunmore	MID	SCR	31	6.5									282	Dylan Goodacre	DEF	GAE	12	11							
+														283	Josh Peel	MID	SHE	32	6.5									283	Leofric Swindell	DEF	MNU	15	11							
+														284	Morgan Keane	FWD	STM	32	6.5									284	Ethan Blake	MID	BRU	33	10							
+														285	Ethan Blake	MID	BRU	33	6.5									285	Conor Dawson	DEF	PCH	7	9							
+														286	Finn Sutton	MID	STM	33	6.5									286	Kymani Hewitt	FWD	AFC	33	9							
+														287	Kymani Hewitt	FWD	AFC	33	6.5									287	Jamie Baines	DEF	AFC	9	8							
+														288	Changming Zhao	MID	PIS	34	6.5									288	Perceval Lamarque	DEF	WNC	10	8							
+														289	Yakov Sorokin	MID	MYH	34	6.5									289	Freddie Marchant	MID	BRI	8	7							
+														290	Ross Dent	MID	AFC	34	6.5									290	Joe Oakhurst	DEF	BRW	4	6							
+														291	Finn Ashcroft	MID	MNU	35	6.5									291	Vittore Gabbiadini	GK	BRU	8	6							
+														292	Connor Palliser	FWD	SCR	36	6.5									292	Rupert Walsh	DEF	SHE	9	6							
+														293	Harvey Doe	FWD	SHE	36	6.5									293	Jamie Butterworth	DEF	STM	13	6							
+														294	Dylan Webb	MID	MNC	36	6.5									294	Joe Greystock	MID	WNC	28	6							
+														295	Rafferty Cross	MID	TOT	37	6.5									295	Jean-Luc Moreau	DEF	SCR	7	5							
+														296	Kacper Dembiński	MID	BIX	37	6.5									296	Callum Swift	DEF	PIS	11	5							
+														297	Declan Knightley	FWD	BIX	37	6.5									297	Torquil Blythe	GK	MYH	11	5							
+														298	Kael Rowntree	MID	TYN	37	6.5									298	Volkan Arslan	GK	PCH	3	4							
+														299	Liam Copley	FWD	WNC	38	6.5									299	Gonzalo Medina	GK	MNU	4	4							
+														300	Tristan Margetts	GK	SHE	38	6.5									300	Niall Birkett	GK	WNC	6	4							
+														301	Josh Hartley	GK	TOT	7	6.4									301	Jake Thornton	GK	WIN	7	4							
+														302	Vittore Gabbiadini	GK	BRU	8	6.4									302	Vasco Madeira	GK	AFC	12	4							
+														303	Fraser Gibbs	GK	GAL	1	7.0									303	Emilio Bianchi	MID	TOT	3	3							
+														304	Joe Oakhurst	DEF	BRW	4	6.7									304	Nate Whetstone	GK	PIS	6	3							
+														305	Luke Fanshawe	MID	GAL	2	6.6									305	Lachlan Mowbray	GK	BRW	3	2							
+														306	Niall Birkett	GK	WNC	6	6.6									306	Kyle Ainsworth	GK	BRI	3	2							
+														307	Will Barrett	GK	STM	5	6.6									307	Finn Hathaway	MID	BIX	4	2							
+														308	Finn Hathaway	MID	BIX	4	6.5									308	Owen Trelawney	DEF	BRU	5	2							
+														309	Owen Trelawney	DEF	BRU	5	6.5									309	Will Barrett	GK	STM	5	2							
+														310	Volkan Arslan	GK	PCH	3	6.5									310	Josh Hartley	GK	TOT	7	2							
+														311	Kyle Ainsworth	GK	BRI	3	6.5									311	Sam Fairweather	GK	GAE	7	2							
+														312	Gonzalo Medina	GK	MNU	4	6.5									312	Luke Fanshawe	MID	GAL	2	1							
+														313	Callum Fothergill	GK	SHE	4	6.5									313	Declan Neal	GK	TYN	8	1							
+														314	Emilio Bianchi	MID	TOT	3	6.5																					
+														315	Lachlan Mowbray	GK	BRW	3	6.4																					
+														316	Nate Whetstone	GK	PIS	6	6.3																					
+														317	Declan Rackham	GK	SCR	6	6.3																					
+														318	Krister Westerberg	MID	MNC	2	6.3																					

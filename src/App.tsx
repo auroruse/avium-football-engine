@@ -3875,6 +3875,7 @@ function fullDisplayName(raw) {
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
                       stsc: "Sei'i Tai Shogun Cup", oberliga: "Alemannische Oberliga",
+                      epl: "Elvesterian Premier League", ca: "Championnat Arvernois",
                       kar: "Karjanian Premier League", cwc: "Club World Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
