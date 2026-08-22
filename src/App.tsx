@@ -11985,7 +11985,7 @@ export default function App() {
                           <span style={{ color: "var(--ui-ok)" }}>{String(ups).padStart(3)} &#9650;</span>
                           <span style={{ color: "var(--ui-danger)" }}>{String(dns).padStart(3)} &#9660;</span>
                           <span style={{ color: net > 0 ? "var(--ui-ok)" : net < 0 ? "var(--ui-danger)" : "var(--chrome-muted-66)" }}>
-                            {(net > 0 ? "+" + net : String(net)).padStart(5)}</span>
+                            {String(Math.abs(net)).padStart(3)} &#916;</span>
                         </span>
                         <span style={{ color: "var(--chrome-muted-66)", fontSize: 15, flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none" }}>&#8250;</span>
                       </div>
