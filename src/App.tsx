@@ -26,22 +26,6 @@ import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON,
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
 
-// ═══ RNG ═════════════════════════════════════════════════════════════════════
-// The injury tables live in the engine now -- it is the thing that hurts people, and two copies
-// of a severity table is two answers to how long a torn hamstring keeps a man out. pickInjury is
-// mePickInjury, imported above; the abstract sim below still calls it.
-const pickInjury = mePickInjury;
-// DOGSO (denying an obvious goalscoring opportunity) is almost always the last line of
-// defence — defenders and keepers commit it far more than midfielders, and forwards
-// almost never end up as the last man back.
-const DOGSO_PROB = { GK: 0.55, DEF: 0.55, MID: 0.15, FWD: 0.03 };
-function pickRedCardVariant(rng, pos) {
-  const dogsoP = DOGSO_PROB[pos] ?? 0.15;
-  const vr = rng.u();
-  if (vr < dogsoP) return "dogso";
-  const rem = (vr - dogsoP) / (1 - dogsoP);
-  return rem < 0.5 ? "violent" : rem < 0.7 ? "abusive" : "sfp";
-}
 // Positive side no longer hard-clamps at the old +12-gap ceiling (1.0) — it keeps
 // climbing up to a +30 gap (2.5), so a real outlier stuck on a weak team still reads
 // as one instead of flatlining at the same bonus as a merely-decent gap.
@@ -82,10 +66,6 @@ const SHOT_EDGE = 0.12;
 // side read as below par, which is not something a rating that means anything is allowed to say.
 const GK_PWR = 0.15, GK_SPREAD = 40;
 const gkEdge = (gk, sh) => (gk == null || sh == null) ? 0 : Math.max(-1, Math.min(1, (gk - sh) / GK_SPREAD));
-// The save rate for a shot the keeper duel has not moved. Was 0.20 + 0.16*defE/(atkE+defE), the third
-// charging of the team gap; on equal sides that expression sat at 0.28, so that is where it lands.
-const SAVE_BASE = 0.28;
-const gkOvr = (players) => { const g = (players || []).find(p => p.pos === "GK"); return g ? fatigueOvr(g.ovr, g.stamina) : null; };
 // For choosing BETWEEN team-mates, the comparator is the team-mates. Who takes the shot is a
 // question about this XI, not about the opposition.
 const squadMeanOvr = (players) => { let n = 0, t = 0; for (const p of players || []) if (p.ovr != null) { t += p.ovr; n++; } return n ? t / n : null; };
@@ -260,90 +240,6 @@ function fixDescCoords(txt, gv) {
   else pos = "from outside the box";
   return txt.replace(/from (?:the (?:left|right|center) (?:side )?of (?:the )?(?:box|six yard box|area)|the edge of (?:the )?(?:box|six yard box|area)|the (?:left|right) side|(?:very )?close range|outside the box|the penalty spot|\d+ yards|long range|distance|range)/i, pos);
 }
-// Synthetic player-to-player build-up for a "chance" event, on the same pitch coordinate
-// system as genGoalViz's shotFrom (x 0-100 toward the attacking goal, y 0-65). "solo" is a
-// lone dribble (chance_magic) — same player at every hop. "passed" is a short passing move
-// (trap_beaten / enter_box) — one synthesized teammate feeding the player who gets the chance.
-// Chance visuals are drawn in a 5..60 band of the pitch's short axis; both generators clamp to it.
-const clampY = (y) => Math.max(5, Math.min(60, y));
-function genChanceViz(rng, chanceType, playerName, teamPlayers, cp) {
-  const R = (lo, hi) => lo + rng.u() * (hi - lo);
-  const fx = R(78, 92), fy = R(18, 47);
-  if (chanceType === "solo") {
-    const h1x = fx - R(15, 22), h1y = clampY(fy + R(-8, 8));
-    const h0x = h1x - R(15, 22), h0y = clampY(h1y + R(-8, 8));
-    const chain = [
-      { name: playerName, pos: { x: h0x, y: h0y } },
-      { name: playerName, pos: { x: h1x, y: h1y } },
-      { name: playerName, pos: { x: fx, y: fy } },
-    ];
-    return { chain, _baseLen: chain.length, contested: 0 };
-  }
-  // Steps backward from the box, each hop a genuinely different teammate where the squad
-  // allows it. Weighted rather than uniform so most build-ups stay short but a real minority
-  // run as a single instinctive finish (1 hop, no buildup at all) or a fully worked move (up
-  // to 5) — variety, not every chance reading the same length. Each hop's x is pulled toward
-  // the picked player's own position (DEF deep, MID midfield, FWD advanced) so the chain
-  // roughly traces a realistic role progression instead of a random walk.
-  const HOP_W = cp?.hopW || [15, 35, 30, 14, 6];
-  const hopRoll = rng.u() * HOP_W.reduce((a, b) => a + b, 0);
-  let acc = 0, hopCount = 1;
-  for (let i = 0; i < HOP_W.length; i++) { acc += HOP_W[i]; if (hopRoll <= acc) { hopCount = i + 1; break; } }
-  hopCount = Math.min(hopCount, 1 + teamPlayers.filter(p => p.pos !== "GK").length);
-  const ROLE_X = { DEF: [8, 38], MID: [30, 62], FWD: [52, 85] };
-  const used = new Set([playerName]);
-  const chain = [{ name: playerName, pos: { x: fx, y: fy } }];
-  let cx = fx, cy = fy;
-  for (let i = 1; i < hopCount; i++) {
-    if (rng.u() < (cp?.dribbleP ?? DRIBBLE_P)) {
-      const prevHop = chain[0];
-      cx = Math.max(8, Math.min(85, cx - R(8, 18)));
-      cy = clampY(cy + R(-8, 8));
-      chain.unshift({ name: prevHop.name, pos: { x: cx, y: cy } });
-      continue;
-    }
-    const pool = teamPlayers.filter(p => p.pos !== "GK" && !used.has(p.name));
-    if (!pool.length) break;
-    const teammate = pickPlayer(rng, pool, "any", cp?.formPosW);
-    used.add(teammate.name);
-    const range = ROLE_X[teammate.pos] || ROLE_X.MID;
-    cx = Math.max(range[0], Math.min(range[1], cx - R(15, 26)));
-    cy = clampY(cy + R(-10, 10));
-    chain.unshift({ name: teammate.name, pos: { x: cx, y: cy } });
-  }
-  return { chain, _baseLen: chain.length, contested: 0 };
-}
-// Builds the shooter/assist/position context lmResolveShot needs to make a chance's resulting
-// shot reuse its build-up instead of independently re-rolling who shoots from where.
-function chanceCtxFromChain(chain) {
-  const last = chain[chain.length - 1];
-  let prev = null;
-  for (let i = chain.length - 2; i >= 0; i--) { if (chain[i].name !== last.name) { prev = chain[i]; break; } }
-  return { shooterName: last.name, assistName: prev ? prev.name : null, shotFrom: last.pos, assistFrom: prev ? prev.pos : null };
-}
-// A chance that survives a tick without resolving grows one more hop instead of falling
-// through to disconnected filler text — see the dg===0 block in lmSimMinute. Capped so an
-// astronomically unlucky sustained spell can't grow the click-through chain unboundedly.
-const CHANCE_MAX_HOPS = 7;
-const DRIBBLE_P = 0.25;
-function genChanceExtension(rng, chain, teamPlayers, dm, dribbleP) {
-  const R = (lo, hi) => lo + rng.u() * (hi - lo);
-  const prev = chain[chain.length - 1];
-  const dribble = rng.u() < (dribbleP ?? DRIBBLE_P);
-  const next = dribble ? prev : pickPlayer(rng, teamPlayers.filter(p => p.pos !== "GK" && p.name !== prev.name), "any");
-  return { name: next.name, pos: { x: Math.max(76, Math.min(94, prev.pos.x + R(-8, 8))), y: clampY(prev.pos.y + R(-10, 10)) }, min: dm };
-}
-// What a side is worth on the field right now: the mean rating of the eleven currently on it. The
-// squad OVR is depth and counts a bench that is not playing, so it cannot express the cost of
-// naming a weaker XI or of rotating through a match -- it does not move. Sent-off players stay in
-// the mean; lmEffSkill already charges for a red separately, and charging twice would double it.
-// The squad figure is the fallback for a side whose players carry no ratings at all.
-const xiSkill = (players, fallback) => {
-  let n = 0, t = 0;
-  for (const p of players || []) { const v = p.ovr ?? fallback; if (v != null) { t += v; n++; } }
-  return n ? t / n : fallback;
-};
-const lmEffSkill = (base, reds, minute) => { let s = base * Math.pow(0.85, reds); if (minute > 90) s *= Math.max(0.88, 1 - 0.004 * (minute - 90)); return s; };
 // What the offence costs him. Violent conduct is the long one, serious foul play the next, and
 // DOGSO and a second yellow are a single match -- which is also the fallback, so an unlabelled red
 // from anywhere is treated as the cheapest thing it could have been rather than the dearest.
@@ -359,95 +255,7 @@ const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3
 // this match should trigger exactly one ban if it crosses a boundary, not be missed because
 // the raw total "doesn't look round" beforehand.
 const ycSuspGames = (prevYellows, newYellows) => Math.floor(newYellows / 5) - Math.floor(prevYellows / 5);
-function lmDisplayMin(phase, min, se) { const b = { first_half_stoppage:45, second_half_stoppage:90, et_first_stoppage:105, et_second_stoppage:120 }[phase]; return b !== undefined ? `${b}+${se}` : `${min}`; }
-function lmClockDisplay(s) {
-  const map = { pre_match:"--", half_time:"HT", full_time:"FT", et_half_time:"ET HT", et_full_time:"ET FT", penalties:"PEN", finished:"FT" };
-  return map[s.phase] || lmDisplayMin(s.phase, s.minute, s.stoppageElapsed) + "'";
-}
-function lmCalcStoppage(bank, phase, rng) { const cfg = { first_half:[60,5], second_half:[120,8], et_first:[30,3], et_second:[30,3] }; const [base,cap] = cfg[phase]||[60,3]; return Math.min(cap, Math.max(1, Math.round((base+bank)/60) + (rng.u()<0.5?1:0))); }
-function lmCheckPenDecided(hK, aK) {
-  const hS = hK.filter(k=>k?.scored??k).length, aS = aK.filter(k=>k?.scored??k).length;
-  if (hK.length <= 5) { const hR = 5-hK.length, aR = 5-aK.length; if (hS > aS+aR) return "home"; if (aS > hS+hR) return "away"; if (hK.length===5 && aK.length===5 && hS!==aS) return hS>aS?"home":"away"; }
-  else if (hK.length===aK.length && hS!==aS) return hS>aS?"home":"away";
-  return null;
-}
 
-// ═══ TACTICAL ENGINE ═════════════════════════════════════════════════════════
-function autoTac(rng, diff, rem, urgency, style, current, skillAdv, matchUrg) {
-  const r = Math.max(0, rem - (urgency||0));
-  const sa = skillAdv || 0;
-  const mu = matchUrg || 0;
-  // Style-specific tempo behavior
-  // ds: defensive shift (positive = go defensive earlier when leading)
-  // as: attacking shift (positive = go attacking earlier when trailing)
-  // ceil: max attacking intensity, floor: max defensive intensity
-  // bias: baseline push toward atk(+) or def(-)
-  const sp = {
-    gegenpress:   {ds:-12, as:10, ceil:2.0, floor:-1.5, bias:0.15},
-    verticaltiki: {ds:-6,  as:6,  ceil:2.0, floor:-1.5, bias:0.15},
-    wingplay:     {ds:-5,  as:5,  ceil:2.0, floor:-1.2, bias:0.2},
-    lanuestra:    {ds:-14, as:11, ceil:2.3, floor:-1.0, bias:0.2},
-    secondball:   {ds:-3,  as:6,  ceil:2.0, floor:-1.5, bias:0.05},
-    routeone:     {ds:0,   as:5,  ceil:2.0, floor:-1.5, bias:0},
-    balanced:     {ds:0,   as:0,  ceil:2.0, floor:-2.0, bias:0},
-  tikitaka:     {ds:3,   as:-5, ceil:1.6, floor:-1.5, bias:0.1},
-    possession:   {ds:6,   as:-8, ceil:1.6, floor:-1.5, bias:0},
-    cholismo:     {ds:10,  as:-6, ceil:1.6, floor:-2.0, bias:-0.2},
-  zonamista:    {ds:12,  as:-8, ceil:1.5, floor:-2.0, bias:-0.25},
-    counterattack:{ds:15,  as:-8, ceil:1.3, floor:-2.0, bias:-0.4},
-    catenaccio:   {ds:18,  as:-10,ceil:1.2, floor:-2.0, bias:-0.5},
-    parkthebus:   {ds:20,  as:-12,ceil:1.0, floor:-2.0, bias:-0.6},
-  }[style] || {ds:0,as:0,ceil:2.5,floor:-2.0,bias:0};
-  // Skill mismatch: strong teams hold tempo when leading, press harder when trailing
-  // Weak teams turtle when leading, accept deficit when trailing
-  sp.ds += Math.round(sa * -20);
-  sp.as += Math.round(sa * 12);
-  sp.bias += sa * 0.15;
-  // Strong teams get a higher attacking ceiling when trailing
-  if (sa > 0.15 && diff < 0) sp.ceil = Math.min(2.5, sp.ceil + sa * 0.4);
-  // Weak teams get a lower defensive floor when leading
-  if (sa < -0.15 && diff > 0) sp.floor = Math.max(-2.0, sp.floor - Math.abs(sa) * 0.3);
-  // Group/tournament context: must-win teams attack, dead rubber teams coast
-  sp.bias += mu * 0.3;
-  sp.ds += Math.round(mu * -10);
-  if (mu > 0.5) sp.floor = Math.max(sp.floor, -0.5);
-  if (mu < -0.2) sp.ceil = Math.min(sp.ceil, 1.0);
-  let t = 0;
-  // Trailing thresholds (shifted by as)
-  const aOff = sp.as;
-  if (diff<=-3&&r<=15+aOff) t=2.5;
-  else if (diff<=-2&&r<=20+aOff) t=2.0;
-  else if (diff<=-2&&r<=40+aOff) t=1.5;
-  else if (diff<=-1&&r<=25+aOff) t=1.2;
-  else if (diff<=-1&&r<=50+aOff) t=0.5;
-  else if (diff<=-2) t=0.8;
-  else if (diff<=-1) t=0.2;
-  // Leading thresholds (shifted by ds)
-  else if (diff>=1&&r<=12+sp.ds) t=-1.8;
-  else if (diff>=1&&r<=30+sp.ds) t=-1.0;
-  else if (diff>=2&&r<=45+sp.ds) t=-1.2;
-  else if (diff>=3) t=-0.8;
-  else if (diff>=1) t=-0.3;
-  // Urgency
-  if (urgency&&diff<=-2) t=Math.max(t,1.2);
-  if (urgency&&diff<=-1&&r<=60) t=Math.max(t,0.6);
-  // Style bias
-  t += sp.bias;
-  // Clamp to style ceiling/floor
-  t = Math.min(t, sp.ceil);
-  t = Math.max(t, sp.floor);
-  // Resignation: strong teams resist resignation, weak teams accept earlier
-  const resignThresh = 0.35 + sa * 0.2;
-  if (diff<=-3&&rem<=12&&rng.u()<Math.max(0.1, resignThresh)) t=-0.3;
-  if (diff<=-4&&rem<=20&&rng.u()<Math.max(0.1, resignThresh+0.05)) t=-0.5;
-  // Jitter
-  t += (rng.u()-0.5)*0.7;
-  // Hysteresis
-  if (current) { const ci=TAC_ORD.indexOf(current); if(ci>=0){ t=t*0.65+(ci-2)*0.35; }}
-  if (t>=1.2) return "ultra"; if (t>=0.5) return "atk";
-  if (t>=-0.5) return "bal"; if (t>=-1.4) return "def"; return "park";
-}
-const TAC_MSG = {ultra:"throwing everything forward!",atk:"pushing more players forward",def:"dropping deep, protecting the lead",park:"ultra defensive. Wall of defenders",bal:"back to a balanced shape"};
 const STYLES = ["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone","balanced","tikitaka","possession","cholismo","counterattack","zonamista","catenaccio","parkthebus"];
 const STYLE_GRP = [["Offensive",["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone"]],["Neutral",["balanced","tikitaka","possession"]],["Defensive",["cholismo","counterattack","zonamista","catenaccio","parkthebus"]]];
 // These labels ARE the registry file format: parseBulk builds its lookup straight off this table,
@@ -699,57 +507,9 @@ const STYLE_PRESET = {
                    dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
 };
 
-// What is left of the old style tables: one row, the neutral one. Every style used to carry its own,
-// which is the buff this removes. Kept as a named base rather than inlined so the formation
-// modifiers it is merged with still have something to merge against.
-const STYLE_MOD = {
-  balanced:     {press:1.0,adv:0,hold:0,lb:0,boxShot:0,goalP:0,ctr:1.0,ctrShot:0,def:0,lr:0,corn:1.0,maxT:null,minT:null},
-};
-const STYLE_CHANCE = {
-  balanced:      { hopW: [15, 35, 30, 14, 6], dribbleP: 0.25, soloBase: 0 },
-};
 
-const FORM_DEFPOOL = {
-  "4-3-3": {},
-  "4-4-2": { defendTurnover: { MID: 3, FWD: -3 } },
-  "4-2-4": { defendTurnover: { DEF: -4, MID: -2, FWD: 6 }, defendBox: { DEF: -3, MID: 1, FWD: 2 } },
-  "3-4-3": { defendTurnover: { DEF: -2, MID: -2, FWD: 4 } },
-  "4-1-2-1-2": { defendBox: { MID: 2, FWD: -2 } },
-  "4-2-3-1": { defendTurnover: { MID: 3, FWD: -3 }, defendLongBall: { MID: 2, FWD: -2 } },
-  "3-5-2": { defendTurnover: { DEF: -3, MID: 5, FWD: -2 }, defendLongBall: { DEF: -2, MID: 4, FWD: -2 }, defendClear: { MID: 3, FWD: -3 } },
-  "3-4-1-2": { defendTurnover: { DEF: -1, MID: 2, FWD: -1 } },
-  "4-1-4-1": { defendTurnover: { MID: 4, FWD: -4 }, defendClear: { MID: 2, FWD: -2 } },
-  "4-3-2-1": { defendTurnover: { MID: 3, FWD: -3 } },
-  "5-3-2": { defendBox: { DEF: 5, MID: -3, FWD: -2 }, defendClear: { DEF: 4, MID: -2, FWD: -2 }, defendTurnover: { DEF: 3, MID: -1, FWD: -2 } },
-};
 const STYLE_MOM = {
   balanced:      { mult: 1.0, decay: 1.0 },
-};
-const FORM_CHANCE = {
-  "4-3-3":     { hopAdj: [0, 0, 0, 0, 0], dribbleAdj: 0, soloAdj: 0 },
-  "4-4-2":     { hopAdj: [3, 2, -2, -2, -1], dribbleAdj: 0.02, soloAdj: 0 },
-  "4-2-4":     { hopAdj: [8, 4, -4, -5, -3], dribbleAdj: 0.05, soloAdj: 0.01 },
-  "3-4-3":     { hopAdj: [5, 3, -3, -3, -2], dribbleAdj: 0.03, soloAdj: 0 },
-  "4-1-2-1-2": { hopAdj: [2, 2, 0, -2, -2], dribbleAdj: 0.03, soloAdj: 0 },
-  "4-2-3-1":   { hopAdj: [-3, -2, 2, 2, 1], dribbleAdj: -0.03, soloAdj: 0 },
-  "3-5-2":     { hopAdj: [-1, 0, 1, 0, 0], dribbleAdj: 0, soloAdj: 0 },
-  "3-4-1-2":   { hopAdj: [-2, -1, 1, 1, 1], dribbleAdj: 0.02, soloAdj: 0 },
-  "4-1-4-1":   { hopAdj: [-3, -1, 2, 1, 1], dribbleAdj: -0.02, soloAdj: 0 },
-  "4-3-2-1":   { hopAdj: [-4, -2, 3, 2, 1], dribbleAdj: -0.02, soloAdj: 0 },
-  "5-3-2":     { hopAdj: [6, 3, -3, -4, -2], dribbleAdj: 0, soloAdj: 0.01 },
-};
-const FORM_MOM = {
-  "4-3-3":     { mult: 1.0, decay: 1.0 },
-  "4-4-2":     { mult: 1.0, decay: 1.0 },
-  "4-2-4":     { mult: 1.2, decay: 1.2 },
-  "3-4-3":     { mult: 1.15, decay: 1.1 },
-  "4-1-2-1-2": { mult: 1.05, decay: 1.0 },
-  "4-2-3-1":   { mult: 0.9, decay: 0.85 },
-  "3-5-2":     { mult: 1.0, decay: 0.9 },
-  "3-4-1-2":   { mult: 0.95, decay: 0.9 },
-  "4-1-4-1":   { mult: 0.85, decay: 0.8 },
-  "4-3-2-1":   { mult: 0.9, decay: 0.85 },
-  "5-3-2":     { mult: 0.8, decay: 0.7 },
 };
 const TEST_SKILL = 65;
 // Test mode pins every team to TEST_SKILL so a result reflects tactics rather than a skill gap.
@@ -788,58 +548,9 @@ function testOvrShift(players, teamSkill) {
 // not the rule.
 const STAMINA_RECOVER_PCT = 0.75;
 const staminaRecoverFrom = (stamina) => Math.min(100, stamina + (100 - stamina) * STAMINA_RECOVER_PCT);
-const TAC_ORD=["park","def","bal","atk","ultra"];
-const TAC_DRAIN={park:-0.15,def:-0.08,bal:0,atk:0.10,ultra:0.18};
-function clampTac(tac,style){const m=STYLE_MOD[style]||STYLE_MOD.balanced;const i=TAC_ORD.indexOf(tac);if(m.maxT){const mx=TAC_ORD.indexOf(m.maxT);if(i>mx)return m.maxT;}if(m.minT){const mn=TAC_ORD.indexOf(m.minT);if(i<mn)return m.minT;}return tac;}
-function parseFormation(f) { const p = (f || "4-3-3").split("-").map(Number); return { DEF: p[0], MID: p.slice(1, -1).reduce((a, b) => a + b, 0), FWD: p[p.length - 1] }; }
 const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
 const FORM_CLR={"4-2-4":"var(--ui-attack)","3-4-3":"var(--ui-attack)","4-1-2-1-2":"var(--ui-attack)","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"var(--ui-form-defensive)","4-3-2-1":"var(--ui-form-defensive)","5-3-2":"var(--ui-form-defensive)"};
-// Every deviation in this table was scaled to 55% of what it was. Measured, the eleven formations
-// spanned 3.34 pts a season while the fourteen playstyles spanned 2.13 -- so the shape a side lined
-// up in mattered MORE than the football it played, which is backwards. Flattening the table entirely
-// collapses the spread to 0.90, which proves it all lives here and none of it in squad composition;
-// no single channel is at fault either, since removing any one of them mostly made the spread WORSE
-// (hold by +2.74), the table having been tuned to compensate internally. So the whole thing is
-// scaled rather than repriced: every formation keeps its character in proportion, the shapes simply
-// sit closer together. 4-3-3 and 4-2-3-1, the two most common shapes in the registries, were the
-// two worst before this.
-const FORM_MOD = {
-  "4-3-3":   {press:1.0,adv:0.0,hold:0.0,lb:0.0,boxShot:0.0055,goalP:0,ctr:1.0,ctrShot:0.0,def:0.0055,lr:0.0,corn:1.0},
-  "4-4-2":   {press:1.0,adv:0.0,hold:0.0,lb:0.011,boxShot:0.022,goalP:0,ctr:0.9725,ctrShot:0.0,def:0.0055,lr:-0.011,corn:1.0825},
-  "4-2-3-1": {press:1.0,adv:0.0,hold:0.022,lb:-0.0055,boxShot:-0.0165,goalP:0,ctr:0.945,ctrShot:0.0,def:0.0165,lr:0.0165,corn:1.0},
-  "4-1-4-1": {press:1.0,adv:0.0,hold:0.0165,lb:0.0,boxShot:0.0,goalP:0,ctr:0.9175,ctrShot:0.0,def:0.0275,lr:0.0,corn:1.11},
-  "4-1-2-1-2":{press:1.0,adv:0.0055,hold:0.0055,lb:0.0,boxShot:0.011,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0165,lr:0.0165,corn:0.8625},
-  "4-3-2-1": {press:1.0,adv:0.0,hold:0.0165,lb:-0.0055,boxShot:0.0,goalP:0,ctr:0.945,ctrShot:0.0,def:0.0165,lr:0.022,corn:0.9175},
-  "4-2-4":   {press:0.89,adv:0.022,hold:-0.044,lb:0.0165,boxShot:0.022,goalP:0,ctr:0.945,ctrShot:0.0,def:-0.0605,lr:0.0,corn:1.055},
-  "3-5-2":   {press:1.0,adv:0.011,hold:0.0055,lb:0.0,boxShot:0.011,goalP:0,ctr:1.0275,ctrShot:0.0,def:-0.022,lr:0.0,corn:1.0825},
-  "3-4-3":   {press:1.0275,adv:0.022,hold:-0.011,lb:0.0,boxShot:0.022,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0275,lr:0.0,corn:1.0},
-  "3-4-1-2": {press:1.0,adv:0.0055,hold:0.011,lb:0.0,boxShot:0.0,goalP:0,ctr:1.0,ctrShot:0.0,def:-0.0165,lr:0.0165,corn:0.9725},
-  "5-3-2":   {press:0.89,adv:-0.011,hold:0.0,lb:0.0165,boxShot:0.0,goalP:0,ctr:1.165,ctrShot:0.011,def:0.0385,lr:0.0,corn:0.9175},
-};
-function mergeModifiers(sm, fm) {
-  if (!fm) return sm;
-  return { press:sm.press*(fm.press||1), adv:sm.adv+(fm.adv||0), hold:sm.hold+(fm.hold||0), lb:sm.lb+(fm.lb||0), boxShot:sm.boxShot+(fm.boxShot||0), goalP:sm.goalP+(fm.goalP||0), ctr:sm.ctr*(fm.ctr||1), ctrShot:sm.ctrShot+(fm.ctrShot||0), def:sm.def+(fm.def||0), lr:sm.lr+(fm.lr||0), corn:sm.corn*(fm.corn||1), maxT:sm.maxT, minT:sm.minT };
-}
 
-function applyStyleFit(mod, fit) {
-  if (fit === 1) return mod;
-  const BAL = STYLE_MOD.balanced;
-  // WHETHER YOUR SQUAD CAN ACTUALLY PLAY THIS, as a term of its own.
-  // Everything else in this function interpolates the FORMATION row by fit -- all applyStyleFit had
-  // left to scale once the per-style modifier tables were removed. Once those formation rows were
-  // themselves cut to 55%, the whole mechanism measured under half a point a season for most styles:
-  // squad suitability was computed correctly and did nothing, which hollows out the point of picking
-  // a style at all.
-  // Centred on fit = 1.0, which IS the population median by construction, so a typical squad gets
-  // exactly zero from this and it cannot act as the hidden per-style buff the old tables were.
-  // Bounded because fit floors at 0.30: unbounded, (fit-1)*C reaches -0.245 against formation values
-  // of +/-0.022, which does not make a lopsided squad worse at its wrong style, it deletes it.
-  // Measured at C=0.70: playing a style the squad suits is worth ~3.6 pts a season over playing
-  // its worst-suited one. That deliberately sits ABOVE the style spread (2.17) and the formation
-  // spread (1.65), so having the right players matters more than which system or shape you pick.
-  const _fd = Math.max(-0.05, Math.min(0.05, (fit - 1) * 0.70));
-  return { press: 1 + (mod.press - 1) * fit, adv: BAL.adv + (mod.adv - BAL.adv) * fit + _fd, hold: BAL.hold + (mod.hold - BAL.hold) * fit, lb: BAL.lb + (mod.lb - BAL.lb) * fit, boxShot: BAL.boxShot + (mod.boxShot - BAL.boxShot) * fit, goalP: BAL.goalP + (mod.goalP - BAL.goalP) * fit, ctr: 1 + (mod.ctr - 1) * fit, ctrShot: BAL.ctrShot + (mod.ctrShot - BAL.ctrShot) * fit, def: BAL.def + (mod.def - BAL.def) * fit + _fd, lr: BAL.lr + (mod.lr - BAL.lr) * fit, corn: 1 + (mod.corn - 1) * fit, maxT: mod.maxT, minT: mod.minT };
-}
 // TOURNAMENTS RUN THE POSITIONAL ENGINE. Every fixture goes through simPositionalMatch -- the four
 // scoring call sites in tScorinate/tScorinateKO and the two-leg helpers, and Play Live, which builds
 // the same match on screen through meBuild rather than off-thread. One game, one set of physics.
@@ -875,71 +586,6 @@ const STRAT_LABELS = {
 // system you picked.
 const STRAT_EDITABLE = ["tempo","timeWasting","gkDist","dlBehavior"];
 
-const PRESS_LOE_MULT = [0.5, 0.7, 1.0, 1.3, 1.5];
-// MC-balanced coefficients (5000-leg test, all ±3.5% net win rate vs default).
-// Passing: ±0.008 adv/lb per step, -0.006 def per step (direct = attack, short = defend).
-// DL: Step Up +0.008 adv / -0.014 def, OT +0.012 adv / -0.018 def.
-// Tackling: GSI +1.04 press / +0.012 def, SOF 0.97 press / -0.005 def. Engine: foul 1.10/0.88, card 1.25/0.75, dcP +0.12/-0.06.
-// Creativity: Expressive +0.002 goalP / -0.014 def / 1% solo chance. Disciplined +0.003 goalP.
-// GK dist engine: short = midfield + pressure 1, long = 35% turnover (was 60%).
-// HOW A BOX ENTRY BECOMES A CHANCE ignored the defence entirely: both nd===0 gates were a bare
-// 0.25 + 0.35 * strength ratio, with no effDef, no defTierMod and no instruction input of any kind.
-// That is the commonest route to goal in the model, so a side set up to defend did nothing at all
-// about it -- which is why a catenaccio build conceded MORE than a side with every slider at No
-// Instruction (1.78 against 1.69 a game) however large its `def` grew. `def` reached only shotP and
-// the dcP challenge: nine attacking channels reached the scoreline and defending reached two.
-// Weighted below 1.0 because this gate compounds with shotP downstream; the same back line must not
-// be paid twice for one passage of play. Module scope on purpose -- the in-function effDef is
-// block-scoped and is NOT visible at either box-entry site, which vite compiles happily and throws
-// on at runtime.
-const effDefOf = (m) => m.def / (1 + Math.abs(m.def) * 8);
-const BOX_DEF = 0.55;
-function applyStrategy(mod, strat) {
-  const st = strat || STRAT_DEF;
-  // STACKING HAS DIMINISHING RETURNS. Seven instructions feed `adv` and eight feed `def`, every one
-  // of them linear and additive, so the strongest build in the game was a shopping list -- press
-  // high AND hold a high line AND play much more direct AND work it patiently into the box -- worth
-  // +4.0 points a season over doing nothing while describing no football anyone has ever played.
-  // Nothing punished the contradiction because nothing knew the instructions existed together.
-  //
-  // `soft` is quadratic, so ONE instruction is essentially untouched (about 6% at a single setting,
-  // inside the noise floor) while the full ten-instruction stack sheds roughly 40% of its sum. Each
-  // choice keeps the value it was measured at; only piling them up stops paying. Applied to the
-  // STRATEGY contribution alone -- mod.adv and mod.def carry the style and formation, which are
-  // already balanced and must not be touched by this.
-  const soft = (x, T) => x / (1 + (x / T) * (x / T));
-  const dAdv = st.passingDir * 0.006 + (st.approachPlay === 1 ? 0.02 : st.approachPlay === -1 ? -0.01 : 0)
-    + (st.dribbling === 1 ? 0.007 : st.dribbling === -1 ? -0.003 : 0)
-    + (st.dlBehavior === -1 ? -0.008 : st.dlBehavior === 1 ? 0.008 : st.dlBehavior === 2 ? 0.012 : 0)
-    + (st.defLine > 0 ? st.defLine * 0.008 : st.defLine < 0 ? st.defLine * 0.005 : 0)
-    + (st.creativity === -1 ? -0.006 : 0) + (st.possLost === -1 ? -0.006 : 0);
-  const dHold = st.passingDir * -0.034 + (st.possWon === -1 ? 0.03 : st.possWon === 1 ? -0.02 : 0)
-    + (st.approachPlay === -1 ? 0.02 : st.approachPlay === 1 ? -0.02 : 0) + (st.possLost === -1 ? -0.01 : 0);
-  const dDef = (st.pressingLOE < 0 ? -st.pressingLOE * 0.017 : -st.pressingLOE * 0.005)
-    + (st.defLine > 0 ? st.defLine * -0.019 : st.defLine * -0.032) + st.passingDir * -0.006
-    + (st.possLost === -1 ? 0.028 : st.possLost === 1 ? -0.004 : 0)
-    + (st.dlBehavior === -1 ? 0.024 : st.dlBehavior === 1 ? -0.014 : st.dlBehavior === 2 ? -0.022 : 0)
-    + (st.creativity === 1 ? -0.014 : 0)
-    + (st.dribbling === 1 ? -0.024 : st.dribbling === -1 ? 0.013 : 0)
-    + (st.tackling === 1 ? 0.020 : st.tackling === -1 ? -0.012 : 0);
-  return {
-    press: mod.press * PRESS_LOE_MULT[st.pressingLOE + 2] * (st.possLost === 1 ? 1.20 : st.possLost === -1 ? 0.85 : 1.0) * (st.tackling === 1 ? 1.04 : st.tackling === -1 ? 0.97 : 1.0) * (st.dribbling === 1 ? 0.95 : 1.0) * (st.defLine > 0 ? 1 + st.defLine * 0.05 : 1.0),
-    adv: mod.adv + soft(dAdv, 0.075),
-    // `hold` is NOT saturated. Only four instructions feed it, against seven for adv and eight for
-    // def, so it was never a stacking channel -- and damping it cost the possession identity its
-    // whole payoff (+0.71 -> -0.46 pts a season), since short passing buys retention and nothing
-    // else. Saturation is for channels that are actually being piled up.
-    hold: mod.hold + dHold,
-    lb: mod.lb + st.passingDir * 0.008,
-    boxShot: mod.boxShot + (st.chanceCreation === -1 ? 0.03 : st.chanceCreation === 1 ? -0.015 : 0),
-    goalP: mod.goalP + (st.creativity === 1 ? 0.002 : st.creativity === -1 ? 0.003 : 0),
-    ctr: mod.ctr * (st.possWon === -1 ? 0.5 : st.possWon === 1 ? 1.5 : 1.0) * (st.possLost === -1 ? 0.97 : 1.0),
-    ctrShot: mod.ctrShot + (st.possWon === 1 ? 0.04 : 0),
-    def: mod.def + soft(dDef, 0.085),
-    lr: mod.lr + (st.chanceCreation === 1 ? 0.04 : st.chanceCreation === -1 ? -0.02 : 0),
-    corn: mod.corn, maxT: mod.maxT, minT: mod.minT,
-  };
-}
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
   if (s.activeChance) { s.activeChance.chanceViz._completed = true; }
   const r = rng.u();
@@ -1028,944 +674,15 @@ function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
     }
   }
 }
-function lmResolveShot(s, rng, dm, atk, def, atkE, defE, nm, method, chanceCtx, qual) {
-  // Link this resolution back to whatever chance is currently open (if any) so the click-through
-  // card can find its own outcome later, regardless of how many ticks/events came in between —
-  // see the bottom of this function and lmPendingChance/lmHiddenGoals for the other half.
-  const _linkedChance = s.activeChance, _evLenAtStart = s.events.length;
-  s.activeChance = null;
-  // Gates the defending team's save/miss momentum relief to shots that were actually
-  // dangerous — a long-built chain (real buildup) or a direct free kick — so routine
-  // speculative efforts don't trigger a swing every time they're comfortably dealt with.
-  const isBigChance = (_linkedChance && (_linkedChance.chanceViz.chain?.length || 0) >= 3) || method === "long-range";
-  const shooter = (chanceCtx && s.players[atk].find(p=>p.name===chanceCtx.shooterName)) || pickPlayer(rng, s.players[atk].filter(p=>p.pos!=="GK"), "goal", s.formPosW?.[atk]);
-  // The shot itself — sprint into space plus a full-power strike — costs extra regardless
-  // of whether it capped off a long buildup or was spontaneous (counter/long-range/free
-  // kick), which is why this lives here rather than only in the chain-drain call sites.
-  shooter.stamina = Math.max(0, (shooter.stamina ?? 100) - 2.0);
-  // When this shot is the payoff of a chance's build-up, the goal (if scored) reuses that
-  // build-up's own passer as the assist and its final hop as the shot position, instead of
-  // independently re-rolling both — see genChanceViz / the chance push sites for the source data.
-  const pickAssist = (scorerName, delta) => {
-    if (chanceCtx?.assistName) {
-      const p = s.players[atk].find(p=>p.name===chanceCtx.assistName && p.name!==scorerName);
-      if (p) { p.assists++; p.rating=Math.max(3,Math.min(10,+(p.rating+(delta??0.6)).toFixed(2))); return p; }
-    }
-    if (chanceCtx && !chanceCtx.assistName) return null;
-    return assistPlayer(rng, s.players[atk], scorerName, delta, s.formPosW?.[atk]);
-  };
-  // Always shows the connecting pass on the pitch when the chance had one, even for
-  // save/miss/woodwork outcomes where genGoalViz was given assistName=null (no assist
-  // *stat* is credited for a non-goal, but the pass that created the chance still happened
-  // and should still be visible) — falls back to the chance's own passer name as the label.
-  const applyChancePos = (_g) => { if (chanceCtx) { _g.shotFrom = {...chanceCtx.shotFrom}; _g._posLocked = true; if (chanceCtx.assistFrom) { _g.assistFrom = {...chanceCtx.assistFrom}; if (!_g.assist) _g.assist = chanceCtx.assistName; } else _g.assistFrom = null; } };
-  if(chanceCtx?.assistName){const _kp=s.players[atk].find(p=>p.name===chanceCtx.assistName);if(_kp)_kp.chances=(_kp.chances||0)+1;}
-  s.stats[atk].shots++;
-  const sGk = s.players[def].find(p => p.pos === "GK");
-  const sEmergency = sGk?.emergencyGK ? EMERGENCY_GK_SAVE_PENALTY : 0;
-  let goalP = (0.140+(s.modifiers?s.modifiers[atk]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[atk]]), s.strategy?.[atk])).goalP) * (1 + ovrVs(fatigueOvr(shooter.ovr, shooter.stamina), lineOvr(s.players[def], "DEF")) * SHOT_EDGE) + sEmergency;
-  if(_linkedChance?.chanceViz){const _h=_linkedChance.chanceViz.chain?.length||0,_c=_linkedChance.chanceViz.contested||0;if(_h>=3&&_c>=1)goalP+=0.04;else if(_h>=2||_c>=1)goalP+=0.02;}
-  // HOW GOOD A CHANCE THIS ACTUALLY WAS. The engine had no such concept: goalP came from the
-  // shooter's OVR against the defensive line and nothing about where the chance came from, so
-  // "many poor chances against a few good ones" -- the whole distinction between a possession side
-  // and a counter side -- could not be expressed at all. 1 is an ordinary box entry and every
-  // existing caller omits it and gets exactly that, so nothing below this line changed behaviour.
-  goalP *= (qual ?? 1);
-  // The keeper faces the shot. Must come after the chain bonuses above: those move goalP, and what
-  // he stops is a share of the goalP actually being rolled. A weak keeper has a negative edge, which
-  // moves probability the other way — goals up, saves down — so this is one term, not two.
-  // A share of goalP, so it needs no clamp of its own: GK_PWR is well under 1 and the edge is capped
-  // at +-1, so the keeper can neither drive a chance below zero nor inflate a tap-in past it.
-  const _gkE = gkEdge(sGk ? fatigueOvr(sGk.ovr, sGk.stamina) : null, fatigueOvr(shooter.ovr, shooter.stamina));
-  const _gkStop = _gkE * GK_PWR * goalP;
-  goalP -= _gkStop;
-  // Whatever the keeper took off the goal bucket lands here, so the shot count is conserved and a
-  // save is a shot that was going in. His edge no longer appears anywhere else: a shot going wide is
-  // not saved by anybody, however good he is.
-  const saveP = Math.max(0.02, SAVE_BASE + _gkStop - sEmergency);
-  if(s.xG) s.xG[atk] = (s.xG[atk]||0) + goalP;
-  const roll = rng.u();
-  if (roll < goalP) {
-    // Goal — check for deflection (8%)
-    const isDeflection = rng.u() < 0.08;
-    const finalMethod = isDeflection ? "deflection" : (method||null);
-    s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:finalMethod});
-    shooter.goals++;let _ast;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_ast=pickAssist(shooter.name,0);if(_ast){const oldA=_ast.rating;_ast.rating=Math.max(3,Math.min(10,+(_ast.rating+0.6*assistAtkMult(_ast.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_ast.name,delta:+(_ast.rating-oldA).toFixed(2)};}}
-    s.players[def].forEach(p=>{if(p.pos==="GK"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.18)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}else if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
-    {let _t=goalText(rng,isDeflection?"deflection_desc":"goal_desc",s,nm,shooter,_ast);const _g=genGoalViz(rng,finalMethod,shooter.name,_ast?_ast.name:null);applyChancePos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
-    s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
-  } else if (roll < goalP+saveP) {
-    // Save — check for GK error (3%) or tipped onto woodwork (8%)
-    const gkErrRoll = rng.u();
-    if (gkErrRoll < 0.012) {
-      // GK error → goal
-      s.score[atk==="home"?0:1]++; s.stats[atk].onTarget++; if(s.goalscorers)s.goalscorers[atk].push({name:shooter.name,min:dm,method:"gk-error"});
-      shooter.goals++;let _astGk;const ratingDeltas={scorer:null,assist:null,conceding:[]};{const ti=atk==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;const oldS=shooter.rating;shooter.rating=Math.min(10,+(shooter.rating+goalAtkMult(shooter.atkW)*gCtx*goalPosMult(shooter.pos)).toFixed(2));ratingDeltas.scorer={name:shooter.name,delta:+(shooter.rating-oldS).toFixed(2)};_astGk=pickAssist(shooter.name,0);if(_astGk){const oldA=_astGk.rating;_astGk.rating=Math.max(3,Math.min(10,+(_astGk.rating+0.6*assistAtkMult(_astGk.atkW)*aCtx).toFixed(2)));ratingDeltas.assist={name:_astGk.name,delta:+(_astGk.rating-oldA).toFixed(2)};}}
-      const gk=s.players[def].find(p=>p.pos==="GK");if(gk){const old=gk.rating;gk.rating=Math.max(3,+(gk.rating-(xgConcedePenalty(goalP,0.18)+0.3)).toFixed(2));ratingDeltas.conceding.push({name:gk.name,delta:+(gk.rating-old).toFixed(2)});}
-      s.players[def].forEach(p=>{if(p.pos==="DEF"){const old=p.rating;p.rating=Math.max(3,+(p.rating-xgConcedePenalty(goalP,0.10)).toFixed(2));ratingDeltas.conceding.push({name:p.name,delta:+(p.rating-old).toFixed(2)});}});
-      {let _t=goalText(rng,"gk_error_desc",s,nm,shooter,_astGk);const _g=genGoalViz(rng,"gk-error",shooter.name,_astGk?_astGk.name:null);applyChancePos(_g);_t=fixDescCoords(_t,_g);gvSync(_t,_g);_g.ratingDeltas=ratingDeltas;s.events.push({min:dm,type:"goal",team:atk,playerFull:shooter.fullName||shooter.name,text:"\u26BD "+_t,goalViz:_g});}
-      s.ball=2;s.pressure=0;s.possession=def;s.stoppageBank+=45;momBump(s,atk,4);
-    } else if (gkErrRoll < 0.09) {
-      // Tipped onto woodwork
-      s.stats[atk].onTarget++;s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;if(sGk){sGk.saves=(sGk.saves||0)+1;sGk.rating=Math.min(10,+(sGk.rating+xgSaveBonus(goalP,1.0)).toFixed(2));}
-      ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});
-      momBump(s,atk,1);
-      {const _t=comm(rng,"woodwork_save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="woodwork";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"woodwork",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDEA8 "+_t,goalViz:_g});}
-      if(rng.u()<0.50){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
-      else{s.possession=def;s.ball=2;s.pressure=0;}
-    } else {
-      // Normal save
-      s.stats[atk].onTarget++;{const gk=s.players[def].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(goalP,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}ratePlayer(s.players[atk],shooter.name,0.15);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});}
-      if(isBigChance)momBump(s,def,2);
-      {const _t=comm(rng,"save",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name,g:sGk?.fullName||sGk?.name||"the keeper"},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="save";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"save",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}
-      if(rng.u()<0.45){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
-      else{
-        const gkD = s.strategy?.[def]?.gkDist || 0;
-        s.pressure=0;
-        if (gkD === -1) { s.ball = 2; s.possession = def; s.pressure = 1; }
-        else if (gkD === 1) { if (rng.u() < 0.35) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
-        else { s.ball = 2; s.possession = def; }
-      }
-    }
-  } else {
-    // Miss — check for woodwork (15%)
-    if (rng.u() < 0.08) {
-      s.stats[atk].woodwork=(s.stats[atk].woodwork||0)+1;
-      ratePlayer(s.players[atk],shooter.name,0.1);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});
-      momBump(s,atk,1);
-      {const _t=comm(rng,"woodwork",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="woodwork";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"woodwork",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83E\uDEA8 "+_t,goalViz:_g});}
-      if(rng.u()<0.40){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[atk]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
-      else{s.possession=def;s.ball=2;s.pressure=0;}
-    } else {
-      ratePlayer(s.players[atk],shooter.name,-0.05);s.players[def].forEach(p=>{if(p.pos==="DEF")p.rating=Math.min(10,+(p.rating+0.01).toFixed(2));});if(isBigChance)momBump(s,def,2);{const _t=comm(rng,"miss",{t:nm[atk],o:nm[def],n:shooter.fullName||shooter.name},s),_g=genGoalViz(rng,method,shooter.name,null);_g.result="miss";applyChancePos(_g);gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:atk,playerFull:shooter.fullName||shooter.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}
-      if(rng.u()<0.30){s.stats[atk].corners++;s.events.push({min:dm,type:"corner",team:atk,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[atk],o:nm[def]},s)});lmResolveCorner(s,rng,dm,atk,def,atkE,defE,nm);}
-      else{
-        const gkD = s.strategy?.[def]?.gkDist || 0;
-        s.pressure=0;
-        if (gkD === -1) { s.ball = 2; s.possession = def; s.pressure = 1; }
-        else if (gkD === 1) { if (rng.u() < 0.35) { s.possession = atk; s.ball = 2; } else { s.possession = def; s.ball = def === "home" ? 3 : 1; } }
-        else { s.ball = 2; s.possession = def; }
-      }
-    }
-  }
-  if (_linkedChance) {
-    // Bulk-sim's events stub only counts pushes (no real indices), so this can be undefined there.
-    const _oc = s.events[_evLenAtStart];
-    if (_oc && (_oc.type === "goal" || _oc.type === "save" || _oc.type === "miss" || _oc.type === "woodwork")) {
-      _linkedChance.chanceViz.outcomeEvent = _oc;
-      _oc.suppressStandalone = true;
-    }
-  }
-}
-// Five reds for one side ends the match outright, awarded 3\u20130 to the opponent \u2014 there's no
-// sensible way to keep simulating a side that's lost that many players to dismissals.
-function lmCheckMassEjection(s, dm, team, nm) {
-  if (s.stats[team].reds < 5) return false;
-  const winner = team === "home" ? "away" : "home";
-  s.score = team === "home" ? [0, 3] : [3, 0];
-  s.phase = "finished";
-  s.events.push({min:dm, type:"phase", text:"\uD83D\uDFE5 Match abandoned! "+nm[team]+" cannot continue after a fifth red card. "+nm[winner]+" awarded a 3\u20130 win."});
-  return true;
-}
-function lmHandleCard(s, rng, dm, team, fouler, nm, cardChance) {
-  const fn = fouler?.name || String(fouler);
-  if (rng.u() >= cardChance) return;
-  if (rng.u() < 0.015) {
-    const rcVariant = pickRedCardVariant(rng, fouler?.pos);
-    const cmKey = "red_" + rcVariant;
-    s.stats[team].reds++; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;rp.rcVariant=rcVariant;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
-    s.events.push({min:dm,type:"red",team,player:fn,playerFull:fouler?.fullName||fn,rcVariant,text:"\uD83D\uDFE5 "+comm(rng,cmKey,{t:nm[team],n:fouler?.fullName||fn,c:s.players[team].length},s)});
-    s.stoppageBank+=60;
-    momBump(s, team === "home" ? "away" : "home", 3);
-    if (lmCheckMassEjection(s, dm, team, nm)) return;
-    ensureGoalkeeper(s, team, dm, nm, rng);
-  } else if (s.booked[team].includes(fn)) {
-    s.stats[team].yellows++; s.stats[team].reds++; s.stats[team].secondYellows=(s.stats[team].secondYellows||0)+1; {const rp=s.players[team].find(p=>p.name===fn);if(rp){rp.rc=true;ratePlayer(s.players[team],fn,-2.0);s.subbedOff[team].push({...rp});}} s.players[team] = s.players[team].filter(p => p.name !== fn);
-    s.events.push({min:dm,type:"red",team,player:fn,playerFull:fouler?.fullName||fn,text:"\uD83D\uDFE5 "+comm(rng,"second_yellow",{t:nm[team],n:fouler?.fullName||fn,c:s.players[team].length},s)});
-    s.stoppageBank+=60;
-    momBump(s, team === "home" ? "away" : "home", 3);
-    if (lmCheckMassEjection(s, dm, team, nm)) return;
-    ensureGoalkeeper(s, team, dm, nm, rng);
-  } else {
-    s.stats[team].yellows++; s.booked[team].push(fn); ratePlayer(s.players[team],fn,-0.3); {const yp=s.players[team].find(p=>p.name===fn);if(yp)yp.yc++;}
-    s.events.push({min:dm,type:"yellow",team,playerFull:fouler?.fullName||fn,text:"\uD83D\uDFE8 "+comm(rng,"yellow",{t:nm[team],n:fouler?.fullName||fn},s)});
-    s.stoppageBank+=30;
-  }
-}
-// If a team has no recognized keeper left on the pitch, bring on the backup keeper for an
-// outfield player (using a substitution, if one's still available); failing that, a random
-// Pre-match equivalent of the mid-match emergency-keeper promotion below: if every recognized
-// keeper is unavailable (suspended/injured) before kickoff, an outfield starter takes the gloves
-// for the whole game at a steep save penalty, rather than the team fielding zero goalkeepers.
-function ensureStartingGK(starters) {
-  if (starters.length > 0 && !starters.some(p => p.pos === "GK")) {
-    const promoted = starters.find(p => p.pos === "DEF") || starters[0];
-    promoted.pos = "GK"; promoted.emergencyGK = true;
-  }
-}
-// outfield player takes the gloves as an emergency stand-in (no substitution used — they're
-// just repositioned, same as happens on a real pitch when the bench keeper is unavailable).
-function ensureGoalkeeper(s, side, dm, nm, rng) {
-  if (s.players[side].some(p => p.pos === "GK")) return;
-  const sn = nm[side];
-  const benchIdx = s.bench[side].findIndex(p => p.pos === "GK");
-  if (benchIdx !== -1 && s.subs[side] < subLimit(s, side) && s.players[side].length > 0) {
-    s.subs[side]++;
-    const subOn = s.bench[side].splice(benchIdx, 1)[0];
-    subOn.sub = 'on'; subOn.startedBench = true; subOn.rating = 6.5; subOn.chances = 0; subOn.defActs = 0; subOn.saves = 0;
-    const subOff = pick(rng, s.players[side]);
-    s.players[side] = s.players[side].filter(p => p.name !== subOff.name);
-    s.subbedOff[side].push({...subOff, sub: 'off'});
-    s.players[side].push(subOn);
-    s.events.push({min:dm,type:"sub",text:"🔄 "+sn+"'s backup keeper "+(subOn.fullName||subOn.name)+" comes on for "+(subOff.fullName||subOff.name)+" to take over between the posts.",offName:subOff.fullName||subOff.name,onName:subOn.fullName||subOn.name,reason:"Goalkeeper cover",offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos});
-  } else {
-    const promoted = pick(rng, s.players[side]);
-    promoted.pos = "GK"; promoted.emergencyGK = true;
-    s.events.push({min:dm,type:"neutral",text:"🧤 With no keeper left, "+sn+"'s "+promoted.name+" pulls on the gloves as an emergency stand-in."});
-  }
-}
-
-// ═══ ZONE-BASED MINUTE SIMULATION ═══════════════════════════════════════════
-function staminaMod(stam) { return 1 - Math.pow((100 - Math.max(0, stam)) / 100, 1.5) * 0.25; }
-// Team-level fatigue is derived live from the roster instead of tracked as its own counter —
-// a separate accumulator can drift from what the players themselves report, which is exactly
-// what caused this system's earlier bugs. Averages everyone currently on the pitch.
-function teamStam(s, side) { const ps = s.players[side]; return ps.length ? ps.reduce((a,p) => a + (p.stamina ?? 100), 0) / ps.length : 100; }
-function lmResolvePossession(s, rng, home, away, dm, hE, aE, nm) {
-  // Possession setup + style modifiers
-  let po=s.possession, op=po==="home"?"away":"home";
-  let poE=po==="home"?hE:aE, opE=op==="home"?hE:aE;
-  const dir0=po==="home"?1:-1;
-  const z=s.ball;
-  const poM=s.modifiers?s.modifiers[po]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[po]]), s.strategy?.[po]);
-  const opM=s.modifiers?s.modifiers[op]:applyStrategy(mergeModifiers(STYLE_MOD.balanced, FORM_MOD[s.formations?.[op]]), s.strategy?.[op]);
-
-  // Time wasting (dead minute when leading) — costs stoppage time and a flavor event, but
-  // doesn't stop the ball: play still falls through to pressing/shooting/buildup below, so a
-  // leading team running the clock down can still concede or create a chance.
-  const poSt = s.strategy?.[po] || STRAT_DEF;
-  if (poSt.timeWasting > 0) {
-    const scoreDiff = po === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
-    if (scoreDiff > 0) {
-      const twProb = poSt.timeWasting === 2 ? 0.45 : 0.25;
-      if (rng.u() < twProb) {
-        s.stoppageBank += poSt.timeWasting === 2 ? 25 : 15;
-        s.events.push({min:dm, type:"neutral", text:comm(rng,"time_waste",{t:nm[po],o:nm[po==="home"?"away":"home"]},s)});
-        if (poSt.timeWasting === 2 && rng.u() < 0.025) { const waster = pickPlayer(rng, s.players[po], "foul"); lmHandleCard(s, rng, dm, po, waster, nm, 1.0); }
-      }
-    }
-  }
-
-  // Creative freedom — brilliant chance (expressive: 1% solo chance, stacks with style soloBase)
-  const _soloP = (poSt.creativity === 1 ? 0.006 : 0) + (STYLE_CHANCE.balanced.soloBase);
-  if (_soloP > 0 && rng.u() < _soloP) {
-    s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-    {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const mp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);mp.chances=(mp.chances||0)+1;const cv=genChanceViz(rng,"solo",mp.name,s.players[po],s.chanceProfile?.[po]);const ce={min:dm, type:"chance", team:po, playerFull:mp.fullName||mp.name, chanceViz:cv, text:"\u2728 "+comm(rng,"chance_magic",{t:nm[po],n:mp.fullName||mp.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE, opE, nm, null, chanceCtxFromChain(cv.chain));}
-    return;
-  }
-
-  // Pressing
-  const pressDiff=Math.max(0,(opE-poE)/(opE+poE));
-  let pressMult=opM.press;
-  const _opMidLine = lineOvr(s.players[op], "MID");
-  const poMidTier = s.players[po].reduce((a, p) => a + (p.pos === "MID" ? ovrVs(fatigueOvr(p.ovr, p.stamina), _opMidLine) * 0.03 : 0), 0);
-  const pressChance=(0.28*Math.tanh(5*pressDiff)*pressMult) - poMidTier;
-  if(pressChance>0&&rng.u()<pressChance){
-    // Unlike every other possession change in this function, pressing flips s.possession
-    // without ever touching s.ball — so without this, a team could press the ball away,
-    // then win it straight back via a second press with the ball never having moved, landing
-    // right back in a dg===0 tick that would silently reattach to the interrupted chance.
-    s.possession=op;s.possCount[op]++;s.pressure=0;const _prChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
-    {const _prEv={min:dm,type:"press",text:comm(rng,"press_won",{t:nm[op],o:nm[po]},s)};if(_prChance){_prChance.chanceViz.outcomeEvent=_prEv;_prEv.suppressStandalone=true;}s.events.push(_prEv);}
-    return;
-  }
-  s.possCount[po]++;
-
-  const dir=dir0;
-  const dg=po==="home"?(4-z):z; // distance to goal (0=in opponent box)
-
-  // BOTH mispriced axes were mispriced through the FOUL SYSTEM, not through the modifier tables.
-  // A channel decomposition at 98k matches an arm put tackling's whole imbalance in the turnover-foul
-  // and foul/card multipliers (+0.68/-0.66 and +0.34/-0.40 of a +0.76/-1.03 axis) and dribbling's in
-  // the free-kicks-won multiplier (+1.17 of a +0.91 axis). dDef, dAdv and the dribble-success bonus
-  // together carried almost nothing. The reason is that a foul is a possession swing AND a set piece,
-  // so it is worth several times what a comparable modifier tweak is -- which is not visible anywhere
-  // in the tables these coefficients live in. Anything added here later should be priced by measuring
-  // it, not by comparing it to a neighbouring constant.
-  // Two of these are provably inert and were left alone rather than tuned: opSt.tackling's dcP term
-  // measured +0.00/+0.00, and gkDist Short is a no-op at both of its call sites.
-  // Foul (modified by dribbling + tackling)
-  const dribbleFoulMod = poSt.dribbling === 1 ? 1.075 : poSt.dribbling === -1 ? 0.97 : 1.0;
-  const opSt = s.strategy?.[op] || STRAT_DEF;
-  const tackleFoulMod = opSt.tackling === 1 ? 1.024 : opSt.tackling === -1 ? 0.976 : 1.0;
-  const tackleCardMod = opSt.tackling === 1 ? 1.048 : opSt.tackling === -1 ? 0.96 : 1.0;
-  if(rng.u()<0.15*dribbleFoulMod*tackleFoulMod){
-    // A foul stops the phase of play — whatever chance was building closes out here;
-    // the free kick (or penalty) that follows is a new, separate situation.
-    const _foulChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
-    let fouler=pickPlayer(rng,s.players[op],"foul");
-    if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}
-    s.stats[op].fouls++;
-    if(dg===0&&rng.u()<0.12){
-      // Penalty — award now, defer the kick to the next tick so auto-play can pause before it is taken
-      {const _penEv={min:dm,type:"penalty",team:po,playerFull:fouler.fullName||fouler.name,text:"\uD83C\uDFAF "+comm(rng,"foul_pen",{t:nm[po],o:nm[op],n:fouler.fullName||fouler.name},s)};if(_foulChance){_foulChance.chanceViz.outcomeEvent=_penEv;_penEv.suppressStandalone=true;}s.events.push(_penEv);}s.stoppageBank+=90;s.stats[po].penalties++;
-      ratePlayer(s.players[op],fouler.name,-0.3);lmHandleCard(s,rng,dm,op,fouler,nm,0.55*tackleCardMod);
-      const taker=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.formPosW?.[po]);
-      s.pendingPenalty={po,op,taker:taker.name,dm};
-      return;
-    }
-    {const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_foulChance){_foulChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;
-    ratePlayer(s.players[op],fouler.name,-0.1);lmHandleCard(s,rng,dm,op,fouler,nm,0.28*tackleCardMod);
-    // Free kick in a shooting position — resolves as a genuine shot (goal/save/miss/woodwork all possible).
-    if(dg<=1&&rng.u()<0.18){
-      const fkShooter=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");
-      fkShooter.chances=(fkShooter.chances||0)+1;const _fkChain=[{name:fkShooter.name,pos:{x:75+rng.u()*10,y:30+rng.u()*40}}];const _fkCv={chain:_fkChain,_baseLen:1,contested:0};const _fkCe={min:dm,type:"chance",team:po,playerFull:fkShooter.fullName||fkShooter.name,chanceViz:_fkCv,text:comm(rng,"free_kick",{t:nm[po],n:fkShooter.fullName||fkShooter.name},s)};s.events.push(_fkCe);s.activeChance=_fkCe;drainChain(s,po,_fkChain,1.0);
-      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,"long-range",chanceCtxFromChain(_fkChain));
-    }
-    else if(dg>1)s.ball+=dir; // free kick advances position
-    return;
-  }
-
-  // === SHOOTING ZONE (dg===0) ===
-  if(dg===0){
-    s.pressure++;
-    if(!s.activeChance && s.pressure>1)s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
-    const effDef=opM.def/(1+Math.abs(opM.def)*8);
-    const defTierMod = s.players[op].reduce((a, p) => a + ((p.pos === "DEF" || p.pos === "GK") ? ovrVs(fatigueOvr(p.ovr, p.stamina), lineOvr(s.players[po], "FWD")) * 0.05 : 0), 0);
-    let shotP=0.48+0.14*poE/(poE+opE)+Math.min(s.pressure*0.03,0.12)+poM.boxShot-effDef-defTierMod;
-    if(s.tactics[op]==="def")shotP-=0.08;if(s.tactics[op]==="park")shotP-=0.18;if(s.tactics[op]==="atk")shotP+=0.04;if(s.tactics[op]==="ultra")shotP+=0.10;
-    // Defensive contest: a named defender can end an active chance before a shot happens
-    if(s.activeChance&&s.pressure>1){
-      const df=pickDefActPlayer(rng,s,op,"defendBox");
-      const dfOvr=df?ovrVs(fatigueOvr(df.ovr,df.stamina),lineOvr(s.players[po],"FWD"))*0.12:0;
-      const dcP=0.30+effDef*0.5+defTierMod*0.3+dfOvr+(opSt.tackling===1?0.14:opSt.tackling===-1?-0.11:0);
-      if(rng.u()<dcP&&df){
-        const _lc=s.activeChance;
-        df.defActs=(df.defActs||0)+1;
-        ratePlayer(s.players[op],df.name,xgSaveBonus(shotP,0.45));
-        const dcType=rng.u()<0.45?"tackle":rng.u()<0.636?"interception":"block";
-        const dcPool=dcType==="tackle"?"tackle_won":dcType==="interception"?"interception":"def_block";
-        const dcEv={min:dm,type:dcType,team:op,playerFull:df.fullName||df.name,text:"🛡️ "+comm(rng,dcPool,{t:nm[op],o:nm[po],n:df.fullName||df.name},s)};
-        s.events.push(dcEv);
-        _lc.chanceViz.outcomeEvent=dcEv;dcEv.suppressStandalone=true;
-        _lc.chanceViz._completed=true;s.activeChance=null;
-        s.possession=op;s.ball=2;s.pressure=0;
-        return;
-      }
-      s.activeChance.chanceViz.contested=(s.activeChance.chanceViz.contested||0)+1;
-    }
-    if(rng.u()<shotP){if(!s.activeChance){const _sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);_sp.chances=(_sp.chances||0)+1;const _sv=genChanceViz(rng,"passed",_sp.name,s.players[po],s.chanceProfile?.[po]);const _si=_sv.chain.length>1?(s.players[po].find(p=>p.name===_sv.chain[0].name)||_sp):_sp;const _spool=_sv.chain.length>1?"chance_created":"enter_box";const _se={min:dm,type:"chance",team:po,playerFull:_si.fullName||_si.name,chanceViz:_sv,text:comm(rng,_spool,{t:nm[po],o:nm[op],n:_si.fullName||_si.name},s)};s.events.push(_se);s.activeChance=_se;drainChain(s,po,_sv.chain,1.0);}lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(s.activeChance.chanceViz.chain));return;}
-    // No shot — keep or lose ball
-    const keepP=0.35+0.10*poE/(poE+opE)+(s.strategy?.[po]?.chanceCreation===-1?0.04:0);
-    if(rng.u()<keepP){
-      if(s.activeChance){
-        const chain=s.activeChance.chanceViz.chain;
-        if(chain.length<CHANCE_MAX_HOPS){
-          // The player receiving this hop made the run/movement to get on the ball —
-          // extra cost on top of the blanket per-minute team drain everyone else pays.
-          const hop=genChanceExtension(rng,chain,s.players[po],dm,s.chanceProfile?.[po]?.dribbleP);
-          chain.push(hop);
-          const hopP=s.players[po].find(p=>p.name===hop.name);
-          if(hopP)hopP.stamina=Math.max(0,(hopP.stamina??100)-1.0);
-        }
-        else s.events.push({min:dm,type:"press",text:comm(rng,"pressure",{t:nm[po],o:nm[op]},s)});
-      } else {
-        s.events.push({min:dm,type:"buildup",text:(()=>{const sp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"assist");return comm(rng,"sustain",{t:nm[po],o:nm[op],n:sp.name},s);})()});
-      }
-      return;
-    }
-    // Cleared \u2014 if this was clearing away an active chance's build-up (fumbled possession,
-    // no shot), express the clearance AS that chance's outcome (like a tackle or a miss)
-    // instead of a disconnected standalone event, same pattern lmResolveShot and the
-    // defensive-contest branch above use for goal/save/miss/woodwork/tackle/interception/block.
-    const _clChance = s.activeChance;
-    s.possession=op;s.pressure=0;if(s.activeChance)s.activeChance.chanceViz._completed=true;s.activeChance=null;
-    const _clDf=pickDefActPlayer(rng,s,op,"defendClear");if(_clDf){_clDf.defActs=(_clDf.defActs||0)+1;ratePlayer(s.players[op],_clDf.name,_clChance?xgSaveBonus(shotP,0.45):0.12);}const _clN=_clDf?.fullName||_clDf?.name||nm[op];
-    const _clOvr=_clDf?ovrVs(fatigueOvr(_clDf.ovr,_clDf.stamina),lineOvr(s.players[po],"FWD"))*0.08:0;const defR=opE/(poE+opE)+_clOvr,cl=rng.u();
-    if(cl<0.35-0.20*defR){if(rng.u()<0.30){s.stats[po].corners++;s.possession=po;const cnEv={min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=cnEv;cnEv.suppressStandalone=true;}s.events.push(cnEv);lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}else{s.ball=z===4?3:z===0?1:2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_edge",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}}
-    else if(cl<0.70-0.20*defR){s.ball=2;const clEv={min:dm,type:"clearance",text:comm(rng,"clearance_mid",{t:nm[po],o:nm[op],n:_clN},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
-    else{
-      const cm=rng.u()<0.30?2:1;s.ball=Math.max(0,Math.min(4,z-dir*cm));
-      const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
-      else {const clEv={min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_clChance){_clChance.chanceViz.outcomeEvent=clEv;clEv.suppressStandalone=true;}s.events.push(clEv);}
-    }
-    return;
-  }
-
-  // === BUILDUP ZONES (dg 1-4) ===
-  // Long-range shot from opponent's half (dg===1, 12% chance)
-  if(dg===1&&rng.u()<Math.max(0.04,0.24+poM.lr)){
-    const shooter=pickPlayer(rng,s.players[po],"any");s.stats[po].shots++;
-    const lrScorer=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"longGoal",s.formPosW?.[po]);lrScorer.chances=(lrScorer.chances||0)+1;const lrGoal=0.025*Math.pow(poE/opE,0.5)*(1+ovrVs(fatigueOvr(lrScorer.ovr,lrScorer.stamina),lineOvr(s.players[op],"DEF"))*0.18),lrSave=0.23;
-    if(s.xG) s.xG[po] = (s.xG[po]||0) + lrGoal;
-    const lr=rng.u();
-    if(lr<lrGoal){s.score[po==="home"?0:1]++;s.stats[po].onTarget++;s.goalscorers[po].push({name:lrScorer.name,min:dm,method:"long-range"});lrScorer.goals++;let _astLr;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm),aCtx=1+(gCtx-1)*0.5;lrScorer.rating=Math.min(10,+(lrScorer.rating+goalAtkMult(lrScorer.atkW)*gCtx*goalPosMult(lrScorer.pos)).toFixed(2));_astLr=assistPlayer(rng,s.players[po],lrScorer.name,0,s.formPosW?.[po]);if(_astLr)_astLr.rating=Math.max(3,Math.min(10,+(_astLr.rating+0.6*assistAtkMult(_astLr.atkW)*aCtx).toFixed(2)));}s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.18)).toFixed(2));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-xgConcedePenalty(lrGoal,0.10)).toFixed(2));});{let _t=goalText(rng,"goal_lr_desc",s,nm,lrScorer,_astLr);const _g=genGoalViz(rng,"long-range",lrScorer.name,_astLr?_astLr.name:null);_t=fixDescCoords(_t,_g);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\u26BD "+_t,goalViz:_g});}s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);}
-    else if(lr<lrGoal+lrSave){s.stats[po].onTarget++;ratePlayer(s.players[po],lrScorer.name,0.1);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+xgSaveBonus(lrGoal,1.3)).toFixed(2));gk.saves=(gk.saves||0)+1;}{const _t=comm(rng,"save_lr",{t:nm[po],o:nm[op],n:lrScorer.fullName||lrScorer.name,g:gk?.fullName||gk?.name||"the keeper"},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="save";gvSync(_t,_g);s.events.push({min:dm,type:"save",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83E\uDDE4 "+_t,goalViz:_g});}}if(rng.u()<0.40){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
-    else{{const _t=comm(rng,"miss_lr",{t:nm[po],n:lrScorer.fullName||lrScorer.name},s),_g=genGoalViz(rng,"long-range",lrScorer.name,null);_g.result="miss";gvSync(_t,_g);s.events.push({min:dm,type:"miss",team:po,playerFull:lrScorer.fullName||lrScorer.name,text:"\uD83D\uDCA8 "+_t,goalViz:_g});}if(rng.u()<0.25){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"miss_corner",{t:nm[po],o:nm[op]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}}
-    return;
-  }
-  // Standalone corner from cross (4% in attacking territory)
-  if(dg<=2&&rng.u()<0.04*poM.corn){
-    s.stats[po].corners++;
-    s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_won",{t:nm[po],o:nm[op]},s)});
-    lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);
-    return;
-  }
-  const advBase=0.42;
-  const advSkill=0.28*(poE-opE)/(poE+opE);
-  const advZone=dg===1?-0.06:dg>=3?0.05:0;
-  const _poMidLine = lineOvr(s.players[po], "MID");
-  const opMidTier = s.players[op].reduce((a, p) => a + (p.pos === "MID" ? ovrVs(fatigueOvr(p.ovr, p.stamina), _poMidLine) * 0.03 : 0), 0);
-  let advP=advBase+advSkill+advZone+poM.adv+poMidTier-opMidTier;
-  const pT=s.tactics[po],oT=s.tactics[op];
-  if(pT==="ultra")advP+=0.09;else if(pT==="atk")advP+=0.05;
-  if(oT==="def")advP-=0.04;if(oT==="park")advP-=0.08;
-  advP=Math.max(0.10,Math.min(0.60,advP));
-  const holdP=Math.max(0.05,0.10+0.22*poE/(poE+opE)+poM.hold*0.6),longP=Math.max(0.01,0.06+(pT==="ultra"?0.04:pT==="atk"?0.02:0)+poM.lb);
-
-  const roll=rng.u();
-  if(roll<advP){
-    // Advance with ball
-    s.ball+=dir;const nd=po==="home"?(4-s.ball):s.ball;
-    // Offside check (6% when entering final third or box)
-    const dlBeh = s.strategy?.[op]?.dlBehavior || 0;
-    let offsideMod = 1 + (s.strategy?.[op]?.defLine || 0) * 0.12;
-    if (dlBeh === 1) offsideMod += 0.25;
-    if (dlBeh === 2) offsideMod += 0.60;
-    const offsideRate = 0.06 * offsideMod;
-    if(nd<=1&&rng.u()<offsideRate){
-      s.ball-=dir;s.possession=op;s.events.push({min:dm,type:"offside",team:po,text:"\uD83D\uDEA9 "+comm(rng,"offside",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});return;
-    }
-    // A TRAP IS BEATEN WHEN IT DOES NOT SPRING. This used to be nested inside the successful-
-    // offside branch, so being played through was a 15% sub-outcome of catching someone offside:
-    // stepping up scaled the reward and the punishment together at a fixed ratio, and the reward
-    // won every time. Measured, Offside Trap was worth +1.71 pts a season and Step Up +0.75, both
-    // with MORE goals scored and FEWER conceded -- a defensive setting with no defensive cost at
-    // all. The risk now takes its own roll, on the entries the trap failed to catch, which is also
-    // the only reading under which the trap_beaten commentary describes what happened.
-    if (nd <= 1 && (dlBeh === 1 || dlBeh === 2) && rng.u() < (dlBeh === 2 ? 0.110 : 0.050)) {
-        s.ball = po === "home" ? 4 : 0; s.pressure = 1;
-        {if(s.activeChance){s.activeChance.chanceViz._completed=true;}const tb=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any");const cv=genChanceViz(rng,"passed",tb.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||tb):tb;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"trap_beaten";const ce={min:dm, type:"chance", team:po, playerFull:init.fullName||init.name, chanceViz:cv, text:"\u26A1 "+comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s, rng, dm, po, op, poE * 1.25, opE, nm, "counter", chanceCtxFromChain(cv.chain));}
-      return;
-    }
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)-effDefOf(opM)*BOX_DEF){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal",s.formPosW?.[po]);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
-    else s.events.push({min:dm,type:"buildup",text:(()=>{const bp=pickPlayer(rng,s.players[po],"assist");return comm(rng,"buildup",{t:nm[po],o:nm[op],n:bp.name},s);})()});
-  }else if(roll<advP+holdP){
-    // Hold ball. PATIENT POSSESSION HAS TO GO SOMEWHERE, AND IT HAS TO GET THERE FIRST.
-    // This branch emitted a neutral event and stopped, which made `hold` a pure do-not-advance
-    // modifier. Tiki-Taka's dAdv is -0.014, so a possession side advanced LESS than Balanced and
-    // stood still more: it never reached the final third at all. Measured, Catenaccio created 16.83
-    // chances a game to Tiki-Taka's 15.03, and Park The Bus beat Tiki-Taka too -- exactly upside
-    // down, because a deep block concedes the ball and every counter that reaches the box counts.
-    //
-    // Deep, holding now carries the ball forward: building patiently IS progress, just slow, and it
-    // takes a turnover risk for it. High, it probes -- at quarter quality, because that is the trade
-    // the style makes, many half-openings instead of a few clear ones. The quality term is what
-    // makes this work: without it the same change simply handed the possession styles goals and
-    // doubled the balance spread, since volume and scoring were the same thing.
-    {const _hnd = po==="home" ? (4-s.ball) : s.ball;
-    if (_hnd > 1) {
-      if (rng.u() < 0.50) {
-        if (rng.u() < 0.25) { s.possession = op; if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;} s.events.push({min:dm,type:"clearance",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)}); }
-        else { s.ball += dir; s.events.push({min:dm,type:"neutral",text:comm(rng,"buildup",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)}); }
-      }
-      else s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
-    } else if (rng.u() < 0.80) {
-      s.pressure = 1;
-      if(s.activeChance){s.activeChance.chanceViz._completed=true;}
-      const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");
-      ratePlayer(s.players[po],cp.name,0.12);
-      const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);
-      const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;
-      init.chances=(init.chances||0)+1;
-      const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,"chance_created",{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};
-      s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);
-      lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain),0.25);
-    } else {
-      s.events.push({min:dm,type:"neutral",text:comm(rng,"z_neutral",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});
-    }}
-  }else if(roll<advP+holdP+longP){
-    // Long ball
-    s.ball=Math.max(0,Math.min(4,z+dir*2));const nd=po==="home"?(4-s.ball):s.ball;
-    if(nd===0){s.pressure=1;if(rng.u()<0.25+0.35*poE/(poE+opE)-effDefOf(opM)*BOX_DEF){if(s.activeChance){s.activeChance.chanceViz._completed=true;}const cp=pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"goal");ratePlayer(s.players[po],cp.name,0.15);const cv=genChanceViz(rng,"passed",cp.name,s.players[po],s.chanceProfile?.[po]);const init=cv.chain.length>1?(s.players[po].find(p=>p.name===cv.chain[0].name)||cp):cp;init.chances=(init.chances||0)+1;const pool=cv.chain.length>1?"chance_created":"enter_box";const ce={min:dm,type:"chance",team:po,playerFull:init.fullName||init.name,chanceViz:cv,text:comm(rng,pool,{t:nm[po],o:nm[op],n:init.fullName||init.name},s)};s.events.push(ce);s.activeChance=ce;drainChain(s,po,cv.chain,1.0);lmResolveShot(s,rng,dm,po,op,poE,opE,nm,null,chanceCtxFromChain(cv.chain));}else if(!s.activeChance){s.events.push({min:dm,type:"neutral",text:comm(rng,"enter_box",{t:nm[po],o:nm[op],n:pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"any").name},s)});}}
-    else if(rng.u()<0.45){s.events.push({min:dm,type:"neutral",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
-    else{s.possession=op;if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendLongBall");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}s.events.push({min:dm,type:"clearance",text:comm(rng,"long_ball",{t:nm[po],o:nm[op]},s)});}
-  }else{
-    // Get Stuck In used to make this 1.3x and Stay On Feet 0.75x, and a foul here RETURNS the ball
-    // to the side you just took it from -- so the aggressive setting won possession back and gave it
-    // straight up again a quarter more often than neutral. Measured, that one multiplier cost
-    // tackling:1 about 1.3 pts a season and handed tackling:-1 about 0.8, which sorted the whole
-    // style table by nothing but its tackling value. Halving the asymmetry puts both sides inside
-    // the noise floor while keeping the mechanic: diving in still concedes more fouls.
-    // Turnover — but 20% are fouls that give ball back
-    const tTackle = s.strategy?.[op]?.tackling || 0;
-    if(rng.u()<0.20*(tTackle===1?1.06:tTackle===-1?0.952:1.0)){const _tfChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}s.stats[op].fouls++;let fouler=pickPlayer(rng,s.players[op],"foul");if(s.booked[op].includes(fouler.name)&&rng.u()<0.92){const ub=s.players[op].filter(p=>!s.booked[op].includes(p.name));if(ub.length>0)fouler=pick(rng,ub);}{const _fEv={min:dm,type:"foul",team:op,playerFull:fouler.fullName||fouler.name,text:"\u26A0\uFE0F "+comm(rng,"foul",{t:nm[op],n:fouler.fullName||fouler.name,o:nm[po]},s)};if(_tfChance){_tfChance.chanceViz.outcomeEvent=_fEv;_fEv.suppressStandalone=true;}s.events.push(_fEv);}s.stoppageBank+=15;lmHandleCard(s,rng,dm,op,fouler,nm,0.22*(tTackle===1?1.4:tTackle===-1?0.65:1.0));return;}
-    s.possession=op;const _toChance=s.activeChance;if(s.activeChance){s.activeChance.chanceViz._completed=true;s.activeChance=null;}
-    // Winning the ball back in open play is by far the most common defensive moment in a
-    // match, and the main lever for making defActs volume track chances-created volume —
-    // gated below 100% only so an occasional turnover has no single credited player (ball
-    // bounces loose, no clean tackle), not to artificially suppress the count.
-    if(rng.u()<0.95){const _tw=pickDefActPlayer(rng,s,op,"defendTurnover");if(_tw){_tw.defActs=(_tw.defActs||0)+1;ratePlayer(s.players[op],_tw.name,0.08);}}
-    // A COUNTER FROM DEEP IS STILL A COUNTER. cm was a flat one-or-two zones, and a break only
-    // becomes a chance if it reaches the opponent's box (od === 0 below). A side defending deep
-    // wins the ball in its OWN third, so two zones never got there and every one of its counters
-    // resolved as a decorative "transition" event. The counter mechanic therefore rewarded winning
-    // the ball HIGH -- gegenpress -- and gave nothing at all to the one identity built to absorb
-    // and break. Measured, a catenaccio side conceded MORE than a side with every slider at No
-    // Instruction (1.703 against 1.640 a game) and scored less: it failed at the only thing it
-    // exists to do, and no amount of re-pricing `def` could fix that, because defending had no
-    // path to the scoreline at all. Nine attacking channels reached it and one defensive one did.
-    //
-    // How far the break travels is now the counter side's own shape. Springing it (possWon
-    // Counter) and sitting deep enough to have space to run into (a low line, Regroup) carry it
-    // further up the pitch -- which is what a counter-attack IS. This adds no goals on its own:
-    // it moves them from the side that had the ball to the side that took it off them.
-    const ctrReach = (opSt.possWon === 1 ? 1 : 0)
-                   + (opSt.defLine < 0 ? 1 : 0)
-                   + (opSt.possLost === -1 ? 1 : 0);
-    const ctrP=(dg<=2?0.14:0.06)*opM.ctr;
-    if(rng.u()<ctrP){
-      const cm=(rng.u()<0.5?2:1)+ctrReach;s.ball=Math.max(0,Math.min(4,z-dir*cm));
-      const od=op==="home"?(4-s.ball):s.ball;
-      if(od===0){s.pressure=1;const cp2=pickPlayer(rng,s.players[op].filter(p=>p.pos!=="GK"),"any",s.formPosW?.[op]);cp2.chances=(cp2.chances||0)+1;ratePlayer(s.players[op],cp2.name,0.12);{const _cEv={min:dm,type:"counter",team:op,text:"\u26A1 "+comm(rng,"counter",{t:nm[op],o:nm[po],n:cp2.name},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}if(rng.u()<0.25+0.30*opE/(opE+poE)+opM.ctrShot){const _ctCv=genChanceViz(rng,"passed",cp2.name,s.players[op],s.chanceProfile?.[op]);const _ctCe={min:dm,type:"chance",team:op,playerFull:cp2.fullName||cp2.name,chanceViz:_ctCv,text:"⚡ "+comm(rng,"chance_created",{t:nm[op],o:nm[po],n:cp2.fullName||cp2.name},s)};s.events.push(_ctCe);s.activeChance=_ctCe;drainChain(s,op,_ctCv.chain,1.0);lmResolveShot(s,rng,dm,op,po,opE,poE,nm,"counter",chanceCtxFromChain(_ctCv.chain));}}
-      else {const _cEv={min:dm,type:"counter",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_cEv;_cEv.suppressStandalone=true;}s.events.push(_cEv);}
-    }else {const _nEv={min:dm,type:"neutral",text:comm(rng,"transition",{t:nm[po],o:nm[op]},s)};if(_toChance){_toChance.chanceViz.outcomeEvent=_nEv;_nEv.suppressStandalone=true;}s.events.push(_nEv);}
-  }
-}
 
 
 
-function lmSimMinute(s, rng, home, away) {
-  const dm = lmDisplayMin(s.phase,s.minute,s.stoppageElapsed);
-  let hE = lmEffSkill(xiSkill(s.players.home, s.teamSkill?.home ?? home.skill),s.stats.home.reds,s.minute) * (1 + s.momentum.home * 0.02) * staminaMod(teamStam(s,"home")), aE = lmEffSkill(xiSkill(s.players.away, s.teamSkill?.away ?? away.skill),s.stats.away.reds,s.minute) * (1 + s.momentum.away * 0.02) * staminaMod(teamStam(s,"away"));
-  if (s.homeAdv === "home") hE *= 1.03; else if (s.homeAdv === "away") aE *= 1.03;
-  // Momentum across the season, alongside the in-match momentum already folded into hE/aE above.
-  hE *= 1 + (s.teamForm?.home || 0) * FORM_SWING; aE *= 1 + (s.teamForm?.away || 0) * FORM_SWING;
-  ["home","away"].forEach(_ds => { if (s.momentum[_ds] > 0) { const _dr = s.momProfile?.[_ds]?.decay ?? (STYLE_MOM.balanced.decay); if (_dr >= 1) { s.momentum[_ds]--; if (s.momentum[_ds] > 0 && rng.u() < _dr - 1) s.momentum[_ds]--; } else if (rng.u() < _dr) s.momentum[_ds]--; } });
-  const nm = {home:home.name,away:away.name};
-
-  // Tactics (with style constraints + skill mismatch)
-  const diff=(s.score[0]+(s.startScore?.[0]||0))-(s.score[1]+(s.startScore?.[1]||0)), rem=s.minute<=90?90-s.minute:120-s.minute;
-  const sDef=(s.startScore?.[0]||0)-(s.startScore?.[1]||0);
-  const skAdv = (hE - aE) / Math.max(hE, aE, 1);
-  const pH=s.tactics.home, pA=s.tactics.away;
-  if(s.allowTacChange?.home!==false){s.tactics.home=clampTac(autoTac(rng,diff,rem,sDef<0?Math.abs(sDef)*20:0,s.styles.home,s.tactics.home,skAdv,s.matchUrg?.home),s.styles.home);}
-  if(s.allowTacChange?.away!==false){s.tactics.away=clampTac(autoTac(rng,-diff,rem,sDef>0?sDef*20:0,s.styles.away,s.tactics.away,-skAdv,s.matchUrg?.away),s.styles.away);}
-  if(s.tactics.home!==pH&&TAC_MSG[s.tactics.home])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+home.name+" "+TAC_MSG[s.tactics.home]+"."});
-  if(s.tactics.away!==pA&&TAC_MSG[s.tactics.away])s.events.push({min:dm,type:"phase",text:"\uD83D\uDCCB "+away.name+" "+TAC_MSG[s.tactics.away]+"."});
-
-  lmResolvePossession(s, rng, home, away, dm, hE, aE, nm);
-
-  // Stamina drain
-  for (const side of ["home","away"]) {
-    const st = s.strategy?.[side] || STRAT_DEF;
-    const stratDrain = Math.abs(st.passingDir) * 0.04
-      + (st.pressingLOE > 0 ? st.pressingLOE * 0.04 : st.pressingLOE * 0.03)
-      + Math.abs(st.defLine) * 0.03
-      + (st.possWon === 1 ? 0.05 : st.possWon === -1 ? -0.04 : 0)
-      + (st.approachPlay === 1 ? 0.05 : st.approachPlay === -1 ? -0.04 : 0)
-      + (st.dribbling === 1 ? 0.06 : st.dribbling === -1 ? -0.03 : 0)
-      + (st.creativity === 1 ? 0.03 : 0)
-      + (st.timeWasting > 0 && ((side === "home" ? s.score[0] - s.score[1] : s.score[1] - s.score[0]) > 0) ? (st.timeWasting === 2 ? -0.15 : -0.08) : 0)
-      + (st.possLost === 1 ? 0.13 : st.possLost === -1 ? -0.06 : 0)
-      + (st.dlBehavior === 1 ? 0.02 : st.dlBehavior === 2 ? 0.03 : st.dlBehavior === -1 ? -0.03 : 0)
-      + (st.tackling === 1 ? 0.04 : 0);
-    // Ambient drain no longer scales with pressing intensity at all — every playstyle shares
-    // the same 0.75 baseline; only tactic choice and strategy sliders can move it, still
-    // clamped to 0.75-1.2 below. Three rounds of shrinking the press coefficient (1.5x, then
-    // 1.333x, then 1.1x-capped-at-1.6x) all still left Gegenpress far more drained than
-    // Balanced in real matches, because a high-press style is ALSO naturally more involved in
-    // play — winning the ball back more means more possessions and more chances, which already
-    // racks up far more of the much-larger chance-involvement drain (drainChain/shot costs
-    // below) than a Balanced team ever sees. Any ambient premium on top of that already-
-    // compounding natural gap kept overshooting no matter how small the coefficient got, so
-    // the ambient term stops trying to differentiate by press at all — involvement alone does
-    // that job now.
-    const extraDrain = (TAC_DRAIN[s.tactics[side]] || 0) + stratDrain;
-    const teamDrain = 0.75 + Math.max(0, Math.min(0.45, extraDrain));
-    // Individual ambient drain is most of the team-computed rate (0.75x for outfield, GK kept
-    // at the same ~1:4.7 ratio to outfield since keepers barely move) — a standard-pressing,
-    // uninvolved player should be down to roughly 75 stamina at half time, not a token trickle.
-    // On top of this, genuine involvement (drainChain's hop and shot costs) still separates a
-    // busy attacker from a center-back who barely touches the ball during the same 45 minutes.
-    // Must derive from the FLOORED teamDrain, not raw drain: low-press styles (Counter, Park
-    // the Bus) routinely push drain to zero/negative, and the old code let individual stamina
-    // hit its own much-weaker 0.01 floor independently of the team's 0.1 floor — a low-press
-    // team's players would barely lose any stamina at all while the team stat drained normally.
-    s.players[side].forEach(p => { const pd = p.pos === "GK" ? teamDrain * 0.16 : teamDrain * 0.75; p.stamina = Math.max(0, (p.stamina ?? 100) - Math.max(0.01, pd)); });
-  }
-  // Substitutions \u2014 weighted by rating, tier, and booking status
-  for (const side of ["home","away"]) {
-    if (s.subs[side] < subLimit(s, side) && s.autoSubs?.[side] !== false && s.bench[side].some(p => p.pos !== "GK")) {
-      const scoreDiff = side === "home" ? (s.score[0]+(s.startScore?.[0]||0)) - (s.score[1]+(s.startScore?.[1]||0)) : (s.score[1]+(s.startScore?.[1]||0)) - (s.score[0]+(s.startScore?.[0]||0));
-      const trailing = scoreDiff < 0;
-      // One window per permitted substitution, indexed by how many have been made. The 3-sub
-      // schedule is unchanged; the 5-sub one (international, 11-man bench) spreads the extra two
-      // across the same stretch rather than bunching them at the end.
-      const windows = subLimit(s, side) >= 5
-        ? (trailing ? [[46,51],[55,60],[62,67],[70,75],[78,83]] : [[55,60],[62,67],[70,74],[76,80],[82,86]])
-        : (trailing ? [[50,55],[60,65],[70,75]] : [[58,62],[68,72],[78,82]]);
-      const prob = trailing ? 0.55 : 0.40;
-      const w = windows[s.subs[side]];
-      if (w && s.minute >= w[0] && s.minute <= w[1] && rng.u() < prob) {
-        s.subs[side]++;
-        const sn = side === "home" ? home.name : away.name;
-        const cands = s.players[side].filter(p => p.pos !== "GK");
-        const booked = s.booked[side] || [];
-        const avgR = cands.reduce((a, p) => a + (p.rating || 6.5), 0) / cands.length;
-        const _candMean = squadMeanOvr(cands);
-        const subWeights = cands.map(p => {
-          let sw = POS_W.subOff[p.pos] || 10;
-          sw *= Math.pow(2, (avgR - (p.rating || 6.5)) * 0.5);
-          sw *= Math.max(0.1, 1 - ovrVs(fatigueOvr(p.ovr, p.stamina), _candMean) * 0.75);
-          if ((p.stamina ?? 100) < 70) sw *= 1 + (70 - p.stamina) * 0.04;
-          if (booked.includes(p.name)) sw *= 2.5;
-          return { p, w: sw };
-        });
-        const swTotal = subWeights.reduce((a, x) => a + x.w, 0);
-        let sr = rng.u() * swTotal;
-        let subOff = subWeights[subWeights.length - 1].p;
-        for (const x of subWeights) { sr -= x.w; if (sr <= 0) { subOff = x.p; break; } }
-        const subOn = (()=>{ const b=s.bench[side]; const sameGrp=b.filter(p=>p.pos===subOff.pos); const pool=sameGrp.length>0?sameGrp:b.filter(p=>p.pos!=="GK"); const best=pool.reduce((a,p)=>(p.ovr||0)>(a.ovr||0)?p:a,pool[0]); return b.splice(b.indexOf(best),1)[0]; })();
-        subOn.sub='on'; subOn.startedBench=true; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===subOff.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==subOff.name); s.players[side].push(subOn);
-        const wasBooked = booked.includes(subOff.name);
-        if (wasBooked) {
-          s.booked[side] = s.booked[side].filter(p => p !== subOff.name);
-          { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.fullName||subOn.name,x:subOff.fullName||subOff.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+(subOff.fullName||subOff.name)+" \u2192 "+(subOn.fullName||subOn.name)+". "+reason,offName:subOff.fullName||subOff.name,onName:subOn.fullName||subOn.name,reason,offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos}); }
-        } else {
-          { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.fullName||subOn.name,x:subOff.fullName||subOff.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+(subOff.fullName||subOff.name)+" \u2192 "+(subOn.fullName||subOn.name)+". "+reason,offName:subOff.fullName||subOff.name,onName:subOn.fullName||subOn.name,reason,offPos:subOff.pos,offRating:subOff.rating,onPos:subOn.pos}); }
-        }
-      }
-    }
-  }
-  // Injuries (~0.14 per game, rarer when fresh, more common when tired)
-  if (s.injuriesEnabled !== false) for (const side of ["home","away"]) {
-    const injRate = 0.0008 * (1 + (100 - teamStam(s,side)) * 0.008);
-    if (rng.u() < injRate && s.players[side].length > 7) {
-      // Whether an injury happens at all still rolls off team-average stamina (injRate
-      // above) — this only decides WHO, weighting toward whoever's more gassed rather than
-      // picking uniformly, since fatigue disproportionately produces muscle-strain injuries
-      // in practice. Every player keeps a base weight of 1 so a fresh player is never immune.
-      const injured = (() => {
-        const weights = s.players[side].map(p => ({ p, w: 1 + Math.max(0, 100 - (p.stamina ?? 100)) * 0.02 }));
-        const total = weights.reduce((a, x) => a + x.w, 0);
-        let r = rng.u() * total;
-        for (const x of weights) { r -= x.w; if (r <= 0) return x.p; }
-        return weights[weights.length - 1].p;
-      })();
-      const sn = side === "home" ? home.name : away.name;
-      const { sev: injSev, part: injPart } = pickInjury(rng);
-      const injTag = " " + injSev.label + " (" + injPart + ").";
-      s.stoppageBank += 60; s.stats[side].injuries++;
-      const isGK = injured.pos === "GK";
-      const canSub = isGK
-        ? (s.subs[side] < subLimit(s, side) && s.bench[side].some(p => p.pos === "GK"))
-        : (s.subs[side] < subLimit(s, side) && s.bench[side].some(p => p.pos !== "GK"));
-      if (canSub) {
-        s.subs[side]++; injured.inj = true; injured.injSev = injSev.id; injured.injPart = injPart;
-        const wasBooked = s.booked[side].includes(injured);
-        if (wasBooked) s.booked[side] = s.booked[side].filter(p => p !== injured);
-        s.events.push({min:dm,type:"injury",team:side,playerFull:injured.fullName||injured.name,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.fullName||injured.name})+injTag+(wasBooked ? " Was on a yellow." : "")});
-        const subOn = (()=>{ const b=s.bench[side]; const outIdx = isGK ? b.findIndex(p=>p.pos==="GK") : b.findIndex(p=>p.pos!=="GK"); return b.splice(outIdx,1)[0]; })();
-        subOn.sub='on'; subOn.startedBench=true; subOn.rating=6.5; subOn.chances=0; subOn.defActs=0; subOn.saves=0; const off=s.players[side].find(p=>p.name===injured.name); if(off){off.sub='off';s.subbedOff[side].push({...off});} s.players[side] = s.players[side].filter(p=>p.name!==injured.name); s.players[side].push(subOn);
-        { const reason=fill(pick(rng,CM.sub_in),{t:sn,n:subOn.fullName||subOn.name,x:injured.fullName||injured.name}); s.events.push({min:dm,type:"sub",text:"\u21C4 "+sn+"'s "+(injured.fullName||injured.name)+" \u2192 "+(subOn.fullName||subOn.name)+". "+reason,offName:injured.fullName||injured.name,onName:subOn.fullName||subOn.name,reason,offPos:injured.pos,offRating:injured.rating,onPos:subOn.pos}); }
-      } else {
-        {const ip=s.players[side].find(p=>p.name===injured.name);if(ip){ip.inj=true;ip.injSev=injSev.id;ip.injPart=injPart;s.subbedOff[side].push({...ip});}} s.players[side] = s.players[side].filter(p => p.name !== injured.name);
-        if (s.booked[side].includes(injured.name)) s.booked[side] = s.booked[side].filter(p => p !== injured.name);
-        s.stats[side].injuriesNoSub++;
-        s.events.push({min:dm,type:"injury",team:side,playerFull:injured.fullName||injured.name,text:"\uD83E\uDD15 "+fill(pick(rng,CM.injury_event),{t:sn,n:injured.fullName||injured.name})+injTag+" No subs remaining. "+sn+" down to "+s.players[side].length+" men."});
-      }
-      ensureGoalkeeper(s, side, dm, nm, rng);
-    }
-  }
-  // Record momentum: ball position + possession bias (smoothed) blended with the real,
-  // event-driven momentum counter (unsmoothed, so a goal/red card/big chance shows up on
-  // the graph the instant it happens rather than fading in over a few minutes of EMA lag —
-  // it still decays naturally since s.momentum itself decays a tick above).
-  const rawMom = (s.ball - 2) / 2 + (s.possession === "home" ? 0.15 : -0.15) + (s.pressure * 0.08 * (s.possession === "home" ? 1 : -1));
-  const prev = s.momHist.length > 0 ? s.momHist[s.momHist.length - 1].v : 0;
-  const smoothed = prev * 0.6 + rawMom * 0.4;
-  const momBias = (s.momentum.home - s.momentum.away) / (MOMENTUM_CAP * 2);
-  s.momHist.push({ m: s.minute, v: Math.max(-1, Math.min(1, smoothed + momBias)) });
-  // Periodic rating: every 5 min, driven by each player's own accumulated stats (saves/defActs/chances)
-  if (s.minute > 0 && s.minute % 5 === 0) {
-    const ph = s.possCount.home, pa = s.possCount.away, pt = ph + pa || 1;
-    for (const side of ["home","away"]) {
-      const pct = side === "home" ? ph/pt : pa/pt;
-      const op = side === "home" ? "away" : "home";
-      const gaConceded = side === "home" ? s.score[1] : s.score[0];
-      const gfScored = side === "home" ? s.score[0] : s.score[1];
-      s.players[side].forEach(p => {
-        if (p.pos === "GK") {
-          const sv = (p.saves||0) - (p._rSv||0); p._rSv = p.saves||0;
-          if (sv > 0) p.rating = Math.min(10, +(p.rating + 0.02 * sv).toFixed(2));
-          if (gaConceded === 0 && s.minute >= 30) p.rating = Math.min(10, +(p.rating + 0.015).toFixed(2));
-          if ((p.saves||0) === 0 && pct > 0.58 && s.stats[op].shots < s.minute/12) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
-        }
-        if (p.pos === "DEF") {
-          const da = (p.defActs||0) - (p._rDa||0); p._rDa = p.defActs||0;
-          if (da > 0) p.rating = Math.min(10, +(p.rating + 0.03 * da).toFixed(2));
-          if (!p._rDaT && (p.defActs||0) >= 3 && gaConceded <= 1) { p._rDaT = true; p.rating = Math.min(10, +(p.rating + 0.15).toFixed(2)); }
-        }
-        if (p.pos === "MID") {
-          const ch = (p.chances||0) - (p._rCh||0); p._rCh = p.chances||0;
-          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.015 * ch).toFixed(2));
-          if (!p._rChT && (p.chances||0) >= 3 && gfScored > 0) { p._rChT = true; p.rating = Math.min(10, +(p.rating + 0.08).toFixed(2)); }
-          if ((p.chances||0) === 0 && s.minute >= 40) p.rating = Math.max(3, +(p.rating - 0.01).toFixed(2));
-        }
-        if (p.pos === "FWD") {
-          const ch = (p.chances||0) - (p._rCh||0); p._rCh = p.chances||0;
-          if (ch > 0) p.rating = Math.min(10, +(p.rating + 0.015 * ch).toFixed(2));
-          if (s.minute >= 50 && p.goals === 0 && p.assists === 0 && (p.chances||0) === 0 && p.rating <= 6.7) p.rating = Math.max(3, +(p.rating - 0.04).toFixed(2));
-        }
-      });
-      // Individual involvement bonus: random player from possession team gets credit
-      if (pct > 0.52) { const mp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], mp.name, 0.04); }
-      if (pct < 0.42 && rng.u() < 0.3) { const dp = pickPlayer(rng, s.players[side], "any"); ratePlayer(s.players[side], dp.name, -0.02); }
-    }
-  }
-}
 
 
-function cloneState(p) {
-  return { ...p, score:[...p.score], events:[...p.events],
-    stats:{home:{...p.stats.home},away:{...p.stats.away}},
-    players:{home:p.players.home.map(x=>({...x})),away:p.players.away.map(x=>({...x}))},
-    bench:{home:p.bench.home.map(x=>({...x})),away:p.bench.away.map(x=>({...x}))},
-    booked:{home:[...p.booked.home],away:[...p.booked.away]},
-    goalscorers:{home:[...p.goalscorers.home],away:[...p.goalscorers.away]},
-    subbedOff:{home:p.subbedOff?p.subbedOff.home.map(x=>({...x})):[],away:p.subbedOff?p.subbedOff.away.map(x=>({...x})):[]},
-    tactics:{...p.tactics}, possCount:{...p.possCount}, momentum:{...p.momentum},
-    subs:{...p.subs}, subCap:{...(p.subCap||{home:3,away:3})}, startScore:p.startScore||[0,0], xG:{home:p.xG?.home||0,away:p.xG?.away||0}, momHist:p.momHist?[...p.momHist]:[],
-    strategy:{home:{...p.strategy.home},away:{...p.strategy.away}},
-    penalties:p.penalties?{...p.penalties,home:[...p.penalties.home],away:[...p.penalties.away],homeOrder:p.penalties.homeOrder?[...p.penalties.homeOrder]:[],awayOrder:p.penalties.awayOrder?[...p.penalties.awayOrder]:[]}:null };
-}
-function resolvePendingPenalty(s, rng, home, away) {
-  const pp = s.pendingPenalty; s.pendingPenalty = null; if(s.activeChance)s.activeChance.chanceViz._completed=true; s.activeChance = null;
-  const po = pp.po, op = pp.op, dm = pp.dm;
-  const nm = {home:home.name,away:away.name};
-  const taker = s.players[po].find(p=>p.name===pp.taker) || pickPlayer(rng,s.players[po].filter(p=>p.pos!=="GK"),"penalty",s.formPosW?.[po]);
-  const poE = lmEffSkill(xiSkill(s.players[po], s.teamSkill?.[po] ?? (po==="home"?home.skill:away.skill)), s.stats[po].reds, s.minute) * (1 + s.momentum[po]*0.02) * staminaMod(teamStam(s,po));
-  const opE = lmEffSkill(xiSkill(s.players[op], s.teamSkill?.[op] ?? (op==="home"?home.skill:away.skill)), s.stats[op].reds, s.minute) * (1 + s.momentum[op]*0.02) * staminaMod(teamStam(s,op));
-  const skillF2=Math.min(1,poE/85+ovrVs(fatigueOvr(taker.ovr,taker.stamina),gkOvr(s.players[op]))*0.12);
-  const zW2=[18+skillF2*8,8-skillF2*3,18+skillF2*8,20+skillF2*6,10-skillF2*4,20+skillF2*6];
-  const zT2=zW2.reduce((a,b)=>a+b,0);let zR2=rng.u()*zT2,zone2=0;for(let i=0;i<6;i++){zR2-=zW2[i];if(zR2<=0){zone2=i;break;}}
-  const missP2=[0.14,0.04,0.14,0.07,0.02,0.07][zone2];
-  const dive2=Math.floor(rng.u()*3);
-  const zCol2=zone2%3;
-  const isMiss2=rng.u()<missP2;
-  const isSave2=!isMiss2&&dive2===zCol2;
-  if(isMiss2){
-    s.stats[po].shots++;
-    ratePlayer(s.players[po],taker.name,-0.5);momBump(s,op,3);s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_missed",{t:nm[po],n:taker.fullName||taker.name},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"miss"}});
-    s.possession=op;s.pressure=0;
-  }else if(isSave2){
-    s.stats[po].shots++;s.stats[po].onTarget++;
-    ratePlayer(s.players[po],taker.name,-0.4);momBump(s,op,3);{const gk=s.players[op].find(p=>p.pos==="GK");if(gk){gk.rating=Math.min(10,+(gk.rating+1.0).toFixed(2));gk.saves=(gk.saves||0)+1;}s.events.push({min:dm,type:"pen_miss",team:po,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,"pen_saved",{t:nm[po],n:taker.fullName||taker.name,g:gk?.fullName||gk?.name||"the keeper"},s),goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone2,dive:dive2,result:"save"}});}
-    if(rng.u()<0.30){s.stats[po].corners++;s.events.push({min:dm,type:"corner",team:po,text:"\uD83C\uDFF4 "+comm(rng,"corner_rebound",{t:nm[po]},s)});lmResolveCorner(s,rng,dm,po,op,poE,opE,nm);}
-    else{s.possession=op;s.pressure=0;}
-  }else{
-    s.score[po==="home"?0:1]++;s.stats[po].shots++;s.stats[po].onTarget++;
-    if(s.goalscorers)s.goalscorers[po].push({name:taker.name,min:dm,method:"pen"});taker.goals++;{const ti=po==="home"?0:1,gCtx=goalCtxMult([s.score[0]-(ti===0?1:0),s.score[1]-(ti===1?1:0)],ti,dm);taker.rating=Math.min(10,+(taker.rating+goalAtkMult(taker.atkW)*gCtx).toFixed(2));}
-    s.players[op].forEach(p=>{if(p.pos==="GK")p.rating=Math.max(3,+(p.rating-0.1).toFixed(1));else if(p.pos==="DEF")p.rating=Math.max(3,+(p.rating-0.05).toFixed(1));});
-    {const _t=goalText(rng,"pen_scored_desc",s,nm,taker,null),_g=genGoalViz(rng,"pen",taker.name,null,zone2,dive2);gvSync(_t,_g);s.events.push({min:dm,type:"goal",team:po,playerFull:taker.fullName||taker.name,text:"\u26BD "+_t,goalViz:_g});}
-    s.ball=2;s.pressure=0;s.possession=op;s.stoppageBank+=45;momBump(s,po,4);
-  }
-}
-function lmAdvance(prev, rng, home, away, mutate) {
-  const s = mutate ? prev : cloneState(prev);
-  if (s.pendingPenalty) { resolvePendingPenalty(s, rng, home, away); return s; }
-  const playMin = () => lmSimMinute(s,rng,home,away);
-  const toStop = (phase) => { s.stoppageTotal=lmCalcStoppage(s.stoppageBank,phase,rng);s.stoppageElapsed=0;s.stoppageBank=0;s.phase=phase+"_stoppage";s.events.push({min:"",type:"phase",text:"\u23F1 "+s.stoppageTotal+" minutes added time"}); };
-  switch(s.phase){
-    case "pre_match": s.phase="first_half";s.minute=1;s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:home.name})});playMin();break;
-    case "first_half": s.minute++;playMin();if(s.minute>=45)toStop("first_half");break;
-    case "first_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){s.phase="half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "half_time": s.phase="second_half";s.minute=45;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+20));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
-    case "second_half": s.minute++;playMin();if(s.minute>=90)toStop("second_half");break;
-    case "second_half_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){const aggH=s.score[0]+(s.startScore?.[0]||0),aggA=s.score[1]+(s.startScore?.[1]||0);if(s.forceResult&&aggH===aggA){s.phase="full_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ft_whistle)+" "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")+". Extra time to follow."});}else{s.phase="finished";s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+home.name+" "+s.score[0]+"\u2013"+s.score[1]+" "+away.name+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH+"\u2013"+aggA+" agg.)":"")});}}break;
-    case "full_time": s.phase="et_first";s.minute=90;s.ball=2;s.possession="home";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+pick(rng,CM.et_start)});break;
-    case "et_first": s.minute++;playMin();if(s.minute>=105)toStop("et_first");break;
-    case "et_first_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){s.phase="et_half_time";s.events.push({min:"",type:"phase",text:"\u23F0 "+pick(rng,CM.ht_whistle)+" "+s.score[0]+"\u2013"+s.score[1]});}break;
-    case "et_half_time": s.phase="et_second";s.minute=105;s.ball=2;s.possession="away";s.players.home.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.players.away.forEach(p=>p.stamina=Math.min(100,(p.stamina??100)+10));s.events.push({min:"",type:"phase",text:"\u26BD "+fill(pick(rng,CM.kickoff),{t:away.name})});break;
-    case "et_second": s.minute++;playMin();if(s.minute>=120)toStop("et_second");break;
-    case "et_second_stoppage": s.stoppageElapsed++;playMin();if(s.stoppageElapsed>=s.stoppageTotal&&!s.activeChance){const aggH2=s.score[0]+(s.startScore?.[0]||0),aggA2=s.score[1]+(s.startScore?.[1]||0);if(aggH2===aggA2){s.phase="penalties";
-        const penOrd=(side)=>{const pl=s.players[side].filter(p=>p.pos!=="GK").sort((a,b)=>(b.atkW||0)-(a.atkW||0)).map(p=>p.name);const gk=s.players[side].find(p=>p.pos==="GK");if(gk)pl.push(gk.name);return pl;};
-        s.penalties={home:[],away:[],homeOrder:penOrd("home"),awayOrder:penOrd("away"),homeIdx:0,awayIdx:0,nextTeam:"home",decided:false,winner:null};s.events.push({min:"",type:"phase",text:"\uD83C\uDFAF Penalty shootout!"});}else{s.phase="finished";const w=aggH2>aggA2?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC1 "+pick(rng,CM.ft_whistle)+" "+w+" win after extra time! "+s.score[0]+"\u2013"+s.score[1]+(s.startScore?.[0]||s.startScore?.[1]?" ("+aggH2+"\u2013"+aggA2+" agg.)":"")});}}break;
-    case "penalties": { const p=s.penalties;if(p.decided)break;const tk=p.nextTeam,ok=tk==="home"?"away":"home";const kE=lmEffSkill(xiSkill(s.players[tk], s.teamSkill?.[tk] ?? (tk==="home"?home.skill:away.skill)),s.stats[tk].reds,s.minute);const gE=lmEffSkill(xiSkill(s.players[ok], s.teamSkill?.[ok] ?? (ok==="home"?home.skill:away.skill)),s.stats[ok].reds,s.minute);
-      // Pick taker from order
-      const ordKey=tk+"Order",idxKey=tk+"Idx";
-      const ordArr=p[ordKey]||[];let taker;
-      if(ordArr.length>0){const tn=ordArr[p[idxKey]%ordArr.length];taker=s.players[tk].find(pl=>pl.name===tn)||pickPlayer(rng,s.players[tk],"penalty");p[idxKey]=(p[idxKey]||0)+1;}else{taker=pickPlayer(rng,s.players[tk],"penalty");}
-      const tName=tk==="home"?home.name:away.name;
-      // Zone-based penalty: zones 0-5 = [TL,TC,TR,BL,BC,BR], dive 0-2 = [L,C,R]
-      const skillF=Math.min(1,kE/85+ovrVs(fatigueOvr(taker.ovr,taker.stamina),gkOvr(s.players[ok]))*0.12);
-      const zW=[18+skillF*8, 8-skillF*3, 18+skillF*8, 20+skillF*6, 10-skillF*4, 20+skillF*6]; // corner-heavy for good takers
-      const zT=zW.reduce((a,b)=>a+b,0); let zR=rng.u()*zT, zone=0; for(let i=0;i<6;i++){zR-=zW[i];if(zR<=0){zone=i;break;}}
-      const missP=[0.14,0.04,0.14,0.07,0.02,0.07][zone]; // miss chance by zone
-      const dive=Math.floor(rng.u()*3); // keeper dive: 0=L,1=C,2=R
-      const zCol=zone%3; // zone column: 0=L,1=C,2=R
-      const isMiss=rng.u()<missP;
-      const isSave=!isMiss&&dive===zCol;
-      const scored=!isMiss&&!isSave;
-      const result=isMiss?"miss":isSave?"save":"goal";
-      p[tk].push({scored,name:taker.name,zone,dive,result});
-      const hScore=p.home.filter(k=>k.scored).length, aScore=p.away.filter(k=>k.scored).length;
-      const penScore="("+hScore+"\u2013"+aScore+")";const _pkGk=s.players[ok].find(p2=>p2.pos==="GK");
-      if(scored){s.events.push({min:"PEN",type:"goal",team:tk,playerFull:taker.fullName||taker.name,text:"\u26BD "+comm(rng,"pen_scored",{t:tName,n:taker.fullName||taker.name},s)+" "+penScore,goalViz:genGoalViz(rng,"pen",taker.name,null,zone,dive)});}
-      else{s.events.push({min:"PEN",type:"pen_miss",team:tk,player:taker.name,playerFull:taker.fullName||taker.name,text:"\u274C "+comm(rng,isMiss?"pen_missed":"pen_saved",{t:tName,n:taker.fullName||taker.name,g:_pkGk?.fullName||_pkGk?.name||"the keeper"},s)+" "+penScore,goalViz:{method:"pen",scorer:taker.name,assist:null,shotFrom:{x:88,y:32.5},assistFrom:null,goalZone:zone,dive:dive,result:result}});}
-      p.nextTeam=ok;const winner=lmCheckPenDecided(p.home,p.away);if(winner){p.decided=true;p.winner=winner;s.phase="finished";const wName=winner==="home"?home.name:away.name;s.events.push({min:"",type:"phase",text:"\uD83C\uDFC6 "+wName+" win on penalties! "+s.score[0]+"\u2013"+s.score[1]+" ("+p.home.filter(k=>k.scored).length+"\u2013"+p.away.filter(k=>k.scored).length+" PENS)"});}break;}
-    default:break;
-  }
-  // End of match: individual performance bonuses (saves/defActs/chances); clean sheet is a smaller topper
-  if (s.phase === "finished") {
-    for (const side of ["home","away"]) {
-      const cs = (side === "home" ? s.score[1] : s.score[0]) === 0;
-      s.players[side].forEach(p => {
-        let b = 0;
-        if (p.pos === "GK") b = Math.min(1.0, 0.05 * (p.saves || 0) + (cs ? 0.15 : 0));
-        else if (p.pos === "DEF") b = Math.min(0.7, 0.12 * Math.min(p.defActs || 0, 8) + (cs ? 0.15 : 0));
-        else if (p.pos === "MID") b = Math.min(0.8, 0.10 * Math.min(p.chances || 0, 5));
-        else if (p.pos === "FWD") b = Math.min(0.5, 0.06 * Math.min(p.chances || 0, 4));
-        if (b > 0) p.rating = Math.min(10, +(p.rating + b).toFixed(2));
-      });
-    }
-  }
-  return s;
-}
-
-// A shot with no build-up chain (spontaneous, counter, long-range, corner header) still gets
-// its own two-step reveal: who's taking it, then the outcome. Penalties and own goals are
-// excluded — a penalty already gets its own suspense beat from the separate "PENALTY!" award
-// event a tick earlier, and an own goal isn't really a deliberate "shapes to shoot" moment.
-function isGatableShot(e) {
-  return !e?.suppressStandalone && (e?.type === "save" || e?.type === "miss" || e?.type === "woodwork" || (e?.type === "goal" && e?.goalViz?.method !== "pen" && e?.goalViz?.method !== "og"));
-}
-// Finds the one chance/shot the "next minute" button is currently driving, if any — the
-// *oldest* not-yet-fully-clicked-through reveal. Scans forward from the start (not backward
-// from the end): a single tick can cascade more than one gatable moment (a save that earns a
-// corner whose rebound is also a shot), so the most recent one isn't necessarily the one still
-// waiting to be revealed — an older one earlier in that same cascade might be. Skipping past
-// everything already fully revealed and returning the first thing that isn't keeps reveals in
-// the order they actually happened.
-function lmPendingChance(match, chanceStepMap) {
-  if (!match || match.phase === "finished") return null;
-  const events = match.events;
-  for (let idx = 0; idx < events.length; idx++) {
-    const ev = events[idx];
-    if (ev?.type === "chance" && ev?.chanceViz) {
-      if (ev.chanceViz._completed && !ev.chanceViz.outcomeEvent) continue;
-      const hasOutcome = !!ev.chanceViz.outcomeEvent;
-      const totalSteps = (ev.chanceViz._baseLen || ev.chanceViz.chain?.length || 0) + (hasOutcome ? 1 : 0);
-      if ((chanceStepMap[idx] || 0) < totalSteps - 1) return { idx, totalSteps };
-      if (!hasOutcome && !ev.chanceViz._completed) return { idx, totalSteps, atEnd: true };
-      continue;
-    }
-    if (isGatableShot(ev)) {
-      if ((chanceStepMap[idx] || 0) < 1) return { idx, totalSteps: 2 };
-      continue;
-    }
-  }
-  return null;
-}
-// Shared shape for masking a not-yet-revealed goal.
-function lmGoalInfo(ev) {
-  if (ev?.type !== "goal") return null;
-  return { team: ev.team, scorerName: ev.goalViz?.scorer || null, assistName: ev.goalViz?.assist || null, ratingDeltas: ev.goalViz?.ratingDeltas || null };
-}
-// Every goal still behind an unrevealed card — not just the single oldest one. Checking only
-// the frontmost pending card misses goals buried further back: a save-then-corner sequence
-// pushes its goal (the corner) several events after the still-pending card (the save), so
-// once that save event scrolls into view its own outcome isn't a goal and a frontmost-only
-// check would report nothing pending — showing the corner's goal (and its scorer's
-// stats/rating) early, then hiding them again once reveal-by-reveal finally reaches that
-// card. Scanning every event instead keeps every hidden goal masked the whole time.
-function lmHiddenGoals(match, chanceStepMap) {
-  // Once the match is actually over there's no more suspense left to protect, and — critically
-  // — no more "Continue" button left to click through whatever's still queued: a bulk sim
-  // (lmSimAll) jumps straight to the final state without ever walking chanceStep forward, so
-  // anything still pending at that point would otherwise stay hidden forever with no way for
-  // the user to ever reveal it. Finished means reveal everything, unconditionally.
-  if (!match || match.phase === "finished") return [];
-  const hidden = [];
-  const push = (ev) => { const gi = lmGoalInfo(ev); if (gi) hidden.push(gi); };
-  for (const [idx, ev] of match.events.entries()) {
-    if (ev?.type === "chance" && ev?.chanceViz) {
-      const hasOutcome = !!ev.chanceViz.outcomeEvent;
-      if (!hasOutcome) continue;
-      const totalSteps = (ev.chanceViz._baseLen || ev.chanceViz.chain?.length || 0) + 1;
-      if ((chanceStepMap[idx] || 0) < totalSteps - 1) push(ev.chanceViz.outcomeEvent);
-      continue;
-    }
-    if (isGatableShot(ev) && (chanceStepMap[idx] || 0) < 1) push(ev);
-  }
-  return hidden;
-}
-function lmDisplayScore(match, chanceStepMap) {
-  if (!match) return [0, 0];
-  let hHome = 0, hAway = 0;
-  for (const g of lmHiddenGoals(match, chanceStepMap)) { if (g.team === "home") hHome++; else if (g.team === "away") hAway++; }
-  return [Math.max(0, match.score[0] - hHome), Math.max(0, match.score[1] - hAway)];
-}
-// Undoes a pending goal's exact rating swing (scorer/assist boost, conceding side's dip) for
-// one player, using the actual applied deltas captured at the moment lmResolveShot mutated
-// them — not a recomputation, so it's exact even where clamping (e.g. rating already at 10)
-// made the real change smaller than the nominal formula output.
-function lmAdjRating(pendingGoal, side, player) {
-  if (!pendingGoal || !player) return player?.rating;
-  if (pendingGoal.team === side) {
-    if (player.name === pendingGoal.scorerName) return +(player.rating - (pendingGoal.ratingDeltas?.scorer?.delta || 0)).toFixed(2);
-    if (player.name === pendingGoal.assistName) return +(player.rating - (pendingGoal.ratingDeltas?.assist?.delta || 0)).toFixed(2);
-  } else {
-    const cd = pendingGoal.ratingDeltas?.conceding?.find(c => c.name === player.name);
-    if (cd) return +(player.rating - cd.delta).toFixed(2);
-  }
-  return player.rating;
-}
-function lmBtnLabel(s) {
-  const map = { pre_match:"\u26BD Kick Off", half_time:"\u25B6 2nd Half", full_time:"\u25B6 Extra Time", et_half_time:"\u25B6 ET 2nd Half" };
-  if (map[s.phase]) return map[s.phase];
-  if (s.pendingPenalty) return "\u26BD Take Penalty";
-  if (s.phase==="penalties") return s.penalties?.decided?null:"\u25B6 Next Kick";
-  if (s.phase==="finished") return null;
-  if (s.phase.includes("stoppage")) { const b={first_half_stoppage:45,second_half_stoppage:90,et_first_stoppage:105,et_second_stoppage:120}[s.phase]; return "\u25B6 "+b+"+"+(s.stoppageElapsed+1)+"'"; }
-  return "\u25B6 "+(s.minute+1)+"'";
-}
 
 
-// ═══ INSTANT SIM ═════════════════════════════════════════════════════════════
-// teamForm is {home, away} in [-1, +1]. Named apart from homeForm/awayForm above, which are
-// FORMATIONS — an unfortunate collision that predates this.
-function simInstantMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm, awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad, matchUrg, teamForm) {
-  const home={name:"H",skill:homeSkill},away={name:"A",skill:awaySkill};
-  let s=createMatchState();s.forceResult=!!forceResult;s.teamSkill={home:homeSkill,away:awaySkill};
-  s.styles={home:homeStyle||"balanced",away:awayStyle||"balanced"};
-  s.formations={home:homeForm||"4-3-3",away:awayForm||"4-3-3"};
-  s.homeAdv=homeAdv||null;
-  if (matchUrg) s.matchUrg = matchUrg;
-  if (teamForm) s.teamForm = teamForm;
-  s.strategy={home:{...STRAT_DEF,...(homeStrat||{})},away:{...STRAT_DEF,...(awayStrat||{})}};
-  const mapP = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0});
-  const mapB = (p) => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,benchSize:p.benchSize});
-  const hSquadRaw = homeSquad || buildSquad(homeForm || "4-3-3", null);
-  const aSquadRaw = awaySquad || buildSquad(awayForm || "4-3-3", null);
-  s.players={home:hSquadRaw.filter(p=>!p.bench).map(mapP),away:aSquadRaw.filter(p=>!p.bench).map(mapP)};
-  s.bench={home:hSquadRaw.filter(p=>p.bench).map(mapB),away:aSquadRaw.filter(p=>p.bench).map(mapB)};
-  s.subCap={home:subCapFor(s.bench.home),away:subCapFor(s.bench.away)};
-  if (homeSquad && awaySquad) { ensureStartingGK(s.players.home); ensureStartingGK(s.players.away); }
-  const _hFit=computeStyleFit(s.styles.home,hSquadRaw),_aFit=computeStyleFit(s.styles.away,aSquadRaw);
-  s.modifiers={home:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced,FORM_MOD[s.formations.home]),_hFit),s.strategy.home),away:applyStrategy(applyStyleFit(mergeModifiers(STYLE_MOD.balanced,FORM_MOD[s.formations.away]),_aFit),s.strategy.away)};
-  s.styleFit={home:_hFit,away:_aFit};
-  initMatchEnhancements(s);
-  s.events={length:0,push(){this.length++;}};
-  lmAdvance(s,rng,home,away,true);let ftS=null;
-  for(let i=0;i<300&&s.phase!=="finished";i++){if(s.phase==="full_time"&&!ftS)ftS=[...s.score];lmAdvance(s,rng,home,away,true);}
-  if(!ftS)ftS=[...s.score];
-  const penH=s.penalties?.home?.filter(k=>k?.scored).length||0,penA=s.penalties?.away?.filter(k=>k?.scored).length||0;
-  const allP = (side) => [...s.players[side], ...s.subbedOff[side]];
-  return{ftHome:ftS[0],ftAway:ftS[1],et:(s.score[0]!==ftS[0]||s.score[1]!==ftS[1])?{home:s.score[0]-ftS[0],away:s.score[1]-ftS[1]}:null,pen:s.penalties?.decided?{home:penH,away:penA}:null,cards:{home:{yellows:s.stats.home.yellows,reds:s.stats.home.reds,secondYellows:s.stats.home.secondYellows||0,injuries:s.stats.home.injuries},away:{yellows:s.stats.away.yellows,reds:s.stats.away.reds,secondYellows:s.stats.away.secondYellows||0,injuries:s.stats.away.injuries}},playerData:{home:allP("home"),away:allP("away")}};
-}
+
+
 
 
 
@@ -2745,23 +1462,6 @@ function formScore(results) {
   recent.forEach((x, i) => { const w = i + 1; num += w * (x.r === "W" ? 1 : x.r === "L" ? -1 : 0); den += w; });
   return den ? num / den : 0;
 }
-// Applied to effective strength like home advantage, which is 1.03 — so a side at the top of its
-// run is worth about two thirds of home soil, and the gap between a team on a tear and one in
-// freefall is 4%. Form feeds back into itself (winning improves form improves the chance of
-// winning), so this was measured over 40 NL1 seasons per value rather than guessed:
-//
-//   swing    champion    spread    longest unbeaten
-//   off      76.4±1.5    47.3±1.8      14.8±0.8
-//   0.020    77.3±1.8    48.3±2.7      16.8±1.1
-//   0.035    79.8±1.7    51.9±2.1      16.4±1.2
-//
-// 0.020 is the largest value where the champion's total and the table's spread are both still
-// statistically indistinguishable from form being off, while the longest unbeaten run does move.
-// At 0.035 the champion gained 3.4 points and the spread 4.6, which is a real distortion of a
-// table shape that was already believable. Form did NOT make the league more predictable at any
-// setting — upset (mean |finish - skill rank|) held at 3.5 throughout — so the cost is the
-// stretch, not a loss of surprise.
-const FORM_SWING = 0.020;
 // Player form is an EMA of match ratings around the 6.5 baseline, so a player with no history
 // reads as neutral rather than as bad. One float per player instead of a rolling window: decay is
 // built in, nothing to migrate, and an absent value is simply 0.
@@ -2897,14 +1597,6 @@ function fixtureHorizon(schedule, ri, teamName, k = 3) {
 function koWinner(m) { if (!m.result || !m.home) return null; if (m.result.twoLeg) { if (m.result.partial) return null; if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const ah=m.result.agg.home, aa=m.result.agg.away; if (ah!==aa) return ah>aa?m.home:m.away; if (m.result.awayGoalsRule) return m.result.awayGoals.home>m.result.awayGoals.away?m.home:m.away; return m.home; } if (m.result.pen) return m.result.pen.home > m.result.pen.away ? m.home : m.away; const h = m.result.ftHome + (m.result.et?.home || 0), a = m.result.ftAway + (m.result.et?.away || 0); return h > a ? m.home : h < a ? m.away : m.home; }
 function koLoser(m) { const w = koWinner(m); return w === m.home ? m.away : m.home; }
 function koRoundName(total, ri) { const r = total / Math.pow(2, ri); return r === 2 ? "Final" : r === 4 ? "Semi-finals" : r === 8 ? "Quarter-finals" : `Round of ${r}`; }
-// Kicks scored by each side in a shootout. The full-time label carries this now that the
-// kick-by-kick panel is gone, so it must read straight off the kick arrays.
-const penScore = (pen) => [pen?.home?.filter(k => k.scored).length || 0, pen?.away?.filter(k => k.scored).length || 0];
-// Full-time label suffix: the shootout result outranks AET, which outranks the away-goals note.
-function ftSuffix({ pen, et, awayGoals }) {
-  if (pen) { const [h, a] = penScore(pen); return ` (${h}–${a} PENS)`; }
-  return et ? " (AET)" : awayGoals ? " (AG)" : "";
-}
 function koResultText(m) { if (!m.result) return null; if (m.result.twoLeg) { const r=m.result; if (r.partial) return `${r.leg1.home}–${r.leg1.away} (L1)`; let t=`${r.leg1.home}–${r.leg1.away} / ${r.leg2.away}–${r.leg2.home} (${r.agg.home}–${r.agg.away} agg.)`; if (r.et) t+=` AET`; if (r.pen) t+=` (${r.pen.home}–${r.pen.away} PENS)`; if (!r.et&&!r.pen&&r.agg.home===r.agg.away&&r.awayGoalsRule) t+=` (away goals)`; return t; } let t = `${m.result.ftHome}–${m.result.ftAway}`; if (m.result.et) t = `${m.result.ftHome + m.result.et.home}–${m.result.ftAway + m.result.et.away} AET`; if (m.result.pen) t += ` (${m.result.pen.home}–${m.result.pen.away} PENS)`; return t; }
 function propagateKO(ko) {
   // WB propagation (shared by single & double elim)
@@ -3416,28 +2108,6 @@ function parseVenuePool(text) {
     return { city: stripVenue(city), stadium: stripVenue(stadium) };
   }).filter(v => v.city || v.stadium);
 }
-// Long team names: instead of wrapping to a second line, clip to one line with a fade
-// at the edges and auto-scroll periodically so the full name is still readable over time.
-// Falls back to plain static text (respecting `align`) when the name already fits.
-function MarqueeName({ text, align = "left", style }) {
-  const outerRef = useRef(null);
-  const innerRef = useRef(null);
-  const [dist, setDist] = useState(0);
-  useEffect(() => {
-    const outer = outerRef.current, inner = innerRef.current;
-    if (!outer || !inner) return;
-    const measure = () => setDist(Math.max(0, inner.scrollWidth - outer.clientWidth));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(outer);
-    return () => ro.disconnect();
-  }, [text]);
-  return (
-    <span ref={outerRef} style={{ display: "block", overflow: "hidden", whiteSpace: "nowrap", ...style }}>
-      <span ref={innerRef} className={dist > 0 ? "marquee-name" : ""} style={dist > 0 ? { display: "inline-block", "--marquee-dist": `-${dist}px` } : { display: "block", textAlign: align }}>{text}</span>
-    </span>
-  );
-}
 // Renders text onto a <canvas> instead of a DOM text node — unlike a <span> (or an SVG
 // <text> element, which is just as editable a DOM node), there's nothing here for
 // Inspect Element's "Edit as HTML" to change; it's pixels, not markup. Doesn't protect
@@ -3446,42 +2116,6 @@ function MarqueeName({ text, align = "left", style }) {
 // The scoreboard lifts its text off the stadium photo with this shadow. Shared so the DOM text and
 // the canvas-rendered numbers beside it can't drift apart.
 const SCOREBOARD_SHADOW = "0 1px 3px rgba(0,0,0,0.75)";
-function CanvasText({ text, fontSize = 9, color = "--chrome-muted", title, shadow }) {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    const font = `${fontSize}px 'JetBrains Mono', monospace`;
-    const cs = getComputedStyle(canvas);
-    // A leading "--" means a CSS custom property to resolve (theme-aware); anything else
-    // (e.g. a literal "#ffffff") is used as-is — canvas fillStyle doesn't understand
-    // var() syntax, so a raw custom-property reference would silently paint nothing.
-    const resolvedColor = color.startsWith("--") ? (cs.getPropertyValue(color).trim() || "#7889a0") : color;
-    // Match whatever line-height this element would actually inherit here (the WC1933
-    // theme's global rule, or the browser/font default in Standard) instead of guessing a
-    // fixed ratio — same root cause as the scorer-row misalignment fixed earlier: two
-    // independently-sized boxes drift apart the moment their heights aren't forced equal.
-    const inheritedLH = parseFloat(cs.lineHeight);
-    const height = Number.isFinite(inheritedLH) && inheritedLH > 0 ? Math.ceil(inheritedLH) : Math.ceil(fontSize * 1.4);
-    const ctx = canvas.getContext("2d");
-    ctx.font = font;
-    const width = Math.ceil(ctx.measureText(text).width) + 2;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
-    ctx.scale(dpr, dpr);
-    ctx.font = font;
-    ctx.fillStyle = resolvedColor;
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, 0, height / 2);
-  }, [text, fontSize, color]);
-  // CSS text-shadow cannot reach glyphs painted into a canvas, so the same lift is applied as a
-  // drop-shadow filter on the element. Filters render outside the element box, so unlike a canvas
-  // shadowBlur this needs no extra padding and shifts nothing in the layout around it.
-  return <canvas ref={canvasRef} style={{ verticalAlign: "middle", display: "inline-block", ...(shadow ? { filter: `drop-shadow(${shadow})` } : null) }} />;
-}
 // Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
 // shield in the team's home color, outlined in its away color, if none exists.
 function TeamCrest({ team, size = 22, style }) {
@@ -3610,73 +2244,6 @@ const POS_W = {goal:{GK:0,DEF:5,MID:25,FWD:70},longGoal:{GK:0,DEF:10,MID:70,FWD:
   // forwards genuinely contribute, so FWD's share is highest there and DEF's lowest.
   defendBox:{GK:0,DEF:78,MID:19,FWD:3},defendCorner:{GK:0,DEF:68,MID:24,FWD:8},defendClear:{GK:0,DEF:70,MID:23,FWD:7},defendLongBall:{GK:0,DEF:58,MID:37,FWD:5},defendTurnover:{GK:0,DEF:38,MID:44,FWD:18},
   penalty:{GK:0,DEF:5,MID:35,FWD:60},any:{GK:0,DEF:25,MID:40,FWD:35},assist:{GK:0,DEF:10,MID:50,FWD:40},subOff:{GK:0,DEF:20,MID:40,FWD:40}};
-const FORM_BASE = { DEF: 4, MID: 3, FWD: 3 };
-function scalePosW(formation) {
-  const fc = parseFormation(formation);
-  const sc = { GK: 1, DEF: Math.pow(fc.DEF / FORM_BASE.DEF, 0.5), MID: Math.pow(fc.MID / FORM_BASE.MID, 0.5), FWD: Math.pow(fc.FWD / FORM_BASE.FWD, 0.5) };
-  const result = {};
-  for (const [pool, w] of Object.entries(POS_W)) {
-    const raw = { GK: w.GK * sc.GK, DEF: w.DEF * sc.DEF, MID: w.MID * sc.MID, FWD: w.FWD * sc.FWD };
-    const t = raw.GK + raw.DEF + raw.MID + raw.FWD;
-    result[pool] = t > 0 ? { GK: raw.GK / t * 100, DEF: raw.DEF / t * 100, MID: raw.MID / t * 100, FWD: raw.FWD / t * 100 } : w;
-  }
-  return result;
-}
-function computeMatchPosW(formation, style, strat) {
-  const base = scalePosW(formation);
-  const apply = (adj) => { for (const [pool, shifts] of Object.entries(adj)) { if (base[pool]) { const p = { ...base[pool] }; for (const [pos, d] of Object.entries(shifts)) p[pos] = Math.max(0, (p[pos]||0) + d); base[pool] = p; } } };
-  apply(FORM_DEFPOOL[formation] || {});
-  const st = strat || STRAT_DEF;
-  const tAdj = {};
-  if (st.pressingLOE) tAdj.defendTurnover = { DEF: -st.pressingLOE * 2, FWD: st.pressingLOE * 2 };
-  if (st.defLine) tAdj.defendBox = { DEF: -st.defLine * 2, MID: st.defLine * 2 };
-  if (st.tackling === 1) { tAdj.defendBox = { ...(tAdj.defendBox || {}), DEF: (tAdj.defendBox?.DEF||0) + 3, MID: (tAdj.defendBox?.MID||0) + 2, FWD: (tAdj.defendBox?.FWD||0) - 3 }; }
-  if (st.possLost === 1) { tAdj.defendTurnover = { ...(tAdj.defendTurnover || {}), DEF: (tAdj.defendTurnover?.DEF||0) - 3, FWD: (tAdj.defendTurnover?.FWD||0) + 3 }; }
-  else if (st.possLost === -1) { tAdj.defendTurnover = { ...(tAdj.defendTurnover || {}), DEF: (tAdj.defendTurnover?.DEF||0) + 3, FWD: (tAdj.defendTurnover?.FWD||0) - 3 }; }
-  apply(tAdj);
-  return base;
-}
-function buildChanceProfile(style, formation, strat, formPosW) {
-  const base = STYLE_CHANCE.balanced;
-  const fc = FORM_CHANCE[formation] || FORM_CHANCE["4-3-3"];
-  const st = strat || STRAT_DEF;
-  // tactic hop adjustments: chanceCreation (Work Ball In / Shoot On Sight), approachPlay (Play Out / Into Space), possWon (Hold Shape / Counter)
-  const tHop = [0,0,0,0,0];
-  if (st.chanceCreation === -1) { tHop[0] -= 4; tHop[1] -= 2; tHop[2] += 2; tHop[3] += 2; tHop[4] += 2; }
-  if (st.chanceCreation === 1) { tHop[0] += 4; tHop[1] += 2; tHop[2] -= 2; tHop[3] -= 2; tHop[4] -= 2; }
-  if (st.approachPlay === -1) { tHop[0] -= 2; tHop[2] += 1; tHop[3] += 1; }
-  if (st.approachPlay === 1) { tHop[0] += 2; tHop[2] -= 1; tHop[3] -= 1; }
-  if (st.possWon === -1) { tHop[0] -= 2; tHop[2] += 1; tHop[3] += 1; }
-  if (st.possWon === 1) { tHop[0] += 3; tHop[1] += 1; tHop[2] -= 2; tHop[3] -= 1; tHop[4] -= 1; }
-  const hopW = base.hopW.map((v, i) => Math.max(1, v + (fc.hopAdj[i] || 0) + tHop[i]));
-  const tDrib = (st.dribbling === 1 ? 0.06 : st.dribbling === -1 ? -0.04 : 0);
-  const dribbleP = Math.max(0.05, Math.min(0.50, base.dribbleP + fc.dribbleAdj + tDrib));
-  const tSolo = (st.possWon === 1 ? 0.01 : 0);
-  const soloBase = base.soloBase + fc.soloAdj + tSolo;
-  return { hopW, dribbleP, soloBase, formPosW };
-}
-function initMatchEnhancements(s) {
-  s.formPosW = { home: computeMatchPosW(s.formations.home, s.styles.home, s.strategy?.home), away: computeMatchPosW(s.formations.away, s.styles.away, s.strategy?.away) };
-  s.chanceProfile = {
-    home: buildChanceProfile(s.styles.home, s.formations.home, s.strategy?.home, s.formPosW.home),
-    away: buildChanceProfile(s.styles.away, s.formations.away, s.strategy?.away, s.formPosW.away),
-  };
-  const sm = (side) => STYLE_MOM.balanced;
-  const fm = (side) => FORM_MOM[s.formations?.[side]] || FORM_MOM["4-3-3"];
-  const tm = (side) => {
-    const st = s.strategy?.[side] || STRAT_DEF;
-    let m = 1.0, d = 1.0;
-    if (st.timeWasting === 1) { m *= 0.9; d *= 0.85; }
-    if (st.timeWasting === 2) { m *= 0.75; d *= 0.7; }
-    if (st.possLost === 1) { m *= 1.1; d *= 1.1; }
-    if (st.possLost === -1) { m *= 0.9; d *= 0.9; }
-    return { mult: m, decay: d };
-  };
-  s.momProfile = {
-    home: { mult: sm("home").mult * fm("home").mult * tm("home").mult, decay: sm("home").decay * fm("home").decay * tm("home").decay },
-    away: { mult: sm("away").mult * fm("away").mult * tm("away").mult, decay: sm("away").decay * fm("away").decay * tm("away").decay },
-  };
-}
 function pickPlayer(rng, players, type, overridePosW) {
   if (!players || players.length === 0) return {name:"?",pos:"MID",atkW:0};
   if (!players[0]?.pos) return {name:String(pick(rng,players)),pos:"MID",atkW:0};
@@ -3885,9 +2452,6 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
 // 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
 const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
 const PSTATS_KIND = { wc: 0, cwc: 2 };            // anything else is a league season
-const PSTATS_INTL = new Set(["wc"]);
-const PSTATS_BOARD = { G: "Top Scorers", A: "Assists", RTG: "Best Rating",
-                       CC: "Chances Created", DC: "Defensive Contributions", SV: "Saves" };
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 const FORMER_TEAMS = { CAL: "Calveria", THO: "The Thorne", LEC: "Lechia" };
 const formerName = (code) => FORMER_TEAMS[code] || code;
@@ -5025,62 +3589,9 @@ const XI_STEPS = (() => {
 // behind a 79 and a 79 who happened to be exact. Four puts it back where it was.
 const XI_STEP_MAX = 2, XI_OOP_PENALTY = 4;
 const xiSteps = (natural, slot) => XI_STEPS[natural]?.[slot] ?? Infinity;
-const POS_ORDER = {GK:0,DEF:1,MID:2,FWD:3};
-// Bolds the given player name(s) wherever they appear in an already-filled commentary string.
-function boldNames(txt, names, clr) {
-  const valid = [...new Set((Array.isArray(names) ? names : [names]).filter(Boolean))];
-  if (!valid.length) return txt;
-  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const rx = new RegExp("(" + valid.map(esc).join("|") + ")");
-  return txt.split(rx).map((part, i) => valid.includes(part) ? <span key={"bn" + i} style={{ fontWeight: 700, color: clr || "var(--ui-text)" }}>{part}</span> : part);
-}
-// Goal text bolds the scorer AND (when present) the assister by parsing "X (POS) ... Assisted
-// by Y (POS)." structure directly, rather than boldNames' single-name-lookup — a goal is the
-// one event type where two different players' names both need their own bold span. Falls back
-// to boldNames (scorer only) if the text doesn't match the expected shape.
-// The commentary prints the abbreviated name ("T. Hawthorne") while the event stores the full one
-// ("Trent Hawthorne"), so the scorer cannot be found by a literal lookup on playerFull alone. Both
-// forms are tried, because finding the name is the only reliable way to bold it: the old approach
-// took everything between the first full stop and the position tag, and a team whose name contains
-// full stops broke it outright — "E.S.U. 1, Guandong 0. T. Hawthorne (FWD)" bolded from "S.U."
-// onward, scoreline and all.
-const nameForms = (full) => {
-  const { first, last } = splitFullName(full);
-  const initial = first.trim().charAt(0);
-  return [full, initial ? initial + ". " + last : null].filter(Boolean);
-};
-function styledGoalText(txt, playerFull, clr) {
-  const parts = []; let rest = txt;
-  const printed = nameForms(playerFull).find(f => txt.includes(f));
-  if (printed) {
-    const at = txt.indexOf(printed);
-    parts.push(txt.slice(0, at));
-    parts.push(<span key="s" style={{ fontWeight: 700, color: clr }}>{printed}</span>);
-    rest = txt.slice(at + printed.length);
-  } else {
-  // Greedy, so the prefix runs to the LAST full stop before the position tag rather than the first.
-  const scorerMatch = rest.match(/^(.+\.\s*)(.+?)(\s*\([A-Z]+\)\s*)/);
-  if (!scorerMatch) return boldNames(txt, playerFull, clr);
-  parts.push(scorerMatch[1]);
-  parts.push(<span key="s" style={{ fontWeight: 700, color: clr }}>{scorerMatch[2]}</span>);
-  parts.push(scorerMatch[3]);
-  rest = rest.slice(scorerMatch[0].length);
-  }
-  const astMatch = rest.match(/(.*?Assisted by\s*)(.+?)(\s*\([A-Z]+\)\.?)$/);
-  if (astMatch) {
-    parts.push(astMatch[1]);
-    parts.push(<span key="a" style={{ fontWeight: 700, color: clr }}>{astMatch[2]}</span>);
-    parts.push(astMatch[3]);
-  } else {
-    parts.push(rest);
-  }
-  return parts;
-}
-const evColor = { goal: "var(--ui-text)", penalty: "var(--ui-attack)", chance: "var(--ui-warn)", red: "var(--ui-danger)", second_yellow: "var(--ui-danger)", pen_miss: "var(--ui-danger)", yellow: "var(--ui-warn)", save: "var(--ui-text)", miss: "var(--ui-text)", sub: "var(--ui-sub)", injury: "var(--ui-injury)", press: "var(--ui-text)", counter: "var(--ui-text)", phase: "var(--ui-text)", foul: "var(--ui-text)", corner: "var(--ui-text)", neutral: "var(--ui-text)", offside: "var(--ui-text)", buildup: "var(--ui-text)", clearance: "var(--ui-text)" };
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
 const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
 const shortName = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; if (p.length === 2 && NAME_PFX.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!NAME_PFX.has(p[i].toLowerCase())) { let s = i; while (s > 1 && NAME_PFX.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
-const gvSn = shortName;
 // Splits a full display name into {first, last}, using the same prefix-aware surname
 // boundary as shortName above, so "Kevin Van Der Berg" bolds as "Kevin **Van Der Berg**".
 const splitFullName = (n) => {
@@ -5161,182 +3672,7 @@ const boldSurname = (n, abbrev) => {
 // identically, in the resolved-outcome view and in the chance preview; the two differ only
 // in what they draw ON it. The geometry is fixed, so it takes no arguments, and the
 // constants are shared so a change to the mouth cannot move one view and not the other.
-const GV_W = 220, GV_L = 25, GV_R = 195, GV_T = 10, GV_B = 82;
-function gvGoalFrame() {
-  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B;
-  return (<g>
-      <rect x="3" y={gB+2} width={W-6} height="18" fill="var(--ui-pitch-deep)" rx="2" />
-      <rect x="3" y={gB+2} width={W-6} height="4" fill="var(--ui-pitch-mid)" rx="1" opacity="0.4" />
-      <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="var(--ui-pitch-dark)" rx="1" />
-      {[0,1,2,3,4,5].map(i=><line key={"h"+i} x1={gL+3} y1={gT+3+i*12} x2={gR-3} y2={gT+3+i*12} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-      {[0,1,2,3,4,5,6,7,8,9].map(i=><line key={"v"+i} x1={gL+6+i*16.4} y1={gT+3} x2={gL+6+i*16.4} y2={gB-3} stroke="var(--chrome-muted)" strokeWidth="0.5" opacity="0.06" />)}
-      <rect x={gL} y={gT} width={gR-gL} height={gB-gT} fill="none" stroke="var(--chrome-muted)" strokeWidth="3" rx="1" />
-      <line x1={gL+1.5} y1={gT+3} x2={gL+1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-      <line x1={gR-1.5} y1={gT+3} x2={gR-1.5} y2={gB-2} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-      <line x1={gL+3} y1={gT+1.5} x2={gR-3} y2={gT+1.5} stroke="var(--ui-goal-frame)" strokeWidth="0.8" opacity="0.2" />
-      <line x1={gL+57} y1={gT} x2={gL+57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-      <line x1={gR-57} y1={gT} x2={gR-57} y2={gB} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-      <line x1={gL} y1={(gT+gB)/2} x2={gR} y2={(gT+gB)/2} stroke="var(--chrome-muted)" strokeWidth="0.4" opacity="0.25" />
-  </g>);
-}
 
-// Front-on goal mouth: ball animates from the grass to its zone, keeper dives. Used for all goals and penalty misses.
-function gvGoalMouth(gv, delay) {
-  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B;
-  const zone = gv.goalZone ?? 4, dive = gv.dive ?? 1, result = gv.result || "goal";
-  const zPos = [[gL+26,gT+20],[gL+85,gT+16],[gR-26,gT+20],[gL+26,gB-18],[gL+85,gB-14],[gR-26,gB-18]];
-  // Pushed outside the frame so a miss reads as unambiguously off target rather than
-  // looking like it grazed the inside — but scaled by how close the commentary said the
-  // miss was ("side netting" should sit just past the post, not out with "row Z").
-  const missOff = gv.missCloseness === "close" ? 0.4 : gv.missCloseness === "wild" ? 1.3 : 1;
-  const mPos = [[gL-14*missOff,gT-16*missOff],[gL+85,gT-19*missOff],[gR+14*missOff,gT-16*missOff],[gL-16*missOff,gB+15*missOff],[gL+85,gB+19*missOff],[gR+16*missOff,gB+15*missOff]];
-  // Woodwork sits right on the frame boundary itself — the whole point is it struck the
-  // post or bar, not that it missed it.
-  const wPos = [[gL,gT],[gL+85,gT],[gR,gT],[gL,gB],[gL+85,gB],[gR,gB]];
-  const dX = [(gL+gR)/2-44,(gL+gR)/2,(gL+gR)/2+44], dY = (gT+gB)/2+4;
-  const pos = result === "miss" ? mPos[zone] : result === "woodwork" ? wPos[zone] : zPos[zone];
-  const col = result === "goal" ? "var(--ui-ok)" : "var(--ui-danger)";
-  const bx = (gL+gR)/2, by = gB+13;
-  const saved = result === "save";
-  const d = Math.max(0, delay || 0);
-  return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    {gvGoalFrame()}
-    <g className="gv-anim" style={{ "--gv-kdx": (dX[1]-dX[dive])+"px", animation: "gvKeep 0.3s ease-out "+(d+0.12).toFixed(2)+"s both" }}>
-      <text x={dX[dive]} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" style={{opacity: saved ? 1 : 0.25}}>🧤</text>
-    </g>
-    <g className="gv-anim" style={{ "--gv-bdx": (pos[0]-bx)+"px", "--gv-bdy": (pos[1]-by)+"px", animation: "gvBallTo 0.45s cubic-bezier(0.25,0.8,0.4,1) "+d.toFixed(2)+"s both" }}>
-      <circle cx={bx} cy={by} r="7" fill={col} stroke="var(--chrome-panel)" strokeWidth="1" />
-      <text x={bx} y={by+1} textAnchor="middle" dominantBaseline="middle" fill="var(--chrome-panel)" fontSize="8" fontWeight="800">{result==="goal"?"✓":result==="save"?"✕":"×"}</text>
-    </g>
-    {result !== "miss" && <circle cx={pos[0]} cy={pos[1]} r="5" fill="none" stroke={col} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(d+0.42).toFixed(2)+"s both" }} />}
-  </svg>);
-}
-// Overhead build-up pitch: assist pass line, then shot line, ball traveling along both. Attacking goal on the right.
-// staticAssist: when the build-up pass has already been shown (a chance's own hops during
-// its click-through, or this shot's own step-0 anticipation card), the assist portion draws
-// in immediately instead of re-animating — only the shot-to-goal portion plays, so revealing
-// the outcome doesn't replay ground the viewer already covered.
-function gvPitch(gv, clr, staticAssist) {
-  const S = [gv.shotFrom.x*2, gv.shotFrom.y*2];
-  const A = gv.assistFrom ? [gv.assistFrom.x*2, gv.assistFrom.y*2] : null;
-  const G = [199, 65];
-  const len1 = A ? Math.hypot(S[0]-A[0], S[1]-A[1]) : 0;
-  const len2 = Math.hypot(G[0]-S[0], G[1]-S[1]);
-  const t2 = (A && !staticAssist) ? 0.9 : 0.1;
-  const lx = (x, lim) => Math.max(26, Math.min(lim, x));
-  const ly = (y) => y < 16 ? y+13 : y-8;
-  const dotClr = clr || "var(--ui-text)";
-  return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
-    <rect x="1" y="1" width="198" height="128" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="2" />
-    <line x1="100" y1="1" x2="100" y2="129" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="17" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="1" fill="var(--chrome-muted-44)" />
-    <rect x="166" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <rect x="188" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="176" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
-    <rect x="1" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <rect x="1" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="24" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
-    <rect x="199" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
-    <rect x="-2.5" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
-    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
-    <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
-    {A && (staticAssist
-      ? <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} stroke="var(--ui-text-66)" strokeWidth="1.1" />
-      : <line x1={A[0]} y1={A[1]} x2={S[0]} y2={S[1]} className="gv-anim" stroke="var(--ui-text-66)" strokeWidth="1.1" strokeDasharray={len1} style={{ "--gv-len": len1+"px", animation: "gvLine 0.8s ease-in-out both" }} />
-    )}
-    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
-    <line x1={S[0]} y1={S[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-text-cc)" strokeWidth="1.4" strokeDasharray={len2} style={{ "--gv-len": len2+"px", animation: "gvLine 0.5s ease-in "+t2.toFixed(2)+"s both" }} />
-    {A && <g>
-      <circle cx={A[0]} cy={A[1]} r="4" fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity="0.95" />
-      <text x={lx(A[0],194)} y={ly(A[1])} textAnchor="middle" fill="var(--ui-text)" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.assist)}</text>
-    </g>}
-    <circle cx={S[0]} cy={S[1]} r="4" fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity="0.95" />
-    <text x={lx(S[0],194)} y={ly(S[1])} textAnchor="middle" fill="var(--ui-text)" fontSize="7" fontFamily="monospace" fontWeight="600">{gvSn(gv.scorer)}</text>
-    {A && !staticAssist && <g className="gv-anim" style={{ "--gv-dx": (S[0]-A[0])+"px", "--gv-dy": (S[1]-A[1])+"px", animation: "gvBallA 0.8s ease-in-out both" }}>
-      <circle cx={A[0]} cy={A[1]} r="2.8" fill="var(--ui-text)" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
-    </g>}
-    <g className="gv-anim" style={{ "--gv-dx": (G[0]-S[0])+"px", "--gv-dy": (G[1]-S[1])+"px", animation: "gvBallB 0.5s ease-in "+t2.toFixed(2)+"s both" }}>
-      <circle cx={S[0]} cy={S[1]} r="2.8" fill="var(--ui-text)" stroke="var(--chrome-bg2)" strokeWidth="0.8" />
-    </g>
-    <circle cx={G[0]} cy={G[1]} r="4" fill="none" stroke="var(--ui-ok)" strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gvBurst 0.5s ease-out "+(t2+0.5).toFixed(2)+"s both" }} />
-  </svg>);
-}
-// Click-through build-up pitch for "chance" events: reveals chain[0..step] one hop at a
-// time, each new segment mounting fresh (real React mount, not a key-remount trick) so its
-// CSS line-draw animation plays on every Next/Back the same way it would the first time.
-function gvChancePitch(chain, clr, step, shotGv, replay) {
-  const dotClr = clr || "var(--ui-text)";
-  const pts = chain.map(h => [h.pos.x*2, h.pos.y*2]);
-  const s = Math.max(0, Math.min(step, pts.length - 1));
-  const FS = 5.5, LH = FS + 3;
-  const placed = [];
-  const labels = [];
-  for (let i = 0; i <= s; i++) {
-    const isDrib = i > 0 && chain[i].name === chain[i-1].name;
-    if (isDrib && i !== s) continue;
-    const name = gvSn(chain[i].name);
-    const hw = name.length * FS * 0.31;
-    const px = Math.max(hw + 2, Math.min(198 - hw, pts[i][0]));
-    const py = pts[i][1];
-    let ly = py > 20 ? py - 8 : py + 12;
-    for (const p of placed) { if (Math.abs(px - p.x) < hw + p.hw + 3 && Math.abs(ly - p.y) < LH) { ly = ly > py ? py - 8 : py + 12; break; } }
-    placed.push({ x: px, y: ly, hw });
-    labels.push({ idx: i, x: px, y: ly, name });
-  }
-  return (<svg viewBox="-3 -6 206 142" overflow="visible" style={{ width: "100%", maxWidth: 280, height: "auto", display: "block" }}>
-    <rect x="1" y="1" width="198" height="128" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.8" rx="2" />
-    <line x1="100" y1="1" x2="100" y2="129" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="17" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <circle cx="100" cy="65" r="1" fill="var(--chrome-muted-44)" />
-    <rect x="166" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <rect x="188" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="176" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
-    <rect x="1" y="28" width="33" height="74" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.6" />
-    <rect x="1" y="44" width="11" height="42" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="24" cy="65" r="0.8" fill="var(--chrome-muted-44)" />
-    <rect x="199" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
-    <rect x="-2.5" y="56" width="3.5" height="18" fill="var(--chrome-muted-22)" stroke="var(--chrome-muted-66)" strokeWidth="0.7" />
-    <path d="M1 5 A4 4 0 0 0 5 1" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M195 1 A4 4 0 0 0 199 5" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M5 129 A4 4 0 0 0 1 125" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M199 125 A4 4 0 0 0 195 129" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-    <path d="M166 50 A18 18 0 0 0 166 80" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <path d="M34 80 A18 18 0 0 0 34 50" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.5" />
-    <circle cx="199" cy="56" r="1.2" fill="var(--chrome-muted-66)" />
-    <circle cx="199" cy="74" r="1.2" fill="var(--chrome-muted-66)" />
-    {pts.slice(1, s + 1).map((p, i) => { const prev = pts[i]; const len = Math.hypot(p[0]-prev[0], p[1]-prev[1]); const newest = i === s - 1; const anim = (replay || newest) ? { className: "gv-anim", strokeDasharray: len, style: { "--gv-len": len+"px", animation: `gvLine 0.4s ease-in ${replay ? (i*0.4).toFixed(2)+"s " : ""}both` } } : {}; return (<g key={"seg"+i}>
-      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" {...anim} />
-      <line x1={prev[0]} y1={prev[1]} x2={p[0]} y2={p[1]} stroke="var(--ui-text-cc)" strokeWidth="1.4" {...anim} />
-    </g>); })}
-    {pts.slice(0, s + 1).map((p, i) => { const isDrib = i > 0 && chain[i].name === chain[i-1].name; const lb = labels.find(l => l.idx === i); const newest = i === s; const dAnim = (replay || newest) ? { className: "gv-anim", style: { animation: `gvDotIn 0.15s ease-out ${replay ? ((i === 0 ? 0 : (i-1)*0.4+0.3).toFixed(2)+"s ") : ""}both` } } : {}; return (<g key={"dot"+i} {...dAnim}>
-      <circle cx={p[0]} cy={p[1]} r={isDrib && i !== s ? 2.5 : 4} fill={dotClr} stroke="var(--ui-text)" strokeWidth="1" opacity={isDrib && i !== s ? 0.6 : 0.95} />
-      {lb && <text x={lb.x} y={lb.y} textAnchor="middle" fill="var(--ui-text-cc)" fontSize={FS} fontFamily="monospace" fontWeight="500">{lb.name}</text>}
-    </g>); })}
-    <circle cx={pts[s][0]} cy={pts[s][1]} r="5" fill="none" stroke={dotClr} strokeWidth="1.5" className="gv-anim" style={{ transformBox: "fill-box", transformOrigin: "center", animation: `gvBurst 1.2s ease-out ${replay ? ((s > 0 ? (s-1)*0.4+0.35 : 0).toFixed(2)+"s ") : ""}infinite both` }} />
-    {shotGv && (() => { const G = [199, 65], last = pts[s], sLen = Math.hypot(G[0]-last[0], G[1]-last[1]); return (<>
-      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-ok-22)" strokeWidth="5" strokeLinecap="round" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
-      <line x1={last[0]} y1={last[1]} x2={G[0]} y2={G[1]} className="gv-anim" stroke="var(--ui-text-cc)" strokeWidth="1.4" strokeDasharray={sLen} style={{ "--gv-len": sLen+"px", animation: `gvLine 0.5s ease-in ${replay ? (s*0.4).toFixed(2)+"s " : ""}both` }} />
-    </>); })()}
-  </svg>);
-}
-// Static "goal they're now facing" preview for a chance card — an honest empty-goal frame,
-// no ball, no result. Deliberately not gvGoalMouth: that component's whole visual grammar is
-// built around showing an already-resolved outcome, which a chance, by definition, isn't yet.
-function gvChanceGoalPreview() {
-  const W = GV_W, gL = GV_L, gR = GV_R, gT = GV_T, gB = GV_B,
-        dX = (gL + gR) / 2, dY = (gT + gB) / 2 + 4;
-  return (<svg viewBox="0 -12 220 136" style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}>
-    {gvGoalFrame()}
-    <text x={dX} y={dY} textAnchor="middle" dominantBaseline="middle" fontSize="22" opacity="0.35">🧤</text>
-  </svg>);
-}
 // Narrowest window the app will render in. Below it the app is not shown at all — a layout built
 // for width degrades into something misleading rather than merely cramped, and a wrong-looking
 // table is worse than an honest refusal.
@@ -6214,9 +4550,9 @@ export default function App() {
                     return [natRow(g, vs.length, open),
                       ...(open ? vs.map(v => row("o" + v.stadium, isSel(v.stadium), () => onPick(v.stadium), v.stadium, groundSub(v), v.img)) : [])];
                   });
-                  const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
-                  const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); setLmMatch(null); };
-                  const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); setLmMatch(null); };
+                  const pickNeutral = () => { setLmHomeAdv(null); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); };
+                  const pickHost = (side) => { setLmHomeAdv(side); setLmNeutralVenueName(""); setLmNeutralVenueLoc(""); };
+                  const pickGround = (st) => { setLmHomeAdv(null); setLmNeutralVenueName(st); setLmNeutralVenueLoc(byStadium.get(st)?.city || ""); };
                   // A tournament fixture picks from what the tournament allows and writes to its
                   // overrides — the rows are the standalone ones so the panel looks no different.
                   if (lmLocked && lmVc) {
@@ -6341,21 +4677,18 @@ export default function App() {
     // THE VENUE AND THE STAKES, which this builder never carried. Everything above is about the two
     // squads; these three are about the match, and without them the ground you pick on the setup
     // screen did nothing at all to a live match. The values were being computed and written onto
-    // lmMatch, which is the ABSTRACT engine's state object -- a different thing from the st the
-    // positional engine actually runs on, so they were set and then never read by anybody.
     st.homeAdv = tn ? (tn.homeAdv || null) : (lmHomeAdv || null);
     // The tournament's own switch. It gated the abstract sim and nothing else, so turning injuries
     // off left every fixture still producing them.
     st.injuriesOn = tConfig.injuries !== false;
-    // Two sources, because there are two ways in. The Venue Selector on the Live Match tab writes
-    // lmNeutralVenueName/Loc; the tournament's Play Live writes the venue onto lmMatch instead. This
-    // builder was reading neither, so a positional match had no venue at all.
+    // A tournament fixture carries its own venue; the Live Match tab's Venue Selector writes
+    // lmNeutralVenueName/Loc. There is no third source any more.
     st.venue = tn ? (tn.venue || null)
       : (lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()))
       ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() }
-      : (lmMatch?.venue || null);
-    st.matchUrg = tn ? tn.matchUrg : (lmMatch?.matchUrg || { home: 0, away: 0 });
-    st.teamForm = lmMatch?.teamForm || { home: 0, away: 0 };
+      : null;
+    st.matchUrg = tn ? tn.matchUrg : { home: 0, away: 0 };
+    st.teamForm = { home: 0, away: 0 };
     st.possession = "home";
     // The rng is built BEFORE meInit, because meInit now uses it: the toss for who kicks off, where
     // the twenty-two actually line up, and which of the forward men rolls it. Without it every match
@@ -7372,25 +5705,15 @@ export default function App() {
   const [lmNeutralVenueName, setLmNeutralVenueName] = useState("");
   const [lmNeutralVenueLoc, setLmNeutralVenueLoc] = useState("");
   const [lm2ndLeg, setLm2ndLeg] = useState(false);
-  const [lmMatch, setLmMatch] = useState(null);
   // "subs" | "tactics" | null. Both are overlays rather than panels: the live tab has to fit one
   // viewport with nothing scrolling, and these two are the only blocks whose height is unbounded.
   const [lmPanel, setLmPanel] = useState(null);
   const [lmStartScore, setLmStartScore] = useState([0, 0]);
-  const lmRng = useRef(null);
-  const lmFeedRef = useRef(null);
   const [manualSub, setManualSub] = useState({side:null,off:null});
   const [preSwap, setPreSwap] = useState({side:null,off:null});
   const [gvReplayKeys, setGvReplayKeys] = useState({});
-  const [chanceStep, setChanceStep] = useState({});
   const [goalFlash, setGoalFlash] = useState(null);
-  const [autoPlay, setAutoPlay] = useState(false);
-  const [autoSpeed, setAutoSpeed] = useState(1500);
   const [lmAutoSubs, setLmAutoSubs] = useState(true);
-  const [lmStopOnEvents, setLmStopOnEvents] = useState(false);
-  const autoRef = useRef(null);
-  const lmMatchRef = useRef(null); lmMatchRef.current = lmMatch;
-  const chanceStepRef = useRef({}); chanceStepRef.current = chanceStep;
   const exportBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length) return;
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
@@ -7713,7 +6036,6 @@ export default function App() {
     document.body.appendChild(a); a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   };
-  const [lastLiveResult, setLastLiveResult] = useState(null);
 
   // ─── TOURNAMENT ───
   const [tPhase, setTPhase] = useState("setup");
@@ -7883,77 +6205,6 @@ export default function App() {
     const resetReady = isDE && !!tKO.reset?.home && !!tKO.reset?.away && !tKO.reset.result;
     return { wbRi, lbRi, tpReady, gfReady, resetReady };
   }, [tKO]);
-  // Every advance pins the feed to the bottom. Not events.length alone: stepping through a chance
-  // grows the last card instead of adding an event, and a minute that produces nothing still moves
-  // the clock — both left the newest content below the fold.
-  // Keyed on the match itself. Naming the four things that were known to change — event count,
-  // minute, phase, chance step — meant anything else that redrew the feed left it where it was:
-  // a substitution, a card, a score, a replayed chance. lmAdvance clones the state on every step,
-  // so the object identity changes on every click and this fires for all of them.
-  // Layout effect, and again on the next frame: the row that was just added is measured before the
-  // browser paints, and the frame after catches anything that reflows late (a crest, a pitch graphic).
-  // Pinning on a state change is not enough on its own, and this is the third go at it. The feed's
-  // tallest content is a chance card carrying an inline pitch diagram and a goal preview, and it
-  // does not reach its final height in the commit that adds it — measure then and scrollHeight is
-  // short, so the pin lands mid-card and the card finishes growing underneath it. A single
-  // requestAnimationFrame afterwards catches some of that and not all of it.
-  // So the height itself is the trigger: a ResizeObserver on the content re-pins whenever the
-  // scrollable area changes size, whatever caused it — a card growing, an image arriving, a font
-  // swapping in. The state effect stays for the case where the height happens not to change.
-  const lmPinFeed = useCallback(() => {
-    const el = lmFeedRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, []);
-  useLayoutEffect(() => {
-    const el = lmFeedRef.current;
-    if (!el) return;
-    lmPinFeed();
-    const ro = new ResizeObserver(lmPinFeed);
-    // The scroller's own box never changes; what grows is the content inside it.
-    for (const child of el.children) ro.observe(child);
-    return () => ro.disconnect();
-  }, [lmMatch, chanceStep, lmPinFeed]);
-  useEffect(() => {
-    if (autoPlay && lmMatch && lmMatch.phase !== "finished") {
-      const delay = lmMatch.phase === "pre_match" ? 2000 : autoSpeed;
-      autoRef.current = setInterval(() => {
-        // Mirrors the manual button's own gating exactly: while something (a chance, or a
-        // standalone shot's own two-step reveal) is still mid-reveal, advance its step
-        // instead of ticking the simulation. Without this, auto-play would tick straight
-        // through lmAdvance on a timer, racing the underlying data ahead of whatever the
-        // user has actually seen — a later, ungated event (a penalty, say) could exist and
-        // render well before an earlier chance's own outcome had been clicked into view.
-        const pc = lmPendingChance(lmMatchRef.current, chanceStepRef.current);
-        if (pc) { if (pc.atEnd) { /* fall through to lmAdvance */ } else { setChanceStep(k => ({ ...k, [pc.idx]: Math.min(pc.totalSteps - 1, (k[pc.idx] || 0) + 1) })); return; } }
-        setLmMatch(prev => {
-          if (!prev || prev.phase === "finished") { setAutoPlay(false); return prev; }
-          const prevLen = prev.events.length;
-          const next = lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: prev.testMode ? TEST_SKILL : teamById(lmH).skill }, { name: teamById(lmA).name, skill: prev.testMode ? TEST_SKILL : teamById(lmA).skill });
-          // Re-resolve against `prev`, not the `pc` captured outside this updater from
-          // lmMatchRef — if another queued update landed between reading that ref and this
-          // updater actually running, `pc.idx` can point at the wrong event. Mutating the
-          // wrong event's chanceViz is worse than a no-op: cloneState only shallow-copies
-          // events, so that object reference is shared across every future snapshot too,
-          // corrupting it permanently (no more commentary or goals for the rest of the
-          // match) instead of just missing one update.
-          const freshPc = lmPendingChance(prev, chanceStepRef.current);
-          if(freshPc?.atEnd){const idx=freshPc.idx; const cv=next.events[idx]?.chanceViz;if(cv){cv._baseLen=cv.chain?.length||0;const newTotal=cv._baseLen+(cv.outcomeEvent?1:0);setChanceStep(k=>({...k,[idx]:Math.max(k[idx]||0,newTotal-1)}));}}
-          if (lmStopOnEvents) {
-            const stopPhases = new Set(["half_time", "full_time", "et_half_time", "et_full_time", "finished"]);
-            if (stopPhases.has(next.phase) && !stopPhases.has(prev.phase)) { setAutoPlay(false); }
-            else if (next.events.length > prevLen) {
-              const major = new Set(["goal", "red", "penalty", "chance"]);
-              for (let i = prevLen; i < next.events.length; i++) {
-                if (major.has(next.events[i].type)) { setAutoPlay(false); break; }
-              }
-            }
-          }
-          return next;
-        });
-      }, delay);
-      return () => clearInterval(autoRef.current);
-    } else { if (autoRef.current) clearInterval(autoRef.current); }
-  }, [autoPlay, autoSpeed, lmMatch, chanceStep, teams, lmH, lmA, lmStopOnEvents]);
 
   // ─── TEAM MGMT ───
   const addTeam = () => setTeams(t => [...t, { id: "Custom::" + Date.now() + "-" + t.length, league: "Custom", name: `Team ${t.length + 1}`, skill: 50, style: "balanced", formation: "4-3-3", strategy: {...STRAT_DEF} }]);
@@ -7968,36 +6219,11 @@ export default function App() {
       if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; })); };
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
-  // Capture finished live match result for tournament import
-  const lmPhase = lmMatch?.phase;
-  const prevScoreRef = useRef([0,0]);
-  useEffect(() => {
-    if (!lmMatch) return;
-    const dispScore = lmDisplayScore(lmMatch, chanceStep);
-    const [ph, pa] = prevScoreRef.current;
-    if (dispScore[0] > ph) { setGoalFlash("home"); setTimeout(() => setGoalFlash(null), 1200); }
-    else if (dispScore[1] > pa) { setGoalFlash("away"); setTimeout(() => setGoalFlash(null), 1200); }
-    prevScoreRef.current = dispScore;
-  }, [lmMatch?.score?.[0], lmMatch?.score?.[1], chanceStep]);
-  useEffect(() => {
-    if (lmPhase === "finished" && lmMatch) {
-      const allPlayers = (side) => [...(lmMatch.players?.[side]||[]), ...(lmMatch.subbedOff?.[side]||[])];
-      setLastLiveResult({
-        homeName: teamById(lmH)?.name, awayName: teamById(lmA)?.name,
-        homeCode: teamById(lmH)?.code, awayCode: teamById(lmA)?.code,
-        homeScore: lmMatch.score[0], awayScore: lmMatch.score[1],
-        goalscorers: structuredClone(lmMatch.goalscorers || {home:[],away:[]}),
-        homePlayers: allPlayers("home").map(p => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
-        awayPlayers: allPlayers("away").map(p => ({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,goals:p.goals||0,assists:p.assists||0,rating:+(p.rating||6.5).toFixed(1),yc:p.yc||0,rc:p.rc?1:0,rcVariant:p.rcVariant,inj:p.inj?1:0,injSev:p.injSev,injPart:p.injPart,chances:p.chances||0,defActs:p.defActs||0,saves:p.saves||0,stamina:p.stamina,sub:p.sub==='on'})),
-        penalties: lmMatch.penalties?.decided ? { homeScore: lmMatch.penalties.home.filter(k=>k.scored).length, awayScore: lmMatch.penalties.away.filter(k=>k.scored).length } : null
-      });
-    }
-  }, [lmPhase]);
 
   // Import live result into a tournament match
   const importLiveToMatch = (target, result) => {
-    const lr = result || lastLiveResult;
-    if (!lr) return;
+    if (!result) return;
+    const lr = result;
     const hg = lr.homeScore, ag = lr.awayScore;
     const isFlipped = target.flipped;
     const hPlayers = isFlipped ? lr.awayPlayers : lr.homePlayers;
@@ -9011,90 +7237,6 @@ export default function App() {
   const exportState = () => { setShowExport(!showExport); };
 
 
-  // ─── LIVE MATCH ───
-  const lmKickOff = () => { if (!teamById(lmH) || !teamById(lmA)) return; lmRng.current = new RNG(Date.now()); const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: teamById(lmH).skill, away: teamById(lmA).skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
-    const hSq = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
-    const aSq = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
-    // A match started here belongs to no tournament: bans, injuries and carried stamina are
-    // tournament state and must not follow players into an unrelated fixture. tPlayLive builds
-    // its own squads with that state applied; this path deliberately has none of it.
-    setTLiveTarget(null);
-    const unavail = new Set();
-    const stamData = null;
-    const hLive = splitAvailSquad(hSq, teamById(lmH).name, unavail, stamData);
-    const aLive = splitAvailSquad(aSq, teamById(lmA).name, unavail, stamData);
-    init.players = {home: hLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
-    ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    setLmMatch(init); setManualSub({side:null,off:null}); setPreSwap({side:null,off:null}); setExpandedTeam(null); setChanceStep({}); };
-  const lmTick = useCallback(() => { if (!lmMatch || !lmRng.current) return; setLmMatch(prev => { const _ts = prev?.testMode ? TEST_SKILL : null; return lmAdvance(prev, lmRng.current, { name: teamById(lmH).name, skill: _ts ?? teamById(lmH).skill }, { name: teamById(lmA).name, skill: _ts ?? teamById(lmA).skill }); }); }, [lmMatch, teams, lmH, lmA]);
-  const lmSimAll = () => { setLoading(true); setTimeout(() => { const rng = lmRng.current || new RNG(Date.now()); lmRng.current = rng; const _ts2 = lmMatch?.testMode ? TEST_SKILL : null; const h = { name: teamById(lmH).name, skill: _ts2 ?? teamById(lmH).skill }, a = { name: teamById(lmA).name, skill: _ts2 ?? teamById(lmA).skill }; const init = createMatchState(); init.forceResult = lmForce; init.teamSkill = { home: h.skill, away: a.skill }; init.styles = { home: teamById(lmH).style || "balanced", away: teamById(lmA).style || "balanced" }; init.formations = { home: teamById(lmH).formation || "4-3-3", away: teamById(lmA).formation || "4-3-3" }; initMatchEnhancements(init); init.allowTacChange = {home:lmAllowTac, away:lmAllowTac}; init.autoSubs = {home:lmAutoSubs, away:lmAutoSubs}; init.homeAdv = lmHomeAdv || null; init.venue = lmHomeAdv === null && (lmNeutralVenueName.trim() || lmNeutralVenueLoc.trim()) ? { stadium: lmNeutralVenueName.trim(), city: lmNeutralVenueLoc.trim() } : null; init.strategy = { home: { ...STRAT_DEF, ...(teamById(lmH).strategy || {}) }, away: { ...STRAT_DEF, ...(teamById(lmA).strategy || {}) } }; init.score = [0, 0]; init.startScore = [lmStartScore[0] || 0, lmStartScore[1] || 0]; init.isSecondLeg = lm2ndLeg; init.injuriesEnabled = tConfig.injuries !== false;
-    const hSq2 = teamById(lmH)?.squad || buildSquad(teamById(lmH)?.formation, null);
-    const aSq2 = teamById(lmA)?.squad || buildSquad(teamById(lmA)?.formation, null);
-    const isTournamentMatch = !!tLiveTarget;
-    const unavail2 = new Set();
-    if (isTournamentMatch) for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended || 0) > 0 || (v.injOut || 0) > 0) unavail2.add(k); }
-    const stamData2 = isTournamentMatch && tConfig.staminaCarry ? tPlayerStats : null;
-    const hLive2 = splitAvailSquad(hSq2, teamById(lmH).name, unavail2, stamData2);
-    const aLive2 = splitAvailSquad(aSq2, teamById(lmA).name, unavail2, stamData2);
-    init.players = {home: hLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0})), away: aLive2.starters.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:6.5,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0,chances:0,defActs:0,saves:0}))};
-    init.bench = {home: hLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0})), away: aLive2.bench.map(p=>({name:p.name,fullName:p.fullName,pos:p.pos,ovr:p.ovr,rating:null,stamina:p.stamina??100,goals:0,assists:0,sub:false,yc:0,rc:false,inj:false,atkW:p.atkW||0}))};
-    init.subCap = { home: subCapFor(init.bench.home), away: subCapFor(init.bench.away) };
-    ensureStartingGK(init.players.home); ensureStartingGK(init.players.away);
-    // Must read the match to continue from via this functional updater's prevMatch, not the
-    // closed-over lmMatch — autoplay's own interval can tick (and commit via its own
-    // setLmMatch(prev=>...)) during the 40ms setTimeout above, and computing off a stale
-    // closure value here would silently overwrite that newer state with a replay of an
-    // older one when this call finally commits.
-    setLmMatch(prevMatch => {
-      // If prevMatch already exists (set up via tPlayLive, with managerSelect's rotation and
-      // any pre-match lineup edits already applied), it must always win over the from-scratch
-      // squad rebuilt above — that rebuild has no rotation context at all and would silently
-      // discard the real lineup; still in "pre_match" phase is not the same as "never set up."
-      let s = prevMatch ? (prevMatch.phase === "pre_match" ? lmAdvance(cloneState(prevMatch), rng, h, a) : cloneState(prevMatch)) : lmAdvance(init, rng, h, a);
-      for (let i = 0; i < 300 && s.phase !== "finished"; i++) lmAdvance(s, rng, h, a, true);
-      return s;
-    });
-    setChanceStep({}); setAutoPlay(false); setLoading(false); }, 40); };
-  const executeManualSub = (side, offName, onName) => {
-    setLmMatch(prev => {
-      const s = cloneState(prev);
-      const dm = s.minute;
-      const sn = side === "home" ? teamById(lmH)?.name : teamById(lmA)?.name;
-      const offP = s.players[side].find(p => p.name === offName);
-      const onIdx = s.bench[side].findIndex(p => p.name === onName);
-      if (!offP || onIdx === -1 || s.subs[side] >= subLimit(s, side)) return prev;
-      const onP = s.bench[side].splice(onIdx, 1)[0];
-      onP.sub = 'on'; onP.startedBench = true; onP.rating = 6.5;
-      offP.sub = 'off';
-      s.subbedOff[side].push({...offP});
-      s.players[side] = s.players[side].filter(p => p.name !== offName);
-      s.players[side].push(onP);
-      s.subs[side]++;
-      { const offFull=offP.fullName||offName, onFull=onP.fullName||onName; const reason=fill(CM.sub_in[Math.floor(Math.random()*CM.sub_in.length)],{t:sn,n:onFull,x:offFull}); s.events.push({min:dm,type:"sub",team:side,text:"\uD83D\uDD04 "+sn+"'s "+offFull+" \u2192 "+onFull+". "+reason,offName:offFull,onName:onFull,reason,offPos:offP.pos,offRating:offP.rating,onPos:onP.pos}); }
-      return s;
-    });
-    setManualSub({side:null,off:null});
-  };
-  // Pre-kickoff lineup swap — a straight positional swap between starters/bench, no subs
-  // counter, no event log entry, no subbedOff record: nobody's actually played a minute yet.
-  const executePreMatchSwap = (side, offName, onName) => {
-    setLmMatch(prev => {
-      if (!prev || prev.phase !== "pre_match") return prev;
-      const s = cloneState(prev);
-      const offIdx = s.players[side].findIndex(p => p.name === offName);
-      const onIdx = s.bench[side].findIndex(p => p.name === onName);
-      if (offIdx === -1 || onIdx === -1) return prev;
-      const offP = s.players[side][offIdx], onP = s.bench[side][onIdx];
-      s.players[side][offIdx] = { ...onP, rating: 6.5 };
-      s.bench[side][onIdx] = { ...offP, rating: null };
-      return s;
-    });
-    setPreSwap({side:null,off:null});
-  };
-  const lmReset = () => { setAutoPlay(false); setLmMatch(null); };
-  const lmBl = lmMatch ? lmBtnLabel(lmMatch) : null;
   // One property, no state: re-rendering the whole tree on every drag frame is what a resize
   // listener usually costs, and setting a custom property on the root avoids all of it.
   useEffect(() => {
@@ -9106,7 +7248,6 @@ export default function App() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, []);
-  const lmIsSetup = !lmMatch;
   // A tournament fixture uses the same setup screen, with everything the tournament decides read-only.
   const lmLocked = !!tPendingPlayLive;
   const lmVc = tPendingPlayLive ? tResolveVenueContext(tPendingPlayLive) : null;
@@ -9126,12 +7267,10 @@ export default function App() {
     (lmPick === "home" ? setLmH : setLmA)(id);
     // The active slot deliberately does NOT flip: clicking twice should correct the slot you are
     // filling, not silently move to the other one.
-    setLmMatch(null);
   };
   // ─── TOURNAMENT ───
   const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;
   const tPerGroupMax = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.ceil(tournamentTeams.length / tConfig.numGroups) : 0;
-  const tDivisible = tournamentTeams.length > 0 && tConfig.numGroups > 0 && tournamentTeams.length % tConfig.numGroups === 0;
   const tHasGroups = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "groups");
   const tHasKO = tConfig.mode === "double" || (tConfig.mode === "single" && tConfig.singleType === "knockout");
   const qz = tConfig.qualZones || [];
@@ -10235,13 +8374,8 @@ export default function App() {
   // — a fixture with no HA (or a set-piece neutral venue name) shows that instead, rather than
   // defaulting to whichever team happens to sit in the "home" slot. Lifted out of the scoreboard
   // so the overview's meta block reads the identical chain and the two can never disagree.
-  // WHICH ENGINE'S STATE THE VENUE COMES FROM. lmMatch is the ABSTRACT engine's object and the
-  // positional engine keeps its own in meRef, never writing lmMatch. Both display sites below read
-  // venue and homeAdv off lmMatch, so a positional match showed either NOTHING -- the Venue Selector
-  // calls setLmMatch(null) on every pick -- or whatever a previous abstract kickoff left behind.
-  // That is the same class of bug as the venue not reaching the engine: two state objects for one
-  // match, and the newer engine wired to neither.
-  const lmVenueState = () => (meView !== "setup" && meRef.current?.s) ? meRef.current.s : lmMatch;
+  // One state object for one match: the positional engine's own, in meRef.
+  const lmVenueState = () => (meView !== "setup" && meRef.current?.s) ? meRef.current.s : null;
   const lmVenue = () => {
     const lm = lmVenueState();
     const host = lm?.homeAdv === "away" ? teamById(lmA) : lm?.homeAdv === "home" ? teamById(lmH) : null;
@@ -10589,311 +8723,6 @@ export default function App() {
     </div>);
   };
 
-  const renderScoreboard = (extra) => {
-    // Stadium photo is a faint backdrop, not a skin — team-color gradient stays
-    // ~70% opaque on top so colors still read as the dominant signal. Not theme-gated
-    // and not host-mode-gated: any match where a stadium name resolves (explicit
-    // tournament/neutral venue, or falling back to whichever team holds home
-    // advantage's own ground) shows its photo if one exists in /stadiums, same
-    // fallback chain as venueText below so the two never disagree.
-    // Stadium images live at /stadiums/<exact stadium name>.jpg or .jpeg (tries both —
-    // a missing/wrong-extension file just renders no photo, background-image 404s
-    // are silent, so this isn't hunted down as a JS error).
-    const _lmv = lmVenueState();
-    const hostTeam = _lmv?.homeAdv === "away" ? teamById(lmA) : _lmv?.homeAdv === "home" ? teamById(lmH) : null;
-    // stripVenue here (not at each input site) because a team's own .stadium field is
-    // free-typed in the team editor, unlike the bulk-import/host-pool parsers which
-    // already strip population/capacity suffixes before they ever reach this point.
-    const venueStadium = stripVenue(_lmv?.venue?.stadium || hostTeam?.stadium || "") || null;
-    // Accented names (Chūkyō, etc.) can round-trip through Unicode normalization
-    // differently than the file was saved with — macOS Finder/drag-drop commonly writes
-    // NFD (decomposed: u + combining macron) while typed/pasted text is usually NFC
-    // (precomposed). Same visible name, different bytes, so try both forms — a no-op
-    // when the name has nothing to normalize (plain ASCII names hit the same URL twice).
-    // BASE_URL (not a hardcoded leading "/") because this deploys to GitHub Pages under
-    // /avium-football-engine/, not domain root — an absolute "/stadiums/..." resolves
-    // against the wrong root there even though it works fine locally, same as how the
-    // crest badges above already do it.
-    const stadiumFileName = venueStadium || null;
-    const stadiumUrlNFC = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFC"))}` : null;
-    const stadiumUrlNFD = stadiumFileName ? `${import.meta.env.BASE_URL}stadiums/${encodeURIComponent(stadiumFileName.normalize("NFD"))}` : null;
-    const scoreboardBg = venueStadium
-      ? `linear-gradient(90deg, ${hClr2}b3 0%, ${hClr2}b3 40%, ${aClr2}b3 60%, ${aClr2}b3 100%), url("${stadiumUrlNFC}.jpg"), url("${stadiumUrlNFC}.jpeg"), url("${stadiumUrlNFD}.jpg"), url("${stadiumUrlNFD}.jpeg")`
-      : `linear-gradient(90deg, ${hClr2}88 0%, ${hClr2}88 40%, ${aClr2}88 60%, ${aClr2}88 100%)`;
-    return (
-    <div style={{ background: scoreboardBg, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "14px 20px 12px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 20px var(--ui-shadow-3)", textShadow: SCOREBOARD_SHADOW, ...extra }}>
-      {/* Venue + POTM sticker */}
-      {lmMatch.phase === "pre_match" && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", marginBottom: 10 }}>PRE-MATCH</div>}
-      {/* Pre-match tactical preview */}
-      {lmMatch.phase === "pre_match" && (()=>{
-        const SC = STYLE_CLR;
-        const sn = shortName;
-        const staminaClr = (v) => v > 60 ? "var(--chrome-muted)" : v > 30 ? "var(--ui-warn)" : "var(--ui-danger)";
-        const PitchSVG = ({starters, formation}) => {
-          const FPOS = {
-            "4-4-2":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
-            "4-3-3":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
-            "4-2-3-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
-            "4-1-4-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
-            "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
-            "4-3-2-1": [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
-            "4-2-4":   [[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
-            "3-4-3":   [[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
-            "3-5-2":   [[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
-            "3-4-1-2": [[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
-            "5-3-2":   [[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
-          };
-          const pitchPos2 = FPOS[formation] || (() => {
-            const layers = (formation||"4-3-3").split("-").map(Number);
-            const nR = layers.length+1, yT=12, yB=90, rG=(yB-yT)/(nR-1);
-            const pts = [{x:50,y:yB}];
-            // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
-            layers.forEach((c,li)=>{const y=yB-(li+1)*rG;const hs=c<=1?0:Math.max(35,11*(c-1));const lo=50-hs;const gap=c<=1?0:(2*hs)/(c-1);for(let j=0;j<c;j++){pts.push({x:c===1?50:lo+j*gap,y});}});
-            return pts;
-          })();
-          const pp = pitchPos2.map(p => Array.isArray(p) ? {x:p[0],y:p[1]} : p);
-          return (<svg viewBox="-10 0 120 100" style={{ width: "100%", height: "auto" }}>
-            <rect x="1" y="1" width="98" height="98" fill="var(--chrome-bg2)" stroke="var(--chrome-muted-44)" strokeWidth="0.6" rx="1.5" />
-            <rect x="26" y="1" width="48" height="13" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-            <rect x="37" y="1" width="26" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.35" />
-            <rect x="26" y="86" width="48" height="13" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-            <rect x="37" y="94" width="26" height="5" fill="none" stroke="var(--chrome-muted-33)" strokeWidth="0.35" />
-            <circle cx="50" cy="50" r="9" fill="none" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-            <circle cx="50" cy="50" r="0.6" fill="var(--chrome-muted-44)" />
-            <line x1="1" y1="50" x2="99" y2="50" stroke="var(--chrome-muted-44)" strokeWidth="0.5" />
-            {starters.map((p, pi) => {
-              const pos = pp[pi]; if (!pos) return null;
-              return (<g key={pi}>
-                <circle cx={pos.x} cy={pos.y} r="3.2" fill={POS_CLR[p.pos]||"#888"} opacity="0.9" stroke="var(--chrome-bg2)" strokeWidth="0.5" />
-                <text x={pos.x} y={pos.y - 5} textAnchor="middle" fill="var(--ui-text)" fontSize="2.6" fontFamily="monospace" fontWeight="500">{sn(p.name)}</text>
-              </g>);
-            })}
-          </svg>);
-        };
-        return (<div style={{ marginTop: 10, marginBottom: 6 }}>
-          {/* Formation pitches with team info */}
-          <div className="pre-match-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
-            {[{side:"home",id:lmH},{side:"away",id:lmA}].map(({side,id}) => {
-              const tm = teamById(id);
-              const starters = lmMatch.players[side] || [];
-              const bench = lmMatch.bench[side] || [];
-              const offP = preSwap.side === side ? starters.find(p => p.name === preSwap.off) : null;
-              return (<div key={side} style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 10px 8px", display: "flex", flexDirection: "column", textShadow: "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "0 2px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)" }}>{tm?.name}</span>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <span style={{ fontSize: 8, color: SC[tm?.style]||"#888", fontWeight: 600 }}>{STYLE_LBL[tm?.style]||"Balanced"}</span>
-                    <span style={{ fontSize: 9, color: FORM_CLR[tm?.formation||"4-3-3"]||"var(--chrome-muted)", fontWeight: 600, ...mono }}>{tm?.formation||"4-3-3"}</span>
-                  </div>
-                </div>
-                <PitchSVG starters={starters} formation={tm?.formation} />
-                <div style={{ marginTop: 6, padding: "0 2px" }}>
-                  {offP && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 6px", background: "var(--chrome-brand-14)", border: "1px solid var(--chrome-brand-44)", borderRadius: 6 }}>
-                    <span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>Bench <b style={{ color: "var(--ui-text)" }}>{offP.name}</b>, pick a replacement below</span>
-                    <span onClick={() => setPreSwap({side:null,off:null})} style={{ fontSize: 9, color: "var(--ui-danger)", cursor: "pointer", fontWeight: 700, padding: "0 2px" }}>✕</span>
-                  </div>}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 8px", fontSize: 9 }}>
-                    {starters.map((p, pi) => {
-                      const stam = p.stamina ?? 100;
-                      const isOffP = offP?.name === p.name;
-                      return (<div key={pi} onClick={() => setPreSwap(isOffP ? {side:null,off:null} : {side, off:p.name})} style={{ display: "flex", alignItems: "center", gap: 4, padding: "1px 0", cursor: "pointer", opacity: offP && !isOffP ? 0.5 : 1, background: isOffP ? "var(--chrome-brand-1a)" : "transparent", borderRadius: 3 }}>
-                        <span style={{ color: POS_CLR[p.pos], fontWeight: 700, fontSize: 7, width: 20, flexShrink: 0, textAlign: "left", ...mono }}>{p.pos}</span>
-                        <span style={{ color: "var(--ui-text)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", flex: 1, textAlign: "left" }}>{p.name}</span>
-                        <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600, flexShrink: 0 }}>🗲{Math.round(stam)}</span>
-                      </div>);
-                    })}
-                  </div>
-                  {bench.length > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border-33)" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                      {[...bench].sort((a,b) => (b.stamina??100)-(a.stamina??100)).map((p, pi) => { const stam = p.stamina ?? 100; return (
-                        <span key={pi} onClick={offP ? () => executePreMatchSwap(side, offP.name, p.name) : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8, padding: "2px 5px", borderRadius: 6, cursor: offP ? "pointer" : "default", background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-88)" }}>
-                          <span style={{ ...mono, fontSize: 7, color: POS_CLR[p.pos]||"var(--chrome-muted)", fontWeight: 700 }}>{p.pos}</span>
-                          <span style={{ color: "var(--chrome-muted)" }}>{p.name}</span>
-                          <span style={{ ...mono, fontSize: 7, color: staminaClr(stam), fontWeight: 600 }}>🗲{Math.round(stam)}</span>
-                        </span>
-                      ); })}
-                    </div>
-                  </div>}
-                </div>
-              </div>);
-            })}
-          </div>
-        </div>);
-      })()}
-      {/* Score */}
-      {lmMatch.phase !== "pre_match" && <>
-      {(() => {
-        // tLiveTarget, not the save slot: a slot is adopted on first load whether or not a
-        // tournament is running, so it says nothing about this match. lmKickOff clears the target
-        // precisely because a match started from the setup screen belongs to no competition.
-        const cup = !!tLiveTarget;
-        const save = tSlots.find(x => x.id === tActiveSlot)?.name;
-        return <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--chrome-panel)", border: "1px solid var(--chrome-border-66)", borderRadius: 6, padding: "3px 10px", marginBottom: 8, textShadow: "none" }}>
-          <span style={{ fontSize: 10 }}>{cup ? "🏆" : "⚽"}</span>
-          <span style={{ fontSize: 10, color: "var(--ui-text-cc)", fontWeight: 500, ...ui }}>{cup ? (save || "Tournament") : "Live Match"}</span>
-        </div>;
-      })()}
-      {(() => {
-        // A chance-linked goal is held out of every score-derived display in this block
-        // (crest markers, main score, aggregate, flash) until its card is fully clicked
-        // through — see lmDisplayScore.
-        const dispScore = lmDisplayScore(lmMatch, chanceStep);
-        const buildItems = (side) => {
-          const items = [];
-          const visibleGoals = side === "home" ? dispScore[0] : dispScore[1];
-          for (const g of (lmMatch.goalscorers?.[side] || []).slice(0, visibleGoals))
-            items.push({ type: g.method === "pen" ? "pen_goal" : g.method === "og" ? "og" : "goal", name: g.name, min: g.min });
-          for (const e of lmMatch.events || [])
-            if (e.team === side && e.player && (e.type === "red" || (e.type === "pen_miss" && e.min !== "PEN")))
-              items.push({ type: e.type, name: e.player, min: e.min });
-          // Shootout kicks join the same list rather than getting a panel of their own: they already
-          // render correctly here as a ball with a "P", red when missed, and mTxt prints no minute
-          // for "PEN". Read from penalties[] and not the events, because that array is the kick
-          // order and a shootout goal is deliberately absent from goalscorers[] (it must not move
-          // the scoreline). The 999 sort fallback keeps them after every timed event.
-          for (const k of (lmMatch.penalties?.[side] || []))
-            items.push({ type: k.scored ? "so_goal" : "so_miss", name: k.name, min: "PEN" });
-          items.sort((a, b) => {
-            const am = typeof a.min === "number" ? a.min : parseInt(a.min) || 999;
-            const bm = typeof b.min === "number" ? b.min : parseInt(b.min) || 999;
-            return am - bm;
-          });
-          return items;
-        };
-        const hI = buildItems("home"), aI = buildItems("away");
-        const mTxt = (m) => (m != null && m !== "" && m !== "PEN") ? m + "'" : "";
-        // lineHeight matches the scorer-name/minute rows exactly (see below) — the ⚽︎
-        // glyph's own font-dependent line-height was 14px vs. their fixed 13px, and since
-        // this cell shares a CSS grid row with the name cells, Grid's tallest-cell sizing
-        // rounded every row up to 14px, drifting the minute column (plain block stacking,
-        // unaffected by this cell) further out of alignment on every subsequent row.
-        // Shootout kicks get their own types so the outcome reads off the colour alone — scored
-        // green, missed red — and they carry no "P": below the divider every kick is a penalty,
-        // so the marker only added noise. An in-game penalty still keeps its white ball and its P.
-        const ball = (t) => t === "pen_miss" || t === "so_miss" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--chrome-brand)" }}>⚽︎</span>
-          : t === "so_goal" ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-ok)" }}>⚽︎</span>
-          : (t === "goal" || t === "og" || t === "pen_goal") ? <span style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>⚽︎</span>
-          : t === "red" ? <svg width="8" height="11" viewBox="0 0 8 11" style={{ verticalAlign: "middle", flexShrink: 0 }}><rect x="1" y="1" width="6" height="9" rx="1" fill="var(--ui-danger)" transform="rotate(15 4 5.5)"/></svg>
-          : null;
-        const ballWithP = (t) => {
-          const isPen = t === "pen_goal" || t === "pen_miss";
-          const isOG = t === "og";
-          const label = isPen ? "P" : isOG ? "OG" : null;
-          return <span style={{ display: "inline-flex", alignItems: "flex-start", position: "relative" }}>
-            {ball(t)}
-            {label && <span style={{ fontSize: 6, color: "var(--ui-on-accent)", position: "absolute", top: -3, right: isOG ? -8 : -4, fontWeight: 700, ...mono }}>{label}</span>}
-          </span>;
-        };
-        // Shootout kicks pair up among themselves, under a hairline separating them from the timed
-        // events. The divider is a row like any other and holds the same 13px line box, so the two
-        // minute columns — which stack independently of this grid — stay level with the names.
-        const isPenItem = (it) => it && it.min === "PEN";
-        const rowsOf = (h, a) => Array.from({ length: Math.max(h.length, a.length) }, (_, i) => ({ h: h[i], a: a[i] }));
-        const hP = hI.filter(isPenItem), aP = aI.filter(isPenItem);
-        // The event area is three independent stacks in a grid with a 16px columnGap, so the
-        // divider is drawn per column and each piece overhangs half the gap to close it — the
-        // result reads as one line across the whole box. Outer edges stay flush.
-        const dividerCell = (edge, extra) => (
-          <div style={{ height: 13, display: "flex", alignItems: "center", marginLeft: edge === "left" ? 0 : -8, marginRight: edge === "right" ? 0 : -8, ...extra }}>
-            <span style={{ flex: 1, height: 1, background: "var(--ui-text-33)" }} />
-          </div>
-        );
-        const evRows = [
-          ...rowsOf(hI.filter(x => !isPenItem(x)), aI.filter(x => !isPenItem(x))),
-          ...(hP.length || aP.length ? [{ divider: true }] : []),
-          ...rowsOf(hP, aP),
-        ];
-        const phaseLabelBase = lmMatch.phase === "half_time" ? "HALF TIME"
-          : lmMatch.phase === "full_time" ? "FULL TIME"
-          : lmMatch.phase === "et_half_time" || lmMatch.phase === "extra_half_time" ? "ET HALF TIME"
-          : lmMatch.phase === "et_full_time" ? "ET FULL TIME"
-          : lmMatch.phase === "penalties" ? "PENALTIES"
-          : lmMatch.phase === "finished" ? "FULL TIME"
-          : lmClockDisplay(lmMatch);
-        const isTerminal = lmMatch.phase === "finished" || lmMatch.phase === "full_time" || lmMatch.phase === "et_full_time" || lmMatch.phase === "penalties";
-        const isLive = lmMatch.phase !== "pre_match" && !isTerminal;
-        const phaseLabelText = (() => {
-          const hasPen = lmMatch.penalties?.decided;
-          const hasET = lmMatch.minute > 90;
-          if (lmMatch.isSecondLeg) {
-            const aggH = dispScore[0] + (lmMatch.startScore?.[0] || 0), aggA = dispScore[1] + (lmMatch.startScore?.[1] || 0);
-            if (!isTerminal) return `${phaseLabelBase} (${aggH}–${aggA} agg.)`;
-            // Already inside brackets here, so the shared suffix's own pair is stripped off.
-            const suffix = ftSuffix({ pen: hasPen && lmMatch.penalties, et: hasET, awayGoals: aggH === aggA && lmMatch.forceResult }).replace(/^ \(|\)$/g, " ").trimEnd();
-            return `FULL TIME (${aggH}–${aggA} agg.${suffix ? " " + suffix : ""})`;
-          }
-          if (!isTerminal) return phaseLabelBase;
-          return `FULL TIME${ftSuffix({ pen: hasPen && lmMatch.penalties, et: hasET })}`;
-        })();
-        return <div style={{ marginBottom: 6 }}>
-          <div className="sb-grid" style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "start", columnGap: 16 }}>
-            {/* Left: home crest, big, own column, top-aligned with the phase/clock label.
-                Event minutes stack below it, in order, rather than crowding the name row. */}
-            <div className="sb-col" style={{ minWidth: 100 }}>
-              <div className="sb-crest" style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
-                <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
-                  <TeamCrest team={teamById(lmH)} size={100} />
-                </div>
-              </div>
-              {evRows.map((row, i) => (
-                <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{row.divider ? dividerCell("left") : <div style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent-cc)", textAlign: "center", ...mono }}>{row.h ? mTxt(row.h.min) : "\u00a0"}</div>}</div>
-              ))}
-            </div>
-            {/* Middle: phase/clock bar, then name+skill (stacked, as a unit) | score | name+skill —
-                score centers against the whole 2-line name+skill block, matching the classic layout. */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-on-accent)", textAlign: "center", marginBottom: 6 }}>{isLive && <span className="live-dot" />}{phaseLabelText}</div>
-              <div className="sb-rows" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", columnGap: 16, alignItems: "center", rowGap: 4 }}>
-                <div style={{ textAlign: "right", minWidth: 0 }}>
-                  <div className="sb-name"><MarqueeName text={teamById(lmH)?.name} align="right" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmH) }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmH) }}>{abbr(teamById(lmH)?.name, teamById(lmH)?.code)}</span> <span style={{ color: "var(--ui-on-accent)" }}>· </span><CanvasText text={teamById(lmH) ? showOvr(teamById(lmH).skill) : ""} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /></div>
-                </div>
-                <div className="sb-score" style={{ fontSize: 40, fontWeight: 700, color: "var(--ui-on-accent)", letterSpacing: 2, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
-                  <span className={goalFlash==="home"?"goal-flash":""}>{dispScore[0]}</span>
-                  <span style={{ color: "var(--ui-on-accent)", margin: "0 6px" }}>-</span>
-                  <span className={goalFlash==="away"?"goal-flash":""}>{dispScore[1]}</span>
-                </div>
-                <div style={{ textAlign: "left", minWidth: 0 }}>
-                  <div className="sb-name"><MarqueeName text={teamById(lmA)?.name} align="left" style={{ fontSize: 18, fontWeight: 600, color: "var(--ui-on-accent)", ...editedStyle(lmA) }} /></div>
-                  <div style={{ fontSize: 9, ...mono }}><CanvasText text={teamById(lmA) ? showOvr(teamById(lmA).skill) : ""} fontSize={9} color="--ui-on-accent" shadow={SCOREBOARD_SHADOW} /><span style={{ color: "var(--ui-on-accent)" }}> ·</span> <span style={{ color: "var(--ui-on-accent)", ...editedStyle(lmA) }}>{abbr(teamById(lmA)?.name, teamById(lmA)?.code)}</span></div>
-                </div>
-                {/* Events: extra rows in this SAME grid, so columns are guaranteed to line up with
-                    name/score above — ball icons share the score column, names share the name columns.
-                    Minutes live under the crests instead (separate columns, see either side). */}
-                {evRows.map((row, i) => (
-                  <Fragment key={i}>
-                    {row.divider
-                      ? dividerCell(null, { gridColumn: "1 / -1" })
-                      : <>
-                        <div style={{ textAlign: "right", fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>{row.h?.name}</div>
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                          <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(-6.5px)" }}>{row.h && ballWithP(row.h.type)}</div>
-                          <div style={{ flex: 1, display: "flex", justifyContent: "center", transform: "translateX(6.5px)" }}>{row.a && ballWithP(row.a.type)}</div>
-                        </div>
-                        <div style={{ textAlign: "left", fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent)" }}>{row.a?.name}</div>
-                      </>}
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-            {/* Right: away crest, big, own column. Event minutes stack below it. */}
-            <div className="sb-col" style={{ minWidth: 100 }}>
-              <div className="sb-crest" style={{ position: "relative", height: 65, width: 100, margin: "0 auto" }}>
-                <div style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)" }}>
-                  <TeamCrest team={teamById(lmA)} size={100} />
-                </div>
-              </div>
-              {evRows.map((row, i) => (
-                <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>{row.divider ? dividerCell("right") : <div style={{ fontSize: 9, lineHeight: "13px", color: "var(--ui-on-accent-cc)", textAlign: "center", ...mono }}>{row.a ? mTxt(row.a.min) : "\u00a0"}</div>}</div>
-              ))}
-            </div>
-          </div>
-        </div>;
-      })()}
-      </>}
-    </div>
-  );
-  };
 
 
   // Single source of truth for team-list column widths — header spacers and row cells
@@ -11163,7 +8992,6 @@ export default function App() {
   const renderTuneables = () => (<>
                   {/* Tiebreakers */}
                   {tHasGroups && (() => {
-                    const TBL = {"gd":"Goal Difference","gf":"Goals For","h2h":"Head-to-Head","wins":"Wins","buchholz":"Median-Buchholz","manual":"Manual"};
                     const TBSH = {"gd":"GD","gf":"GF","h2h":"H2H","wins":"W","buchholz":"Buch","manual":"Man"};
                     const tbs = tConfig.tiebreakers || ["gd", "gf", "h2h", "wins"];
                     const isSwiss = tConfig.matchFormat === "swiss";
@@ -12351,16 +10179,16 @@ export default function App() {
 
 
         {/* ═══ LIVE MATCH TAB ═══ */}
-        {/* THE ABSTRACT MATCH ENGINE'S INTERFACE WAS HERE -- 634 lines of it, the whole classic
-            live-match screen: controls, minute feed, chance cards, team sheets and subs. It was
-            gated on `absim`, and the only thing that ever set that was the Utilities panel above
-            and the two tournament Play Live paths. Both are gone (see TOURNAMENTS_ENABLED), so
-            nothing could open it and nothing could close it -- it was unreachable UI for a second
-            simulation the app no longer runs.
-            The ENGINE is untouched: simInstantMatch, createMatchState, lmAdvance and the rest all
-            still exist, because lib.mjs runs full seasons through them for the avium-tactics skill
-            and they are the only thing that can score a season in under nine minutes. When
-            tournaments come back on the positional engine this screen is not what returns. */}
+        {/* THE ABSTRACT MATCH ENGINE IS GONE. Its interface went first -- 634 lines of classic
+            live-match screen, unreachable once nothing set `absim` -- and the simulation itself
+            followed on 22 August 2026: lmSimMinute, lmAdvance, simInstantMatch, the chance-card
+            geometry, the tactics and stamina models it alone used, and the eight pieces of state
+            that drove it. Roughly 2,200 lines.
+            It survived that long because .claude/skills/avium-tactics/scripts/lib.mjs ran whole
+            seasons through it, but that skill is retired and its bundled copy of the engine is a
+            build artefact of its own. One match engine now: the positional one, in src/engine.
+            createMatchState stays -- it builds the match-state object BOTH engines used, and the
+            positional builder still does. */}
 
         {/* ═══ TOURNAMENT TAB ═══ */}
         {/* Still rendered when the tab is restored from a saved session, so nobody lands on a blank
@@ -13609,7 +11437,6 @@ export default function App() {
                 );
               };
 
-              const gfCardH = (cardH - gap) * 2 + 16;
 
               const gfConn = (height) => {
                 const midY = height / 2;
@@ -13809,16 +11636,9 @@ export default function App() {
               {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </div></>)}
-          {/* The Abstract Match Engine panel was here, and its own caption said why it stayed:
-              "tournament fixtures are still scored by this one, so it stays until they are wired
-              over." Tournaments are off (TOURNAMENTS_ENABLED), so that reason is spent and this was
-              the last way into the abstract simulation from the interface. Everything the app can
-              now reach runs the positional engine.
-              The CODE stays. simInstantMatch is what .claude/skills/avium-tactics/scripts/lib.mjs
-              runs full double round-robin seasons through, and it is the only thing in the project
-              that can score a season in less than the nine minutes the positional engine needs. The
-              overlay and the `absim` flag that gated it are both gone -- nothing in the app can
-              reach the abstract simulation any more. */}
+          {/* The Abstract Match Engine panel was here -- the last way into that simulation from
+              the interface. Both the panel and the engine behind it are gone; everything the app
+              runs is the positional engine. */}
           <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
@@ -14651,29 +12471,6 @@ export default function App() {
                         const sect = (label) => (
                           <div style={{ fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
                                         color: "var(--chrome-muted)", textAlign: "center", padding: "0 0 10px" }}>{label}</div>);
-                        // WHO SCORED, flanking the score. The old scoreboard put the two lists
-                        // either side of the number and it is still the right place for them: the
-                        // header had empty flanks, and a match report whose first line does not say
-                        // who scored is not a match report. Grouped by man, so a hat-trick is one
-                        // line with three minutes on it rather than three near-identical rows.
-                        const scorerList = (side, align) => {
-                          const list = out.scorers?.[side] || [];
-                          if (!list.length) return null;
-                          const by = new Map();
-                          for (const g of list) {
-                            const n = shortName(g.name || "");
-                            if (!by.has(n)) by.set(n, []);
-                            by.get(n).push(g.min);
-                          }
-                          return (
-                            <div style={{ marginTop: 5, fontSize: 10.5, lineHeight: 1.65, textAlign: align,
-                                          color: "var(--chrome-muted)" }}>
-                              {[...by].map(([n, mins]) => (
-                                <div key={n} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                  {n} <span style={{ ...mono, opacity: 0.75 }}>{mins.map(x => x + "'").join(", ")}</span>
-                                </div>))}
-                            </div>);
-                        };
                         const clips = m.clips || [];
                         return (
                         <div style={{ maxWidth: 1560, margin: "0 auto", minHeight: "100%",
@@ -15312,7 +13109,6 @@ export default function App() {
             // the app rather than as a separate document. H1 keeps the brand accent, H2 takes the
             // League blue — matching it exactly while still reading as one level down.
             const H1 = ({children, id}) => <PanelTitle id={id}>{children}</PanelTitle>;
-            const H2 = ({children, id}) => <div style={{ marginTop: 24, marginBottom: 10 }}><PanelTitle id={id} accent="var(--ui-info)">{children}</PanelTitle></div>;
             const H3 = ({children, id}) => <div id={id} style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", marginTop: 18, marginBottom: 8 }}>{children}</div>;
             const P = ({children}) => <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.7, color: "var(--chrome-muted)" }}>{children}</p>;
             // A PLAYSTYLE'S INSTRUCTIONS, READ OFF THE ENGINE RATHER THAN TYPED OUT HERE. The old
