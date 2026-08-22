@@ -11981,7 +11981,7 @@ export default function App() {
                         <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, fontSize: 10, ...mono }}>
                           <span style={{ color: "var(--ui-ok)" }}>{ups} &#9650;</span>
                           <span style={{ color: "var(--ui-danger)" }}>{dns} &#9660;</span>
-                          <span style={{ color: "var(--chrome-muted-66)" }}>net {net > 0 ? "+" + net : net}</span>
+                          <span style={{ color: "var(--chrome-muted-66)" }}>&#916; {net > 0 ? "+" + net : net}</span>
                         </span>
                         <span style={{ color: "var(--chrome-muted-66)", fontSize: 15, flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none" }}>&#8250;</span>
                       </div>
