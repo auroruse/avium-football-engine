@@ -3874,7 +3874,7 @@ function fullDisplayName(raw) {
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      stsc: "Sei'i Tai Shogun Cup",
+                      stsc: "Sei'i Tai Shogun Cup", oberliga: "Alemannische Oberliga",
                       kar: "Karjanian Premier League", cwc: "Club World Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
