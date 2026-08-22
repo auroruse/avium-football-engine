@@ -4605,7 +4605,7 @@ export default function App() {
 
               <div style={{ ...panelBox, marginBottom: 0, flexShrink: 0 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties", true], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo", false], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs", false], [lmStopOnEvents, e => setLmStopOnEvents(e), "Auto-Play Stops on Events", "Pause on goals, chances, pens, reds", false]].map(([checked, onChange, label, sub, tOwned], i) => (
+                {[[lmForce, e => setLmForce(e), "Force Result", "ET + Penalties", true], [lmAllowTac, e => setLmAllowTac(e), "Auto Tempo", "AI manages tempo", false], [lmAutoSubs, e => setLmAutoSubs(e), "Auto Subs", "AI manages subs", false]].map(([checked, onChange, label, sub, tOwned], i) => (
                   <label key={i} onClick={() => { if (!(lmLocked && tOwned)) onChange(!checked); }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: lmLocked && tOwned ? "default" : "pointer", padding: "6px 0", opacity: lmLocked && tOwned ? 0.5 : 1 }}>
                     <div style={{ width: 32, height: 18, borderRadius: 10, background: checked ? "var(--chrome-brand)" : "var(--chrome-panel-66)", border: "1px solid " + (checked ? "var(--chrome-brand)" : "var(--chrome-muted-33)"), position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
                       <div style={{ width: 12, height: 12, borderRadius: 6, background: checked ? "var(--chrome-panel)" : "var(--chrome-muted-66)", position: "absolute", top: 2, left: checked ? 17 : 3, transition: "all 0.2s" }} />
