@@ -6411,6 +6411,7 @@ export default function App() {
       homeScore: m.out.goals.home, awayScore: m.out.goals.away,
       homePlayers: men("home"), awayPlayers: men("away"),
       penalties: m.pens ? { homeScore: m.pens.home ?? 0, awayScore: m.pens.away ?? 0 } : null,
+      scorers: m.out.scorers, ogs: m.out.ogs,
     });
   };
 
@@ -8002,6 +8003,11 @@ export default function App() {
     const hPlayers = isFlipped ? lr.awayPlayers : lr.homePlayers;
     const aPlayers = isFlipped ? lr.homePlayers : lr.awayPlayers;
     const penData = lr.penalties ? (isFlipped ? { homeScore: lr.penalties.awayScore, awayScore: lr.penalties.homeScore } : lr.penalties) : null;
+    // Goals and own goals ride the same flip the squads do: on a second leg the bracket's home
+    // side is the match's away side.
+    const flipSides = (o) => { const h = o?.home || [], a = o?.away || [];
+      return isFlipped ? { home: a, away: h } : { home: h, away: a }; };
+    const goalLedger = flipSides(lr.scorers), ogLedger = flipSides(lr.ogs);
 
     const buildStatsUpdate = (teamObj, players) => {
       if (!teamObj || !players?.length) return {};
@@ -8116,10 +8122,11 @@ export default function App() {
         else { resultObj.statDiffs = { home: homeDiffs, away: awayDiffs }; }
         // The live match keeps a real goalscorer ledger, minutes and all; leg-keyed the same way
         // statDiffs is so the exporter reads both shapes with one accessor.
-        { const _gs = structuredClone(lmMatch.goalscorers || { home: [], away: [] });
+        { const _gs = structuredClone(goalLedger), _og = structuredClone(ogLedger);
           if (resultObj.twoLeg) { const lk = target.leg === 2 ? "leg2" : "leg1";
-            resultObj.scorers = { ...(resultObj.scorers || {}), [lk]: _gs }; }
-          else resultObj.scorers = _gs; }
+            resultObj.scorers = { ...(resultObj.scorers || {}), [lk]: _gs };
+            resultObj.ogs = { ...(resultObj.ogs || {}), [lk]: _og }; }
+          else { resultObj.scorers = _gs; resultObj.ogs = _og; } }
       };
       if (target.type === "group") {
         setTGroups(prev => { const ng = structuredClone(prev); storeDiffs(ng[target.gi].schedule[target.ri][target.mi].result); return ng; });
