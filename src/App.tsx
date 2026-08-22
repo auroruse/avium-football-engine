@@ -11978,10 +11978,13 @@ export default function App() {
                                  borderLeft: "3px solid var(--chrome-brand)", borderBottom: isOpen ? "1px solid var(--chrome-border-33)" : "none" }}>
                         <span style={{ fontSize: 17, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.02em", flexShrink: 0, ...mono }}>{b.season}</span>
                         <span style={{ minWidth: 0, flex: 1, fontSize: 11, color: "var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.comp}</span>
-                        <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, fontSize: 10, ...mono }}>
-                          <span style={{ color: "var(--ui-ok)" }}>{ups} &#9650;</span>
-                          <span style={{ color: "var(--ui-danger)" }}>{dns} &#9660;</span>
-                          <span style={{ color: "var(--chrome-muted-66)" }}>&#916; {net > 0 ? "+" + net : net}</span>
+                        {/* Three slots of one width, mono and padded, so the counts line up
+                            down the whole list however many digits a batch happens to carry. */}
+                        <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, fontSize: 10, ...mono, whiteSpace: "pre" }}>
+                          <span style={{ color: "var(--ui-ok)" }}>{String(ups).padStart(3)} &#9650;</span>
+                          <span style={{ color: "var(--ui-danger)" }}>{String(dns).padStart(3)} &#9660;</span>
+                          <span style={{ color: net > 0 ? "var(--ui-ok)" : net < 0 ? "var(--ui-danger)" : "var(--chrome-muted-66)" }}>
+                            &#916;{(net > 0 ? "+" + net : String(net)).padStart(5)}</span>
                         </span>
                         <span style={{ color: "var(--chrome-muted-66)", fontSize: 15, flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none" }}>&#8250;</span>
                       </div>
