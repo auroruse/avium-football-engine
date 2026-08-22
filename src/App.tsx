@@ -3873,10 +3873,12 @@ function fullDisplayName(raw) {
 // One TSV per competition-season of side-by-side leaderboard blocks (#/PLAYER/POS/TEAM/GP/<stat>),
 // plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
+// Folder -> competition, for the competitions a report cannot name itself: the international
+// calendar and the cups. A league season is detected from the record -- the clubs its boards and
+// tables name belong to one preset league -- so a new league is a folder drop and nothing else.
+// nl1 and nl2 stay because changelog.tsv keys its rows on them.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      stsc: "Sei'i Tai Shogun Cup", oberliga: "Alemannische Oberliga",
-                      epl: "Elvesterian Premier League", ca: "Championnat Arvernois",
-                      kar: "Karjanian Premier League", cwc: "Club World Cup",
+                      stsc: "Sei'i Tai Shogun Cup", cwc: "Club World Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
@@ -3894,6 +3896,29 @@ const FORMER_BY_NAME = Object.fromEntries(Object.entries(FORMER_TEAMS).map(([c, 
 const PSTATS_CLR = { G: "var(--ui-attack)", A: "var(--ui-style-tikitaka)", RTG: "var(--chrome-brand)",
                      CC: "var(--ui-ok)", DC: "var(--ui-info)", SV: "var(--ui-warn)" };
 const pFold = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+// Which preset league a record belongs to: the league with the most clubs named in it, by
+// code (the TSV's TEAM column) or by name (a report's fixtures and tables). Two clubs is the
+// floor, so a stray code cannot claim a season. A code is not unique across leagues, which is
+// why this is a vote and not a lookup.
+function detectLeague(codes, names) {
+  const tally = new Map();
+  for (const t of PRESET_CLUBS) {
+    if ((codes && codes.has(t.code)) || (names && names.has(t.name))) tally.set(t.league, (tally.get(t.league) || 0) + 1);
+  }
+  let best = null, n = 0;
+  for (const [l, c] of tally) if (c > n) { best = l; n = c; }
+  return n >= 2 ? best : null;
+}
+function clubNamesIn(text) {
+  const out = new Set();
+  for (const L of String(text || "").split("\n")) {
+    if (!L.trim().startsWith("|")) continue;
+    const cs = L.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(x => x.trim());
+    if (/\svs\s/.test(cs[0])) cs[0].split(/\s+vs\s+/).forEach(x => out.add(x.replace(/\*\*/g, "").trim()));
+    else if (cs.length >= 8 && /^\d+$/.test(cs[0])) out.add(cs[1].replace(/\*\*/g, "").replace(/^\*|\*$/g, "").trim());
+  }
+  return out;
+}
 function parseStatBoards(text) {
   const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
   const head = rows[0] || [], boards = {};
@@ -4229,7 +4254,6 @@ const PRESET_CATALOG = [
   id: t.league + "::" + (t.code || t.name),
 }));
 
-const PSTATS_KEY = Object.fromEntries(Object.entries(PSTATS_COMP).map(([k, v]) => [v, k]));
 function MdTable({ head, body, keyBase }) {
   const inline = (s, ki) => String(s).split(/\*\*([^*]+)\*\*/g)
     .map((seg, i) => i % 2 ? <b key={ki + "b" + i} style={{ color: "var(--ui-text)" }}>{seg}</b> : seg);
@@ -7233,7 +7257,24 @@ export default function App() {
         seasons.push({ id: base + ".tsv", md: true, boards: {}, comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
                        season: m[4] || (m[2] + "/" + m[3]), ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1) });
       }
+      // A folder the map does not name is a league: read which one off the record. The boards'
+      // team codes settle it when there are boards; a report-only season reads its clubs instead,
+      // and the text it fetched for that is kept so opening the season does not fetch it twice.
+      const mdSeed = {};
+      await Promise.all(seasons.filter(s => !PSTATS_COMP[s.id.split("/")[0]]).map(async (s) => {
+        const codes = new Set();
+        for (const k of Object.keys(s.boards || {})) for (const e of s.boards[k]) if (e.team) codes.add(e.team);
+        let lg = codes.size ? detectLeague(codes, null) : null;
+        if (!lg && s.md) {
+          const path = s.id.replace(/\.tsv$/i, ".md");
+          const res = await fetch("pstats/" + path).catch(() => null);
+          if (res && res.ok) { const text = await res.text(); mdSeed[path] = text; lg = detectLeague(null, clubNamesIn(text)); }
+        }
+        if (lg) s.comp = lg;
+      }));
+      if (dead) return;
       seasons.sort((a, b) => a.ord - b.ord || a.comp.localeCompare(b.comp));   // chronological, as the changelog is
+      if (Object.keys(mdSeed).length) setLgMd(m => ({ ...mdSeed, ...m }));
       setPstats({ seasons, changelog });
     })();
     return () => { dead = true; };

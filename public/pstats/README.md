@@ -8,8 +8,15 @@ dev), so adding a season is one file drop — no code change, no manifest to kee
 A season is up to two files sharing a name: `<season>.tsv` holding its leaderboards, and
 `<season>.md` holding its report. Either one on its own is a season; neither is required to have
 the other. A league season is `<comp>/<YY>-<YY>` (`nl1/33-34`); a one-off tournament is
-`<comp>/<YYYY>` (`wc/1934`). The folder name maps to a competition in `PSTATS_COMP` in
-`src/App.tsx`; an unmapped folder shows uppercased.
+`<comp>/<YYYY>` (`wc/1934`).
+
+**A league season names its own league.** The folder can be called anything (`ao`, `epl`, `ca`):
+the app reads the club codes off the TSV's TEAM column, or the club names off a report-only
+season's tables, and files the season under the preset league most of those clubs belong to.
+Dropping a new league's season is therefore the two files and nothing else. Only competitions a
+record cannot name — the international calendar, the cups — are mapped by folder in `PSTATS_COMP`
+in `src/App.tsx`, plus `nl1`/`nl2`, which `changelog.tsv` keys its rows on. A folder that is
+neither mapped nor detectable shows uppercased.
 
 **Two-digit years are read with a pivot at 50**: `88-89` is 1888/89 and `00-01` is 1900/01. The
 archive reaches back forty-five years, so a flat `1900 + n` filed the oldest seasons after the
