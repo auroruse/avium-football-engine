@@ -3160,7 +3160,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["shoguncup", "Sei'i Tai Shogun Cup"]];
+const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["stsc", "Sei'i Tai Shogun Cup"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
