@@ -7206,6 +7206,8 @@ export default function App() {
   const [lgMd, setLgMd] = useState({});                          // report path -> text | false (fetched, absent)
   const [lgRound, setLgRound] = useState(null);                  // selected report round; null = the last one
   const [lgTTab, setLgTTab] = useState(0);                       // selected tournament tab
+  const [clOpen, setClOpen] = useState(null);                    // opened rating-changelog batch
+  const [clSort, setClSort] = useState({ k: "d", asc: false });  // and how its table is sorted
   const LG_ALL_NATS = "::all-nations", LG_ALL_CLUBS = "::all-clubs", LG_ALL_PLAYERS = "::all-players";
   const [lgTeamSort, setLgTeamSort] = useState({ k: "ovr", asc: false });
   const [lgPlayerSort, setLgPlayerSort] = useState({ k: "ovr", asc: false });
@@ -11598,11 +11600,13 @@ export default function App() {
               header repeats it; a third copy was the clutter this replaced. ── */}
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
-            <div style={{ display: lgIsDir(lgComp) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {!lgIsDir(lgComp) && (lgIntlComp ? [["seasons", "Seasons"]]
+            <div style={{ display: (lgIsDir(lgComp) && lgComp !== LG_ALL_PLAYERS) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
+              {(lgComp === LG_ALL_PLAYERS ? [["players", "Players"], ["changelog", "Rating Changelog"]]
+                : lgIsDir(lgComp) ? []
+                : lgIntlComp ? [["seasons", "Seasons"]]
                 : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"],
                    ...(LEAGUE_CUPS[lgComp] ? [["cup", LEAGUE_CUPS[lgComp]]] : [])]).map(([id, l]) => { const on = lgSubEff === id; return (
-              <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); if (id !== "teams") setExpandedTeam(null); }}
+              <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); setClOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
                          background: on ? "var(--chrome-panel)" : "transparent",
@@ -11923,6 +11927,112 @@ export default function App() {
             </>)}
           </div>
             </>)}
+            {/* ── EVERY RATING CHANGE EVER FILED ──────────────────────────────────────────
+                One box per batch — a competition adjusted a set of players at one moment — in the
+                same shape the Seasons list uses, newest first, opening onto its own table. */}
+            {lgSubEff === "changelog" && (() => {
+              const log = pstats?.changelog || [];
+              const batches = [];
+              for (const c of log) {
+                const key = c.season + "\u0000" + c.comp;
+                let b = batches.find(x => x.key === key);
+                if (!b) { b = { key, season: c.season, comp: c.comp, rows: [] }; batches.push(b); }
+                b.rows.push(c);
+              }
+              batches.reverse();                                  // the file is oldest-first
+              const open = batches.find(b => b.key === clOpen) || null;
+              const flip = (k) => setClSort(p => p.k === k ? { k, asc: !p.asc } : { k, asc: k === "name" });
+              const arrow = (k) => clSort.k === k ? (clSort.asc ? " \u25B4" : " \u25BE") : "";
+              const hot = (k) => clSort.k === k ? { color: "var(--chrome-brand)" } : null;
+              return (
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <PanelTitle sub={`${batches.length}`}>Rating Changelog</PanelTitle>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Changes</div>
+                    <div style={{ fontSize: 12, color: "var(--ui-text)", ...mono }}>{log.length}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  {!pstats && <div style={{ padding: 20, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>Loading&hellip;</div>}
+                  {pstats && !batches.length && <div style={{ padding: 20, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No rating changes filed.</div>}
+                  <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                  {batches.map((b) => {
+                    const isOpen = open && open.key === b.key;
+                    const ups = b.rows.filter(r => r.neu > r.old).length, dns = b.rows.filter(r => r.neu < r.old).length;
+                    const net = b.rows.reduce((a, r) => a + (r.neu - r.old), 0);
+                    const rows = !isOpen ? [] : [...b.rows].sort((x, y) => {
+                      const v = (r) => clSort.k === "name" ? fullDisplayName(r.player)
+                        : clSort.k === "old" ? r.old : clSort.k === "new" ? r.neu : r.neu - r.old;
+                      const a = v(x), c2 = v(y);
+                      const d = typeof a === "string" ? a.localeCompare(c2) : a - c2;
+                      return (clSort.asc ? d : -d) || (y.neu - y.old) - (x.neu - x.old);
+                    });
+                    return (
+                    <div key={b.key} style={{ border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", background: "var(--chrome-panel)" }}>
+                      <div role="button" tabIndex={0} onClick={() => setClOpen(isOpen ? null : b.key)}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                        className="cell-link"
+                        style={{ display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
+                                 padding: "11px 20px", background: "linear-gradient(90deg, var(--chrome-brand-11) 0%, var(--chrome-bg-08) 55%, transparent 100%)",
+                                 borderLeft: "3px solid var(--chrome-brand)", borderBottom: isOpen ? "1px solid var(--chrome-border-33)" : "none" }}>
+                        <span style={{ fontSize: 17, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.02em", flexShrink: 0, ...mono }}>{b.season}</span>
+                        <span style={{ minWidth: 0, flex: 1, fontSize: 11, color: "var(--chrome-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.comp}</span>
+                        <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, fontSize: 10, ...mono }}>
+                          <span style={{ color: "var(--ui-ok)" }}>{ups} &#9650;</span>
+                          <span style={{ color: "var(--ui-danger)" }}>{dns} &#9660;</span>
+                          <span style={{ color: "var(--chrome-muted-66)" }}>net {net > 0 ? "+" + net : net}</span>
+                        </span>
+                        <span style={{ color: "var(--chrome-muted-66)", fontSize: 15, flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none" }}>&#8250;</span>
+                      </div>
+                      {isOpen && (
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                        <colgroup>
+                          <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} />
+                          <col style={{ width: 56 }} /><col style={{ width: "26%" }} />
+                          <col style={{ width: 62 }} /><col style={{ width: 62 }} /><col style={{ width: 62 }} />
+                        </colgroup>
+                        <thead><tr>
+                          <th style={thCell}>#</th><th style={thCell} />
+                          <th onClick={() => flip("name")} style={{ ...thCell, cursor: "pointer", ...hot("name") }}>Player{arrow("name")}</th>
+                          <th style={{ ...thCell, textAlign: "center" }}>POS</th>
+                          <th style={{ ...thCell, paddingLeft: 8 }}>Team</th>
+                          <th onClick={() => flip("old")} style={{ ...thCell, textAlign: "center", cursor: "pointer", ...hot("old") }}>OLD{arrow("old")}</th>
+                          <th onClick={() => flip("new")} style={{ ...thCell, textAlign: "center", cursor: "pointer", ...hot("new") }}>NEW{arrow("new")}</th>
+                          <th onClick={() => flip("d")} style={{ ...thCell, textAlign: "center", cursor: "pointer", ...hot("d") }}>&#916;{arrow("d")}</th>
+                        </tr></thead>
+                        <tbody>
+                          {rows.map((r, i) => {
+                            const ct = teams.find(tm => tm.code === r.team && tm.league === r.comp)
+                              || teams.find(tm => tm.code === r.team && tm.league !== "Avium International")
+                              || teams.find(tm => tm.code === r.team) || null;
+                            const d = r.neu - r.old, go = playerByName.has(r.player);
+                            return (
+                            <tr key={r.player + i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                              <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, ...mono }}>{i + 1}</td>
+                              <td className={go ? "cell-link" : undefined} onClick={() => go && openPlayer(r.player)}
+                                  style={{ ...tdCell, paddingRight: 0, cursor: go ? "pointer" : "default" }}>
+                                <PlayerShot name={r.player} size={24} /></td>
+                              <td className={go ? "cell-link" : undefined} onClick={() => go && openPlayer(r.player)}
+                                  style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: go ? "pointer" : "default" }}>
+                                {boldSurname(r.player, r.player)}</td>
+                              <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[r.pos] || "var(--chrome-muted)", ...mono }}>{r.pos}</td>
+                              <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
+                                  style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default" }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                                  <TeamCrest team={ct || { code: r.team }} size={15} />
+                                  <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ct ? ct.name : formerName(r.team)}</span>
+                                </span></td>
+                              <td style={{ ...tdCell, textAlign: "center", color: "var(--chrome-muted)", ...mono }}>{showOvr(r.old)}</td>
+                              <td style={{ ...tdCell, textAlign: "center", ...mono }}><span style={ovrBlock(r.neu)}>{showOvr(r.neu)}</span></td>
+                              <td style={{ ...tdCell, textAlign: "center", fontWeight: 700, ...mono, color: d > 0 ? "var(--ui-ok)" : d < 0 ? "var(--ui-danger)" : "var(--chrome-muted-66)" }}>{d > 0 ? "+" + d : d}</td>
+                            </tr>); })}
+                        </tbody>
+                      </table>)}
+                    </div>); })}
+                  </div>
+                </div>
+              </div>); })()}
             {lgSubEff === "players" && (<>
         {/* The old Players tab, scoped to the open competition by the filter below. The nations
             rail died with the tab; nationality still shows on every row. */}
