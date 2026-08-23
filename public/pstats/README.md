@@ -72,6 +72,12 @@ The Winner column on a season's banner resolves in order: the top row of `## Fin
 `**Winner:**`/`**Champions:**` line; the bolded side of the report's last `Final`/`Grand Final`
 fixture. Every season currently filed resolves one.
 
+**The exporter writes this format directly.** `buildSeasonMd` in `src/App.tsx` decides the shape
+and `test/export.mjs` checks its output against the reader, so an exported season is dropped in as
+it comes — no retitling, no trailing champion line, no rewriting `(6-5p)` into `6-5 pens`. A season
+with no knockout gets the league shape; one with a knockout gets the tab shape, since a round
+stepper cannot show eight group tables to a round.
+
 The reports were converted out of `Avium/Football/` — `International/<year>/`, and
 `Nichirin League One|Two/<season>/`. Seasons older than 30/31 survive only as a final table, which
 is what their TSV in `Historical Seasons/` holds; the club and base-skill block beside it is not

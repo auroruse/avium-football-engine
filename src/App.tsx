@@ -2968,19 +2968,16 @@ const dlText = (name, text, mime) => {
 };
 // One accessor for every result shape: sim returns (scorers + ogs side-keyed), live-match ledgers
 // (method-tagged entries), and two-leg results (leg-keyed, leg2 stored in second-leg orientation).
-const seasonScoreCell = (m) => {
-  const r = m.result;
-  if (!r) return "";
-  if (r.twoLeg) {
-    if (r.partial) return `${r.leg1.home}-${r.leg1.away} (leg 1)`;
-    let s = `${r.leg1.home}-${r.leg1.away}, ${r.leg2.away}-${r.leg2.home} (agg ${r.agg.home}-${r.agg.away})`;
-    if (r.pen) s += ` (${r.pen.home}-${r.pen.away}p)`;
-    return s;
-  }
-  let s = `${r.ftHome + (r.et?.home || 0)}-${r.ftAway + (r.et?.away || 0)}`;
-  if (r.et) s += " aet";
-  if (r.pen) s += ` (${r.pen.home}-${r.pen.away}p)`;
-  return s;
+// A knockout scoreline in the archive's own shape: the ninety minutes bare, and everything that
+// settled a level tie as a comma suffix. `2-2, 7-6 pens`, `1-2, aet`, `2-2, ag`. The reader turns
+// those into bracketed pen counts and coloured tags, so the exporter must not invent its own
+// spelling -- three cup reports had to be rewritten by hand because it did.
+const seasonKoScore = (r) => {
+  const sfx = [];
+  if (r.pen) sfx.push(`${r.pen.home}-${r.pen.away} pens`);
+  if (r.et) sfx.push("aet");
+  if (!r.pen && !r.et && r.twoLeg && r.agg && r.agg.home === r.agg.away && r.awayGoalsRule) sfx.push("ag");
+  return [sfx];
 };
 const seasonMdStandings = (rows) => {
   const L = ["| # | Team | P | W | D | L | GF | GA | GD | Pts |",
@@ -2988,40 +2985,105 @@ const seasonMdStandings = (rows) => {
   rows.forEach((s, i) => L.push(`| ${i + 1} | ${s.name} | ${s.p} | ${s.w} | ${s.d} | ${s.l} | ${s.gf} | ${s.ga} | ${s.gf - s.ga >= 0 ? "+" : ""}${s.gf - s.ga} | ${s.pts} |`));
   return L.join("\n");
 };
+// A league round: no winner to mark, because a draw is a result.
 const seasonFixtureRows = (matches) => {
   const L = ["| Match | Score |", "|-------|-------|"];
   for (const m of matches) {
     if (!m || m.bye || !m.home || !m.away) continue;
-    L.push(`| ${m.home.name} vs ${m.away.name} | ${seasonScoreCell(m)} |`);
+    const r = m.result;
+    L.push(`| ${m.home.name} vs ${m.away.name} | ${r ? `${r.ftHome}-${r.ftAway}` : ""} |`);
   }
   return L.join("\n");
 };
-function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
-  const L = [`# ${title} — Season Report`, ""];
-  (groups || []).forEach((g, gi) => {
-    const gLabel = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
-    (g.schedule || []).forEach((rd, ri) => {
-      if (!rd.some(m => m?.result)) return;
-      L.push("---", "", `## Round ${ri + 1}${gLabel}`, "", seasonFixtureRows(rd), "");
-      // The table as it stood after this round: same recompute the app runs, on a truncated season.
-      const upto = { ...g, schedule: g.schedule.slice(0, ri + 1) };
-      L.push(`### Table after Round ${ri + 1}${gLabel}`, "", seasonMdStandings(recalcStandings(upto, tiebreakers)), "");
-    });
-    L.push("---", "", `## Final Table${gLabel}`, "", seasonMdStandings(recalcStandings(g, tiebreakers)), "");
-  });
-  const koBlock = (label, matches) => {
-    if (!matches?.some(m => m?.result)) return;
-    L.push("---", "", `## ${label}`, "", seasonFixtureRows(matches), "");
-  };
-  if (ko?.rounds?.length) {
-    ko.rounds.forEach((r, ri) => koBlock(r.name || koRoundLabel(ko.rounds.length === 1 ? 2 : 2 ** (ko.rounds.length - ri)), r.matches));
-    (ko.losers || []).forEach((r, ri) => koBlock(`Losers Round ${ri + 1}`, r.matches));
-    if (ko.thirdPlace) koBlock("Third Place", [ko.thirdPlace]);
-    if (ko.grandFinal) koBlock("Grand Final", [ko.grandFinal]);
-    if (ko.reset) koBlock("Grand Final Reset", [ko.reset]);
-    if (ko.champion) L.push("---", "", `**${ko.champion.name} are champions.**`, "");
+// A knockout tie: somebody goes through, and the winner is BOLD in the Match cell. That bold is
+// the record -- the reader takes the champion off the last Final it can find, and every display
+// of a tie reads its winner from there rather than recomputing one.
+const seasonKoRows = (matches, twoLeg) => {
+  const head = twoLeg ? ["Match", "Leg 1", "Leg 2", "Agg"] : ["Match", "Score"];
+  const L = ["| " + head.join(" | ") + " |", "|" + head.map(() => "---").join("|") + "|"];
+  for (const m of matches) {
+    if (!m || m.bye || !m.home || !m.away || !m.result) continue;
+    const r = m.result;
+    const w = koWinner(m);
+    const nm = (t) => (w && t.name === w.name) ? `**${t.name}**` : t.name;
+    const match = `${nm(m.home)} vs ${nm(m.away)}`;
+    const [sfx] = seasonKoScore(r);
+    const tail = sfx.length ? ", " + sfx.join(", ") : "";
+    if (r.twoLeg) {
+      if (r.partial) { L.push(`| ${match} | ${r.leg1.home}-${r.leg1.away} | | |`); continue; }
+      L.push(`| ${match} | ${r.leg1.home}-${r.leg1.away} | ${r.leg2.away}-${r.leg2.home} | ${r.agg.home}-${r.agg.away}${tail} |`);
+    } else {
+      L.push(`| ${match} | ${r.ftHome + (r.et?.home || 0)}-${r.ftAway + (r.et?.away || 0)}${tail} |`);
+    }
   }
   return L.join("\n");
+};
+// THE EXPORT IS THE ARCHIVE FORMAT. Whatever this writes is dropped into public/pstats and read
+// back with no editing, so the shape is decided here and nowhere else.
+//   a league season  -> `## Round N` + `### Table after Round N` + `## Final Table`, which is what
+//                       drives the round stepper
+//   a tournament     -> `## Group Stage` (standings, then the rounds) + `## Knockouts`, which the
+//                       reader turns into tabs. A group tournament must NOT use the league shape:
+//                       eight group tables to a round is not something a round stepper can show.
+function buildSeasonMd({ title, groups, ko, tiebreakers, koLegs }) {
+  const L = [`# ${title}`, ""];
+  const hasKO = !!(ko?.rounds?.length || ko?.grandFinal || ko?.thirdPlace);
+  const played = (g) => (g.schedule || []).some(rd => rd.some(m => m?.result));
+  const gs = (groups || []).filter(played);
+  if (gs.length) {
+    if (hasKO) {
+      // Tab format: the tables first, then how they were arrived at.
+      L.push("## Group Stage", "");
+      gs.forEach((g, gi) => {
+        L.push(`### ${groups.length > 1 ? `Group ${String.fromCharCode(65 + gi)}` : "Final Table"}`, "",
+               seasonMdStandings(recalcStandings(g, tiebreakers)), "");
+      });
+      gs.forEach((g, gi) => {
+        const gl = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
+        (g.schedule || []).forEach((rd, ri) => {
+          if (!rd.some(m => m?.result)) return;
+          L.push(`### Round ${ri + 1}${gl}`, "", seasonFixtureRows(rd), "");
+        });
+      });
+    } else {
+      // League format: the stepper reads this one.
+      gs.forEach((g, gi) => {
+        const gl = groups.length > 1 ? ` — Group ${String.fromCharCode(65 + gi)}` : "";
+        (g.schedule || []).forEach((rd, ri) => {
+          if (!rd.some(m => m?.result)) return;
+          L.push("---", "", `## Round ${ri + 1}${gl}`, "", seasonFixtureRows(rd), "");
+          const upto = { ...g, schedule: g.schedule.slice(0, ri + 1) };
+          L.push(`### Table after Round ${ri + 1}${gl}`, "", seasonMdStandings(recalcStandings(upto, tiebreakers)), "");
+        });
+        L.push("---", "", `## Final Table${gl}`, "", seasonMdStandings(recalcStandings(g, tiebreakers)), "");
+      });
+    }
+  }
+  if (hasKO) {
+    const two = koLegs === 2;
+    const stage = (label, matches) => {
+      if (!matches?.some(m => m?.result)) return;
+      L.push(`### ${label}`, "", seasonKoRows(matches, two), "");
+    };
+    const de = !!(ko.losers?.length || ko.grandFinal);
+    L.push(de ? "## Upper Bracket" : "## Knockouts", "");
+    ko.rounds?.forEach((r, ri) => stage(r.name || koRoundLabel(ko.rounds.length === 1 ? 2 : 2 ** (ko.rounds.length - ri)), r.matches));
+    if (!de && ko.thirdPlace) stage("3rd Place", [ko.thirdPlace]);
+    if (de) {
+      if (ko.losers?.length) {
+        L.push("## Lower Bracket", "");
+        ko.losers.forEach((r, ri) => stage(`LB Round ${ri + 1}`, r.matches));
+      }
+      if (ko.grandFinal || ko.reset) {
+        L.push("## Grand Final", "");
+        if (ko.grandFinal) stage("Grand Final", [ko.grandFinal]);
+        if (ko.reset) stage("Grand Final Reset", [ko.reset]);
+      }
+    }
+  }
+  // No champion line: the bold side of the last Final is the record, and prose does not belong
+  // in a record the reader parses.
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 // The archive's canonical player TSV: six ranked boards side by side, one blank column apart.
 function buildSeasonStatsTsv(tPlayerStats) {
