@@ -1853,7 +1853,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["stsc", "Sei'i Tai Shogun Cup"]];
+const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["stsc", "Sei'i Tai Shogun Cup"], ["cwc", "Club World Cup"]];
 const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
@@ -2448,6 +2448,13 @@ function fullDisplayName(raw) {
 // nl1 and nl2 stay because changelog.tsv keys its rows on them.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
                       stsc: "Sei'i Tai Shogun Cup", cwc: "Club World Cup",
+                      // A domestic cup is entered from more than one division, so its clubs never
+                      // vote for one league: the Karjanian Cup's own record carries eight Premier
+                      // sides, a Secondary one and a Frederikka guest, and detectLeague would file
+                      // it under the Premier League. Named here, which also keeps it out of
+                      // detection altogether. A LEAGUE season still needs no entry -- ksl's ten
+                      // clubs carry it 8-2 to the Secondary League on their own.
+                      kc: "Karjanian Cup",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
@@ -2671,8 +2678,13 @@ const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiat
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
 // it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
 const TAB_LABEL = { leagues: "Registry", live: "Live Match", tournament: "Tournament", utilities: "Utilities", docs: "Documentation" };
+// Which cup a division's clubs enter, so the cup shows as a tab inside every league that plays in
+// it rather than as a competition of its own. Both Karjanian divisions enter the Karjanian Cup,
+// exactly as both Nichirian ones enter the Shogun Cup.
 const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
-                      "Nichirin League Two": "Sei'i Tai Shogun Cup" };
+                      "Nichirin League Two": "Sei'i Tai Shogun Cup",
+                      "Karjanian Premier League": "Karjanian Cup",
+                      "Karjanian Secondary League": "Karjanian Cup" };
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },

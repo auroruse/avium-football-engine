@@ -31,6 +31,18 @@ nation, a confederation championship fields that confederation, and the Club Wor
 club. The four championships are derived from the confederations in `AVIUM.tsv`, so adding one adds
 its competition.
 
+A **domestic cup** is not a competition of its own: `LEAGUE_CUPS` names the cup each division's
+clubs enter, and the cup then shows as a tab inside every one of those leagues. Both Nichirian
+divisions enter the Sei'i Tai Shogun Cup (`stsc/`) and both Karjanian ones enter the Karjanian Cup
+(`kc/`), so one folder serves two leagues in each case.
+
+A **league** season needs no entry anywhere. The clubs in its own record vote for it -- see
+`detectLeague` -- and two agreeing clubs settle it, so a new division is a drop of files and
+nothing else: `ksl/33-34` carries its ten clubs 8-2 to the Karjanian Secondary League, the two
+dissenters being sides promoted since. A CUP cannot work that way, because it is entered from more
+than one division and its clubs never agree, so every cup is named in `PSTATS_COMP` -- which also
+takes it out of detection.
+
 Two competitions were folded into their successors, which is why a 1932 report can carry an older
 name than the folder it sits in. **CONELAF became CONSEAF**, so the 1932 CONELAF Championship is
 `conseaf/1932.md`; the **Foundation Cup became the Nations League**, so the 1932 Foundation Cup is
