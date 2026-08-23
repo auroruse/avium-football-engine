@@ -7189,6 +7189,59 @@ export default function App() {
   // A tournament tab's body: a ### caption adopts the table under it, tables render by shape,
   // prose goes through MdDoc, and a run of captioned standings tables packs into a grid.
   const renderTournBody = (body) => {
+    // "Round N \u2014 Group X" sections fold into one round bar: a round is every group's
+    // fixtures in one table, sorted by group, instead of a heading per group per round.
+    const rounds = new Map(); const kept = [];
+    for (let i = 0; i < body.length; i++) {
+      const rg = body[i].match(/^###\s+Round\s+(\d+)\s*[\u2013\u2014-]+\s*Group\s+(.+?)\s*$/i);
+      let j = i + 1;
+      while (rg && j < body.length && !body[j].trim()) j++;
+      if (rg && body[j] && body[j].trim().startsWith("|")) {
+        const rows = [];
+        while (j < body.length && body[j].trim().startsWith("|")) { rows.push(body[j].trim()); j++; }
+        const cells = r => r.replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+        const head = cells(rows[0]);
+        const rest = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
+        if (head.some(h => /^match$/i.test(h))) {
+          const n = +rg[1];
+          if (!rounds.has(n)) rounds.set(n, { head: ["Group", ...head], rows: [] });
+          for (const r of rest) rounds.get(n).rows.push([rg[2], ...r]);
+          i = j - 1; continue;
+        }
+      }
+      kept.push(body[i]);
+    }
+    body = kept;
+    const ordR = [...rounds.keys()].sort((x, y) => x - y);
+    const idxR = rounds.size ? Math.min(Math.max(lgRound ?? ordR.length - 1, 0), ordR.length - 1) : -1;
+    // Stepping back a round recomputes each group's table from the fixtures up to that round.
+    // The last round keeps the report's own tables: they carry the official tie-breaks, which
+    // points, goal difference and goals scored cannot always reconstruct.
+    let compTables = null;
+    if (rounds.size && idxR < ordR.length - 1) {
+      compTables = new Map();
+      const acc = new Map();
+      for (const n of ordR.slice(0, idxR + 1)) for (const r of rounds.get(n).rows) {
+        const g = r[0], m = String(r[1] || "").replace(/\*\*/g, "").split(/\s+vs\s+/i).map(x => x.trim());
+        const sc = String(r[2] || "").replace(/\*\*/g, "").match(/(\d+)\s*-\s*(\d+)/);
+        if (!sc || m.length !== 2) continue;
+        const gf = [+sc[1], +sc[2]];
+        m.forEach((tm2, k) => {
+          const key = g + "|" + tm2;
+          const t = acc.get(key) || { g, team: tm2, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+          t.p++; t.gf += gf[k]; t.ga += gf[1 - k];
+          if (gf[k] > gf[1 - k]) t.w++; else if (gf[k] === gf[1 - k]) t.d++; else t.l++;
+          acc.set(key, t);
+        });
+      }
+      const byG = new Map();
+      for (const t of acc.values()) { if (!byG.has(t.g)) byG.set(t.g, []); byG.get(t.g).push(t); }
+      for (const [g, list] of byG) {
+        list.sort((x, y) => (3 * y.w + y.d) - (3 * x.w + x.d) || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.team.localeCompare(y.team));
+        compTables.set("Group " + g, { head: ["#", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts"],
+          body: list.map((t, i2) => [i2 + 1, t.team, t.p, t.w, t.d, t.l, t.gf, t.ga, (t.gf - t.ga >= 0 ? "+" : "") + (t.gf - t.ga), 3 * t.w + t.d].map(String)) });
+      }
+    }
     const items = []; let prose = [];
     const flush = () => { if (prose.join("\n").trim()) items.push({ md: prose.join("\n") }); prose = []; };
     for (let i = 0; i < body.length; i++) {
@@ -7207,9 +7260,10 @@ export default function App() {
         const rest = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
         const isFix = head.some(h => /^match$/i.test(h));
         const isStand = !isFix && head.some(h => /team|club/i.test(h));
+        const ct = isStand && h3 && compTables ? compTables.get(h3[1].trim()) : null;
         items.push({ h: h3 ? h3[1] : null, grid: isStand,
                      el: isFix ? renderFixTable({ head, body: rest })
-                       : isStand ? renderStandTable({ head, body: rest })
+                       : isStand ? renderStandTable(ct || { head, body: rest })
                        : <MdTable head={head} body={rest} keyBase={"tt" + items.length} /> });
         continue;
       }
@@ -7232,6 +7286,25 @@ export default function App() {
       out.push(<div key={"t" + out.length} style={{ marginBottom: 16 }}>{cell(it, 0)}</div>);
     }
     flushRun();
+    if (rounds.size) {
+      const ord = ordR, idx = idxR;
+      const rd = rounds.get(ord[idx]);
+      const fixRows = rd.rows.slice().sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+      out.push(
+        <div key="rounds" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <button onClick={() => setLgRound(Math.max(0, idx - 1))} disabled={idx === 0}
+              style={{ ...smBtn, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8249;</button>
+            <select value={idx} onChange={e => setLgRound(+e.target.value)}
+              style={{ ...smBtn, background: "transparent", color: "var(--ui-text)", cursor: "pointer", fontWeight: 600 }}>
+              {ord.map((n2, i2) => <option key={n2} value={i2}>Round {n2}</option>)}
+            </select>
+            <button onClick={() => setLgRound(Math.min(ord.length - 1, idx + 1))} disabled={idx === ord.length - 1}
+              style={{ ...smBtn, cursor: idx === ord.length - 1 ? "default" : "pointer", opacity: idx === ord.length - 1 ? 0.4 : 1, background: "transparent", color: "var(--chrome-muted)" }}>&#8250;</button>
+          </div>
+          {renderFixTable({ head: rd.head, body: fixRows })}
+        </div>);
+    }
     return out;
   };
   // The seasons list reads every report (the winner lives in the final table), so the whole
