@@ -366,7 +366,7 @@ foulAggr: 0.25,
   // rates +0.28 higher, against +1.1 and +0.15 before, and a better passer's sharper judgement
   // finally buys him something because the objective he sharpens is the real one.
   // Refitted at the landing (400 matches); `node test/ratings.mjs check` holds it within 0.30.
-  passCal0: 1.95, passCalB: 1.30, passCalR: 1.08, passCalL: 2.52,
+  passCal0: 1.95, passCalB: 1.26, passCalR: 1.21, passCalL: 2.69,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -952,6 +952,24 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   runTicks: 14,
   runMax: 4,
   runCool: 28,
+  // THE BOX IS OCCUPIED, at last. With the ball in the final third the side's most attacking men
+  // take stations in the penalty area -- near post, penalty spot, far post -- clamped to the legal
+  // frontier: level with the second-last defender, or with the ball when the ball is deeper, which
+  // is exactly what the offside law allows. Nothing else changes; the cross valuation, the aerial
+  // duel and the cutback were all built years of sessions ago and measured as "outscored because
+  // there is nobody there": 74% of final-third passes were struck with ZERO team-mates in the box
+  // (0.65 men on average, 65% of samples empty), because the anchor never asked for the area and
+  // the space search never proposes what the anchor does not ask for. That emptiness is why match
+  // xG was a count of ~1.5 rare big chances a side -- blowout or nothing -- with the whole
+  // 0.08-0.2 band of ordinary box chances missing.
+  // boxFrom is ballDepth (distance from the ATTACKER'S OWN goal) past which stations engage, and
+  // boxHold is how many ticks they persist after the ball drops back out. Both exist because of
+  // the same measurement: engaged only inside the final third, the front men averaged 20.8 m from
+  // their stations and reached them on 7% of sampled ticks -- a final-third spell lasts seconds,
+  // and a twenty-metre commute does not fit inside one. A striker is not commuting; he is already
+  // pinned on the last shoulder while the ball is still being worked forward, which is what
+  // engaging from 56 with six seconds of hold actually is.
+  boxFrom: 56, boxHold: 24, boxMen: 3, boxNear: 6.5, boxSpot: 11, boxFar: 9, boxSlack: 0.3,
   // How far up the pitch the ball must be before ANYBODY runs beyond it. A counter-attack starts by
   // definition with the ball deep, so this number decides whether the engine can counter at all.
   runMinDepth: 30,
@@ -1193,7 +1211,7 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
   rateSave: 0.65, gkExpPen: 0.85, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
-  gkExp: [[0.05, 0.19], [0.10, 0.20], [0.20, 0.22], [0.30, 0.37], [0.40, 0.78], [0.60, 0.47], [1.01, 0.60]],
+  gkExp: [[0.05, 0.18], [0.10, 0.19], [0.20, 0.18], [0.30, 0.36], [0.40, 0.80], [0.60, 0.60], [1.01, 0.83]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1252,7 +1270,7 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // Re-derive it the same way if any delta above, or rateSpread, moves.
   // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
   // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
-  ratePos: { GK: 0.225, DEF: -0.473, MID: -0.513, FWD: -0.489 },
+  ratePos: { GK: 0.200, DEF: -0.542, MID: -0.639, FWD: -0.795 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1782,6 +1800,25 @@ gkDiveV: 2.9,
   // How much extra a long flight buys his read: nothing under gkReadT0 seconds, full value by
   // gkReadT0 + gkReadTSpan. A close-range shot stays a guess however good he is.
   gkReadT0: 0.25, gkReadTSpan: 0.6, gkReadTime: 0.18,
+  // The open goal, as meShotP prices it: a keeper gkOpenLat off the shot line (past a 0.7 m body
+  // allowance) is fully beaten, and a fully beaten goal converts at xgOpenCap decayed with
+  // distance. See the keeper block in meShotP for the measurement that forced this.
+  gkOpenLat: 2.4, gkOpenReach: 1.3, xgOpenCap: 0.93, xgOpenDecay: 0.015,
+  // The recorder's calibration: P = sigma(xgCal0 + xgCalB * logit(q)), fitted on 7,193 attempts
+  // joined to their outcomes by shot id (test/ratings.mjs collects the data). After the open-goal
+  // term the raw recorder ran monotonically hot close in and cold from range; through this map
+  // every band lands within a few points of what the physics actually converts. Re-fit whenever
+  // the shot or keeper physics move.
+  // The intercept is raised over the joined fit's -1.135 because the join can only see goals
+  // that resolve with a live shot attached: about thirty percent go in off a deflection or a
+  // scramble and resolve with none, so a map calibrated to the joined outcomes booked 2.50 xG a
+  // match against 3.17 goals. The deflected goal was still created by the attempt that produced
+  // it, so its mass is returned to the attempts proportionally -- +0.24 in logit space is the
+  // 3.17/2.50 ratio -- and the season's xG ledger balances against its goals.
+  // (A rebound bonus keyed on mp._parry was tried here and reverted: post-parry strikes realize
+  // 19-31%, not the 82% a bookkeeping artefact suggested -- goals with no live shot fall back to
+  // rateGoalXgDef 0.3 in the KEEPER's ledger and had pooled into one measurement band.)
+  xgCal0: -0.82, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   gkDiveVmin: 5.0, gkDiveVmax: 9.5,

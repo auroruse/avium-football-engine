@@ -999,6 +999,53 @@ export function meShape(s, side) {
   // How besieged we are: 0 with the ball far away, 1 with it on our goal line.
   const siege = Math.max(0, Math.min(1, 1 - ballDepth / CFG.siegeDepth));
 
+  // BOX STATIONS. See CFG.boxFrom: with the ball in the final third the boxMen most attacking men
+  // -- not the carrier, not the keeper -- man the near post, the penalty spot and the far post.
+  // Lanes are dealt by formation width so they do not flicker: the man nearest the ball's side
+  // takes the near post, the farthest the far post.
+  const boxLane = new Map();
+  // Engagement with hysteresis: on past boxFrom, and held boxHold ticks once on, so the front men
+  // do not yo-yo between their stations and the anchor every time the ball dips out of range.
+  mp._boxT = mp._boxT || { home: 0, away: 0 };
+  // ...and which side of the pitch the ball is on is remembered with a dead zone, not read raw:
+  // the near and far posts swap when the ball crosses the centre line of the pitch, and the ball's
+  // y oscillates through the centre every few seconds of build-up -- read raw, the two wide men
+  // exchanged an eleven-metre shuffle each time and spent the whole spell commuting (mean 18.6 m
+  // from station, 13% arrival). The side only updates when the ball is clearly wide of centre.
+  mp._boxLow = mp._boxLow || { home: true, away: true };
+  if (Math.abs(mp.by - ME_HALF_W) > 6) mp._boxLow[side] = mp.by < ME_HALF_W;
+  // THE LANES ARE STICKY. Re-picked every tick, the carrier exclusion rotated membership through
+  // exactly the front men -- whoever took a touch surrendered his lane and its next holder started
+  // thirty metres away -- so the far post was a job description everyone briefly held and nobody
+  // did. Measured before this: mean 17.6 m from station, 12% arrival. Picked once per engagement
+  // spell; a man on the ball or mid-run keeps his lane and simply skips the override for a tick.
+  const engaged = attacking && ballDepth > CFG.boxFrom;
+  if (engaged && mp._boxT[side] <= 0) {
+    const cand = [];
+    for (let j = 0; j < ps.length; j++) {
+      const q = ps[j];
+      if (q.pos === "GK" || q.off) continue;
+      cand.push([j, q.atkW ?? 0]);
+    }
+    cand.sort((a, b) => b[1] - a[1]);
+    mp._boxPick = mp._boxPick || {};
+    mp._boxPick[side] = cand.slice(0, CFG.boxMen).map(c => c[0]);
+  }
+  if (engaged) mp._boxT[side] = CFG.boxHold;
+  else if (mp._boxT[side] > 0) mp._boxT[side]--;
+  // The hold timer is the ONLY gate on holding a station. Gated on `attacking` as well, a
+  // fifty-fifty scramble in the final third -- where mp.side flips on every touch -- released the
+  // front men once a second and they drifted off their posts mid-move. A striker stays high
+  // through a scramble; if possession has genuinely gone, the timer runs out and rest defence
+  // collects him.
+  if (mp._boxT[side] > 0 && mp._boxPick?.[side]) {
+    const picks = mp._boxPick[side].filter(j => !ps[j]?.off);
+    const ballLow = mp._boxLow[side];
+    picks.sort((a, b) => ballLow ? (ps[a]._bw ?? ME_HALF_W) - (ps[b]._bw ?? ME_HALF_W)
+                                 : (ps[b]._bw ?? ME_HALF_W) - (ps[a]._bw ?? ME_HALF_W));
+    picks.forEach((j, r) => boxLane.set(j, r));
+  }
+
   for (let i = 0; i < ps.length; i++) {
     const p = ps[i];
     p._closing = false; p._track = false;
@@ -1604,6 +1651,28 @@ export function meShape(s, side) {
         const add = Math.max(0, dl - got) * CFG.devRestore;    // never past it: add is clamped at 0
         tx += ux * add; ty += uy * add;
       }
+    }
+    // ...and a man with a box station goes to it, whatever the chain above decided. Placed HERE,
+    // after the leash and the restore, because the station is nothing like his zone by design and
+    // the leash exists precisely to stop targets like it -- the first cut sat before the leash and
+    // measured 0.67 men in the box against 0.65 untouched. The support man keeps his short-option
+    // job (the cutback needs somebody OUTSIDE the area to pull back to) and a man mid-burst
+    // finishes his run. Clamped to the legal frontier: as near the goal as the more advanced of
+    // the offside line and the ball, a shade behind it -- a striker holding his line. As defenders
+    // drop, the frontier drops, and the box fills with them.
+    const _lane = boxLane.get(i);
+    if (_lane !== undefined && (p._runT ?? 0) <= 0
+        && p._duty !== "support" && p._duty !== "press" && p._duty !== "cover" && p._duty !== "recover"
+        && !(mp.side === side && mp.idx === i)) {
+      const depth3 = _lane === 0 ? CFG.boxNear : _lane === 1 ? CFG.boxSpot : CFG.boxFar;
+      const ballLow3 = mp._boxLow[side];
+      ty = _lane === 0 ? ME_HALF_W + (ballLow3 ? -1 : 1) * (GOAL_HALF_W + 1.5)
+         : _lane === 1 ? ME_HALF_W
+         : ME_HALF_W + (ballLow3 ? 1 : -1) * (GOAL_HALF_W + 2.5);
+      tx = meGoalX(side) - dir * depth3;
+      const frontier = dir > 0 ? Math.max(off, mp.bx) : Math.min(off, mp.bx);
+      if ((tx - frontier) * dir > -CFG.boxSlack) tx = frontier - dir * CFG.boxSlack;
+      if (Math.hypot(p.x - tx, p.y - ty) > 3) p._closing = true;
     }
     // Offside holds everyone except a man running in behind, who is gambling on the timing.
     if (p._run !== "behind" && (tx - off) * dir > 0 && (tx - mp.bx) * dir > 0) tx = off - dir * 0.6;

@@ -4,7 +4,7 @@ import { meAerial, meAttrs, meDuel, meGkSkill, meSpeed, meTech } from "./attribu
 import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, meLoftFor, meShootBall } from "./ball";
 import { meBlock, meDuties, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
-import { meDecide, meShotP } from "./decide";
+import { meXgCal, meDecide, meShotP } from "./decide";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
@@ -1803,12 +1803,12 @@ export function meTick(s, rng, out) {
             // header six yards out is worth what a shot from there is worth. headXg is the knob if
             // heading turns out to deserve a discount against a foot; it ships at parity because
             // the outcome here is resolved by the physics either way, exactly as a strike is.
-            { const hp = meShotP(s, bs, q, q.x, q.y) * CFG.headXg;
-              if (out.xgS) out.xgS[bs] += hp;
-              if (out.shotDist) { out.shotDist[Math.min(9, Math.floor(dGoalA / 5))]++;
-                                  out.xg = (out.xg || 0) + hp; } }
+            const hp = meXgCal(meShotP(s, bs, q, q.x, q.y, true) * CFG.headXg);
+            if (out.xgS) out.xgS[bs] += hp;
+            if (out.shotDist) { out.shotDist[Math.min(9, Math.floor(dGoalA / 5))]++;
+                                out.xg = (out.xg || 0) + hp; }
             const aimY = ME_HALF_W + (q.y < ME_HALF_W ? 1 : -1) * GOAL_HALF_W * CFG.headAim;
-            mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick, p: q };
+            mp.shot = { side: bs, name: q.name, full: q.fullName || q.name, i: bi, t0: mp.tick, p: q, xg: hp };
             const gkH = s.players[meOther(bs)].find(z => z.pos === "GK");
             if (gkH) {
               const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
@@ -2396,8 +2396,11 @@ export function meTick(s, rng, out) {
     // because a sweep that asks "did this instruction make the side BETTER" needs a difference, and
     // a goal is a Poisson count with a mean of 1.6 -- a whole match of it carries more noise than
     // the effect being measured. xG is the same question answered from ~8 continuous samples.
-    if (out.shotDist) { const _g = meShotGeom(side, p.x, p.y); out.shotDist[Math.min(9, Math.floor(_g.d / 5))]++; out.xg = (out.xg || 0) + act.p; }
-    if (out.xgS) out.xgS[side] += act.p;
+    // What the book says this shot was worth is the RECORDER's number, not the decision's --
+    // see the keeper block in meShotP. act.p keeps steering the choice; xgRec is what is written.
+    const xgRec = meXgCal(meShotP(s, side, p, p.x, p.y, true));
+    if (out.shotDist) { const _g = meShotGeom(side, p.x, p.y); out.shotDist[Math.min(9, Math.floor(_g.d / 5))]++; out.xg = (out.xg || 0) + xgRec; }
+    if (out.xgS) out.xgS[side] += xgRec;
     // ...but only if the pass actually MADE the chance. _gotFj is stamped when a man receives the
     // ball and it persists, so a centre-half who found a forward in his own half was being credited
     // with a chance the forward then carried thirty metres and manufactured himself -- which is why
@@ -2411,7 +2414,7 @@ export function meTick(s, rng, out) {
     const shooter = mp.idx;
     meKickedBy(mp, side, mp.idx);
     mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
-    mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: act.p, t0: mp.tick, p };
+    mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: xgRec, t0: mp.tick, p };
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted

@@ -12,7 +12,13 @@ import { meTick } from "./match";
 // as module constants they were dead knobs and a sweep over them measured pure seed noise.
 export const ME_XG_K = 0.143;
 
-export function meShotP(s, side, p, x, y) {
+// The recorded-xG calibration. Applied by the RECORDING sites to whatever the rec-mode model
+// says (headers after their headXg discount), never by the decision path.
+export const meXgCal = (q) => {
+  const c = Math.max(0.005, Math.min(0.97, q));
+  return 1 / (1 + Math.exp(-(CFG.xgCal0 + CFG.xgCalB * Math.log(c / (1 - c)))));
+};
+export function meShotP(s, side, p, x, y, rec) {
   const g = meShotGeom(side, x, y);
   if (g.d > 40) return 0;
   const a = meAttrs(p);
@@ -51,20 +57,43 @@ export function meShotP(s, side, p, x, y) {
   const clearMax = 1 + (CFG.shotClear - 1)
     * Math.max(0, Math.min(1, 1 - (g.d - CFG.shotClearD) / CFG.shotClearFade));
   q *= Math.max(CFG.shotCrowd, Math.min(clearMax, clearMax - lane0 * CFG.shotLaneK));
-  // The keeper. Absolute: his reflexes against this shot, nothing to do with who he plays for.
+  // The keeper -- and WHICH keeper term depends on who is asking. The decision layer gets the
+  // estimate every choice in the engine was balanced against; making the estimate honest about a
+  // beaten keeper re-tuned the whole game three runs in a row (shots a side fell from 10.0 to 7.6
+  // while claimed xG doubled), because sp feeds shoot-or-pass, passShotW and carryShotW. The
+  // RECORDER (rec = true) prices the keeper's true state instead: his shadow on the goal plane as
+  // the shooter sees him, reach projected by the same factor as his position, and a beaten goal
+  // lifted toward a distance-decayed open-net cap. That is what out.xgS, the shot's own xg and
+  // the keeper's save credit carry -- measured, the physics converts the rebound left in front of
+  // an open net at 88% while the set-keeper estimate said 37%.
   const gk = meKeeper(s.players[meOther(side)]);
-  if (gk) {
-    // WHERE HE IS, not just how good he is. This read his reflexes and nothing else, so a keeper
-    // stranded thirty metres upfield discounted the shot exactly as much as one stood on his line --
-    // an open net was priced as an ordinary save and the man in front of it rationally declined to
-    // shoot. He cannot save what is already behind him, and he cannot save what is across the goal
-    // from where he is standing.
+  if (!rec) {
+    if (gk) {
+      const dr = meDir(side);
+      const behind = Math.max(0, (x - gk.x) * dr);        // shooter nearer the goal than the keeper
+      const lat = Math.abs(gk.y - y);
+      const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
+      const D = Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70);
+      q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
+    }
+  } else {
     const gxg = meGoalX(side), dr = meDir(side);
-    const behind = Math.max(0, (x - gk.x) * dr);          // shooter nearer the goal than the keeper
-    const lat = Math.abs(gk.y - y);
-    const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
-    const D = Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70);
-    q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
+    const D = gk ? Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70) : 1;
+    let open01 = 1;
+    if (gk) {
+      const behind = Math.max(0, (x - gk.x) * dr);
+      let miss = 0;
+      const depth = (gk.x - x) * dr;
+      if (depth > 0.5) {
+        const proj = (gxg - x) / (gk.x - x);
+        const shadowY = y + (gk.y - y) * proj;
+        miss = Math.max(0, Math.abs(shadowY - ME_HALF_W) - 3.66 - CFG.gkOpenReach * Math.max(1, Math.abs(proj)));
+      }
+      open01 = Math.max(0, Math.min(1, Math.max(behind / CFG.gkBeatX, miss / CFG.gkOpenLat)));
+    }
+    const cap = CFG.xgOpenCap * Math.exp(-g.d * CFG.xgOpenDecay);
+    q *= D * (gk && gk.emergencyGK ? 1.35 : 1);
+    q += Math.max(0, cap - q) * open01;
   }
   return Math.max(0, Math.min(0.95, q));
 }

@@ -604,7 +604,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // `pen` rides with the shot so whatever it turns into knows where it came from: a penalty
     // scored and a penalty missed are their own events, not a goal and a shot off target.
     mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti,
-                t0: mp.tick, pen: true }; mp.fj = -1;
+                t0: mp.tick, pen: true, xg: CFG.spPenXg }; mp.fj = -1;
     gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
                  mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
@@ -622,7 +622,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // and a dead ball is struck from wherever the foul happened.
     if (out.xgS) out.xgS[side] += CFG.spFkXg;
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spFkXg;
-    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick };
+    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick, xg: CFG.spFkXg };
     mp.fj = -1;
     // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
     // stood and watched every free kick struck at his goal.
