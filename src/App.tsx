@@ -9647,7 +9647,13 @@ export default function App() {
                 return (
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
                 {list.map((x) => {
-                  const b2 = x.boards, top = (k) => b2[k]?.[0] || null;
+                  // The honour goes to whoever the Player Statistics table puts first, which is not
+                  // the board's own row order: that table merges the boards per player and breaks
+                  // ties on goals, so a 7.7 with twelve of them outranks a 7.7 with one.
+                  const b2 = x.boards;
+                  const gOf = new Map((b2.G || []).map(e => [e.player, e.v]));
+                  const top = (k) => (b2[k]?.length ? b2[k].reduce((best, r) =>
+                    ((r.v ?? -Infinity) - (best.v ?? -Infinity) || (gOf.get(r.player) ?? 0) - (gOf.get(best.player) ?? 0)) > 0 ? r : best) : null);
                   const kinds = PSTATS_STAT_ORDER.filter(k => b2[k]?.length);
                   const wn = winnerOf(x), wt = wn ? teamByName.get(wn) : null;
                   return (
