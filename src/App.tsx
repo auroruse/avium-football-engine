@@ -14,6 +14,7 @@ import kkmTSV from "./presets/KKM.tsv?raw";
 import nchTSV from "./presets/NCH.tsv?raw";
 import rudTSV from "./presets/RUD.tsv?raw";
 import shiTSV from "./presets/SHI.tsv?raw";
+import skjTSV from "./presets/SKJ.tsv?raw";
 import turTSV from "./presets/TUR.tsv?raw";
 import varTSV from "./presets/VAR.tsv?raw";
 import vicTSV from "./presets/VIC.tsv?raw";
@@ -21,7 +22,7 @@ import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_KEY_ROLE, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeRoleFit, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
@@ -2438,7 +2439,8 @@ function fullDisplayName(raw) {
 }
 // ── Player stats archive (public/pstats) ──
 // One TSV per competition-season of side-by-side leaderboard blocks (#/PLAYER/POS/TEAM/GP/<stat>),
-// plus changelog.tsv recording every post-tournament rating change. The file list arrives from the
+// plus changelog.tsv recording every post-tournament rating change and hof.tsv, the Hall of Fame:
+// players the presets no longer carry, kept with the identity the roster last held. The file list arrives from the
 // pstats-manifest plugin; contents are fetched on first visit to the Players tab.
 // Folder -> competition, for the competitions a report cannot name itself: the international
 // calendar and the cups. A league season is detected from the record -- the clubs its boards and
@@ -2505,9 +2507,22 @@ function parseChangelog(text) {
     .map(r => ({ season: r[0], comp: PSTATS_COMP[r[1]] || r[1], player: r[2], team: r[3], pos: r[4], old: +r[5], neu: +r[6] }))
     .filter(c => c.player && Number.isFinite(c.old) && Number.isFinite(c.neu));
 }
+// hof.tsv: PLAYER / POS / NAT / CLUB / OVR / INDUCTED. The snapshot is what the Player
+// page falls back on once the man has left every preset; his career and changelog still come
+// from the archive like anyone else's.
+function parseHof(text) {
+  const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
+  return rows.slice(1)
+    .map(r => ({ player: r[0], pos: r[1] || "", nat: r[2] || "", club: r[3] || "", ovr: +r[4] || null, inducted: r[5] || "" }))
+    .filter(h => h.player);
+}
 // Natural-position model: [line, side] — line GK→DEF→WB→DM→MID→AM→FWD, side left/centre/right.
 // Side mismatches cost slightly more than line ones: a left back at right back is a worse ask
 // than a left back pushed to left midfield.
+// A minute, written the way football writes it: 45+2 and 90+4 rather than 45 and 90. `add` is the
+// board, stamped beside the minute by the engine, so a stoppage-time goal can be told apart from
+// one on the whistle -- three in a row all reading 90' was the bug this fixes.
+const fmtMin = (min, add) => `${min ?? 0}${add ? "+" + add : ""}'`;
 const POS_SPECIFIC = ["GK","LB","CB","RB","LWB","RWB","DM","CM","AM","LM","RM","LW","RW","ST"];
 const POS_ROLE = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
 function posFitCost(a, b) {
@@ -2592,8 +2607,8 @@ const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false, true);
 // Column 1 holds the club badge — an image floating over the cell, so it exports blank — and both
 // it and the league column are stripped before parseBulk sees the row.
 const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
-                     KKM: kkmTSV, NCH: nchTSV, RUD: rudTSV, SHI: shiTSV, TUR: turTSV,
-                     VAR: varTSV, VIC: vicTSV };
+                     KKM: kkmTSV, NCH: nchTSV, RUD: rudTSV, SHI: shiTSV, SKJ: skjTSV,
+                     TUR: turTSV, VAR: varTSV, VIC: vicTSV };
 // Divisions whose sheets carry no per-player ratings. Every player in them inherits his club's team
 // skill, which is a default rather than an assessment of anyone — so they all read identically, and
 // in national-team selection they displace real, individually-rated players with placeholder names.
@@ -2655,6 +2670,7 @@ const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2,
 const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
 // it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
+const TAB_LABEL = { leagues: "Registry", live: "Live Match", tournament: "Tournament", utilities: "Utilities", docs: "Documentation" };
 const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
                       "Nichirin League Two": "Sei'i Tai Shogun Cup" };
 const INTL_COMPS = [
@@ -3651,6 +3667,162 @@ const XI_STEPS = (() => {
 // behind a 79 and a 79 who happened to be exact. Four puts it back where it was.
 const XI_STEP_MAX = 2, XI_OOP_PENALTY = 4;
 const xiSteps = (natural, slot) => XI_STEPS[natural]?.[slot] ?? Infinity;
+function buildPlayerIndex(teams) {
+  const natNames = new Map();
+  teams.forEach(t => { if (t.league === "Avium International" && t.code) natNames.set(t.code, t.name); });
+  const resNat = (code) => code ? (natNames.get(code) || code) : null;
+  const byName = new Map();
+  teams.forEach(t => {
+    if (!t.squad) return;
+    const isIntl = t.league === "Avium International";
+    t.squad.forEach(p => {
+      if (!p.name || p.name.startsWith("#")) return;
+      const key = p.fullName || p.name;
+      const eff = p.ovr ?? t.skill;
+      if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, clubPos: new Set(), natPos: new Set(), bandPos: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
+      const e = byName.get(key);
+      // Club and national slots are kept apart so the union below can be built from both.
+      //
+      // ...but ONLY the starting eleven's slots. An 11-man international bench mirrors the XI slot
+      // for slot, so every substitute inherits the specific position of the starter he sits
+      // behind -- and reading that back as a position he plays renamed him: measured across the
+      // sheets, 118 of the 227 benched men with a club were being credited with a position they
+      // play nowhere, a natural right-back reading as a centre-half because that is the slot the
+      // formation put him in. His country picking him in the XI at left-back is a fact about him;
+      // sitting twelfth is a fact about the formation. It is kept only as a fallback, for the men
+      // who exist on a national sheet and nowhere else: their bench slot is the only record of
+      // what they play, so dropping it outright left 46 nations unable to fill a bench at all.
+      const sp = p.spos || p.pos;
+      if (sp) { if (!isIntl) e.clubPos.add(sp); else if (!p.bench) e.natPos.add(sp); else e.bandPos.add(sp); }
+      if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
+      else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
+    });
+  });
+  const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
+  const arr = [...byName.values()];
+  // Both slots count. A man his country plays at left-back and his club plays at centre-back has
+  // shown he plays both, and taking only the club row threw the other half away: Skjarnland's own
+  // sheet opens with Haugland 85 at left-back, and preferring his club's CB left an unrelated 75
+  // as the only man the index believed could play there.
+  arr.forEach(p => { const u = [...p.clubPos, ...p.natPos];
+    p.pos = (u.length ? u : [...p.bandPos]).sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).filter((x, i, a2) => a2.indexOf(x) === i).join("/") || p.pos;
+    delete p.clubPos; delete p.natPos; delete p.bandPos; });
+  // Tiebreak equal ratings by club skill, then national team skill.
+  return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
+}
+// The national-team selector. It used to be a panel on the Utilities tab; now it is what
+// test/natxi.mjs runs to recompute AVIUM.tsv's player columns, and nothing in the app calls it.
+// The XI is the exact assignment below, locked to the nation's own formation; the bench is filled
+// by broad group and then filled full stop.
+function pickNationalSquad(playerIndex, teams, nat) {
+  const natTeam = teams.find(t => t.league === "Avium International" && t.code === nat);
+  const formation = natTeam?.formation || "4-3-3";
+  // National teams play international rules, so the selector always picks a full 22:
+  // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
+  const template = buildSquad(formation, [], 11);
+
+  // How far a player is from a slot, in steps along XI_EDGES. Zero means he plays there.
+  const stepsOf = (p, sp) => Math.min(...p.elig.map(e => xiSteps(e, sp)));
+  const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * stepsOf(p, sp);
+  const byOvr = (p) => p.ovr || 0;
+  // Starters must match their exact slot position; bench slots only need the broad
+  // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
+  // That group is the slot's own `pos`, which buildSquad derives from the formation's bands.
+  // Re-deriving it from spos would disagree wherever a band and a position's name differ, so the
+  // player side answers with bandsOf — every band the formation table ever puts him in.
+  const slots = template.map(p => p.bench ? p.pos : p.spos);
+  const pool = playerIndex.filter(p => p.natCode === nat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.flatMap(e => [...bandsOf(e, formation)])) }; });
+  const used = new Set();
+  const players = new Array(slots.length).fill(null);
+  // Picking eleven players for eleven slots is an assignment problem, and it is solved exactly
+  // rather than approximated. "Fill the scarcest slot first" was the heuristic here before, and
+  // it was quietly wrong: it put Arverne's two best central midfielders in the two holding roles,
+  // which left the third attacking slot to a 77 while an 85 sat behind them. Across the field it
+  // gave up points on nine of sixty-two nations, so this was not a rounding error.
+  //
+  // Subset DP over the slots: each player is either left out or placed in one open slot he can
+  // fill. Eleven slots is 2048 states, and only one nation is ever being picked, so exactness is
+  // free. `value` returns -Infinity where a player cannot take a slot at all.
+  const bits = (m) => { let n = 0; while (m) { n += m & 1; m >>= 1; } return n; };
+  const assign = (indices, value) => {
+    const cands = pool.filter(p => !used.has(p.fullName));
+    const S = indices.length, FULL = 1 << S;
+    let dp = new Float64Array(FULL).fill(-Infinity); dp[0] = 0;
+    const took = [];
+    for (const p of cands) {
+      const next = Float64Array.from(dp), mine = new Int8Array(FULL).fill(-1);
+      for (let m = 0; m < FULL; m++) {
+        if (dp[m] === -Infinity) continue;
+        for (let s = 0; s < S; s++) {
+          if (m & (1 << s)) continue;
+          const w = value(p, slots[indices[s]], indices[s]);
+          if (w === -Infinity) continue;
+          const to = m | (1 << s);
+          if (dp[m] + w > next[to]) { next[to] = dp[m] + w; mine[to] = s; }
+        }
+      }
+      took.push(mine); dp = next;
+    }
+    // Fill as many slots as can be filled first, and take the best assignment among those.
+    let best = 0;
+    for (let m = 1; m < FULL; m++) {
+      if (dp[m] === -Infinity) continue;
+      const a = bits(m), b = bits(best);
+      if (a > b || (a === b && dp[m] > dp[best])) best = m;
+    }
+    let m = best;
+    for (let i = cands.length - 1; i >= 0; i--) {
+      const s = took[i][m];
+      if (s < 0) continue;                       // this player was left out
+      players[indices[s]] = cands[i];
+      used.add(cands[i].fullName);
+      m &= ~(1 << s);
+    }
+  };
+  const allIdx = slots.map((_, i) => i);
+  const xiIdx = allIdx.filter(i => !template[i].bench);
+  // Giving naturals absolute priority was tried and was worse: a 4-2-3-1 has no CM slot, so it
+  // benched an 88-rated central midfielder behind a 79 defensive midfielder and a 77 attacking
+  // midfielder purely because those two were exact. The graph is what fixes the bug this
+  // replaced — AM cannot reach ST at any price now — and the penalty can go back to doing what it
+  // is for, which is making a stand-in pay for the move without pretending he cannot make it.
+  // The step term breaks a tie toward whoever is closer to the slot.
+  assign(xiIdx, (p, s) => stepsOf(p, s) <= XI_STEP_MAX ? scoreFor(p, s) - stepsOf(p, s) / 1000 : -Infinity);
+  // The XI is settled before the bench is looked at, or a bench slot's broader group match would
+  // claim a player who should have started. The bench covers an area rather than a slot, so it
+  // matches on the broad group and takes the best rating available for it.
+  //
+  // ...but WHICH of that group's slots he takes is not arbitrary, because an 11-man bench mirrors
+  // the XI slot for slot and a substitute is therefore LABELLED with the position of the starter
+  // he sits behind. Picking on the broad group alone and ordering by nothing put natural full-
+  // backs behind centre-halves and wingers behind holding midfielders, and the formation then
+  // renamed them: the man's own position was overwritten by the slot he happened to land in.
+  // The group gate is what searches -- the formation is only entitled to say how many defenders,
+  // midfielders and forwards sit there -- and this orders them inside it, so each substitute
+  // takes the mirrored slot nearest what he actually plays. It is a thousandth of a rating point,
+  // far below any real gap, so it can only ever break a tie between men of equal rating; the
+  // bench is still the best available, in the order that keeps everybody's position his own.
+  const benchStep = (p, i) => Math.min(9, ...p.elig.map(e => xiSteps(e, template[i].spos)));
+  assign(allIdx.filter(i => template[i].bench),
+         (p, s, i) => p.groups.has(s) ? byOvr(p) - benchStep(p, i) / 1000 : -Infinity);
+  // ...and whatever is still open after that takes the best man left, whatever he plays. The
+  // group gate decides who sits where; it does not get to decide that nobody sits. A sheet short
+  // in one line was leaving a seat empty with a rated player in the stand: Sidanya lists nine
+  // substitutes and no spare midfielder, so two 71 wingers watched while DM and AM stayed blank;
+  // Auritania lists ten and no third forward. Only the keeper's seat keeps its gate -- a keeper
+  // does not cover the field and an outfielder does not cover goal. A nation with fewer bodies
+  // than seats (NHO carries twenty-one) still shows the gap, because there is nobody to put in it.
+  const open = allIdx.filter(i => template[i].bench && !players[i]);
+  if (open.length) assign(open, (p, s, i) => (s === "GK") === p.elig.includes("GK") ? byOvr(p) - benchStep(p, i) / 1000 : -Infinity);
+  return { template, players, formation, reqs: slots, skill: natTeam?.skill };
+}
+// One preset player cell, as AVIUM.tsv writes them: the rating always shown, the surname or
+// mononym in caps. An empty slot is an empty cell, which parseBulk reads back as the same gap.
+const presetCell = (p) => {
+  if (!p) return "";
+  const { first, last } = splitSurname(p.fullName || p.name, p.name);
+  return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
+};
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
 const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
 const shortName = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; if (p.length === 2 && NAME_PFX.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!NAME_PFX.has(p[i].toLowerCase())) { let s = i; while (s > 1 && NAME_PFX.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
@@ -4183,7 +4355,10 @@ export default function App() {
     // above the league list, which reads as searching all of them.
     const code = (t) => (t.code || "").toLowerCase(), name = (t) => t.name.toLowerCase();
     const hit = (t) => name(t).includes(q) || code(t).includes(q);
-    const out = q ? teams.filter(hit) : teams.filter(inView);
+    // ...except in the two directories, which are each the whole of one kind: a search typed in
+    // All National Teams finds nations and one typed in All Clubs finds clubs, never the other.
+    const isDirView = teamLeagueFilter === ALL_INTL || teamLeagueFilter === ALL_CLUBS;
+    const out = q ? (isDirView ? teams.filter(inView) : teams).filter(hit) : teams.filter(inView);
     // Ranked by how well the query matches, so an exact code lands first: "WIN" has to reach Winscor
     // FC before Winscor Chaplains, and "ROM" reaches Romsa JK though its code is RSA.
     if (q) return out.sort((a, b) =>
@@ -5472,7 +5647,11 @@ export default function App() {
     const hardEnd = end + ME_END_WAIT;
     const blowNow = () => m.t >= end && (meCanWhistle(m.s) || m.t >= hardEnd);
     for (let i = 0; i < n && !blowNow() && m.t < hardEnd; i++) {
-      m.out.min = meMinute(m.t); meTick(m.s, m.rng, m.out); m.t++; drain();
+      // meMinute stops at 90 by design, so without this every stoppage-time goal was written 90'
+      // and every extra-time goal with it -- three in a row on the same minute in the feed.
+      m.out.min = etOn ? 90 + Math.min(30, Math.floor((m.t - m.etAt) / (ME_MATCH_TICKS / 90))) : meMinute(m.t);
+      m.out.add = etOn ? meAddedMin(m.t, m.etAt, ME_ET_TICKS) : meAddedMin(m.t);
+      meTick(m.s, m.rng, m.out); m.t++; drain();
       if (!m.fast) { meSubScan(m); meSubStep(m); }
       m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
       // A goal, read off the score rather than off the feed: the counter is the one thing that cannot
@@ -5613,7 +5792,7 @@ export default function App() {
   const lgOpenComp = (name, sub) => {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
     setLgSub(name === LG_ALL_PLAYERS ? "players" : COMP_SCOPE[name] ? "seasons" : lgIsDir(name) ? "teams" : (sub || "teams"));
-    setPlayerNatFilter(""); setPlayerLeagueFilter("");
+    setPlayerNatFilter(""); setPlayerLeagueFilter(""); setTeamSearch("");
     const sc = COMP_SCOPE[name];
     setTeamLeagueFilter(name === LG_ALL_NATS || sc === "intl" ? ALL_INTL
                       : name === LG_ALL_CLUBS || sc === "clubs" ? ALL_CLUBS : sc || name);
@@ -5624,14 +5803,14 @@ export default function App() {
   const [tournQ, setTournQ] = useState("");
   const [tournPosF, setTournPosF] = useState("ALL");
   const [tournTeamF, setTournTeamF] = useState("");
-  const [playerBack, setPlayerBack] = useState(null);            // {season} to restore on closing a player page
+  const [playerBack, setPlayerBack] = useState(null);            // whole-page snapshot to restore on closing a player page
   // Season stats + rating changelog. null until the Players tab is first opened.
   const [pstats, setPstats] = useState(null);
   useEffect(() => {
     if (tab !== "leagues" || pstats) return;
     let dead = false;
     (async () => {
-      const seasons = [], changelog = [];
+      const seasons = [], changelog = [], hof = [];
       const mdFiles = new Set(PSTATS_FILES.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
       await Promise.all(PSTATS_FILES.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
@@ -5639,6 +5818,7 @@ export default function App() {
         if (!res || !res.ok) return;
         const text = await res.text();
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
+        if (/(^|\/)hof\.tsv$/i.test(f)) { hof.push(...parseHof(text)); return; }
         const m = f.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))\.tsv$/i);
         if (!m) return;
         const yr = m[4] ? +m[4] : pstatsYear(m[3]);
@@ -5673,7 +5853,7 @@ export default function App() {
       if (dead) return;
       seasons.sort((a, b) => a.ord - b.ord || a.comp.localeCompare(b.comp));   // chronological, as the changelog is
       if (Object.keys(mdSeed).length) setLgMd(m => ({ ...mdSeed, ...m }));
-      setPstats({ seasons, changelog });
+      setPstats({ seasons, changelog, hof });
     })();
     return () => { dead = true; };
   }, [tab, pstats]);
@@ -5754,8 +5934,6 @@ export default function App() {
     setPlScroll(0);
   }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerSearch]);
   const [dupCodeId, setDupCodeId] = useState(null);
-  const [bestXiNat, setBestXiNat] = useState("");
-  const [showBestXiExport, setShowBestXiExport] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // ─── LIVE MATCH ───
@@ -6882,7 +7060,7 @@ export default function App() {
             <tr key={r.player} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
               <td style={{ ...tdCell, fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{i + 1}</td>
               <td style={{ ...tdCell, paddingRight: 0 }}><PlayerShot name={r.player} size={22} /></td>
-              <td className={go ? "cell-link" : undefined} onClick={() => openPlayer(r.player, { season: s.id })}
+              <td className={go ? "cell-link" : undefined} onClick={() => openPlayer(r.player)}
                   style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: go ? "pointer" : "default" }}>{boldSurname(r.player, r.player)}</td>
               <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[r.pos] || "var(--chrome-muted)", ...mono }}>{r.pos}</td>
               <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
@@ -8803,37 +8981,7 @@ export default function App() {
     </div>
   );
 
-  const playerIndex = useMemo(() => {
-    const natNames = new Map();
-    teams.forEach(t => { if (t.league === "Avium International" && t.code) natNames.set(t.code, t.name); });
-    const resNat = (code) => code ? (natNames.get(code) || code) : null;
-    const byName = new Map();
-    teams.forEach(t => {
-      if (!t.squad) return;
-      const isIntl = t.league === "Avium International";
-      t.squad.forEach(p => {
-        if (!p.name || p.name.startsWith("#")) return;
-        const key = p.fullName || p.name;
-        const eff = p.ovr ?? t.skill;
-        if (!byName.has(key)) byName.set(key, { name: p.name, fullName: key, ovr: eff, pos: p.pos, clubPos: new Set(), natPos: new Set(), nationality: null, natCode: null, capped: false, clubs: [], clubSkill: 0, natSkill: 0 });
-        const e = byName.get(key);
-        // Club and national slots are kept apart so the union below can be built from both.
-        const sp = p.spos || p.pos;
-        if (sp) (isIntl ? e.natPos : e.clubPos).add(sp);
-        if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
-        else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
-      });
-    });
-    const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
-    const arr = [...byName.values()];
-    // Both slots count. A man his country plays at left-back and his club plays at centre-back has
-    // shown he plays both, and taking only the club row threw the other half away: Skjarnland's own
-    // sheet opens with Haugland 85 at left-back, and preferring his club's CB left an unrelated 75
-    // as the only man the index believed could play there.
-    arr.forEach(p => { p.pos = [...p.clubPos, ...p.natPos].sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).filter((x, i, a2) => a2.indexOf(x) === i).join("/"); delete p.clubPos; delete p.natPos; });
-    // Tiebreak equal ratings by club skill, then national team skill.
-    return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
-  }, [teams]);
+  const playerIndex = useMemo(() => buildPlayerIndex(teams), [teams]);
   // ── Players tab ──────────────────────────────────────────────────────────
   // Nations rail, built the same shape as the league rail: an entry per nation with its player
   // count and average OVR. Sorted by squad size rather than alphabetically — the search box covers
@@ -8870,8 +9018,39 @@ export default function App() {
   const openTeam = (t) => { if (!t) return;
     const comp = t.league === "Avium International" ? LG_ALL_NATS : (t.league || "Custom");
     lgOpenComp(comp, "teams"); setExpandedTeam(t.id); };
-  const openPlayer = (name, back = null) => { if (!name || !playerByName.has(name)) return;
-    setPlayerBack(back);
+  // ── Where the user was when they opened a player page ──────────────────────────────────
+  // A player is reachable from a season board, a squad, the rating changelog, the Hall of Fame,
+  // the All Players list and a live match, and every one of those used to come back to the same
+  // generic Players list — the one route that did not was a season, which had its own {season}
+  // hint threaded through by hand. This captures the page whole at the moment of the click and
+  // restores it whole, so back is where you were rather than where the app assumed you were.
+  // Everything openPlayer itself overwrites is in here, which is what made the old behaviour
+  // unrecoverable: by the time the page rendered, the state that knew the answer was gone.
+  const navSnap = () => ({ tab, lgComp, lgSub, lgSeason, lgRound, lgTTab, expandedTeam, clOpen,
+                           posF: playerPosFilter, natF: playerNatFilter, lgF: playerLeagueFilter, q: playerSearch });
+  const navRestore = (b) => {
+    setPlayerOpen(null); setPlayerBack(null);
+    if (!b) return;
+    setLgComp(b.lgComp); setLgSub(b.lgSub); setLgSeason(b.lgSeason); setLgRound(b.lgRound); setLgTTab(b.lgTTab);
+    setExpandedTeam(b.expandedTeam); setClOpen(b.clOpen);
+    setPlayerPosFilter(b.posF); setPlayerNatFilter(b.natF); setPlayerLeagueFilter(b.lgF); setPlayerSearch(b.q);
+    setTab(b.tab);
+  };
+  // What the button says. The page's own name, in the order the page is nested: another tab
+  // outranks the registry, an opened season outranks the face it sits in, and a face names itself.
+  const navLabel = (b) => {
+    if (!b) return "Players";
+    if (b.tab !== "leagues") return TAB_LABEL[b.tab] || "Back";
+    if (b.lgSeason) return (pstats?.seasons || []).find(x => x.id === b.lgSeason)?.season || "Season";
+    if (b.lgSub === "cup") return LEAGUE_CUPS[b.lgComp] || "Cup";
+    return { teams: "Teams", players: b.lgComp === LG_ALL_PLAYERS ? "All Players" : "Players",
+             seasons: "Seasons", changelog: "Rating Changelog", hof: "Hall of Fame" }[b.lgSub] || "Players";
+  };
+  // Opening a player from the Hall of Fame cannot go through openPlayer: an inductee the presets
+  // no longer carry is not in playerByName, which is exactly the case the Hall exists for.
+  const showPlayer = (name) => { setPlayerBack(navSnap()); setPlayerOpen(name); };
+  const openPlayer = (name) => { if (!name || !playerByName.has(name)) return;
+    setPlayerBack(navSnap());
     setPlayerNatFilter(""); setPlayerSearch("");
     // Stay in the competition already open; from anywhere else the player's own club decides it.
     const pp = playerByName.get(name);
@@ -8924,99 +9103,6 @@ export default function App() {
   const playerByName = useMemo(() => new Map(playerIndex.map(p => [p.fullName || p.name, p])), [playerIndex]);
   const allPlayersAvg = useMemo(() => playerIndex.length
     ? Math.round(playerIndex.reduce((a, p) => a + (p.ovr || 0), 0) / playerIndex.length) : 0, [playerIndex]);
-
-  const natOptions = useMemo(() => [...playerIndex.reduce((m, p) => {
-    if (!p.natCode) return m;
-    const e = m.get(p.natCode) || { skill: 0, count: 0 };
-    e.skill = Math.max(e.skill, p.natSkill || 0); e.count++;
-    m.set(p.natCode, e);
-    return m;
-  }, new Map())].sort((a, b) => b[1].skill - a[1].skill), [playerIndex]);
-
-  // Greedy best-XI, locked to the nation's own formation: repeatedly fill the scarcest
-  // open slot (fewest eligible unused players) with its highest-OVR eligible candidate.
-  // A slot with no specialist available is left empty rather than forcing a wrong-position player in.
-  const bestXi = useMemo(() => {
-    if (!bestXiNat) return null;
-    const natTeam = teams.find(t => t.league === "Avium International" && t.code === bestXiNat);
-    const formation = natTeam?.formation || "4-3-3";
-    // National teams play international rules, so the selector always picks a full 22:
-    // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
-    const template = buildSquad(formation, [], 11);
-
-    // How far a player is from a slot, in steps along XI_EDGES. Zero means he plays there.
-    const stepsOf = (p, sp) => Math.min(...p.elig.map(e => xiSteps(e, sp)));
-    const scoreFor = (p, sp) => (p.ovr || 0) - XI_OOP_PENALTY * stepsOf(p, sp);
-    const byOvr = (p) => p.ovr || 0;
-    // Starters must match their exact slot position; bench slots only need the broad
-    // group (DEF/MID/FWD) — bench depth is about covering an area, not exact tactical fit.
-    // That group is the slot's own `pos`, which buildSquad derives from the formation's bands.
-    // Re-deriving it from spos would disagree wherever a band and a position's name differ, so the
-    // player side answers with bandsOf — every band the formation table ever puts him in.
-    const slots = template.map(p => p.bench ? p.pos : p.spos);
-    const pool = playerIndex.filter(p => p.natCode === bestXiNat).map(p => { const elig = p.pos.split("/"); return { ...p, elig, groups: new Set(elig.flatMap(e => [...bandsOf(e, formation)])) }; });
-    const used = new Set();
-    const players = new Array(slots.length).fill(null);
-    // Picking eleven players for eleven slots is an assignment problem, and it is solved exactly
-    // rather than approximated. "Fill the scarcest slot first" was the heuristic here before, and
-    // it was quietly wrong: it put Arverne's two best central midfielders in the two holding roles,
-    // which left the third attacking slot to a 77 while an 85 sat behind them. Across the field it
-    // gave up points on nine of sixty-two nations, so this was not a rounding error.
-    //
-    // Subset DP over the slots: each player is either left out or placed in one open slot he can
-    // fill. Eleven slots is 2048 states, and only one nation is ever being picked, so exactness is
-    // free. `value` returns -Infinity where a player cannot take a slot at all.
-    const bits = (m) => { let n = 0; while (m) { n += m & 1; m >>= 1; } return n; };
-    const assign = (indices, value) => {
-      const cands = pool.filter(p => !used.has(p.fullName));
-      const S = indices.length, FULL = 1 << S;
-      let dp = new Float64Array(FULL).fill(-Infinity); dp[0] = 0;
-      const took = [];
-      for (const p of cands) {
-        const next = Float64Array.from(dp), mine = new Int8Array(FULL).fill(-1);
-        for (let m = 0; m < FULL; m++) {
-          if (dp[m] === -Infinity) continue;
-          for (let s = 0; s < S; s++) {
-            if (m & (1 << s)) continue;
-            const w = value(p, slots[indices[s]]);
-            if (w === -Infinity) continue;
-            const to = m | (1 << s);
-            if (dp[m] + w > next[to]) { next[to] = dp[m] + w; mine[to] = s; }
-          }
-        }
-        took.push(mine); dp = next;
-      }
-      // Fill as many slots as can be filled first, and take the best assignment among those.
-      let best = 0;
-      for (let m = 1; m < FULL; m++) {
-        if (dp[m] === -Infinity) continue;
-        const a = bits(m), b = bits(best);
-        if (a > b || (a === b && dp[m] > dp[best])) best = m;
-      }
-      let m = best;
-      for (let i = cands.length - 1; i >= 0; i--) {
-        const s = took[i][m];
-        if (s < 0) continue;                       // this player was left out
-        players[indices[s]] = cands[i];
-        used.add(cands[i].fullName);
-        m &= ~(1 << s);
-      }
-    };
-    const allIdx = slots.map((_, i) => i);
-    const xiIdx = allIdx.filter(i => !template[i].bench);
-    // Giving naturals absolute priority was tried and was worse: a 4-2-3-1 has no CM slot, so it
-    // benched an 88-rated central midfielder behind a 79 defensive midfielder and a 77 attacking
-    // midfielder purely because those two were exact. The graph is what fixes the bug this
-    // replaced — AM cannot reach ST at any price now — and the penalty can go back to doing what it
-    // is for, which is making a stand-in pay for the move without pretending he cannot make it.
-    // The step term breaks a tie toward whoever is closer to the slot.
-    assign(xiIdx, (p, s) => stepsOf(p, s) <= XI_STEP_MAX ? scoreFor(p, s) - stepsOf(p, s) / 1000 : -Infinity);
-    // The XI is settled before the bench is looked at, or a bench slot's broader group match would
-    // claim a player who should have started. The bench covers an area rather than a slot, so it
-    // matches on the broad group and takes the best rating available for it.
-    assign(allIdx.filter(i => template[i].bench), (p, s) => p.groups.has(s) ? byOvr(p) : -Infinity);
-    return { template, players, formation, reqs: slots, skill: natTeam?.skill };
-  }, [playerIndex, teams, bestXiNat]);
 
   // An 11-man bench mirrors the XI slot for slot, so buildSquad hands every substitute the
   // position of the starter he is behind: a natural right back sitting behind a centre back is
@@ -9498,12 +9584,12 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: (lgIsDir(lgComp) && lgComp !== LG_ALL_PLAYERS) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {(lgComp === LG_ALL_PLAYERS ? [["players", "Players"], ["changelog", "Rating Changelog"]]
+              {(lgComp === LG_ALL_PLAYERS ? [["players", "Players"], ["changelog", "Rating Changelog"], ["hof", "Hall of Fame"]]
                 : lgIsDir(lgComp) ? []
                 : lgIntlComp ? [["seasons", "Seasons"]]
                 : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"],
                    ...(LEAGUE_CUPS[lgComp] ? [["cup", LEAGUE_CUPS[lgComp]]] : [])]).map(([id, l]) => { const on = lgSubEff === id; return (
-              <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); setClOpen(null); if (id !== "teams") setExpandedTeam(null); }}
+              <button key={id} onClick={() => { setLgSub(id); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null); setClOpen(null); if (id !== "teams") setExpandedTeam(null); }}
                 style={{ padding: "11px 24px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase",
                          fontFamily: "inherit", cursor: on ? "default" : "pointer",
                          background: on ? "var(--chrome-panel)" : "transparent",
@@ -9537,7 +9623,7 @@ export default function App() {
                 const openSeason = (x) => { setTournQ(""); setTournPosF("ALL"); setTournTeamF(""); setTournSort({ k: "RTG", asc: false }); setLgRound(null); setLgTTab(0); setLgSeason(x.id); };
                 const playerCell = (x, e) => e ? (
                   <span className={playerByName.has(e.player) ? "cell-link" : undefined}
-                    onClick={(ev) => { ev.stopPropagation(); openPlayer(e.player, { season: x.id }); }}
+                    onClick={(ev) => { ev.stopPropagation(); openPlayer(e.player); }}
                     style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: playerByName.has(e.player) ? "pointer" : "default" }}>
                     <PlayerShot name={e.player} size={20} />
                     <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(() => { const { first, last } = splitFullName(e.player);
@@ -9934,16 +10020,75 @@ export default function App() {
                   </div>
                 </div>
               </div>); })()}
-            {lgSubEff === "players" && (<>
+            {/* ── HALL OF FAME ────────────────────────────────────────────────────────
+                Players the presets no longer carry, kept on the record by hof.tsv with the
+                identity the roster last held. Same table as the player list, the club column
+                giving way to the year; a row opens the same Player page as anyone else's. */}
+            {lgSubEff === "hof" && !playerOpen && (() => {
+              const hof = pstats?.hof || [];
+              return (
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <PanelTitle sub={`${hof.length}`}>Hall of Fame</PanelTitle>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                  {!pstats && <div style={{ padding: 20, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>Loading&hellip;</div>}
+                  {pstats && !hof.length && <div style={{ padding: 20, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>Nobody inducted yet. Inductees live in public/pstats/hof.tsv.</div>}
+                  {hof.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 75 }} /><col style={{ width: 75 }} /><col style={{ width: 74 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
+                    </colgroup>
+                    <thead><tr>
+                      <th style={thCellSticky}>#</th>
+                      <th style={thCellSticky} />
+                      <th style={thCellSticky}>Player</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>OVR</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>RTG</th>
+                      <th style={{ ...thCellSticky, textAlign: "center" }}>POS</th>
+                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>Nationality</th>
+                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>Inducted</th>
+                    </tr></thead>
+                    <tbody>
+                      {hof.map((h, i) => {
+                        const natT = h.nat ? natTeamByCode.get(h.nat) : null;
+                        return (
+                        <tr key={h.player} onClick={() => showPlayer(h.player)} style={{ cursor: "pointer", background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                          <td style={{ ...tdCell, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono, borderLeft: "2px solid transparent" }}>{i + 1}</td>
+                          <td style={{ ...tdCell, paddingRight: 0 }}><PlayerShot name={h.player} size={24} /></td>
+                          <td style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(h.player, h.player)}</td>
+                          <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
+                            {h.ovr ? <span style={{ ...ovrBlock(h.ovr), ...mono }}>{showOvr(h.ovr)}</span> : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"\u2013"}</span>}</td>
+                          {rtgCell(h.player, tdCell)}
+                          <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", color: POS_CLR[h.pos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600, ...mono }}>{h.pos}</td>
+                          <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); if (natT) openTeam(natT); }}
+                            style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, cursor: natT ? "pointer" : "default" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              {natT ? <TeamCrest team={natT} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{natT ? natT.name : formerName(h.nat)}</span>
+                            </span></td>
+                          <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{h.inducted}</td>
+                        </tr>); })}
+                    </tbody>
+                  </table>)}
+                </div>
+              </div>); })()}
+            {(lgSubEff === "players" || (lgSubEff === "hof" && playerOpen)) && (<>
         {/* The old Players tab, scoped to the open competition by the filter below. The nations
             rail died with the tab; nationality still shows on every row. */}
 
           {/* ── Players, or the drilled-into player ── */}
           <div style={{ padding: 0, overflow: "hidden", minWidth: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               {playerOpen ? (() => {
-                const p = playerIndex.find(x => (x.fullName || x.name) === playerOpen) || null;
                 const disp = fullDisplayName(playerOpen);
                 const key = pFold(disp);
+                // A Hall of Fame inductee outlives his preset row. hof.tsv holds the identity the
+                // roster last carried, shaped like an index entry so the strip below needs no branch.
+                const hofRow = (pstats?.hof || []).find(h => pFold(h.player) === key) || null;
+                const p = playerIndex.find(x => (x.fullName || x.name) === playerOpen)
+                  || (hofRow && { name: hofRow.player, fullName: hofRow.player, ovr: hofRow.ovr, pos: hofRow.pos, natCode: hofRow.nat,
+                                  clubs: hofRow.club ? [{ name: teams.find(tm => tm.code === hofRow.club && tm.league !== "Avium International")?.name || formerName(hofRow.club) }] : [] })
+                  || null;
                 const natT = p?.natCode ? natTeamByCode.get(p.natCode) : null;
                 const clubT = p ? teamByName.get(p.clubs[0]?.name) : null;
                 // A changelog row can name a national side as easily as a club -- a World Cup adjusts
@@ -9981,9 +10126,9 @@ export default function App() {
                 return (<>
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
-                    <button onClick={() => { if (playerBack) { setLgSub("seasons"); setLgSeason(playerBack.season); } setPlayerBack(null); setPlayerOpen(null); }}
+                    <button onClick={() => navRestore(playerBack)}
                       style={{ ...smBtn, background: "transparent", color: "var(--chrome-muted)", cursor: "pointer", flexShrink: 0 }}>
-                      &#8592; {playerBack ? ((pstats?.seasons || []).find(x => x.id === playerBack.season)?.season || "Season") : "Players"}</button>
+                      &#8592; {navLabel(playerBack)}</button>
                     {/* The name is on the identity strip a few pixels below and the header's
                         rating is gone: a career average says more about a player's record than
                         the OVR he happens to carry today. The bar only names the kind of page. */}
@@ -9997,6 +10142,7 @@ export default function App() {
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 16, fontWeight: 500, color: "var(--ui-text)", marginBottom: 6 }}>{p ? boldSurname(p.fullName || p.name, p.name) : disp}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                        {p?.ovr ? <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span> : null}
                         {p && <span style={{ fontSize: 10, fontWeight: 600, color: POS_CLR[p.pos.split("/")[0]] || "var(--chrome-muted)", ...mono }}>{p.pos}</span>}
                         {natT && <span className="cell-link" onClick={() => openTeam(natT)}
                           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer" }}>
@@ -10012,6 +10158,11 @@ export default function App() {
                                    : [["CAREER G", cSum("G")], ["CAREER A", cSum("A")]])].map(([l, v]) => (
                           <span key={l} style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>
                             {l} <b style={{ fontSize: 11, color: "var(--ui-text)", marginLeft: 3, ...mono }}>{v}</b></span>))}
+                      </div>)}
+                      {hofRow && (
+                      <div style={{ marginTop: 8, fontSize: 9, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>
+                        <b style={{ color: "var(--ui-warn)" }}>HALL OF FAME</b>
+                        <span style={{ marginLeft: 8, ...mono }}>{hofRow.inducted}</span>
                       </div>)}
                     </div>
                   </div>
@@ -10156,7 +10307,11 @@ export default function App() {
                     : lgPlayerSort.k === "rtg" ? (careerRtgOf(x.fullName || x.name)?.v ?? -1) : (x.ovr || 0);
                   const va = sv(a), vb = sv(b);
                   const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
-                  return lgPlayerSort.asc ? c : -c;
+                  if (c) return lgPlayerSort.asc ? c : -c;
+                  // Equal on the sorted column: the better career rating first, whichever way the
+                  // column is sorted. The index order behind this is club and national-team skill,
+                  // which says nothing about the man himself.
+                  return (careerRtgOf(b.fullName || b.name)?.v ?? -1) - (careerRtgOf(a.fullName || a.name)?.v ?? -1);
                 });
                 const plTotal = filtered.length;
                 const plY = Math.max(0, Math.min(plScroll, Math.max(0, plTotal * plRowH - PL_VIEW_H)));
@@ -10198,9 +10353,11 @@ export default function App() {
                       {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No players found.</td></tr>}
                       {plRows.map((p, wi) => { const i = plStart + wi;
                         const natT = p.natCode ? natTeamByCode.get(p.natCode) : null, clubT = teamByName.get(p.clubs[0]?.name);
-                        const capped = p.capped && !!playerNatFilter;
+                        // Capped players are marked when ONE nation is selected -- that is its
+                        // squad. A confederation is not a squad, so nothing is marked.
+                        const capped = p.capped && !!playerNatFilter && !playerNatFilter.startsWith("C|");
                         return (
-                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null} onClick={() => setPlayerOpen(p.fullName)}
+                        <tr key={p.fullName} ref={wi === 0 ? plFirstRowRef : null} onClick={() => showPlayer(p.fullName)}
                           style={{ cursor: "pointer", background: capped ? "var(--chrome-brand-11)" : i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
                           <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono,
                                        borderLeft: `2px solid ${capped ? "var(--chrome-brand)" : "transparent"}` }}>{i + 1}</td>
@@ -11701,80 +11858,6 @@ export default function App() {
           {/* The Abstract Match Engine panel was here -- the last way into that simulation from
               the interface. Both the panel and the engine behind it are gone; everything the app
               runs is the positional engine. */}
-          <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>National Team Selector</PanelTitle></div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-            <select value={bestXiNat} onChange={e => setBestXiNat(e.target.value)} style={{ ...inp, flex: 1 }}>
-              <option value="">Select Nation</option>
-              {natOptions.map(([code, info]) => <option key={code} value={code}>{code} ({info.count})</option>)}
-            </select>
-          </div>
-          {!bestXiNat && <div style={{ fontSize: 11, color: "var(--chrome-muted-66)", padding: "20px 0", textAlign: "center" }}>Pick a nation to compute its strongest XI.</div>}
-          {bestXiNat && bestXi && (() => {
-            // Bench slots are matched by broad group (DEF/MID/FWD), but display the
-            // assigned player's own exact position(s) — the broad group only drives the search.
-            const rows = bestXi.template.map((t, i) => { const player = bestXi.players[i]; return { spos: t.bench && player ? player.pos : bestXi.reqs[i], bench: t.bench, player }; });
-            const starters = rows.filter(x => !x.bench);
-            const bench = rows.filter(x => x.bench);
-            // The listed rating, not the one this match nudged: meInit folds the drill penalty and
-            // home advantage into p.ovr, and neither belongs on a squad average.
-            const avgOvr = starters.reduce((s, x) => s + (x.player?.ovr0 ?? x.player?.ovr ?? 0), 0) / starters.length;
-            // Preset rows always give every player an explicit "(NN)" and store the surname/mononym
-            // in caps — unlike exportTeamsText's suppress-if-default convention, this always shows
-            // the rating and re-caps the surname. An unfilled slot exports as an empty column, not
-            // a "#12" placeholder: the blank is positional, and parseBulk reads it back as the same
-            // empty slot.
-            const exportText = () => bestXi.template.map((t, i) => {
-              const p = bestXi.players[i];
-              if (!p) return "";
-              const { first, last } = splitSurname(p.fullName || p.name, p.name);
-              return "(" + p.ovr + ") " + (first ? first + " " : "") + last.toUpperCase();
-            }).join("\t");
-            const XI_COLW = { pos: 60, player: 220, ovr: 50, club: 200 };
-            const thS = thCell;
-            const tdS = tdCell;
-            const ColGroup = () => <colgroup><col style={{ width: XI_COLW.pos }} /><col style={{ width: XI_COLW.player }} /><col style={{ width: XI_COLW.ovr }} /><col style={{ width: XI_COLW.club }} /></colgroup>;
-            const Row = (x, i) => (
-              <tr key={i} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                <td style={{ ...tdS, whiteSpace: "nowrap", color: POS_CLR[x.spos.split("/")[0]] || "var(--chrome-muted)", fontSize: 9, fontWeight: 600 }}>{x.spos}</td>
-                <td style={tdS}>{x.player ? boldSurname(x.player.fullName || x.player.name, x.player.name) : <span style={{ color: "var(--chrome-muted-66)" }}>—</span>}</td>
-                <td style={{ ...tdS, textAlign: "center", whiteSpace: "nowrap" }}><OvrBadge v={x.player?.ovr} sm /></td>
-                <td style={{ ...tdS, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10 }}>{x.player?.clubs?.[0]?.name || "–"}</td>
-              </tr>
-            );
-            return (<>
-              {/* Export sits in the header with the thing it exports, not below two tables where a
-                  long squad puts it past the fold. Same placement the Teams tab gives its own
-                  export and bulk-import panels. */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                <PanelTitle accent="var(--chrome-muted)" sub={bestXi.formation}>Starting XI</PanelTitle>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Avg OVR <OvrBadge v={avgOvr} sm text={avgOvr.toFixed(1)} /></span>
-                  <button onClick={() => setShowBestXiExport(v => !v)} style={{ ...smBtn, color: showBestXiExport ? "var(--ui-danger)" : "var(--chrome-muted)" }}>{showBestXiExport ? "✕ Export" : "💾 Export"}</button>
-                </div>
-              </div>
-              {showBestXiExport && (<div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 16, boxShadow: "0 2px 10px var(--ui-shadow-2)", marginBottom: 12 }}>
-                <p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste over a team's {bestXi.template.length} player columns.</p>
-                <textarea readOnly value={exportText()} rows={4} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} />
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button onClick={() => { navigator.clipboard?.writeText(exportText()); setShowBestXiExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button>
-                </div>
-              </div>)}
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                  <ColGroup />
-                  <thead><tr><th style={thS}>Pos</th><th style={thS}>Player</th><th style={{ ...thS, textAlign: "center" }}>OVR</th><th style={{ ...thS, paddingLeft: 8 }}>Club</th></tr></thead>
-                  <tbody>{starters.map((x, i) => Row(x, i))}</tbody>
-                </table>
-              </div>
-              <div style={{ marginBottom: 8 }}><PanelTitle accent="var(--chrome-muted)">Bench</PanelTitle></div>
-              <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                  <ColGroup />
-                  <tbody>{bench.map((x, i) => Row(x, i))}</tbody>
-                </table>
-              </div>
-            </>);
-          })()}
         </div>)}
 
         {/* ═══ DOCS TAB ═══ */}
@@ -12362,7 +12445,7 @@ export default function App() {
                               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px",
                                             borderBottom: "1px solid var(--chrome-border-33)" }}>
                                 <span style={{ width: 7, height: 7, borderRadius: 4, background: clr, flexShrink: 0 }} />
-                                <span style={{ ...mono, fontSize: 12, fontWeight: 700 }}>{c.min}'</span>
+                                <span style={{ ...mono, fontSize: 12, fontWeight: 700 }}>{fmtMin(c.min, c.add)}</span>
                                 <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap",
                                                overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
                                   {ch.length ? ch[ch.length - 1].name : "Goal"}</span>
@@ -12812,10 +12895,10 @@ export default function App() {
                         summary is the feed with the noise removed rather than a second design. */}
                     {(() => {
                       const code = (t) => t?.code || (t?.name || "").slice(0, 3).toUpperCase();
-                      const mCell = (min) => (
+                      const mCell = (min, add) => (
                         <div style={{ width: 34, minWidth: 34, display: "flex", alignItems: "center",
                                       justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min}'</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{fmtMin(min, add)}</span>
                         </div>);
                       const iCell = (content, sz) => (
                         <div style={{ width: 22, minWidth: 22, display: "flex", alignItems: "center",
@@ -12867,7 +12950,7 @@ export default function App() {
                       // it silently -- a time-wasting second yellow read as a serious foul.
                       const RED_WHY = (why, second) =>
                         `RED CARD (${ME_RED_WHY[why] || (second ? "2nd Yellow" : "Serious Foul Play")})`;
-                      const row = (i, min, side, k, body, headOver) => {
+                      const row = (i, min, add, side, k, body, headOver) => {
                         const md = META[k] || {};
                         const cl = side === "away" ? aClr : hClr;
                         return (
@@ -12877,7 +12960,7 @@ export default function App() {
                                                 borderLeft: md.tint ? `2px solid ${md.tint}` : "2px solid transparent",
                                                 borderRadius: md.big ? 4 : 0,
                                                 borderBottom: "1px solid var(--chrome-border-33)" }}>
-                            {mCell(min)}
+                            {mCell(min, add)}
                             {iCell(md.icon, md.big ? 13 : 10)}
                             <div style={{ flex: 1, minWidth: 0, padding: "0 6px", lineHeight: 1.4 }}>
                               {(headOver || md.head) && (
@@ -12921,7 +13004,7 @@ export default function App() {
                         if (!key.length && !pens.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
                         return (<>
-                          {key.map((f, i) => row(i, f.min, f.side, f.k, (<>
+                          {key.map((f, i) => row(i, f.min, f.add, f.side, f.k, (<>
                             <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
                             {(f.k === "goal" || f.k === "pen") && f.assist
                               ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
@@ -12943,18 +13026,18 @@ export default function App() {
                         if (f.k === "goal" || f.k === "pen") {
                           const mt = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(f.txt);
                           const who = mt ? mt[1] : f.txt, ast = mt ? mt[2] : null;
-                          return row(i, f.min, f.side, f.k, (<>
+                          return row(i, f.min, f.add, f.side, f.k, (<>
                             <b style={{ fontWeight: 700 }}>{who}</b>
                             {ast ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(ast)}</span> : null}
                           </>));
                         }
                         if (f.k === "red") {
                           const mt = /^(.*?) is sent off(?:,\s*(.+))?$/.exec(f.txt || "");
-                          return row(i, f.min, f.side, f.k,
+                          return row(i, f.min, f.add, f.side, f.k,
                             <b style={{ fontWeight: 700 }}>{mt ? mt[1] : f.txt}</b>,
                             RED_WHY(f.why, /second yellow/i.test(f.txt || "")));
                         }
-                        return row(i, f.min, f.side, f.k, feedRich(f.txt));
+                        return row(i, f.min, f.add, f.side, f.k, feedRich(f.txt));
                       });
                     })()}
                   </div>

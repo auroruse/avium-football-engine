@@ -604,10 +604,20 @@ export const meCtxMult = (gFor, gAg, min) => {
   return b * (min >= 85 ? 1.3 : min >= 75 ? 1.15 : min >= 60 ? 1.05 : 1);
 };
 // Saving a chance that was going in is a bigger save. Conceding one that was NOT going in is a
-// worse goal to concede -- the inversion is deliberate, and it is the abstract sim's.
+// worse goal to concede. Both are measured against what an ordinary keeper concedes from a shot on
+// target of that quality, and they share one weight, so over a match he is paid W times the goals
+// he prevented and nothing for volume. See rateSave in config.
 const clamp01 = (x) => Math.max(0, Math.min(1, x || 0));
-export const meSaveBonus = (xg) => CFG.rateSave * clamp01(xg);
-export const meConcedePen = (xg) => CFG.rateConcede * (1 - clamp01(xg));
+// What an ordinary keeper concedes from this shot on target: the engine's own conversion curve by
+// xg band, and a penalty's own figure. See gkExp in config.
+export const meGkExp = (xg, pen) => {
+  if (pen) return CFG.gkExpPen;
+  const x = clamp01(xg), T = CFG.gkExp;
+  for (const [hi, e] of T) if (x < hi) return e;
+  return T[T.length - 1][1];
+};
+export const meSaveBonus = (xg, pen) => CFG.rateSave * meGkExp(xg, pen);
+export const meConcedePen = (xg, pen) => CFG.rateSave * (1 - meGkExp(xg, pen));
 export const meRate = (p, d) => {
   if (p && d) p.rating = Math.max(3, Math.min(10, +(((p.rating ?? 6.5) + d).toFixed(2))));
 };
@@ -644,7 +654,7 @@ export function meFinalise(s) {
       // 6.05, a better afternoon than most of the men who stayed on the pitch. He is rated in full.
       // An injury keeps the shrink -- going off hurt is not something he did.
       const shrink = p.rc ? 1 : Math.min(1, frac / CFG.rateFullFrac);
-      const dev = (p.rating - 6.5) + (CFG.ratePos[p.pos] ?? 0);
+      const dev = (p.rating - 6.5) * (CFG.rateSpread?.[p.pos] ?? 1) + (CFG.ratePos[p.pos] ?? 0);
       p.rating = Math.max(3, Math.min(10, +((6.5 + dev * shrink).toFixed(2))));
     }
   }
@@ -745,7 +755,7 @@ const mePenRes = (out, sh, mp) => {
   if (!sh.pen) return;
   if (sh.p) meRate(sh.p, -CFG.ratePenMiss);
   const pmList = (out.penMiss = out.penMiss || { home: [], away: [] })[sh.side];
-  pmList.push({ name: sh.name, full: sh.full || sh.name, min: out.min ?? 0 });
+  pmList.push({ name: sh.name, full: sh.full || sh.name, min: out.min ?? 0, add: out.add || 0 });
   // A PARRIED PENALTY THAT STILL GOES IN WAS NEVER MISSED. It is logged here because the
   // keeper's hand ended the shot, and that it finished in the net is not known for several
   // slices yet -- so leave the trail the revocation needs instead of the entry standing beside
@@ -773,7 +783,7 @@ export function meRed(s, out, side, q, why, x, y) {
   q.y = -6; q.vx = 0; q.vy = 0; q._offAt = s.mePos.tick;
   (out.reds = out.reds || { home: 0, away: 0 })[side]++;
   (out.sendOff = out.sendOff || { home: [], away: [] })[side].push(
-    { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, second: why === "second", why });
+    { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, add: out.add || 0, second: why === "second", why });
   meEvt(out, "red", side, x, y, x, y,
         `${q.fullName || q.name} is sent off, ${ME_RED_SAID[why] || "serious foul play"}`, { why });
 }
@@ -812,7 +822,7 @@ export function meTackle(s, rng, out) {
     out.tackleTry = (out.tackleTry || 0) + 1; meBump(out, "tackleTrySide", def);
     p._tkCool = CFG.tkCool;
     const win = rng.u() < Math.min(0.92, Math.max(0.05,
-      CFG.tkBase + angle * CFG.tkAngleW + (a.tackle - meAttrs(c).pace) / 99 * CFG.tkSkillW));
+      CFG.tkBase + angle * CFG.tkAngleW + ((a.tackle - meAttrs(c).pace) / 99 - CFG.tkSkillMid) * CFG.tkSkillW));
     if (win) {
       // out.tackles is ALSO incremented by the keeper-save path below, which is the bug that made
       // the app print saves under the word tackles. Kept for compatibility, but the honest count of
@@ -1421,7 +1431,7 @@ export function meTick(s, rng, out) {
           if (ownGoal) { const og = s.players[cross.conceding]?.[lastT.i];
             if (og) { og.ownGoals = (og.ownGoals || 0) + 1;
               (out.owns = out.owns || { home: [], away: [] })[cross.conceding].push(
-                { name: og.name, full: og.fullName || og.name, min: out.min ?? 0 }); } }
+                { name: og.name, full: og.fullName || og.name, min: out.min ?? 0, add: out.add || 0 }); } }
           if (gp) gp.goals = (gp.goals || 0) + 1;
           // The assist is the last DIFFERENT team-mate to have kicked it, and only if the other side
           // never had it in between -- a goal that came from winning the ball off somebody is not
@@ -1456,10 +1466,10 @@ export function meTick(s, rng, out) {
                    // A separate ledger, not an entry in out.scorers: the scorers list feeds the
                    // golden digest and the shootout revocation, both of which count real goals.
                    (out.ogs = out.ogs || { home: [], away: [] })[scorer].push(
-                     { name: og.name, full: og.fullName || og.name, min: out.min ?? 0 }); } }
+                     { name: og.name, full: og.fullName || og.name, min: out.min ?? 0, add: out.add || 0 }); } }
           if (gp) (out.scorers = out.scorers || { home: [], away: [] })[scorer].push(
             { name: gp.name, full: gp.fullName || gp.name, assist: ast ? ast.name : null,
-              min: out.min ?? 0, pen: !!(sh && sh.pen) });
+              min: out.min ?? 0, add: out.add || 0, pen: !!(sh && sh.pen) });
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
           // winner is scored as the goal that won it rather than as the one that made it 2-1.
           const gm = out.min ?? 0, xg = sh ? sh.xg : CFG.rateGoalXgDef;
@@ -1468,6 +1478,36 @@ export function meTick(s, rng, out) {
           if (gp) meRate(gp, CFG.rateGoal * ctx * (1 - CFG.rateGoalXgW * clamp01(xg)));
           else meRate(s.players[cross.conceding]?.[(mp.tlog || []).slice(-1)[0]?.i], -CFG.rateOwnGoal);
           if (ast) meRate(ast, CFG.rateAssist * (1 + (ctx - 1) * 0.5));
+          // THE MOVE. A goal is not two men. The pre-assist, the ball before that, and the man who
+          // won it back are the midfield's whole contribution to a goal, and until now every one of
+          // them finished the move on exactly what he started it with. Walked back through the
+          // scoring side's unbroken run of touches: each earlier DIFFERENT man is paid a share that
+          // decays a step at a time, and if the run began with a ball won in open play the man who
+          // won it is paid for winning it. Ricochets read through, as the assist does. Nobody is
+          // paid twice for one goal, and the scorer and the assister are paid already.
+          if (gp) {
+            const paid = new Set([gi]); if (ast) paid.add(s.players[scorer].indexOf(ast));
+            let k = lg.length - 1, share = CFG.rateBuild, firstK = -1;
+            for (; k >= 0; k--) {
+              const e = lg[k];
+              if (e.t > gt) continue;                    // after the strike: deflections, the parry
+              if (e.s !== scorer) { if (e.d) continue; break; }
+              firstK = k;
+              if (paid.has(e.i)) continue;
+              paid.add(e.i);
+              const bp = s.players[scorer]?.[e.i];
+              if (bp) meRate(bp, share);
+              share *= CFG.rateBuildDecay;
+            }
+            // k sits on the other side's last touch, or at -1 if the window is all ours. A ball won
+            // within recoverWin of their touch was won in play -- a tackle logs at once, an
+            // interception when he first plays it -- while a restart is taken later than that by
+            // construction (spMinT and the dead-ball timings in meDead), so it is never a recovery.
+            if (k >= 0 && firstK >= 0 && lg[firstK].i !== gi && lg[firstK].t - lg[k].t <= CFG.recoverWin) {
+              const w = s.players[scorer]?.[lg[firstK].i];
+              if (w) meRate(w, CFG.rateRecover);
+            }
+          }
           // THE MAN WHO GAVE IT AWAY. In phase A a defender could only ever lose rating, and only
           // collectively, when his side conceded -- so the model said nothing about whether he had
           // anything to do with it, and defenders sat 0.42 below forwards for playing their
@@ -1494,7 +1534,7 @@ export function meTick(s, rng, out) {
           // The men it went past. The keeper carries most of it and the back line shares the rest.
           for (const q of s.players[cross.conceding] || []) {
             if (q.off) continue;
-            if (q.pos === "GK") meRate(q, -meConcedePen(xg));
+            if (q.pos === "GK") meRate(q, -meConcedePen(xg, !!(sh && sh.pen)));
             else if (q.pos === "DEF") meRate(q, -CFG.rateConcedeDef);
           }
         }
@@ -1645,12 +1685,33 @@ export function meTick(s, rng, out) {
         // where he stands to where he will be. At diving pace that lag alone was 1.9 m of a 3.66 m
         // goal: he was beaten before he left the ground.
         if (q.pos === "GK") {
-          const spd = Math.hypot(q.vx || 0, q.vy || 0) / ME_DT;
+          // WHERE HE IS GOING, not where he was going. The contest runs before this slice's
+          // movement, so he was swept along LAST slice's step -- and a keeper who had settled on
+          // his read, about to dive at a ball that had strayed off it, had no last step: he stood
+          // as a disc while a ball he would have reached went past him. Measured at 0.45-0.85 s of
+          // flight, the keeper who read the shot RIGHT conceded 15% and the one who read it wrong
+          // 7%, because the wrong-footed man was still diving at full stretch, span out, when the
+          // ball arrived, and the right-footed man had stopped and lost his span. That inversion
+          // is why a better keeper, who reads right more often, did not concede less. With a shot
+          // live and his reaction paid he is swept along the dive he is about to make -- toward his
+          // read, at diving pace -- which is what the comment below always said was happening.
+          let gvx = q.vx || 0, gvy = q.vy || 0;
+          if (q._closing && mp.shot && mp.shot.side !== sd) {
+            const gk = meGkSkill(meAttrs(q));
+            if ((mp.tick - mp.shot.t0) * ME_DT >= CFG.gkReactSlow + (CFG.gkReactFast - CFG.gkReactSlow) * gk) {
+              const tdx = (q._tx ?? q.x) - q.x, tdy = (q._ty ?? q.y) - q.y, tl = Math.hypot(tdx, tdy);
+              if (tl > 1e-3) {
+                const stp = Math.min(tl, (CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmin) * gk) * ME_DT);
+                gvx = tdx / tl * stp; gvy = tdy / tl * stp;
+              }
+            }
+          }
+          const spd = Math.hypot(gvx, gvy) / ME_DT;
           const ext = Math.max(0, Math.min(1, (spd - CFG.gkSpanV0) / (CFG.gkSpanV1 - CFG.gkSpanV0))) * CFG.gkSpan;
-          const ux = spd > 1e-4 ? (q.vx || 0) / (spd * ME_DT) : 0;
-          const uy = spd > 1e-4 ? (q.vy || 0) / (spd * ME_DT) : 0;
+          const ux = spd > 1e-4 ? gvx / (spd * ME_DT) : 0;
+          const uy = spd > 1e-4 ? gvy / (spd * ME_DT) : 0;
           for (let k = 0; k <= 2; k++) {                 // across the slice he is about to travel
-            const cx = q.x + (q.vx || 0) * (k / 2), cy = q.y + (q.vy || 0) * (k / 2);
+            const cx = q.x + gvx * (k / 2), cy = q.y + gvy * (k / 2);
             for (let e = -1; e <= 1; e++) {              // ...and along the whole of him
               const sx = cx + ux * ext * e, sy = cy + uy * ext * e;
               const tk = L2 > 0.001 ? Math.max(0, Math.min(1, ((sx - x0) * dx + (sy - y0) * dy) / L2)) : 0;
@@ -1834,7 +1895,7 @@ export function meTick(s, rng, out) {
           // Too hot to hold: parried away, still live. This is where rebounds come from.
           const shp = mp.shot;
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
-            meRate(q, meSaveBonus(shp.xg) + (shp.pen ? CFG.ratePenSave : 0));
+            meRate(q, meSaveBonus(shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0));
             if (shp.p) meRate(shp.p, CFG.rateShotOn);
             mePenRes(out, shp);
                      meEvt(out, shp.pen ? "penmiss" : "save", shp.pen ? shp.side : bs, mp.bx, mp.by, mp.bx, mp.by,
@@ -1850,7 +1911,7 @@ export function meTick(s, rng, out) {
           // plus 112 goals, an excess of twelve, and eleven goals had "parries it" as the line
           // immediately before them. So it is banked provisionally and the goal takes it back.
           if (shp) mp._parry = { side: bs, q, t: mp.tick,
-                                 credit: meSaveBonus(shp.xg) + (shp.pen ? CFG.ratePenSave : 0) };
+                                 credit: meSaveBonus(shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0) };
           mePenRes(out, mp.shot); mp.shot = null; mp.lastSide = bs; meKickedBy(mp, bs, bi);
           // A REFLECTION off his hands. The surface is square to the line from him to the ball, so
           // angle in equals angle out -- that is the whole geometry of a parry and there is nothing
@@ -1894,7 +1955,7 @@ export function meTick(s, rng, out) {
         }
         if (isGK && mp.shot) {                       // gathered cleanly
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
-          meRate(q, meSaveBonus(mp.shot.xg) + (mp.shot.pen ? CFG.ratePenSave : 0));
+          meRate(q, meSaveBonus(mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePenSave : 0));
           if (mp.shot.p) meRate(mp.shot.p, CFG.rateShotOn);
           mePenRes(out, mp.shot);
           // The SIDE on an event is whose event it is, and a save is the keeper's. Tagged with the
@@ -1956,6 +2017,7 @@ export function meTick(s, rng, out) {
             n: (mp.deflect && mp.tick - mp.deflect.t < CFG.deflectWin ? mp.deflect.n : 0) + 1 };
           mePenRes(out, mp.shot); mp.shot = null;
         }
+        const _cut = !!(mp.passPending && mp.passPending.side !== bs);
         resolvePending(bs);
         mp.flight = false;
         if (mp.idx === bi && mp.side === bs) return false;    // still his: not a new touch
@@ -1984,6 +2046,14 @@ export function meTick(s, rng, out) {
             q.vx *= CFG.ftCheck; q.vy *= CFG.ftCheck;
           }
         }
+        // READING IT. Stepping across somebody else's pass was the one defensive act that was free:
+        // the passer paid for it, and the man who read it was paid nothing and counted nowhere, so he
+        // finished the afternoon indistinguishable from the man beside him who read nothing. It is
+        // paid here, on the clean pickup -- a toe-poke at full stretch has already returned above --
+        // and it counts as a defensive action. Outfielders only: the keeper is rated on goals
+        // prevented and nothing else, by design.
+        if (_cut && !isGK) { q.ints = (q.ints || 0) + 1; q.defActs = (q.defActs || 0) + 1;
+                             meRate(q, CFG.rateIntercept); }
         meBallTo(s, bs, bi, mp.bx, mp.by);
         // ...and if he was entitled to use them, it is now IN HIS HANDS. Nobody can take it off him
         // and he is not carrying it under his feet, so it sits out in front of him where it can be
@@ -2426,7 +2496,7 @@ export function meTick(s, rng, out) {
   const wasOff = (q.x - offL) * meDir(side) > CFG.offTol
     && (q.x - PITCH_L / 2) * meDir(side) > 0        // only in the opponent's half
     && (q.x - p.x) * meDir(side) > 0;               // and ahead of the ball
-  mp.passPending = { side, p: act.p, thru: !!act.thru, high: !!act.high, d: dist, forced,
+  mp.passPending = { side, p: act.p, c: act.c, thru: !!act.thru, high: !!act.high, d: dist, forced,
                      off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x, byP: p };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
              meTech(a.pass) / (mp.firstTouch ? Math.max(1, CFG.firstTouchNoise + (s.strategy?.[side]?.dribbling || 0) * CFG.dribTouch) : 1), press,
@@ -2441,7 +2511,8 @@ export function meEvt(out, k, side, x0, y0, x1, y1, txt, extra) {
   // part of him went. Reading those back out of the wording is how the feed used to do it, and a
   // reworded caption silently broke it.
   if (out.feed && txt) {
-    out.feed.unshift(extra ? { min: out.min || 0, side, k, txt, ...extra } : { min: out.min || 0, side, k, txt });
+    out.feed.unshift(extra ? { min: out.min || 0, add: out.add || 0, side, k, txt, ...extra }
+                           : { min: out.min || 0, add: out.add || 0, side, k, txt });
     if (out.feed.length > 60) out.feed.pop();
   }
 }

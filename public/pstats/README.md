@@ -194,3 +194,19 @@ longer fields a team keeps its code: the badge in `public/badges` outlives the p
 renders like any other national team, just with nothing to open behind it. Give it a full name by
 adding the code to `FORMER_TEAMS` in `src/App.tsx`; without an entry it shows the bare code, which
 is better than an invented name.
+
+## hof.tsv
+
+The Hall of Fame, one row per inductee:
+
+```
+PLAYER          POS     NAT   CLUB   OVR   INDUCTED
+Taiga Bashira   LW/ST   NCH   DYM    89    1934
+```
+
+A row is the identity the roster last held — position, nation and club codes, rating — and it is
+what the Player page falls back on once the man has left every preset. His career table and his
+changelog entries still come from the archive, keyed on his name like anyone else's, so removing
+him from the presets loses nothing that was recorded. Rows display in file order. `NAT` and `CLUB`
+resolve to crests and full names the same way `changelog.tsv`'s `TEAM` does, and fall back to
+`FORMER_TEAMS` and then the bare code.

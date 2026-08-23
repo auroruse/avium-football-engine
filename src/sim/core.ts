@@ -7,7 +7,7 @@
 //
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
-import { ME_MATCH_TICKS, meFinalise, meInit, meMinute, meShootout, meTick } from "../engine";
+import { ME_MATCH_TICKS, meAdded, meAddedMin, meFinalise, meInit, meMinute, meShootout, meTick } from "../engine";
 
 export class RNG {
   constructor(seed) { this.s = seed || Date.now(); }
@@ -578,7 +578,7 @@ export const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, 
   // able to hand back the same question answered from eight or so continuous samples per match.
   // That is the difference between needing 300 fixtures to see an effect and needing 60.
   xg: 0, xgS:{home:0,away:0}, shotDist: new Array(10).fill(0),
-  evt: null, feed: [], min: 0 });
+  evt: null, feed: [], min: 0, add: 0 });
 
 // The XI, however the team happens to be defined: a real squad if it has one, otherwise eleven
 // players synthesised at the team's own rating so an unfilled preset is still testable.
@@ -619,7 +619,18 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
   const rng = new RNG(seed >>> 0 || 7);
   meInit(st, pitchSlots, rng);
   const out = meFreshOut();
-  for (let t = 0; t < ME_MATCH_TICKS; t++) meTick(st, rng, out);
+  // The clock has to be advanced by the caller, and this one never did: every goal, card and feed
+  // line it produced was stamped minute 0.
+  //
+  // ...and so does the FINISH LINE. meAdded counts every slice the ball spent dead and hands back a
+  // share of it, which is all stoppage time is -- but only the watched match was reading it, so a
+  // simulated ninety ended on the whistle while the same fixture played live ran to 90+8. Measured,
+  // a match banks around 570 ticks of it, about twelve minutes of football that was never played:
+  // the last chance of every close game, missing from every season table. The engine's own note
+  // above meAdded spells this loop out. It is recomputed each tick because the board goes up during
+  // the match, not before it.
+  for (let t = 0; t < ME_MATCH_TICKS + meAdded(st); t++) {
+    out.min = meMinute(t); out.add = meAddedMin(t); meTick(st, rng, out); }
   meFinalise(st);
   return { s: st, out };
 }
@@ -665,14 +676,19 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   meInit(st, pitchSlots, r);
   const out = meFreshOut();
   // out.min is what a goal stamps its minute from; without it every scorer reads 0'.
-  for (let t = 0; t < ME_MATCH_TICKS; t++) { out.min = meMinute(t); meTick(st, r, out); }
+  for (let t = 0; t < ME_MATCH_TICKS + meAdded(st); t++) {
+    out.min = meMinute(t); out.add = meAddedMin(t); meTick(st, r, out); }
   const ftH = out.goals.home, ftA = out.goals.away;
   let et = null, pen = null;
   // Extra time is a third of a match, the same proportion thirty minutes is of ninety, and then
   // kicks. meShootout drives itself to a conclusion in one call.
   if (forceResult && ftH === ftA) {
-    for (let t = 0; t < Math.round(ME_MATCH_TICKS / 3); t++) {
-      out.min = 90 + Math.floor(t / (ME_MATCH_TICKS / 90)); meTick(st, r, out); }
+    const etLen = Math.round(ME_MATCH_TICKS / 3), etAt = st.mePos.tick, etAdd0 = meAdded(st);
+    for (let t = 0; t < etLen + Math.max(0, meAdded(st) - etAdd0); t++) {
+      out.min = 90 + Math.min(30, Math.floor(t / (ME_MATCH_TICKS / 90)));
+      out.add = Math.max(0, Math.floor((t - etLen) / ME_MATCH_TICKS * 90));
+      meTick(st, r, out); }
+    void etAt;
     if (out.goals.home !== ftH || out.goals.away !== ftA)
       et = { home: out.goals.home - ftH, away: out.goals.away - ftA };
     if (out.goals.home === out.goals.away) {

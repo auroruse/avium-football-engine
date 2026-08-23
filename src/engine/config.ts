@@ -105,6 +105,12 @@ export const ME_MATCH_TICKS = ME_SIM_MIN * ME_TPM;
 // Thirty minutes on the same scale the ninety uses, so extra time needs no second clock.
 export const ME_ET_TICKS = Math.round(ME_MATCH_TICKS / 3);
 export const meMinute = (tick) => Math.min(90, Math.floor(tick / ME_MATCH_TICKS * 90));
+// ...and what the board shows on top of it. meMinute stops at 90 on purpose -- the clock a
+// footballer plays to does, and meChase reads it as "minutes left" -- but a goal in stoppage still
+// has to be WRITTEN 90+4, so the two halves of the time are stamped separately. `at` is the tick
+// the current period began on: 0 for normal time, the first tick of extra time after that.
+export const meAddedMin = (tick, at = 0, len = ME_MATCH_TICKS) =>
+  Math.max(0, Math.floor((tick - at - len) / ME_MATCH_TICKS * 90));
 
 export const CFG = {
   // The worth of simply still having the ball afterwards. Without it a safe sideways pass scores near
@@ -130,7 +136,8 @@ export const CFG = {
   // from 81.9% to 77.3%, which is the honest price of attempting the harder ball, and it is the
   // reason this is a pair of numbers rather than one: pull alone moves direction without moving
   // progression, and room alone moves neither far enough.
-  fwdPull: 0.0020,
+  // 0.0020 was set against the pessimistic belief; see passCal* -- 0.0013 with the belief honest.
+  fwdPull: 0.0013,
   // The pass length a side is looking for, and how far each step of the passing instruction moves
   // it. passWantW is what a metre away from that length costs in the pass score -- the whole of the
   // instruction's authority now, and deliberately a preference rather than a veto.
@@ -189,7 +196,9 @@ export const CFG = {
   // own goal the worse that is. Without this term the expected value of a pass was ok*value with no
   // downside, so a 50% ball into the box outscored a 95% square pass every time -- completion sat at
   // 70% against a real 80% and far too much of it reached the box.
-  loss: 0.12,
+  // 0.12 was calibrated against a belief that undersold every risky ball; with the belief honest
+  // the same cost of losing it buys less caution, so 0.18. See passCal*.
+  loss: 0.18,
   // How fast running with it stops working as defenders close. At 0.055 a carry retained 88% with a
   // man on him, so the safest option was always to keep running and passing collapsed to a fifth of
   // its real rate. Real dribble success under genuine pressure is closer to half.
@@ -332,6 +341,32 @@ foulAggr: 0.25,
   // ratio wrong is what makes a side dribble instead of playing: at 66% passing and 85% carrying, the
   // engine ran 963 carries to 554 passes, which is the opposite of the sport.
   passBase: 1.06,
+  // How much the passer's own skill lifts his BELIEF that a ball will arrive: passSkillLo +
+  // pass/99 * passSkillW, anchored near 1.0 at a 75-rated midfielder (pass attr 80).
+  passSkillLo: 0.462, passSkillW: 0.66,
+  // WHAT THE DECISION BELIEVES AGAINST WHAT HAPPENS. Measured over 76,000 passes (test/ratings.mjs
+  // logs them): balls the decision rated at 0.19 reached the man they were played to 62% of the
+  // time, 0.61 reached him 70%, 0.94 reached him 87%. The estimate was far too pessimistic low
+  // down and a little optimistic at the top, so the objective every player optimised was a
+  // conservative one -- and that was the ceiling on what judgement is worth: a sharp player
+  // picked the safe ball precisely, a noisy one stumbled into the forward ball that came off.
+  // The belief is now P = logistic(passCal0 + passCalB ln okBase + passCalR ln okRisk + passCalL
+  // ln okLate), fitted on the chosen passes' outcomes. Re-fit with `node test/ratings.mjs` if
+  // any term of okBase, mePassRisk or the late-receiver ramp moves; the fit is printed.
+  // WHAT IT DID TO THE GAME, AND WHAT WAS RE-TUNED AROUND IT. Honest beliefs made every forward
+  // ball rational: completion fell 74% -> 64%, balls into space rose from 38% to 52% of passes,
+  // goals 2.80 -> 3.18. The brake on that had been the pessimism itself, so the ground terms that
+  // were set high to overcome it came down (roomFwd 0.0045 -> 0.001, fwdPull 0.0020 -> 0.0013) and
+  // the cost of giving it away went up (loss 0.12 -> 0.18). Swept loss / keep / roomFwd / fwdPull
+  // one and two at a time over 400 matches each: loss alone was weak (0.30 bought five points of
+  // completion and crushed shooting), keep only added volume (131 passes a side at 0.12 with the
+  // same mix), the ground terms were the lever. Landed: completion 70.7%, into space 39%, lofted
+  // 33%, 16.8 m a pass, 2.85 goals, 9.4 shots a side at higher xG each. The payoff, which was the
+  // point: a midfielder ten OVR above his own XI's mean now gets +1.8 more balls a match and
+  // rates +0.28 higher, against +1.1 and +0.15 before, and a better passer's sharper judgement
+  // finally buys him something because the objective he sharpens is the real one.
+  // Refitted at the landing (400 matches); `node test/ratings.mjs check` holds it within 0.30.
+  passCal0: 1.95, passCalB: 1.30, passCalR: 1.08, passCalL: 2.52,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -652,6 +687,17 @@ foulAggr: 0.25,
   // which ships at 0.45. Same starting value for the same reason: the two are the same idea applied
   // to the two ways a man can move the ball.
   passShotW: 0.45,
+  // WHO HE IS PLAYING IT TO. passShotW above values a receiver by what he can FINISH, and nothing
+  // valued him by what he can DO: a ball to the best midfielder on the pitch and a ball to the
+  // worst scored identically, so the ball never looked for the good player -- measured, a
+  // midfielder ten OVR better completed one pass FEWER a match than the man beside him. This pays
+  // for the better head the ball is going to, relative to the passer's own (floored at zero: a
+  // pass to a worse man is not a worse pass), so it re-ranks receivers and never inflates passing
+  // against carrying or shooting. Swept 0 / 0.03 / 0.06 over 400 matches each: a midfielder ten
+  // OVR above his own side's mean received +0.4 / +0.7 / +1.1 more balls a match, and only at
+  // 0.06 did his completion stop falling as his rating rose. Team completion and possession did
+  // not move at any setting.
+  passRecvW: 0.06,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
@@ -895,7 +941,14 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // buying possession that nothing on the ball had earned. At 0.02/0.10 the spread is 167% and Park
   // The Bus sits at 49.6%, which is a real difference between a side that dives in and one that
   // does not, rather than a different sport.
-  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.24, rateTackle: 0.06,
+  // tkSkillW is the whole of what being a better tackler is worth once he has gone in. At 0.24 on
+  // a rating difference already squeezed by ME_COMPRESS, a defender fifteen points better than the
+  // man he was challenging won four per cent more of his tackles -- while tkGoSkill had him going
+  // in more often, so he was beaten more often too and the two charges cancelled: measured across
+  // a league, defenders' ratings did not move with their OVR. tkSkillMid is the population mean of
+  // the (tackle - pace)/99 term, so the league-wide win rate stays where tkBase calibrated it and
+  // only the spread between good and bad tacklers widens.
+  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.06,
   runTicks: 14,
   runMax: 4,
   runCool: 28,
@@ -928,7 +981,10 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // Swept against ground gained per pass. With space unpriced the side gained HALF A METRE a pass --
   // it went sideways and backwards all afternoon. 0.0016 gives +2.9 m, 0.005 gives +6.6 m and 55%
   // forward, which is a side that only knows one direction. Real football is about +4 m.
-  roomFull: 12, roomFwd: 0.0045,
+  // ...and 0.0045 was measured against a belief that priced a ball into space at a fifth of what
+  // it was worth. With the belief honest (passCal*), 0.0045 had sides playing into space 52% of
+  // the time; 0.001 with fwdPull at 0.0013 puts the mix back where it was measured to be right.
+  roomFull: 12, roomFwd: 0.001,
   // How much the pressure at the spot he is dribbling INTO counts against him, next to the pressure
   // he is already under. This is what makes a packed penalty area something to be broken down
   // rather than walked through.
@@ -986,13 +1042,15 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
   // anchored to 1.0 at a 75-rated centre-half (position attr ~81, meTech ~0.82) so the calibrated
   // baseline is untouched and only the spread across bands is new.
-  // The spread is DELIBERATELY SHALLOWER than the passing spread. Interceptions are roughly flat
-  // across real divisions -- a worse defender reads less, but bad passing hands him more loose
-  // balls to feed on, and the two nearly cancel. Swept at 0.52 the cancellation was total: worse
-  // passers against proportionally worse cutters left completion FLAT at 81-83% across thirty
-  // rating points. 0.20 is where the bands finally separate (81 / 80 / 79 at 85 / 75 / 55) while
-  // the gap games keep their possession stretch.
-  cutAntLo: 0.836, cutAntW: 0.20,
+  // The spread used to be DELIBERATELY SHALLOW -- 0.20, on the finding that a wider one cancelled
+  // against worse passing and left team completion flat across bands. At 0.20 the whole of the
+  // rating scale moved the reach by about five centimetres, which is to say reading the game was
+  // switched off: a 55-rated back four cut passes as well as a 90-rated one, and measured across a
+  // league the interceptions a defender made did not move with his rating at all. Widened, with
+  // the POPULATION mean held: outfielders average meTech(position) ~0.72, which the old pair put
+  // at 0.98 of cutReach, and cutAntLo is set so the new pair puts it at exactly the same place.
+  // Only the spread around the mean is new, so pass completion and possession are untouched.
+  cutAntLo: 0.404, cutAntW: 0.80,
   // ---- bodies -------------------------------------------------------------------------------
   // Players are SOLID. A ball cannot pass through one and two men cannot stand in the same place.
   // bodyR is shoulder to shoulder, bodyH is how high you can block a ball before it goes over you,
@@ -1105,17 +1163,53 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // and a match in which the ball only ever neared a goal because one man walked it there.
   // How many touches back the assist search may look. Long enough to cross a passing move, short
   // enough that it never reaches into a previous phase of play.
-  tlogMax: 8,
+  // Twelve so a move can be paid back through its pre-assist and to the man who won it. Every
+  // reader of the log breaks on the first change of side or bounds itself in time, so the extra
+  // length never reaches a previous phase of play.
+  tlogMax: 12,
   // MATCH RATING deltas, on the abstract sim's scale so the two engines agree about what a 7 means.
   // rateGoalXgW is how much of a goal's credit is taken back for it having been an easy one;
   // rateGoalXgDef is what a goal with no shot attached to it is assumed to have been worth.
   rateGoal: 0.9, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
-  rateSave: 1.3, rateConcede: 0.18, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
+  // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
+  // a busy keeper rated well for being busy, and the good keeper on the good side, facing three
+  // shots a match, had no way to earn. Measured: saves a match fell 0.30 per ten OVR and rating
+  // rose 0.07, when the same keepers were preventing 0.21 more goals a match per ten OVR.
+  // Now one weight, on his performance against what an ORDINARY keeper concedes from that shot:
+  // a save pays rateSave x gExp and a goal costs rateSave x (1 - gExp), so a keeper who concedes
+  // exactly what his shots deserved nets zero however many he faces, and the rating is W times the
+  // goals he kept out. gExp is NOT the pre-shot xg, which predicts conversion on target badly in
+  // this engine: measured over 3,650 shots on target, the near-zero band (xg < 0.05) goes in 17%
+  // of the time, the 0.30-0.40 band 83% (rebounds and tap-ins the model underprices) and the
+  // 0.40-0.60 band 54%. A straight line through that charged a keeper 0.4 for a rebound he could
+  // do nothing about and paid him 0.2 for a tap-in he kept out, and the bias moved with the shot
+  // mix a side faced. So it is the engine's OWN conversion curve, by band: each pair is
+  // [upper xg bound, share scored]. Penalties carry no xg and convert at 85%, so they have their
+  // own figure. Re-derive both from the probe if the shot model or the keeper physics move.
+  // 0.65 because a busy clean sheet (five saves) lands near 7.7 and three conceded from five
+  // shots near 5.7, which is where the systems this is modelled on put them; 0.85 put the latter
+  // at 5.4 and had one keeper in nine finishing below 5.5.
+  // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
+  // again after the pass-belief recalibration changed what he faces.
+  rateSave: 0.65, gkExpPen: 0.85, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  gkExp: [[0.05, 0.19], [0.10, 0.20], [0.20, 0.22], [0.30, 0.37], [0.40, 0.78], [0.60, 0.47], [1.01, 0.60]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
   rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.05, rateKeyPass: 0.15,
+  // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
+  // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
+  // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
+  // rateBuild is what the pre-assist earns, decaying by rateBuildDecay a step further back through
+  // the scoring side's unbroken run of touches; rateRecover is for the man who won the ball that
+  // started it, if it was won in open play -- his first kick within recoverWin ticks of the other
+  // side's last one, which a tackle or an interception-and-short-carry is and a restart never is
+  // (the quickest, a throw, is taken eleven ticks after the ball died). Both are small on
+  // purpose: they are how a deep midfielder finishes a 3-0 on 7.6 rather than on exactly what he
+  // started with.
+  rateIntercept: 0.09, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
   // PHASE D: THE ROUTINE. Everything above is a moment -- a goal, a card, an error -- and a match
   // is mostly not moments. A full-back who played ninety composed minutes and a midfielder who
   // completed eighty passes both finished on exactly 6.50, because nothing either of them did all
@@ -1149,14 +1243,25 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // face value; below it he is pulled back toward par. ratePos is the positional par itself,
   // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
   rateFullFrac: 0.667,
-  // RE-DERIVED once the routine contributions above existed, by running a half-season with this
-  // set to zero and reading the raw per-position means straight off it. It has shrunk a long way,
-  // which is the point: it was 0.42 for a forward because the only things the rating could see were
-  // things forwards do, and a defender had no way to earn. With passing, duels, aerials and being
-  // beaten all counted, the raw means came in at GK 6.82, DEF 6.76, MID 6.88, FWD 6.98 -- a 0.22
-  // spread where it used to be 0.52 -- so what is left is a genuine positional par rather than a
-  // correction for a blind spot. Re-derive it the same way if any delta above moves.
-  ratePos: { GK: -0.067, DEF: -0.008, MID: -0.125, FWD: -0.232 },
+  // RE-DERIVED 23 Aug 2026 with `node test/ratings.mjs derive`: 400 league matches with this set
+  // to zero, full-match players only, and each position's par set so its mean lands on 6.85 --
+  // about where the systems this is modelled on put a man who played the ninety. The raw means
+  // were GK 6.65, DEF 7.28, MID 7.41, FWD 7.39: the outfield ones climbed when interceptions,
+  // build-up and recoveries started paying and rateSpread scaled the deviation, and the keeper's
+  // fell when his save volume stopped paying. The par absorbs all of that, which is its job.
+  // Re-derive it the same way if any delta above, or rateSpread, moves.
+  // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
+  // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
+  ratePos: { GK: 0.225, DEF: -0.473, MID: -0.513, FWD: -0.489 },
+  // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
+  // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
+  // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
+  // midfielder does is, so the top of every table was a forward by construction and a fifth of
+  // all midfield and defensive afternoons finished within 0.15 of par. A factor on the deviation,
+  // applied before the positional par: 1.0 is the forward, and the others are lifted part of the
+  // way toward him, not all of it -- forwards genuinely swing more. Re-derive ratePos after
+  // touching this, since scaling the deviation moves the mean.
+  rateSpread: { GK: 1.0, DEF: 1.20, MID: 1.15, FWD: 1.0 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
@@ -1663,15 +1768,23 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // converts 40%, 2.4 converts 51%. At 3.9 his reach from ten metres was 1.96 m against a shooter
   // aiming 2.12 m off centre -- sixteen centimetres, which execution noise ate every time.
 gkDiveV: 2.9,
-  gkReactSlow: 0.28, gkReactFast: 0.18,      // seconds, worst keeper to best
+  // THE SPANS, widened 23 Aug 2026 with the league's mean keeper held where he was. meGkSkill
+  // runs 0.43 to 0.94 across the keepers in the registries, and at 0.28-0.18 / 6-9 / 0.45-0.82
+  // nearly all of them sat in the top third of every span: measured, a keeper ten OVR better
+  // prevented +0.01 goals a match on the shots that reached him, against a standard error of
+  // 0.06. The mean keeper (skill ~0.76) keeps his read at 0.73, his reaction near 0.20 s and his
+  // dive near 8.3 m/s; the ends move. Conversion on target came back from 30.0% to 31.2% because
+  // the worse keepers lose more than the better ones gain, and a 10-OVR step is now worth about
+  // +0.13 goals a match on target with the gradient visible in his rating.
+  gkReactSlow: 0.30, gkReactFast: 0.16,      // seconds, worst keeper to best
   // How often he picks the right side as it is struck, worst keeper to best.
-  gkReadMin: 0.45, gkReadMax: 0.82,
+  gkReadMin: 0.237, gkReadMax: 0.887,
   // How much extra a long flight buys his read: nothing under gkReadT0 seconds, full value by
   // gkReadT0 + gkReadTSpan. A close-range shot stays a guess however good he is.
   gkReadT0: 0.25, gkReadTSpan: 0.6, gkReadTime: 0.18,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
-  gkDiveVmin: 6.0, gkDiveVmax: 9.0,
+  gkDiveVmin: 5.0, gkDiveVmax: 9.5,
   // How far past his own wingspan still counts as barely moving. Inside this he catches it; beyond
   // it he has had to dive, and a dive is a deflection. Pace does not come into that: a rocket
   // straight at his chest is a comfortable take and a gentle one into the corner is a fingertip.

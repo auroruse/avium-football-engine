@@ -16,6 +16,7 @@ const aviumTSV=__tsv("AVIUM.tsv"),
       nchTSV=__tsv("NCH.tsv"),
       rudTSV=__tsv("RUD.tsv"),
       shiTSV=__tsv("SHI.tsv"),
+      skjTSV=__tsv("SKJ.tsv"),
       turTSV=__tsv("TUR.tsv"),
       varTSV=__tsv("VAR.tsv"),
       vicTSV=__tsv("VIC.tsv");

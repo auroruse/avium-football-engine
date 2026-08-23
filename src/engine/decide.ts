@@ -367,13 +367,15 @@ export function meDecide(s, rng, side, i, dwell) {
     // Giving the ball away is nearly free when you give it away in their half, so the only lever that
     // can price directness is how often the long ball fails in the first place. It was a hard-coded
     // 0.0072 a metre; named and raised so a forty-metre ball is meaningfully worse than a twenty.
-    let ok = (CFG.passBase - d * CFG.passDistK) * Math.exp(-blk * CFG.laneK) * (0.72 + a.pass / 99 * 0.34)
+    const okBase = (CFG.passBase - d * CFG.passDistK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + a.pass / 99 * CFG.passSkillW)
            * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp)) * (0.86 + meAttrs(q).position / 99 * 0.20);
+    let ok = okBase;
     // The decision now asks the resolution's own question: can anyone reach this ball first? A
     // lofted ball is only cuttable near its ends, so it is judged on a straighter, faster line.
     const spd = isHigh ? meLoftFor(d).vxy : meGroundSpeed(d);
     const risk = mePassRisk(s, side, p.x, p.y, aimX, aimY, spd, isHigh) * (isHigh ? CFG.riskHigh : 1);
-    ok *= 1 - risk * CFG.riskW;
+    const okRisk = 1 - risk * CFG.riskW;          // NOT riskM: that is the side's risk appetite, in scope above
+    ok *= okRisk;
     // THE MAN IT IS PLAYED TO HAS TO GET THERE AS WELL. Every opponent was charged for the race to
     // the ball and the receiver alone was exempt, so a ball rolled into space he had no chance of
     // reaching scored the same as one laid into his feet. Worse, the lead above is solved off his TOP
@@ -384,14 +386,24 @@ export function meDecide(s, rng, side, i, dwell) {
     // Free for a ball to his feet, which is why those were calibrated all along.
     const tBall = (isHigh ? d / Math.max(1, spd) : meGroundT(d, d)) * 1000;
     const late = meTimeToBallMs(q, aimX, aimY, meSpeed(meAttrs(q), q.stamina)) - tBall;
-    if (late > CFG.rcvLateMs)
-      ok *= 1 - Math.min(1, (late - CFG.rcvLateMs) / CFG.riskSpanMs) * CFG.riskW;
+    const okLate = late > CFG.rcvLateMs ? 1 - Math.min(1, (late - CFG.rcvLateMs) / CFG.riskSpanMs) * CFG.riskW : 1;
+    ok *= okLate;
     if (isGK) {
-      // A rolled or thrown ball out of the hands beats a stroked pass for accuracy, and gkDist
-      // decides whether he is looking for a full-back or for the halfway line.
-      if (d < CFG.gkRollD) ok *= CFG.gkRollOk;
+      // gkDist decides whether he is looking for a full-back or for the halfway line. (The rolled
+      // ball's accuracy bonus, gkRollOk, is applied below, after the calibration.)
       val0 += (d > CFG.gkLongD ? 1 : -1) * (st.gkDist || 0) * CFG.gkDistW;
     }
+    // WHAT THE PHYSICS ACTUALLY DELIVERS. The product above is the decision's model of a pass; it
+    // was the belief itself, and it was wrong by a lot -- balls it rated at 0.19 reached the man
+    // they were played to 62% of the time, because the three factors compound and each is too
+    // strong on its own. Fitted against 62,000 chosen passes and their outcomes (test/ratings.mjs
+    // prints the fit), as a logistic on the logs of the three factors, so the SHAPE of the model
+    // -- what makes a pass harder -- is kept and only its honesty is repaired. See passCal0 in
+    // config for what it did to the game and what was re-tuned around it.
+    ok = 1 / (1 + Math.exp(-(CFG.passCal0 + CFG.passCalB * Math.log(Math.max(0.01, okBase))
+                                         + CFG.passCalR * Math.log(Math.max(0.01, okRisk))
+                                         + CFG.passCalL * Math.log(Math.max(0.01, okLate)))));
+    if (isGK && d < CFG.gkRollD) ok *= CFG.gkRollOk;
     ok = Math.max(CFG.passFloor, Math.min(0.985, ok));   // floor is ~0: see config
     // What the pass is WORTH, before instructions.
     // Keeping the ball is worth more when it is a SAFE ball -- but ONLY when the way forward is
@@ -439,6 +451,10 @@ export function meDecide(s, rng, side, i, dwell) {
     // and this can only ever re-rank, never inflate. It sits inside val, so the completion chance
     // multiplies it: you are paid for the chance you create only if the ball actually arrives.
     val += Math.max(0, spq - sp) * CFG.passShotW;
+    // ...and who he is. What he can finish is priced above; this is what he can DO with it, which
+    // is the whole of why a side plays through its best midfielder. Relative to the passer's own
+    // judgement and floored at zero, so it only ever decides between receivers. See passRecvW.
+    if (q.pos !== "GK") val += Math.max(0, meMind(q) - meMind(p)) * CFG.passRecvW;
     // THE PATTERN. Everything above prices this pass on its own; this prices what it SETS UP. A
     // square ball that begins a switch and a square ball that begins nothing score identically to a
     // one-move utility, and the first is how possession football actually moves a defence. The style
@@ -462,7 +478,8 @@ export function meDecide(s, rng, side, i, dwell) {
              + (q.pos === "GK" ? -0.020 : 0);
     if (ME_DBG) ME_DBG.pass = Math.max(ME_DBG.pass ?? -1, sc);
     const jsc = sc + jit("pass");
-    if (jsc > bestSc) { bestSc = jsc; best = { k: "pass", j, p: ok, ax: aimX, ay: aimY, high: isHigh, thru }; }
+    if (jsc > bestSc) { bestSc = jsc; best = { k: "pass", j, p: ok, ax: aimX, ay: aimY, high: isHigh, thru,
+                                               c: [okBase, okRisk, okLate, d, blk, press, rPress] }; }
     }
   }
   // Carry it. Cheap, safe, gains a little -- and the option a pressed player loses first.
