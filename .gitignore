@@ -11,3 +11,4 @@ test/engine.mjs
 test/engine.tsx
 test/e2.tsx
 test/e3.tsx
+test/ssr/app.mjs
