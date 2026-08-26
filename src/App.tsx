@@ -22,7 +22,7 @@ import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_KEY_ROLE, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeRoleFit, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, STYLE_PRESET, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
@@ -305,208 +305,6 @@ export // GOAL-KICK DISTANCE: SHORT IS A TAX, LONG IS NOT. Removed from all seve
 // match WHICHEVER WAY IT IS SET: short -0.084, long -0.093. Not a trade, a fine for having an
 // opinion about goal kicks, paid by half the roster.
 // A manager can still set it per match from the Tactics panel, which is what an execution choice is.
-const STYLE_PRESET = {
-  balanced:      {},
-  // Win it back high and go again. The only style that maxes both press and line.
-  gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
-  // Keep it, move it, never hurry. Presses to restart possession, not to score off the turnover.
-  // ELEVEN INSTRUCTIONS AND NINE OF THEM COST. Last in the head-to-head, beating two of thirteen and
-  // losing to the side that carries no instructions at all. The two dropped here are the two that are
-  // NOT what Tiki-Taka is: gkDist is classified in this file as an execution choice rather than an
-  // identity axis (it is in STRAT_EDITABLE, excluded from fit damping) and costs 0.08 whichever way
-  // it is set, and tackling -1 is incidental at 0.10. Together that is a fifth of a goal of pure tax
-  // for nothing anyone would call tiki-taka.
-  // What makes it the style is untouched: shortest passing in the game, narrow, high line, presses to
-  // restart possession, holds shape, works the ball in, expressive.
-  tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
-                   possWon: -1, chanceCreation: -1, creativity: 1, width: -1 },
-  // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
-  verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
-                   possWon: 1, dribbling: 1, creativity: 1, width: -1 },
-  // Patient without the press: shortest passing outside Tiki-Taka, plays out from the back, holds
-  // shape, keeps the ball. It used to carry SEVEN negative instructions and not one positive -- a
-  // style defined entirely by refusal -- and measured as the worst side in the game on territory,
-  // shots and goals. Leave-one-out showed no single culprit: removing ANY of the seven gained shots,
-  // between +0.5 and +2.7. It was the accumulation.
-  // dribbling and chanceCreation are gone because they contradict the name as well as the numbers:
-  // a possession side's midfielders carry the ball, that is how positional play advances, and a side
-  // that works it into the box then declines to shoot has no way to finish what it starts.
-  // ...AND THE LINE IS HIGH, which it was not. "Patient without the press" was read as a standard
-  // line, and with short passing and playing out on top of it the side held the ball DEEPER THAN
-  // PARK THE BUS -- a mean possession position of 35.8 m, the lowest of all fourteen. Controlling
-  // possession without controlling territory is not a style, it is sterile possession, and it left
-  // this a notch of line and a notch of press away from Zona Mista: 0.34 apart on twelve behaviour
-  // columns, the closest pair in the game and the only one too close to tell apart.
-  // A high line with NO press is a combination nobody else holds -- Tiki-Taka presses from its high
-  // line, Zona Mista sits deep and does not -- so this is what separates all three.
-  // IT DID NOT FIX THE TERRITORY, and the honest number belongs here rather than the intention: a
-  // full notch of defensive line moved the mean possession position 35.8 m to 36.4, and the distance
-  // to Zona Mista 0.34 to 0.41. Where a side HOLDS the ball is contested -- it is capped by the
-  // opponent's block and by the offside line -- so its own defensive line does not push the ball up
-  // the pitch. Kept because a control side genuinely should hold a high line and because it is now
-  // two notches of line from Zona Mista rather than one, but a possession side that cannot gain
-  // territory is a progression problem in the pass model, not something a stamp can reach.
-  // ...AND THE LINE IS GONE, on this stamp's own evidence. The note above records what it bought:
-  // 0.6 m of possession position and 0.07 of separation from Zona Mista. Measured since, a notch of
-  // defensive line is the most expensive instruction in the game at ANY setting -- 0.23 at one notch,
-  // 0.37 at two -- and this side had six instructions of which every single one was a net cost, which
-  // is why it finished last of fourteen head to head, beating one opponent.
-  // gkDist goes with it: this file classifies it as an execution choice rather than an identity axis
-  // (STRAT_EDITABLE, excluded from fit damping) and it costs about 0.08 whichever way it is set.
-  // What a control side IS survives intact -- shortest passing outside Tiki-Taka, plays out from the
-  // back, holds shape rather than countering, stays on its feet, and presses at nobody.
-  // REVERTED to possWon -1. Flipping it measured +0.49 goals against the field, the largest gain
-  // anyone found for this style -- and it still did not clear Balanced (-0.70 to -0.22), so it paid
-  // distinctness for a result it did not achieve. The reason it looked like a gain is the same
-  // reason every style below Balanced looked fixable by deletion: an all-zero stamp IS the engine's
-  // unconstrained optimum, so ANY instruction reads as a cost. That is an engine problem, not a
-  // stamp problem, and it is being fixed at the source. Do not re-apply this without re-measuring
-  // once instruction coherence is in.
-  possession:    { pressingLOE: 0, passingDir: -1, approachPlay: -1, possLost: 0,
-                   possWon: -1, tackling: -1 },
-  // Width, overlaps, and licence to take a man on.
-  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
-  // Sit off, then hurt them the moment it breaks.
-  counterattack: { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1 },
-  // Skip the middle third entirely. Distinct from Counter by NOT sitting deep to earn the ball.
-  routeone:      { gkDist: 1, pressingLOE: 0, defLine: 0, passingDir: 2, approachPlay: 1, possWon: 1,
-                   chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1 },
-  // The deep block that still intends to score: absorbs like Park The Bus, breaks like Counter,
-  // and sits deeper and more disciplined than either. Its whole value is the transition.
-  // dribbling: -1 is gone for the same reason it left Cholismo, and the measurement is the same
-  // shape: worst style in the game at -0.30 goal difference, fewest shots (8.2) and fewest goals
-  // (1.03) despite allowing a mid-table 14.9%. It was not defending badly, it was not breaking.
-  // Five candidates at 260 fixtures each, where a real difference needs about 0.26 GD: dropping
-  // dribbling was worth +0.31 and nothing else cleared the bar. Shots 8.2 -> 9.1, scored 1.03 ->
-  // 1.23, conceded 1.33 -> 1.22 -- it improves at BOTH ends, which is what a side that can finally
-  // carry the ball out looks like.
-  // The block itself is untouched: pressingLOE -2 is where it presses from. What moves is where the
-  // ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter actually happening.
-  //
-  // defLine -2 -> -1, AND IT IS THE ONLY INSTRUCTION IN THIS STAMP THAT WAS COSTING ANYTHING.
-  // Taken apart axis by axis against the full field, 180 blocked fixtures an arm: dropping defLine
-  // was worth +0.73 goals and nothing else in the stamp cleared its own error. Every other
-  // instruction is EARNING -- possWon -0.30, width -0.28, passingDir -0.17, approachPlay -0.12, so
-  // the side is worse without them. It is not a broken setting at -2 either; depth is penalised
-  // about 0.25 goals a rung all the way down, because the four styles at the top of the table
-  // (Route One, Wing Play, Second Ball, Gegenpress) all feast on a deep line and nothing punishes
-  // them back. One rung up puts this style at +0.16 against Balanced's +0.02, which is the whole
-  // point of the change, and it is still in the deepest tier in the game beside Zona Mista.
-  // Park The Bus is NOT fixable this way -- at -1 it is still -0.09, below Balanced. See its note.
-  catenaccio:    { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
-                   possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1, width: -1 },
-  // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
-  // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
-  // Tiki-Taka, while passing more (120 a match) and completing more (80.8%) than any side in the
-  // list. A bus that outpasses Tiki-Taka is not a bus.
-  // Leave-one-out found one axis responsible and it was not the obvious one: dropping `tackling`
-  // alone was worth -4.7pp, five times any other instruction in the vector. Get Stuck In was winning
-  // it 17.4 times a match and every one of those is a turnover in its own favour. Stay On Feet is
-  // also how a low block actually defends -- diving in is what breaks the block, which is why
-  // Catenaccio has carried -1 all along.
-  // approachPlay biases the CLEAR option in decide.ts, so at 0 this side never hoofed it, it
-  // recycled among the back four; and passingDir 1 asked for 20 m balls, which in its own third
-  // means short, safe and kept. The three together land it at 44.6% with MORE clearances, and it
-  // both scores more (1.11 -> 1.23) and concedes less (1.34 -> 1.14) than the version that hogged
-  // the ball. Two axes still separate it from Catenaccio, and they are the two that matter:
-  // possWon -1 rather than +1, and no Shoot On Sight. It absorbs and it does not break.
-  // timeWasting is what keeps it from BEING Catenaccio. Taking tackling out fixed the possession
-  // profile and left the two indistinguishable -- 45.2 / 44.9 possession, 36.2 / 35.7 up the pitch,
-  // 6.8 / 6.7 clearances, a 0.03 gap in goal difference against a 0.09 standard error -- because
-  // possWon and chanceCreation, the two axes meant to carry the difference, are both worth less than
-  // the noise. Killing the game is the one thing this style does that a side trying to counter must
-  // not, and the engine charges for it properly: dead time comes back at 55% and the caution is the
-  // price, and it only applies while in front. Measured separation goes 0.66 to 2.12 with goal
-  // difference untouched.
-  // The cost, stated: holding the ball longer means carriers travel further before releasing it, so
-  // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
-  // MEASURED, +0.90 goals against the field (se 0.16), -0.53 to +0.37 -- the largest single gain in
-  // the table, and it clears Balanced at +0.02. Three axes, each measured as a cost INSIDE this
-  // stamp rather than guessed: defLine -2 -> -1, possLost -1 -> 0, pressingLOE -2 -> -1.
-  // It still parks, and it is still the deepest tier in the game beside Zona Mista. What it stops
-  // doing is parking so far back that it cannot get out. At -2 its shooter received the ball 33.2 m
-  // from goal and carried it 28.3 m, taking 18% fewer shots than a neutral line at identical chance
-  // quality (0.124 xG against 0.132) -- and it conceded MORE shots from CLOSER while standing 7.81
-  // men in its own box against 6.97. More bodies, more shots, nearer the goal.
-  // Two thirds of what depth cost this side was at the OTHER end: goals for 0.98 against 1.30.
-  // Four things that did NOT fix it are recorded in engine/config.ts beside lineADefL, with their
-  // numbers. Read those before touching this again.
-  // possWon -1 -> +1. A side that parks the bus and then KEEPS the ball is the one contradiction
-  // left in this stamp, and it is measured rather than argued: it takes 39.6% of its shots from
-  // turnovers where a neutral line takes 44.1%, and the engine had it at 52.1% possession, second
-  // most in the game. Park it and hit them on the break, which is what the style is.
-  parkthebus:    { gkDist: 1, pressingLOE: -1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 0,
-                   possWon: 1, creativity: -1, dribbling: -1, tackling: -1,
-                   timeWasting: 2, width: -1 },
-  // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
-  // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
-  // off the diagonal -- every style either pressed high from a high line or sat deep behind a low
-  // one. These occupy the empty cells.
-  //
-  // Compact in the middle third, deny the centre, never chase. The only style on pressingLOE -1,
-  // and the answer to "what sits between Gegenpress and Counter", which was nothing.
-  // A mid-block defends narrow and deep; it does not refuse to run with the ball. dribbling: -1 was
-  // the only axis in this vector doing real damage -- leave-one-out moved shots by at most 1.5 for
-  // everything else, while dropping dribbling was worth +0.54 goals and 4.9 m of territory. The rest
-  // of the vector measured as working: sitting deeper IS the style, and 33 m up the pitch is a
-  // mid-block behaving like one rather than a fault.
-  // tackling +1, measured once the drill equilibrium was fixed: +0.46 goals against a twelve-style
-  // field on paired seeds -- and it earned that while still being CHARGED for the old clash rule
-  // that called a low press with hard tackling a contradiction. A mid-block that bites when you
-  // enter it is the whole brand; the rule was wrong, not the stamp, and it is gated one-way in
-  // engine/config.ts now. possWon +1 was measured alongside and rejected at -0.51: a mid-block
-  // that sends breakers the moment it wins it leaks the shape it just defended with.
-  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1, width: -1,
-                   tackling: 1 },
-  // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
-  // nothing else in the list does. possLost Counter-Press is the whole point rather than a
-  // trimming: swarming the second ball IS the style, and without it this was two axes from
-  // Counter and read as a rename of it.
-  // ...AND IT WAS A RENAME OF ROUTE ONE INSTEAD. Measured at 0.45 rms z-distance, the closest pair
-  // in the game, and the stamps say why: eight of the instructions were byte-identical to Route
-  // One's and all three differences were defensive, so the two had the same attack by construction.
-  // Pass length 21.1 against 21.2, long balls 51% against 52%, shot distance 13.7 against 13.6,
-  // fouls 13.4 against 13.4.
-  // The high-press-from-a-low-line signature does not separate them because it cancels ITSELF:
-  // pressingLOE and defLine both feed meBlock's wantLine at blkDefLine 6 m a step against blkLoe's
-  // 3, so -1 line and +1 press nets to three metres DEEPER, and this side wins its tackles at 50.8 m
-  // against Route One's 53.6 -- pressing lower than a side carrying no press instruction at all.
-  // The signature is kept because it is the design; the separation comes from the one thing the
-  // concept names that Route One has no claim on. You do not spread out to contest a knock-down,
-  // you compress around where it lands.
-  // DIRECT, NOT ROUTE ONE. passingDir 2 is the biggest single buff in the game -- worth +0.37 on the
-  // isolated axis, more than twice anything else -- and the two styles that maxed it finished first
-  // and second head to head, with this one beating all thirteen opponents and its WORST result still
-  // a win. Nothing else in the game has no bogey team.
-  // Dropped to 1, which also sharpens the pair: Route One keeps 2 and is THE long-ball style; this
-  // one goes direct and contests the knock-down, which is what its name says and what the width
-  // stamp already expresses.
-  // defLine -1 -> 0. A second-ball side fights for knock-downs from a compact MID block; it does
-  // not defend deep AND press high at the same time, which is what -1 alongside pressingLOE +1
-  // was asking for.
-  secondball:    { gkDist: 1, pressingLOE: 1, defLine: 0, passingDir: 1, approachPlay: 1, possLost: 1,
-                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, width: -1 },
-  // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
-  // patience, then Counter's intent once it is out.
-  zonamista:     { pressingLOE: -1, defLine: -1, passingDir: -1, approachPlay: -1, possWon: 1,
-                   possLost: -1 },
-  // Everything forward, nobody disciplined. This is the build that used to be worth +3.3 a season
-  // when a user could assemble it slider by slider; it measures under +1 now, which is the only
-  // reason it can exist as a named option instead of a exploit.
-  // ...BUT NOT LONG. It carried passingDir 1 and approachPlay 1 together, which is a preference for
-  // the longer ball plus a taste for clearing it, and once directness became an instruction that
-  // actually reaches the pitch that is what it played: a mean pass of 20.7 m with 43% of them
-  // lofted, which is Route One's profile under the name of the most technical style in football.
-  // La Nuestra is la gambeta -- short, on the deck, through the middle, with the licence to beat a
-  // man. The expression stays (dribbling, creativity, shoot on sight, and pressing high to get it
-  // back); the long ball goes, and it no longer hoofs it clear.
-  // chanceCreation +1 -> 0. Short passing and shoot-on-sight pull against each other. La Nuestra is
-  // about working the opening and individual brilliance, not speculative efforts -- but this is the
-  // most arguable of the five, so it goes to NO instruction rather than asserting the opposite.
-  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: -1, approachPlay: 0, chanceCreation: 0,
-                   dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
-};
 
 
 const STYLE_MOM = {
@@ -1900,6 +1698,10 @@ function parseBulk(text) {
     "DL BEHAVIOR":"dlBehavior","TACKLING":"tackling"};
   const _hdr = text.split("\n").find(l => /\bPLAYSTYLE\b/i.test(l));
   const _fromHdr = _hdr ? _hdr.split("\t").map(c => STRAT_HDR[c.trim().toUpperCase()]).filter(Boolean) : [];
+  // The MANAGER column sits between the instructions and #1, declared in the header. Headerless
+  // input (the in-app export, old registries, hand-pasted squads) has no manager column and
+  // parses exactly as it always did.
+  const hasManager = _hdr ? /\bMANAGER\b/i.test(_hdr) : false;
   const stratKeys = _fromHdr.length ? _fromHdr
     : ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
@@ -1974,7 +1776,7 @@ function parseBulk(text) {
     // Anything past the block is optional trailing metadata, in a fixed order: up to 2 #RRGGBB
     // colours, then city, then stadium.
     const isHexColor = (s) => /^#[0-9A-Fa-f]{6}$/.test((s||"").trim());
-    const PLAYER_START = 4 + stratKeys.length + o;
+    const PLAYER_START = 4 + stratKeys.length + o + (hasManager ? 1 : 0);
     // The player block is 16 slots (11 + a 5-man bench) or 22 (11 + the 11-man international
     // bench). Metadata always opens with a #RRGGBB colour, so the first colour terminates the
     // block; only the two legal widths are accepted, so a malformed row falls back to 16 rather
@@ -1992,6 +1794,17 @@ function parseBulk(text) {
     // unoccupied. Push a placeholder rather than skipping, or every later name shifts up one and
     // the whole bench lands on the wrong positions. "–" is accepted as an explicit empty marker.
     const isBlankSlot = (v) => !v || v === "–" || v === "—" || v === "-";
+    // The manager's cell reads like a player's -- "(85) Jordan STANFORD [ELV]" -- and sits at
+    // the head of the block when the header declares a MANAGER column. The player slots follow,
+    // sixteen for a club and twenty-two for an international row, exactly as before.
+    let manager = null, mgmt = null, managerNat = null;
+    if (hasManager) {
+      const mc = p[PLAYER_START - 1]?.trim();
+      if (mc && !isBlankSlot(mc)) {
+        const mo = parseOvr(mc);
+        manager = fullDisplayName(mc); mgmt = mo.ovr ?? null; managerNat = mo.nat ?? null;
+      }
+    }
     const playerNames = [], playerFullNames = [], playerNats = [];
     for (let i = PLAYER_START; i < Math.min(PLAYER_START + PLAYER_SLOTS, p.length); i++) {
       const v = p[i]?.trim();
@@ -2017,7 +1830,7 @@ function parseBulk(text) {
     // Key off p.slot, not the array index: buildSquad drops unfilled bench slots, so a row with a
     // gap has a shorter squad than its column list and the two no longer line up positionally.
     squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
-    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(conference ? {conference} : {}) };
+    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(conference ? {conference} : {}), ...(manager ? {manager} : {}), ...(mgmt != null ? {mgmt} : {}), ...(managerNat ? {managerNat} : {}) };
   }).filter(Boolean).map(t => { const sk = squadSkill(t.squad); return sk == null ? t : { ...t, skill: sk }; });
 }
 // A team is worth what its players are worth. This used to be an authored SKILL (T) column sitting
@@ -2454,7 +2267,11 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       // it under the Premier League. Named here, which also keeps it out of
                       // detection altogether. A LEAGUE season still needs no entry -- ksl's ten
                       // clubs carry it 8-2 to the Secondary League on their own.
-                      kc: "Karjanian Cup",
+                      kc: "Karjanian Cup", kpl: "Karjanian Premier League",
+                      // Winners-only stubs and generated historical seasons carry no boards for
+                      // detection to read, so the historical league folders are named outright.
+                      ao: "Alemannische Oberliga", ca: "Championnat Arvernois",
+                      epl: "Elvesterian Premier League",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
@@ -2730,6 +2547,9 @@ const leagueLogoCandidates = (lg) => {
 // Shared by both roster headers so they line up. The right-hand one stacks a label over a value in
 // its stat blocks, which is what sets the floor.
 const ROSTER_HEAD_H = 56;
+// The squad list beside the team sheet is a fixed window: a bench of five and a bench of eleven
+// draw the same page, and the list scrolls inside itself rather than growing it.
+
 // The live match's two columns, measured off the right one — venue bar 56 + event feed panel 316 +
 // stats panel 284. That side is the stable one; the left is a scoreboard whose height depends on
 // the phase. The live grid takes this as a FLOOR, since a pre-match scoreboard with two pitch
@@ -3904,6 +3724,213 @@ const PlayerShot = ({ name, size, style }) => {
   );
 };
 
+// The dugout, as a card: portrait (same folder and fallback chain as the players -- coach
+// portraits land there eventually), name, nationality, MGMT rating through showOvr, and the
+// football he has the side playing. Renders nothing for a side with no manager filed.
+// One glyph per instruction, so a chip says WHICH call it is without spending a word on it:
+// a double chevron for tempo, a clock face for time wasting, a lofted trajectory for goal-kick
+// distance, and a back line with an arrow for how the defence steps. Drawn in currentColor, so
+// each takes the chip's own warm/cool/muted colour, and each carries the instruction's name as
+// its tooltip.
+const STRAT_ICON = {
+  tempo: <><path d="M2 3l3.2 3L2 9" /><path d="M6.4 3l3.2 3-3.2 3" /></>,
+  timeWasting: <><circle cx="6" cy="6" r="4" /><path d="M6 3.6V6l1.9 1.2" /></>,
+  gkDist: <><path d="M1.8 9.2C3.4 4.2 7.2 2.6 10.2 3.4" /><circle cx="10.4" cy="3.3" r="1.1" /></>,
+  dlBehavior: <><path d="M1.8 9h8.4" /><path d="M6 7.4V2.6" /><path d="M4.1 4.4L6 2.4l1.9 2" /></>,
+};
+const StratIcon = ({ k }) => (
+  <svg viewBox="0 0 12 12" width="8.5" height="8.5" fill="none" stroke="currentColor"
+       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+       style={{ flexShrink: 0, opacity: 0.85 }}>{STRAT_ICON[k]}</svg>
+);
+// The dugout log's card faces: one glyph and one label per kind of change a manager makes.
+const MGR_LOG_KIND = {
+  switch: { lbl: "Playstyle switch", clr: "var(--ui-warn)",
+            icon: <><path d="M2.5 4h6l-1.8-1.8" /><path d="M9.5 8h-6l1.8 1.8" /></> },
+  orders: { lbl: "Individual orders", clr: "var(--ui-attack)",
+            icon: <><path d="M2 3.2l3 2.8-3 2.8" /><path d="M6.4 3.2l3 2.8-3 2.8" /></> },
+  lift:   { lbl: "Orders lifted", clr: "var(--ui-ok)",
+            icon: <path d="M2.4 6.4l2.6 2.6 4.6-5.4" /> },
+  talk:   { lbl: "Half-time talk", clr: "var(--ui-info)",
+            icon: <path d="M2 2.6h8v5H6.4L4 9.8V7.6H2z" /> },
+  reorg:  { lbl: "Reorganisation", clr: "var(--ui-info)",
+            icon: <path d="M6 1.8l3.8 1.5v2.6c0 2.3-1.7 3.7-3.8 4.3-2.1-.6-3.8-2-3.8-4.3V3.3z" /> },
+};
+const MgrLogCard = ({ e }) => {
+  const K = MGR_LOG_KIND[e.k] || MGR_LOG_KIND.orders;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 9, border: "1px solid var(--chrome-border)",
+                  borderLeft: `2px solid ${K.clr}`, borderRadius: 7, padding: "6px 10px", marginBottom: 6,
+                  background: "var(--chrome-bg-08)" }}>
+      <svg viewBox="0 0 12 12" width="13" height="13" fill="none" stroke={K.clr} strokeWidth="1.4"
+           strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{K.icon}</svg>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: K.clr }}>{K.lbl}</div>
+        <div style={{ fontSize: 10.5, color: "var(--ui-text)", lineHeight: 1.35 }}>{e.t}</div>
+      </div>
+      <span style={{ ...mono, fontSize: 9.5, fontWeight: 700, color: "var(--chrome-muted)", flexShrink: 0 }}>{e.min}&#8242;</span>
+    </div>);
+};
+const ManagerCard = ({ t, dense, center, wide, bare, style }) => {
+  if (!t) return null;
+  if (wide) {
+    const named = !!t.manager;
+    const { first, last } = named ? splitFullName(t.manager) : { first: "", last: "Vacant" };
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minWidth: 0,
+                    border: "1px solid var(--chrome-border)", borderRadius: 10, background: "var(--chrome-bg-08)",
+                    padding: "0 14px", height: 58, flexShrink: 0, overflow: "hidden", ...style }}>
+        {named
+          ? <PlayerShot name={t.manager} size={40} />
+          : <span style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0, background: "var(--chrome-bg-dd)", border: "1px dashed var(--chrome-border)" }} />}
+        <div style={{ minWidth: 0, flexShrink: 0 }}>
+          <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 1 }}>Manager</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 13 }}>
+              {first && <span style={{ fontWeight: 400, fontSize: 11.5 }}>{first} </span>}
+              <b style={{ letterSpacing: "0.01em", color: named ? undefined : "var(--chrome-muted)" }}>{last}</b>
+            </span>
+            {named && t.mgmt != null && <span style={{ ...ovrBlock(t.mgmt, "sm"), ...mono, flexShrink: 0 }}>{showOvr(t.mgmt)}</span>}
+          </div>
+        </div>
+        <div style={{ width: 1, alignSelf: "stretch", background: "var(--chrome-border-33)", flexShrink: 0 }} />
+        <div style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_LBL[t.style || "balanced"]}</div>
+          <div style={{ ...mono, fontSize: 10.5, fontWeight: 700, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)", marginTop: 2 }}>{t.formation || "4-3-3"}</div>
+        </div>
+        <div style={{ flex: 1 }} />
+        {/* Two-by-two inside the banner's fixed height: the height had headroom for a second
+            row of chips, and two rows is what lets every label print in full. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, auto))", gap: "4px 5px", justifyContent: "end", flexShrink: 0 }}>
+          {STRAT_EDITABLE.map(k => {
+            const v = (t.strategy || STRAT_DEF)[k] ?? 0, L = STRAT_LABELS[k];
+            const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
+            return (
+              <span key={k} title={L?.name}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8.5, fontWeight: 600,
+                             color: clr, border: `1px solid ${clr}`, borderRadius: 4, padding: "2px 7px",
+                             whiteSpace: "nowrap", opacity: v === 0 ? 0.55 : 0.9 }}>
+                <StratIcon k={k} />
+                {L?.vals?.find(([vv]) => vv === v)?.[1] || L?.name}
+              </span>);
+          })}
+        </div>
+      </div>);
+  }
+  // A side with nobody filed still has football and still has calls, so the dugout is drawn
+  // either way -- the seat is simply empty. Same shape, so nothing jumps when one is named.
+  const named = !!t.manager;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: center ? 14 : 9, minWidth: 0,
+                  justifyContent: center ? "center" : undefined, ...style }}>
+      {named
+        ? <PlayerShot name={t.manager} size={dense ? 26 : 34} />
+        : <span style={{ width: dense ? 26 : 34, height: dense ? 26 : 34, borderRadius: "50%", flexShrink: 0,
+                         background: "var(--chrome-bg-dd)", border: "1px dashed var(--chrome-border)" }} />}
+      <div style={{ minWidth: 0, textAlign: center ? "center" : undefined }}>
+        {/* The label sits over the name, the way a caption does, rather than trailing it. */}
+        <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 1 }}>Manager</div>
+        {(() => { const { first, last } = named ? splitFullName(t.manager) : { first: "", last: "Vacant" }; return (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, justifyContent: center ? "center" : undefined }}>
+          {/* Given name light before surname bold caps, the way the team sheet prints a player. */}
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: dense ? 11 : 12,
+                         color: named ? undefined : "var(--chrome-muted)" }}>
+            {first && <span style={{ fontWeight: 400, fontSize: dense ? 9.5 : 10.5, color: "var(--ui-text)" }}>{first} </span>}
+            <b style={{ letterSpacing: "0.01em" }}>{last}</b>
+          </span>
+          {named && t.mgmt != null && <span style={{ ...ovrBlock(t.mgmt, "sm"), ...mono, flexShrink: 0 }}>{showOvr(t.mgmt)}</span>}
+        </div>); })()}
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 2, whiteSpace: "nowrap", justifyContent: center ? "center" : undefined }}>
+          <span style={{ fontSize: 9.5, fontWeight: 600, color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_LBL[t.style || "balanced"]}</span>
+          <span style={{ ...mono, fontSize: 9.5, fontWeight: 600, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)" }}>{t.formation || "4-3-3"}</span>
+        </div>
+        {/* His own calls, under the football he plays: the four a manager still sets by hand.
+            All four print, so the row reads as a full set of instructions rather than as
+            whatever happens to be non-default -- the untouched ones just sit muted. Suppressed
+            where the instructions are already on screen as controls (`bare`). */}
+        {!bare && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4, justifyContent: center ? "center" : undefined }}>
+          {STRAT_EDITABLE.map(k => {
+            const v = (t.strategy || STRAT_DEF)[k] ?? 0, L = STRAT_LABELS[k];
+            const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
+            return (
+              <span key={k} title={L?.name}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 3.5,
+                             fontSize: 8, fontWeight: 600, letterSpacing: "0.04em", whiteSpace: "nowrap",
+                             color: clr, border: `1px solid ${clr}`, borderRadius: 4,
+                             padding: "1px 5px", opacity: v === 0 ? 0.55 : 0.9 }}>
+                <StratIcon k={k} />
+                {L?.vals?.find(([vv]) => vv === v)?.[1] || L?.name}
+              </span>);
+          })}
+        </div>}
+      </div>
+    </div>);
+};
+
+// Sizes its child to the space between its own top edge and the bottom of the viewport, minus a
+// breath. The team page tried to do this with a hard-coded chrome estimate and the estimate was
+// wrong twice -- the crest band above it is taller for a club than for a nation, so one of the
+// two always overflowed. Measured, it cannot drift.
+const FitHeight = ({ pad = 4, minH = 420, children }) => {
+  const ref = useRef(null);
+  const [h, setH] = useState(null);
+  useEffect(() => {
+    const m = () => {
+      const el = ref.current; if (!el) return;
+      // A SCREENFUL, not "what is left under the header". The crest band above scrolls away; the
+      // sheet gets the viewport's own height so the rows keep a usable size on short windows.
+      const sc = el.closest(".fit-scroll");
+      const padB = sc ? (parseFloat(getComputedStyle(sc).paddingBottom) || 0) : 0;
+      setH(Math.max(minH, (sc ? sc.clientHeight : window.innerHeight) - padB - pad));
+    };
+    // Once now, once after layout settles (fonts and crests land late), and on every resize.
+    m();
+    const raf = requestAnimationFrame(m);
+    const late = setTimeout(m, 220);
+    window.addEventListener("resize", m);
+    return () => { cancelAnimationFrame(raf); clearTimeout(late); window.removeEventListener("resize", m); };
+  }, []);
+  return <div ref={ref} style={{ height: h ?? minH }}>{children}</div>;
+};
+
+// Fits N rows into the height it is given, by CHECKING rather than by arithmetic: it renders at
+// a density, asks the DOM whether the sheet overflowed, and steps down a notch until it does not.
+// Two earlier versions computed a row height and trusted it -- both cut the last substitute off,
+// because a row's true floor is its portrait, its padding, its border and its line box together,
+// and that is not knowable up front. This cannot be wrong: the browser answers the question.
+const SQ_DENSITY = [
+  { img: 24, pad: 4,   fs: 11 },
+  { img: 22, pad: 3,   fs: 10.5 },
+  { img: 20, pad: 2.5, fs: 10 },
+  { img: 18, pad: 2,   fs: 9.5 },
+  { img: 16, pad: 1.5, fs: 9 },
+  { img: 14, pad: 1,   fs: 8.5 },
+  { img: 12, pad: 0.5, fs: 8 },
+  { img: 11, pad: 0,   fs: 7.5 },
+];
+const SquadFit = ({ rows, children }) => {
+  const ref = useRef(null);
+  const [k, setK] = useState(0);
+  useEffect(() => { setK(0); }, [rows]);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const check = () => {
+      const e2 = ref.current; if (!e2) return;
+      if (e2.scrollHeight > e2.clientHeight + 1) setK(p2 => (p2 < SQ_DENSITY.length - 1 ? p2 + 1 : p2));
+    };
+    const raf = requestAnimationFrame(check);
+    const late = setTimeout(check, 200);
+    const onR = () => setK(0);
+    window.addEventListener("resize", onR);
+    return () => { cancelAnimationFrame(raf); clearTimeout(late); window.removeEventListener("resize", onR); };
+  }, [k, rows]);
+  const d = SQ_DENSITY[k];
+  return (
+    <div ref={ref} style={{ height: "100%", minHeight: 0, overflow: "hidden",
+                            "--sq-img": `${d.img}px`, "--sq-pad": `${d.pad}px`,
+                            "--sq-fs": `${d.fs}px`, "--sq-head": `${Math.max(3, d.pad * 2)}px` }}>{children}</div>);
+};
+
 const splitSurname = (n, abbrev) => {
   const full = String(n || "");
   const m = String(abbrev || "").match(/^\p{L}\.\s+(.+)$/u);
@@ -3945,6 +3972,39 @@ const APP_H = HEADER_H + 32 + PANEL_H + LM_CONTROLS_H;
 const MIN_ZOOM = 0.5;
 const MIN_WINDOW_W = Math.ceil(MIN_APP_WIDTH * MIN_ZOOM) + APP_PAD_X * 2;
 const APP_CSS = `
+/* Instant hover tooltips: the native title attribute waits a second and looks like nothing is
+   happening, which reads as broken. */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 40;
+  background: var(--chrome-bg-dd); color: var(--ui-text);
+  border: 1px solid var(--chrome-border); border-radius: 6px;
+  padding: 5px 8px; font-size: 9.5px; line-height: 1.4; font-weight: 500;
+  white-space: pre; pointer-events: none; box-shadow: 0 4px 14px var(--ui-shadow-3);
+}
+
+/* The full-squad list beside the team sheet. Its density is MEASURED, not guessed: SquadFit
+   divides the height it actually has by the rows it actually has and writes the three variables
+   below, so sixteen players or twenty-four both land inside the column with nothing clipped and
+   nothing to scroll. Fixed density classes were tried twice and cut the last man off both times.
+   The paddings are inline styles, hence the importants. */
+.squad-compact td { padding-top: var(--sq-pad, 2px) !important; padding-bottom: var(--sq-pad, 2px) !important;
+                    padding-left: 6px !important; padding-right: 6px !important;
+                    font-size: var(--sq-fs, 10.5px) !important; }
+.squad-compact th { padding-left: 6px !important; padding-right: 6px !important; }
+/* Auto layout with a greedy name column: every other cell is sized by its content and refuses to
+   wrap, and the name takes whatever is left. Fixed widths were tried and the seven cells' padding
+   ate the column -- the names came out as single letters. */
+.squad-compact td, .squad-compact th { white-space: nowrap; }
+.squad-compact td { width: 1px; }
+.squad-compact td.sq-name { width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.squad-compact th { padding-top: 2px !important; padding-bottom: var(--sq-head, 9px) !important; }
+.squad-compact tbody tr:first-child td { padding-top: var(--sq-head, 8px) !important; }
+.squad-compact img { width: var(--sq-img, 21px) !important; height: var(--sq-img, 21px) !important; }
+.squad-compact table { height: 100%; }
+.squad-compact tr.sq-div { height: 1px; }
+
 /* Aoboshi One and Agrandir are bundled — see the @font-face blocks in theme.css. These two are not:
    neither ships a file in the repo, so they still come off a CDN and the app falls back to Inter or
    Helvetica Neue wherever it cannot reach one. Drop their files into src/fonts to close that. */
@@ -4443,15 +4503,89 @@ export default function App() {
   // the shape the lifted body reads. It came along as a free variable when this was pulled out of
   // that closure, so xiPitch threw on `starters.map` at every call site including the team view's
   // own. Named as a parameter now, so it cannot silently resolve to something else again.
-  const xiPitch = (t, starters, sideOf, isIntlTeam, linkPlayer) => {
+  // Two faces of the same sheet: the match view keeps the broadcast perspective, and the team
+  // page asks for `flat` -- the side's own half drawn top-down, goal line at the bottom, halfway
+  // at the top, no projection. Slot coordinates are shared; only the mapping changes.
+  const FLAT_H = 78;
+  const xiPitch = (t, starters, sideOf, isIntlTeam, linkPlayer, showMgr, flat) => {
     const slots = pitchSlots(t?.formation || "4-3-3");
-    const TOK = PITCH_TOKEN;
+    // The flat sheet is read at page distance, not broadcast distance, and its taller box makes
+    // the same token a smaller share of the view -- so everything hanging off the token scales.
+    const FS = flat ? 1.6 : 1;
+    const cf = (px) => cq(px * FS);
+    // The authored slot depths were drawn for the perspective pitch and pile up when read flat.
+    // For the flat sheet the DEPTHS are recomputed from the formation's own structure: slots are
+    // clustered into their real lines, the keeper is pinned in his box, and the remaining lines
+    // are dealt evenly down the half -- so no formation can overlap and every one uses the whole
+    // pitch. The authored WIDTHS survive untouched, and a scaled remnant of each line's stagger
+    // keeps a back five looking like a back five.
+    const flatY = (() => {
+      if (!flat) return null;
+      const rows = [];
+      slots.forEach(([x, y], i) => {
+        const r = rows.find(r2 => Math.abs(r2.y / r2.n - y) < 7);
+        if (r) { r.y += y; r.n++; r.idx.push(i); }
+        else rows.push({ y, n: 1, idx: [i] });
+      });
+      rows.forEach(r => { r.mean = r.y / r.n; });
+      rows.sort((a2, b2) => b2.mean - a2.mean);          // keeper's line first
+      const out = new Array(slots.length);
+      const gkY = FLAT_H - 9, topY = 9.5, botY = FLAT_H - 21;
+      rows.forEach((r, ri) => {
+        const base = ri === 0 ? gkY
+          : rows.length === 2 ? (topY + botY) / 2
+          : botY - (ri - 1) * ((botY - topY) / (rows.length - 2));
+        for (const i of r.idx)
+          out[i] = base + Math.max(-3, Math.min(3, (slots[i][1] - r.mean) * 0.4));
+      });
+      return out;
+    })();
+    const TOK = PITCH_TOKEN * FS;
+    const VBH = flat ? FLAT_H : PITCH_H;
     const ellip = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
     return (
-                  <div style={{ maxWidth: PITCH_MAX_W + 68, margin: "0 auto", padding: "0 34px 4px" }}>
+                  <div style={{ width: "100%", margin: "0 auto", padding: flat ? 0 : "0 34px 4px", height: flat ? "100%" : undefined }}>
                     {/* containerType is what makes cq() mean anything: every token size below is a
                         share of THIS box's width. */}
-                    <div style={{ position: "relative", containerType: "inline-size" }}>
+                    <div style={{ position: "relative", containerType: "inline-size", height: flat ? "100%" : undefined }}>
+                      {/* The dugout, in the dead corner the perspective leaves above the touchline:
+                          the pitch is a trapezoid inside a rectangle, so the top-left of the box is
+                          empty grassless space and the card costs no vertical room at all. */}
+                      {showMgr && <div style={{ position: "absolute", left: cq(6), top: cq(2), zIndex: 2, maxWidth: "36%" }}>
+                        <ManagerCard t={t} dense />
+                      </div>}
+                      {flat ? (
+                      <svg viewBox={`0 0 100 ${FLAT_H}`} preserveAspectRatio="none" style={{ display: "block", width: "100%", height: "100%", borderRadius: 10 }}>
+                        <defs>
+                          {/* Broadcast grass: mown bands, then a soft falloff toward the edges so
+                              the middle of the pitch reads brighter than the corners. */}
+                          <radialGradient id="pitchGlow" cx="50%" cy="42%" r="75%">
+                            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.055" />
+                            <stop offset="60%" stopColor="#ffffff" stopOpacity="0.018" />
+                            <stop offset="100%" stopColor="#000000" stopOpacity="0.16" />
+                          </radialGradient>
+                        </defs>
+                        <rect x="0" y="0" width="100" height={FLAT_H} fill="var(--ui-pitch-deep)" />
+                        {Array.from({ length: 10 }, (_, i) => i % 2 === 0 ? null : (
+                          <rect key={i} x={i * 10} y="0" width="10" height={FLAT_H} fill="var(--ui-pitch-mid)" />))}
+                        <rect x="0" y="0" width="100" height={FLAT_H} fill="url(#pitchGlow)" />
+                        <g fill="none" stroke="rgba(236,248,238,0.20)" strokeWidth="0.3" strokeLinejoin="round" strokeLinecap="round">
+                          <rect x="2.2" y="2.2" width="95.6" height={FLAT_H - 4.4} />
+                          {/* Halfway across the top, the centre circle dipping in. */}
+                          <path d={`M${50 - 9.15} 2.2A9.15 9.15 0 0 0 ${50 + 9.15} 2.2`} />
+                          {/* The business end: penalty area, six-yard box, the D, the goal. */}
+                          <rect x={50 - 20.16} y={FLAT_H - 2.2 - 16.5} width={40.32} height={16.5} />
+                          <rect x={50 - 9.16} y={FLAT_H - 2.2 - 5.5} width={18.32} height={5.5} />
+                          <rect x={50 - 3.66} y={FLAT_H - 2.2} width={7.32} height={1.4} />
+                          <path d={`M${50 - 7.3} ${FLAT_H - 2.2 - 16.5}A9.15 9.15 0 0 1 ${50 + 7.3} ${FLAT_H - 2.2 - 16.5}`} />
+                          {/* Corner quadrants. */}
+                          <path d={`M2.2 ${FLAT_H - 4.2}A2 2 0 0 0 4.2 ${FLAT_H - 2.2}`} />
+                          <path d={`M95.8 ${FLAT_H - 2.2}A2 2 0 0 0 97.8 ${FLAT_H - 4.2}`} />
+                        </g>
+                        <circle cx="50" cy={FLAT_H - 13} r="0.4" fill="rgba(236,248,238,0.28)" />
+                        <circle cx="50" cy="2.2" r="0.4" fill="rgba(236,248,238,0.28)" />
+                      </svg>
+                      ) : (
                       <svg viewBox={`0 0 100 ${PITCH_H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%" }}>
                         <polygon points={pitchPoly([[0, 0], [1, 0], [1, 1], [0, 1]])} fill="var(--ui-pitch-deep)" />
                         {Array.from({ length: 10 }, (_, i) => i % 2 === 0 ? null : (
@@ -4469,27 +4603,30 @@ export default function App() {
                         </g>
                         {[1 - PITCH_MARK.spot, PITCH_MARK.spot, 0.5].map((y, i) => { const [cx, cy] = pitchProj(0.5, y); return <circle key={i} cx={cx} cy={cy} r="0.35" fill="var(--chrome-muted-33)" />; })}
                       </svg>
+                      )}
                       {starters.map(([p, idx], i) => {
                         const sp = slots[i];
                         if (!sp) return null;
-                        const [sx, sy] = pitchToken(sp[0] / 100, sp[1] / 100);
+                        const [sx, sy] = flat
+                          ? [8 + sp[0] * 0.84, flatY[i]]
+                          : pitchToken(sp[0] / 100, sp[1] / 100);
                         const side = sideOf(p), clr = POS_CLR[p.pos] || "var(--chrome-border)";
                         const { first, last } = splitSurname(p.fullName || p.name, p.name);
                         const ovr = p.ovr ?? t.skill, ovrM = ovrMetal(ovr);
-                        const chip = { position: "absolute", top: cq(TOKEN.chipTop), ...mono, fontSize: cq(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
-                                       minWidth: cq(TOKEN.chipMin), padding: `${cq(TOKEN.chipPadY)} ${cq(TOKEN.chipPadX)}`, borderRadius: cq(TOKEN.chipR), textAlign: "center" };
+                        const chip = { position: "absolute", top: cf(TOKEN.chipTop), ...mono, fontSize: cf(TOKEN.chipFont), fontWeight: 700, lineHeight: 1.25,
+                                       minWidth: cf(TOKEN.chipMin), padding: `${cf(TOKEN.chipPadY)} ${cf(TOKEN.chipPadX)}`, borderRadius: cf(TOKEN.chipR), textAlign: "center" };
                         return (
-                        <div key={idx} style={{ position: "absolute", left: `${sx}%`, top: `${sy / PITCH_H * 100}%`, width: cq(TOK), marginLeft: cq(-TOK / 2), marginTop: cq(-TOK / 2) }}>
+                        <div key={idx} style={{ position: "absolute", left: `${sx}%`, top: `${sy / VBH * 100}%`, width: cq(TOK), marginLeft: cq(-TOK / 2), marginTop: cq(-TOK / 2) }}>
                           {/* Given name light over surname bold, the way a team sheet prints it. */}
-                          <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cq(TOKEN.gap), textAlign: "center", maxWidth: cq(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
+                          <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: cf(TOKEN.gap), textAlign: "center", maxWidth: cf(PITCH_NAME_W), textShadow: `0 ${cq(1)} ${cq(4)} var(--ui-shadow-4)` }}>
                             {/* Same colour as the surname: over grass, muted grey lost the given name entirely. Size and
                                 weight still carry the hierarchy. */}
-                            {first && <div style={{ fontSize: cq(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-on-pitch-cc)", ...ellip }}>{first}</div>}
-                            <div style={{ fontSize: cq(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-on-pitch)", ...ellip }}>{last}</div>
+                            {first && <div style={{ fontSize: cf(TOKEN.first), fontWeight: 400, lineHeight: 1.15, color: "var(--ui-on-pitch-cc)", ...ellip }}>{first}</div>}
+                            <div style={{ fontSize: cf(TOKEN.name), fontWeight: 700, lineHeight: 1.15, letterSpacing: "0.02em", textTransform: "uppercase", color: "var(--ui-on-pitch)", ...ellip }}>{last}</div>
                           </div>
                           <div
                             onClick={() => linkPlayer ? openPlayer(p.fullName || p.name) : openTeam(side.team)}
-                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cq(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
+                            style={{ width: cq(TOK), height: cq(TOK), borderRadius: "50%", background: "var(--chrome-bg-dd)", border: `${cf(TOKEN.ring)} solid ${clr}`, overflow: "hidden",
                                      display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 ${cq(2)} ${cq(8)} var(--ui-shadow-3)`,
                                      cursor: (linkPlayer ? playerByName.has(p.fullName || p.name) : side.team) ? "pointer" : "default" }}>
                             {/* His face, not his employer's badge. The crest told you the same thing
@@ -5822,7 +5959,7 @@ export default function App() {
     if (tab !== "leagues" || pstats) return;
     let dead = false;
     (async () => {
-      const seasons = [], changelog = [], hof = [];
+      const seasons = [], changelog = [], hof = [], winnersRaw = [];
       const mdFiles = new Set(PSTATS_FILES.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
       await Promise.all(PSTATS_FILES.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
@@ -5830,6 +5967,7 @@ export default function App() {
         if (!res || !res.ok) return;
         const text = await res.text();
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
+        if (/(^|\/)winners\.tsv$/i.test(f)) { winnersRaw.push([f.split("/")[0], text]); return; }
         if (/(^|\/)hof\.tsv$/i.test(f)) { hof.push(...parseHof(text)); return; }
         const m = f.match(/^(.+)\/(?:(\d{2})-(\d{2})|(\d{4}))\.tsv$/i);
         if (!m) return;
@@ -5846,6 +5984,23 @@ export default function App() {
         const yr = m[4] ? +m[4] : pstatsYear(m[3]);
         seasons.push({ id: base + ".tsv", md: true, boards: {}, comp: PSTATS_COMP[m[1]] || m[1].toUpperCase(),
                        season: m[4] || (m[2] + "/" + m[3]), ord: yr * 10 + (PSTATS_KIND[m[1]] ?? 1) });
+      }
+      // Winners-only history: <comp>/winners.tsv files one season per row with nothing behind
+      // it but who won -- no report, no boards, not clickable. Rows for seasons that exist as
+      // real files are skipped, so filing a full season later retires the stub by itself.
+      for (const [dir, text] of winnersRaw) {
+        const label = PSTATS_COMP[dir] || dir.toUpperCase();
+        for (const line of text.replace(/\r/g, "").split("\n").slice(1)) {
+          const c = line.split("\t").map(x => x.trim());
+          if (!c[0] || !c[1]) continue;
+          const m = c[0].match(/^(?:(\d{2})\/(\d{2})|(\d{4}))$/);
+          if (!m) continue;
+          const season = m[3] || (m[1] + "/" + m[2]);
+          if (seasons.some(s2 => s2.id.split("/")[0] === dir && s2.season === season)) continue;
+          const yr = m[3] ? +m[3] : pstatsYear(m[2]);
+          seasons.push({ id: dir + "/" + season + ".hist", hist: true, winner: c[1], md: false,
+                         boards: {}, comp: label, season, ord: yr * 10 + (PSTATS_KIND[dir] ?? 1) });
+        }
       }
       // A folder the map does not name is a league: read which one off the record. The boards'
       // team codes settle it when there are boards; a report-only season reads its clubs instead,
@@ -7193,7 +7348,9 @@ export default function App() {
     // fixtures in one table, sorted by group, instead of a heading per group per round.
     const rounds = new Map(); const kept = [];
     for (let i = 0; i < body.length; i++) {
-      const rg = body[i].match(/^###\s+Round\s+(\d+)\s*[\u2013\u2014-]+\s*Group\s+(.+?)\s*$/i);
+      // Two shapes fold: "Round N \u2014 Group X" over a per-group table, and a plain "Round N"
+      // over an already-merged table carrying its own Group column. "Round of 32" stays put.
+      const rg = body[i].match(/^###\s+Round\s+(\d+)\s*(?:[\u2013\u2014-]+\s*Group\s+(.+?)\s*)?$/i);
       let j = i + 1;
       while (rg && j < body.length && !body[j].trim()) j++;
       if (rg && body[j] && body[j].trim().startsWith("|")) {
@@ -7204,8 +7361,8 @@ export default function App() {
         const rest = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
         if (head.some(h => /^match$/i.test(h))) {
           const n = +rg[1];
-          if (!rounds.has(n)) rounds.set(n, { head: ["Group", ...head], rows: [] });
-          for (const r of rest) rounds.get(n).rows.push([rg[2], ...r]);
+          if (!rounds.has(n)) rounds.set(n, { head: rg[2] ? ["Group", ...head] : head, rows: [] });
+          for (const r of rest) rounds.get(n).rows.push(rg[2] ? [rg[2], ...r] : r);
           i = j - 1; continue;
         }
       }
@@ -7221,9 +7378,14 @@ export default function App() {
     if (rounds.size && idxR < ordR.length - 1) {
       compTables = new Map();
       const acc = new Map();
-      for (const n of ordR.slice(0, idxR + 1)) for (const r of rounds.get(n).rows) {
-        const g = r[0], m = String(r[1] || "").replace(/\*\*/g, "").split(/\s+vs\s+/i).map(x => x.trim());
-        const sc = String(r[2] || "").replace(/\*\*/g, "").match(/(\d+)\s*-\s*(\d+)/);
+      for (const n of ordR.slice(0, idxR + 1)) { const R2 = rounds.get(n);
+      const gi2 = R2.head.findIndex(h => /^group$/i.test(h));
+      const mi2 = R2.head.findIndex(h => /^match$/i.test(h));
+      const si2 = R2.head.findIndex(h => /^(score|agg)$/i.test(h));
+      if (gi2 < 0 || mi2 < 0 || si2 < 0) continue;
+      for (const r of R2.rows) {
+        const g = r[gi2], m = String(r[mi2] || "").replace(/\*\*/g, "").split(/\s+vs\s+/i).map(x => x.trim());
+        const sc = String(r[si2] || "").replace(/\*\*/g, "").match(/(\d+)\s*-\s*(\d+)/);
         if (!sc || m.length !== 2) continue;
         const gf = [+sc[1], +sc[2]];
         m.forEach((tm2, k) => {
@@ -7233,7 +7395,7 @@ export default function App() {
           if (gf[k] > gf[1 - k]) t.w++; else if (gf[k] === gf[1 - k]) t.d++; else t.l++;
           acc.set(key, t);
         });
-      }
+      } }
       const byG = new Map();
       for (const t of acc.values()) { if (!byG.has(t.g)) byG.set(t.g, []); byG.get(t.g).push(t); }
       for (const [g, list] of byG) {
@@ -7289,7 +7451,9 @@ export default function App() {
     if (rounds.size) {
       const ord = ordR, idx = idxR;
       const rd = rounds.get(ord[idx]);
-      const fixRows = rd.rows.slice().sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+      const giB = rd.head.findIndex(h => /^group$/i.test(h));
+      const fixRows = giB < 0 ? rd.rows
+        : rd.rows.slice().sort((x, y) => String(x[giB]).localeCompare(String(y[giB])));
       out.push(
         <div key="rounds" style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -7616,6 +7780,13 @@ export default function App() {
 
   const createTournament = (mode) => {
     if (!tValid) return;
+    // A NEW TOURNAMENT STARTS EVERY PLAYER AT ZERO. Only resetTournament cleared the player table,
+    // so generating a fresh season in the same slot restarted the league table at nought played
+    // while goals, assists, saves and defensive actions kept counting from the seasons before it.
+    // The board went on looking plausible because a rating is a mean over appearances and those
+    // accumulated too -- what gave it away was a striker finishing on 53 goals for a side that had
+    // scored 43. The stats and the table have to describe the same competition.
+    setTPlayerStats({});
     setLoading(true); setTimeout(() => {
     // Snapshot the selected participants' current squads/config at generation time —
     // roster edits afterward must not retroactively affect this tournament.
@@ -9333,7 +9504,7 @@ export default function App() {
                     {t.league !== "Custom" && <button onClick={() => toggleUnlocked(t.id)} style={{ ...smBtn, flexShrink: 0, background: "transparent", cursor: "pointer", color: unlockedTeams.has(t.id) ? "var(--ui-warn)" : "var(--chrome-muted)" }}
                       >{unlockedTeams.has(t.id) ? "🔓 Editing" : "✎ Edit"}</button>}
                   </div>
-                  <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
+                  <div className="fit-scroll" style={{ overflowY: "auto", flex: 1, padding: 20 }}>
                     {/* Header band: crest and name on the left, the four ratings on the right, the
                         way a squad screen reads. Code, location and colours drop to the strip under
                         it — they are identity, not form, and seven labelled columns across one line
@@ -9359,10 +9530,6 @@ export default function App() {
                         : <div style={{ flexShrink: 0 }}>{ratingStrip(t)}</div>}
                     </div>
                     <div style={SECTION_RULE} />
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <PanelTitle accent="var(--ui-info)">Squad</PanelTitle>
-                      <span style={{ ...mono, fontSize: 11, fontWeight: 600, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)" }}>{t.formation || "4-3-3"}</span>
-                    </div>
                     {(() => {
                 const sq = t.squad || buildSquad(t.formation || "4-3-3", null);
                 // Carry each man's real index in the squad, not his index within his half of it —
@@ -9401,7 +9568,7 @@ export default function App() {
                         style={{ ...tdCell, paddingRight: 0, cursor: goPlayer.onClick ? "pointer" : "default" }}>
                       <PlayerShot name={p.fullName || p.name} size={24} />
                     </td>
-                    <td {...goPlayer} style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: goPlayer.onClick ? "pointer" : "default" }}>
+                    <td {...goPlayer} className="sq-name" style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: goPlayer.onClick ? "pointer" : "default" }}>
                       {ed
                         ? <input value={p.fullName || p.name} onClick={e => e.stopPropagation()} onChange={e => { const ns = [...sq]; ns[idx] = { ...ns[idx], name: e.target.value, fullName: undefined }; updateTeam(t.id, "squad", ns); }}
                             style={{ ...inp, width: "100%", padding: "2px 4px", fontSize: 11, border: "1px solid transparent", background: "transparent" }}
@@ -9424,10 +9591,11 @@ export default function App() {
                     {/* The XI shows its formation slot; a substitute shows his own role. */}
                     <td style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap", fontSize: 9, fontWeight: 700, color: POS_CLR[p.pos] || "var(--chrome-muted)", ...mono }}>{p.bench ? benchSpos(p, side.pe) : (p.spos || p.pos)}</td>
                     <td className={side.team ? "cell-link" : undefined} onClick={() => openTeam(side.team)}
-                      style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: side.team ? "pointer" : "default" }}>
+                      title={side.label || side.code || undefined}
+                      style={{ ...tdCell, fontSize: 10, color: "var(--chrome-muted)", cursor: side.team ? "pointer" : "default" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         {side.team ? <TeamCrest team={side.team} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
-                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{side.label || side.code || "\u2014"}</span>
+                        <span style={{ ...mono, fontWeight: 700 }}>{side.code || "\u2014"}</span>
                       </span>
                     </td>
                   </tr>); };
@@ -9437,16 +9605,36 @@ export default function App() {
                 return (<>
                   {/* Badge padding is horizontal room for the OVR and position chips, which hang off
                       the touchline tokens on both sides. */}
-                  {xiPitch(t, starters, sideOf, isIntlTeam, true)}
-                  {/* The table never needed the full width — five short columns stretched to 1200px
-                      put the nationality a screen away from the name. The rule down the middle is
-                      what stops the short right-hand column reading as a box floating in the gap. */}
-                  <div style={SECTION_RULE} />
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5, tableLayout: "fixed" }}>
-                    <colgroup>
-                      <col style={{ width: 40 }} /><col style={{ width: 34 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 62 }} /><col style={{ width: 62 }} /><col style={{ width: "34%" }} />
-                    </colgroup>
+                  {/* SHEET AND LIST, ONE SCREEN. The perspective pitch on the left, capped so
+                      the whole of it fits under the header chrome; the right column is HELD to the
+                      same height -- the manager on top, the list filling the rest and scrolling
+                      inside itself -- so eleven substitutes and five draw exactly the same page.
+                      Both caps are the same expression: the pitch's height is its width times
+                      PITCH_H/100, so column height = min(viewport room, column width * aspect). */}
+                  {/* The row's height is the PITCH's height and nothing else's: the grid
+                      stretches both cells to the tallest, the pitch is the tall one, and the
+                      right column pins its list to its own cell edges with an absolute fill --
+                      so the list bottom lands exactly on the pitch bottom with no viewport
+                      arithmetic to drift. The pitch width cap is the one real constraint: it
+                      keeps the whole trapezoid on screen under the ~300px of chrome above. */}
+                  <FitHeight>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 22, alignItems: "stretch", height: "100%" }}>
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
+                      <ManagerCard t={t} wide />
+                      {/* The pitch takes every pixel between the banner and the row's bottom edge,
+                          full column width: preserveAspectRatio is off, so the half-pitch simply
+                          becomes the shape of the space -- near the true ratio on any normal
+                          window -- and the tokens ride their percentages with it. */}
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                        {xiPitch(t, starters, sideOf, isIntlTeam, true, false, true)}
+                      </div>
+                    </div>
+                    <div style={{ minWidth: 0, position: "relative" }}>
+                      <div className="squad-compact"
+                           style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                      <SquadFit rows={starters.length + bench.length}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5, height: "100%" }}>
                     <thead>
                       <tr>
                         <th style={thCell}>#</th>
@@ -9456,16 +9644,26 @@ export default function App() {
                         <th style={{ ...thCell, textAlign: "center" }}>OVR</th>
                         <th style={{ ...thCell, textAlign: "center" }}>RTG</th>
                         <th style={{ ...thCell, textAlign: "center" }}>POS</th>
-                        <th style={{ ...thCell, paddingLeft: 8 }}>{isIntlTeam ? "Club" : "Nationality"}</th>
+                        <th style={{ ...thCell, textAlign: "center" }}>{isIntlTeam ? "Club" : "Nat"}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {secRow("Starting XI", starters.length)}
                       {starters.map((r, n) => squadRow(r, n))}
-                      {secRow("Bench", bench.length)}
+                      {/* A rule, not a heading: the shirt numbers already say which half is which. */}
+                      {bench.length > 0 && <tr className="sq-div"><td colSpan={7} style={{ padding: 0 }}>
+                        <div style={{ borderTop: "2px solid var(--chrome-border)", margin: "3px 0" }} /></td></tr>}
                       {bench.map((r, n) => squadRow(r, starters.length + n))}
                     </tbody>
                   </table>
+                      </SquadFit>
+                      </div>
+                      </div>
+                    </div>
+                  </div>
+                  </FitHeight>
+                  <div style={SECTION_RULE} />
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
+                  <div />
                   {(() => {
                     const st = stripVenue(t.stadium || "");
                     const row = (label, value, first) => (
@@ -9507,6 +9705,9 @@ export default function App() {
                   </div>
                 </>);
               })()}
+                    {/* Read-only pages carry the tactics on the manager's card in the Squad
+                        header now; the full panel only appears when the team is being edited. */}
+                    {ed && <>
                     <div style={SECTION_RULE} />
                     <div style={{ marginBottom: 12 }}><PanelTitle accent="var(--ui-warn)">Tactics</PanelTitle></div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -9548,6 +9749,7 @@ export default function App() {
                     ))}
                   </div>))}
                   </div>); })()}
+                  </>}
                   </div>
   </>); };
 
@@ -9696,6 +9898,7 @@ export default function App() {
                 Nothing filed for this competition yet. Seasons live in public/pstats/&lt;comp&gt;/ as &lt;season&gt;.tsv (stats) and &lt;season&gt;.md (report).</div>}
               {list.length > 0 && (() => {
                 const winnerOf = (x) => {
+                  if (x.winner) return x.winner;
                   const text = lgMd[x.id.replace(/\.tsv$/i, ".md")];
                   if (typeof text !== "string") return null;
                   const F = parseSeasonReport(text).final;
@@ -9731,14 +9934,14 @@ export default function App() {
                   const wn = winnerOf(x), wt = wn ? teamByName.get(wn) : null;
                   return (
                   <div key={x.id} style={{ border: "1px solid var(--chrome-border)", borderRadius: 10, overflow: "hidden", background: "var(--chrome-panel)" }}>
-                    <div role="button" tabIndex={0} onClick={() => openSeason(x)}
+                    <div role={x.hist ? undefined : "button"} tabIndex={x.hist ? undefined : 0} onClick={() => !x.hist && openSeason(x)}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
-                      className="cell-link"
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer",
+                      className={x.hist ? undefined : "cell-link"}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: x.hist ? "default" : "pointer",
                                padding: "11px 20px", background: "linear-gradient(90deg, var(--chrome-brand-11) 0%, var(--chrome-bg-08) 55%, transparent 100%)",
                                borderLeft: "3px solid var(--chrome-brand)", borderBottom: "1px solid var(--chrome-border-33)" }}>
                       <span style={{ fontSize: 19, fontWeight: 700, color: "var(--ui-text)", letterSpacing: "0.02em", ...mono }}>{x.season}</span>
-                      <span style={{ color: "var(--chrome-muted-66)", fontSize: 15 }}>&#8250;</span>
+                      {!x.hist && <span style={{ color: "var(--chrome-muted-66)", fontSize: 15 }}>&#8250;</span>}
                     </div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                       <colgroup>
@@ -9755,7 +9958,7 @@ export default function App() {
                         <th style={thCell}>Golden Glove</th>
                       </tr></thead>
                       <tbody>
-                        <tr onClick={() => openSeason(x)} style={{ cursor: "pointer" }}>
+                        <tr onClick={() => !x.hist && openSeason(x)} style={{ cursor: x.hist ? "default" : "pointer" }}>
                           <td style={{ ...tdCell, textAlign: "center", color: x.md ? "var(--ui-ok)" : "var(--chrome-muted-66)", fontWeight: 700 }}>{x.md ? "\u2713" : "\u2013"}</td>
                           <td style={tdCell}>
                             <span style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -12838,26 +13041,64 @@ export default function App() {
                           const on = m.s.players[side] || [], bn = m.s.bench?.[side] || [];
                           const sel = meSubPick.current?.side === side ? meSubPick.current.outIdx : -1;
                           const used = (m.s.subs?.[side] || 0), capN = subLimit(m.s, side);
-                          const row = (p, i, kind) => !p ? null : (
+                          const row = (p, i, kind) => { if (!p) return null;
+                            const st2 = Math.max(0, Math.min(100, p.stamina ?? 100));
+                            const stClr = st2 > 60 ? "var(--ui-ok)" : st2 > 35 ? "var(--ui-warn)" : "var(--ui-danger)";
+                            // The whole touchline truth on one chip. Coaching moves p.ovr off its
+                            // kickoff baseline (always up); tired legs move execution DOWN -- the
+                            // engine strikes and passes at fatExLo of technique at zero stamina,
+                            // and 25 OVR-equivalent is that span expressed on the rating scale.
+                            const dCoach = (p.ovr ?? 0) - (p.ovr0 ?? p.ovr ?? 0);
+                            const dFat = -(1 - (ME_CFG.fatExLo ?? 0.72)) * (1 - st2 / 100) * 25;
+                            const d = dCoach + dFat;
+                            const dTip = "Coaching " + (dCoach >= 0 ? "+" : "") + dCoach.toFixed(1)
+                                       + "\nFatigue " + dFat.toFixed(1)
+                                       + "\nNet " + (d >= 0 ? "+" : "") + d.toFixed(1) + " OVR";
+                            // ...and the flow manager's personal orders sit on _ci.
+                            const ci = p._ci && Object.keys(p._ci).length ? p._ci : null;
+                            return (
                             <div key={kind + i} onClick={() => !p.off && pick(side, kind, i)}
-                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px",
-                                       borderRadius: 5, cursor: p.off ? "default" : "pointer", fontSize: 11,
+                              className={p.off ? undefined : "cell-link"}
+                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 9px",
+                                       borderRadius: 6, cursor: p.off ? "default" : "pointer", fontSize: 11,
                                        opacity: p.off ? 0.35 : 1,
+                                       border: kind === "off" && sel === i ? "1px solid var(--chrome-brand)" : "1px solid transparent",
                                        background: kind === "off" && sel === i ? "var(--chrome-brand-11)" : "transparent" }}>
-                              <PlayerShot name={p.fullName || p.name} size={22} />
-                              <span style={{ width: 30, color: POS_CLR[p.pos] || "var(--chrome-muted)",
-                                             fontSize: 9, fontWeight: 700, ...mono }}>{p.pos}</span>
+                              <PlayerShot name={p.fullName || p.name} size={24} />
+                              <span style={{ width: 26, color: POS_CLR[p.pos] || "var(--chrome-muted)",
+                                             fontSize: 9, fontWeight: 700, flexShrink: 0, ...mono }}>{p.pos}</span>
                               <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden",
                                              textOverflow: "ellipsis" }}>{p.name}</span>
-                              <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted)" }}>
-                                {Math.round(p.stamina ?? 100)}%</span>
-                              <span style={{ ...ovrBlock(p.ovr), ...mono }}>{showOvr(p.ovr)}</span>
-                            </div>);
+                              {/* The manager's personal orders, when this man is carrying some. */}
+                              {ci && <span data-tip={"Individual orders\n" + Object.entries(ci).map(([k2, v2]) => (STRAT_LABELS[k2]?.name || k2) + " " + (v2 > 0 ? "+" : "") + (Math.round(v2 * 10) / 10)).join("\n")}
+                                    style={{ flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
+                                <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="var(--ui-attack)"
+                                     strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M2 3.2l3 2.8-3 2.8" /><path d="M6.4 3.2l3 2.8-3 2.8" /></svg>
+                              </span>}
+                              {/* Coaching delta: where his effective level sits against kickoff. */}
+                              {Math.abs(d) >= 0.05 && <span data-tip={dTip}
+                                     style={{ ...mono, flexShrink: 0, fontSize: 8.5, fontWeight: 700,
+                                              color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>
+                                {d > 0 ? "\u25b2" : "\u25bc"}{Math.abs(d).toFixed(1)}</span>}
+                              {/* Legs: the bar is the read, the number is the receipt. */}
+                              <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                <span style={{ width: 42, height: 4, borderRadius: 2, background: "var(--chrome-bg-dd)",
+                                               border: "1px solid var(--chrome-border-33)", overflow: "hidden", display: "inline-block" }}>
+                                  <span style={{ display: "block", width: `${st2}%`, height: "100%", background: stClr }} />
+                                </span>
+                                <span style={{ ...mono, fontSize: 9, width: 26, textAlign: "right",
+                                               color: st2 > 35 ? "var(--chrome-muted)" : "var(--ui-danger)" }}>{Math.round(st2)}%</span>
+                              </span>
+                              <span style={{ ...ovrBlock(p.ovr, "sm"), ...mono, flexShrink: 0 }}>{showOvr(p.ovr)}</span>
+                            </div>); };
                           return (
                             <div key={side} style={{ minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 9, marginBottom: 12,
+                                            borderBottom: "1px solid var(--chrome-border-33)" }}>
                                 <TeamCrest team={t} size={22} />
-                                <span style={{ fontSize: 12, fontWeight: 700 }}>{t?.name}</span>
+                                <span style={{ fontSize: 12.5, fontWeight: 700, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name}</span>
+                                {t?.manager && <ManagerCard t={t} dense bare style={{ flexShrink: 0 }} />}
                               </div>
                               <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 4, display: "flex",
                                             justifyContent: "space-between" }}>
@@ -12882,7 +13123,7 @@ export default function App() {
                             {q.subs.length > 0 && <b style={{ color: "var(--chrome-brand)", marginLeft: 8 }}>
                               {q.subs.length} queued</b>}
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 36 }}>
                             {col("home")}{col("away")}
                           </div>
                         </>);
@@ -12892,11 +13133,16 @@ export default function App() {
                         const col = (side) => {
                           const t = side === "home" ? m.hT : m.aT;
                           const live = { ...(m.s.strategy?.[side] || {}), ...(mePending.current.strategy[side] || {}) };
+                          const mlog = (m.out?.mgrLog?.[side] || []).slice(-6).reverse();
                           return (
                             <div key={side} style={{ minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 9, marginBottom: 14,
+                                            borderBottom: "1px solid var(--chrome-border-33)" }}>
                                 <TeamCrest team={t} size={22} />
-                                <span style={{ fontSize: 12, fontWeight: 700 }}>{t?.name}</span>
+                                <span style={{ fontSize: 12.5, fontWeight: 700, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name}</span>
+                                {/* No box and no chips: the four instructions are the selects right
+                                    below, and printing them twice was just noise. */}
+                                {t?.manager && <ManagerCard t={t} dense bare style={{ flexShrink: 0 }} />}
                               </div>
                               {grp.map(g => (
                                 <div key={g} style={{ marginBottom: 14 }}>
@@ -12913,6 +13159,11 @@ export default function App() {
                                       </select>
                                     </div>))}
                                 </div>))}
+                              <div style={{ marginTop: 6 }}>
+                                <div style={{ ...sectionLabel, fontSize: 9, marginBottom: 8 }}>FROM THE DUGOUT</div>
+                                {mlog.map((e, i2) => <MgrLogCard key={i2} e={e} />)}
+                                {!mlog.length && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "2px 0" }}>No changes yet.</div>}
+                              </div>
                             </div>);
                         };
                         const pend = Object.keys(mePending.current.strategy).length;
@@ -12922,7 +13173,7 @@ export default function App() {
                             Applied at the next stoppage, not mid-move.
                             {pend > 0 && <b style={{ color: "var(--chrome-brand)", marginLeft: 8 }}>changes queued</b>}
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 36 }}>
                             {col("home")}{col("away")}
                           </div>
                         </>);

@@ -392,7 +392,11 @@ export function meDuties(s, side) {
         const prev = us.findIndex(p => p._wasPress && p._duty === "hold" && p.pos !== "GK");
         const pd = prev >= 0 ? Math.hypot(us[prev].x - mp.bx, us[prev].y - mp.by) : Infinity;
         const use = (prev >= 0 && pd < bd * 1.45) ? prev : bi;
-        if (use >= 0) us[use]._duty = "press";
+        // His reach is his legs: a spent man covers loeStamLo of a fresh man's engagement
+        // distance, so the late-match press arrives late or not at all. See config.
+        const _ud = use === prev ? pd : bd;
+        const _stF = CFG.loeStamLo + (1 - CFG.loeStamLo) * ((us[use]?.stamina ?? 100) / 100);
+        if (use >= 0 && _ud <= travel * _stF) us[use]._duty = "press";
       }
       // Tried and rejected: choosing the presser from the men with a CLAIM on the ball -- everyone
       // who was pressing and is still inside jockeying distance, plus anyone who has got within
@@ -623,7 +627,19 @@ export function meDuties(s, side) {
       if (Math.abs(p._bw - ME_HALF_W) / ME_HALF_W > 0.40) p._duty = "width";
       else if (p._bd > 62) p._duty = "runner";
     }
-    const [si] = nearest(mp.bx - dir * 6, mp.by, free());
+    // THE SHORT OPTION IS THE HUB'S JOB. Support went to whoever was nearest the ball, so a side's
+    // best midfielder showed for it exactly as often as its worst -- which is why creation never
+    // concentrated on anybody. The playmaker is worth pmkSupport metres of walking here, scaled by
+    // how much of a hub he actually is: in a flat squad this barely moves, and in a side built
+    // around one man he comes to get the ball nearly every time. Touches are what creation is
+    // made of, so this is the half of the role that matters.
+    let si = -1, sbest = Infinity;
+    for (const i of free()) {
+      const q = us[i];
+      const d = meTimeToBallMs(q, mp.bx - dir * 6, mp.by, meSpeed(meAttrs(q), q.stamina)) / 1000 * 7
+              - (q._pmk || 0) * CFG.pmkSupport;
+      if (d < sbest) { sbest = d; si = i; }
+    }
     if (si >= 0) us[si]._duty = "support";
   }
 }
@@ -714,7 +730,10 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
     for (const q of s.players[side]) { if (q === p || q.pos === "GK") continue;
       const d = Math.hypot(q.x - cx, q.y - cy); if (d < cr) crowd += (cr - d) / cr; }
     const sc = meCtrl(s, side, cx, cy) * 1.00                    // do we own it
-             + meDanger(side, cx, cy) * 1.30                     // is it worth owning
+             // ...and the HUB wants it more. A playmaker is the man who finds the pocket between
+             // the lines, and this is the term that says a spot is worth standing in. Scaled by
+             // how much of a hub he is, so a side without one is unchanged.
+             + meDanger(side, cx, cy) * (1.30 + (p._pmk || 0) * CFG.pmkDanger)
              - meLaneBlock(s, side, mp.bx, mp.by, cx, cy) * 0.30 // can the ball reach me
              + meSpaceGain(s, side, cx, cy) * ME_SPACE_W          // would we newly own ground here
              - crowd * 0.55                                      // is somebody already there
@@ -723,7 +742,10 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
              // spot on the carrier's shoulder and one forty metres away scored identically.
              + (attackingRing(s, side, cx, cy)) * CFG.orbitW
              // The further out of shape you already are, the harder the base pulls you back.
-             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * awayK * hold;
+             // ...and he is allowed off his slot to do it. Everyone else is held to the shape;
+             // roaming to find the ball is most of what being a creative hub IS.
+             - Math.hypot(cx - baseX, cy - baseY) * 0.010 * awayK * hold
+               * (1 - (p._pmk || 0) * CFG.pmkRoam);
     if (sc > best) { best = sc; bx = cx; by = cy; }
   }
   return [bx, by];
@@ -1673,6 +1695,13 @@ export function meShape(s, side) {
       const frontier = dir > 0 ? Math.max(off, mp.bx) : Math.min(off, mp.bx);
       if ((tx - frontier) * dir > -CFG.boxSlack) tx = frontier - dir * CFG.boxSlack;
       if (Math.hypot(p.x - tx, p.y - ty) > 3) p._closing = true;
+    }
+    // A re-instructed man's own line and width, before the law: his defLine pushes his target
+    // up or drops it, his width stretches him off the shape's lane. On-ball behaviour reads his
+    // overlay in meDecide; these two are the overlay's body.
+    if (p._ci) {
+      if (p._ci.defLine) tx += dir * p._ci.defLine * 3;
+      if (p._ci.width) ty = ME_HALF_W + (ty - ME_HALF_W) * (1 + p._ci.width * 0.18);
     }
     // Offside holds everyone except a man running in behind, who is gambling on the timing.
     if (p._run !== "behind" && (tx - off) * dir > 0 && (tx - mp.bx) * dir > 0) tx = off - dir * 0.6;

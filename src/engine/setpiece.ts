@@ -100,6 +100,27 @@ export function meSPBegin(s, kind, side, out) {
       const p = us[i]; if (p.pos === "GK" || p.off) continue;
       if (best < 0 || meAttrs(p).shoot > meAttrs(us[best]).shoot) best = i; } ti = best; }
   else if (kind === "goalkick") ti = meKeeperIx(us);
+  // A CORNER HAS A TAKER. Every dead ball except the penalty went to whoever happened to be
+  // standing nearest, so the man who swung a corner in was an accident of position and no side
+  // had a dead-ball specialist at all. That is most of why the league's best creator finished a
+  // season on eleven assists against a real fifteen to eighteen: real set-piece assists pile up
+  // on one or two men a side, and here they were shared out among all eleven. A corner and a
+  // free kick within striking range now go to the man who actually strikes them -- fit dominates
+  // and distance only separates men of similar quality. Everything else (throws, goal kicks, and
+  // the deep free kicks that are usually played quickly) still goes to the nearest man, because
+  // that is what happens on a pitch. The restart cannot hang while he walks: spMaxTBy caps a
+  // corner at 86 ticks and forces it away.
+  else if (kind === "corner"
+           || (kind === "freekick" && Math.abs(meGoalX(meOther(side)) - x) < CFG.spTakerRange)) {
+    const want = kind === "corner" ? "pass" : "shoot";
+    let best = -1, bsc = Infinity;
+    for (let i = 0; i < us.length; i++) { const p = us[i];
+      if (p.pos === "GK" || p.off) continue;
+      const fit = Math.max(0, Math.min(1, (meAttrs(p)[want] - 60) / 39));
+      const sc = Math.hypot(p.x - x, p.y - y) - fit * CFG.spTakerW;
+      if (sc < bsc) { bsc = sc; best = i; } }
+    if (best >= 0) ti = best;
+  }
   else if (kind === "kickoff") { let best = -1; for (let i = 0; i < us.length; i++)
       if (us[i].pos !== "GK" && !us[i].off
           && (best < 0 || (us[i]._bd0 || 0) > (us[best]._bd0 || 0))) best = i; ti = best; }
@@ -238,9 +259,22 @@ export function meSPShape(s) {
   if (sp.kind === "penalty") {
     const gkD = meKeeper(them);
     if (gkD) { gkD._tx = clampX(gx - dir * 0.3); gkD._ty = ME_HALF_W; gkD._spSet = true; gkD._closing = true; }
+    const taker = us[sp.ti];
+    // The taker waits behind the spot rather than on it: standing on the ball put him inside the
+    // area for the readiness test and, on the replay, in the middle of a box that is supposed to
+    // be empty. meSPTake's run-up brings him in.
+    if (taker && !taker.off && !sp.run) {
+      taker._tx = clampX(sp.x - dir * CFG.spRunup);
+      taker._ty = clampY(sp.y);
+      taker._spSet = true; taker._closing = true;
+    }
     let k = 0;
     for (const sd of ME_SIDES) for (const p of s.players[sd]) {
-      if (p._spSet || p.off) continue;
+      // EVERYONE is claimed, _spSet or not. A penalty won at a corner arrives with half the box
+      // still carrying the corner's _spSet flags, and honouring them left those men standing on
+      // the goal line through the kick. Only the taker and the defending keeper keep the spots
+      // this branch just gave them.
+      if (p.off || p === taker || p === gkD) continue;
       // THE OTHER KEEPER STAYS AT HIS OWN END. This loop runs over BOTH sides and only the defending
       // goalkeeper had been marked _spSet already, so the attacking side's keeper fell through into
       // the arc of men around the box and trotted seventy metres up the pitch for a penalty.
@@ -248,10 +282,30 @@ export function meSPShape(s) {
         p._tx = clampX(meGoalX(meOther(sd)) + meDir(sd) * 2);
         p._ty = ME_HALF_W; p._spSet = true; continue;
       }
+      // A man on an active RUN is steered by meRuns, which overrides the mark he is given here --
+      // the one intruder left in a sixteen-penalty sweep was a forward still running the move the
+      // foul interrupted. The run is cancelled with the whistle.
+      p._run = null; p._runT = 0; p._cool = 0;
       const ang = -1.1 + (k++ % 10) * 0.24;
       p._tx = clampX(sp.x - dir * (CFG.spPenBack + Math.cos(ang) * 2));
       p._ty = clampY(ME_HALF_W + Math.sin(ang) * CFG.spPenSpread);
       p._spSet = true; p._closing = true;
+      // ...and anyone still inside the area is WALKED out by the referee, not asked. The pair
+      // involved in the foul freeze where the whistle caught them -- the fouled man down, the
+      // fouler over him -- and the ordinary mover never shifts them, so the kick used to go with
+      // both of them on the goal line. Direct displacement cannot be refused by whatever froze
+      // them, and at a stride a slice they clear the box well inside the referee's patience.
+      const _inArea = Math.abs(p.x - gx) < 17 && Math.abs(p.y - ME_HALF_W) < 20.8;
+      if (_inArea || Math.hypot(p.x - sp.x, p.y - sp.y) < 10.5) {
+        let _dx = p._tx - p.x, _dy = p._ty - p.y, _dd = Math.hypot(_dx, _dy);
+        // Two men frozen on the SAME point -- the fouler standing over the man he fouled -- have
+        // the same target and the same zero-length vector, so neither could be walked anywhere.
+        // Push them straight out of the area instead, and fan them apart on the way.
+        if (_dd < 0.05) { _dx = -dir * 1; _dy = (p.y < ME_HALF_W ? -1 : 1) * 0.4 + k * 0.01; _dd = Math.hypot(_dx, _dy); }
+        const _st = Math.min(_dd, 2.2);
+        p.x += _dx / _dd * _st; p.y += _dy / _dd * _st;
+        p.vx = 0; p.vy = 0;
+      }
     }
     return;
   }
@@ -484,6 +538,21 @@ export function meSPShape(s) {
 export function meSPReady(s) {
   const mp = s.mePos, sp = mp.sp; if (!sp) return false;
   if (sp.t < (sp.minT ?? CFG.spMinT)) return false;
+  // A PENALTY WAITS FOR AN EMPTY BOX. The arc targets were always legal; what the replays kept
+  // catching was the kick going while men who had been in the box for the corner that won it were
+  // still jogging back out -- the referee here blows the moment the taker is set, and a real one
+  // does not. Nobody but the taker and the keepers may be inside the area or within 10 m of the
+  // spot when it is struck; the hard cap above still breaks a genuine deadlock.
+  if (sp.kind === "penalty" && !sp.run && sp.t < (sp.minT ?? CFG.spMinT) + 150) {
+    const _gx = meGoalX(sp.side), _boxW = 20.16;
+    for (const sd of ME_SIDES) for (const q of s.players[sd]) {
+      if (!q || q.off || q.pos === "GK") continue;
+      if (sd === sp.side && s.players[sd][sp.ti] === q) continue;
+      const inArea = Math.abs(q.x - _gx) < 16.5 && Math.abs(q.y - ME_HALF_W) < _boxW;
+      if (inArea || Math.hypot(q.x - sp.x, q.y - sp.y) < 10) return false;
+    }
+  }
+
   const taker = s.players[sp.side][sp.ti];
   if (!taker) return true;
   // NOTHING MAY HANG A RESTART. meSPTake has a capT meant to force one when the players cannot
@@ -605,6 +674,21 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // scored and a penalty missed are their own events, not a goal and a shot off target.
     mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti,
                 t0: mp.tick, pen: true, xg: CFG.spPenXg }; mp.fj = -1;
+    // THE LAW, ENFORCED AT THE KICK. Everything before this is the referee ASKING them to clear:
+    // the arc marks, the walk-out, the readiness gate. All of it is timing-dependent, and a man
+    // who drifts back in once the run-up has begun beats every one of them, which is the last
+    // thing the replays kept catching. This is the referee refusing to allow it -- at the instant
+    // the ball is struck, anyone but the taker and the keepers inside the area or the arc is
+    // standing on its edge instead.
+    for (const _sd of ME_SIDES) for (const _q of s.players[_sd]) {
+      if (!_q || _q.off || _q.pos === "GK" || _q === taker) continue;
+      const _dy = Math.abs(_q.y - ME_HALF_W);
+      const _inArea = Math.abs(_q.x - gx) < 16.6 && _dy < 20.3;
+      if (!_inArea && Math.hypot(_q.x - sp.x, _q.y - sp.y) >= 9.2) continue;
+      _q.x = clampX(gx + dir * 16.9);
+      if (_dy < 20.4) _q.y = clampY(ME_HALF_W + (_q.y < ME_HALF_W ? -1 : 1) * 20.7);
+      _q.vx = 0; _q.vy = 0; _q._tx = _q.x; _q._ty = _q.y;
+    }
     gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
                  mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);

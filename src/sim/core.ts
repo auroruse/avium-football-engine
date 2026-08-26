@@ -613,6 +613,7 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
   st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+  st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
   st.styles = { home: hT.style || "balanced", away: aT.style || "balanced" };
   st.teamSkill = { home: hT.skill, away: aT.skill };
   st.possession = "home";
@@ -662,6 +663,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
   st.formations = { home: hT.formation, away: aT.formation };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+  st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
   st.styles = { home: hT.style, away: aT.style };
   st.teamSkill = { home: homeSkill, away: awaySkill };
   st.homeAdv = homeAdv || null;

@@ -1,9 +1,9 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
-import { CFG, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
-import { meAtkW, meAttrs } from "./attributes";
+import { meCoachSt, CFG, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
+import { meAtkW, meAttrs, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundSpeed, meLoftFor } from "./ball";
-import { meMind } from "./attributes";
+import { meMind, meTech } from "./attributes";
 import { meOppDist } from "./brain";
 import { meSpeed } from "./attributes";
 import { meTick } from "./match";
@@ -73,12 +73,12 @@ export function meShotP(s, side, p, x, y, rec) {
       const behind = Math.max(0, (x - gk.x) * dr);        // shooter nearer the goal than the keeper
       const lat = Math.abs(gk.y - y);
       const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
-      const D = Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70);
+      const D = Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW);
       q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
     }
   } else {
     const gxg = meGoalX(side), dr = meDir(side);
-    const D = gk ? Math.max(0.22, 1.24 - meAttrs(gk).reflex / 99 * 0.70) : 1;
+    const D = gk ? Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW) : 1;
     let open01 = 1;
     if (gk) {
       const behind = Math.max(0, (x - gk.x) * dr);
@@ -112,7 +112,8 @@ export const meSetDbg = (v) => { ME_DBG = v; };
 
 // `dwell` is how many slices he is PAST his touch budget. Zero means he still has time to look up.
 export function meDecide(s, rng, side, i, dwell) {
-  const ps = s.players[side], p = ps[i], a = meAttrs(p), st = s.strategy?.[side] || NO_INSTRUCTIONS;
+  // A man the manager has re-instructed (p._ci) decides on the side's orders plus his own.
+  const ps = s.players[side], p = ps[i], a = meAttrs(p), st = meCoachSt(s.strategy?.[side] || NO_INSTRUCTIONS, p);
   const isGK = p.pos === "GK";
   const mp = s.mePos, press = mePressure(s, side, p.x, p.y), here = meVal(side, p.x, p.y);
   const off = meOffsideLine(s, side), dir = meDir(side);
@@ -396,8 +397,17 @@ export function meDecide(s, rng, side, i, dwell) {
     // Giving the ball away is nearly free when you give it away in their half, so the only lever that
     // can price directness is how often the long ball fails in the first place. It was a hard-coded
     // 0.0072 a metre; named and raised so a forty-metre ball is meaningfully worse than a twenty.
-    const okBase = (CFG.passBase - d * CFG.passDistK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + a.pass / 99 * CFG.passSkillW)
-           * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp)) * (0.86 + meAttrs(q).position / 99 * 0.20);
+    // THE PRICE OF AGGRESSION, half one: distance is charged as if every metre were contested,
+    // which is true through a set block and false over the top of a high line. A through ball
+    // aimed into genuine emptiness gets part of the distance charge back -- the grass is the
+    // relief, so only a line that leaves grass behind it pays, and a deep block concedes nothing.
+    // Scoped to the man actually RUNNING in behind: applied to every into-space ball it made the
+    // whole league punt (completion 72% to 58% in the smoke fixtures) -- the ordinary mode-1 lead
+    // pass is aimed at a jogging man and deserves its full charge.
+    const distK = CFG.passDistK * (1 - (thru && q._run === "behind" ? Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * CFG.escDistRelief : 0));
+    const okBase = (CFG.passBase - d * distK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + meTech(a.pass) * CFG.passSkillW)
+           * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp))
+           * (CFG.rcvPosLo + meTech(meAttrs(q).position) * CFG.rcvPosW);
     let ok = okBase;
     // The decision now asks the resolution's own question: can anyone reach this ball first? A
     // lofted ball is only cuttable near its ends, so it is judged on a straighter, faster line.
@@ -480,10 +490,36 @@ export function meDecide(s, rng, side, i, dwell) {
     // and this can only ever re-rank, never inflate. It sits inside val, so the completion chance
     // multiplies it: you are paid for the chance you create only if the ball actually arrives.
     val += Math.max(0, spq - sp) * CFG.passShotW;
+    // THE PRICE OF AGGRESSION, half two: the ball over the top matures AFTER it arrives. spq
+    // prices the receiver's chance at the aim point, forty metres out, so the pass that puts a
+    // man clean through against a high line reads like any other forward ball -- the chance it
+    // actually creates is the run that follows into whatever is left between the last man and
+    // the keeper. Count the outfield men goal-side of the aim: one cover man halves it, two kill
+    // it, and against a deep block there are always two, so only height concedes the bonus.
+    if (thru && q._run === "behind") {
+      let _gs = 0;
+      for (const o of s.players[meOther(side)]) if (o && !o.off && o.pos !== "GK" && (o.x - aimX) * dir > 0) _gs++;
+      val += Math.max(0, 1 - _gs / 2) * CFG.escThruW;
+    }
     // ...and who he is. What he can finish is priced above; this is what he can DO with it, which
     // is the whole of why a side plays through its best midfielder. Relative to the passer's own
     // judgement and floored at zero, so it only ever decides between receivers. See passRecvW.
     if (q.pos !== "GK") val += Math.max(0, meMind(q) - meMind(p)) * CFG.passRecvW;
+    // ...and giving it to the hub is worth something on its own, by how much of a hub he is. The
+    // line above only fires on the meMind DIFFERENCE, which inside a squad is small -- a six-OVR
+    // gap is 0.14 of it -- so on its own it never made anybody the creator. See CFG.pmkRecvW.
+    if (q._pmk && q !== p) val += q._pmk * CFG.pmkRecvW;
+    // ...AND WHETHER HE SEES IT AT ALL. Everything above prices the pass; nothing above asked who
+    // is looking. passRecvW already sends the ball TO the best player, and judgeErr already makes a
+    // poor man noisy -- but noise is symmetric, so across a season every midfielder found the same
+    // number of killer balls and no side had a creator. The hard ball is the one that has to be
+    // seen: through the line, across a blocked lane, or a long way. A poor player systematically
+    // does not find it and plays the simple one instead; an elite one gives it up for nothing.
+    // This is a DISCOUNT on the hard option, never a bonus on the easy one, so it can only ever
+    // stop a pass being played -- it cannot manufacture a chance that was not there.
+    const seeHard = Math.min(1, (thru ? CFG.visThru : 0) + blk * CFG.visLane
+                                + Math.max(0, d - CFG.visD0) / CFG.visDSpan);
+    val -= CFG.visMiss * seeHard * (1 - meMind(p));
     // THE PATTERN. Everything above prices this pass on its own; this prices what it SETS UP. A
     // square ball that begins a switch and a square ball that begins nothing score identically to a
     // one-move utility, and the first is how possession football actually moves a defence. The style
@@ -558,7 +594,16 @@ export function meDecide(s, rng, side, i, dwell) {
   // appeared and nobody walked into it, because walking into it paid nothing.
   // Multiplied by drb, because he only gets the better shot if he still has the ball when he arrives.
   const spGain = Math.max(0, spAhead - sp);
-  const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72 + spGain * CFG.carryShotW)
+  // THE FREE CARRY ADVANCES. Passes have paid room-times-forward for ground gained into nobody
+  // since roomFwd shipped; the carry never got the mirror, so an unpressed centre-back's best
+  // forward option -- walking the ball out until somebody comes -- scored as nothing and the
+  // whole side recycled at the engagement line instead. Measured: 68% of a possession side's
+  // settled spells never reached the middle third, and mean possession position pinned at the
+  // block edge for every style. Same units as the pass term: the metres the carry gains, paid
+  // only into room, so driving at a set body is exactly as worthless as it was.
+  const roomC = Math.min(1, meOppDist(s, side, cdx, p.y) / CFG.roomFull);
+  const dsc = drb * (meValHere(s, side, cdx, p.y) + CFG.keep * 0.72 + spGain * CFG.carryShotW
+                     + roomC * CFG.carryAdv * CFG.roomFwd * CFG.carryRoomW)
             - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.

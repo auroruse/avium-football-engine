@@ -40,6 +40,11 @@ export const SP = {
   // enough that your best header of a ball attacks the near post and your best striker of one
   // takes the edge, without anybody crossing the pitch for a spot somebody else can fill.
   spRoleW: 12,
+  // THE DEAD-BALL SPECIALIST. spTakerW is how many metres of walking a corner or a shooting free
+  // kick is worth handing to a better striker of one -- large enough that fit decides it and
+  // distance only separates men of similar quality. spTakerRange is how near goal a free kick has
+  // to be before it is a shooting chance rather than a ball to be played quickly.
+  spTakerW: 70, spTakerRange: 30,
   // Corners: how many aerial targets are sent up REGARDLESS of distance (the big centre-halves),
   // and how far beyond the aimed man the delivery is flighted so it crosses him at head height
   // rather than landing at his feet -- 3.5 m puts the ball at 1.8-2.0 m over the mark at any
@@ -343,7 +348,19 @@ foulAggr: 0.25,
   passBase: 1.06,
   // How much the passer's own skill lifts his BELIEF that a ball will arrive: passSkillLo +
   // pass/99 * passSkillW, anchored near 1.0 at a 75-rated midfielder (pass attr 80).
-  passSkillLo: 0.462, passSkillW: 0.66,
+  // ON THE OCCUPIED BAND, not attr/99. Execution has always used meTech -- see its note: forty OVR
+  // points squeeze into thirty attribute points, so attr/99 makes everybody identical -- while the
+  // BELIEF stayed on the compressed scale, so the engine struck a pass on one measure of a player
+  // and decided it on another. Measured: a 90-rated playmaker thought a ball 5% likelier to arrive
+  // than a 77-rated one did, which is why no midfielder ever became his side's creator. Re-anchored
+  // so a 75-rated midfielder (pass attr 80, meTech 0.80) keeps the 0.995 everything was calibrated
+  // against; the spread around him widens from 11% to 27% across the league.
+  passSkillLo: 0.515, passSkillW: 0.60,
+  // WHAT IT TAKES TO SEE A PASS. Hardness is the through ball, the blocked lane and the long ball,
+  // capped at one; visMiss is what a man who reads nothing gives up on the hardest of them, in the
+  // same units meDecide scores everything else (roughly 0.1 to 1). Scaled by (1 - meMind), so an
+  // elite player pays none of it.
+  visMiss: 0.12, visThru: 0.60, visLane: 0.50, visD0: 18, visDSpan: 25,
   // WHAT THE DECISION BELIEVES AGAINST WHAT HAPPENS. Measured over 76,000 passes (test/ratings.mjs
   // logs them): balls the decision rated at 0.19 reached the man they were played to 62% of the
   // time, 0.61 reached him 70%, 0.94 reached him 87%. The estimate was far too pessimistic low
@@ -366,7 +383,7 @@ foulAggr: 0.25,
   // rates +0.28 higher, against +1.1 and +0.15 before, and a better passer's sharper judgement
   // finally buys him something because the objective he sharpens is the real one.
   // Refitted at the landing (400 matches); `node test/ratings.mjs check` holds it within 0.30.
-  passCal0: 1.95, passCalB: 1.26, passCalR: 1.21, passCalL: 2.69,
+  passCal0: 1.98, passCalB: 1.26, passCalR: 1.26, passCalL: 5.64,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -687,6 +704,19 @@ foulAggr: 0.25,
   // which ships at 0.45. Same starting value for the same reason: the two are the same idea applied
   // to the two ways a man can move the ball.
   passShotW: 0.45,
+  // The escape ball, priced -- both terms fire only on through balls to a man running in behind,
+  // and both are keyed on what the DEFENDING side's height actually concedes, so they price
+  // aggression without touching any stamp. escDistRelief is the fraction of the distance charge
+  // returned when the aim point is genuinely empty (meOppDist against roomFull); escThruW is the
+  // matured-chance bonus for a runner put clean through, scaled down by each outfield man still
+  // goal-side of the aim.
+  // CALIBRATED 25 Aug 2026 at 0.08/0.06, the mildest cell with a real effect: the worst counter
+  // in the game (zonamista vs gegenpress, restamped equal squads) compresses -2.13 to -1.85 xGD
+  // and completion pays about two points, which the pass-belief refit below absorbs. Sweeping
+  // hotter (0.15/0.12) bought only -1.71 for twice the completion damage -- the rest of the
+  // ladder is press-side machinery, not the escape ball, and raising these past 0.08/0.06 buys
+  // almost nothing. Re-sweep with escsweep.mjs before ever moving them.
+  escDistRelief: 0.08, escThruW: 0.06,
   // WHO HE IS PLAYING IT TO. passShotW above values a receiver by what he can FINISH, and nothing
   // valued him by what he can DO: a ball to the best midfielder on the pitch and a ball to the
   // worst scored identically, so the ball never looked for the good player -- measured, a
@@ -698,6 +728,28 @@ foulAggr: 0.25,
   // 0.06 did his completion stop falling as his rating rose. Team completion and possession did
   // not move at any setting.
   passRecvW: 0.06,
+  // THE PLAYMAKER. pmkAbsLo/Span read his own quality off meOvr (so ovr 77 is about 0.2 and ovr 90
+  // about 0.83); pmkRelFull is how far clear of his own outfield mean he has to be to count as
+  // fully the difference; pmkRelLo is what a man in a completely flat squad still gets, since
+  // somebody takes the ball even when nobody stands out. pmkRecvW is what a team-mate adds to the
+  // value of giving it to him, and pmkSupport is how many metres of walking the support duty --
+  // the short option for the carrier, which is where touches come from -- is worth handing him.
+  // pmkRelLo is what a man who is NOT clear of his peers still gets. At 0.35 it was too generous:
+  // a midfielder level with the other three took a third of the hub for nothing, which is how a
+  // side with no playmaker ended up with one anyway. Somebody still takes the ball in a flat
+  // midfield, so it is not zero -- it is small.
+  pmkAbsLo: 72, pmkAbsSpan: 12, pmkRelFull: 4, pmkRelLo: 0.15,
+  pmkRecvW: 0.10,
+  // TRIED AND MEASURED, and it is OFF: handing the hub the support duty -- the short option BEHIND
+  // the carrier -- moved creation barely at all (top creator's share of his club's key passes 15%
+  // to 16%) and cost 0.28 goals a match, with the best side's GF falling 75 to 65 and the league's
+  // top scorer 27 to 22. It drags a side's best midfielder backwards, away from the places chances
+  // are made. A hub receives in ADVANCED space, which is what pmkDanger and pmkRoam do instead.
+  pmkSupport: 0,
+  // How much more a hub wants the dangerous pocket, added to the 1.30 every player weighs it at,
+  // and how much of the pull back toward his formation slot he is released from. Both scale by
+  // _pmk, so a squad with nobody who stands out plays exactly as it did.
+  pmkDanger: 1.10, pmkRoam: 0.55,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
@@ -913,7 +965,25 @@ foulAggr: 0.25,
   tkClose: 0.10,
   // How far the ball must get past him to count as beaten, and how long he is out of the play for
   // it, per step of Get Stuck In. Zero at Stay On Feet and at no instruction: only committing costs.
-tkBeatT: 10, tkBeatSpd: 0.55,
+tkBeatT: 14, tkBeatSpd: 0.55,
+  // THE PRICE OF THE PRESS. Measured (80 fixtures, gegenpress vs possession, restamped equal
+  // squads): the press dividend is 55 turnovers a match won in the opponent's half feeding 1.99
+  // of its 2.72 xG through transition shots, while settled play is dead even -- and a press
+  // engagement that FAILED cost nothing, because only a missed tackle set _beat. Two prices:
+  // a designated presser whom the ball completes past, forward, from inside his engagement
+  // radius is beaten exactly as a missed tackle leaves him (pressThruR metres from the strike,
+  // pressThruT ticks); and a man's press REACH decays with his legs -- at zero stamina he
+  // arrives on loeStamLo of the distance a fresh man covers, so the 90th-minute gegenpress is
+  // a jog, which is the cost every real press pays.
+  pressThruR: 6, pressThruT: 14, loeStamLo: 0.55,
+  // The free carry's room-times-forward mirror (see decide.ts): 1.0 is parity with the pass
+  // term's pricing of the same metres.
+  carryRoomW: 1.0,
+  // Execution fatigue: at zero stamina a man strikes and passes at fatExLo of his technique.
+  // Movement already slows with stamina (meSpeed, 20%); this is the other half -- the mishit --
+  // and it is what finally sends the press a bill: measured before it, gegenpress's BEST phase
+  // was 75-90 minutes despite being ten stamina points down.
+  fatExLo: 0.72,
   // THE TACKLE. tkRange is how close he must be to go at all; the tkw* weights are what "his options
   // are closed" is made of, summing to 1 at best. tkGo is the bar, lowered by his own tackle rating
   // and by Get Stuck In. tkCool stops one man lunging every slice.
@@ -948,7 +1018,7 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // a league, defenders' ratings did not move with their OVR. tkSkillMid is the population mean of
   // the (tackle - pace)/99 term, so the league-wide win rate stays where tkBase calibrated it and
   // only the spread between good and bad tacklers widens.
-  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.06,
+  tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.042,
   runTicks: 14,
   runMax: 4,
   runCool: 28,
@@ -1069,6 +1139,15 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // at 0.98 of cutReach, and cutAntLo is set so the new pair puts it at exactly the same place.
   // Only the spread around the mean is new, so pass completion and possession are untouched.
   cutAntLo: 0.404, cutAntW: 0.80,
+  // THE OTHER TWO POSITIONING CHANNELS, moved onto the same band as the interception reach above.
+  // `position` reaches the pitch three ways -- cutting a pass out, getting to a loose ball first,
+  // and how reliably a ball played to him arrives -- and only the first was ever read over the
+  // occupied band. The other two sat on position/99, where twenty OVR is twelve attribute points:
+  // measured, they were worth 3% and 2% between a 70 and a 90 while judgement was worth 100%.
+  // Both are anchored on the league's mean man (OVR ~77, position attr ~76) so the calibration he
+  // was fitted to does not move; the ends separate.
+  chaseAntW: 0.20,                 // loose-ball chase: 3% spread -> 7%
+  rcvPosLo: 0.8025, rcvPosW: 0.30, // ball played to him arrives: 2% spread -> 9%
   // ---- bodies -------------------------------------------------------------------------------
   // Players are SOLID. A ball cannot pass through one and two men cannot stand in the same place.
   // bodyR is shoulder to shoulder, bodyH is how high you can block a ball before it goes over you,
@@ -1211,12 +1290,12 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
   rateSave: 0.65, gkExpPen: 0.85, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
-  gkExp: [[0.05, 0.18], [0.10, 0.19], [0.20, 0.18], [0.30, 0.36], [0.40, 0.80], [0.60, 0.60], [1.01, 0.83]],
+  gkExp: [[0.05, 0.14], [0.10, 0.14], [0.20, 0.16], [0.30, 0.29], [0.40, 0.77], [0.60, 0.41], [1.01, 0.85]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.05, rateKeyPass: 0.15,
+  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.15,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1227,7 +1306,32 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // (the quickest, a throw, is taken eleven ticks after the ball died). Both are small on
   // purpose: they are how a deep midfielder finishes a 3-0 on 7.6 rather than on exactly what he
   // started with.
-  rateIntercept: 0.09, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
+  rateIntercept: 0.063, rateBuild: 0.18, rateBuildDecay: 0.6, rateRecover: 0.20, recoverWin: 12,
+  // THE CHANCE IS THE CONTRIBUTION, not the goal. The build walk above only ran when the move
+  // scored, so a winger who manufactured two goals of expected chances on the striker's blank
+  // afternoon finished on par -- his rating tracked the statline, not the football. Every
+  // recorded shot now pays its own build chain in proportion to the chance's xG: the last
+  // different man before the shooter earns rateChanceBuild per unit of xG, decaying a step at a
+  // time exactly like the goal walk, and the goal walk itself is unchanged on top -- scoring
+  // still pays like scoring.
+  // ...and the man who REACHED the end of it gets the same currency: rateChanceGet per unit of
+  // xG for arriving where the chance was, from the same per-match cap pool as the build credit.
+  // Without it a striker's whole afternoon was the binary of conversion -- the board's forwards
+  // vanished behind defenders the moment defensive actions started paying properly.
+  rateChanceBuild: 0.45, rateChanceGet: 0.35, rateChanceCap: 1.1,
+  // ...and STOPPING the chance is worth what the chance was. A flat tackle rate said cutting out
+  // a square ball on halfway and an interception on the six-yard line were the same act. Every
+  // defensive action -- tackle, interception, block, clearance -- now scales with the danger of
+  // the spot it happened on: base pay in safe space, up to (1 + rateDefDanger) of it at the
+  // goalmouth. 1.5 handed the top of the season board to full-minute defenders (16 of the top
+  // 25, four of them on 0g 0a), and 0.7 with the base rates below still paid ACCUMULATION: a
+  // centre-half with no goal, one assist and four chances created all season rated 7.3 purely on
+  // volume, alongside one who had genuinely played well. So the danger premium goes UP and the
+  // base rates come DOWN by about a third together -- the mean is unchanged and the same
+  // afternoon's worth of routine work pays less, while the block on the line and the interception
+  // in the six-yard box pay more. The standout defender separates from his own back four, which
+  // is the whole point of rating a defender at all.
+  rateDefDanger: 1.3,
   // PHASE D: THE ROUTINE. Everything above is a moment -- a goal, a card, an error -- and a match
   // is mostly not moments. A full-back who played ninety composed minutes and a midfielder who
   // completed eighty passes both finished on exactly 6.50, because nothing either of them did all
@@ -1261,6 +1365,9 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // face value; below it he is pulled back toward par. ratePos is the positional par itself,
   // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
   rateFullFrac: 0.667,
+  // The ceiling on the per-ninety projection above. 1/rateFullFrac, so a man who plays the
+  // qualifying share reaches his full rate and anything shorter is damped by the shrink.
+  rateProjMax: 1.5,
   // RE-DERIVED 23 Aug 2026 with `node test/ratings.mjs derive`: 400 league matches with this set
   // to zero, full-match players only, and each position's par set so its mean lands on 6.85 --
   // about where the systems this is modelled on put a man who played the ninety. The raw means
@@ -1270,7 +1377,7 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // Re-derive it the same way if any delta above, or rateSpread, moves.
   // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
   // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
-  ratePos: { GK: 0.200, DEF: -0.542, MID: -0.639, FWD: -0.795 },
+  ratePos: { GK: -0.034, DEF: -0.431, MID: -0.709, FWD: -1.021 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1279,7 +1386,32 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // applied before the positional par: 1.0 is the forward, and the others are lifted part of the
   // way toward him, not all of it -- forwards genuinely swing more. Re-derive ratePos after
   // touching this, since scaling the deviation moves the mean.
-  rateSpread: { GK: 1.0, DEF: 1.20, MID: 1.15, FWD: 1.0 },
+  // RE-DERIVED 26 Aug 2026, then CORRECTED the same day. Lifting the other three toward the
+  // forward is what the ghost problem asked for and it is also how a season board fills up with
+  // centre-halves: at DEF 1.15 against FWD 1.0 a defender's afternoon swung as wide as a striker's
+  // (sd 0.746 against 0.839), and since a league fields four defenders a side and two forwards,
+  // the tail of the season table was defenders by sheer weight of bodies -- twelve of the top
+  // twenty-five finished within 0.1 of each other, so ties decided the order. The forward is now
+  // the widest swing in the game and the defender the narrowest, which is what the real boards
+  // look like. Ghosts come back a little at DEF 1.0; that is the price and it is the right one.
+  // ...and the MIDFIELDER is the other half of the same mistake. Squeezing the defender without
+  // lifting him left the middle of the pitch as the worst-represented position on the board --
+  // two of the top ten and four of the top twenty-five, behind a back four who had scored nothing
+  // between them. A season table should read forwards, then midfielders, then defenders, and the
+  // three multipliers are what say so: applied to neutral swings of DEF 0.649 / MID 0.655 /
+  // FWD 0.839, these give 0.584 / 0.753 / 1.049.
+  // ...and the KEEPER was left at 1.0 while the other three moved, which quietly made him the
+  // narrowest swing on the pitch: nought of the top twenty-five in a full season, so a keeper
+  // could not have a great year at all. A screamer of a season should reach the board and an
+  // ordinary one should not, which is a WIDE keeper, not a high one -- the par is unchanged and
+  // both tails open together.
+  // TRIED AND REVERTED: DEF 0.80 with FWD 1.15, to move the defenders who fill the eleven-to-
+  // twenty-five band. It cost the thing that matters -- the top ten went to two forwards and
+  // three defenders, with the league's leading scorer down at twelfth -- because compressing the
+  // forward compresses the men whose seasons the board is supposed to be about. The middle of a
+  // season table carries defenders and that is what a defender's season looks like; the top of it
+  // is forwards and midfielders, and that is what these hold.
+  rateSpread: { GK: 1.30, DEF: 0.90, MID: 1.15, FWD: 1.25 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
@@ -1479,7 +1611,16 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   dwellDrop: 0.99,
   // Build-up: what a safe ball is worth when nothing forward is on. Higher means more recycling
   // between attacks, which is what real possessions are made of.
-  keepBuild: 0.018,
+  // ZEROED, 25 Aug 2026, the settled-creation surgery's one real mover. The term paid BACKWARD
+  // passes extra precisely when the defence was set (times `shut`), which made recycling against
+  // a block a standing bribe: 68% of a possession side's settled spells died before the middle
+  // third, tikitaka created 0.18 settled xG a match against a deep block, and every patient style
+  // starved. Its original job -- stopping suicidal forward forcing -- is done by the risk model
+  // now (the pass-belief logistic prices what a forward ball actually costs). Measured at 0:
+  // settled xG 0.18 to 0.52, final-third spells 1.5 to 2.1, tikitaka-vs-verticaltiki -1.30 to
+  // -0.94, goals level; completion pays about three points because sides finally attempt the
+  // forward ball, and the belief refit absorbs the honesty.
+  keepBuild: 0.000,
   // What you GIVE UP by playing it. A pass was scored purely on where the ball ENDS UP, so turning
   // away from a shooting position cost precisely nothing -- which is the only reason a man through on
   // goal could ever be found passing backwards. Handing back a good position is a real price and it
@@ -1767,7 +1908,13 @@ tkBeatT: 10, tkBeatSpd: 0.55,
   // most of the missing off-target. 1.8 was set BEFORE that scaling existed; this is the same
   // effective error with it. Swept against conversion: 1.8/3.5/5.0/6.5/8.0 -> 24.4/22.5/17.5/15.7/
   // and goals 2.4/2.4/1.8/1.6.
-  shotElevErr: 8.0, shotElevSkill: 0.72,
+  // shotElevSkill is THE TOP-END DIAL. Elevation error is shotElevErr * (1 - skill*this), so
+  // raising it takes the ballooned shot away from an elite finisher and leaves it with a poor one:
+  // measured over a full season, 0.72 / 0.85 / 0.90 give a club's top scorer a mean of
+  // 16.3 / 18.1 / 17.5 and the league's best 25 / 32 / 25, with the best side's GF 75 / 95 / 86.
+  // It concentrates goals in the good sides and the good strikers rather than floating the whole
+  // league, which is what the keeper dial does. 0.90 overshoots and flattens again.
+  shotElevErr: 8.0, shotElevSkill: 0.90,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -1804,6 +1951,12 @@ gkDiveV: 2.9,
   // allowance) is fully beaten, and a fully beaten goal converts at xgOpenCap decayed with
   // distance. See the keeper block in meShotP for the measurement that forced this.
   gkOpenLat: 2.4, gkOpenReach: 1.3, xgOpenCap: 0.93, xgOpenDecay: 0.015,
+  // HOW BEATABLE THE SHOOTER THINKS HE IS. Same bug the pass belief had, and worse: this DECIDED
+  // on reflex/99 while the save RESOLVES on meGkSkill, so a striker saw the division's best keeper
+  // as 11% different from its worst while the save itself separated them by 55%. Nobody shot
+  // differently against a great goalkeeper. On the band the resolution uses, anchored so the mean
+  // league keeper (77.4 OVR) keeps the 0.586 everything was calibrated against.
+  gkBeatLo: 0.907, gkBeatW: 0.40,
   // The recorder's calibration: P = sigma(xgCal0 + xgCalB * logit(q)), fitted on 7,193 attempts
   // joined to their outcomes by shot id (test/ratings.mjs collects the data). After the open-goal
   // term the raw recorder ran monotonically hot close in and cold from range; through this map
@@ -1818,7 +1971,10 @@ gkDiveV: 2.9,
   // (A rebound bonus keyed on mp._parry was tried here and reverted: post-parry strikes realize
   // 19-31%, not the 82% a bookkeeping artefact suggested -- goals with no live shot fall back to
   // rateGoalXgDef 0.3 in the KEEPER's ledger and had pooled into one measurement band.)
-  xgCal0: -0.82, xgCalB: 0.468,
+  // Intercept dropped 0.24 in logit space (ln 2.64/3.34) when the keeper's save reach and the
+  // loose-ball claim took goals a match from 3.7 to ~2.6 and the recorder kept booking the old
+  // conversion. Slope untouched; gkExp re-derived against the new physics the same day.
+  xgCal0: -0.86, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   gkDiveVmin: 5.0, gkDiveVmax: 9.5,
@@ -1850,6 +2006,13 @@ gkDiveV: 2.9,
   // why 91% of loose balls came free more than eight metres from a touchline and there were 5.5
   // throw-ins a match against a real 40-50 -- the ball simply never got near the line.
   deflectKeep: 0.35,
+  // A deflection off a man is not uniform. His body arrived between the ball and whatever he was
+  // protecting, so a ball travelling goalward leaves off him biased AWAY from his own net -- the
+  // knock target shifts this many metres off the goalward line. Uniform here was worth a goal a
+  // match: 63 of 154 no-live-shot goals in 150 matches were deflected crosses and passes rolling
+  // in, plus most of the deflected-strike class. Applied only when the incoming ball is moving
+  // at his own goal above walking pace, so attacking flicks and neutral squirts stay uniform.
+  deflectAway: 3.0,
   deflectWin: 12,
   // HOW RECENTLY AN ATTACKER HAD TO HAVE TOUCHED IT for a goal off a defender to be his rather than
   // an own goal. Without this the test was only "was the last touch theirs", which made every box
@@ -2025,6 +2188,32 @@ gkDiveV: 2.9,
   // where everywhere else he keeps the strict body radius a shot save demands. Without this the
   // pounce entered races it could not win -- the carrier's re-take always beat a 0.5 m body.
   gkClaimReach: 1.05,
+  // A live opposing SHOT he plays with his arms along its whole path -- that is what a save is.
+  // The body-only rule was measured against through-balls and stands for them; lumping shots in
+  // with passes gave him 0.46 m of reach against a strike, which is why 16-25 m converted at 19%
+  // on target and the median conceded goal crossed 0.6 m from his body. Not his full claim span:
+  // he is reacting to a strike, not gathering a roller -- swept 0.46/0.60/0.70/0.80/1.05 against
+  // goals a match. THE LEAGUE'S GOALS DIAL, and it must be set on the full 380-fixture season
+  // rather than a 120-fixture sample -- the sample frame ran 0.4 goals hot, so 0.58 measured 2.64
+  // there and 2.24 over a real season. Paired on the season fixtures with the foot-reach floor
+  // below: 0.44 / 0.48 / 0.52 / 0.58 give 2.75 / 2.60 / 2.40 / 2.24 goals a match, with the top
+  // scorer on 25 / 23 / 23 / 22 in thirty-eight. 0.44 is a real league.
+  // ...AND IT IS NOT ONE NUMBER FOR EVERY KEEPER. Shipped flat, it handed the worst goalkeeper in
+  // the division exactly the arms of the best, and since this reach is most of what a save now is,
+  // it flattened goalkeeping itself: measured, a keeper ten OVR better prevented +0.01 goals a
+  // match against +0.28 before the reach existed, so no keeper could have a season worth putting
+  // on a board -- there was nothing to have. The reach spans by meGkSkill between Lo and Hi, and
+  // the league's mean keeper (skill about 0.76) still lands on the 0.44 the goals dial was set at.
+  // The span is wide because meGkSkill only runs 0.43 to 0.94 across the keepers in the registries:
+  // at 0.28-0.50 the actual spread between the division's worst keeper and its best was 0.11 m and
+  // bought +0.07 goals prevented per ten OVR. These put the real spread near 0.19 m with the mean
+  // keeper still on 0.44.
+  gkSaveReach: 0.44, gkSaveReachLo: 0.16, gkSaveReachHi: 0.53,
+  // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
+  // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
+  // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,
+  // frozen by the flight flag and the backpass gate.
+  gkLooseWin: 16,
 };
 
 export type EngineConfig = typeof CFG;
@@ -2358,6 +2547,291 @@ export const ME_HOME_ADV = {
 };
 
 // What the UI could legally set. A chase must not push an instruction somewhere a manager could not.
+// THE STYLE STAMPS, moved here from App.tsx so the engine itself can restamp a side (the
+// half-time emergency switch in meChase). App.tsx imports this back; there is one copy.
+export const STYLE_PRESET = {
+  balanced:      {},
+  // Win it back high and go again. The only style that maxes both press and line.
+  gegenpress:    { pressingLOE: 2, defLine: 2, approachPlay: 1, possLost: 1, possWon: 1, tackling: 1 },
+  // Keep it, move it, never hurry. Presses to restart possession, not to score off the turnover.
+  // ELEVEN INSTRUCTIONS AND NINE OF THEM COST. Last in the head-to-head, beating two of thirteen and
+  // losing to the side that carries no instructions at all. The two dropped here are the two that are
+  // NOT what Tiki-Taka is: gkDist is classified in this file as an execution choice rather than an
+  // identity axis (it is in STRAT_EDITABLE, excluded from fit damping) and costs 0.08 whichever way
+  // it is set, and tackling -1 is incidental at 0.10. Together that is a fifth of a goal of pure tax
+  // for nothing anyone would call tiki-taka.
+  // What makes it the style is untouched: shortest passing in the game, narrow, high line, presses to
+  // restart possession, holds shape, works the ball in, expressive.
+  tikitaka:      { pressingLOE: 1, defLine: 1, passingDir: -2, approachPlay: -1, possLost: 1,
+                   possWon: -1, chanceCreation: -1, creativity: 1, width: -1 },
+  // Tiki-Taka pointed at the goal: same short passing, opposite intent on the ball and in transition.
+  verticaltiki:  { pressingLOE: 1, defLine: 2, passingDir: -1, approachPlay: 1, possLost: 1,
+                   possWon: 1, dribbling: 1, creativity: 1, width: -1 },
+  // Patient without the press: shortest passing outside Tiki-Taka, plays out from the back, holds
+  // shape, keeps the ball. It used to carry SEVEN negative instructions and not one positive -- a
+  // style defined entirely by refusal -- and measured as the worst side in the game on territory,
+  // shots and goals. Leave-one-out showed no single culprit: removing ANY of the seven gained shots,
+  // between +0.5 and +2.7. It was the accumulation.
+  // dribbling and chanceCreation are gone because they contradict the name as well as the numbers:
+  // a possession side's midfielders carry the ball, that is how positional play advances, and a side
+  // that works it into the box then declines to shoot has no way to finish what it starts.
+  // ...AND THE LINE IS HIGH, which it was not. "Patient without the press" was read as a standard
+  // line, and with short passing and playing out on top of it the side held the ball DEEPER THAN
+  // PARK THE BUS -- a mean possession position of 35.8 m, the lowest of all fourteen. Controlling
+  // possession without controlling territory is not a style, it is sterile possession, and it left
+  // this a notch of line and a notch of press away from Zona Mista: 0.34 apart on twelve behaviour
+  // columns, the closest pair in the game and the only one too close to tell apart.
+  // A high line with NO press is a combination nobody else holds -- Tiki-Taka presses from its high
+  // line, Zona Mista sits deep and does not -- so this is what separates all three.
+  // IT DID NOT FIX THE TERRITORY, and the honest number belongs here rather than the intention: a
+  // full notch of defensive line moved the mean possession position 35.8 m to 36.4, and the distance
+  // to Zona Mista 0.34 to 0.41. Where a side HOLDS the ball is contested -- it is capped by the
+  // opponent's block and by the offside line -- so its own defensive line does not push the ball up
+  // the pitch. Kept because a control side genuinely should hold a high line and because it is now
+  // two notches of line from Zona Mista rather than one, but a possession side that cannot gain
+  // territory is a progression problem in the pass model, not something a stamp can reach.
+  // ...AND THE LINE IS GONE, on this stamp's own evidence. The note above records what it bought:
+  // 0.6 m of possession position and 0.07 of separation from Zona Mista. Measured since, a notch of
+  // defensive line is the most expensive instruction in the game at ANY setting -- 0.23 at one notch,
+  // 0.37 at two -- and this side had six instructions of which every single one was a net cost, which
+  // is why it finished last of fourteen head to head, beating one opponent.
+  // gkDist goes with it: this file classifies it as an execution choice rather than an identity axis
+  // (STRAT_EDITABLE, excluded from fit damping) and it costs about 0.08 whichever way it is set.
+  // What a control side IS survives intact -- shortest passing outside Tiki-Taka, plays out from the
+  // back, holds shape rather than countering, stays on its feet, and presses at nobody.
+  // REVERTED to possWon -1. Flipping it measured +0.49 goals against the field, the largest gain
+  // anyone found for this style -- and it still did not clear Balanced (-0.70 to -0.22), so it paid
+  // distinctness for a result it did not achieve. The reason it looked like a gain is the same
+  // reason every style below Balanced looked fixable by deletion: an all-zero stamp IS the engine's
+  // unconstrained optimum, so ANY instruction reads as a cost. That is an engine problem, not a
+  // stamp problem, and it is being fixed at the source. Do not re-apply this without re-measuring
+  // once instruction coherence is in.
+  possession:    { pressingLOE: 0, passingDir: -1, approachPlay: -1, possLost: 0,
+                   possWon: -1, tackling: -1 },
+  // Width, overlaps, and licence to take a man on.
+  wingplay:      { passingDir: 1, approachPlay: 1, creativity: 1, dribbling: 1, width: 2 },
+  // Sit off, then hurt them the moment it breaks.
+  counterattack: { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1 },
+  // Skip the middle third entirely. Distinct from Counter by NOT sitting deep to earn the ball.
+  routeone:      { gkDist: 1, pressingLOE: 0, defLine: 0, passingDir: 2, approachPlay: 1, possWon: 1,
+                   chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1 },
+  // The deep block that still intends to score: absorbs like Park The Bus, breaks like Counter,
+  // and sits deeper and more disciplined than either. Its whole value is the transition.
+  // dribbling: -1 is gone for the same reason it left Cholismo, and the measurement is the same
+  // shape: worst style in the game at -0.30 goal difference, fewest shots (8.2) and fewest goals
+  // (1.03) despite allowing a mid-table 14.9%. It was not defending badly, it was not breaking.
+  // Five candidates at 260 fixtures each, where a real difference needs about 0.26 GD: dropping
+  // dribbling was worth +0.31 and nothing else cleared the bar. Shots 8.2 -> 9.1, scored 1.03 ->
+  // 1.23, conceded 1.33 -> 1.22 -- it improves at BOTH ends, which is what a side that can finally
+  // carry the ball out looks like.
+  // The block itself is untouched: pressingLOE -2 is where it presses from. What moves is where the
+  // ball is when this side HAS it, 35.3 m to 40.0 m, and that is the counter actually happening.
+  //
+  // defLine -2 -> -1, AND IT IS THE ONLY INSTRUCTION IN THIS STAMP THAT WAS COSTING ANYTHING.
+  // Taken apart axis by axis against the full field, 180 blocked fixtures an arm: dropping defLine
+  // was worth +0.73 goals and nothing else in the stamp cleared its own error. Every other
+  // instruction is EARNING -- possWon -0.30, width -0.28, passingDir -0.17, approachPlay -0.12, so
+  // the side is worse without them. It is not a broken setting at -2 either; depth is penalised
+  // about 0.25 goals a rung all the way down, because the four styles at the top of the table
+  // (Route One, Wing Play, Second Ball, Gegenpress) all feast on a deep line and nothing punishes
+  // them back. One rung up puts this style at +0.16 against Balanced's +0.02, which is the whole
+  // point of the change, and it is still in the deepest tier in the game beside Zona Mista.
+  // Park The Bus is NOT fixable this way -- at -1 it is still -0.09, below Balanced. See its note.
+  catenaccio:    { gkDist: 1, pressingLOE: -2, defLine: -1, passingDir: 2, approachPlay: 1, possLost: -1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, tackling: -1, width: -1 },
+  // The deep block that does not. Holds shape, kills the game, concedes the ball on purpose --
+  // except it did not concede it. Measured at 52.1% possession, second most in the game and ahead of
+  // Tiki-Taka, while passing more (120 a match) and completing more (80.8%) than any side in the
+  // list. A bus that outpasses Tiki-Taka is not a bus.
+  // Leave-one-out found one axis responsible and it was not the obvious one: dropping `tackling`
+  // alone was worth -4.7pp, five times any other instruction in the vector. Get Stuck In was winning
+  // it 17.4 times a match and every one of those is a turnover in its own favour. Stay On Feet is
+  // also how a low block actually defends -- diving in is what breaks the block, which is why
+  // Catenaccio has carried -1 all along.
+  // approachPlay biases the CLEAR option in decide.ts, so at 0 this side never hoofed it, it
+  // recycled among the back four; and passingDir 1 asked for 20 m balls, which in its own third
+  // means short, safe and kept. The three together land it at 44.6% with MORE clearances, and it
+  // both scores more (1.11 -> 1.23) and concedes less (1.34 -> 1.14) than the version that hogged
+  // the ball. Two axes still separate it from Catenaccio, and they are the two that matter:
+  // possWon -1 rather than +1, and no Shoot On Sight. It absorbs and it does not break.
+  // timeWasting is what keeps it from BEING Catenaccio. Taking tackling out fixed the possession
+  // profile and left the two indistinguishable -- 45.2 / 44.9 possession, 36.2 / 35.7 up the pitch,
+  // 6.8 / 6.7 clearances, a 0.03 gap in goal difference against a 0.09 standard error -- because
+  // possWon and chanceCreation, the two axes meant to carry the difference, are both worth less than
+  // the noise. Killing the game is the one thing this style does that a side trying to counter must
+  // not, and the engine charges for it properly: dead time comes back at 55% and the caution is the
+  // price, and it only applies while in front. Measured separation goes 0.66 to 2.12 with goal
+  // difference untouched.
+  // The cost, stated: holding the ball longer means carriers travel further before releasing it, so
+  // this sits 2.6 m higher up the pitch than it did and Catenaccio is now the deeper of the two.
+  // MEASURED, +0.90 goals against the field (se 0.16), -0.53 to +0.37 -- the largest single gain in
+  // the table, and it clears Balanced at +0.02. Three axes, each measured as a cost INSIDE this
+  // stamp rather than guessed: defLine -2 -> -1, possLost -1 -> 0, pressingLOE -2 -> -1.
+  // It still parks, and it is still the deepest tier in the game beside Zona Mista. What it stops
+  // doing is parking so far back that it cannot get out. At -2 its shooter received the ball 33.2 m
+  // from goal and carried it 28.3 m, taking 18% fewer shots than a neutral line at identical chance
+  // quality (0.124 xG against 0.132) -- and it conceded MORE shots from CLOSER while standing 7.81
+  // men in its own box against 6.97. More bodies, more shots, nearer the goal.
+  // Two thirds of what depth cost this side was at the OTHER end: goals for 0.98 against 1.30.
+  // Four things that did NOT fix it are recorded in engine/config.ts beside lineADefL, with their
+  // numbers. Read those before touching this again.
+  // possWon -1 -> +1. A side that parks the bus and then KEEPS the ball is the one contradiction
+  // left in this stamp, and it is measured rather than argued: it takes 39.6% of its shots from
+  // turnovers where a neutral line takes 44.1%, and the engine had it at 52.1% possession, second
+  // most in the game. Park it and hit them on the break, which is what the style is.
+  parkthebus:    { gkDist: 1, pressingLOE: -1, defLine: -1, passingDir: 2, approachPlay: 1, possLost: 0,
+                   possWon: 1, creativity: -1, dribbling: -1, tackling: -1,
+                   timeWasting: 2, width: -1 },
+  // ── The four below fill holes the first ten left. Measured before being named: the press-by-line
+  // grid had FOUR styles stacked on (0,0), nothing at all on pressingLOE -1, and nothing anywhere
+  // off the diagonal -- every style either pressed high from a high line or sat deep behind a low
+  // one. These occupy the empty cells.
+  //
+  // Compact in the middle third, deny the centre, never chase. The only style on pressingLOE -1,
+  // and the answer to "what sits between Gegenpress and Counter", which was nothing.
+  // A mid-block defends narrow and deep; it does not refuse to run with the ball. dribbling: -1 was
+  // the only axis in this vector doing real damage -- leave-one-out moved shots by at most 1.5 for
+  // everything else, while dropping dribbling was worth +0.54 goals and 4.9 m of territory. The rest
+  // of the vector measured as working: sitting deeper IS the style, and 33 m up the pitch is a
+  // mid-block behaving like one rather than a fault.
+  // tackling +1, measured once the drill equilibrium was fixed: +0.46 goals against a twelve-style
+  // field on paired seeds -- and it earned that while still being CHARGED for the old clash rule
+  // that called a low press with hard tackling a contradiction. A mid-block that bites when you
+  // enter it is the whole brand; the rule was wrong, not the stamp, and it is gated one-way in
+  // engine/config.ts now. possWon +1 was measured alongside and rejected at -0.51: a mid-block
+  // that sends breakers the moment it wins it leaks the shape it just defended with.
+  cholismo:      { pressingLOE: -1, defLine: 0, passingDir: 1, possLost: -1, creativity: -1, width: -1,
+                   tackling: 1 },
+  // Go long, then hunt the knock-down. The one style that presses HIGH from a LOW line, which
+  // nothing else in the list does. possLost Counter-Press is the whole point rather than a
+  // trimming: swarming the second ball IS the style, and without it this was two axes from
+  // Counter and read as a rename of it.
+  // ...AND IT WAS A RENAME OF ROUTE ONE INSTEAD. Measured at 0.45 rms z-distance, the closest pair
+  // in the game, and the stamps say why: eight of the instructions were byte-identical to Route
+  // One's and all three differences were defensive, so the two had the same attack by construction.
+  // Pass length 21.1 against 21.2, long balls 51% against 52%, shot distance 13.7 against 13.6,
+  // fouls 13.4 against 13.4.
+  // The high-press-from-a-low-line signature does not separate them because it cancels ITSELF:
+  // pressingLOE and defLine both feed meBlock's wantLine at blkDefLine 6 m a step against blkLoe's
+  // 3, so -1 line and +1 press nets to three metres DEEPER, and this side wins its tackles at 50.8 m
+  // against Route One's 53.6 -- pressing lower than a side carrying no press instruction at all.
+  // The signature is kept because it is the design; the separation comes from the one thing the
+  // concept names that Route One has no claim on. You do not spread out to contest a knock-down,
+  // you compress around where it lands.
+  // DIRECT, NOT ROUTE ONE. passingDir 2 is the biggest single buff in the game -- worth +0.37 on the
+  // isolated axis, more than twice anything else -- and the two styles that maxed it finished first
+  // and second head to head, with this one beating all thirteen opponents and its WORST result still
+  // a win. Nothing else in the game has no bogey team.
+  // Dropped to 1, which also sharpens the pair: Route One keeps 2 and is THE long-ball style; this
+  // one goes direct and contests the knock-down, which is what its name says and what the width
+  // stamp already expresses.
+  // defLine -1 -> 0. A second-ball side fights for knock-downs from a compact MID block; it does
+  // not defend deep AND press high at the same time, which is what -1 alongside pressingLOE +1
+  // was asking for.
+  secondball:    { gkDist: 1, pressingLOE: 1, defLine: 0, passingDir: 1, approachPlay: 1, possLost: 1,
+                   possWon: 1, chanceCreation: 1, creativity: -1, dribbling: -1, tackling: 1, width: -1 },
+  // The deep block that builds instead of clearing. Catenaccio's line with Control Possession's
+  // patience, then Counter's intent once it is out.
+  zonamista:     { pressingLOE: -1, defLine: -1, passingDir: -1, approachPlay: -1, possWon: 1,
+                   possLost: -1 },
+  // Everything forward, nobody disciplined. This is the build that used to be worth +3.3 a season
+  // when a user could assemble it slider by slider; it measures under +1 now, which is the only
+  // reason it can exist as a named option instead of a exploit.
+  // ...BUT NOT LONG. It carried passingDir 1 and approachPlay 1 together, which is a preference for
+  // the longer ball plus a taste for clearing it, and once directness became an instruction that
+  // actually reaches the pitch that is what it played: a mean pass of 20.7 m with 43% of them
+  // lofted, which is Route One's profile under the name of the most technical style in football.
+  // La Nuestra is la gambeta -- short, on the deck, through the middle, with the licence to beat a
+  // man. The expression stays (dribbling, creativity, shoot on sight, and pressing high to get it
+  // back); the long ball goes, and it no longer hoofs it clear.
+  // chanceCreation +1 -> 0. Short passing and shoot-on-sight pull against each other. La Nuestra is
+  // about working the opening and individual brilliance, not speculative efforts -- but this is the
+  // most arguable of the five, so it goes to NO instruction rather than asserting the opposite.
+  lanuestra:     { pressingLOE: 1, defLine: 1, passingDir: -1, approachPlay: 0, chanceCreation: 0,
+                   dribbling: 1, creativity: 1, possWon: 1, possLost: 1 },
+};
+
+// A player carrying coach instructions (p._ci, written by the manager layer in meChase) plays
+// the side's instructions plus his own, clamped to the legal range. Everyone else costs one
+// truthy check and no allocation.
+export const meCoachSt = (st, p) => {
+  if (!p || !p._ci) return st;
+  const o = { ...st };
+  for (const k in p._ci) {
+    const r = ME_STRAT_RANGE[k] || [-2, 2];
+    o[k] = Math.max(r[0], Math.min(r[1], (o[k] || 0) + p._ci[k]));
+  }
+  return o;
+};
+// THE MANAGER'S READ OF THE FLOW. meChase reads the scoreline; this reads the match underneath
+// it -- the windowed xG a side is conceding minus creating -- and answers a fixture that is going
+// wrong before the score says so. There is no fixed minute: a side clearly being railed at 0-0 in
+// the 25th gets its answer then.
+//
+// The window is an EWMA updated once a football minute: steady-state reads roughly
+// netXgPerMin / (1 - decay), so a sustained deficit of ~1.0 xG per 90 sits near 0.17 and a true
+// railing (~2.4 per 90) near 0.45. tau maps the MGMT rating between those: a sharp manager
+// (99) steps in at tauSharp, a dinosaur (25) needs tauDull, and everyone stands down with
+// hysteresis at tau * off so the response does not flap.
+//
+// Two prepared answers, chosen by where the side HOLDS the ball when it steps in (mean
+// possession metres): pinned deep = break the siege (line up, press up, directer, faster);
+// holding the ball but creating nothing = stop the sterile passing (directer, shoot sooner,
+// wider, carry it). One notch per axis, always -- the leash is identity's, not the manager's --
+// and MGMT gates only WHEN he moves and how fast, never how far. Like chasing, this is a
+// reaction rather than a claim the squad suits the system, so squad fit does not damp it.
+export const ME_MGR = {
+  // THE TALK. What a manager is worth is guaranteed positive and scales with his rating, by
+  // construction: at half time he retunes the whole side -- every behaviour his players run on
+  // reads off OVR through meAttrs, so the talk lands as OVR points to every man (the drill
+  // channel's own mechanism, ovr0 keeps the reports honest) plus legs back for the second half.
+  // A sharper manager gives a better talk; nobody's talk makes his side worse.
+  coach: true,
+  htBase: 0.3, htSlope: 1.7,     // OVR points at the break: 0.73 at MGMT 25, 2.0 at 99
+  // ...and DURING STOPPAGES: conceding stops the match, and the reorganisation while the ball
+  // walks back is the same channel in miniature, on-pitch men only, capped across the match.
+  stopInc: 0.15, stopCap: 0.6,
+  // THE HALF-TIME SWITCH. In an extreme situation -- two down, or a goal down and clearly
+  // outplayed, or level but battered -- the manager may abandon the plan, once, at the break,
+  // and only for the ADJACENT style: each style's desperate pivot is the more aggressive
+  // sibling that shares its football (tikitaka is already verticaltiki without the verticals;
+  // a catenaccio that must chase becomes a counterattack, not a tiki-taka). His rating is his
+  // read: a sharp manager recognises a lost cause at a smaller deficit, a dull one needs the
+  // scoreboard to spell it out. The switch restamps the whole instruction vector, exactly as
+  // the app does on the tactics panel, and the emergency plan keeps the kickoff drill bonus --
+  // an undrilled restamp would be a second punishment for already losing.
+  swAdj: { balanced: "secondball", tikitaka: "verticaltiki", possession: "tikitaka",
+           zonamista: "counterattack", catenaccio: "counterattack", counterattack: "cholismo",
+           cholismo: "secondball", parkthebus: "catenaccio", routeone: "secondball",
+           secondball: "gegenpress", wingplay: "lanuestra", lanuestra: "verticaltiki",
+           verticaltiki: "gegenpress", gegenpress: "verticaltiki" },
+  sw1Xg: 0.9, sw0Xg: 1.8, swMgmt: 0.55,   // deficits shrink by swMgmt * (mgmt/99) of their base
+  // THE FLOW-RESPONSE, delivered man by man. The trigger (the xG a side is conceding minus
+  // creating, EWMA'd) and the MGMT gates are unchanged; what changed is where the answer lands.
+  // A side-wide instruction stamp was measured useless against a railing (+0.02 at best), so the
+  // manager now re-instructs INDIVIDUALS: the pin answer goes to the back line and midfield, the
+  // blunt answer to the midfield and front line, each man carrying his own p._ci overlay on top
+  // of the side's instructions -- read on the ball in meDecide, in the tackle in meTackle, and
+  // as his own line and width in meShape.
+  on: true,
+  pinPos: { DEF: 1, MID: 1 }, bluntPos: { MID: 1, FWD: 1 },
+  // The order MENU. The old design had two fixed vectors, so every railed match produced the
+  // same order sheet -- the manager now composes his orders from what is actually failing, one
+  // entry per diagnostic, in priority order, and his rating decides how many he may give: a
+  // sharp manager reads four problems, a dull one grabs the first two. Conditions read the
+  // match's own counters at the moment he steps in.
+  ordMax: 2, ordMgmt: 2,          // orders = ordMax + round(mgmt01 * ordMgmt)
+  sigCompLo: 0.62, sigCompHi: 0.74, sigShotsLow: 0.09,
+  mgmtDef: 60,          // a club with no rated manager gets a league-average touchline
+  decay: 0.94,
+  tauSharp: 0.16, tauDull: 0.42,
+  off: 0.5,             // stand-down threshold as a fraction of tau
+  slewSharp: 0.30, slewDull: 0.10,
+  pinBelow: 36,         // held deeper than this = pinned; the deepest style tier lives near 35
+  pin:   { defLine: 1, pressingLOE: 1, passingDir: 1, tempo: 1 },
+  blunt: { passingDir: 1, chanceCreation: 1, width: 1, dribbling: 1 },
+};
 export const ME_STRAT_RANGE = { defLine:[-2,2], pressingLOE:[-2,2], passingDir:[-2,2], tempo:[-2,2],
   chanceCreation:[-1,1], timeWasting:[0,2] };
 
