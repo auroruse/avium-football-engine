@@ -1,5 +1,5 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
-import { meCoachSt, CFG, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
+import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundSpeed, meLoftFor } from "./ball";
@@ -282,16 +282,32 @@ export function meDecide(s, rng, side, i, dwell) {
     let aimX, aimY, thru = false;
     if (mode === 0) { aimX = q.x; aimY = q.y; }
     else {
-      // Into space. Solve the lead so the ball and the man arrive together: guess the furthest
-      // sensible ball, see how long it takes, and only play it as far as he can actually run.
-      const rvx = (q._runT > 0 && q._run === "behind") ? (q._rx - q.x) : dir * CFG.thruMax;
-      const rvy = (q._runT > 0 && q._run === "behind") ? (q._ry - q.y) : 0;
+      // Into space -- ALONG THE RUN THAT EXISTS. This used to invent one: a receiver on no run at
+      // all was assumed to burst dead upfield at the moment of the pass, and the lead was solved
+      // to the far end of that imaginary sprint. Measured, that manufactured a league where 31% of
+      // all passes were into-space balls completing 47%, and half of every interception was the
+      // ball running past its own receiver. A committed runner gets the full solve; a man already
+      // moving gets a short ball led along his ACTUAL velocity; a standing man gets no into-space
+      // option, because the ball to his feet is already on the menu as mode 0.
+      const committed = q._runT > 0 && q._run === "behind";
+      const qvx = (q.vx || 0) / ME_DT, qvy = (q.vy || 0) / ME_DT;
+      const qsp = Math.hypot(qvx, qvy);
+      let rvx, rvy;
+      if (committed) { rvx = q._rx - q.x; rvy = q._ry - q.y; }
+      else if (qsp > CFG.thruMoveV && qvx * dir > -0.3) { rvx = qvx; rvy = qvy; }
+      else continue;
       const rl = Math.hypot(rvx, rvy);
       if (rl < 0.5) continue;
       const ux = rvx / rl, uy = rvy / rl;
       const d0 = Math.hypot(q.x + ux * CFG.thruMax - p.x, q.y + uy * CFG.thruMax - p.y);
       const tB = meGroundT(d0, d0);
-      const lead = Math.max(CFG.thruMin, Math.min(CFG.thruMax, meSpeed(meAttrs(q), q.stamina) * tB));
+      // He runs onto it. A man already sprinting uses the whole flight; a man being INVITED to
+      // extend his jog loses thruReact of it, and either way the ball is aimed thruLeadFrac short
+      // of the solved limit so the last stride is his. A jog-lead is also capped at thruJogMax:
+      // the invitation is a ball in front of him, not a punt to his sprint horizon.
+      const tUse = Math.max(0.2, tB - (committed ? 0 : CFG.thruReact));
+      const lead = Math.max(CFG.thruMin, Math.min(committed ? CFG.thruMax : CFG.thruJogMax,
+        meSpeed(meAttrs(q), q.stamina) * tUse * CFG.thruLeadFrac));
       aimX = q.x + ux * lead; aimY = q.y + uy * lead;
       if (aimX < 2 || aimX > PITCH_L - 2 || aimY < 2 || aimY > PITCH_W - 2) continue;
       thru = true;
@@ -365,7 +381,7 @@ export function meDecide(s, rng, side, i, dwell) {
     if (d > loftAt) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
     else if (d > 10) {
       const blkH = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true);
-      if (blkH * CFG.laneK + 0.45 < blk * CFG.laneK) { blk = blkH; isHigh = true; }
+      if (blkH * CFG.laneK + CFG.loftBar < blk * CFG.laneK) { blk = blkH; isHigh = true; }
     }
     // Longer balls and covered lanes fail more. This is the only place directness is ever paid for.
     // Whether the RECEIVER is marked, which is the thing that was missing: success depended on the

@@ -160,6 +160,11 @@ export const CFG = {
   // shots a match. The two settings are indistinguishable on spread.
   passWant: 16, passWantStep: 4, passWantW: 0.0025,
   passBand: 6, loftD: 26, loftDir: 3,
+  // How much clearer the AIR has to be before a ball inside loftD goes over instead of along the
+  // grass. At 0.45 the marginal chip flew constantly and died half the time: 10-18 m lofted balls
+  // completed 51% against 83% for the same ball on the ground, 8% of all passes. The chip has to
+  // be clearly the better ball, not slightly.
+  loftBar: 0.75,
   // The range he is looking to shoot from, and how far each step of chance creation moves it.
   // shotBand is the free zone beyond the preferred range before distance starts costing him, and it
   // is ZERO because the band was the wrong idea here. A threshold only works if it sits inside the
@@ -203,7 +208,12 @@ export const CFG = {
   // 70% against a real 80% and far too much of it reached the box.
   // 0.12 was calibrated against a belief that undersold every risky ball; with the belief honest
   // the same cost of losing it buys less caution, so 0.18. See passCal*.
-  loss: 0.18,
+  // Raised 0.18 -> 0.28 in the completion rework: the league attempted passes down to whatever
+  // belief this tolerated, so every physical completion gain was spent on extra aggression until
+  // the marginal ball was as risky as before. Swept 0.18/0.26/0.34: completion 69.6/71.2/73.9 and
+  // goals 2.74/2.63/2.38 -- 0.34 is catatonic, 0.28 prices a professional's actual respect for
+  // possession. The manager instructions scale risk appetite around whatever this is.
+  loss: 0.36,
   // How fast running with it stops working as defenders close. At 0.055 a carry retained 88% with a
   // man on him, so the safest option was always to keep running and passing collapsed to a fifth of
   // its real rate. Real dribble success under genuine pressure is closer to half.
@@ -383,7 +393,11 @@ foulAggr: 0.25,
   // rates +0.28 higher, against +1.1 and +0.15 before, and a better passer's sharper judgement
   // finally buys him something because the objective he sharpens is the real one.
   // Refitted at the landing (400 matches); `node test/ratings.mjs check` holds it within 0.30.
-  passCal0: 1.98, passCalB: 1.26, passCalR: 1.26, passCalL: 5.64,
+  // passCal0 carries +0.10 over the joined fit's 2.35: the 0.3-0.5 belief band sat 0.06 under
+  // its real completion across three independent fits -- a residual of the model's shape, not of
+  // any one sample -- and recentering the intercept closes it while the high bands stay inside
+  // tolerance. Do not chase that band with more derive cycles; it oscillates.
+  passCal0: 2.41, passCalB: 1.21, passCalR: 1.50, passCalL: 3.08,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -739,7 +753,7 @@ foulAggr: 0.25,
   // side with no playmaker ended up with one anyway. Somebody still takes the ball in a flat
   // midfield, so it is not zero -- it is small.
   pmkAbsLo: 72, pmkAbsSpan: 12, pmkRelFull: 4, pmkRelLo: 0.15,
-  pmkRecvW: 0.10,
+  pmkRecvW: 0.40,
   // TRIED AND MEASURED, and it is OFF: handing the hub the support duty -- the short option BEHIND
   // the carrier -- moved creation barely at all (top creator's share of his club's key passes 15%
   // to 16%) and cost 0.28 goals a match, with the best side's GF falling 75 to 65 and the league's
@@ -749,7 +763,7 @@ foulAggr: 0.25,
   // How much more a hub wants the dangerous pocket, added to the 1.30 every player weighs it at,
   // and how much of the pull back toward his formation slot he is released from. Both scale by
   // _pmk, so a squad with nobody who stands out plays exactly as it did.
-  pmkDanger: 1.10, pmkRoam: 0.55,
+  pmkDanger: 1.40, pmkRoam: 0.55,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
@@ -1057,6 +1071,18 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // played; the actual lead is solved so the two ARRIVE TOGETHER, because a fixed lead overshoots
   // whenever the ball gets there first -- which, at pass speed against a running man, it always did.
   thruMax: 14, thruMin: 3.5,
+  // A LED BALL IS RUN ONTO, NOT MET AT THE LIMIT. The lead used to be solved so ball and man
+  // arrive together at the far end of his sprint: any hesitation and it ran through him -- which
+  // it did, constantly. Measured over 22,097 passes: 31% of everything attempted was an
+  // into-space ball completing 47%, and HALF of all interceptions were the ball running past its
+  // own receiver -- against 9% cut in the lane, the thing interceptions are supposed to be.
+  // thruReact is the seconds of flight the receiver does not get to use (he has to see it played
+  // before he runs), and thruLeadFrac aims the ball short of the solved limit so the last stride
+  // belongs to the man, not the flight. Both shorten every lead; neither touches a ball to feet.
+  thruReact: 0.45, thruLeadFrac: 0.68,
+  // The gate and the cap on jog-leads: a receiver moving slower than thruMoveV (m/s) has no
+  // into-space option at all, and one merely jogging is led at most thruJogMax metres.
+  thruMoveV: 1.6, thruJogMax: 7,
   // How much of the real flight time a ball to a moving man is led by. Under one because he will not
   // hold his current line and pace for the whole flight -- he is running to meet it, not past it.
   // Swept 0.6 / 0.85 / 1.0: completion came out 79 / 78 / 76%, which is flat within noise at this
@@ -1113,7 +1139,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   bounceGrip: 0.74, bounceMin: 1.2,
   // Kicking. A ground pass is aimed to ARRIVE at passArrive m/s; execution noise replaces the old
   // outcome roll -- degrees of aim error by skill and pressure, and a power wobble.
-  passArrive: 6, passMaxV: 30, passNoiseDeg: 3.9, passNoiseSkill: 9, passNoisePress: 2.5, powerNoise: 0.05, powerNoiseSkill: 0.15,
+  passArrive: 6, passMaxV: 30, passNoiseDeg: 2.5, passNoiseSkill: 6.8, passNoisePress: 2.5,
+  // Weight, trimmed 26 Aug 2026 as part of the completion rework: at 0.05 + 0.15 the mean player
+  // put +-20% swings on the ball and the overrun tail fed the ran-past-the-receiver class above.
+  // The skill slope stays meaningful -- weight is still the half of passing that separates levels.
+  powerNoise: 0.028, powerNoiseSkill: 0.11,
   // Lofted balls: flight time T = highT0 + highTk * distance, launch solved from T.
   highT0: 0.9, highTk: 0.035,
   // Receiving. Reach is a radius around the receiver against the ball's path this tick; a ball
@@ -1126,7 +1156,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // How much further than a controlling touch he can stretch to KICK it -- a toe-poke reaches a
   // little past the foot that shepherds it, but not four metres past.
   playReach: 1.10,
-  reach: 0.70, cutReach: 0.60, controlV: 11, controlVSkill: 6,
+  // cutReach trimmed 0.60 -> 0.53 in the completion rework: at 0.60 a marker's poke matched 88%
+  // of the receiver's own reach, so 27% of all interceptions were clean picks AT the target man's
+  // feet -- real markers arrive a beat late and tackle after the touch instead. The anticipation
+  // span (cutAntLo/W below) still separates a reader of the game from a statue.
+  reach: 0.70, cutReach: 0.53, controlV: 11, controlVSkill: 6,
   // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
   // anchored to 1.0 at a 75-rated centre-half (position attr ~81, meTech ~0.82) so the calibrated
   // baseline is untouched and only the spread across bands is new.
@@ -1267,7 +1301,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // MATCH RATING deltas, on the abstract sim's scale so the two engines agree about what a 7 means.
   // rateGoalXgW is how much of a goal's credit is taken back for it having been an easy one;
   // rateGoalXgDef is what a goal with no shot attached to it is assumed to have been worth.
-  rateGoal: 0.9, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
+  // rateGoal raised 0.9 -> 1.15 in the board rebalance: through ctx and the xg discount the
+  // effective credit was ~0.7 a goal against the ~1.0-1.2 the reference systems pay, and goals
+  // are the one currency concentrated in the players a season board is FOR -- the top scorers.
+  // Uniform cuts to hub pay could never reorder the board (the positional par re-centers the
+  // mean and hands most of it back); paying the striker's currency properly is the symmetric fix.
+  rateGoal: 1.15, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
   // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
   // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
   // a busy keeper rated well for being busy, and the good keeper on the good side, facing three
@@ -1289,13 +1328,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.85, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
-  gkExp: [[0.05, 0.14], [0.10, 0.14], [0.20, 0.16], [0.30, 0.29], [0.40, 0.77], [0.60, 0.41], [1.01, 0.85]],
+  rateSave: 0.65, gkExpPen: 0.86, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  gkExp: [[0.05, 0.16], [0.10, 0.17], [0.20, 0.14], [0.30, 0.30], [0.40, 0.73], [0.60, 0.49], [1.01, 0.85]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.15,
+  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1318,7 +1357,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // xG for arriving where the chance was, from the same per-match cap pool as the build credit.
   // Without it a striker's whole afternoon was the binary of conversion -- the board's forwards
   // vanished behind defenders the moment defensive actions started paying properly.
-  rateChanceBuild: 0.45, rateChanceGet: 0.35, rateChanceCap: 1.1,
+  // rateChanceCap cut 1.1 -> 0.75 with the board rebalance (27 Aug 2026): the playmaker role
+  // concentrates the build chains on one man, and at 80% completion he hit the old cap most
+  // afternoons -- the cap is what keeps a hub's season from towering over every striker's.
+  // The cap is the hub's board rating: he saturates it nearly every match, so whatever it is
+  // set to lands on his season as a flat bonus the rest of his position never collects. 1.1
+  // built a board of nine midfielders; 0.30 is what keeps the credit real without deciding the
+  // whole table by itself.
+  rateChanceBuild: 0.35, rateChanceGet: 0.35, rateChanceCap: 0.25,
   // ...and STOPPING the chance is worth what the chance was. A flat tackle rate said cutting out
   // a square ball on halfway and an interception on the six-yard line were the same act. Every
   // defensive action -- tackle, interception, block, clearance -- now scales with the danger of
@@ -1357,7 +1403,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // A chance is big when the model says roughly a third of them go in. Creating one is worth more
   // than the key pass it already scores; spurning one is a real cost, and it is charged whether the
   // keeper saved it or it went wide, exactly as it is in the systems this is modelled on.
-  bigChanceXg: 0.30, rateBigChance: 0.30, rateBigMiss: 0.28, rateBigMissCap: 1.7,
+  bigChanceXg: 0.30, rateBigChance: 0.20, rateBigMiss: 0.28, rateBigMissCap: 1.7,
   // The moments that were missing. A penalty saved and a tackle made with nobody behind you are two
   // of the biggest single things a keeper or a defender can do in a match, and neither existed.
   ratePenSave: 0.85, ratePenMiss: 0.80, rateLastMan: 0.28, tkLastManR: 34,
@@ -1377,7 +1423,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derive it the same way if any delta above, or rateSpread, moves.
   // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
   // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
-  ratePos: { GK: -0.034, DEF: -0.431, MID: -0.709, FWD: -1.021 },
+  ratePos: { GK: 0.064, DEF: -0.490, MID: -0.479, FWD: -1.367 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1411,7 +1457,27 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // forward compresses the men whose seasons the board is supposed to be about. The middle of a
   // season table carries defenders and that is what a defender's season looks like; the top of it
   // is forwards and midfielders, and that is what these hold.
-  rateSpread: { GK: 1.30, DEF: 0.90, MID: 1.15, FWD: 1.25 },
+  // Re-tuned after the pass-completion rework (27 Aug 2026): the safer league pays midfielders
+  // far more routine volume -- completions, progressions, key passes, assists all rose -- so at
+  // MID 1.15 the season board went nine midfielders in the top ten. The middle band comes down
+  // and the forward opens up; the raw swing the multipliers act on is not what it was in August's
+  // first derivation, so these are set by the board they produce, not by the old sd ratios.
+  // Re-set with the accumulation trims (rateChanceCap, rateKeyPass): once the hub's rating
+  // volume is capped at source, the multipliers stop fighting the economy and come back to sane
+  // values -- MID 0.90 was compressing every ordinary midfielder's afternoon to protect the board
+  // from three playmakers. The board should read: forwards and midfielders who carried their
+  // team, the standout defender, the standout keeper.
+  // Composition-tuned (27 Aug 2026, third pass): a 19-goal striker already rates 7.8 -- the
+  // problem was tier width, not the top. Every club fields a playmaker at 7.3+, only a few
+  // forwards a season post carry-the-team numbers, so the forward tier is wide open and the hub
+  // tier comes in. GK 1.30 put two keepers in one top ten; one standout is the brief.
+  // Fourth and final composition pass: the multipliers stopped moving the board (8 MID at FWD
+  // 1.55 vs MID 0.94), because the towering seasons are the CREATION ECONOMY, not the spread --
+  // so the key-pass and chain-credit rates above took the cut instead, and the multipliers hold
+  // here. Note for the next person: half the board's "midfielders" are creative winger/AM
+  // profiles that real-world taxonomies list as forwards; the preset position labels understate
+  // the board's true attacker share.
+  rateSpread: { GK: 1.28, DEF: 1.15, MID: 0.94, FWD: 1.55 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
@@ -1914,7 +1980,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // 16.3 / 18.1 / 17.5 and the league's best 25 / 32 / 25, with the best side's GF 75 / 95 / 86.
   // It concentrates goals in the good sides and the good strikers rather than floating the whole
   // league, which is what the keeper dial does. 0.90 overshoots and flattens again.
-  shotElevErr: 8.0, shotElevSkill: 0.90,
+  shotElevErr: 8.0, shotElevSkill: 0.95,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -1974,7 +2040,7 @@ gkDiveV: 2.9,
   // Intercept dropped 0.24 in logit space (ln 2.64/3.34) when the keeper's save reach and the
   // loose-ball claim took goals a match from 3.7 to ~2.6 and the recorder kept booking the old
   // conversion. Slope untouched; gkExp re-derived against the new physics the same day.
-  xgCal0: -0.86, xgCalB: 0.468,
+  xgCal0: -0.69, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   gkDiveVmin: 5.0, gkDiveVmax: 9.5,
@@ -2208,7 +2274,11 @@ gkDiveV: 2.9,
   // at 0.28-0.50 the actual spread between the division's worst keeper and its best was 0.11 m and
   // bought +0.07 goals prevented per ten OVR. These put the real spread near 0.19 m with the mean
   // keeper still on 0.44.
-  gkSaveReach: 0.44, gkSaveReachLo: 0.16, gkSaveReachHi: 0.53,
+  // gkSaveReach is the INFORMATIONAL centre only -- the live pair is Lo/Hi, spanned by meGkSkill.
+  // Shifted down 26 Aug 2026 as the completion rework's goals offset: the safer league creates
+  // fewer chances, so the keeper gives back what the passing took (about +0.45 goals a match,
+  // per the dial's measured ~0.17 per 0.04 of reach).
+  gkSaveReach: 0.42, gkSaveReachLo: 0.07, gkSaveReachHi: 0.50,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,
