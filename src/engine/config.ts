@@ -839,6 +839,17 @@ foulAggr: 0.25,
   // Twice measured, twice refuted, both before and after the decision it was supposedly waiting on.
   // Do not try a third dose; whatever possession is missing here, it is not defensive inertia.
   chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
+  // THE OUTLET. A deep side that intends to counter leaves its most advanced man OUT of the block,
+  // stood on the opponent's last line, and defends with nine. Every earlier attempt to make
+  // possWon +1 mean something moved anchors AFTER the turnover -- "telling it to counter" measured
+  // -0.05 because the box refills in three seconds and there was nobody up the pitch to counter
+  // with; the note above blkMidDrop found pulling the front band back "just shortens the block, and
+  // the men it moves stop being an out-ball". This is the inverse: the out-ball is permanent, paid
+  // for with a defender. Gated structurally on possWon > 0 AND pressingLOE < 0 -- the sit-off
+  // counter identity (Counter, Catenaccio, Zona Mista) -- so a pressing side cannot have it: its
+  // press IS its transition game. outletBack is how far onside of the line he stands; outletWide
+  // how much of his natural width he keeps, pulled toward the centre where the out-ball goes.
+  outletBack: 1.5, outletWide: 0.5,
   // THE STIR, tried and reverted in one night: bank "disorganisation" while the other side holds
   // the ball, decay it on a clock, spend it as deterministic positional error on every man in the
   // block (worse for a poor position attribute), so lanes that do not exist against a set block
@@ -1889,6 +1900,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // worth against the same spot ahead, reached orbitBackSpan metres back. Not zero: a side still
   // needs an out-ball, and the support duty is a separate mechanism that provides one regardless.
   orbitBand: 6, orbitMin: 5, orbitBackLo: 0.35, orbitBackSpan: 12, orbitW: 0.30, basePullW: 0.7,
+  // SHOWING FOR IT. A short-passing side's whole game is receivers who keep presenting a clean lane,
+  // and the space search priced a blocked lane identically for every style -- so Tiki-Taka stood in
+  // traffic exactly as often as Route One and completed 87.6% against Balanced's 91.4%, backwards
+  // for the side taking the shortest, safest balls in the game. Per notch of NEGATIVE passingDir
+  // the lane term scales up by this much; direct sides are untouched -- a target man does not care
+  // about the lane, the ball arrives over it.
+  laneSeekShort: 0.6,
   // WHERE THE OUTLET STANDS, and it follows the passing length now. suppBack is where he stands at
   // passingDir 0 -- seven metres behind the ball, which is the right place for a side that hits it
   // forward and needs somewhere to recycle to. For a side told to keep it short it was dead centre

@@ -13556,7 +13556,15 @@ export default function App() {
                       FIXTURE, not of the moment before kick-off, and the setup screen already asks
                       it as Force Result -- two controls for one decision, on two screens, with the
                       later one silently overriding the earlier. meKick reads lmForce now. */}
-                  <button onClick={() => setMeView("setup")} style={smBtn}>Back</button>
+                  {/* BACK UN-CONFIRMS THE FIXTURE. tConfirmPlayLive consumed tPendingPlayLive on the way
+                      in, so returning to setup without restoring it left the screen unlocked with the
+                      tournament context stranded in meTourn -- and the next Start Match took the
+                      friendly branch, nulled meTourn, and the match you then watched offered New
+                      instead of Import at full time. Backing out returns to exactly the state Start
+                      Match found: fixture pending, setup locked, ready to confirm again. */}
+                  <button onClick={() => { const tn = meTourn.current;
+                      if (tn?.target) { setTPendingPlayLive(tn.target); meTourn.current = null; }
+                      setMeView("setup"); }} style={smBtn}>Back</button>
                   <button onClick={meKick} style={{ ...addBtn, border: "none", color: "var(--ui-on-accent)",
                                                     background: "var(--chrome-brand)" }}>&#9917; Kick Off</button>
                 </div>

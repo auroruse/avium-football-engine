@@ -508,7 +508,12 @@ export function meDecide(s, rng, side, i, dwell) {
     // clean through because it was told to keep it short. Off entirely when nobody but the keeper is
     // left, so the instruction shapes the build-up and never the last ball.
     const want = CFG.passWant + st.passingDir * CFG.passWantStep;
-    if (meCoverGoalSide(s, side, aimX) > 0)
+    // ...AND NOT ON THE BREAK. A counter-attacking side's first ball after winning it is however
+    // long the out-ball is -- taxing a 45 m pass to the outlet because the stamp prefers 24 m
+    // strangled the counter at birth, in the transition window that is the whole reason the side
+    // sits off. Gated on possWon +1 inside transT, the same window every other transition term uses.
+    const breaking = mp.side === side && (mp.possT ?? 99) < CFG.transT && (st.possWon || 0) > 0;
+    if (!breaking && meCoverGoalSide(s, side, aimX) > 0)
       val -= Math.max(0, Math.abs(d - want) - CFG.passBand) * CFG.passWantW;
     // ...and it is worth far more if the man receiving it has ROOM. meVal is pure geometry: on a
     // surface that is nearly flat through midfield it says twelve metres of progress is worth 0.007

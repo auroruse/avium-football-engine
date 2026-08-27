@@ -371,6 +371,16 @@ export function meDuties(s, side) {
   // A man who has just been gone past cannot be the one who presses next -- that is what being
   // beaten MEANS, and without it a defender who dived in and lost simply closed again a quarter of
   // a second later, which is why standing on the man's toes was free.
+  // THE OUTLET, exempted before any job is handed out. "outlet" is not "hold", so free() and every
+  // press/mark/screen search below skip him without knowing he exists. See CFG.outletBack.
+  if (defending && (st.possWon || 0) > 0 && (st.pressingLOE || 0) < 0) {
+    let oi = -1, od = -Infinity;
+    for (let i = 0; i < us.length; i++) { const p = us[i];
+      if (p.off || p.pos === "GK") continue;
+      const b = p._bd ?? p._bd0 ?? 0;
+      if (b > od) { od = b; oi = i; } }
+    if (oi >= 0) us[oi]._duty = "outlet";
+  }
   const free = () => us.map((p, i) => i).filter(i => us[i]._duty === "hold" && !(us[i]._beat > 0));
   const nearest = (x, y, pool) => { let bi = -1, bd = Infinity;
     for (const i of pool) {
@@ -755,7 +765,8 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
              // the lines, and this is the term that says a spot is worth standing in. Scaled by
              // how much of a hub he is, so a side without one is unchanged.
              + meDanger(side, cx, cy) * (1.30 + (p._pmk || 0) * CFG.pmkDanger)
-             - meLaneBlock(s, side, mp.bx, mp.by, cx, cy) * 0.30 // can the ball reach me
+             - meLaneBlock(s, side, mp.bx, mp.by, cx, cy)
+               * 0.30 * (1 + Math.max(0, -(st.passingDir || 0)) * CFG.laneSeekShort) // can the ball reach me -- and a short-passing side lives on it, see laneSeekShort
              + meSpaceGain(s, side, cx, cy) * ME_SPACE_W          // would we newly own ground here
              - crowd * 0.55                                      // is somebody already there
              - mindK * Math.max(0, 1 - meOppDist(s, side, cx, cy) / 8) * CFG.oppAvoidW
@@ -889,7 +900,8 @@ export function meBlock(s, side) {
   const siege = Math.max(0, Math.min(1, 1 - (line + CFG.blkDrop) / CFG.siegeDepth));
 
   const idx = [];
-  for (let i = 0; i < us.length; i++) if (us[i].pos !== "GK") idx.push(i);
+  // The outlet is not in the block -- that is the whole trade. The nine that remain re-space.
+  for (let i = 0; i < us.length; i++) if (us[i].pos !== "GK" && us[i]._duty !== "outlet") idx.push(i);
   let mn = Infinity, mx = -Infinity;
   // THE LIVE SLOT, NOT THE ONE HE STARTED IN. These read _bd0, which match.ts:32 writes once at
   // kickoff and nothing but a substitution ever touches -- so which band a man belonged to was fixed
@@ -1281,6 +1293,16 @@ export function meShape(s, side) {
     // it. Nothing else applies -- no trap compression, no leash back to a formation slot, no
     // screening rule -- because those were all separate attempts to recover a shape the block just
     // has. A man who has picked somebody up moves at his own pace rather than easing into a mark.
+    if (!attacking && p._duty === "outlet") {
+      // Stood on their last line, waiting for the out-ball. `off` is the opponent's second-last
+      // defender -- the exact line his side's attackers must respect -- so against a high line he
+      // holds at halfway with the whole pitch behind it, which is the punishment a high line has
+      // never had to price. Written straight to the target the way the block branch writes its
+      // slot: this is a standing order, not a graded choice.
+      p._tx = Math.max(1.5, Math.min(PITCH_L - 1.5, off - dir * CFG.outletBack));
+      p._ty = Math.max(1.5, Math.min(PITCH_W - 1.5, ME_HALF_W + ((p._bw0 ?? ME_HALF_W) - ME_HALF_W) * CFG.outletWide));
+      continue;
+    }
     if (!attacking && p._duty !== "press" && p._duty !== "cover" && p._duty !== "recover") {
       let tx2 = p._bsx ?? p.x, ty2 = p._bsy ?? p.y;
       // ...BUT A MAN WHO HAS BEEN GIVEN SOMEBODY TO MARK GOES AND MARKS HIM. The block owning every
