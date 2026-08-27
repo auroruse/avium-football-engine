@@ -8,6 +8,18 @@ import { meOppDist } from "./brain";
 import { meSpeed } from "./attributes";
 import { meTick } from "./match";
 
+// CLEAN THROUGH. Outfield opponents goal-side of a point; zero means nobody but the keeper is left
+// between it and the goal. No lateral corridor on purpose -- a man level with the aim point out on
+// the far touchline is still ahead of it, and every caller uses this to switch a tactic OFF, so it
+// has to read tight. This is the count escThruW has always used; it is a function now because the
+// instruction waivers below need exactly the same question answered.
+export function meCoverGoalSide(s, side, x) {
+  const dir = meDir(side);
+  let n = 0;
+  for (const o of s.players[meOther(side)]) if (o && !o.off && o.pos !== "GK" && (o.x - x) * dir > 0) n++;
+  return n;
+}
+
 // Live-tunable: xgK and shotWorth moved onto CFG so calibration sweeps actually reach them --
 // as module constants they were dead knobs and a sweep over them measured pure seed noise.
 export const ME_XG_K = 0.143;
@@ -491,8 +503,13 @@ export function meDecide(s, rng, side, i, dwell) {
     // metre from Tiki-Taka. Inside the band a ball is free, and the charge only starts where the
     // side stops looking. That is a constraint on the option set rather than a distortion of the
     // objective, which is the only shape of instruction that has ever worked in here.
+    // ...UNLESS IT SPRINGS HIM. A preferred length is a constraint on the option set, which is what
+    // makes it a tactic rather than a buff -- but no side alive declines the ball that puts a man
+    // clean through because it was told to keep it short. Off entirely when nobody but the keeper is
+    // left, so the instruction shapes the build-up and never the last ball.
     const want = CFG.passWant + st.passingDir * CFG.passWantStep;
-    val -= Math.max(0, Math.abs(d - want) - CFG.passBand) * CFG.passWantW;
+    if (meCoverGoalSide(s, side, aimX) > 0)
+      val -= Math.max(0, Math.abs(d - want) - CFG.passBand) * CFG.passWantW;
     // ...and it is worth far more if the man receiving it has ROOM. meVal is pure geometry: on a
     // surface that is nearly flat through midfield it says twelve metres of progress is worth 0.007
     // against 0.030 for simply still having the ball, so a ball into twenty metres of open grass and
@@ -513,8 +530,7 @@ export function meDecide(s, rng, side, i, dwell) {
     // the keeper. Count the outfield men goal-side of the aim: one cover man halves it, two kill
     // it, and against a deep block there are always two, so only height concedes the bonus.
     if (thru && q._run === "behind") {
-      let _gs = 0;
-      for (const o of s.players[meOther(side)]) if (o && !o.off && o.pos !== "GK" && (o.x - aimX) * dir > 0) _gs++;
+      const _gs = meCoverGoalSide(s, side, aimX);
       val += Math.max(0, 1 - _gs / 2) * CFG.escThruW;
     }
     // ...and who he is. What he can finish is priced above; this is what he can DO with it, which
@@ -563,6 +579,11 @@ export function meDecide(s, rng, side, i, dwell) {
                                                c: [okBase, okRisk, okLate, d, blk, press, rPress] }; }
     }
   }
+  // THE MAN HIMSELF IS THROUGH. Same waiver as the pass band: a side told not to dribble should not
+  // decline to run at an empty defence, and one told to get it forward should not be nudged into
+  // hoofing it from the edge of their box. Instructions govern how a side builds, not what it does
+  // once it has already broken.
+  const thruMe = meCoverGoalSide(s, side, p.x) === 0;
   // Carry it. Cheap, safe, gains a little -- and the option a pressed player loses first.
   // drb is now a real retention probability, and meTick rolls against exactly this number.
   //
@@ -623,7 +644,7 @@ export function meDecide(s, rng, side, i, dwell) {
             - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.
-  const jdsc = dsc + CFG.carryInstrW * obey * (st.dribbling || 0) + jit("carry");
+  const jdsc = dsc + (thruMe ? 0 : CFG.carryInstrW * obey * (st.dribbling || 0)) + jit("carry");
   if (jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
   }
   // Hoofing it. You probably concede possession, but you concede it forty metres from your own goal
@@ -691,7 +712,7 @@ export function meDecide(s, rng, side, i, dwell) {
     // it separates almost nothing, and all nine share the +0.11 xG that Into Space is worth over
     // Play Out. That gradient is about 1.2 standard errors, so it is a slope rather than a trade,
     // but it is too marginal to act on without a bigger sample.
-    const jc = sc + styleW * (st.approachPlay || 0) * CFG.apClearW + jit("clear");
+    const jc = sc + (thruMe ? 0 : styleW * (st.approachPlay || 0) * CFG.apClearW) + jit("clear");
     if (jc > bestSc) { bestSc = jc; best = { k: "clear", p: ok2, cx, cy }; }
   }
   // Into the stand. No gain at all, so it only ever wins when everything else is worse than a

@@ -13240,7 +13240,7 @@ export default function App() {
                       const mCell = (min, add) => (
                         <div style={{ width: 34, minWidth: 34, display: "flex", alignItems: "center",
                                       justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{fmtMin(min, add)}</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--chrome-muted)", ...mono }}>{min == null ? "" : fmtMin(min, add)}</span>
                         </div>);
                       const iCell = (content, sz) => (
                         <div style={{ width: 22, minWidth: 22, display: "flex", alignItems: "center",
@@ -13336,7 +13336,7 @@ export default function App() {
                         // shootout is not part of the scoreline -- and those two lists are exactly
                         // what this panel is built from, so the whole thing vanished. It is kept
                         // separately and reported separately, in the order the kicks were taken.
-                        const pens = (out.pens || []).map((p, i) => row("pk" + i, "", p.side, "pk", (<>
+                        const pens = (out.pens || []).map((p, i) => row("pk" + i, null, "", p.side, "pk", (<>
                           <b style={{ fontWeight: 700, color: p.scored ? "var(--ui-ok)" : "var(--ui-danger)" }}>
                             {p.scored ? "SCORED" : "MISSED"}</b>
                           <span style={{ color: "var(--chrome-muted)" }}> {p.full || p.name}</span>

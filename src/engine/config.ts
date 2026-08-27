@@ -1875,7 +1875,44 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   riskHigh: 0.78,
   // Force-field terms (elizacontroller.cpp:597-789): the 12-21 m orbit band around the carrier, and
   // a base pull that grows with how far out of shape you already are.
-  orbitLo: 12, orbitHi: 21, orbitW: 0.30, basePullW: 0.7,
+  // WHERE HIS TEAM-MATES STAND RELATIVE TO HIM, and it used to be a fixed 12-21 m ring measured on
+  // raw distance. Both halves of that were wrong for anybody not passing at 16 m.
+  // The band is now the side's OWN preferred length, orbitBand either side of it, so a side told to
+  // keep it short stands inside its own range instead of outside it. At passingDir -2 the old ring
+  // asked for 12-21 m against a pass band of 2-14: the men it positioned were, by construction,
+  // beyond the balls it wanted to play. orbitMin stops a very short side standing on the carrier.
+  // ...AND IN FRONT OF HIM. A spot seven metres behind the carrier scored exactly what one seven
+  // metres ahead did, because Math.hypot does not know which way the goal is. That is the whole of
+  // why a short-passing side's reachable options were beside and behind it: measured, Tiki-Taka
+  // gained 0.50 m of ground per completed pass against Gegenpress's 5.24, and 40.9% of its completed
+  // passes went backwards against 40.5% forwards. orbitBackLo is what a spot directly behind is
+  // worth against the same spot ahead, reached orbitBackSpan metres back. Not zero: a side still
+  // needs an out-ball, and the support duty is a separate mechanism that provides one regardless.
+  orbitBand: 6, orbitMin: 5, orbitBackLo: 0.35, orbitBackSpan: 12, orbitW: 0.30, basePullW: 0.7,
+  // WHERE THE OUTLET STANDS, and it follows the passing length now. suppBack is where he stands at
+  // passingDir 0 -- seven metres behind the ball, which is the right place for a side that hits it
+  // forward and needs somewhere to recycle to. For a side told to keep it short it was dead centre
+  // of its own preferred range, so the single most attractive option on the pitch was the backward
+  // one, by construction, and only for the styles least able to afford it.
+  // ONE-SIDED, on the shotWant pattern: only NEGATIVE passingDir moves him, because a direct side's
+  // outlet behind it is already correct and nothing measured says it wants to be deeper. At
+  // passingDir 0 this is exactly the number that was hard-coded here, so a side carrying no
+  // instruction is unchanged. At -2 he stands five metres in FRONT of the ball, clamped to the
+  // offside line so the shortest option is never an illegal one.
+  // MEASURED, AND IT IS A NULL. Three runs at 40 fixtures a style: the two styles this is for moved
+  // less than the passingDir-0 control did. The instruction is issued and never executed. Where the
+  // outlet is ASKED to stand against where he ACTUALLY stands, metres ahead of the ball:
+  //   tikitaka -0.67 asked / -7.02 actual     balanced -7.01 asked / -8.25 actual
+  // Balanced's outlet is 0.2 m from his target; Tiki-Taka's is 5.8 m behind it, which is to say
+  // exactly where he was before any of this. Two things eat it, and the second is fatal. The offside
+  // clamp takes +5 down to about level on its own, because a side camped in the final third has its
+  // offside line behind the ball. Then the man picked as nearest to a point in FRONT of the ball is,
+  // in practice, always a man behind it -- and he is walking forward while the ball moves, so he
+  // never arrives. One man cannot be moved across the ball by asking him to.
+  // A forward short option has to come from somebody ALREADY in front: the runner and hold
+  // population, which is what attackingRing reaches. Do not re-tune suppDirStep expecting this to
+  // land; the next attempt has to change WHO is picked, not where he is sent.
+  suppBack: 7, suppDirStep: 6,
   // Shot decision knobs, mirrored from decide.ts so sweeps reach them live.
   // What a shot is worth against keeping the ball. At 0.6 a man through on goal preferred a safe
   // ball sideways: real footballers shoot considerably more than the expected-goals-optimal rate,

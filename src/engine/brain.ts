@@ -339,6 +339,19 @@ export function meGkAngle(p, own, bx, by) {
 // ---- coordinators --------------------------------------------------------------------------
 // Every outfielder gets exactly one job. Defensively that is press / cover / mark / screen / hold;
 // in possession it is width / runner / support / hold. Nothing is implicit and nothing is shared.
+// WHERE THE OUTLET STANDS, as ONE number. meDuties picks the man nearest this point and meShape
+// sends him to it, and until now each worked it out for itself -- 6 m behind the ball for the pick,
+// 7 m behind for the destination. Harmless while both were behind; the moment a short-passing side
+// wanted its outlet in FRONT, the side went on choosing the man nearest a spot behind the ball and
+// then asking him to run eleven metres past it, which he never completed before the ball moved.
+// That is why moving the destination alone measured as nothing at all. See CFG.suppBack.
+export function meSuppX(s, side) {
+  const mp = s.mePos, dir = meDir(side), st = s.strategy?.[side] || NO_INSTRUCTIONS;
+  const x = mp.bx + dir * (-CFG.suppBack - Math.min(0, st.passingDir || 0) * CFG.suppDirStep);
+  const off = meOffsideLine(s, side);
+  return (x - off) * dir > 0 ? off : x;          // never offer from an offside spot
+}
+
 export function meDuties(s, side) {
   const mp = s.mePos, us = s.players[side], them = s.players[meOther(side)];
   const dir = meDir(side), own = meGoalX(meOther(side));
@@ -634,9 +647,10 @@ export function meDuties(s, side) {
     // around one man he comes to get the ball nearly every time. Touches are what creation is
     // made of, so this is the half of the role that matters.
     let si = -1, sbest = Infinity;
+    const suppX = meSuppX(s, side);
     for (const i of free()) {
       const q = us[i];
-      const d = meTimeToBallMs(q, mp.bx - dir * 6, mp.by, meSpeed(meAttrs(q), q.stamina)) / 1000 * 7
+      const d = meTimeToBallMs(q, suppX, mp.by, meSpeed(meAttrs(q), q.stamina)) / 1000 * 7
               - (q._pmk || 0) * CFG.pmkSupport;
       if (d < sbest) { sbest = d; si = i; }
     }
@@ -669,8 +683,15 @@ function attackingRing(s, side, cx, cy) {
   const c = s.players[side][mp.idx];
   if (!c) return 0;
   const d = Math.hypot(cx - c.x, cy - c.y);
-  if (d >= CFG.orbitLo && d <= CFG.orbitHi) return 1;
-  return Math.max(0, 1 - Math.min(Math.abs(d - CFG.orbitLo), Math.abs(d - CFG.orbitHi)) / 8);
+  // The ring the side actually passes in, not a fixed one. See CFG.orbitBand.
+  const st = s.strategy?.[side] || NO_INSTRUCTIONS;
+  const want = CFG.passWant + (st.passingDir || 0) * CFG.passWantStep;
+  const lo = Math.max(CFG.orbitMin, want - CFG.orbitBand), hi = want + CFG.orbitBand;
+  let v = d >= lo && d <= hi ? 1
+        : Math.max(0, 1 - Math.min(Math.abs(d - lo), Math.abs(d - hi)) / 8);
+  // ...and it is worth standing AHEAD of him. Behind is an out-ball, not an option.
+  const back = Math.max(0, (c.x - cx) * meDir(side));
+  return v * (1 - (1 - CFG.orbitBackLo) * Math.min(1, back / CFG.orbitBackSpan));
 }
 // The ring is eight fixed compass points and it has always been eight fixed compass points, but
 // the sine and the cosine of each were taken fresh on every candidate, of every player, of every
@@ -1438,7 +1459,8 @@ export function meShape(s, side) {
         tx = sx; ty = sy; break;
       }
       case "support": {                                         // short option for the ball
-        const [sx, sy] = meBrainPos(s, side, p, i, mp.bx - dir * 7, mp.by + (ay > mp.by ? 8 : -8), off);
+        // Behind the ball for a direct side, in front of it for a short-passing one. See suppBack.
+        const [sx, sy] = meBrainPos(s, side, p, i, meSuppX(s, side), mp.by + (ay > mp.by ? 8 : -8), off);
         tx = sx; ty = sy; break;
       }
       case "width": case "hold": default: {
