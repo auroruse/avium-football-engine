@@ -688,6 +688,11 @@ export function meFinalise(s) {
       // punished: a man dismissed in the twentieth had -1.5 scaled down to -0.45 and finished on
       // 6.05, a better afternoon than most of the men who stayed on the pitch. He is rated in full.
       // An injury keeps the shrink -- going off hurt is not something he did.
+      // MINUTES, KEPT. frac is worked out here for the rating shrink and was then thrown away, so
+      // every appearance looked alike downstream and a four-minute cameo weighed what a full ninety
+      // did on a season's rating board. Nominal, because that is how a minutes column reads: a full
+      // match is 90 whatever the stoppage ran to, and a match that went to extra time also reads 90.
+      p.mins = Math.round(frac * 90);
       const shrink = p.rc ? 1 : Math.min(1, frac / CFG.rateFullFrac);
       // The rating is the PERFORMANCE, not the duration. Accumulated deviation used to be taken at
       // face value from rateFullFrac up, so a striker subbed on 65 carried 72% of his own afternoon

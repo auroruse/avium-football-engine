@@ -2276,10 +2276,20 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
 // 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
+// HOW MUCH FOOTBALL A MAN PLAYED, for tiebreaks and for the rating gate. Minutes where they were
+// recorded and appearances where they were not, per player, so a set written before minutes existed
+// still ranks -- and a set cannot mix the two, because either the engine stamped every man or none.
+// Counted in appearances, seven substitute cameos gated a man in alongside seven starts and then
+// his average was taken over those cameos as though each had been a full afternoon.
+const tApps = (p) => (p.matches || 0) + (p.subApp || 0);
+const tTime = (p) => p.mins || tApps(p);
+const tGate = (all) => Math.max(1, ...all.map(tTime)) / 6;
 const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
 const PSTATS_KIND = { wc: 0, cwc: 2 };            // anything else is a league season
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
-const FORMER_TEAMS = { CAL: "Calveria", THO: "The Thorne", LEC: "Lechia" };
+// Slytlia has a badge and a record but no preset row yet, so it is a former side by the same
+// mechanism until it gets one. THO and LEC left when the records they appeared in were renamed.
+const FORMER_TEAMS = { CAL: "Calveria", SLY: "Slytlia" };
 const formerName = (code) => FORMER_TEAMS[code] || code;
 // A former side's badge outlives its preset row, so a report naming one still gets its crest.
 const FORMER_BY_NAME = Object.fromEntries(Object.entries(FORMER_TEAMS).map(([c, n]) => [n, c]));
@@ -2312,14 +2322,22 @@ function clubNamesIn(text) {
 function parseStatBoards(text) {
   const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
   const head = rows[0] || [], boards = {};
+  // The block grew ST and MIN beside GP, and the archive keeps every older shape, so the stat
+  // column is FOUND by walking the header rather than counted four along from PLAYER. A season
+  // written before minutes existed simply reads 0 for the columns it never had.
+  const KNOWN = { POS: "pos", TEAM: "team", GP: "gp", ST: "st", MIN: "min" };
   head.forEach((h, i) => {
     if (h !== "PLAYER") return;
-    const stat = head[i + 4] === "S" ? "SV" : head[i + 4];
+    const col = {};
+    let j = i + 1;
+    for (; j < head.length && KNOWN[head[j]]; j++) col[KNOWN[head[j]]] = j;
+    const stat = head[j] === "S" ? "SV" : head[j];
     if (!stat) return;
     const list = [];
     for (const r of rows.slice(1)) {
       if (!r[i]) continue;
-      list.push({ player: r[i], pos: r[i + 1], team: r[i + 2], gp: +r[i + 3] || 0, v: +r[i + 4] || 0 });
+      list.push({ player: r[i], pos: r[col.pos], team: r[col.team], gp: +r[col.gp] || 0,
+                  st: +r[col.st] || 0, min: +r[col.min] || 0, v: +r[j] || 0 });
     }
     boards[stat] = list;
   });
@@ -2939,31 +2957,42 @@ function buildSeasonStatsTsv(tPlayerStats) {
   const gp = p => (p.matches || 0) + (p.subApp || 0);
   const nameOf = p => p.fullName || p.name;
   const codeOf = p => p.code || (p.team || "").slice(0, 3).toUpperCase();
+  // QUALIFYING ON MINUTES, not on appearances. Counted in appearances, seven substitute cameos
+  // qualified a man on the same footing as seven starts, and then his average was taken over those
+  // cameos as though each were a full afternoon. Minutes answer both. Falls back to appearances for
+  // stats carried over from before minutes were recorded.
+  const mins = p => p.mins || 0;
+  const maxMin = Math.max(0, ...all.map(mins));
   const maxGp = Math.max(1, ...all.map(gp));
   const minQ = Math.ceil(maxGp / 6);
+  const qualifies = maxMin > 0 ? (p => mins(p) >= maxMin / 6) : (p => gp(p) >= minQ);
   const boards = [
     ["G", all.filter(p => (p.goals || 0) > 0).sort((a, b) => b.goals - a.goals || gp(a) - gp(b)).map(p => [p, p.goals])],
     ["A", all.filter(p => (p.assists || 0) > 0).sort((a, b) => b.assists - a.assists || gp(a) - gp(b)).map(p => [p, p.assists])],
     ["RTG", (() => { const played = all.filter(p => gp(p) > 0)
         .map(p => [p, +(p.totalRating / gp(p)).toFixed(1)]);
-      const q = played.filter(([p]) => gp(p) >= minQ).sort((a, b) => b[1] - a[1] || gp(a[0]) - gp(b[0]));
-      const rest = played.filter(([p]) => gp(p) < minQ).sort((a, b) => b[1] - a[1]);
+      const q = played.filter(([p]) => qualifies(p)).sort((a, b) => b[1] - a[1] || gp(a[0]) - gp(b[0]));
+      const rest = played.filter(([p]) => !qualifies(p)).sort((a, b) => b[1] - a[1]);
       return [...q, ...rest]; })()],
     ["CC", all.filter(p => (p.cc || 0) > 0).sort((a, b) => b.cc - a.cc || gp(a) - gp(b)).map(p => [p, p.cc])],
     ["DC", all.filter(p => (p.defActs || 0) > 0).sort((a, b) => b.defActs - a.defActs || gp(a) - gp(b)).map(p => [p, p.defActs])],
     ["S", all.filter(p => (p.saves || 0) > 0).sort((a, b) => b.saves - a.saves || gp(a) - gp(b)).map(p => [p, p.saves])],
   ];
   const H = [], n = Math.max(...boards.map(([, b]) => b.length));
-  boards.forEach(([stat], bi) => { if (bi) H.push(""); H.push("#", "PLAYER", "POS", "TEAM", "GP", stat); });
+  // GP is appearances, ST is how many of them were starts, MIN is minutes. Subs are GP - ST.
+  // Older seasons in the archive carry GP alone; parseStatBoards walks the header rather than
+  // counting columns from PLAYER, so both shapes read.
+  boards.forEach(([stat], bi) => { if (bi) H.push(""); H.push("#", "PLAYER", "POS", "TEAM", "GP", "ST", "MIN", stat); });
   const rows = [H.join("\t")];
   for (let i = 0; i < n; i++) {
     const cells = [];
     boards.forEach(([stat, b], bi) => {
       if (bi) cells.push("");
       const e = b[i];
-      if (!e) { cells.push("", "", "", "", "", ""); return; }
+      if (!e) { cells.push("", "", "", "", "", "", "", ""); return; }
       const [p, v] = e;
-      cells.push(String(i + 1), nameOf(p), p.pos || "", codeOf(p), String(gp(p)), stat === "RTG" ? v.toFixed(1) : String(v));
+      cells.push(String(i + 1), nameOf(p), p.pos || "", codeOf(p), String(gp(p)),
+                 String(p.matches || 0), String(p.mins || 0), stat === "RTG" ? v.toFixed(1) : String(v));
     });
     rows.push(cells.join("\t"));
   }
@@ -5124,7 +5153,7 @@ export default function App() {
         stamina: p.stamina,
         // _onAt is stamped only on a man who came on, so it answers "did he start" for the live
         // array and the subbed-off array at once.
-        sub: p._onAt !== undefined,
+        sub: p._onAt !== undefined, mins: p.mins || 0,
       }));
     importLiveToMatch(tn.target, {
       homeScore: m.out.goals.home, awayScore: m.out.goals.away,
@@ -5206,7 +5235,14 @@ export default function App() {
   // interval is: it is the one moment in a match where nothing should happen until somebody says so.
   // off/on are CAPS rather than durations -- the phase ends when the last man is actually through
   // the tunnel or actually back on his mark, so nobody is teleported off a walk half-finished.
-  const ME_BRK = { off: 200, on: 150, step: 0.55, gone: 69.4 };
+  // `on` is the cap on walking BACK out, and the second half is not allowed to start until the last
+  // man is on his mark -- `settled` is the real exit and this is only meant to survive a mark nobody
+  // can reach. At 150 it was not a guard, it was a race: measured across 106 intervals over every
+  // formation pair, the longest walk back took 144 ticks against a cap of 150. Four per cent of
+  // headroom, and anything that lengthens one walk -- a mark further out, a man the walk-off left
+  // short of the tunnel -- kicks the half off with players still jogging into position. Three times
+  // the worst walk on record, so reaching it means something is stuck rather than merely slow.
+  const ME_BRK = { off: 200, on: 400, step: 0.55, gone: 69.4 };
   // WHEN A REFEREE ACTUALLY BLOWS. Not on the stroke of the tick the clock runs out: he lets the
   // phase finish. So the period ends at the first moment nobody is being robbed of anything -- the
   // ball dead, or in open play with no shot live and nobody inside the last thirty-five metres of
@@ -5772,8 +5808,19 @@ export default function App() {
     // ...and normal time the same. The first half used to end dead on 45:00 with its stoppage only
     // ever appearing at the end of the match, so half time could never show a +N. Each period now
     // measures its own added time from the snapshot taken when the previous one closed.
+    // NORMAL TIME IS TWO PERIODS AND THE CLOCK ONLY EVER KNEW ABOUT ONE. meMinute maps ticks
+    // straight onto 0-90, so the first half's stoppage was spent as ordinary minutes rather than
+    // shown on a board: measured over four matches the interval arrived reading 49:00 to 53:00 with
+    // a +0, where it should have read 45+5 to 45+9. Then `end` subtracted those same ticks from the
+    // total, so the second half ran 36 to 40 displayed minutes against a first half of 50 -- added
+    // time was not added, it was taken out of the half that followed.
+    // Each period measures from its own origin now, which is what extra time has always done. m.htAt
+    // is the tick the interval fell on, and the clock does not advance across the break, so it is
+    // also the tick the second half resumes on.
+    const h2At = !etOn && m.htDone ? (m.htAt ?? (ME_MATCH_TICKS >> 1)) : null;
     const end = etOn ? m.etAt + ME_ET_TICKS + etAdd
-                     : ME_MATCH_TICKS + Math.max(0, meAdded(m.s) - (m.htAdd || 0));
+              : h2At != null ? h2At + (ME_MATCH_TICKS >> 1) + Math.max(0, meAdded(m.s) - (m.htAdd || 0))
+              : ME_MATCH_TICKS + Math.max(0, meAdded(m.s) - (m.htAdd || 0));
     // In extra time the interval moves to ITS midpoint, and it gets its own done-flag so the first
     // one having fired at 45 does not swallow the second.
     const half = etOn ? m.etAt + (ME_ET_TICKS >> 1) + etAdd : (ME_MATCH_TICKS >> 1) + meAdded(m.s);
@@ -5798,8 +5845,11 @@ export default function App() {
     for (let i = 0; i < n && !blowNow() && m.t < hardEnd; i++) {
       // meMinute stops at 90 by design, so without this every stoppage-time goal was written 90'
       // and every extra-time goal with it -- three in a row on the same minute in the feed.
-      m.out.min = etOn ? 90 + Math.min(30, Math.floor((m.t - m.etAt) / (ME_MATCH_TICKS / 90))) : meMinute(m.t);
-      m.out.add = etOn ? meAddedMin(m.t, m.etAt, ME_ET_TICKS) : meAddedMin(m.t);
+      m.out.min = etOn ? 90 + Math.min(30, Math.floor((m.t - m.etAt) / (ME_MATCH_TICKS / 90)))
+                : h2At != null ? Math.min(90, 45 + Math.floor((m.t - h2At) / (ME_MATCH_TICKS / 90)))
+                : Math.min(45, meMinute(m.t));
+      m.out.add = etOn ? meAddedMin(m.t, m.etAt, ME_ET_TICKS)
+                : meAddedMin(m.t, h2At ?? 0, ME_MATCH_TICKS >> 1);
       meTick(m.s, m.rng, m.out); m.t++; drain();
       if (!m.fast) { meSubScan(m); meSubStep(m); }
       m.tape.push(meSnap(m.s)); if (m.tape.length > ME_TAPE) m.tape.shift();
@@ -5821,7 +5871,7 @@ export default function App() {
         // minutes while a flowing one ended it at once.
         if (!meCanWhistle(m.s) && m.t - half < ME_END_WAIT) continue;
         // Snapshot the stoppage served so far, so the second period's added time counts from here.
-        if (m.et) m.etAdd1 = meAdded(m.s); else m.htAdd = meAdded(m.s);
+        if (m.et) m.etAdd1 = meAdded(m.s); else { m.htAdd = meAdded(m.s); m.htAt = m.t; }
         m[halfKey] = true; m.brk = { t: 0, kind: m.et ? "etht" : "ht" }; break;
       }
     }
@@ -6648,7 +6698,7 @@ export default function App() {
       players.forEach(p => {
         const k = teamObj.name + "|" + p.name;
         entries[k] = { name:p.name, fullName:p.fullName, pos:p.pos, ovr:p.ovr, team:teamObj.name, code:teamObj.code||teamObj.name.slice(0,3).toUpperCase(),
-          goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, totalRating: p.rating||6,
+          goals: p.goals||0, assists: p.assists||0, matches: p.sub ? 0 : 1, subApp: p.sub ? 1 : 0, mins: p.mins||0, totalRating: p.rating||6,
           yc: p.yc||0, rc: p.rc||0, inj: p.inj||0, passOk: p.passOk||0, prog: p.prog||0, cc: p.cc||0, defActs: p.defActs||0, saves: p.saves||0, stamina: p.stamina };
       });
       return entries;
@@ -6700,7 +6750,7 @@ export default function App() {
       const buildDiffs = (entries) => {
         const diffs = {};
         for (const [k, v] of Object.entries(entries)) {
-          const d = {matches:v.matches||0,subApp:v.subApp||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,prog:v.prog||0,cc:v.cc||0,defActs:v.defActs||0,saves:v.saves||0};
+          const d = {matches:v.matches||0,subApp:v.subApp||0,mins:v.mins||0,goals:v.goals||0,assists:v.assists||0,totalRating:v.totalRating||0,yellows:v.yc||0,reds:0,suspended:0,injOut:0,passOk:v.passOk||0,prog:v.prog||0,cc:v.cc||0,defActs:v.defActs||0,saves:v.saves||0};
           if (v.rc) { d.reds = 1; d.suspended = tConfig.suspensions !== false ? rcSuspGames(v.rcVariant, Math.random()) : 0; }
           if (v.inj) { const sev = v.injSev ? ME_INJURY.find(s => s.id === v.injSev) : null; d.injOut = sev ? sev.dur[0] + Math.floor(Math.random() * (sev.dur[1] - sev.dur[0] + 1)) : ((() => { const r = Math.random(); return r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.95 ? 4 : 5; })()); }
           diffs[k] = d;
@@ -6715,12 +6765,13 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, prog:0, cc:0, defActs:0, saves:0 };
+          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, mins:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, prog:0, cc:0, defActs:0, saves:0 };
           const d = homeDiffs[k] || awayDiffs[k];
           next[k].goals += d.goals;
           next[k].assists += d.assists;
           next[k].matches += d.matches;
           next[k].subApp = (next[k].subApp||0) + d.subApp;
+          next[k].mins = (next[k].mins||0) + d.mins;
           next[k].totalRating += d.totalRating;
           if (d.matches || d.subApp) next[k].form = playerFormFrom(next[k].form, d.totalRating / Math.max(1, d.matches + d.subApp));
           const prevYc = next[k].yellows||0;
@@ -8030,8 +8081,9 @@ export default function App() {
       const diffs = {};
       simPlayers.forEach(p => {
         const k = keyOf(p.name);
-        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
-        if (p.sub === 'on') d.subApp++; else d.matches++;
+        const d = diffs[k] || (diffs[k] = {matches:0,subApp:0,mins:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
+        if (p.sub === 'on' || p.sub === true || p._onAt !== undefined) d.subApp++; else d.matches++;
+        d.mins += p.mins || 0;
         d.goals += p.goals || 0;
         d.assists += p.assists || 0;
         d.totalRating += p.rating || 6.5;
@@ -8050,11 +8102,12 @@ export default function App() {
       setTPlayerStats(prev => {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
-        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,totalRating:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
+        const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,mins:0,totalRating:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
         simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
           next[k].subApp = (next[k].subApp||0) + d.subApp;
+          next[k].mins = (next[k].mins||0) + d.mins;
           next[k].goals = (next[k].goals||0) + d.goals;
           next[k].assists = (next[k].assists||0) + d.assists;
           next[k].totalRating = (next[k].totalRating||0) + d.totalRating;
@@ -8113,7 +8166,7 @@ export default function App() {
     const merged = {};
     diffsSets.filter(Boolean).forEach(diffs => {
       for (const [k, d] of Object.entries(diffs)) {
-        const m = merged[k] || (merged[k] = {matches:0,subApp:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
+        const m = merged[k] || (merged[k] = {matches:0,subApp:0,mins:0,goals:0,assists:0,totalRating:0,yellows:0,reds:0,suspended:0,injOut:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
         for (const f of Object.keys(m)) m[f] += d[f] || 0;
       }
     });
@@ -8125,6 +8178,7 @@ export default function App() {
         if (!next[k]) continue;
         next[k].matches = Math.max(0, (next[k].matches||0) - d.matches);
         next[k].subApp = Math.max(0, (next[k].subApp||0) - d.subApp);
+        next[k].mins = Math.max(0, (next[k].mins||0) - d.mins);
         next[k].goals = Math.max(0, (next[k].goals||0) - d.goals);
         next[k].assists = Math.max(0, (next[k].assists||0) - d.assists);
         next[k].totalRating = (next[k].totalRating||0) - d.totalRating;
@@ -8896,7 +8950,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("goals")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP SCORERS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tTime(a)-tTime(b))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -8911,7 +8965,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("assists")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>TOP ASSISTS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tTime(a)-tTime(b))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -8926,7 +8980,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("rating")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>BEST RATING<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {(() => { const _all = Object.values(tPlayerStats); const _ap = p => p.matches+(p.subApp||0); const _min = Math.ceil(Math.max(1,..._all.map(_ap))/6); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=_ap(a)>=_min?1:0,bq=_ap(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
+                    {(() => { const _all = Object.values(tPlayerStats); const _ap = tApps; const _min = tGate(_all); return _all.filter(p=>_ap(p)>=1).sort((a,b)=>{const aq=tTime(a)>=_min?1:0,bq=tTime(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/_ap(b))-(a.totalRating/_ap(a));}).slice(0,5); })().map((p,i) => {
                       const avg = (p.totalRating/(p.matches+(p.subApp||0)));
                       return (
                       <tr key={i} style={{ fontSize: 10 }}>
@@ -8943,7 +8997,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("cc")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>CHANCES CREATED<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||(tTime(a)-tTime(b))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -8958,7 +9012,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("defActs")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>DEFENSIVE CONTRIBUTIONS<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tTime(a)-tTime(b))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -8973,7 +9027,7 @@ export default function App() {
                   <div style={{ minWidth: 0 }}>
                     <div onClick={() => setTLeaderboard("saves")} style={{ fontSize: 9, color: "var(--chrome-muted)", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>SAVES<span style={{ fontSize: 8, color: "var(--chrome-muted)" }}>▸</span></div>
                     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
-                    {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||((a.matches+(a.subApp||0))-(b.matches+(b.subApp||0)))).slice(0,5).map((p,i) => (
+                    {Object.values(tPlayerStats).filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tTime(a)-tTime(b))).slice(0,5).map((p,i) => (
                       <tr key={i} style={{ fontSize: 10 }}>
                         <td style={{ color: "var(--chrome-muted)", width: 14, textAlign: "right", padding: "2px 4px 2px 0", ...mono }}>{i+1}</td>
                         <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "2px 4px 2px 0" }}>{p.name}</td>
@@ -9048,7 +9102,7 @@ export default function App() {
             {tLeaderboard && (() => {
               const title = tLeaderboard === "goals" ? "TOP SCORERS" : tLeaderboard === "assists" ? "TOP ASSISTS" : tLeaderboard === "cc" ? "CHANCES CREATED" : tLeaderboard === "defActs" ? "DEFENSIVE CONTRIBUTIONS" : tLeaderboard === "saves" ? "SAVES" : "BEST RATING";
               const all = Object.values(tPlayerStats);
-              const tApp = p => p.matches + (p.subApp||0);
+              const tApp = tApps;
               // Stats recorded before fullName was kept fall back to the team's own squad. Matching
               // inside the team means an abbreviated name cannot pick up a different player's full
               // name from elsewhere in the roster.
@@ -9057,16 +9111,16 @@ export default function App() {
                      ?.squad?.find(q => q.name === p.name)?.fullName
                 || p.name;
               const sorted = tLeaderboard === "goals"
-                ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tApp(a)-tApp(b)))
+                ? all.filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals||(tTime(a)-tTime(b)))
                 : tLeaderboard === "assists"
-                ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tApp(a)-tApp(b)))
+                ? all.filter(p=>p.assists>0).sort((a,b)=>b.assists-a.assists||(tTime(a)-tTime(b)))
                 : tLeaderboard === "cc"
-                ? all.filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||(tApp(a)-tApp(b)))
+                ? all.filter(p=>(p.cc||0)>0).sort((a,b)=>(b.cc||0)-(a.cc||0)||(tTime(a)-tTime(b)))
                 : tLeaderboard === "defActs"
-                ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tApp(a)-tApp(b)))
+                ? all.filter(p=>p.defActs>0).sort((a,b)=>b.defActs-a.defActs||(tTime(a)-tTime(b)))
                 : tLeaderboard === "saves"
-                ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tApp(a)-tApp(b)))
-                : (() => { const _min = Math.ceil(Math.max(1,...all.map(tApp))/6); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tApp(a)>=_min?1:0,bq=tApp(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
+                ? all.filter(p=>p.saves>0).sort((a,b)=>b.saves-a.saves||(tTime(a)-tTime(b)))
+                : (() => { const _min = tGate(all); return all.filter(p=>tApp(p)>=1).sort((a,b)=>{const aq=tTime(a)>=_min?1:0,bq=tTime(b)>=_min?1:0;if(aq!==bq)return bq-aq;return(b.totalRating/tApp(b))-(a.totalRating/tApp(a));});})();
               return (
                 <div onClick={() => setTLeaderboard(null)} style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div onClick={e => e.stopPropagation()} className="modal-shell" style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "20px 24px", minWidth: 340, maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--ui-shadow-4)" }}>
@@ -9077,8 +9131,11 @@ export default function App() {
                     <div style={{ overflowY: "auto", flex: 1 }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}><tbody>
                       {sorted.map((p, i) => {
-                        const ap = p.matches + (p.subApp||0);
+                        const ap = tApps(p);
                         const avg = ap ? (p.totalRating/ap) : 0;
+                        // Minutes, where the season has them. An appearance count cannot tell a
+                        // man who played every minute from one who came on for the last five.
+                        const load = p.mins ? p.mins + "'" : String(ap);
                         const val = tLeaderboard === "goals" ? p.goals : tLeaderboard === "assists" ? p.assists : tLeaderboard === "cc" ? (p.cc||0) : tLeaderboard === "defActs" ? p.defActs : tLeaderboard === "saves" ? p.saves : avg;
                         return (
                           <tr key={i} style={{ fontSize: 11, borderBottom: i < sorted.length-1 ? "1px solid var(--chrome-panel)" : "none" }}>
@@ -9086,7 +9143,7 @@ export default function App() {
                             <td style={{ color: "var(--ui-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "3px 6px 3px 0" }}>{boldSurname(fullNameOf(p), p.name)}</td>
                             <td style={{ color: {GK:"var(--ui-warn)",DEF:"var(--ui-info)",MID:"var(--ui-ok)",FWD:"var(--ui-attack)"}[p.pos]||"var(--chrome-muted)", fontSize: 8, fontWeight: 700, width: 26, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.pos}</td>
                             <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 28, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{p.code||p.team.slice(0,3).toUpperCase()}</td>
-                            <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 16, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{ap}</td>
+                            <td style={{ color: "var(--chrome-muted)", fontSize: 8, width: 34, textAlign: "center", padding: "3px 6px 3px 0", ...mono }}>{load}</td>
                             <td style={{ color: tLeaderboard === "rating" ? ratingColor(avg) : "var(--ui-text)", fontWeight: 700, width: 26, textAlign: "right", padding: "3px 0", ...mono }}>{tLeaderboard === "rating" ? avg.toFixed(1) : val}</td>
                           </tr>
                         );
