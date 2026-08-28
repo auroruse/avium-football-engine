@@ -213,7 +213,11 @@ export const CFG = {
   // the marginal ball was as risky as before. Swept 0.18/0.26/0.34: completion 69.6/71.2/73.9 and
   // goals 2.74/2.63/2.38 -- 0.34 is catatonic, 0.28 prices a professional's actual respect for
   // possession. The manager instructions scale risk appetite around whatever this is.
-  loss: 0.36,
+  // 0.36 -> 0.395 with the balance overhaul: pressActNow makes pressed men release the least-bad
+  // ball early, which is the point, and it costs completion at the league level -- 77.8% fell to
+  // 76.9. loss is the equilibrium dial (0.18 -> 0.36 bought 69.6 -> 80.0, ~0.58pp per 0.01), so the
+  // level is put back here rather than by softening the release change that bought the balance.
+  loss: 0.395,
   // How fast running with it stops working as defenders close. At 0.055 a carry retained 88% with a
   // man on him, so the safest option was always to keep running and passing collapsed to a fifth of
   // its real rate. Real dribble success under genuine pressure is closer to half.
@@ -435,7 +439,20 @@ foulAggr: 0.25,
   // Into touch. Deep and swamped, the ball goes into the stand. A throw-in against you is a much
   // cheaper outcome than a turnover in your own box, and that difference IS the option -- it is
   // scored as the same loss every other action pays, discounted for the ball being dead.
-  touchDepth: 26, touchPress: 1.6, touchDiscount: 0.42,
+  // THE ESCAPE VALVE, widened. A press's goals were measured coming off balls won in the pressed
+  // side's OWN THIRD -- 73 of 93 traceable goals in the verticaltiki-catenaccio cell started from a
+  // turnover at a mean 71.6 m up the pitch, 69% converted inside ten seconds -- and the reason the
+  // pressed side kept coughing it up there is that its two escape options were rigged: into touch
+  // only existed nearly on the goal line under maximum press, and a pressed clearance was aimed AT
+  // a team-mate, so its failure mode was a charged-down ball at 33 m from goal with the block
+  // scattered. A throw-in against you resets both shapes; a live strip does not. touchDepth now
+  // covers the defensive third and touchPress opens at real rather than desperate pressure.
+  touchDepth: 38, touchPress: 1.15, touchDiscount: 0.16,
+  // ...and a clearance struck under press carries OVER its man rather than into the contest -- per
+  // unit of pressure on the kicker, in metres. The ball lands beyond the target running forward,
+  // which is where an outlet chases it, instead of dropping into the second-ball scrum at the
+  // exact height the press wants it back.
+  clearOver: 4.0,
   // The keeper's own distribution. Out of the hands is more accurate than a stroked pass, and what
   // he is really choosing between is playing out and going long -- which is exactly what the gkDist
   // instruction says. It was declared in the strategy object and read by nothing in this engine.
@@ -838,7 +855,12 @@ foulAggr: 0.25,
   // does, so slowing recovery is a straight gift to the highest press in the game.
   // Twice measured, twice refuted, both before and after the decision it was supposedly waiting on.
   // Do not try a third dose; whatever possession is missing here, it is not defensive inertia.
-  chaseFrom: 24, chaseRamp: 40, chaseSlow: 0,
+  // chaseStretch MEASURED NULL at 0.45 and is off. Stretching a chased block's front bands was
+  // meant to open the between-lines pocket for patient sides; the matrix moved tikitaka 0.13 ->
+  // 0.13 exactly, and verticaltiki 0.99 -> 1.13 -- because every strong side holds the ball, so a
+  // mechanism keyed on possession length pays the styles that already win. Same grave as chaseSlow,
+  // one row over. Do not re-run either; possession length is the wrong key for a possession payoff.
+  chaseFrom: 24, chaseRamp: 40, chaseSlow: 0, chaseStretch: 0,
   // THE OUTLET. A deep side that intends to counter leaves its most advanced man OUT of the block,
   // stood on the opponent's last line, and defends with nine. Every earlier attempt to make
   // possWon +1 mean something moved anchors AFTER the turnover -- "telling it to counter" measured
@@ -885,6 +907,41 @@ foulAggr: 0.25,
   // against a baseline 7.0%); adding the lateral squeeze on top pushed it to 11.1%, because the band
   // then has to chase sideways as well as back. The narrowing is off until that is worth paying for.
   blkMidDrop: 0.22, blkSiegeNarrow: 0,
+  // ---- SHAPE DEBT -------------------------------------------------------------------------
+  // The engine's creation economy is inverted at the source and every stamp-level fix bounced off
+  // it: a chance taken within a second of the turnover is worth 0.167 xG, one worked for three to
+  // six seconds 0.089, and the box refills inside three seconds. So transition creates and
+  // possession does not, which is why the three transition styles finish top and the two
+  // possession styles finish bottom whatever their stamps say.
+  // Two previous attempts to pay possession -- chaseSlow and chaseStretch -- both measured dead
+  // null, and both failed the same way: they keyed on POSSESSION LENGTH, which is a quantity the
+  // strong sides maximise anyway, so the payoff landed on whoever was already winning.
+  // This keys on DEFENSIVE WORK instead: how far the block has had to drag itself, and how many of
+  // its men are out of it chasing. A side that is moved about pays; a side that wins the ball back
+  // in two seconds pays nothing, however long the opponent had it. That is the asymmetry the other
+  // two lacked, and it is what "making the ball do the work" is supposed to buy.
+  // debtMove is per metre of block slide, debtChase per man out of the shape per second, debtRest
+  // how fast it is paid back once the side is on the ball or the whistle has gone.
+  // Rates set so the CURVE is right rather than the endpoint: at 0.055/0.020 the debt hit its cap
+  // inside five seconds of any defending at all, which is a flat tax on defending -- it would have
+  // charged the deep blocks this exists to help. At these rates an ordinary three-second spell
+  // costs about 0.03, ten seconds of being moved about costs ~0.44, and only a sustained siege of
+  // twenty-plus seconds reaches the cap. Repayment at 0.30 clears a full debt in about three
+  // seconds, roughly the life of a transition, so winning it back and immediately losing it again
+  // does not wipe the slate.
+  debtMove: 0.008, debtChase: 0.004, debtRest: 0.30,
+  // What the debt BUYS the side in possession, at full debt. Spacing is the pocket between men --
+  // the gap a worked ball is played into -- and markLoss is the share of the marking assignments
+  // that stop being made at all, so the late runner arrives unattended. Both are shape quality,
+  // not shooting or passing coefficients: the chance still has to be created and taken.
+  // Sized against the debt's REAL range, not its nominal one. Measured on the accrual above, the
+  // debt runs 0.03 at three seconds, 0.12 at ten to twenty, 0.18 on a sustained siege and peaks
+  // near 0.33 -- the cap is unreachable by construction, because repayment is fast and a side has
+  // to be genuinely dragged about to climb. Coefficients set so the siege end of that range does
+  // what the original 0.30/0.45 were meant to do at a full debt: a twenty-second spell opens the
+  // pocket about 13% and drops one marking assignment in six, and the worst spells in a match roughly
+  // double that. Effect size beyond that shape is unverified -- this has not been measured yet.
+  debtGap: 0.75, debtMarkLoss: 0.90,
   // Rest defence: how deep a man has to naturally be to hold the block while his own side attacks,
   // over what span of depth that fades out, and how strongly he holds it against his attacking job.
   // At 0.55 / 0.25 it is the back line plus the deepest midfielder, which is a 4+1 rest shape.
@@ -1043,6 +1100,35 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // a league, defenders' ratings did not move with their OVR. tkSkillMid is the population mean of
   // the (tackle - pace)/99 term, so the league-wide win rate stays where tkBase calibrated it and
   // only the spread between good and bad tacklers widens.
+  // ---- THE POKE, derived rather than swept ---------------------------------------------------
+  // The style imbalance closes to one equation. GF = S_t*C_t + S_w*C_w with the engine's own
+  // measured chance values C_t 0.167 (shot within 1s of the turnover) and C_w 0.089 (worked for
+  // 3-6s). Decomposed from the probes: a press archetype runs S_t ~12.5, S_w ~9; the possession
+  // archetype S_t ~2.9, S_w ~16.3. The gap that equation predicts, (9.6 x 0.167) - (7.2 x 0.089)
+  // = 0.96 goals, is the 2.90 - 1.94 the screens measured -- the model closes to two decimal
+  // places, so the model is the diagnosis. Parity requires dS_t = (C_w/C_t) x dS_w ~ 0.53 x dS_w:
+  // the press may keep about +4 transition chances against +7 worked ones, and it currently keeps
+  // +9.6. S_t must fall ~45% and nothing else needs to move.
+  // WHERE: every won tackle handed the winner clean, controlled possession at the strip point
+  // (meBallTo immediately after the roll), facing a side still shaped to attack. Real tackles do
+  // not do that -- roughly half are "tackle without possession": the ball is poked loose, runs
+  // 3-8 m, and becomes a fifty-fifty that the stripped side's eight goal-side men are well placed
+  // to win, or a throw-in. tkLooseP is the share of wins that poke rather than keep; retention of
+  // the loose ball then falls out of the pickup physics that already exist. At 0.7, with scramble
+  // recovery biased toward the tackler's supporting press, effective clean-chance retention lands
+  // near the 0.55 the parity equation asks for. Incidence is automatic: chaos-sourced play is 72%
+  // of a press's GF and 25% of a possession side's, so the same physical rule discounts one three
+  // times harder than the other without touching a style coefficient.
+  // The league-level cost is also arithmetic, not hope: transition share of all goals ~0.45-0.5,
+  // so goals/match falls roughly 2.96 x (0.5 x 0.55 + 0.5) ~ 2.3-2.5, and the difference comes
+  // back on the global keeper dial (gkSaveReach), which is style-blind. Fit both from ONE
+  // instrumented validation, not from sweeps.
+  // Fit round 1 (6-archetype decomposition, 40/pair): worked play reached parity (S_w 0.67 press
+  // vs 0.71 possession) and the whole residual gap is S_t volume, 1.36 vs 0.76. The retention
+  // arithmetic saturates in tkLooseP -- the scramble bias floors clean retention near 0.62 -- so
+  // the second notch is scatter DISTANCE: a longer poke runs to open grass, the stripped side's
+  // goal-side eight, or dead, all of which deny the instant chance.
+  tkLooseP: 0.78, tkLooseD: 8, tkLooseV: 6.5,
   tkBase: 0.34, tkAngleW: 0.34, tkSkillW: 0.80, tkSkillMid: 0.05, rateTackle: 0.042,
   runTicks: 14,
   runMax: 4,
@@ -1580,7 +1666,15 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // A touch budget rather than a mandatory stop. He may play it on any slice; a first-time ball is
   // harder to strike, and being closed down makes him release SOONER, not later. The old rule had a
   // pressed player dwelling 6 slices against a free player's 4 -- exactly backwards.
-  holdBase: 5, holdPress: 1.4, actNow: 0.10, firstTouchNoise: 1.75,
+  // pressActNow: how fast the act-now bar FALLS with pressure. The bar said "only play early if
+  // the option is genuinely good" -- and under press every option is degraded, so the harder a man
+  // was pressed the longer he stood there holding it, which handed the press its duel. Measured in
+  // the verticaltiki-catenaccio cell: 52 possession-wins a match in the pressed side's own half,
+  // all ground duels and loose balls off the carrier, feeding 69% of the presser's goals inside ten
+  // seconds. A pressed man plays the least-bad ball NOW; the inaccuracy of doing so is already
+  // priced by the pass noise and risk terms, which is what makes this a release change and not a
+  // buff. At press 1.8 the bar is gone entirely.
+  holdBase: 5, holdPress: 1.4, actNow: 0.10, pressActNow: 0.55, firstTouchNoise: 1.75,
   // How much a spot being OWNED is worth, on top of where it is. 0 reproduces the engine that
   // had no idea where the opponent's shape was. Kept a dial rather than a rewrite because this
   // is the value surface every calibrated number in the file sits on.
@@ -1620,6 +1714,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // End-of-match stamina runs 83 / 75 / 68 / 60 across the drain sweep: smooth, so this is a price
   // paid across ninety minutes, not a collapse after the hour.
   tempoHold: 0.8, tempoPace: 0.10, tempoNoise: 0, tempoDrain: 0.30,
+  // Per notch of pressingLOE, the drain surcharge while DEFENDING -- see the phase-scoping note at
+  // the drain line. 0.30 against the old always-on 0.18: a side that defends half the match pays
+  // about what it always did, and one made to defend sixty per cent pays more precisely because
+  // the opponent is making it. The counterweight a possession game never had.
+  pressDrain: 0.30,
   // What every extra slice on the ball past that budget costs his chance of keeping it. Geometric,
   // so a man with genuinely nothing on can drive on for another second or two and a man dwelling in
   // his own box runs out of reasons to.

@@ -551,8 +551,14 @@ export function meDuties(s, side) {
     // That is the SECOND confirmation of the same law tonight -- the swarm experiment took men out of
     // the shape to contest the ball and also made it worse. A low block cannot be improved by giving
     // its members a different job. Whatever is wrong with depth here, it is not the duties.
-    const nMark = (ballDepth < CFG.markSiegeDepth ? CFG.markSiege
-                 : ballDepth < 34 ? 4 : ballDepth < 60 ? 2 : 1) + runners;
+    // ...LESS WHATEVER THE SHAPE HAS SPENT. A side that has been dragged around loses track of
+    // people; the man it stops picking up is the last one on the list, which is the late runner.
+    // One tick stale by construction -- meBlock writes the debt after meDuties reads it -- and that
+    // is fine, a defence's memory of who it was tracking is stale too.
+    const _debt = mp.blk?.[side]?.debt ?? 0;
+    const nMark = Math.max(1, Math.round(((ballDepth < CFG.markSiegeDepth ? CFG.markSiege
+                 : ballDepth < 34 ? 4 : ballDepth < 60 ? 2 : 1) + runners)
+                 * (1 - _debt * CFG.debtMarkLoss)));
     // Assigned as one problem, not one pick at a time. Picking greedily hands the same region to
     // several defenders at once, which is what put six of them in the same square metre.
     {
@@ -895,6 +901,17 @@ export function meBlock(s, side) {
   // sat eight to twelve metres behind its slot no matter how hard they were allowed to run, and no
   // amount of effort was ever going to fix it: they were chasing something that teleported.
   bs.depth += Math.max(-mv, Math.min(mv, wantDepth - bs.depth));
+  // THE DEBT. Charged for being moved about and for having men out of the shape; repaid the moment
+  // the side has the ball back or play stops. See CFG.debtMove.
+  {
+    const drag = Math.abs(wantLine - bs.line) + Math.abs(wantCy - bs.cy);
+    let chasers = 0;
+    for (const q of us) if (q && !q.off && (q._duty === "press" || q._duty === "recover" || q._duty === "cover")) chasers++;
+    const live = mp.side !== side && mp.side !== null && !mp.sp;
+    bs.debt = Math.max(0, Math.min(1, (bs.debt ?? 0) + (live
+      ? (drag * CFG.debtMove + chasers * CFG.debtChase) * ME_DT
+      : -CFG.debtRest * ME_DT)));
+  }
   const line = bs.line, cy = bs.cy, depth = bs.depth;
   // How besieged we are, read off the SLEWED line for the same reason.
   const siege = Math.max(0, Math.min(1, 1 - (line + CFG.blkDrop) / CFG.siegeDepth));
@@ -936,12 +953,21 @@ export function meBlock(s, side) {
     // the wrong way. Pulling the front three back does not add bodies to the area; it just shortens
     // the block, and the men it moves stop being an out-ball without ever reaching the box.
     const frac = b === 1 ? 0.5 - siege * CFG.blkMidDrop : b / 2;
-    const bx = own + dir * (line + depth * frac);
+    // A BLOCK THAT HAS BEEN CHASED STRETCHES, and it stretches from the front. chaseSlow -- lagging
+    // the whole block's recovery -- was tried and zeroed: it emptied the box and moved shots the
+    // wrong way, because the back line lagged with everything else. Scaling DEPTH by the chase
+    // leaves the back band exactly where it stands (frac 0) and draws the middle and front bands
+    // up and apart, hunting the ball they cannot get back -- which opens the pocket between the
+    // lines that a patient side's extra passes are supposed to buy. The back line never moves, so
+    // the box stays manned and the chance this concedes is the 12-18 m pocket shot, not the tap-in.
+    const bx = own + dir * (line + depth * (1 + chased * CFG.chaseStretch) * frac);
     // A BAND IS AS WIDE AS THE MEN IN IT. Held at a flat width, a back FOUR stood ten metres apart
     // and a back THREE stood fifteen -- so the fewer defenders a formation had, the bigger the holes
     // it left, which is exactly backwards. A real back three defends narrow and lets the wing backs
     // cover the width; that is the whole idea of the shape. Spacing is what is constant, not span.
-    const spacing = CFG.blkSpacing + b * CFG.blkSpaceStep;
+    // ...AND A TIRED SHAPE STANDS FURTHER APART. This is the pocket a worked possession is meant
+    // to open, and it is why the payoff had to be keyed on work rather than on the clock.
+    const spacing = (CFG.blkSpacing + b * CFG.blkSpaceStep) * (1 + (bs.debt ?? 0) * CFG.debtGap);
     // ...AND THE BLOCK IS AS WIDE AS THE SIDE IS ASKED TO BE. Without this the width instruction is
     // undone by the side's own rest defence: a man who is not on a run is dragged restW of the way
     // back to his BLOCK slot while his own team attacks (see meShape), and that slot was a pure

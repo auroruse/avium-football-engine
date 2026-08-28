@@ -686,6 +686,8 @@ export function meDecide(s, rng, side, i, dwell) {
       const w = up - mePressure(s, side, q.x, q.y) * 9 - Math.abs(q.y - p.y) * 0.25;
       if (w > cw) { cw = w; cx = q.x; cy = q.y; }
     }
+    // Overhit on purpose when pressed: see CFG.clearOver.
+    cx = Math.max(2, Math.min(PITCH_L - 2, cx + dir * press * CFG.clearOver));
     const ok2 = CFG.clearOk;
     // The relief: how much danger it takes off your own goal. That is the whole point of a clearance
     // and it was the one thing not being counted.
@@ -723,8 +725,16 @@ export function meDecide(s, rng, side, i, dwell) {
   // Into the stand. No gain at all, so it only ever wins when everything else is worse than a
   // throw-in against you -- which, ten metres from your own goal with three men on you, it is.
   if (ownDepth < CFG.touchDepth && press > CFG.touchPress) {
+    // Priced as what it actually is: a dead ball, deep, with both shapes reset before it is taken.
+    // The old line charged it like a live turnover at his own feet -- loss times (0.35 + danger) --
+    // and that formula predates CFG.loss doubling in the completion rework, so by the time it was
+    // measured the option sat on 1,895 menus in thirty matches and was taken zero times. The relief
+    // scales with the press on him exactly as a clearance's does; the cost is the flat discounted
+    // loss of a throw-in, with no danger term, because the danger is precisely what the stoppage
+    // dissipates.
     const sc = meDanger(meOther(side), p.x, p.y) * CFG.clearRelief
-             - CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y)) * CFG.touchDiscount;
+                 * (0.2 + 0.8 * Math.min(1, press / CFG.touchPress))
+             - CFG.loss * riskM * CFG.touchDiscount;
     const jt = sc + jit("clear");
     if (jt > bestSc) { bestSc = jt; best = { k: "touch", p: 1 }; }
   }

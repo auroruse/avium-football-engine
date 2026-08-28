@@ -1,0 +1,268 @@
+#	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
+1	Rosendo Zapatero	FWD	AUR	11	11	744	12		1	August Rittenhouse	MID	PON	10	10	709	6		1	Rosendo Zapatero	FWD	AUR	11	11	744	8.3		1	Jadarian Royce	MID	ESU	10	10	579	31		1	Leonardo Urdaneta	DEF	HOL	11	11	940	55		1	Caleb Whitfield	GK	SAL	9	9	810	39
+2	Simón Arismendi	FWD	HOL	11	11	542	10		2	Rosendo Zapatero	FWD	AUR	11	11	744	6		2	August Rittenhouse	MID	PON	10	10	709	8.2		2	Valentín Vivas	MID	HOL	11	11	556	27		2	Rosendo Zapatero	FWD	AUR	11	11	744	46		2	Callum Calhoun	GK	HOL	11	11	990	38
+3	Trent Hawthorne	FWD	ESU	9	9	459	8		3	Jadarian Royce	MID	ESU	10	10	579	5		3	Jadarian Royce	MID	ESU	10	10	579	8.0		3	August Rittenhouse	MID	PON	10	10	709	24		3	Tomás Uzcátegui	DEF	HOL	10	10	842	45		3	Maximilian Mollenhauer	GK	PON	10	10	900	29
+4	Juvenal Vera	FWD	AUR	11	11	770	8		4	Beau Covington	MID	HOL	11	11	644	5		4	Trent Hawthorne	FWD	ESU	9	9	459	7.8		4	Silvio Caruso	MID	ESU	10	10	853	16		4	Jenaro Salamanca	DEF	AUR	11	11	957	45		4	Hamza Benali	GK	ABB	6	6	540	28
+5	Fabián Machado	FWD	HOL	11	0	448	8		5	Leon Vogel	FWD	ESU	10	10	584	4		5	Valentín Vivas	MID	HOL	11	11	556	7.8		5	Olegario Pérez	MID	AUR	11	11	851	16		5	Martial Lefèvre	DEF	ACS	6	6	540	44		5	Spencer Jackson	GK	ESU	10	10	900	28
+6	Dominic Winslow	FWD	ESU	10	10	582	7		6	Silvio Caruso	MID	ESU	10	10	853	4		6	Simón Arismendi	FWD	HOL	11	11	542	7.8		6	Beau Covington	MID	HOL	11	11	644	15		6	Elliot Farnsworth	DEF	ESU	10	10	850	44		6	Sibö Kurbli	GK	NMZ	8	8	720	26
+7	Hans-Jürgen Hōnigsberg	FWD	PON	10	10	722	6		7	Dale Landry	MID	HOL	10	1	415	4		7	Beau Covington	MID	HOL	11	11	644	7.8		7	Yëría Kaché	MID	NMZ	8	8	532	14		7	Alton Begay	DEF	ESU	10	10	803	43		7	Aandeg Debaasige	GK	ATA	6	6	540	23
+8	Nicanor Arandia	FWD	AUR	11	11	787	6		8	Juvenal Vera	FWD	AUR	11	11	770	4		8	Youssef Valverde	MID	AEM	7	7	467	7.7		8	Conrad Bauer	MID	ESU	10	10	707	14		8	Wade Boone	DEF	HOL	11	11	990	42		8	Yassine Benali	GK	AEM	7	7	630	23
+9	Chirá Nubrí	FWD	NMZ	6	0	215	5		9	Valentín Vivas	MID	HOL	11	11	556	4		9	Nuhu Maina	MID	ACS	6	6	375	7.4		9	Rocco De Luca	MID	ESU	10	10	849	13		9	Jedidiah Wanamaker	DEF	PON	10	10	885	41		9	Odd-Isak Hætta	GK	KKM	7	7	630	23
+10	Ildefonso Morón	FWD	AEM	7	7	544	5		10	Horace Peshlakai	FWD	ESU	10	1	437	3		10	Sofiane Mansouri	FWD	ABB	6	6	367	7.4		10	Juvenal Vera	FWD	AUR	11	11	770	13		10	Jean Beauregard	MID	HOL	11	11	767	41		10	Rafael Rosario	GK	AUR	11	11	990	23
+11	Ditsö Nakí	MID	NMZ	8	8	534	5		11	Wade Boone	DEF	HOL	11	11	990	3		11	Wilhelm Giesel	FWD	PON	10	10	708	7.4		11	Rosendo Zapatero	FWD	AUR	11	11	744	13		11	Valentín Vivas	MID	HOL	11	11	556	41		11	Duol Akol	GK	SSA	6	6	540	21
+12	Cyrus Winslow	FWD	SAL	9	9	569	5		12	James Feruccio	MID	HOL	11	0	341	3		12	Leon Vogel	FWD	ESU	10	10	584	7.4		12	Juní Börá	FWD	NMZ	8	8	505	12		12	August Rittenhouse	MID	PON	10	10	709	38		12	Ibrahim Galadima	GK	ACS	6	6	540	20
+13	Wilhelm Giesel	FWD	PON	10	10	708	5		13	Haku Kahananui	FWD	AED	3	3	243	2		13	Dominic Winslow	FWD	ESU	10	10	582	7.3		13	Jonas Mercer	MID	SAL	9	9	732	12		13	Dowá Tuvöl	DEF	NMZ	8	8	685	36		13	Kaiwi Kanakaole	GK	AED	7	7	630	18
+14	Horace Peshlakai	FWD	ESU	10	1	437	5		14	Noureddine Mansouri	MID	AEM	6	0	145	2		14	Juvenal Vera	FWD	AUR	11	11	770	7.3		14	Leon Vogel	FWD	ESU	10	10	584	12		14	Jadarian Royce	MID	ESU	10	10	579	35		14	Comlan Gbanou	GK	VAN	7	7	630	14
+15	Peter Selhorst	FWD	ESU	10	0	339	5		15	Édouard Fontaine	MID	ACS	6	6	410	2		15	Ditsö Nakí	MID	NMZ	8	8	534	7.3		15	Dale Landry	MID	HOL	10	1	415	12		15	Reuben Mendoza	DEF	HOL	11	11	943	35		15	Atiqtalik Ahmaogak	GK	MOR	7	7	630	14
+16	Valentín Vivas	MID	HOL	11	11	556	5		16	Ousman Jalo	MID	ACS	6	6	435	2		16	Durí Karí	MID	NMZ	8	8	450	7.3		16	Ambrose Pickett	MID	HOL	11	0	388	12		16	Namú Suriá	DEF	NMZ	8	8	649	34									
+17	Beau Covington	MID	HOL	11	11	644	5		17	Koceïla Idir	MID	ABB	6	6	483	2		17	Horace Peshlakai	FWD	ESU	10	1	437	7.3		17	James Feruccio	MID	HOL	11	0	341	12		17	Manuel Betancourt	MID	HOL	11	11	914	34									
+18	Sofiane Mansouri	FWD	ABB	6	6	367	4		18	Lakhdar Meziane	FWD	ABB	6	6	420	2		18	Yëría Kaché	MID	NMZ	8	8	532	7.2		18	Lisandro Rivas	MID	AUR	11	11	949	11		18	Beau Covington	MID	HOL	11	11	644	33									
+19	Lakhdar Meziane	FWD	ABB	6	6	420	4		19	Elwood Wagamese	MID	ATA	6	6	511	2		19	Peter Selhorst	FWD	ESU	10	0	339	7.2		19	Trent Hawthorne	FWD	ESU	9	9	459	10		19	Tsirú Diköl	DEF	NMZ	8	8	596	31									
+20	Lono Kekoa	FWD	AED	7	7	471	4		20	Youssef Valverde	MID	AEM	7	7	467	2		20	Silvio Caruso	MID	ESU	10	10	853	7.2		20	Pono Nainoa	MID	AED	7	7	576	9		20	Philip Klein	DEF	ESU	10	10	863	31									
+21	Titus Calloway	FWD	SAL	9	0	342	4		21	Juhani Norsuunlainen	FWD	KKM	7	0	222	2		21	Lakhdar Meziane	FWD	ABB	6	6	420	7.1		21	Kanë Dabá	MID	NMZ	8	8	697	9		21	Lisandro Rivas	MID	AUR	11	11	949	31									
+22	Amos Donnelly	FWD	SAL	9	9	522	4		22	Pono Nainoa	MID	AED	7	7	576	2		22	Pono Nainoa	MID	AED	7	7	576	7.1		22	Elijah Tanner	MID	SAL	9	9	678	9		22	Ephraim Snyder	DEF	PON	10	10	900	30									
+23	Volkmar Scherer	FWD	PON	10	0	284	4		23	Ulu Piipiilani	MID	AED	7	7	619	2		23	Titus Calloway	FWD	SAL	9	0	342	7.1		23	Arcadio Villa	FWD	AUR	10	0	262	9		23	Jose Carlos Pescador	DEF	AUR	11	11	990	30									
+24	Siegmund Stracke	FWD	PON	10	10	652	4		24	Jonah Kupihea	FWD	AED	7	4	321	2		24	Amos Donnelly	FWD	SAL	9	9	522	7.1		24	Diedrich Fassbender	MID	PON	10	10	893	9		24	Bukar Dalori	DEF	ACS	6	6	508	29									
+25	Soufiane Lahlou	FWD	AEM	4	0	86	3		25	Gerrit Van Leeuwen	DEF	AED	7	7	601	2		25	Hans-Jürgen Hōnigsberg	FWD	PON	10	10	722	7.1		25	Horace Peshlakai	FWD	ESU	10	1	437	9		25	Liam Bopp	DEF	PON	10	10	900	29									
+26	Obadiah Larkin	FWD	SAL	6	6	310	3		26	Namú Suriá	DEF	NMZ	8	8	649	2		26	Wade Boone	DEF	HOL	11	11	990	7.1		26	Emiliano Luna	MID	AUR	11	11	876	9		26	Patrick Stumpfegger	MID	PON	10	10	813	29									
+27	Nuhu Maina	MID	ACS	6	6	375	3		27	Juní Börá	FWD	NMZ	8	8	505	2		27	Ambrose Pickett	MID	HOL	11	0	388	7.1		27	Ezekiel Bridger	DEF	SAL	9	0	224	8		27	Silvio Caruso	MID	ESU	10	10	853	29									
+28	Niibin Nadjiwon	FWD	ATA	6	6	404	3		28	Durí Karí	MID	NMZ	8	8	450	2		28	Fabián Machado	FWD	HOL	11	0	448	7.1		28	Amos Donnelly	FWD	SAL	9	9	522	8		28	Pacôme Guébré	MID	VAN	7	7	557	28									
+29	Youssef Valverde	MID	AEM	7	7	467	3		29	Yëría Kaché	MID	NMZ	8	8	532	2		29	Haku Kahananui	FWD	AED	3	3	243	7.0		29	Freek Hendriks	FWD	ESU	9	0	276	8		29	Durí Karí	MID	NMZ	8	8	450	28									
+30	Jonah Kupihea	FWD	AED	7	4	321	3		30	Jedediah McAllister	DEF	SAL	9	9	774	2		30	Chirá Nubrí	FWD	NMZ	6	0	215	7.0		30	Hans-Jürgen Hōnigsberg	FWD	PON	10	10	722	8		30	Elijah Tanner	MID	SAL	9	9	678	28									
+31	Eleu Pokipala	FWD	AED	7	7	584	3		31	Silas Cartwright	DEF	SAL	9	9	810	2		31	Lono Kekoa	FWD	AED	7	7	471	7.0		31	Elliot Farnsworth	DEF	ESU	10	10	850	8		31	Jacinto Valencia	DEF	AUR	11	11	881	28									
+32	Juní Börá	FWD	NMZ	8	8	505	3		32	Ezekiel Bridger	DEF	SAL	9	0	224	2		32	Tsirú Diköl	DEF	NMZ	8	8	596	7.0		32	Tomás Uzcátegui	DEF	HOL	10	10	842	8		32	Silas Cartwright	DEF	SAL	9	9	810	27									
+33	Yëría Kaché	MID	NMZ	8	8	532	3		33	Jonas Mercer	MID	SAL	9	9	732	2		33	Cyrus Winslow	FWD	SAL	9	9	569	7.0		33	Hayes Hollis	MID	HOL	10	10	544	8		33	Conrad Bauer	MID	ESU	10	10	707	27									
+34	Zebulon Hartshorn	FWD	SAL	9	0	240	3		34	Freek Hendriks	FWD	ESU	9	0	276	2		34	Volkmar Scherer	FWD	PON	10	0	284	7.0		34	Simón Arismendi	FWD	HOL	11	11	542	8		34	Olegario Pérez	MID	AUR	11	11	851	27									
+35	Emiliano Luna	MID	AUR	11	11	876	3		35	Hans-Jürgen Hōnigsberg	FWD	PON	10	10	722	2		35	Elliot Farnsworth	DEF	ESU	10	10	850	7.0		35	Youssef Valverde	MID	AEM	7	7	467	7		35	Alceste Derocles	DEF	ABB	6	6	540	26									
+36	Ambrose Pickett	MID	HOL	11	0	388	3		36	Rocco De Luca	MID	ESU	10	10	849	2		36	Alton Begay	DEF	ESU	10	10	803	7.0		36	Durí Karí	MID	NMZ	8	8	450	7		36	Tilman Zartmann	DEF	PON	10	10	900	26									
+37	Zakaria Bouhaddou	MID	AEM	6	6	439	2		37	Peter Selhorst	FWD	ESU	10	0	339	2		37	Conrad Bauer	MID	ESU	10	10	707	7.0		37	Abel Prescott	MID	SAL	9	9	692	7		37	Wilhelm Giesel	FWD	PON	10	10	708	26									
+38	Nasiru Kaura	FWD	ACS	6	0	276	2		38	Manuel Betancourt	MID	HOL	11	11	914	2		38	Rocco De Luca	MID	ESU	10	10	849	7.0		38	Conan Neitzel	MID	PON	10	0	191	7		38	Sulá Bikakö	DEF	NMZ	8	8	696	25									
+39	Lawan Zanna	FWD	ACS	6	0	207	2		39	Ambrose Pickett	MID	HOL	11	0	388	2		39	Biel Chuol	DEF	SSA	3	3	224	6.9		39	Patrick Stumpfegger	MID	PON	10	10	813	7		39	Efraín Arenas	DEF	AUR	11	11	970	25									
+40	Yakubu Dattijo	FWD	ACS	6	6	318	2		40	Simón Arismendi	FWD	HOL	11	11	542	2		40	Yassine Benali	GK	AEM	7	7	630	6.9		40	Manuel Betancourt	MID	HOL	11	11	914	7		40	Juvenal Vera	FWD	AUR	11	11	770	25									
+41	Chérif Guerroudj	FWD	ABB	6	6	351	2		41	Këbö Wirbli	MID	NMZ	4	0	102	1		41	Veniamin Tarakanoff	MID	MOR	7	7	562	6.9		41	Fabián Machado	FWD	HOL	11	0	448	7		41	Atem Madut	DEF	SSA	6	6	421	24									
+42	Duarte Mesquita	MID	ATA	6	0	165	2		42	Lawali Birnin	MID	ACS	4	0	124	1		42	Tilman Zartmann	DEF	PON	10	10	900	6.9		42	Zakaria Bouhaddou	MID	AEM	6	6	439	6		42	Ignatiy Gromoff	DEF	MOR	7	7	615	24									
+43	Abdoulaye Maïna	FWD	VAN	7	7	449	2		43	Bienvenu Wongo	FWD	VAN	5	5	214	1		43	Liam Bopp	DEF	PON	10	10	900	6.9		43	Duchí Siwöl	MID	NMZ	8	8	540	6		43	Jedediah McAllister	DEF	SAL	9	9	774	24									
+44	Luukas Gantoninen	FWD	KKM	7	7	409	2		44	Taoufik Amrani	MID	AEM	6	1	156	1		44	Siegmund Stracke	FWD	PON	10	10	652	6.9		44	Silas Cartwright	DEF	SAL	9	9	810	6		44	Rocco De Luca	MID	ESU	10	10	849	24									
+45	Levi Kignak	FWD	MOR	7	7	539	2		45	Zakaria Bouhaddou	MID	AEM	6	6	439	1		45	Jedidiah Wanamaker	DEF	PON	10	10	885	6.9		45	Cyrus Winslow	FWD	SAL	9	9	569	6		45	Simón Arismendi	FWD	HOL	11	11	542	24									
+46	Veniamin Tarakanoff	MID	MOR	7	7	562	2		46	Ulrik Sejtala	MID	KKM	6	0	157	1		46	Dale Landry	MID	HOL	10	1	415	6.9		46	Volkmar Scherer	FWD	PON	10	0	284	6		46	Giizis Wemigwans	DEF	ATA	6	6	520	23									
+47	Thaddeus Boone	MID	SAL	9	9	657	2		47	Martial Lefèvre	DEF	ACS	6	6	540	1		47	Manuel Betancourt	MID	HOL	11	11	914	6.9		47	Wilhelm Giesel	FWD	PON	10	10	708	6		47	Piquk Ipalook	DEF	MOR	7	7	630	23									
+48	Arcadio Villa	FWD	AUR	10	0	262	2		48	Nuhu Maina	MID	ACS	6	6	375	1		48	Clayton Caldwell	DEF	ESU	4	0	170	6.8		48	Siegmund Stracke	FWD	PON	10	10	652	6		48	Kanë Dabá	MID	NMZ	8	8	697	23									
+49	Severino Guzmán	FWD	AUR	10	0	180	2		49	Rabi'u Ingawa	MID	ACS	6	0	238	1		49	Zakaria Bouhaddou	MID	AEM	6	6	439	6.8		49	Kendrick Nakai	MID	ESU	10	0	381	6		49	Thaddeus Boone	MID	SAL	9	9	657	23									
+50	Ivo Brandão	FWD	AUR	10	0	227	2		50	Aliyu Dikko	DEF	ACS	6	6	502	1		50	Alceste Derocles	DEF	ABB	6	6	540	6.8		50	Peter Selhorst	FWD	ESU	10	0	339	6		50	Duol Akol	GK	SSA	6	6	540	22									
+51	Liam Bopp	DEF	PON	10	10	900	2		51	Ngor Thon	MID	SSA	6	6	426	1		51	Chérif Guerroudj	FWD	ABB	6	6	351	6.8		51	Nicanor Arandia	FWD	AUR	11	11	787	6		51	Donat Obomsawin	DEF	ATA	6	6	453	22									
+52	Rocco De Luca	MID	ESU	10	10	849	2		52	Réda Maameri	DEF	ABB	6	6	540	1		52	Elwood Wagamese	MID	ATA	6	6	511	6.8		52	Leonardo Urdaneta	DEF	HOL	11	11	940	6		52	Sámmol Krusinen	DEF	KKM	7	7	590	22									
+53	Leon Vogel	FWD	ESU	10	10	584	2		53	Chérif Guerroudj	FWD	ABB	6	6	351	1		53	Ulu Piipiilani	MID	AED	7	7	619	6.8		53	Jean Beauregard	MID	HOL	11	11	767	6		53	Josiah Halloway	DEF	SAL	9	9	810	22									
+54	Dale Landry	MID	HOL	10	1	415	2		54	Sofiane Mansouri	FWD	ABB	6	6	367	1		54	Namú Suriá	DEF	NMZ	8	8	649	6.8		54	Noureddine Mansouri	MID	AEM	6	0	145	5		54	Amos Donnelly	FWD	SAL	9	9	522	22									
+55	Lisandro Rivas	MID	AUR	11	11	949	2		55	Boualem Hamraoui	MID	ABB	6	6	513	1		55	Duchí Siwöl	MID	NMZ	8	8	540	6.8		55	Shehu Turaki	DEF	ACS	6	6	540	5		55	Diedrich Fassbender	MID	PON	10	10	893	22									
+56	Manuel Betancourt	MID	HOL	11	11	914	2		56	Firmino Varela	DEF	ATA	6	6	540	1		56	Silas Cartwright	DEF	SAL	9	9	810	6.8		56	Boualem Hamraoui	MID	ABB	6	6	513	5		56	Siegmund Stracke	FWD	PON	10	10	652	22									
+57	James Feruccio	MID	HOL	11	0	341	2		57	Zhaawan Commanda	FWD	ATA	6	0	191	1		57	Thaddeus Boone	MID	SAL	9	9	657	6.8		57	Biidaaban Manitowabi	FWD	ATA	6	6	387	5		57	Meir Shapira	DEF	SSA	5	5	381	21									
+58	Haku Kahananui	FWD	AED	3	3	243	1		58	Clifton Papatie	MID	ATA	6	6	435	1		58	Jonas Mercer	MID	SAL	9	9	732	6.8		58	Dorofei Lestenkof	FWD	MOR	7	7	533	5		58	Yëría Kaché	MID	NMZ	8	8	532	21									
+59	Léopold Yangongo	FWD	VAN	6	0	190	1		59	Keesic Nottaway	MID	ATA	6	6	420	1		59	Patrick Stumpfegger	MID	PON	10	10	813	6.8		59	Veniamin Tarakanoff	MID	MOR	7	7	562	5		59	Leon Vogel	FWD	ESU	10	10	584	21									
+60	Ulrik Sejtala	MID	KKM	6	0	157	1		60	Giizis Wemigwans	DEF	ATA	6	6	520	1		60	Tomás Uzcátegui	DEF	HOL	10	10	842	6.8		60	Ulu Piipiilani	MID	AED	7	7	619	5		60	James Feruccio	MID	HOL	11	0	341	21									
+61	Feoktist Shishkoff	FWD	MOR	6	0	127	1		61	Fidèle Mokossa	FWD	VAN	7	2	311	1		61	Hayes Hollis	MID	HOL	10	10	544	6.8		61	Namú Suriá	DEF	NMZ	8	8	649	5		61	Aliyu Dikko	DEF	ACS	6	6	502	20									
+62	Idrissa Sokoto	FWD	ACS	6	0	222	1		62	Ildefonso Morón	FWD	AEM	7	7	544	1		62	Nicanor Arandia	FWD	AUR	11	11	787	6.8		62	Tkabë Kichá	MID	NMZ	8	0	288	5		62	Comlan Gbanou	GK	VAN	7	7	630	20									
+63	Garba Magaji	FWD	ACS	6	6	308	1		63	Khalil Alami	MID	AEM	7	7	474	1		63	Lisandro Rivas	MID	AUR	11	11	949	6.8		63	Tsirú Diköl	DEF	NMZ	8	8	596	5		63	Duchí Siwöl	MID	NMZ	8	8	540	20									
+64	Festo Gbaduma	FWD	SSA	6	6	323	1		64	Spiridon Krukoff	DEF	MOR	7	7	630	1		64	James Feruccio	MID	HOL	11	0	341	6.8		64	Alvaro Small	MID	HOL	8	0	242	5		64	Emiliano Luna	MID	AUR	11	11	876	20									
+65	Elwood Wagamese	MID	ATA	6	6	511	1		65	Dorofei Lestenkof	FWD	MOR	7	7	533	1		65	Nasiru Kaura	FWD	ACS	6	0	276	6.7		65	Jedediah McAllister	DEF	SAL	9	9	774	5		65	Réda Maameri	DEF	ABB	6	6	540	19									
+66	Ignace Wawanolet	FWD	ATA	6	0	98	1		66	Levi Kignak	FWD	MOR	7	7	539	1		66	Firmino Varela	DEF	ATA	6	6	540	6.7		66	Titus Calloway	FWD	SAL	9	0	342	5		66	Firmino Varela	DEF	ATA	6	6	540	19									
+67	Biidaaban Manitowabi	FWD	ATA	6	6	387	1		67	Katlian Kadashan	MID	MOR	7	7	527	1		67	Khalil Alami	MID	AEM	7	7	474	6.7		67	Tilman Zartmann	DEF	PON	10	10	900	5		67	Kombo Kobanda	DEF	VAN	7	7	630	19									
+68	Gennaro Mancini	DEF	VAN	7	7	630	1		68	Talí Sabákö	MID	NMZ	7	0	206	1		68	Gerrit Van Leeuwen	DEF	AED	7	7	601	6.7		68	Philip Klein	DEF	ESU	10	10	863	5		68	Pono Nainoa	MID	AED	7	7	576	19									
+69	Othmane El Fassi	MID	AEM	7	7	512	1		69	Jatsó Bluköl	MID	NMZ	8	0	251	1		69	Sibö Kurbli	GK	NMZ	8	8	720	6.7		69	Jose Carlos Pescador	DEF	AUR	11	11	990	5		69	Abel Prescott	MID	SAL	9	9	692	19									
+70	Khalil Alami	MID	AEM	7	7	474	1		70	Kanë Dabá	MID	NMZ	8	8	697	1		70	Dowá Tuvöl	DEF	NMZ	8	8	685	6.7		70	Wade Boone	DEF	HOL	11	11	990	5		70	Biel Chuol	DEF	SSA	3	3	224	18									
+71	Ture Poule	FWD	KKM	7	0	187	1		71	Ditsö Nakí	MID	NMZ	8	8	534	1		71	Kanë Dabá	MID	NMZ	8	8	697	6.7		71	Obadiah Larkin	FWD	SAL	6	6	310	4		71	Nuhu Maina	MID	ACS	6	6	375	18									
+72	Juhani Norsuunlainen	FWD	KKM	7	0	222	1		72	Duchí Siwöl	MID	NMZ	8	8	540	1		72	Juní Börá	FWD	NMZ	8	8	505	6.7		72	Daan Mulder	MID	AED	6	6	459	4		72	Tahar Djaballah	DEF	ABB	6	6	509	18									
+73	Dorofei Lestenkof	FWD	MOR	7	7	533	1		73	Tsirú Diköl	DEF	NMZ	8	8	596	1		73	Sulá Bikakö	DEF	NMZ	8	8	696	6.7		73	Nuhu Maina	MID	ACS	6	6	375	4		73	Rufin Yakété	DEF	VAN	7	7	589	18									
+74	Pono Nainoa	MID	AED	7	7	576	1		74	Pirmin Hoffmeister	MID	PON	8	0	94	1		74	Jedediah McAllister	DEF	SAL	9	9	774	6.7		74	Koceïla Idir	MID	ABB	6	6	483	4		74	Dominic Winslow	FWD	ESU	10	10	582	18									
+75	Noa Limahai	FWD	AED	7	0	62	1		75	Alvaro Small	MID	HOL	8	0	242	1		75	Elijah Tanner	MID	SAL	9	9	678	6.7		75	Elwood Wagamese	MID	ATA	6	6	511	4		75	Hayes Hollis	MID	HOL	10	10	544	18									
+76	Manu Kawelo	FWD	AED	7	0	209	1		76	Ánselmo Fernandez	MID	AUR	9	0	190	1		76	Maximilian Mollenhauer	GK	PON	10	10	900	6.7		76	Zhaawan Commanda	FWD	ATA	6	0	191	4		76	Fethi Kateb	MID	ABB	6	6	510	17									
+77	Talí Sabákö	MID	NMZ	7	0	206	1		77	Micah Overstreet	MID	SAL	9	0	241	1		77	Ephraim Snyder	DEF	PON	10	10	900	6.7		77	Katlian Kadashan	MID	MOR	7	7	527	4		77	Abdoulaye Maïna	FWD	VAN	7	7	449	17									
+78	Tkabë Kichá	MID	NMZ	8	0	288	1		78	Abel Prescott	MID	SAL	9	9	692	1		78	Diedrich Fassbender	MID	PON	10	10	893	6.7		78	Jonah Kupihea	FWD	AED	7	4	321	4		78	Narcisse Nakombo	MID	VAN	7	7	594	17									
+79	Duchí Siwöl	MID	NMZ	8	8	540	1		79	Titus Calloway	FWD	SAL	9	0	342	1		79	Jose Carlos Pescador	DEF	AUR	11	11	990	6.7		79	Alton Begay	DEF	ESU	10	10	803	4		79	Trent Hawthorne	FWD	ESU	9	9	459	17									
+80	Alvaro Small	MID	HOL	8	0	242	1		80	Amos Donnelly	FWD	SAL	9	9	522	1		80	Jenaro Salamanca	DEF	AUR	11	11	957	6.7		80	Efraín Arenas	DEF	AUR	11	11	970	4		80	Kendrick Nakai	MID	ESU	10	0	381	17									
+81	Jedediah McAllister	DEF	SAL	9	9	774	1		81	Thaddeus Boone	MID	SAL	9	9	657	1		81	Emiliano Luna	MID	AUR	11	11	876	6.7		81	Clayton Caldwell	DEF	ESU	4	0	170	3		81	Nicanor Arandia	FWD	AUR	11	11	787	17									
+82	Silas Cartwright	DEF	SAL	9	9	810	1		82	Elijah Tanner	MID	SAL	9	9	678	1		82	Olegario Pérez	MID	AUR	11	11	851	6.7		82	Bienvenu Wongo	FWD	VAN	5	5	214	3		82	Zakaria Bouhaddou	MID	AEM	6	6	439	16									
+83	Micah Overstreet	MID	SAL	9	0	241	1		83	Trent Hawthorne	FWD	ESU	9	9	459	1		83	Leonardo Urdaneta	DEF	HOL	11	11	940	6.7		83	Édouard Fontaine	MID	ACS	6	6	410	3		83	Shehu Turaki	DEF	ACS	6	6	540	16									
+84	Ezekiel Bridger	DEF	SAL	9	0	224	1		84	Arcadio Villa	FWD	AUR	10	0	262	1		84	Jean Beauregard	MID	HOL	11	11	767	6.7		84	Aliyu Dikko	DEF	ACS	6	6	502	3		84	Tong Tikima	DEF	SSA	6	6	486	16									
+85	Freek Hendriks	FWD	ESU	9	0	276	1		85	Ivo Brandão	FWD	AUR	10	0	227	1		85	Martial Lefèvre	DEF	ACS	6	6	540	6.6		85	Ngor Thon	MID	SSA	6	6	426	3		85	Ennio Amato	DEF	VAN	7	7	616	16									
+86	Tilman Zartmann	DEF	PON	10	10	900	1		86	Tilman Zartmann	DEF	PON	10	10	900	1		86	Lawan Zanna	FWD	ACS	6	0	207	6.6		86	Chérif Guerroudj	FWD	ABB	6	6	351	3		86	Gennaro Mancini	DEF	VAN	7	7	630	16									
+87	Robert Schlösser	FWD	PON	10	0	144	1		87	Patrick Stumpfegger	MID	PON	10	10	813	1		87	Koceïla Idir	MID	ABB	6	6	483	6.6		87	Sofiane Mansouri	FWD	ABB	6	6	367	3		87	Veniamin Tarakanoff	MID	MOR	7	7	562	16									
+88	Elliot Farnsworth	DEF	ESU	10	10	850	1		88	Diedrich Fassbender	MID	PON	10	10	893	1		88	Aandeg Debaasige	GK	ATA	6	6	540	6.6		88	Firmino Varela	DEF	ATA	6	6	540	3		88	Horace Peshlakai	FWD	ESU	10	1	437	16									
+89	Alton Begay	DEF	ESU	10	10	803	1		89	Volkmar Scherer	FWD	PON	10	0	284	1		89	Giizis Wemigwans	DEF	ATA	6	6	520	6.6		89	Keesic Nottaway	MID	ATA	6	6	420	3		89	Idriss Messaoudi	MID	AEM	7	7	606	15									
+90	Conrad Bauer	MID	ESU	10	10	707	1		90	Wilhelm Giesel	FWD	PON	10	10	708	1		90	Piquk Ipalook	DEF	MOR	7	7	630	6.6		90	Idriss Messaoudi	MID	AEM	7	7	606	3		90	Youssef Valverde	MID	AEM	7	7	467	15									
+91	Kendrick Nakai	MID	ESU	10	0	381	1		91	Siegmund Stracke	FWD	PON	10	10	652	1		91	Jonah Kupihea	FWD	AED	7	4	321	6.6		91	Ildefonso Morón	FWD	AEM	7	7	544	3		91	Biera Tuuliparänen	DEF	KKM	7	7	630	15									
+92	Silvio Caruso	MID	ESU	10	10	853	1		92	Conrad Bauer	MID	ESU	10	10	707	1		92	Alvaro Small	MID	HOL	8	0	242	6.6		92	Levi Kignak	FWD	MOR	7	7	539	3		92	Ring Majok	DEF	SSA	3	3	270	14									
+93	Hayes Hollis	MID	HOL	10	10	544	1		93	Kendrick Nakai	MID	ESU	10	0	381	1		93	Ezekiel Bridger	DEF	SAL	9	0	224	6.6		93	Noa Limahai	FWD	AED	7	0	62	3		93	Ibrahim Galadima	GK	ACS	6	6	540	14									
+94	Jose Carlos Pescador	DEF	AUR	11	11	990	1		94	Dominic Winslow	FWD	ESU	10	10	582	1		94	Abel Prescott	MID	SAL	9	9	692	6.6		94	Lono Kekoa	FWD	AED	7	7	471	3		94	Elwood Wagamese	MID	ATA	6	6	511	14									
+95	Wade Boone	DEF	HOL	11	11	990	1		95	Hayes Hollis	MID	HOL	10	10	544	1		95	Arcadio Villa	FWD	AUR	10	0	262	6.6		95	Eleu Pokipala	FWD	AED	7	7	584	3		95	Joaquim Fonseca	MID	ATA	6	6	514	14									
+									96	Jacinto Valencia	DEF	AUR	11	11	881	1		96	Philip Klein	DEF	ESU	10	10	863	6.6		96	Talí Sabákö	MID	NMZ	7	0	206	3		96	Odilon Borkono	MID	VAN	7	7	512	14									
+									97	Efraín Arenas	DEF	AUR	11	11	970	1		97	Kendrick Nakai	MID	ESU	10	0	381	6.6		97	Ephraim Bayliss	MID	SAL	8	0	168	3		97	Khalil Alami	MID	AEM	7	7	474	14									
+									98	Emiliano Luna	MID	AUR	11	11	876	1		98	Rafael Rosario	GK	AUR	11	11	990	6.6		98	Vito Moretti	MID	ESU	8	0	231	3		98	Nakoa Kealoha	DEF	AED	7	7	630	14									
+									99	Nicanor Arandia	FWD	AUR	11	11	787	1		99	Emilio Escalona	DEF	HOL	4	1	245	6.5		99	Ditsö Nakí	MID	NMZ	8	8	534	3		99	Ulu Piipiilani	MID	AED	7	7	619	14									
+									100	Olegario Pérez	MID	AUR	11	11	851	1		100	Nabil Chakib	MID	AEM	6	0	199	6.5		100	Micah Overstreet	MID	SAL	9	0	241	3		100	Jonas Mercer	MID	SAL	9	9	732	14									
+									101	Jean Beauregard	MID	HOL	11	11	767	1		101	Shehu Turaki	DEF	ACS	6	6	540	6.5		101	Thaddeus Boone	MID	SAL	9	9	657	3		101	Dale Landry	MID	HOL	10	1	415	14									
+																		102	Édouard Fontaine	MID	ACS	6	6	410	6.5		102	Laurenz Reinhart	FWD	PON	10	0	190	3		102	Koceïla Idir	MID	ABB	6	6	483	13									
+																		103	Ousman Jalo	MID	ACS	6	6	435	6.5		103	Biel Chuol	DEF	SSA	3	3	224	2		103	Mateus Herrera	DEF	ATA	6	6	505	13									
+																		104	Réda Maameri	DEF	ABB	6	6	540	6.5		104	Makwa Kijiko	DEF	ATA	4	0	142	2		104	Gerrit Van Leeuwen	DEF	AED	7	7	601	13									
+																		105	Fethi Kateb	MID	ABB	6	6	510	6.5		105	Këbö Wirbli	MID	NMZ	4	0	102	2		105	Hans-Jürgen Hōnigsberg	FWD	PON	10	10	722	13									
+																		106	Boualem Hamraoui	MID	ABB	6	6	513	6.5		106	Bikëí Yëköl	DEF	NMZ	5	0	195	2		106	Uziel Katz	MID	SSA	6	6	433	12									
+																		107	Donat Obomsawin	DEF	ATA	6	6	453	6.5		107	Taoufik Amrani	MID	AEM	6	1	156	2		107	Sofiane Mansouri	FWD	ABB	6	6	367	12									
+																		108	Joaquim Fonseca	MID	ATA	6	6	514	6.5		108	Ilias Rochdi	MID	AEM	6	0	105	2		108	Lakhdar Meziane	FWD	ABB	6	6	420	12									
+																		109	Duarte Mesquita	MID	ATA	6	0	165	6.5		109	Feoktist Shishkoff	FWD	MOR	6	0	127	2		109	Eleu Pokipala	FWD	AED	7	7	584	12									
+																		110	Niibin Nadjiwon	FWD	ATA	6	6	404	6.5		110	Martial Lefèvre	DEF	ACS	6	6	540	2		110	Ditsö Nakí	MID	NMZ	8	8	534	12									
+																		111	Gennaro Mancini	DEF	VAN	7	7	630	6.5		111	Lawan Zanna	FWD	ACS	6	0	207	2		111	Wol Lual	MID	SSA	6	6	454	11									
+																		112	Pacôme Guébré	MID	VAN	7	7	557	6.5		112	Ousman Jalo	MID	ACS	6	6	435	2		112	Boualem Hamraoui	MID	ABB	6	6	513	11									
+																		113	Ildefonso Morón	FWD	AEM	7	7	544	6.5		113	Garang Bol	FWD	SSA	6	1	247	2		113	Clifton Papatie	MID	ATA	6	6	435	11									
+																		114	Juhani Norsuunlainen	FWD	KKM	7	0	222	6.5		114	Alceste Derocles	DEF	ABB	6	6	540	2		114	Mahamat Ngaradoumbé	DEF	VAN	7	7	538	11									
+																		115	Ignatiy Gromoff	DEF	MOR	7	7	615	6.5		115	Réda Maameri	DEF	ABB	6	6	540	2		115	Heliodoro Medina	DEF	AEM	7	7	630	11									
+																		116	Spiridon Krukoff	DEF	MOR	7	7	630	6.5		116	Ouahid Rahmani	MID	ABB	6	6	505	2		116	Esko Sateräkki	DEF	KKM	7	7	630	11									
+																		117	Katlian Kadashan	MID	MOR	7	7	527	6.5		117	Joaquim Fonseca	MID	ATA	6	6	514	2		117	Mitrofan Makaroff	DEF	MOR	7	7	602	11									
+																		118	Kaiwi Kanakaole	GK	AED	7	7	630	6.5		118	Duarte Mesquita	MID	ATA	6	0	165	2		118	Dorofei Lestenkof	FWD	MOR	7	7	533	11									
+																		119	Talí Sabákö	MID	NMZ	7	0	206	6.5		119	Cristian Costanza	MID	AUR	7	0	104	2		119	Alois Steiner	DEF	AED	7	7	630	11									
+																		120	Tkabë Kichá	MID	NMZ	8	0	288	6.5		120	Khalil Alami	MID	AEM	7	7	474	2		120	Sibö Kurbli	GK	NMZ	8	8	720	11									
+																		121	Micah Overstreet	MID	SAL	9	0	241	6.5		121	Sámmol Krusinen	DEF	KKM	7	7	590	2		121	Alvaro Small	MID	HOL	8	0	242	11									
+																		122	Zebulon Hartshorn	FWD	SAL	9	0	240	6.5		122	Ture Poule	FWD	KKM	7	0	187	2		122	Cyrus Winslow	FWD	SAL	9	9	569	11									
+																		123	Freek Hendriks	FWD	ESU	9	0	276	6.5		123	Juhani Norsuunlainen	FWD	KKM	7	0	222	2		123	Ambrose Pickett	MID	HOL	11	0	388	11									
+																		124	Ivo Brandão	FWD	AUR	10	0	227	6.5		124	Veikko Turkunen	FWD	KKM	7	7	442	2		124	Piera Amarainen	MID	KKM	6	6	409	10									
+																		125	Conan Neitzel	MID	PON	10	0	191	6.5		125	Luukas Gantoninen	FWD	KKM	7	7	409	2		125	Daan Mulder	MID	AED	6	6	459	10									
+																		126	Jacinto Valencia	DEF	AUR	11	11	881	6.5		126	Nanuq Oyagak	MID	MOR	7	7	470	2		126	Hamza Benali	GK	ABB	6	6	540	10									
+																		127	Efraín Arenas	DEF	AUR	11	11	970	6.5		127	Gerrit Van Leeuwen	DEF	AED	7	7	601	2		127	Keesic Nottaway	MID	ATA	6	6	420	10									
+																		128	Callum Calhoun	GK	HOL	11	11	990	6.5		128	Pirmin Hoffmeister	MID	PON	8	0	94	2		128	Kaiwi Kanakaole	GK	AED	7	7	630	10									
+																		129	Bikëí Yëköl	DEF	NMZ	5	0	195	6.4		129	Ánselmo Fernandez	MID	AUR	9	0	190	2		129	Peter Selhorst	FWD	ESU	10	0	339	10									
+																		130	Rabi'u Ingawa	MID	ACS	6	0	238	6.4		130	Josiah Halloway	DEF	SAL	9	9	810	2		130	Fabián Machado	FWD	HOL	11	0	448	10									
+																		131	Aliyu Dikko	DEF	ACS	6	6	502	6.4		131	Zebulon Hartshorn	FWD	SAL	9	0	240	2		131	Deng Alier	DEF	SSA	5	1	275	9									
+																		132	Ouahid Rahmani	MID	ABB	6	6	505	6.4		132	Ivo Brandão	FWD	AUR	10	0	227	2		132	Ousman Jalo	MID	ACS	6	6	435	9									
+																		133	Pää Tüülkok	MID	KKM	7	1	279	6.4		133	Robert Schlösser	FWD	PON	10	0	144	2		133	Ouahid Rahmani	MID	ABB	6	6	505	9									
+																		134	Lemet Vesijärven	MID	KKM	7	7	546	6.4		134	Jenaro Salamanca	DEF	AUR	11	11	957	2		134	Montasir El Andaloussi	DEF	AEM	7	7	630	9									
+																		135	Eleu Pokipala	FWD	AED	7	7	584	6.4		135	Prosper Ngoumba	DEF	VAN	1	0	30	1		135	Feodor Kulanen	MID	KKM	7	7	485	9									
+																		136	Ephraim Bayliss	MID	SAL	8	0	168	6.4		136	Sander Vandevelde	MID	HOL	2	0	53	1		136	Nanuq Oyagak	MID	MOR	7	7	470	9									
+																		137	Jatsó Bluköl	MID	NMZ	8	0	251	6.4		137	Haku Kahananui	FWD	AED	3	3	243	1		137	Ikaika Makoa	DEF	AED	7	7	601	9									
+																		138	Ánselmo Fernandez	MID	AUR	9	0	190	6.4		138	Gaston Fabre	MID	ABB	4	0	57	1		138	Ánselmo Fernandez	MID	AUR	9	0	190	9									
+																		139	Severino Guzmán	FWD	AUR	10	0	180	6.4		139	Lawali Birnin	MID	ACS	4	0	124	1		139	Titus Calloway	FWD	SAL	9	0	342	9									
+																		140	Reuben Mendoza	DEF	HOL	11	11	943	6.4		140	Miqliq Katchatag	FWD	MOR	5	0	61	1		140	Ivo Brandão	FWD	AUR	10	0	227	9									
+																		141	Obadiah Larkin	FWD	SAL	6	6	310	6.3		141	Puok Gatluak	FWD	SSA	5	5	243	1		141	Maximilian Mollenhauer	GK	PON	10	10	900	9									
+																		142	Eitan Halevi	MID	SSA	6	0	202	6.3		142	Nabil Chakib	MID	AEM	6	0	199	1		142	Clayton Caldwell	DEF	ESU	4	0	170	8									
+																		143	Mateus Herrera	DEF	ATA	6	6	505	6.3		143	Ulrik Sejtala	MID	KKM	6	0	157	1		143	Obadiah Larkin	FWD	SAL	6	6	310	8									
+																		144	Clifton Papatie	MID	ATA	6	6	435	6.3		144	Piera Amarainen	MID	KKM	6	6	409	1		144	Édouard Fontaine	MID	ACS	6	6	410	8									
+																		145	Keesic Nottaway	MID	ATA	6	6	420	6.3		145	Bukar Dalori	DEF	ACS	6	6	508	1		145	Kabiru Mainasara	FWD	ACS	6	6	289	8									
+																		146	Odilon Borkono	MID	VAN	7	7	512	6.3		146	Rabi'u Ingawa	MID	ACS	6	0	238	1		146	Badr Chraibi	DEF	AEM	7	7	630	8									
+																		147	Narcisse Nakombo	MID	VAN	7	7	594	6.3		147	Nasiru Kaura	FWD	ACS	6	0	276	1		147	Virsa Tuttonen	MID	KKM	7	7	483	8									
+																		148	Montasir El Andaloussi	DEF	AEM	7	7	630	6.3		148	Kabiru Mainasara	FWD	ACS	6	6	289	1		148	Atiqtalik Ahmaogak	GK	MOR	7	7	630	8									
+																		149	Heliodoro Medina	DEF	AEM	7	7	630	6.3		149	Wol Lual	MID	SSA	6	6	454	1		149	Eben Nageak	DEF	MOR	7	7	630	8									
+																		150	Rachid Benchekroun	DEF	AEM	7	7	630	6.3		150	Fethi Kateb	MID	ABB	6	6	510	1		150	Spiridon Krukoff	DEF	MOR	7	7	630	8									
+																		151	Idriss Messaoudi	MID	AEM	7	7	606	6.3		151	Lakhdar Meziane	FWD	ABB	6	6	420	1		151	Jonah Kupihea	FWD	AED	7	4	321	8									
+																		152	Othmane El Fassi	MID	AEM	7	7	512	6.3		152	Ignace Wawanolet	FWD	ATA	6	0	98	1		152	Juní Börá	FWD	NMZ	8	8	505	8									
+																		153	Mitrofan Makaroff	DEF	MOR	7	7	602	6.3		153	Clifton Papatie	MID	ATA	6	6	435	1		153	Arcadio Villa	FWD	AUR	10	0	262	8									
+																		154	Qillaq Nutaaq	MID	MOR	7	0	184	6.3		154	Niibin Nadjiwon	FWD	ATA	6	6	404	1		154	Shmuel Berkovits	DEF	SSA	3	0	114	7									
+																		155	Nanuq Oyagak	MID	MOR	7	7	470	6.3		155	Giizis Wemigwans	DEF	ATA	6	6	520	1		155	Cayetano Montoya	DEF	AUR	3	0	129	7									
+																		156	Nakoa Kealoha	DEF	AED	7	7	630	6.3		156	Chirá Nubrí	FWD	NMZ	6	0	215	1		156	Jovnna Urujärven	DEF	KKM	4	4	323	7									
+																		157	Alois Steiner	DEF	AED	7	7	630	6.3		157	Fidèle Mokossa	FWD	VAN	7	2	311	1		157	Bikëí Yëköl	DEF	NMZ	5	0	195	7									
+																		158	Vito Moretti	MID	ESU	8	0	231	6.3		158	Odilon Borkono	MID	VAN	7	7	512	1		158	Rabi'u Ingawa	MID	ACS	6	0	238	7									
+																		159	Josiah Halloway	DEF	SAL	9	9	810	6.3		159	Pacôme Guébré	MID	VAN	7	7	557	1		159	Biidaaban Manitowabi	FWD	ATA	6	6	387	7									
+																		160	Meir Shapira	DEF	SSA	5	5	381	6.2		160	Narcisse Nakombo	MID	VAN	7	7	594	1		160	Odd-Isak Hætta	GK	KKM	7	7	630	7									
+																		161	Bukar Dalori	DEF	ACS	6	6	508	6.2		161	Virsa Tuttonen	MID	KKM	7	7	483	1		161	Tkabë Kichá	MID	NMZ	8	0	288	7									
+																		162	Uziel Katz	MID	SSA	6	6	433	6.2		162	Mitrofan Makaroff	DEF	MOR	7	7	602	1		162	Ezekiel Bridger	DEF	SAL	9	0	224	7									
+																		163	Ngor Thon	MID	SSA	6	6	426	6.2		163	Spiridon Krukoff	DEF	MOR	7	7	630	1		163	Freek Hendriks	FWD	ESU	9	0	276	7									
+																		164	Wol Lual	MID	SSA	6	6	454	6.2		164	Ikaika Makoa	DEF	AED	7	7	601	1		164	Conan Neitzel	MID	PON	10	0	191	7									
+																		165	Badr Chraibi	DEF	AEM	7	7	630	6.2		165	Jatsó Bluköl	MID	NMZ	8	0	251	1		165	Volkmar Scherer	FWD	PON	10	0	284	7									
+																		166	Virsa Tuttonen	MID	KKM	7	7	483	6.2		166	Ephraim Snyder	DEF	PON	10	10	900	1		166	Nabil Chakib	MID	AEM	6	0	199	6									
+																		167	Levi Kignak	FWD	MOR	7	7	539	6.2		167	Jedidiah Wanamaker	DEF	PON	10	10	885	1		167	Nasiru Kaura	FWD	ACS	6	0	276	6									
+																		168	Laurenz Reinhart	FWD	PON	10	0	190	6.2		168	Dominic Winslow	FWD	ESU	10	10	582	1		168	Eitan Halevi	MID	SSA	6	0	202	6									
+																		169	Deng Alier	DEF	SSA	5	1	275	6.1		169	Jacinto Valencia	DEF	AUR	11	11	881	1		169	Garang Bol	FWD	SSA	6	1	247	6									
+																		170	Léopold Yangongo	FWD	VAN	6	0	190	6.1		170	Reuben Mendoza	DEF	HOL	11	11	943	1		170	Festo Gbaduma	FWD	SSA	6	6	323	6									
+																		171	Piera Amarainen	MID	KKM	6	6	409	6.1											171	Chérif Guerroudj	FWD	ABB	6	6	351	6									
+																		172	Daan Mulder	MID	AED	6	6	459	6.1											172	Cristian Costanza	MID	AUR	7	0	104	6									
+																		173	Gatdet Hoth	MID	SSA	6	6	445	6.1											173	Fidèle Mokossa	FWD	VAN	7	2	311	6									
+																		174	Zhaawan Commanda	FWD	ATA	6	0	191	6.1											174	Rachid Benchekroun	DEF	AEM	7	7	630	6									
+																		175	Rufin Yakété	DEF	VAN	7	7	589	6.1											175	Ildefonso Morón	FWD	AEM	7	7	544	6									
+																		176	Esko Sateräkki	DEF	KKM	7	7	630	6.1											176	Othmane El Fassi	MID	AEM	7	7	512	6									
+																		177	Ture Poule	FWD	KKM	7	0	187	6.1											177	Levi Kignak	FWD	MOR	7	7	539	6									
+																		178	Feodor Kulanen	MID	KKM	7	7	485	6.1											178	Katlian Kadashan	MID	MOR	7	7	527	6									
+																		179	Dorofei Lestenkof	FWD	MOR	7	7	533	6.1											179	Zebulon Hartshorn	FWD	SAL	9	0	240	6									
+																		180	Manu Kawelo	FWD	AED	7	0	209	6.1											180	Laurenz Reinhart	FWD	PON	10	0	190	6									
+																		181	Caleb Whitfield	GK	SAL	9	9	810	6.1											181	Emilio Escalona	DEF	HOL	4	1	245	5									
+																		182	Spencer Jackson	GK	ESU	10	10	900	6.1											182	Feoktist Shishkoff	FWD	MOR	6	0	127	5									
+																		183	Idrissa Sokoto	FWD	ACS	6	0	222	6.0											183	Lawan Zanna	FWD	ACS	6	0	207	5									
+																		184	Yakubu Dattijo	FWD	ACS	6	6	318	6.0											184	Yakubu Dattijo	FWD	ACS	6	6	318	5									
+																		185	Tong Tikima	DEF	SSA	6	6	486	6.0											185	Garba Magaji	FWD	ACS	6	6	308	5									
+																		186	Hamza Benali	GK	ABB	6	6	540	6.0											186	Gatdet Hoth	MID	SSA	6	6	445	5									
+																		187	Biidaaban Manitowabi	FWD	ATA	6	6	387	6.0											187	Aandeg Debaasige	GK	ATA	6	6	540	5									
+																		188	Abdoulaye Maïna	FWD	VAN	7	7	449	6.0											188	Niibin Nadjiwon	FWD	ATA	6	6	404	5									
+																		189	Sámmol Krusinen	DEF	KKM	7	7	590	6.0											189	Pää Tüülkok	MID	KKM	7	1	279	5									
+																		190	Ikaika Makoa	DEF	AED	7	7	601	6.0											190	Luukas Gantoninen	FWD	KKM	7	7	409	5									
+																		191	Ring Majok	DEF	SSA	3	3	270	5.9											191	Lemet Vesijärven	MID	KKM	7	7	546	5									
+																		192	Santteri Selmyaöki	DEF	KKM	3	3	231	5.9											192	Jatsó Bluköl	MID	NMZ	8	0	251	5									
+																		193	Ibrahim Galadima	GK	ACS	6	6	540	5.9											193	Caleb Whitfield	GK	SAL	9	9	810	5									
+																		194	Atem Madut	DEF	SSA	6	6	421	5.9											194	Rafael Rosario	GK	AUR	11	11	990	5									
+																		195	Garang Bol	FWD	SSA	6	1	247	5.9											195	Callum Calhoun	GK	HOL	11	11	990	5									
+																		196	Festo Gbaduma	FWD	SSA	6	6	323	5.9											196	Sander Vandevelde	MID	HOL	2	0	53	4									
+																		197	Ennio Amato	DEF	VAN	7	7	616	5.9											197	Haku Kahananui	FWD	AED	3	3	243	4									
+																		198	Kombo Kobanda	DEF	VAN	7	7	630	5.9											198	Santteri Selmyaöki	DEF	KKM	3	3	231	4									
+																		199	Luukas Gantoninen	FWD	KKM	7	7	409	5.9											199	Soufiane Lahlou	FWD	AEM	4	0	86	4									
+																		200	Atiqtalik Ahmaogak	GK	MOR	7	7	630	5.9											200	Ophir Azoulay	MID	SSA	5	0	148	4									
+																		201	Eben Nageak	DEF	MOR	7	7	630	5.9											201	Amaury Cousteau	FWD	ABB	6	0	227	4									
+																		202	Kabiru Mainasara	FWD	ACS	6	6	289	5.8											202	Chirá Nubrí	FWD	NMZ	6	0	215	4									
+																		203	Amaury Cousteau	FWD	ABB	6	0	227	5.8											203	Yassine Benali	GK	AEM	7	7	630	4									
+																		204	Tahar Djaballah	DEF	ABB	6	6	509	5.8											204	Spencer Jackson	GK	ESU	10	10	900	4									
+																		205	Mahamat Ngaradoumbé	DEF	VAN	7	7	538	5.8											205	Finau Mahoe	MID	AED	5	1	144	3									
+																		206	Biera Tuuliparänen	DEF	KKM	7	7	630	5.8											206	Faustin Mobele	MID	VAN	6	0	55	3									
+																		207	Jovnna Urujärven	DEF	KKM	4	4	323	5.7											207	Taoufik Amrani	MID	AEM	6	1	156	3									
+																		208	Garba Magaji	FWD	ACS	6	6	308	5.7											208	Ogimaa Panadis	MID	ATA	6	0	89	3									
+																		209	Fidèle Mokossa	FWD	VAN	7	2	311	5.7											209	Ignace Wawanolet	FWD	ATA	6	0	98	3									
+																		210	Gideon Colter	FWD	SAL	3	3	173	5.5											210	Gianluca Perrone	DEF	VAN	6	0	146	3									
+																		211	Bienvenu Wongo	FWD	VAN	5	5	214	5.4											211	Veikko Turkunen	FWD	KKM	7	7	442	3									
+																		212	Veikko Turkunen	FWD	KKM	7	7	442	5.4											212	Noa Limahai	FWD	AED	7	0	62	3									
+																		213	Comlan Gbanou	GK	VAN	7	7	630	5.3											213	Lono Kekoa	FWD	AED	7	7	471	3									
+																		214	Duol Akol	GK	SSA	6	6	540	5.2											214	Talí Sabákö	MID	NMZ	7	0	206	3									
+																		215	Puok Gatluak	FWD	SSA	5	5	243	5.1											215	Ephraim Bayliss	MID	SAL	8	0	168	3									
+																		216	Odd-Isak Hætta	GK	KKM	7	7	630	4.6											216	Vito Moretti	MID	ESU	8	0	231	3									
+																		217	Soufiane Lahlou	FWD	AEM	4	0	86	6.9											217	Pirmin Hoffmeister	MID	PON	8	0	94	3									
+																		218	Taoufik Amrani	MID	AEM	6	1	156	6.6											218	Carmelo Bienvenida	DEF	AUR	1	0	33	2									
+																		219	Ulrik Sejtala	MID	KKM	6	0	157	6.6											219	Barnabas Stride	DEF	SAL	1	0	26	2									
+																		220	Keanu Hookano	DEF	AED	2	0	58	6.6											220	Porona Simpansen	DEF	KKM	2	0	72	2									
+																		221	Makwa Kijiko	DEF	ATA	4	0	142	6.6											221	Siwá Chinakö	DEF	NMZ	2	0	59	2									
+																		222	Cayetano Montoya	DEF	AUR	3	0	129	6.6											222	Gideon Colter	FWD	SAL	3	3	173	2									
+																		223	Carmelo Bienvenida	DEF	AUR	1	0	33	6.6											223	Makwa Kijiko	DEF	ATA	4	0	142	2									
+																		224	Cristian Costanza	MID	AUR	7	0	104	6.5											224	Lawali Birnin	MID	ACS	4	0	124	2									
+																		225	Noureddine Mansouri	MID	AEM	6	0	145	6.5											225	Filipp Ayagalria	MID	MOR	5	0	64	2									
+																		226	Sanusi Gwandu	DEF	ACS	1	0	38	6.5											226	Tiies Inkerinen	MID	KKM	5	0	103	2									
+																		227	Umaru Yakasai	MID	ACS	1	0	4	6.5											227	Léopold Yangongo	FWD	VAN	6	0	190	2									
+																		228	Këbö Wirbli	MID	NMZ	4	0	102	6.5											228	Ilias Rochdi	MID	AEM	6	0	105	2									
+																		229	Ola Naone	MID	AED	3	0	16	6.5											229	Noureddine Mansouri	MID	AEM	6	0	145	2									
+																		230	Lawali Birnin	MID	ACS	4	0	124	6.5											230	Idrissa Sokoto	FWD	ACS	6	0	222	2									
+																		231	Aleksanteri Kulainen	DEF	KKM	1	0	39	6.5											231	Hakim Zerguine	MID	ABB	6	0	92	2									
+																		232	Adnane Filali	MID	AEM	3	0	11	6.5											232	Armand Picard	FWD	ABB	6	0	110	2									
+																		233	Sander Dekker	MID	AED	1	0	4	6.5											233	Zhaawan Commanda	FWD	ATA	6	0	191	2									
+																		234	Barnabas Stride	DEF	SAL	1	0	26	6.5											234	Ture Poule	FWD	KKM	7	0	187	2									
+																		235	Nathanael Custer	DEF	PON	1	0	15	6.4											235	Manu Kawelo	FWD	AED	7	0	209	2									
+																		236	Emidio Lombardi	MID	VAN	7	0	150	6.4											236	Micah Overstreet	MID	SAL	9	0	241	2									
+																		237	Faustin Mobele	MID	VAN	6	0	55	6.4											237	Severino Guzmán	FWD	AUR	10	0	180	2									
+																		238	Ibrahim Gali	MID	VAN	2	0	22	6.4											238	Sanusi Gwandu	DEF	ACS	1	0	38	1									
+																		239	Ilias Rochdi	MID	AEM	6	0	105	6.4											239	Keanu Hookano	DEF	AED	2	0	58	1									
+																		240	Yakov Galaktionoff	MID	MOR	6	0	83	6.4											240	Këbö Wirbli	MID	NMZ	4	0	102	1									
+																		241	Filipp Ayagalria	MID	MOR	5	0	64	6.4											241	Gaston Fabre	MID	ABB	4	0	57	1									
+																		242	Feoktist Shishkoff	FWD	MOR	6	0	127	6.4											242	Bienvenu Wongo	FWD	VAN	5	5	214	1									
+																		243	Noa Limahai	FWD	AED	7	0	62	6.4											243	Miqliq Katchatag	FWD	MOR	5	0	61	1									
+																		244	Hakim Zerguine	MID	ABB	6	0	92	6.4											244	Puok Gatluak	FWD	SSA	5	5	243	1									
+																		245	Ogimaa Panadis	MID	ATA	6	0	89	6.4											245	Yakov Galaktionoff	MID	MOR	6	0	83	1									
+																		246	Ignace Wawanolet	FWD	ATA	6	0	98	6.4											246	Yacine Belkacem	FWD	ABB	6	0	145	1									
+																		247	Tiies Inkerinen	MID	KKM	5	0	103	6.4											247	Duarte Mesquita	MID	ATA	6	0	165	1									
+																		248	Tuomas Kuutemben	MID	KKM	1	0	17	6.4											248	Emidio Lombardi	MID	VAN	7	0	150	1									
+																		249	Pirmin Hoffmeister	MID	PON	8	0	94	6.4											249	Qillaq Nutaaq	MID	MOR	7	0	184	1									
+																		250	Aput Anagick	DEF	MOR	2	0	43	6.4											250	Robert Schlösser	FWD	PON	10	0	144	1									
+																		251	Gaston Fabre	MID	ABB	4	0	57	6.4																											
+																		252	Lyle Kakepetum	MID	ATA	2	0	26	6.4																											
+																		253	Sander Vandevelde	MID	HOL	2	0	53	6.4																											
+																		254	Robert Schlösser	FWD	PON	10	0	144	6.3																											
+																		255	Miqliq Katchatag	FWD	MOR	5	0	61	6.3																											
+																		256	Ophir Azoulay	MID	SSA	5	0	148	6.3																											
+																		257	Siwá Chinakö	DEF	NMZ	2	0	59	6.3																											
+																		258	Gianluca Perrone	DEF	VAN	6	0	146	6.3																											
+																		259	Finau Mahoe	MID	AED	5	1	144	6.3																											
+																		260	Shmuel Berkovits	DEF	SSA	3	0	114	6.3																											
+																		261	Jok Gony	MID	SSA	2	0	52	6.3																											
+																		262	Prosper Ngoumba	DEF	VAN	1	0	30	6.3																											
+																		263	Armand Picard	FWD	ABB	6	0	110	6.2																											
+																		264	Kaddour Benfodil	DEF	ABB	1	0	31	6.1																											
+																		265	Yacine Belkacem	FWD	ABB	6	0	145	5.9																											
+																		266	Luol Nhial	FWD	SSA	5	0	161	5.8																											
+																		267	Porona Simpansen	DEF	KKM	2	0	72	5.5																											

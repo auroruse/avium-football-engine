@@ -492,8 +492,15 @@ export function meMove(s, rng) {
       // you take at a moment rather than a slider you set once. The existing fatigue and
       // substitution machinery then handles the consequence without anything new.
       // Clamped at zero as a whole, so a slow side saves legs but can never bank stamina.
-      * (1 + Math.max(0, (s.strategy?.[side]?.pressingLOE || 0) * 0.18
-                          + (s.strategy?.[side]?.tempo || 0) * CFG.tempoDrain)));
+      // ...AND EACH SURCHARGE IN ITS OWN PHASE. The pressing surcharge used to apply to every metre
+      // a presser ran, including the metres he ran while his own side had the ball -- so a high
+      // press paid the same whether it faced a side that gave the ball straight back or one that
+      // made it chase for sixty seconds a spell. Scoped to the defending phase, the cost of
+      // pressing now scales with how much defending the opponent makes you do, which is the whole
+      // of what "making the ball do the work" is supposed to buy a possession side. Tempo is the
+      // mirror: playing quick costs legs while you HAVE the ball.
+      * (1 + Math.max(0, (s.mePos?.side !== side ? (s.strategy?.[side]?.pressingLOE || 0) * CFG.pressDrain : 0)
+                          + (s.mePos?.side === side ? (s.strategy?.[side]?.tempo || 0) * CFG.tempoDrain : 0))));
       // The ball is NOT dragged along with him. He is running near an object.
       p._avgV = (p._avgV ?? 0) * 0.9 + (step / ME_DT) * 0.1;   // ~10-tick lungs for the breath model
     }
@@ -709,7 +716,24 @@ export function meFinalise(s) {
       const proj = p.rc ? 1 : Math.min(1 / Math.max(frac, 0.05), CFG.rateProjMax);
       const dev = (p.rating - 6.5) * proj * (CFG.rateSpread?.[p.pos] ?? 1) * shrink
                 + (CFG.ratePos[p.pos] ?? 0) * shrink;
-      p.rating = Math.max(3, Math.min(10, +((6.5 + dev).toFixed(2))));
+      // THE TOP END COMPRESSES INSTEAD OF CLIPPING. The positional spread (rateSpread.FWD 1.55)
+      // put an ordinary goal-plus-assist afternoon at 9.99, and the hard clamp then flattened every
+      // performance above it onto the same 10.0 -- measured, a ten every four matched-league matches
+      // and 2.6 a match in mismatch fixtures, with a hat-trick and a tidy brace printing identically.
+      // Linear to 8.4, then exponential approach to 10: ordering is preserved, the calibrated pars
+      // are untouched (the knee sits ~2 sd above every positional par), and a 10.0 needs the raw
+      // deviation of roughly three goals AND two assists rather than one of each.
+      // Logarithmic above the knee, not exponential-to-10: the exponential emptied the 10.0 bin but
+      // left a brace printing 9.7, because it spent its whole range on the first stretch past the
+      // knee. The log keeps compressing forever: a goal-and-assist lands ~8.9, a brace low 9s, a
+      // hat-trick ~9.4, a four-goal afternoon ~9.7, and a 10.0 needs roughly five goals and two
+      // assists in one match. The knee sits ~2 sd above every positional par, so the calibrated
+      // body is linear. TAIL 0.55 was measured first and squeezed everything above a brace into
+      // 9.2-9.37 -- a four-goal game printed what a good brace did; 0.7 is where the monsters
+      // separate again without reopening the flood.
+      const rTop = 6.5 + dev, KNEE = 8.4, TAIL = 0.7;
+      const rSoft = rTop > KNEE ? KNEE + TAIL * Math.log(1 + (rTop - KNEE)) : rTop;
+      p.rating = Math.max(3, Math.min(10, +(rSoft.toFixed(2))));
     }
   }
 }
@@ -894,7 +918,17 @@ export function meTackle(s, rng, out) {
       p.defActs = (p.defActs || 0) + 1; p.duelWon = (p.duelWon || 0) + 1;
       // ...and the man he took it off lost it.
       meRate(c, -CFG.rateDuelLost); c.duelLost = (c.duelLost || 0) + 1;
-      meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
+      // A tackle is not a pass to yourself. Most wins POKE the ball loose -- see the derivation at
+      // CFG.tkLooseP -- and the fifty-fifty that follows is resolved by the same pickup physics as
+      // any other loose ball. The clean minority below keeps the old behaviour.
+      if (rng.u() < CFG.tkLooseP) {
+        mp.lastSide = def; meKickedBy(mp, def, i, true);
+        mp._loose = mp.tick;
+        meKnock(mp, rng, mp.bx + (rng.u() - 0.5) * CFG.tkLooseD * 2,
+                         mp.by + (rng.u() - 0.5) * CFG.tkLooseD * 2, CFG.tkLooseV, 0);
+      } else {
+        meKickedBy(mp, def, i); meBallTo(s, def, i, mp.bx, mp.by);
+      }
       meEvt(out, "tackle", def, p.x, p.y, c.x, c.y, `${p.fullName || p.name} wins it off ${c.fullName || c.name}`);
     } else {
       p._beat = CFG.tkBeatT;
@@ -2578,7 +2612,7 @@ export function meTick(s, rng, out) {
   const forced = mp.hold >= natural;
   const act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
   if (act.k === "carry") { meCarry(s, out, p); return; }              // meDribble is already running him
-  if (!forced && (act.sc ?? 0) <= CFG.actNow) return;
+  if (!forced && (act.sc ?? 0) <= CFG.actNow * Math.max(0, 1 - press * CFG.pressActNow)) return;
   mp.firstTouch = mp.hold <= 1;
   mp.hold = 0;
   if (act.k === "shot") {
