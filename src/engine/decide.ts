@@ -123,7 +123,7 @@ export let ME_DBG = null;
 export const meSetDbg = (v) => { ME_DBG = v; };
 
 // `dwell` is how many slices he is PAST his touch budget. Zero means he still has time to look up.
-export function meDecide(s, rng, side, i, dwell) {
+export function meDecide(s, rng, side, i, dwell, noCarry) {
   // A man the manager has re-instructed (p._ci) decides on the side's orders plus his own.
   const ps = s.players[side], p = ps[i], a = meAttrs(p), st = meCoachSt(s.strategy?.[side] || NO_INSTRUCTIONS, p);
   const isGK = p.pos === "GK";
@@ -686,7 +686,10 @@ export function meDecide(s, rng, side, i, dwell) {
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.
   const jdsc = dsc + (thruMe ? 0 : CFG.carryInstrW * obey * (st.dribbling || 0)) + jit("carry");
-  if (jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
+  // noCarry is the hard release (see holdHardT in match.ts): the geometric dwell tax drives a
+  // camped carry's score to zero, but zero still beats a menu where every pass is negative --
+  // a weak carrier against an elite screen wall -- so "never off the menu" needs one exception.
+  if (!noCarry && jdsc > bestSc) { bestSc = jdsc; best = { k: "carry", p: drb }; }
   }
   // Hoofing it. You probably concede possession, but you concede it forty metres from your own goal
   // instead of ten, and the cost of losing it is charged WHERE IT LANDS rather than where you stand.

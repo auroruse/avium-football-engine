@@ -325,6 +325,14 @@ foulAggr: 0.25,
   // so rewriting the target could not matter. Measured, the presser stood on his own target 7% of
   // the time and 4.14 m off it. The fix is closeStop, not this. Kept at a plain standoff.
   jockeyStand: 1.5,
+  // The two halves of the anti-freeze (both born of a 90-minute 95%-possession statue match):
+  // a presser walks onto the ball once the carrier has camped pressTakeHold slices, and the
+  // carrier's own carry option is hard-banned holdHardT slices past his touch budget.
+  pressTakeHold: 10, holdHardT: 40,
+  // ...and the third: a stationary ball further than this from the man who nominally holds it is
+  // nobody's ball. Control reach is 0.70; the slack covers a settling touch without ever letting
+  // "possession" stand for a ball the holder cannot reach.
+  holdLostR: 1.6,
   interceptW: 1.9,
   // Only the man actually going for the ball runs flat out. Everyone else -- markers, the man
   // getting back into shape, a runner in behind -- works hard but does not sprint, because a
@@ -1602,7 +1610,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: 0.134, DEF: -0.609, MID: -0.572, FWD: -1.286 },
+  ratePos: { GK: 0.134, DEF: -0.609, MID: -0.572, FWD: -1.611 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a

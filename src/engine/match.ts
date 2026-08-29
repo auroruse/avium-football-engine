@@ -2556,6 +2556,16 @@ export function meTick(s, rng, out) {
   // instead. The one cause of it is fixed in meMove above, but any future gap between "I have
   // arrived" and "I can touch it" would do exactly the same thing, and it costs four lines to make
   // that class of bug survivable. Give it to the nearest man and let the game go on.
+  // ...AND POSSESSION THAT ISN'T REAL IS REVOKED FIRST. mp.idx can survive pointing at a man the
+  // ball has stopped dead OUTSIDE the reach of: he cannot touch it, so no decision ever fires (the
+  // touch cycle is the only entry), the stall rescue below is gated on idx < 0, and the presser
+  // jockeys the spot -- the 90-minute statue match with 95% possession to the beaten side. If he
+  // cannot play it and it is not moving, it is nobody's ball, and the ordinary loose machinery
+  // (desig, the stall rescue, the press) takes over on the next slice.
+  if (mp.idx >= 0 && Math.hypot(mp.bvx, mp.bvy) < CFG.deadBallV) {
+    const hp = s.players[mp.side]?.[mp.idx];
+    if (!hp || hp.off || Math.hypot(hp.x - mp.bx, hp.y - mp.by) > CFG.holdLostR) mp.idx = -1;
+  }
   if (mp.idx < 0 && Math.hypot(mp.bvx, mp.bvy) < CFG.deadBallV) {
     if ((mp.stallT = (mp.stallT || 0) + 1) > CFG.stallGrace) { meScramble(s, rng); mp.stallT = 0; }
   } else mp.stallT = 0;
@@ -2588,6 +2598,24 @@ export function meTick(s, rng, out) {
     for (const q of s.players[sd]) q._poss = (mp.ttbBest[meOther(sd)] + 200) / ((q._ttbMs ?? 9999) + 200);
   }
   if (mp.tick % ME_MAP_STRIDE === 0) meBuildMaps(s);
+  // Harness-only freeze probe: dump who holds it, who is meant to press, and where everyone is.
+  if (globalThis.__freeze && mp.tick === globalThis.__freeze.at) {
+    const fz = globalThis.__freeze, car = mp.idx >= 0 ? s.players[mp.side][mp.idx] : null;
+    fz.out = { tick: mp.tick, side: mp.side, idx: mp.idx, bx: +mp.bx.toFixed(1), by: +mp.by.toFixed(1),
+      carrier: car ? { n: car.name, x: +car.x.toFixed(1), y: +car.y.toFixed(1),
+                      tx: +(car._tx ?? -1).toFixed(1), ty: +(car._ty ?? -1).toFixed(1) } : null,
+      duties: {}, nearOpp: [] };
+    for (const sd of ME_SIDES) {
+      const h = {};
+      for (const q of s.players[sd]) h[q._duty || "?"] = (h[q._duty || "?"] || 0) + 1;
+      fz.out.duties[sd] = h;
+    }
+    const opp = s.players[meOther(mp.side)] || [];
+    fz.out.nearOpp = opp.filter(q => !q.off).map(q => ({ n: q.name, pos: q.pos, duty: q._duty,
+        d: +Math.hypot(q.x - mp.bx, q.y - mp.by).toFixed(1),
+        dTx: +Math.hypot(q.x - (q._tx ?? q.x), q.y - (q._ty ?? q.y)).toFixed(1) }))
+      .sort((a, b) => a.d - b.d).slice(0, 5);
+  }
   // Every 8 is enough: halving this to 4 was measured against the first-touch shot inflation and
   // moved nothing (3.58 -> 3.62, noise) -- the block's lag was never the leak. Not worth the CPU.
   if (mp.tick % 8 === 0) for (const side of ME_SIDES) meSlots(s, side);
@@ -2826,8 +2854,16 @@ export function meTick(s, rng, out) {
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
   const forced = mp.hold >= natural;
-  const act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
-  if (act.k === "carry") { meCarry(s, out, p); return; }              // meDribble is already running him
+  let act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
+  if (act.k === "carry") {
+    // ...but not FOREVER. The dwell tax shrinks a camped carry toward zero, and zero still wins
+    // against a menu of all-negative passes, so this return was a bypass around the forced
+    // release and a beaten side's centre-back could stand on the ball for the rest of the match.
+    // Far enough past his budget, carry comes off the menu and he plays the least-bad ball.
+    if (mp.hold < natural + CFG.holdHardT) { meCarry(s, out, p); return; }
+    act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1, true);
+    if (act.k === "carry") { meCarry(s, out, p); return; }           // nothing else exists at all
+  }
   if (!forced && (act.sc ?? 0) <= CFG.actNow * Math.max(0, 1 - press * CFG.pressActNow)) return;
   mp.firstTouch = mp.hold <= 1;
   mp.hold = 0;

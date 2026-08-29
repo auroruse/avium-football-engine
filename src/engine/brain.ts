@@ -1517,6 +1517,14 @@ export function meShape(s, side) {
           const gx2 = own - mp.bx, gy2 = ME_HALF_W - mp.by, gl2 = Math.hypot(gx2, gy2) || 1;
           tx = mp.bx + gx2 / gl2 * jk;
           ty = mp.by + gy2 / gl2 * jk;
+          // A STATUE GETS TACKLED. The jockey stand is right against a live dribbler; against a
+          // carrier who has simply stopped with nothing on it froze whole matches -- the presser
+          // stood at jockeyStand for the rest of the afternoon while a beaten side's centre-back
+          // held the ball in his own corner and the possession clock ran to 95%. mp.hold counts
+          // his slices over the ball: once he has camped past pressTakeHold the presser walks
+          // through the jockey point onto the ball itself and the ordinary challenge code wins it.
+          if (mp.idx >= 0 && (mp.hold || 0) > CFG.pressTakeHold
+              && Math.hypot(mp.bvx, mp.bvy) < CFG.deadBallV) { tx = mp.bx; ty = mp.by; }
           p._closing = true;
         }
         break;
