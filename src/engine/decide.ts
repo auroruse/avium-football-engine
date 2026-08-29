@@ -1,8 +1,8 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkSkill } from "./attributes";
-import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meGroundSpeed, meLoftFor } from "./ball";
+import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
+import { meGroundMaxD, meGroundSpeed, meLoftFor } from "./ball";
 import { meMind, meTech } from "./attributes";
 import { meOppDist } from "./brain";
 import { meSpeed } from "./attributes";
@@ -148,8 +148,12 @@ export function meDecide(s, rng, side, i, dwell) {
   // Either way of being through counts, and the first version REPLACED one with the other instead of
   // adding it -- which stopped covering a man twenty metres out with bodies around him but a clear
   // sight of goal, and the backpass rate went up rather than down.
-  const runAtGoal = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W) < CFG.noBackLane
-    && (goalSide === 0 || Math.abs(meGoalX(side) - p.x) < CFG.noBackRange);
+  // The first way of being through is now the RACE, not the headcount: nobody -- wide, deep or
+  // diagonal -- gets across the run before he is in shooting range. The second way is unchanged:
+  // close to goal with a clear lane counts even with bodies around him.
+  const runAtGoal = !meThruCover(s, side, p)
+    || (meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W) < CFG.noBackLane
+        && Math.abs(meGoalX(side) - p.x) < CFG.noBackRange);
   const shut = Math.max(0, Math.min(1,
         Math.min(1, goalSide / 3.5) * 0.65
       + Math.min(1, meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W) / 3) * 0.35));
@@ -242,7 +246,20 @@ export function meDecide(s, rng, side, i, dwell) {
     // Would carrying closer improve this chance, or ruin it? meShotP already knows about the bodies
     // in the lane and the pressure at a point, so ask it about the spot he would dribble to.
     const nowBetter = sp > spAhead ? (sp - spAhead) / Math.max(sp, 1e-4) : 0;
-    const appetite = 1 + meAtkW(p) * 0.30 + sight * CFG.shotSight + nowBetter * CFG.shotNowW;
+    // THE SIGHT BONUS HOLDS ONLY AS FAR AS THIS IS THE BEST CHANCE HE CAN REACH. sight * 1.8 is
+    // the largest term in the appetite, and on a breakaway it is maximal by construction -- clear
+    // lane, extended range -- so the man with the MOST time to carry got the biggest urge to
+    // shoot from range: at eighteen metres clean through, shot and carry scored a coin flip
+    // (0.167 against 0.163) with the patience term outgunned four to one by sight alone. But a
+    // clear lane is also the reason he can go closer; what separates "have a go" from "carry in"
+    // is whether the better chance is reachable, and spAhead already knows -- its pressure and
+    // room discounts collapse it when he is closed down, so a CONTESTED clear-lane shot keeps the
+    // full bonus. Squared so it bites: at 18 m through, (sp/spAhead)^2 = 0.15 and the carry wins
+    // outright; floored inside sightHoldD, where "eight metres on" stops meaning anything and
+    // finishing is simply correct.
+    const sightHold = gsh.d < CFG.sightHoldD ? 1
+      : Math.pow(Math.min(1, sp / Math.max(sp, spAhead, 1e-4)), 2);
+    const appetite = 1 + meAtkW(p) * 0.30 + sight * CFG.shotSight * sightHold + nowBetter * CFG.shotNowW;
     // CHANCE CREATION IS A RANGE, the same way passing directness is. It used to multiply the value
     // of the shot itself by up to 1.55, which is an instruction to misjudge how good a chance is --
     // and against a shot model that is roughly right, misjudging it can only cost you. Measured, it
@@ -278,8 +295,15 @@ export function meDecide(s, rng, side, i, dwell) {
     // their own goal line, which is the least dangerous turnover in football, and a saved one often
     // returns a corner or a rebound. A lost carry hands it over in the attacking third with the side
     // committed forward. Shooting is the SAFEST way to lose the ball and it was priced as the riskiest.
+    // ...AND AN UNPRESSED MAN WHO COULD GET CLOSER, DOES. nowBetter above pays a shot whose
+    // chance is decaying; nothing charged the mirror case, and shotClearRange actively EXTENDS
+    // range on a clear sight -- which a one-on-one maximises. So breakaways were finished from
+    // twenty metres with the keeper set: the striker was paid for the open lane and never
+    // charged for the better chance two strides away. The charge is the chance he is declining
+    // to build, and pressure buys it back -- a hurried man takes what he has.
+    const waitCost = Math.max(0, spAhead - sp) * CFG.shotWaitW / (1 + press * CFG.shotWaitPress);
     const sc = sp * (CFG.shotWorth ?? ME_SHOT_WORTH) * appetite - (1 - sp) * lose * CFG.shotMissW
-             - offWant * CFG.shotWantW;
+             - offWant * CFG.shotWantW - waitCost;
     if (ME_DBG) ME_DBG.shot = sc;
     const j = sc + jit("shot");
     if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp }; }
@@ -389,7 +413,14 @@ export function meDecide(s, rng, side, i, dwell) {
     // ran 27-38% and was INVERTED -- Gegenpress hit more long balls than Route One, whose entire
     // description is skipping the middle third. Directness moves the crossover, which is what
     // choosing to play over a midfield rather than through it actually is.
-    const loftAt = CFG.loftD - (st.passingDir || 0) * CFG.loftDir;
+    // ...AND NEVER LATER THAN THE GRASS ALLOWS. The launch cap makes a ground ball past
+    // meGroundMaxD (about 19 m) arrive below walking pace -- at 23 m it reaches the man at
+    // 2.7 m/s and at 25 it stops dead on the way -- while the crossover sat at 26, and at 29
+    // for a short-passing side. Every through ball executed in that band was understruck by
+    // construction. The old note rejected this clamp as redundant for SCORING, which it is;
+    // the balls still being CHOSEN out of that window executed dead, and that is what the
+    // clamp is for.
+    const loftAt = Math.min(CFG.loftD - (st.passingDir || 0) * CFG.loftDir, meGroundMaxD());
     if (d > loftAt) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
     else if (d > 10) {
       const blkH = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true);

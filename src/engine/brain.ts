@@ -1,7 +1,7 @@
 // The pyramid: tactical brain, coordinators, off-ball positioning.
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "./config";
 import { meHungarian } from "./assignment";
-import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meTimeToBallMs, meVal, meValHere } from "./geometry";
+import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meAttrs, meGkSkill, meMind, meSpeed } from "./attributes";
 import { GOAL_HALF_W } from "./ball";
 
@@ -363,7 +363,19 @@ export function meDuties(s, side) {
   // within seven metres. The phase still shapes the BLOCK (how high, how wide); it must not decide
   // whether anyone defends at all. A ball in flight keeps mp.side with the passer, so the two sides
   // never both think they are attacking.
-  const defending = mp.side !== side;
+  // AT A DEAD BALL, POSSESSION IS THE RESTARTING SIDE -- not whoever touched it last. A corner is
+  // conceded off a defender, so mp.side pointed at THEM through the whole ceremony: the attacking
+  // side ran its defending branch, the box duty (which lives in the possession branch) was never
+  // assigned, and the corner swung into a box its own side had not attacked -- while the actual
+  // defenders ran possession duties and marked nobody. Same class of wrongness at every restart
+  // won against the run of play.
+  // AT A DEAD BALL, POSSESSION IS THE RESTARTING SIDE -- not whoever touched it last. A corner is
+  // conceded off a defender, so mp.side pointed at THEM through the whole ceremony: the attacking
+  // side ran its defending branch, the box duty (which lives in the possession branch) was never
+  // assigned, and the corner swung into a box its own side had not attacked -- while the actual
+  // defenders ran possession duties and marked nobody. Same class of wrongness at every restart
+  // won against the run of play.
+  const defending = mp.sp ? mp.sp.side !== side : mp.side !== side;
   const ballDepth = (mp.bx - own) * dir;
   for (const p of us) { p._wasPress = p._duty === "press"; p._mk = -1;
     if (p._beat > 0) p._beat--;
@@ -411,7 +423,13 @@ export function meDuties(s, side) {
     // because no duty ever pointed at the rebound. _loose is stamped at every one of those sites;
     // for loosePressWin after it the ball is live whatever the flight flag says, so the presser
     // and the box swarm below converge on the spill the way a defence actually does.
+    // ...and a flight with NO intended receiver -- a punt, a clearance, a knock-down (fj -1) --
+    // has neither of the things the exclusion was built around, and sails for two or three
+    // seconds while ten men hold shape and one designated chaser runs. That reads from the stand
+    // as a defence with no idea pressing exists whenever nobody has the ball. Receiverless
+    // flights are live; a pass to a man keeps its exclusion.
     const ballLive = mp.idx >= 0 || (!mp.flight && !mp.sp)
+      || (!mp.sp && mp.flight && mp.fj < 0)
       || (!mp.sp && mp.tick - (mp._loose ?? -99) < CFG.loosePressWin);
     if (ballLive) {
       // Inside the line of engagement a man travels a long way to the ball; outside it he goes only
@@ -537,14 +555,27 @@ export function meDuties(s, side) {
     }
     // Man-mark the most dangerous opponents, tightening as they get nearer our goal.
     const threats = [];
+    // A MAN PAST THE LAST OF US OUTRANKS EVERYTHING. The first version of this keyed on the trap
+    // line and was INERT: meTrap is dragged back by the deepest live threat -- the ball, its
+    // forecast, the carrier -- so the moment a through ball was PLAYED the line collapsed to its
+    // landing point and the runner was never goal-side of it. The marker was released exactly at
+    // the pass, which is exactly when the abandonment was being watched. Through is not a
+    // relationship with a line that follows you; it is having nobody left in front of you:
+    // zero of our outfielders goal-side of the man. Trap-free, and true at the precise moment he
+    // beats the last defender. Does not time out.
+    // ...and "in front of you" is a race, not an x-comparison. The second version counted any
+    // outfielder deeper than the man as cover, so a defender standing goal-side but two channels
+    // wide -- a body that can never make the interception -- cancelled the through flag while the
+    // runner ran on alone. meThruCover races every defender to the run itself.
+    const thruOf = (q) => !meThruCover(s, meOther(side), q);
     for (let j = 0; j < them.length; j++) { const q = them[j]; if (q.pos === "GK") continue;
       if (j === mp.idx && mp.side === meOther(side)) continue;      // the man on the ball is pressed
       // An ACTIVE run is the most dangerous thing on the pitch regardless of where its owner
       // currently stands -- unmarked runners were arriving alone at the far post all match.
       const runBonus = (q._runT ?? 0) > 0 ? 0.8 : 0;
-      threats.push([meDanger(meOther(side), q.x, q.y) + runBonus, j]); }
+      threats.push([meDanger(meOther(side), q.x, q.y) + runBonus + (thruOf(q) ? CFG.markThruW : 0), j]); }
     threats.sort((a, b) => b[0] - a[0]);
-    const runners = them.filter(q => (q._runT ?? 0) > 0 && q.pos !== "GK").length;
+    const runners = them.filter(q => ((q._runT ?? 0) > 0 || thruOf(q)) && q.pos !== "GK").length;
     // TRIED AND REJECTED: scaling the marker budget with how many men are actually back, so a deep
     // block's surplus bodies pick opponents up instead of standing in the shape. nMark keys on where
     // the BALL is and nothing else, so a block on defLine -2 with 5.83 men in its own area marked as
@@ -659,6 +690,17 @@ export function meDuties(s, side) {
       us[i]._duty = "screen"; us[i]._mk = threats[k][1]; k++;
     }
   } else {
+    // ATTACK THE BOX AT YOUR OWN CORNER. The de-choreography rightly deleted the placed marks,
+    // but it deleted the team instruction with them: nobody's brain sent him into the box, the
+    // strike-runs started from outside it, and corners went toothless. This is the instruction
+    // rebuilt at the duty level -- the strongest aerial men are told to attack a ZONE of the box,
+    // the live markers contest them, and where each pair ends up is the duke-out, not a script.
+    if (mp.sp?.kind === "corner" && mp.sp.side === side) {
+      const cands = free().filter(i2 => i2 !== mp.sp.ti)
+        .sort((a2, b2) => meAttrs(us[b2]).strength - meAttrs(us[a2]).strength)
+        .slice(0, CFG.cnBoxN);
+      cands.forEach((i2, k2) => { us[i2]._duty = "box"; us[i2]._boxK = k2; });
+    }
     // In possession. Hold the width, put one man in behind, give the ball a short option.
     for (const i of free()) {
       const p = us[i];
@@ -766,10 +808,22 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
   const mindK = (2.2 - 1.2 * (p._mind ?? 0.5)) / 2.2;
   const awayK = 0.3 + 0.7 * Math.min(1, Math.hypot(p.x - baseX, p.y - baseY) / 20);
   let bx = baseX, by = baseY, best = -Infinity;
-  for (let k = 0; k <= 16; k++) {
+  // THE CHECK TO THE BALL. Sixteen ring spots and the anchor -- all within nine metres of the
+  // slot -- so a man anchored twenty-five metres from play could not PROPOSE any spot the orbit
+  // and lane terms would reward: availability lost by unreachability, which from the stand is a
+  // player loitering. The eighteenth candidate is the point on the ball-to-anchor line at the
+  // side's own preferred pass distance from the ball -- the show a footballer actually makes --
+  // and it wins exactly when the scoring already says being available beats holding the slot.
+  let ckx = baseX, cky = baseY;
+  {
+    const bdx = baseX - mp.bx, bdy = baseY - mp.by, bl = Math.hypot(bdx, bdy) || 1;
+    const want = CFG.passWant + ((st.passingDir || 0) * CFG.passWantStep);
+    ckx = mp.bx + bdx / bl * Math.min(bl, want); cky = mp.by + bdy / bl * Math.min(bl, want);
+  }
+  for (let k = 0; k <= 17; k++) {
     const ring = RING[k % 8], rad = k >= 8 ? ME_SPACE_R : ME_SPACE_R * CFG.spaceInner;
-    const cx = k === 16 ? baseX : baseX + ring[0] * rad;
-    const cy = k === 16 ? baseY : baseY + ring[1] * rad;
+    const cx = k === 16 ? baseX : k === 17 ? ckx : baseX + ring[0] * rad;
+    const cy = k === 16 ? baseY : k === 17 ? cky : baseY + ring[1] * rad;
     if (cx < 2 || cx > PITCH_L - 2 || cy < 2 || cy > PITCH_W - 2) continue;
     if ((cx - off) * dir > 0 && (cx - mp.bx) * dir > 0) continue;          // would be offside
     let crowd = 0;
@@ -882,9 +936,18 @@ export function meBlock(s, side) {
   const wantCy = ME_HALF_W + (mp.by - ME_HALF_W) * CFG.blkSlide;
   // The block slides at running pace, because it is a body of men rather than a formula.
   // Compact defending your own box, long when you are camped in their half.
-  const wantDepth = CFG.blkDepthLow
+  let wantDepth = CFG.blkDepthLow
     + Math.max(0, Math.min(1, (ballDepth - 18) / 42)) * (CFG.blkDepth - CFG.blkDepthLow);
-  const bs = (mp.blk[side] = mp.blk[side] || { line: wantLine, cy: wantCy, depth: wantDepth });
+  // DEFENDING A CORNER PACKS THE AREA. The open-play block holds a fifteen-metre depth span with
+  // its front slots screening lanes that do not exist at a corner -- measured, seven attackers in
+  // the box against three defenders, with six men holding a midfield shape while the delivery
+  // came in. Everybody comes back: the line on the six-yard box, the span inside the area. The
+  // centre snaps to the goal too -- blkSlide would leave the pack hanging toward the corner flag.
+  let wantLine2 = wantLine, wantCy2 = wantCy;
+  if (mp.sp?.kind === "corner" && mp.sp.side !== side) {
+    wantLine2 = 3.5; wantCy2 = ME_HALF_W; wantDepth = CFG.cnDefDepth;
+  }
+  const bs = (mp.blk[side] = mp.blk[side] || { line: wantLine2, cy: wantCy2, depth: wantDepth });
   // A BLOCK THAT HAS BEEN CHASED ALL AFTERNOON DOES NOT RESET PERFECTLY. This is the inertia the
   // note above valCtrlW says is missing: the shape is re-solved every tick, so no side is ever out
   // of position long enough to be exploited, and therefore keeping the ball buys nothing.
@@ -899,10 +962,10 @@ export function meBlock(s, side) {
   // a possession has already outlasted a normal one.
   const chased = (mp.side !== side && mp.side !== null)
     ? Math.max(0, Math.min(1, (mp.possT - CFG.chaseFrom) / CFG.chaseRamp)) : 0;
-  const mv = (wantLine < bs.line ? CFG.blkSlewBack : CFG.blkSlew)
+  const mv = (wantLine2 < bs.line ? CFG.blkSlewBack : CFG.blkSlew)
            * (1 - chased * CFG.chaseSlow) * ME_DT;
-  bs.line += Math.max(-mv, Math.min(mv, wantLine - bs.line));
-  bs.cy += Math.max(-mv, Math.min(mv, wantCy - bs.cy));
+  bs.line += Math.max(-mv, Math.min(mv, wantLine2 - bs.line));
+  bs.cy += Math.max(-mv, Math.min(mv, wantCy2 - bs.cy));
   // ...AND ITS DEPTH. Only the line was ever slew-limited. The depth was recomputed straight off the
   // ball every tick, and it swings seventeen metres between a low block and a high one -- so the
   // front band's slot, which sits a full depth ahead of the line, jumped at 0.4x the ball's own
@@ -1149,7 +1212,7 @@ export function meShape(s, side) {
       // it is a keeper retreating into his own net while it rolls past him, which is what it looked
       // like: measured, with a loose ball inside 18 m of his goal he was moving AWAY from it on 81%
       // of slices and aiming goal-side of it on 97%.
-      if (mp.idx < 0) {
+      if (mp.idx < 0 && !mp.sp) {
         // He goes where he READ it, not where the forecast says. The forecast is the truth and a
         // keeper does not have it -- giving it to him made him a machine that was nonetheless still
         // late; taking it away and giving him a read makes him a goalkeeper.
@@ -1258,8 +1321,12 @@ export function meShape(s, side) {
       }
       const bx2 = mp.bx, by2 = mp.by;
       const vx2 = bx2 - own, vy2 = by2 - ME_HALF_W, vd = Math.hypot(vx2, vy2) || 1;
+      // Depth scales with who he is -- see CFG.gkOutSkill. The elite keeper starts further off
+      // his line, which narrows the shooter's angle before any dive is asked to exist; the poor
+      // one hugs it. This is the positional half of the dive-speed cut.
       const out2 = Math.max(CFG.gkOutMin,
-                   Math.min(CFG.gkOutMax, CFG.gkOutMin + vd * CFG.gkOutK + st.dlBehavior * 1.2));
+                   Math.min(CFG.gkOutMax, (CFG.gkOutMin + vd * CFG.gkOutK + st.dlBehavior * 1.2)
+                     * (1 + (meGkSkill(meAttrs(p)) - 0.5) * CFG.gkOutSkill)));
       // HIS ANGLE IS THE BISECTOR OF THE TWO POSTS, not the line to the middle of his goal
       // (goalie_default.cpp:41-269). For a ball in front of the goal the two are the same line; for
       // a ball out wide they are not, and the whole of the difference is the near post. Bisecting
@@ -1407,7 +1474,18 @@ export function meShape(s, side) {
     switch (p._duty) {
       case "press": {                                           // close him, then stand him up
         const gap = Math.hypot(p.x - mp.bx, p.y - mp.by);
-        if (gap > CFG.jockeyR) { tx = mp.bx; ty = mp.by; p._closing = true; }
+        if (gap > CFG.jockeyR) {
+          // HE CLOSES GOAL-SIDE TOO. The approach aimed at the ball's current position, and
+          // against a carrier moving at goal that point is always his tail -- the defender
+          // arrived into a chase he could never win, and the goal-side logic below only existed
+          // once he was already there. The closing run bends toward the point between the ball
+          // and his own goal, further ahead the further out he starts, which is the curved
+          // recovery run every real defender makes. A man already goal-side finds the target
+          // beside himself and simply jockeys backward with the carrier.
+          const gx3 = own - mp.bx, gy3 = ME_HALF_W - mp.by, gl3 = Math.hypot(gx3, gy3) || 1;
+          const cut = Math.min(CFG.pressCutMax, gap * CFG.pressCut);
+          tx = mp.bx + gx3 / gl3 * cut; ty = mp.by + gy3 / gl3 * cut; p._closing = true;
+        }
         else {
           // Close enough. Stand him up rather than dive in -- that is the difference between
           // defending and lunging -- but stand him up GOAL-SIDE, on the line from the ball to the
@@ -1515,6 +1593,9 @@ export function meShape(s, side) {
         const [sx, sy] = meBrainPos(s, side, p, i, ax + dir * 10, ay, off);
         tx = sx; ty = sy; break;
       }
+      // "box" is not handled here ON PURPOSE -- see the corner station below the leash. A target
+      // that deliberately abandons the zone cannot be set before the thing whose whole job is to
+      // drag targets back into it.
       case "support": {                                         // short option for the ball
         // Behind the ball for a direct side, in front of it for a short-passing one. See suppBack.
         const [sx, sy] = meBrainPos(s, side, p, i, meSuppX(s, side), mp.by + (ay > mp.by ? 8 : -8), off);
@@ -1542,7 +1623,17 @@ export function meShape(s, side) {
     // Forwards are exempt, and so is anyone actually engaged with the ball.
     // A marker whose man has broken beyond the line goes WITH him -- compressing the tracker back
     // onto the trap is exactly how the runner ends up alone at the far post.
-    const tracking = p._duty === "mark" && p._mk >= 0 && (them[p._mk]?._runT ?? 0) > 0;
+    // ...or whose man has nobody left in front of him. Keyed on the trap it was inert -- the
+    // trap follows the deepest threat, so a genuinely through man was never goal-side of it (see
+    // thruOf in meDuties, the other half of the same fix). The marker may stand as deep as the
+    // chase requires; compressing him up onto the line is how the runner ends up alone.
+    const _mkq = p._duty === "mark" && p._mk >= 0 ? them[p._mk] : null;
+    let _mkThru = false;
+    if (_mkq && (_mkq._runT ?? 0) <= 0) {
+      // The race test, excluding the marker himself: whether HIS MAN is through if he lets go.
+      _mkThru = !meThruCover(s, meOther(side), _mkq, p);
+    }
+    const tracking = !!_mkq && ((_mkq._runT ?? 0) > 0 || _mkThru);
     if ((p._mind ?? 0.5) < 0.65 && p._duty !== "press" && !p._closing && !tracking && p.pos !== "GK") {
       const trap = mp.trap?.[side];
       // Only while there is a line worth holding. Deep in our own third the priority is bodies
@@ -1712,7 +1803,7 @@ export function meShape(s, side) {
     // goes the shape is already there and only has to slide. How much of the attack a man joins
     // comes off his natural depth: a centre-half almost none of it, a holding midfielder some, a
     // forward all of it. A man on a committed run is exempt -- that is the whole point of the run.
-    if (attacking && (p._runT ?? 0) <= 0 && p._bsx !== undefined) {
+    if (attacking && (p._runT ?? 0) <= 0 && p._bsx !== undefined && p._duty !== "box") {
       let rest = Math.max(0, Math.min(1, (CFG.restMind - (p._mind ?? 0.5)) / Math.max(0.01, CFG.restTaper)));
       // WHO STAYS HOME IS A PROPERTY OF THE SYSTEM, not only of how deep a man naturally plays.
       // Keyed on _mind alone, a full-back is pinned back exactly as hard in a side built to attack
@@ -1793,6 +1884,20 @@ export function meShape(s, side) {
       const frontier = dir > 0 ? Math.max(off, mp.bx) : Math.min(off, mp.bx);
       if ((tx - frontier) * dir > -CFG.boxSlack) tx = frontier - dir * CFG.boxSlack;
       if (Math.hypot(p.x - tx, p.y - ty) > 3) p._closing = true;
+    }
+    // ...and the CORNER station, for the same reason and in the same slot. Set inside the duty
+    // switch it read exactly like the first cut of boxLane above: 3.80 men took the duty and 2.37
+    // reached the area, because the leash is built to refuse targets that abandon the zone and a
+    // corner station abandons it by design. 26% of corners were still delivered into an empty box.
+    // Zones are corner-side aware: near post, back stick, penalty spot, far post, edge for the
+    // knock-down. No offside from a corner, so the frontier clamp above is not wanted here.
+    if (p._duty === "box" && mp.sp?.kind === "corner") {
+      const nearB = mp.sp.y < ME_HALF_W ? -1 : 1;
+      const ZB = [[5.5, 5.0], [6.0, -5.5], [10.5, 1.0], [11.5, -7.0], [16.5, 2.5]];
+      const zb = ZB[(p._boxK ?? 0) % ZB.length];
+      tx = meGoalX(side) - dir * zb[0];
+      ty = ME_HALF_W + nearB * zb[1];
+      p._closing = true;
     }
     // A re-instructed man's own line and width, before the law: his defLine pushes his target
     // up or drops it, his width stretches him off the shape's lane. On-ball behaviour reads his

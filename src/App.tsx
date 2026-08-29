@@ -2211,7 +2211,17 @@ const ovrSuffix = (ovr, teamSkill) => ovr != null && ovr !== teamSkill ? "(" + o
 // root (MacDonald, MacKenzie) — NOT a general rule, since real surnames like
 // Machado/Machida/Macaraeg also start with "Mac" and must stay plain title-case.
 const MAC_SURNAMES = new Set(["macdonald","mackenzie","macleod","macarthur","macfarlane","macgregor","macintyre","mackay","macneil","macpherson","macqueen","macallister","macbride","macdougall","macewan","macinnes","macintosh","mackinnon","maclachlan","maclean","macmillan","macnab","macrae","mactavish"]);
+// A GENERATIONAL SUFFIX IS NOT A SURNAME WORD. The preset cell writes the surname in caps --
+// "Walter THURMANN III" -- and every caps word was fed through the title-caser, so the suffix came
+// out "Iii" in both display paths (abbrevName's "W. Thurmann Iii" and fullDisplayName's full form).
+// Bare "I", "V" and "X" are deliberately excluded: a single caps letter is an initial, not a third.
+// SO ARE XI AND ABOVE: this squad list holds a Xi Zhou, and no footballer is an eleventh namesake.
+// The test is only ever applied to a word that was ALL-CAPS in the source, which is what separates
+// the suffix in "Walter THURMANN III" from the given name in "Xi ZHOU" -- II and VI would otherwise
+// swallow the surname Ii and the given name Vi.
+const NAME_SUFFIX = /^(?:II|III|IV|VI|VII|VIII|IX)$/;
 function titleCaseWord(word) {
+  if (NAME_SUFFIX.test(word)) return word;
   const capSeg = s => s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s;
   return word.split("-").map(seg => {
     let out = seg.split("'").map(capSeg).join("'");
@@ -3720,9 +3730,20 @@ const splitFullName = (n) => {
 // takes the capital, anything longer is a transliteration mark and does not. NFC first, because in
 // decomposed form the character before the apostrophe is a combining mark rather than a letter and
 // the apostrophe rule would never fire on an accented name like O'Duinnin.
-const shotName = (n) => String(n || "").normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase()
-  .replace(/(^|[\s\-])(\p{L})/gu, (_, sep, c) => sep + c.toUpperCase())
-  .replace(/(^|\s)(\p{L})'(\p{L})/gu, (_, sep, a, c) => sep + a + "'" + c.toUpperCase());
+// ...and the same suffix trap as titleCaseWord: this lowercases the whole name before capitalising
+// word-initials, so "III" became "Iii" and the portrait for a third was requested under a filename
+// nobody would ever save it as. The suffix is restored from the ORIGINAL word rather than from the
+// lowered one -- the lowercase step destroys the very evidence that tells a suffix apart from a
+// name, which is how a first pass at this renamed Xi Zhou to XI Zhou.
+const shotName = (n) => {
+  const src = String(n || "").normalize("NFC").trim().replace(/\s+/g, " ").split(" ");
+  return src.map((w) => {
+    if (w === w.toUpperCase() && NAME_SUFFIX.test(w)) return w;
+    return w.toLowerCase()
+      .replace(/(^|[\s\-])(\p{L})/gu, (_, sep, c) => sep + c.toUpperCase())
+      .replace(/(^|\s)(\p{L})'(\p{L})/gu, (_, sep, a, c) => sep + a + "'" + c.toUpperCase());
+  }).join(" ");
+};
 // ...and one more trap on top of the casing. macOS writes filenames DECOMPOSED -- "Sho" plus a
 // combining macron -- while the preset files carry the same name precomposed, so "Sho Itoshi" is two
 // different byte strings depending on which side you ask, and every accented player silently falls
@@ -5871,7 +5892,7 @@ export default function App() {
         // minutes while a flowing one ended it at once.
         if (!meCanWhistle(m.s) && m.t - half < ME_END_WAIT) continue;
         // Snapshot the stoppage served so far, so the second period's added time counts from here.
-        if (m.et) m.etAdd1 = meAdded(m.s); else { m.htAdd = meAdded(m.s); m.htAt = m.t; }
+        if (m.et) { m.etAdd1 = meAdded(m.s); m.etHtAt = m.t; } else { m.htAdd = meAdded(m.s); m.htAt = m.t; }
         m[halfKey] = true; m.brk = { t: 0, kind: m.et ? "etht" : "ht" }; break;
       }
     }
@@ -12573,9 +12594,17 @@ export default function App() {
             // Extra time is its own half-hour and starts at a flat 90:00 however long stoppage ran,
             // exactly as the fourth official resets it. Normal time keeps counting past 90:00 into
             // added time, which is the one place the clock SHOULD run on.
+            // EACH PERIOD RE-BASES ITS OWN CLOCK. The tick counter never resets, so a second
+            // half read straight off it began at 45:00 plus however long the first half's stoppage
+            // ran. The interval records the tick it was taken on (htAt / etHtAt), and each period
+            // starts flat from its own number -- 45:00, 90:00, 105:00 -- the way the board does.
             const secTot = m.et && m.etAt != null
-              ? Math.max(0, Math.floor(5400 + (m.t + al - m.etAt) / ME_ET_TICKS * 1800))
-              : Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400));
+              ? (m.etHtDone && m.etHtAt != null
+                  ? 6300 + Math.max(0, Math.floor((m.t + al - m.etHtAt) / ME_ET_TICKS * 1800))
+                  : Math.max(0, Math.floor(5400 + (m.t + al - m.etAt) / ME_ET_TICKS * 1800)))
+              : (m.htDone && m.htAt != null
+                  ? 2700 + Math.max(0, Math.floor((m.t + al - m.htAt) / ME_MATCH_TICKS * 5400))
+                  : Math.max(0, Math.floor((m.t + al) / ME_MATCH_TICKS * 5400)));
             // STOPPAGE SHOWN SEPARATELY, the way a broadcast does it: the clock holds at the period's
             // number and the time played beyond it runs alongside as +N:NN. Which number it holds at
             // depends on the period, and the done-flags are what say which one is running.
@@ -13318,9 +13347,11 @@ export default function App() {
                       // kind -> icon, header, colour, and whether it is a headline event
                       const META = {
                         goal:    { icon: "⚽", head: "GOAL", clr: "var(--ui-text)", big: true },
-                        pen:     { icon: "🥅", head: "PENALTY SCORED", clr: "var(--ui-ok)", big: true,
+                        // A PENALTY SCORED IS A GOAL and wears the goal's ball; a missed one wears
+                        // the cross. The net glyph said neither, and put the same picture on both.
+                        pen:     { icon: "⚽", head: "PENALTY SCORED", clr: "var(--ui-ok)", big: true,
                                    tint: "var(--ui-ok)" },
-                        penmiss: { icon: "🥅", head: "PENALTY MISSED", clr: "var(--ui-danger)", big: true,
+                        penmiss: { icon: "\u2715", head: "PENALTY MISSED", clr: "var(--ui-danger)", big: true,
                                    tint: "var(--ui-danger)" },
                         red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
                         og:      { icon: "\u26BD", head: "OWN GOAL", clr: "var(--ui-danger)", big: true,
@@ -13341,6 +13372,9 @@ export default function App() {
                         // An outfield player pulling the gloves on is the sort of thing a feed
                         // should shout about, so it gets a head and the emphasis a goal gets.
                         gloves:  { icon: "\uD83E\uDDE4", clr: "var(--ui-warn)", head: "IN GOAL", big: true },
+                        corner:  { icon: "\u2691", clr: "var(--chrome-muted)" },
+                        throw:   { icon: "\u21B7", clr: "var(--chrome-muted)" },
+                        goalkick:{ icon: "\u21E7", clr: "var(--chrome-muted)" },
                       };
                       // The offence, off the event rather than out of the wording. Reading it back
                       // from the caption is how this worked before, and rewording the caption broke
@@ -13384,28 +13418,59 @@ export default function App() {
                           for (const o of (out.owns?.[sd] || []))
                             key.push({ min: o.min, side: sd === "home" ? "away" : "home", k: "og",
                                        name: o.name, full: o.full });
+                          // ...and the parried-in own goals, which live in their own ledger.
+                          for (const o of (out.ogs?.[sd] || []))
+                            key.push({ min: o.min, add: o.add, side: sd === "home" ? "away" : "home",
+                                       k: "og", name: o.name, full: o.full });
                         }
                         key.sort((u, v) => v.min - u.min);
+                        // POST MATCH IS A TEAMSHEET, NOT A FEED: one 17px line per event, surnames
+                        // only, so twenty of them fit the panel without a scrollbar.
+                        const who = (full, name) => full || name || "";
+                        const cRow = (i, f, body) => {
+                          const md = META[f.k] || {};
+                          return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0",
+                                                background: md.tint ? md.tint + "1e"
+                                                          : md.big ? "var(--chrome-bg-08)" : "transparent",
+                                                borderLeft: md.tint ? `2px solid ${md.tint}` : "2px solid transparent",
+                                                borderRadius: md.big ? 4 : 0,
+                                                borderBottom: "1px solid var(--chrome-border-33)" }}>
+                            {mCell(f.min, f.add)}
+                            {iCell(md.icon, 11)}
+                            <div style={{ flex: 1, minWidth: 0, padding: "0 6px", fontSize: 10,
+                                          lineHeight: "15px", whiteSpace: "nowrap", overflow: "hidden",
+                                          textOverflow: "ellipsis", color: "var(--ui-text)" }}>{body}</div>
+                            {tCell(f.side)}
+                          </div>);
+                        };
+                        const tag = (t, clr) => (
+                          <span style={{ color: clr || "var(--chrome-muted)", fontSize: 8.5 }}> {t}</span>);
                         // THE SHOOTOUT, which until now appeared nowhere at all. meShootout strips its
                         // kicks out of the scorers and penalty-miss lists -- correctly, since a
                         // shootout is not part of the scoreline -- and those two lists are exactly
                         // what this panel is built from, so the whole thing vanished. It is kept
                         // separately and reported separately, in the order the kicks were taken.
-                        const pens = (out.pens || []).map((p, i) => row("pk" + i, null, "", p.side, "pk", (<>
+                        const pens = (out.pens || []).map((p, i) => cRow("pk" + i,
+                          { min: null, add: "", side: p.side, k: "pk" }, (<>
                           <b style={{ fontWeight: 700, color: p.scored ? "var(--ui-ok)" : "var(--ui-danger)" }}>
-                            {p.scored ? "SCORED" : "MISSED"}</b>
-                          <span style={{ color: "var(--chrome-muted)" }}> {p.full || p.name}</span>
+                            {who(p.full, p.name)}</b>
                           <span style={{ ...mono, color: "var(--chrome-muted-66)", fontSize: 9 }}>
                             {"  " + p.sc.home + "-" + p.sc.away}</span>
                         </>)));
                         if (!key.length && !pens.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
                         return (<>
-                          {key.map((f, i) => row(i, f.min, f.add, f.side, f.k, (<>
-                            <b style={{ fontWeight: 700 }}>{f.full || f.name}</b>
-                            {(f.k === "goal" || f.k === "pen") && f.assist
-                              ? <span style={{ color: "var(--chrome-muted)", fontSize: 9 }}> {shortName(f.assist)}</span> : null}
-                          </>), f.k === "red" ? RED_WHY(f.why, f.second) : null))}
+                          {key.map((f, i) => cRow(i, f, (<>
+                            <b style={{ fontWeight: 700,
+                                        color: f.k === "penmiss" || f.k === "red" ? "var(--ui-danger)" : "var(--ui-text)" }}>
+                              {who(f.full, f.name)}</b>
+                            {(f.k === "goal" || f.k === "pen") && f.assist ? tag(f.assist) : null}
+                            {f.k === "pen" ? tag("pen", "var(--ui-ok)") : null}
+                            {f.k === "penmiss" ? tag("pen", "var(--ui-danger)") : null}
+                            {f.k === "og" ? tag("og", "var(--ui-danger)") : null}
+                            {f.k === "red" ? tag(ME_RED_WHY[f.why] || (f.second ? "2nd yellow" : "sent off"), "var(--ui-danger)") : null}
+                          </>)))}
                           {pens.length ? (
                             <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".12em", padding: "8px 0 3px",
                                           color: "var(--chrome-muted)", borderTop: "1px solid var(--chrome-border)",
@@ -13413,7 +13478,13 @@ export default function App() {
                           {pens}
                         </>);
                       }
-                      const all = out.feed || [];
+                      // IN MATCH, THE FEED IS STOPPAGES AND HEADLINES. Goals, cards, saves,
+                      // fouls, offsides and every dead ball -- the play-by-play (passes, tackles,
+                      // blocks, shots wide) stays in the engine's log but off the sidebar.
+                      const FEED_KEEP = new Set(["goal", "pen", "penmiss", "og", "red", "yellow",
+                        "foul", "offside", "corner", "throw", "goalkick", "sub", "injury",
+                        "gloves", "pk"]);
+                      const all = (out.feed || []).filter(f => FEED_KEEP.has(f.k));
                       if (!all.length) return (
                         <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>Nothing yet.</div>);
                       return all.map((f, i) => {

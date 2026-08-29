@@ -193,7 +193,13 @@ export function meSPShape(s) {
   const us = s.players[side], them = s.players[opp];
   const dir = meDir(side), gx = meGoalX(side), own = meGoalX(opp);
   const st = s.strategy?.[side] || {};
-  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = false; p._spSet = false; p._celeb = false; }
+  // THE DUKED KINDS: no placed shape at all. The live brains have already positioned both sides
+  // against the dead ball (see meTick); this function contributes only the taker, the defending
+  // keeper, the wall, and the exclusion laws. Rows of men on pregenerated coordinates -- the
+  // corner tableau, the goal-kick line-up along the byline -- were exactly what made restarts
+  // read as staged, and the duties layer does the position-wrestling better than any script.
+  const duked = sp.kind === "goalkick" || sp.kind === "freekick" || sp.kind === "corner";
+  for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = p._closing && duked; p._spSet = false; p._celeb = false; }
 
   // IT HAS JUST GONE IN. A goal restarts with a kickoff, and the kickoff shape used to begin the
   // instant the ball crossed the line -- twenty-two men turning on the spot and walking to their
@@ -333,6 +339,8 @@ export function meSPShape(s) {
     return bi;
   };
 
+  const marks = [];
+  if (!duked) {
   const targets = [];
   if (sp.kind === "corner") {
     const nearSide = sp.y < ME_HALF_W ? -1 : 1;
@@ -393,7 +401,6 @@ export function meSPShape(s) {
   for (let k2 = 0; k2 < targets.length; k2++) {
     targets[k2][0] += spJ(sp, 10 + k2); targets[k2][1] += spJ(sp, 40 + k2);
   }
-  const marks = [];
   // THE BIG MEN GO UP FOR CORNERS. take() weighs fitness against walking distance, and a centre-half
   // starts forty metres from the box -- so the aerial marks always went to whichever midfielder was
   // nearest and the side's best headers never came up at all. Measured: defenders won the first
@@ -440,6 +447,7 @@ export function meSPShape(s) {
     place(i, base + spJ(sp, 60 + k), wide + spJ(sp, 70 + k));
     k++;
   }
+  }
 
   // ---- the defending side
   const dfree = them.map((p, i) => i).filter(i => them[i].pos !== "GK");
@@ -457,7 +465,7 @@ export function meSPShape(s) {
     else { gk._tx = clampX(gx - dir * 2.0); gk._ty = ME_HALF_W; }
     gk._spSet = true; gk._closing = true;
   }
-  if (sp.kind === "corner") {
+  if (!duked && sp.kind === "corner") {
     const nearSide = sp.y < ME_HALF_W ? -1 : 1;
     // Both posts covered, the near one only, or neither and everybody picks a man up instead.
     if (sp.v !== 2) dtake(gx - dir * 0.8, ME_HALF_W + nearSide * 3.4);
@@ -480,6 +488,7 @@ export function meSPShape(s) {
   // with a corridor between them, which is not what a set piece looks like from above. 40 m reaches
   // the edge-of-box and cut-back marks as well, and the pairs are goal-side and a stride off, so the
   // two sides end up interleaved the way they actually stand.
+  if (!duked) {
   for (const [man] of marks) {
     if (Math.abs(gx - man._tx) > 40) continue;
     dtake(man._tx + dir * 1.1, man._ty + (man._ty < ME_HALF_W ? -0.9 : 0.9));
@@ -521,12 +530,23 @@ export function meSPShape(s) {
     dplace(i, base + spJ(sp, 80 + dk), (p._bw0 ?? ME_HALF_W) + spJ(sp, 85 + dk));
     dk++;
   }
+  }
   // TEN YARDS. The wall was the only part of the defending side that knew the ball had to be given
   // room -- everybody else was placed by his own rule and several of them landed inside it. A free
   // kick from twenty-four metres put the second line of leftovers on their own thirteen and twenty,
   // which is four metres in FRONT of the ball, and a centre-half standing there is simply in the
   // way: measured, the tenth percentile of every free kick blocked was struck into a body 5.1 m
   // out, well short of the wall's 9.15. The referee moves them back, so this does.
+  // THE AREA IS EMPTY AT A GOAL KICK -- the law, now that the brains bring pressers to the edge
+  // of the box instead of a script keeping everyone away. Targets inside the taker's area are
+  // clamped to its edge; the keepOut radius below handles the other kinds.
+  if (sp.kind === "goalkick") for (const p of them) {
+    if (p.off || p.pos === "GK") continue;
+    const txv = p._tx ?? p.x, tyv = p._ty ?? p.y;
+    if (Math.abs(txv - own) < 17.5 && Math.abs(tyv - ME_HALF_W) < 20.8) {
+      p._tx = clampX(own + dir * 18); p._ty = clampY(tyv); p._closing = true;
+    }
+  }
   const keepOut = CFG.spKeepOut[sp.kind];
   if (keepOut) for (const p of them) {
     if (p.off || p.pos === "GK") continue;
@@ -572,7 +592,24 @@ export function meSPReady(s) {
       if (!q || q.off || q.pos === "GK") continue;
       if (sd === sp.side && s.players[sd][sp.ti] === q) continue;
       const inArea = Math.abs(q.x - _gx) < 16.5 && Math.abs(q.y - ME_HALF_W) < _boxW;
-      if (inArea || Math.hypot(q.x - sp.x, q.y - sp.y) < 10) return false;
+      if (inArea || Math.hypot(q.x - sp.x, q.y - sp.y) < 10) {
+        // Harness-only: name the man refusing the pen at mid-ceremony -- who he is, where he
+        // stands, and where his own target is. See the __pen gate in meSPTake.
+        if (globalThis.__pen && sp.t === 100) globalThis.__pen.push({ probe: 1, sd,
+          pos: q.pos, qx: +q.x.toFixed(1), qy: +q.y.toFixed(1),
+          tx: +(q._tx ?? -1).toFixed(1), ty: +(q._ty ?? -1).toFixed(1),
+          dTx: +Math.hypot(q.x - (q._tx ?? q.x), q.y - (q._ty ?? q.y)).toFixed(1),
+          runT: q._runT || 0, spSet: q._spSet ? 1 : 0, closing: q._closing ? 1 : 0 });
+        return false;
+      }
+    }
+    // ...and the taker's own progress at the same instant, for the runs the box wait passes.
+    if (globalThis.__pen && sp.t === 100) {
+      const _tk = s.players[sp.side][sp.ti];
+      if (_tk) globalThis.__pen.push({ probe: 2, tD: +Math.hypot(_tk.x - sp.x, _tk.y - sp.y).toFixed(1),
+        dTx: +Math.hypot(_tk.x - (_tk._tx ?? _tk.x), _tk.y - (_tk._ty ?? _tk.y)).toFixed(1),
+        tx: +(_tk._tx ?? -1).toFixed(1), ty: +(_tk._ty ?? -1).toFixed(1),
+        qx: +_tk.x.toFixed(1), qy: +_tk.y.toFixed(1), spSet: _tk._spSet ? 1 : 0 });
     }
   }
 
@@ -608,6 +645,38 @@ export function meSPReady(s) {
   if (sp.t > capT) { if (struck) { sp.run = 1; return false; } return true; }
   // First phase: he has to be on his mark, and so does everyone whose job is near this restart.
   if (Math.hypot(taker.x - (taker._tx ?? sp.x), taker.y - (taker._ty ?? sp.y)) > CFG.spTakerTol) return false;
+  // The duked kinds wait for NOBODY but the taker: there are no marks to be set on -- both sides
+  // are positioning themselves live -- so the crowd fraction below would count men against brain
+  // targets that move every slice and the restart would hang. The minT floor above still gives
+  // the walk its time, and a struck kind still gets its run-up.
+  // ...A CORNER STILL WAITS FOR ITS BOX, though, and dropping that wait with the choreography is
+  // what emptied it: the delivery went the moment the taker reached the flag, forty metres before
+  // his own big men arrived. Measured, 23% of corners were swung into an EMPTY box and the mean
+  // was 2.63 attackers in it against the five the box duty sends. The old crowd fraction cannot
+  // be used -- it counts men against brain targets that move every slice -- but the FOOTBALLING
+  // condition can be asked directly, and it is the one a real taker waits on: are my men up?
+  // spMaxTBy.corner still forces it away, so nothing can hang.
+  if (sp.kind === "corner") {
+    const gxR = meGoalX(sp.side), usR = s.players[sp.side];
+    let inBox = 0;
+    for (const q of usR) { if (q.off || q.pos === "GK" || q === taker) continue;
+      if (Math.abs(q.x - gxR) < CFG.gkBoxR && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW) inBox++; }
+    if (inBox < CFG.cnBoxReady) return false;
+    // ...and the defenders too: waiting only for the attack meant the kick went while the
+    // defending block was still jogging back from its midfield shape -- seven on three in the
+    // area. The referee holds a corner for both sides; spMaxTBy.corner still forces it away.
+    const themR = s.players[meOther(sp.side)];
+    let defBox = 0;
+    for (const q of themR) { if (q.off || q.pos === "GK") continue;
+      if (Math.abs(q.x - gxR) < CFG.gkBoxR + 3 && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW + 3) defBox++; }
+    if (defBox < CFG.cnDefReady) return false;
+    if (struck) { sp.run = 1; return false; }
+    return true;
+  }
+  if (sp.kind === "freekick") {
+    if (struck) { sp.run = 1; return false; }
+    return true;
+  }
   // A SHOOTOUT KICK WAITS FOR NOBODY BUT THE TAKER. The check below wants most of the outfield
   // on its penalty-arc marks, and in a shootout the other eighteen are deliberately stood on the
   // halfway line -- so it could never pass and every kick sat out the full 140-slice ceiling
@@ -659,7 +728,23 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     if (sp.kind === "goalkick" && (us[i].x - sp.x) * dir < 3) continue;
     const q = us[i], d = Math.hypot(q.x - sp.x, q.y - sp.y);
     if (d > CFG.spMaxBall) continue;
-    const v = into ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d;
+    // A CORNER IS NOT AIMED AT THE GOALMOUTH. The old value maximised proximity to the goal line
+    // and the centre, which selects the man standing on the keeper -- and with the run and the
+    // cross-over both pushing goalward on top, deliveries funnelled into the six-yard box where
+    // the claim eats them. Real deliveries land in the scoring band around the spot, so a corner
+    // scores its candidates by distance from cnAimD out, not by depth.
+    // ...scored at where his RUN puts him at contact (the run fires at the strike and carries
+    // spCornerRun metres goalward before the ball lands), not where he stands now.
+    // A CORNER IS NOT AIMED AT THE GOALMOUTH. The old value maximised proximity to the goal line
+    // and the centre, which selects the man standing on the keeper -- and with the run and the
+    // cross-over both pushing goalward on top, deliveries funnelled into the six-yard box where
+    // the claim eats them. Real deliveries land in the scoring band around the spot, so a corner
+    // scores its candidates by where the RUN puts them at contact (the run fires at the strike
+    // and carries spCornerRun metres goalward before the ball lands), against cnAimD.
+    const v = sp.kind === "corner"
+      ? -Math.abs(Math.hypot(gx - q.x, ME_HALF_W - q.y) - CFG.spCornerRun - CFG.cnAimD)
+        - Math.abs(q.y - ME_HALF_W) * 0.1
+      : into ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d;
     let w = Math.exp(v * CFG.spAimSharp);
     if (into) w *= 0.5 + meAttrs(q).strength / 99;
     cands.push([i, w]);
@@ -717,6 +802,13 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
       if (_dy < 20.4) _q.y = clampY(ME_HALF_W + (_q.y < ME_HALF_W ? -1 : 1) * 20.7);
       _q.vx = 0; _q.vy = 0; _q._tx = _q.x; _q._ty = _q.y;
     }
+    // Harness-only (same gate pattern as __prov): how every penalty was actually struck. tD is the
+    // taker's distance to the ball at the strike -- anything over ~2 is a kick fired by a timeout
+    // with the taker still walking, which is the "shot with no kick" a viewer sees. bD is the
+    // ball's own distance to the spot, and t/run say which readiness path fired it.
+    if (globalThis.__pen) globalThis.__pen.push({ pk: mp._pk ? 1 : 0, t: sp.t, run: sp.run ? 1 : 0,
+      ti: sp.ti, tD: +Math.hypot(taker.x - mp.bx, taker.y - mp.by).toFixed(1),
+      bD: +Math.hypot(mp.bx - sp.x, mp.by - sp.y).toFixed(1) });
     gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
                  mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
@@ -798,6 +890,21 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // a match, which is where the per-player column stopped reconciling with the team's.
   mp.passPending = { side, byP: taker };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
-  if (globalThis.__sp) globalThis.__sp[sp.kind] = (globalThis.__sp[sp.kind] || 0) + 1;
+  if (globalThis.__sp) {
+    globalThis.__sp[sp.kind] = (globalThis.__sp[sp.kind] || 0) + 1;
+    if (sp.kind === "corner") {
+      const gxP = meGoalX(side), dP = meDir(side);
+      let inBox = 0, ownHalf = 0;
+      for (const q2 of us) { if (q2.off || q2.pos === "GK" || q2 === taker) continue;
+        if (Math.abs(q2.x - gxP) < 16.5 && Math.abs(q2.y - ME_HALF_W) < 20.16) inBox++;
+        if ((q2.x - (PITCH_L / 2)) * dP < 0) ownHalf++; }
+      const phaseOK = mp.side === side ? 1 : 0;   // does the duty layer think we are attacking?
+      let boxD = 0; for (const q2 of us) if (q2._duty === "box") boxD++;
+      let defBox2 = 0;
+      for (const q2 of s.players[meOther(side)]) { if (q2.off || q2.pos === "GK") continue;
+        if (Math.abs(q2.x - gxP) < 16.5 && Math.abs(q2.y - ME_HALF_W) < 20.16) defBox2++; }
+      (globalThis.__sp.box = globalThis.__sp.box || []).push([inBox, ownHalf, phaseOK, boxD, defBox2]);
+    }
+  }
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
 }

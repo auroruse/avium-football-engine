@@ -277,7 +277,11 @@ export function meIntercept(p, mp, vmax) {
     const [x, y, z] = pred[i];
     // Over HIS head there -- not over a flat 1.6 m that nobody could ever reach. Without this he
     // would never even set off for a ball he is perfectly capable of winning.
-    if (z >= meAerial(meAttrs(p), CFG)) continue;
+    // A KEEPER'S CEILING IS HIS HANDS. meAerial is the outfield header cap, and under it the
+    // keeper's rush plan could not target any slot of a cross's flight above ~1.9 m -- he could
+    // only ever plan to meet the ball where it DROPS, which is after the header contest is over.
+    // That is most of why he would not come for crosses.
+    if (z >= (p.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(p), CFG))) continue;
     const t = i * ME_DT * 1000;
     const need = meTimeToBallMs(p, x, y, vmax);
     if (need <= t + 60) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
@@ -349,4 +353,32 @@ export function meClosest(ps, x, y) {
   for (let i = 0; i < ps.length; i++) { if (ps[i].pos === "GK") continue;
     const d = Math.hypot(ps[i].x - x, ps[i].y - y); if (d < bd) { bd = d; bi = i; } }
   return bi;
+}
+
+// THROUGH ON GOAL IS A RACE, NOT A HEADCOUNT. "Anybody goal-side of him?" called a man covered by
+// a defender standing deep but two channels wide -- a body that can never make the interception --
+// and called him clean when a diagonal chaser was always going to get across. Cover is a defender
+// who WINS a race to some point of the run: the path to goal is sampled up to shooting range, and
+// each defender's time to each sample is set against the runner's, with thruCovSlack of grace for
+// arriving together, because arriving with him IS contesting him. Keepers never count -- being
+// through means facing only the keeper -- and excl lets a marker ask without counting himself.
+const ME_THRU_F = [0.4, 0.7, 1.0];
+export function meThruCover(s, side, q, excl) {
+  const gx = meGoalX(side), dx = gx - q.x, dy = ME_HALF_W - q.y;
+  const dG = Math.hypot(dx, dy) || 1;
+  // Shooting starts thruShotAt out; nearer than that the run is sampled to 60% of what is left,
+  // so a man at his shoulder still covers and a box scramble is never "through".
+  const sEnd = Math.max(dG * 0.6, dG - CFG.thruShotAt);
+  const ux = dx / dG, uy = dy / dG;
+  const vq = Math.max(3, meSpeed(meAttrs(q), q.stamina));
+  for (const p2 of s.players[meOther(side)]) {
+    if (!p2 || p2.off || p2.pos === "GK" || p2 === excl) continue;
+    const vd = Math.max(3, meSpeed(meAttrs(p2), p2.stamina));
+    for (const f of ME_THRU_F) {
+      const d = sEnd * f;
+      if (Math.hypot(p2.x - (q.x + ux * d), p2.y - (q.y + uy * d)) / vd <= d / vq + CFG.thruCovSlack)
+        return true;
+    }
+  }
+  return false;
 }
