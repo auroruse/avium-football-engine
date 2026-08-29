@@ -13340,22 +13340,24 @@ export default function App() {
                               {code(isH ? m.hT : m.aT)}</span>
                           </div>);
                       };
+                      const BALL = (clr) => <span style={{ color: clr }}>{"\u26BD\uFE0E"}</span>;
                       const YCARD = <span style={{ display: "inline-block", width: 7, height: 10, borderRadius: 1.5,
                                                    background: "var(--ui-warn)" }} />;
                       const RCARD = <span style={{ display: "inline-block", width: 7, height: 10, borderRadius: 1.5,
                                                    background: "var(--ui-danger)" }} />;
                       // kind -> icon, header, colour, and whether it is a headline event
                       const META = {
-                        goal:    { icon: "⚽", head: "GOAL", clr: "var(--ui-text)", big: true },
-                        // A PENALTY SCORED IS A GOAL and wears the goal's ball; a missed one wears
-                        // the cross. The net glyph said neither, and put the same picture on both.
-                        pen:     { icon: "⚽", head: "PENALTY SCORED", clr: "var(--ui-ok)", big: true,
-                                   tint: "var(--ui-ok)" },
-                        penmiss: { icon: "\u2715", head: "PENALTY MISSED", clr: "var(--ui-danger)", big: true,
-                                   tint: "var(--ui-danger)" },
+                        goal:    { icon: BALL("var(--ui-text)"), head: "GOAL", clr: "var(--ui-text)", big: true },
+                        // EVERY PENALTY WEARS THE GOAL'S BALL, and its colour is the whole message:
+                        // green scored, red missed. The glyph used to differ per outcome and the
+                        // outcome was spelled out in a written tag beside the name; neither is needed.
+                        pen:     { icon: BALL("var(--ui-ok)"), head: "PENALTY SCORED", clr: "var(--ui-ok)",
+                                   big: true, tint: "var(--ui-ok)" },
+                        penmiss: { icon: BALL("var(--ui-danger)"), head: "PENALTY MISSED",
+                                   clr: "var(--ui-danger)", big: true, tint: "var(--ui-danger)" },
                         red:     { icon: RCARD, head: "RED CARD", clr: "var(--ui-danger)", big: true },
-                        og:      { icon: "\u26BD", head: "OWN GOAL", clr: "var(--ui-danger)", big: true,
-                                   tint: "var(--ui-danger)" },
+                        og:      { icon: BALL("var(--ui-text)"), head: "OWN GOAL", clr: "var(--ui-danger)",
+                                   big: true, tint: "var(--ui-danger)" },
                         pk:      { icon: "\uD83E\uDD45", clr: "var(--chrome-muted)" },
                         sub:     { icon: "⇄", head: "SUB", clr: "var(--chrome-muted)", big: true },
                         save:    { icon: "🧤", clr: "var(--ui-info)" },
@@ -13466,9 +13468,7 @@ export default function App() {
                                         color: f.k === "penmiss" || f.k === "red" ? "var(--ui-danger)" : "var(--ui-text)" }}>
                               {who(f.full, f.name)}</b>
                             {(f.k === "goal" || f.k === "pen") && f.assist ? tag(f.assist) : null}
-                            {f.k === "pen" ? tag("pen", "var(--ui-ok)") : null}
-                            {f.k === "penmiss" ? tag("pen", "var(--ui-danger)") : null}
-                            {f.k === "og" ? tag("og", "var(--ui-danger)") : null}
+                            {f.k === "og" ? tag("(OG)", "var(--ui-danger)") : null}
                             {f.k === "red" ? tag(ME_RED_WHY[f.why] || (f.second ? "2nd yellow" : "sent off"), "var(--ui-danger)") : null}
                           </>)))}
                           {pens.length ? (
