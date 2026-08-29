@@ -8335,7 +8335,7 @@ export default function App() {
       g.schedule.forEach((rd, ri) => { if (targetRi !== -1 && targetRi !== ri) return;
         rd.forEach((m, mi) => { if (m.result || (targetMi !== -1 && targetMi !== mi)) return;
           if (m.home?.name && m.away?.name) totalJobs++; }); }); });
-    setSimProg(totalJobs > 1 ? { done: 0, total: totalJobs } : null);
+    setSimProg(totalJobs > 0 ? { done: 0, total: totalJobs } : null);
 
     for (let ri = 0; ri < maxRds; ri++) {
       if (targetRi !== -1 && targetRi !== ri) continue;
@@ -8381,11 +8381,11 @@ export default function App() {
       }
     }
     ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
-    setTGroups(ng); setSimProg(null); if (bulk) setLoading(false);
+    setTGroups(ng);
     };
     if (simBusy.current) return;                   // one at a time; see simBusy
     const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
-      try { await run(); } finally { simBusy.current = false; }
+      try { await run(); } finally { simBusy.current = false; setSimProg(null); if (bulk) setLoading(false); }
       console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
@@ -8656,7 +8656,7 @@ export default function App() {
     const totalTies = (ko.rounds || []).reduce((a, r) => a + (r.matches || []).filter(m => m.home && m.away && (!m.result || m.result.partial)).length, 0)
                     + (ko.losers || []).reduce((a, r) => a + (r.matches || []).filter(m => m.home && m.away && (!m.result || m.result.partial)).length, 0);
     let seen = 0;
-    setSimProg(totalTies > 1 ? { done: 0, total: totalTies } : null);
+    setSimProg(totalTies > 0 ? { done: 0, total: totalTies } : null);
     const localBans = {};
     for (const [k, v] of Object.entries(tPlayerStats)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) localBans[k] = { suspended: v.suspended||0, injOut: v.injOut||0 }; }
     const buildUnavail = () => { const s = new Set(); for (const [k, v] of Object.entries(localBans)) { if ((v.suspended||0) > 0 || (v.injOut||0) > 0) s.add(k); } return s; };
@@ -8712,14 +8712,12 @@ export default function App() {
     setTKO(ko);
     // A finished round may owe the next one a draw. Checked after the results are in and before the
     // completion check, so the tournament does not skip straight past a draw it was configured for.
-    if (tMaybeDrawNextKO(ko)) { setTKO(ko); setSimProg(null); if (bulk) setLoading(false); return; }
+    if (tMaybeDrawNextKO(ko)) { setTKO(ko); return; }
     if (isKOComplete(ko)) setTPhase("complete");
-    setSimProg(null);
-    if (bulk) setLoading(false);
     };
     if (simBusy.current) return;                   // one at a time; see simBusy
     const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
-      try { await run(); } finally { simBusy.current = false; }
+      try { await run(); } finally { simBusy.current = false; setSimProg(null); if (bulk) setLoading(false); }
       console.log(`[perf] tScorinateKO: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
