@@ -403,7 +403,16 @@ export function meDuties(s, side) {
     //   frame released him and something else picked him up.
     // A ball in flight is deliberately still excluded: that one has an intended receiver and a
     // designated chaser already, and sending the block after it is how a side gets pulled apart.
-    const ballLive = mp.idx >= 0 || (!mp.flight && !mp.sp);
+    // ...EXCEPT A RICOCHET. A parry, a block, a poked tackle and a squirt off a shin all leave
+    // mp.flight standing from the strike they interrupted, and none of them has a receiver -- so
+    // the exclusion built for passes was eating exactly the balls this branch was written for.
+    // Measured at the goal ledger: 26.6% of all goals were born within a second of one of those
+    // events or trickled in with no strike at all, with the defence standing in shape watching,
+    // because no duty ever pointed at the rebound. _loose is stamped at every one of those sites;
+    // for loosePressWin after it the ball is live whatever the flight flag says, so the presser
+    // and the box swarm below converge on the spill the way a defence actually does.
+    const ballLive = mp.idx >= 0 || (!mp.flight && !mp.sp)
+      || (!mp.sp && mp.tick - (mp._loose ?? -99) < CFG.loosePressWin);
     if (ballLive) {
       // Inside the line of engagement a man travels a long way to the ball; outside it he goes only
       // if he is already close. Somebody is always tasked with it -- that is the difference between
@@ -1553,6 +1562,24 @@ export function meShape(s, side) {
       // A dribble is a committed movement, not an argmax re-solved four times a second.
       if ((p._drbT ?? 0) > 0) p._drbT--;
       else {
+        // A CLEAR RUN AT GOAL BENDS THE CARRY AT THE GOAL. The eight directions below are scored
+        // on meValHere minus pressure, and the arithmetic of that pair is why a man clean through
+        // never ran at the net: the value surface gains about 0.083 (at carryVal) for the goalward
+        // step from twenty metres out, and the keeper standing in it is worth up to 0.075 of
+        // pressure -- the one body left on the pitch cancelled the entire reason to go there, and
+        // any loose body near the goalward ray beat it from further out. So the search literally
+        // steered AWAY from the keeper, which from the stand is a man declining an open goal.
+        // Same corridor test as decide.ts runAtGoal, priced per metre of ground gained on the goal
+        // mouth so it dominates the flat surface only when he is actually through.
+        const gx2 = meGoalX(side);
+        let atGoal = 0;
+        if (meLaneBlock(s, side, p.x, p.y, gx2, ME_HALF_W) < CFG.noBackLane) {
+          let gs2 = 0;
+          for (const o of them) if (o && !o.off && o.pos !== "GK"
+              && (o.x - p.x) * dir > 0 && Math.abs(o.y - p.y) < 20) gs2++;
+          if (gs2 === 0 || Math.abs(gx2 - p.x) < CFG.noBackRange) atGoal = 1;
+        }
+        const gd0 = atGoal ? Math.hypot(gx2 - p.x, ME_HALF_W - p.y) : 0;
         let bAng = null, bSc = -Infinity;
         for (let k = 0; k < 8; k++) {
           const ang = k * Math.PI / 4;
@@ -1561,6 +1588,7 @@ export function meShape(s, side) {
           // Where he takes it is worth what it is worth WITH the bodies there, and a footballer
           // does not turn on a sixpence: holding your line is cheaper than reversing it.
           let sc2 = meValHere(s, side, cx, cy) * CFG.carryVal - mePressure(s, side, cx, cy) * CFG.carryAvoid;
+          if (atGoal) sc2 += (gd0 - Math.hypot(gx2 - cx, ME_HALF_W - cy)) * CFG.carryGoalW;
           // Running it out of play is a real cost, and it is not the same cost everywhere. A throw
           // near halfway is almost nothing; a goal kick hands them the ball; a defender who puts it
           // behind for a corner has conceded the most dangerous restart in football. Measured, 7.4

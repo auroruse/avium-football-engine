@@ -588,7 +588,12 @@ export function meDecide(s, rng, side, i, dwell) {
   // decline to run at an empty defence, and one told to get it forward should not be nudged into
   // hoofing it from the edge of their box. Instructions govern how a side builds, not what it does
   // once it has already broken.
-  const thruMe = meCoverGoalSide(s, side, p.x) === 0;
+  // NOT the full-width count. meCoverGoalSide reads every outfield opponent ahead of his x across
+  // the whole pitch, so a striker clean through the middle was "covered" by a winger loitering
+  // level on the far touchline and kept his instructions -- which is why a man with nobody in
+  // front of him still played like a man in a build-up. Being through is the corridor question
+  // runAtGoal already answers, and the two gates now agree.
+  const thruMe = runAtGoal;
   // Carry it. Cheap, safe, gains a little -- and the option a pressed player loses first.
   // drb is now a real retention probability, and meTick rolls against exactly this number.
   //

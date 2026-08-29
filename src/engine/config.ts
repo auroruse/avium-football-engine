@@ -50,6 +50,14 @@ export const SP = {
   // rather than landing at his feet -- 3.5 m puts the ball at 1.8-2.0 m over the mark at any
   // realistic corner distance (solved from the loft profile, see meLoftFor).
   spCornerUp: 2, spCrossOver: 2.7,
+  // The moment a corner is struck, every attacker in the box breaks goalward on a committed run:
+  // metres of dart and slices it lasts. See meSPTake.
+  spCornerRun: 4.5, spCornerRunT: 6,
+  // The defending side at an opponent's GOAL KICK stands in nearly its full shape (share of
+  // formation depth), front men clamped outside the taker's box -- pressing a goal kick, not
+  // retreating to its own half. And at a free kick or throw anywhere upfield, the leftover block
+  // holds spDropBack metres goal-side of the BALL rather than dropping to its own box.
+  spGkDefScale: 0.85, spDropBack: 26,
   // How far a step of the defensive-line instruction moves the block at a free kick, and how far
   // a keeper has to be out of position before the goal counts as open. gkBeatX is along the pitch
   // (behind him is behind him), gkBeatY across it.
@@ -189,6 +197,11 @@ export const CFG = {
   // ...and metres the men who are NOT the intended receivers shift at a goal kick. Going long with
   // the whole side still standing on the eighteen-yard line means conceding every second ball.
   gkShapePush: 12,
+  // The shallowest any leftover outfielder stands at his side's own goal kick, in metres from his
+  // own goal line. The kick is taken at 5.5; halved formation depth stood the centre-halves level
+  // with it in front of the goal mouth, and the take then aimed the kick at them. Thirteen is a
+  // back line receiving on the edge of its own box, comfortably clear of the ball, jitter included.
+  gkShapeMin: 13,
   // How much of the usual depth gate a counter-attack is allowed to ignore. A break starts deep.
   brkDepth: 0.35,
   // How deep the ball has to be for a side to count as building, and how far the midfield shifts
@@ -1072,7 +1085,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Inside this of his own goal a beaten man drops goal-side; beyond it he turns and chases.
   beatDeep: 34,
   tkRange: 2.8, tkEdge: 8, tkCoverR: 14, tkCool: 10,
-  tkwNear: 0.42, tkwSide: 0.20, tkwSlow: 0.20, tkwEdge: 0.08, tkwCover: 0.14,
+  // Reweighted 28 Aug 2026 with the first-touch rework: the old mix leaned 0.20 on a slow
+  // carrier, and most of "slow" was the reception drag artifact -- a claimed ball pinned at a
+  // man's heels for half a second. With first touches going in front, carriers move at real pace
+  // and the slow term stopped firing: tackle attempts fell 25% and goals rose 0.6 on nothing but
+  // uncontested carries. A defender AT the man goes in whatever pace the man carries at -- that
+  // is what a challenge on the run is -- so the weight lives on proximity now.
+  tkwNear: 0.50, tkwSide: 0.22, tkwSlow: 0.10, tkwEdge: 0.08, tkwCover: 0.14,
   // Swept 0.60 / 0.78 / 0.84 / 0.88: attempts a side 103.9 / 27.3 / 9.3 / 2.8 and won 57 / 62 / 62
   // / 68%. A real match is 15-20 tackles a side at about 65%, and this engine runs a fifth of a real
   // one's event volume, so 4-6 attempts is the target -- 0.86.
@@ -1341,6 +1360,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and it is anybody's ball.
   // Checking his run for a ball that has arrived behind him: how much of his pace he sheds, and how
   // far behind him it has to be (metres of his own direction, so 0 is level with him).
+  // ftCheckDot is METRES of ball ahead along his own line, not a cosine: below it he checks.
+  // Widening it to 0.35 was measured and rejected (goals 3.58 -> 3.89, passes +6): the brake
+  // slows INTERCEPTING defenders as much as receivers, and a defender braked to 30% on his own
+  // cut is re-pressed and stripped. Leave it on the strictly-behind ball.
   ftCheck: 0.30, ftCheckDot: 0,
   ftStretch: 0.55, ftHot: 18, ftPace: 0.5, ftFail: 0.30, ftSquirt: 0.5, ftSquirtArc: 1.2,
   // ---- the ball is its own object -----------------------------------------------------------
@@ -1426,7 +1449,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
   rateSave: 0.65, gkExpPen: 0.86, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
-  gkExp: [[0.05, 0.16], [0.10, 0.17], [0.20, 0.14], [0.30, 0.30], [0.40, 0.73], [0.60, 0.49], [1.01, 0.85]],
+  // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
+  // keeper concedes less per shot, so the whole expectation table shifts down a few points.
+  gkExp: [[0.05, 0.13], [0.10, 0.13], [0.20, 0.11], [0.30, 0.25], [0.40, 0.72], [0.60, 0.48], [1.01, 0.82]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1520,7 +1545,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derive it the same way if any delta above, or rateSpread, moves.
   // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
   // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
-  ratePos: { GK: 0.064, DEF: -0.490, MID: -0.479, FWD: -1.367 },
+  // Re-derived 28 Aug 2026 after the loose-ball rework (loosePressWin, carryGoalW, the goal-kick
+  // shape floor): the trickle-in and own-goal classes it removed were mostly forward goals, so the
+  // FWD par climbed a third of a point and the others moved a few hundredths.
+  // The derive-to-zero figures overshoot because the projection shrink interacts with the par;
+  // interpolate from measured (par, mean) points at slope ~0.88 rating per unit of par instead.
+  // Re-set 28 Aug 2026 after the fluidity rework and its keeper-reach offset: FWD from
+  // (-1.243, 6.999) at slope 0.88; GK's own slope is steeper, ~1.72 -- interpolated from
+  // (0.086, 7.087) and (-0.183, 6.625). DEF and MID held (both passed).
+  // DEF nudged 28 Aug (set-piece/header rework): real clearances pay defenders more, par ran
+  // 6.975 -- interpolated at the outfield slope 0.88.
+  ratePos: { GK: -0.052, DEF: -0.657, MID: -0.507, FWD: -1.412 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1591,6 +1626,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ordinary passes clear was regress at six matches, not an effect. 1.50 is chest-high: below it he
   // controls it, above it he heads it.
   headMinZ: 1.50, headReach: 0.62, headLo: 0.55,
+  // The drop-wait veto (zNext, in the aerial gate) is waived when an opponent stands inside this:
+  // letting it fall to your feet in a crowd is how you get robbed, so a marked man attacks it
+  // with his head -- which is most of the box at a corner.
+  headDuelR: 2.4,
+  // A relief header is a clearance and travels like one: launch speed before the strength scale,
+  // and its loft. The old knock (headV * power * 0.75, vz 0.9) left the head at 5-9 m/s and
+  // carried six to ten metres against an 18 m aim -- a fifty-fifty on the edge of his own box.
+  headClearV: 13, headClearVz: 3.5,
   // What a header DOES. Inside headShotR of the goal he is attacking he heads it at goal; anywhere
   // else he heads it away from his own. headV is how hard, before strength scales it -- a header
   // travels a fraction of what a struck ball does.
@@ -1633,6 +1676,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // what made him shuffle: measured, the steering reversed by more than 90 degrees on 13% of the
   // slices a man had the ball, which on screen is a player dribbling back and forth in the box.
   carryCommit: 4, carryVal: 3.2, carryAvoid: 0.075, carryTurn: 0.012,
+  // THE DRIVE AT AN OPEN GOAL, per metre of ground gained on the goal mouth, paid only while the
+  // carrier has a clear run (the runAtGoal corridor in meShape). Sized off the terms it has to
+  // beat: the goalward step at carryLook = 6 is worth about 0.083 of carryVal from twenty metres
+  // and the keeper standing in the lane costs up to 0.075 of carryAvoid -- the pair that cancelled
+  // and left a through man steering around the goal. 0.03/m is 0.18 per step: the drive wins
+  // against a keeper, and an outfield body back in the corridor (which drops the gate) frees the
+  // search to swerve as before.
+  carryGoalW: 0.03,
   // How fast he can change the line he is taking the ball ALONG, in radians per slice, and how much
   // running hard takes off that. A footballer rearranges his feet to keep the ball in front of him:
   // he cannot knock it across his own body at a sprint. The touch angle used to snap straight to a
@@ -1675,6 +1726,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // priced by the pass noise and risk terms, which is what makes this a release change and not a
   // buff. At press 1.8 the bar is gone entirely.
   holdBase: 5, holdPress: 1.4, actNow: 0.10, pressActNow: 0.55, firstTouchNoise: 1.75,
+  // SPEED OF THOUGHT IS A RATING. The touch budget was flat: a 92 looked up on exactly the
+  // schedule a 58 did, so elite football had the same standing-on-the-ball cadence as a second
+  // division. Slices shaved off (or added to) the budget per unit of meMind, centred near the
+  // check leagues' mean so the league-wide tempo barely moves while the top of it visibly plays
+  // quicker and the bottom dwells longer.
+  holdMind: 2.4,
   // How much a spot being OWNED is worth, on top of where it is. 0 reproduces the engine that
   // had no idea where the opponent's shape was. Kept a dial rather than a rewrite because this
   // is the value surface every calibrated number in the file sits on.
@@ -1837,6 +1894,27 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // stop in that 0.7 m band could not be picked up by anyone, and both sides' designated chasers
   // stood over it having "arrived". Measured: six matches in twelve froze solid and never restarted.
   scrambleStop: 1.3,
+  // THE STAND-OFF IS FROM THE BALL'S LINE, NOT THE MEETING POINT. scrambleStop stops the chaser
+  // 1.3 m short of his intercept point so a travelling ball is not overrun -- but reach is 0.70,
+  // so a man 1.3 m PERPENDICULAR to the path watched the ball roll past untouchable and chased
+  // the re-solve, which is the whole of "he can't receive a ball that isn't straight at him".
+  // Standing off is only legal once he is within lineStand of the path itself.
+  lineStand: 0.55,
+  // THE GATHER. Winning the race to a through ball is a sprint; taking a ball that is dying in
+  // front of you is not. With no arrival control the receiver closed on a 2.3 m/s ball at 8 and
+  // ran straight over it -- inside gatherR of a ball receding along his approach, his pace is
+  // capped at the ball's plus gatherOver, so he arrives with it playable instead of behind him.
+  gatherR: 2.5, gatherOver: 1.5,
+  // A clean claim on the move puts the FIRST TOUCH in front, along the line he is running --
+  // claims land anywhere inside reach, including 0.6 m behind a sprinting man, and the ball was
+  // simply left there (or ejected along the claim direction, which can be backwards). Below this
+  // speed in m/s he is standing and the claim spot stands with him.
+  ftFwdV: 1.5,
+  // ...and how fast that touch degrades with the pressure on the receiver. The effect of the
+  // forward touch is binary (once the ball is out of the behind-cone the drag never starts), so
+  // the only honest price is the situations in which it is denied: a man receiving under a
+  // tackler's shadow scuffs it under himself whoever he is. At press 1.25 the touch is gone.
+  ftFwdPress: 0.8,
   // How near a man COMMITTED to a spot has to get before he counts as arrived. It was 1.6 -- LOOSER
   // than the 1.3 for a man committed to nothing -- left over from set pieces, which take the mp.sp
   // branch above it and have not needed it for a long time. That spare metre and a half is what kept
@@ -1968,6 +2046,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // How deep the ball must be before a block stops sending one man and starts swarming, how many
   // extra go, and how close they have to be already. Same units as engageIn.
   swarmDepth: 26, swarmMax: 1, swarmR: 11,
+  // Slices after a ricochet (_loose) during which the ball counts as live for the press and the
+  // swarm even though mp.flight still says a strike is in the air. A parry, a block and a poked
+  // tackle have no intended receiver, so the flight exclusion built for passes left the rebound
+  // unassigned -- the defence stood in shape while it sat in the six-yard box. Two seconds covers
+  // the scramble window; the keeper's own claim (gkLooseWin) stays wider.
+  loosePressWin: 8,
   // Reading a pass: how late an opponent can be and still be a threat, and over what span of
   // timing the risk runs from nothing to certain.
   riskLateMs: 160, riskSpanMs: 620, riskW: 0.92,
@@ -2432,7 +2516,12 @@ gkDiveV: 2.9,
   // Shifted down 26 Aug 2026 as the completion rework's goals offset: the safer league creates
   // fewer chances, so the keeper gives back what the passing took (about +0.45 goals a match,
   // per the dial's measured ~0.17 per 0.04 of reach).
-  gkSaveReach: 0.42, gkSaveReachLo: 0.07, gkSaveReachHi: 0.50,
+  // Shifted up 28 Aug 2026 as the fluidity rework's goals offset, the mirror of the 26 Aug move:
+  // first touches going in front (ftFwdV) raised shot volume 17% at IDENTICAL conversion-on-
+  // target, so the league scores more on pure throughput. The attack got quicker; the keeper gets
+  // the reach to answer it. Both ends move together so the keeper spread is untouched. Sized off
+  // the dial's measured rate scaled to the new volume (~0.21 a match per 0.04 of reach).
+  gkSaveReach: 0.51, gkSaveReachLo: 0.16, gkSaveReachHi: 0.59,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,

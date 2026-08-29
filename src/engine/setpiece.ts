@@ -423,9 +423,17 @@ export function meSPShape(s) {
     // 0.5 rather than 0.45 + 18: everyone must be in their own half at a kickoff, and _bd0 runs to
     // about 95, so half of it is the compression that guarantees it.
     const shape = sp.kind === "goalkick" || sp.kind === "kickoff";
+    // A GOAL KICK IS NOT A KICKOFF. Halving formation depth is the kickoff's own-half law; applied
+    // to a goal kick it stood the centre-halves at _bd0 * 0.5 = five or six metres -- level with
+    // the ball at 5.5 and square in front of the goal mouth -- where the take's nearest-man draw
+    // then aimed the kick at them. That is the whole own-goal-from-a-goal-kick chain: a 6 m/s
+    // floor-speed ball struck goalward at a man standing on his own six-yard line. Nobody stands
+    // goal-side of a goal kick; the leftovers hold at least gkShapeMin, which is where a back four
+    // actually receives one.
     const base = shape
-      ? own + dir * ((p._bd0 ?? 40) * 0.5
-                     + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
+      ? own + dir * Math.max(sp.kind === "goalkick" ? CFG.gkShapeMin : 0,
+                             (p._bd0 ?? 40) * 0.5
+                             + (sp.kind === "goalkick" ? (st.gkDist || 0) * CFG.gkShapePush : 0))
       : sp.x - dir * (10 + k * 7);
     const wide = shape ? (p._bw0 ?? ME_HALF_W)
                        : ME_HALF_W + ((k % 2 ? 1 : -1) * (7 + k * 3));
@@ -493,8 +501,23 @@ export function meSPShape(s) {
     // side's own strategy -- st above belongs to the side taking it.
     const dst = s.strategy?.[opp] || {};
     const dLine = 13 + (dst.defLine || 0) * CFG.spLineStep;
-    const base = shape2 ? gx - dir * (p._bd0 ?? 40) * 0.5
-                        : gx - dir * (dLine + Math.floor(dk / 4) * 7);
+    // NOBODY RETREATS TO HIS OWN HALF FOR A GOAL KICK. The kickoff's half-depth law was applied
+    // here too, so the defending side's striker stood 46 m from his own goal -- fifty-nine from
+    // the ball -- and the whole side sprinted back out the moment it was struck. The only law a
+    // goal kick has is the penalty area: the side stands in nearly its full shape, the front men
+    // on the edge of the taker's box, which is what pressing a goal kick is.
+    // ...AND A FREE KICK'S LINE IS ANCHORED TO THE BALL. dLine alone sent every leftover to his
+    // own box for a free kick at halfway -- retreat, then rush back out, the same artificial
+    // pulse. The block holds spDropBack goal-side of the ball wherever the ball is; a kick in
+    // shooting range still gets the old deep line, because there dLine wins the max().
+    let base;
+    if (sp.kind === "kickoff") base = gx - dir * (p._bd0 ?? 40) * 0.5;
+    else if (sp.kind === "goalkick")
+      base = gx - dir * Math.min(PITCH_L - 17.5, (p._bd0 ?? 40) * CFG.spGkDefScale);
+    else {
+      const bDep = Math.abs(sp.x - gx);
+      base = gx - dir * (Math.max(dLine, bDep - CFG.spDropBack) + Math.floor(dk / 4) * 7);
+    }
     dplace(i, base + spJ(sp, 80 + dk), (p._bw0 ?? ME_HALF_W) + spJ(sp, 85 + dk));
     dk++;
   }
@@ -629,6 +652,11 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const cands = [];
   for (let i = 0; i < us.length; i++) {
     if (i === sp.ti || us[i].pos === "GK") continue;
+    // Never level with or behind the ball at a goal kick. The weighted draw below is exp(-d), so a
+    // man standing two metres away owns it whoever else is free -- and a man behind the ball spot
+    // is a pass struck at his own net. The shape floor above should leave nobody there; this is
+    // the law for whoever ends up there anyway.
+    if (sp.kind === "goalkick" && (us[i].x - sp.x) * dir < 3) continue;
     const q = us[i], d = Math.hypot(q.x - sp.x, q.y - sp.y);
     if (d > CFG.spMaxBall) continue;
     const v = into ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d;
@@ -729,8 +757,24 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99, 0, CFG.spFkElev, fkV);
     return;
   }
+  // THE BOX ATTACKS THE DELIVERY -- and the delivery leads the run. Runs are committed BEFORE the
+  // aim is computed, because a corner flight is five or six slices and a man darting goalward at
+  // the strike is three metres past his mark when the ball lands on it: the first cut set the
+  // runs after the aim and made every runner run AWAY from his own delivery. The ball is flighted
+  // to where the target's run ends, which is what "attacking the near post" is.
+  if (sp.kind === "corner") {
+    for (const q2 of us) {
+      if (q2 === taker || q2.pos === "GK" || q2.off) continue;
+      const dg = Math.hypot(gx - q2.x, ME_HALF_W - q2.y);
+      if (dg > 25 || dg < 2) continue;
+      q2._run = "corner"; q2._runT = CFG.spCornerRunT;
+      q2._rx = q2.x + (gx - q2.x) / dg * CFG.spCornerRun;
+      q2._ry = q2.y + (ME_HALF_W - q2.y) / dg * CFG.spCornerRun;
+    }
+  }
   const q = ti >= 0 ? us[ti] : null;
-  let tx = q ? q.x : sp.x + dir * 20, ty = q ? q.y : ME_HALF_W;
+  let tx = q ? (sp.kind === "corner" ? (q._rx ?? q.x) : q.x) : sp.x + dir * 20,
+      ty = q ? (sp.kind === "corner" ? (q._ry ?? q.y) : q.y) : ME_HALF_W;
   // A CORNER IS FLIGHTED TO HIS HEAD, NOT HIS FEET. The loft lands where it is aimed, so aiming at
   // the man meant the ball fell through head height metres SHORT of him -- at his marker -- and
   // arrived at his boots at z = 0. Landing spCrossOver beyond him puts it at 1.8-2.0 m as it
@@ -740,6 +784,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     tx += ux / ul * CFG.spCrossOver; ty += uy / ul * CFG.spCrossOver;
     if ((gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted to land in the net
   }
+  if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
   const high = sp.kind === "corner"
     || (sp.kind === "goalkick" && (s.strategy?.[side]?.gkDist || 0) > 0)
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);
@@ -753,5 +798,6 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // a match, which is where the per-player column stopped reconciling with the team's.
   mp.passPending = { side, byP: taker };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
+  if (globalThis.__sp) globalThis.__sp[sp.kind] = (globalThis.__sp[sp.kind] || 0) + 1;
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
 }
