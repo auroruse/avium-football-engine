@@ -13420,12 +13420,14 @@ export default function App() {
                           for (const o of (out.owns?.[sd] || []))
                             key.push({ min: o.min, side: sd === "home" ? "away" : "home", k: "og",
                                        name: o.name, full: o.full });
-                          // ...and the parried-in own goals, which live in their own ledger.
-                          for (const o of (out.ogs?.[sd] || []))
-                            key.push({ min: o.min, add: o.add, side: sd === "home" ? "away" : "home",
-                                       k: "og", name: o.name, full: o.full });
+                          // NOT out.ogs AS WELL. It is the same own goal: both ledgers are written
+                          // at the one goal site, owns keyed on the conceder and ogs on the side it
+                          // counts for. Measured over 400 matches, 25 own goals produced 25 entries
+                          // in each and 25 double-files -- one man, one minute, two rows, opposite
+                          // badges, because only the owns row wants the flip above.
                         }
-                        key.sort((u, v) => v.min - u.min);
+                        const keyD = key;
+                        keyD.sort((u, v) => v.min - u.min);
                         // POST MATCH IS A TEAMSHEET, NOT A FEED: one 17px line per event, surnames
                         // only, so twenty of them fit the panel without a scrollbar.
                         const who = (full, name) => full || name || "";
@@ -13460,10 +13462,10 @@ export default function App() {
                           <span style={{ ...mono, color: "var(--chrome-muted-66)", fontSize: 9 }}>
                             {"  " + p.sc.home + "-" + p.sc.away}</span>
                         </>)));
-                        if (!key.length && !pens.length) return (
+                        if (!keyD.length && !pens.length) return (
                           <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "4px 0" }}>No goals.</div>);
                         return (<>
-                          {key.map((f, i) => cRow(i, f, (<>
+                          {keyD.map((f, i) => cRow(i, f, (<>
                             <b style={{ fontWeight: 700,
                                         color: f.k === "pen" ? "var(--ui-ok)"
                                              : f.k === "penmiss" || f.k === "red" ? "var(--ui-danger)"
