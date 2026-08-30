@@ -2458,6 +2458,23 @@ const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false, true);
 // art under public/arterra, and no clubs at all. Same sheet shape as AVIUM.tsv minus the
 // confederation column, so the metadata tail simply ends a field early and `conference` is null.
 const PRESET_ARTERRA = parsePresetTSV(arterraTSV, null, 1, false, true);
+// TWO WORLDS, ONE APP. Avium and Arterra are separate settings with separate art and separate
+// nations, and the toggles in the three pickers filter what each one LISTS -- never what is already
+// picked. That is the whole point: a fixture or a tournament can span both, so a cross-RP game is
+// two ticks in two tabs rather than a mode you have to leave.
+// DECLARED HERE, DIRECTLY UNDER THE PRESETS, because ARTERRA_RAIL below is built at module scope and
+// a const read before its own line is a temporal-dead-zone throw -- which is a black screen, not an
+// error anyone sees. esbuild rewrites these to `var` when it bundles, so the SSR smoke test read
+// undefined and passed while the browser threw.
+const ARTERRA_LEAGUE = "Arterra International", AVIUM_LEAGUE = "Avium International";
+const WORLDS = [["avium", "Avium"], ["arterra", "Arterra"]];
+const INTL_LEAGUE = { avium: AVIUM_LEAGUE, arterra: ARTERRA_LEAGUE };
+const isIntlLeague = (lg) => lg === AVIUM_LEAGUE || lg === ARTERRA_LEAGUE;
+// A team saved before the worlds split comes back without the field, and every one of those is
+// Avium. Custom teams belong to neither -- nothing in a hand-built row could say which world it is
+// for -- so they list under both rather than being stranded in one.
+const worldOf = (t) => t?.world || (t?.league === ARTERRA_LEAGUE ? "arterra" : "avium");
+const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 // One file per nation, and every club row names its own league in the last column. The catalog is
 // grouped out of that rather than from a hardcoded list of divisions: adding a tier to a nation's
 // sheet is enough to make it appear in the rail and the tournament picker, with no code change.
@@ -2553,19 +2570,6 @@ const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
 // called "All Clubs" would otherwise silently take the view over.
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
-// TWO WORLDS, ONE APP. Avium and Arterra are separate settings with separate art and separate
-// nations, and the toggles in the three pickers filter what each one LISTS -- never what is already
-// picked. That is the whole point: a fixture or a tournament can span both, so a cross-RP game is
-// two ticks in two tabs rather than a mode you have to leave.
-const ARTERRA_LEAGUE = "Arterra International", AVIUM_LEAGUE = "Avium International";
-const WORLDS = [["avium", "Avium"], ["arterra", "Arterra"]];
-const INTL_LEAGUE = { avium: AVIUM_LEAGUE, arterra: ARTERRA_LEAGUE };
-const isIntlLeague = (lg) => lg === AVIUM_LEAGUE || lg === ARTERRA_LEAGUE;
-// A team saved before the worlds split comes back without the field, and every one of those is
-// Avium. Custom teams belong to neither -- nothing in a hand-built row could say which world it is
-// for -- so they list under both rather than being stranded in one.
-const worldOf = (t) => t?.world || (t?.league === ARTERRA_LEAGUE ? "arterra" : "avium");
-const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clubs" };
 const railLeague = (t) =>
   (isIntlLeague(t.league) && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
@@ -2594,11 +2598,11 @@ const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
   const w = ARTERRA_RAIL.has(lg) ? "arterra" : "avium";
-  const url = (dir, x) => `${import.meta.env.BASE_URL}${w}/${dir}/${encodeURIComponent(x)}.png`;
+  const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
   return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat(w === "arterra" ? [url("leagues", ARTERRA_LEAGUE)] : [])
-    .concat([url("leagues", LEAGUE_PLACEHOLDER)]);
+    .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
 // Shared by both roster headers so they line up. The right-hand one stacks a label over a value in
 // its stat blocks, which is what sets the floor.

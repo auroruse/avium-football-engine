@@ -12,6 +12,7 @@ the real `src/engine` modules into `test/engine.mjs`, which every harness import
 | `cards.mjs`   | do suspensions outlast the right things — second yellow, violent conduct, DOGSO? |
 | `import.mjs`  | does a bracket import land each side on its own club? |
 | `rcbadge.mjs` | does the red-card badge render and count? |
+| `tdz.mjs`     | does the app paint at all? Evaluates the SHIPPED `dist` bundle in node and fails on a ReferenceError — a const read before its own line at module scope, which is a black screen and nothing else. Needs `npx vite build` first, and it is the only harness that can see this: `test/ssr` bundles with esbuild, which concatenates every module into one scope and rewrites all 415 top-level consts to `var`, erasing the dead zone. Rollup keeps const, so only the real bundle still carries the bug. |
 | `natxi.mjs`   | not a test: the national-team selector, run by hand. Recomputes every nation's 22 player columns from the player pool and prints them as a TSV to paste over `AVIUM.tsv`; the per-nation changes and any unfilled seats go to stderr. It replaced the Utilities-tab panel that did this on screen. |
 | `ratings.mjs` | does a player's rating reach his rating, and does the decision believe the truth? Plays 200 league fixtures on every core and reads, per position, the par, the spread, what ten OVR buys (raw and within his own XI), the ghost share and the per-event deltas; for keepers, the engine's conversion curve on target and whether the save/concede model balances; for passes, the decision's completion belief against what happened, by band and by component, with the logistic fit the belief ships. `check` fails if `ratePos`, `gkExp` or the belief (by band) have drifted; `derive` prints the values to ship. It is the calibration harness behind those constants as well as the test. |
 
@@ -22,6 +23,7 @@ node test/golden.mjs write      # re-baseline, once you can name why every diver
 node test/ratings.mjs check     # the pars and the keeper balance still hold (about a minute on 8 cores)
 node test/ratings.mjs derive    # after touching any rate constant: the ratePos / gkExp to ship
 node test/natxi.mjs > natxi.tsv  # recompute the national sheets' player columns
+npx vite build && node test/tdz.mjs   # after any App.tsx edit: does the shipped bundle still evaluate
 ```
 
 ## The probes are gone
