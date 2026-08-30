@@ -3350,8 +3350,8 @@ function WorldToggle({ value, onChange, style }) {
   return (<div style={{ display: "flex", gap: 3, flexShrink: 0, ...style }}>
     {WORLDS.map(([id, label]) => { const on = value === id; return (
       <button key={id} onClick={() => onChange(id)}
-        style={{ flex: 1, padding: "3px 9px", borderRadius: 6, fontFamily: "inherit", cursor: on ? "default" : "pointer",
-                 fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
+        style={{ padding: "4px 8px", borderRadius: 6, fontFamily: "inherit", cursor: on ? "default" : "pointer",
+                 fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap",
                  border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
                  background: on ? "var(--chrome-brand-33)" : "transparent",
                  color: on ? "var(--chrome-brand)" : "var(--chrome-muted)" }}>{label}</button>); })}
@@ -4907,11 +4907,10 @@ export default function App() {
 
                 {/* ── Leagues ── */}
                 <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: 5, borderBottom: "1px solid var(--chrome-border)" }}>
                     <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
+                    <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: PANEL_HEAD_INSET }} />
                   </div>
-                  <WorldToggle value={world} onChange={setWorld}
-                    style={{ padding: "8px 10px", borderBottom: "1px solid var(--chrome-border)" }} />
                   <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                     {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
                     <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
@@ -9944,9 +9943,9 @@ export default function App() {
 
           {/* ── Competitions ── */}
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
+            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: 5, borderBottom: "1px solid var(--chrome-border)" }}>
               <PanelTitle sub={`${lgRail.length}`}>Competitions</PanelTitle>
-              <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: "auto" }} />
+              <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: PANEL_HEAD_INSET }} />
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {[["Directory", [
@@ -10911,9 +10910,8 @@ export default function App() {
                       <select value="" onChange={e => { applyParticipantPreset(e.target.value); e.target.value = ""; }}
                           style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
                         <option value="" hidden>&#9776; Presets</option>
-                        {[...PARTICIPANT_PRESETS].map(([name, p]) => <option key={name} value={name}>{name} ({p.teams.length}{p.groups ? ", drawn" : ""})</option>)}
+                        {[...PARTICIPANT_PRESETS].map(([name, p]) => <option key={name} value={name}>{name}</option>)}
                       </select>)}
-                    <button onClick={() => setTournamentTeamIds(ids => [...new Set([...ids, ...worldTeams.map(t => t.id)])])} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
                     <button onClick={() => { setTournamentTeamIds([]); setPresetMsg(""); }} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                   </div>
                 </div>
