@@ -12530,99 +12530,95 @@ export default function App() {
       const c = m.cel, F = c.clip.frames;
       const A = F[c.i], B = F[Math.min(F.length - 1, c.i + 1)], a = c.a;
       const L = (u, v) => u + (v - u) * a;
-      // ALIGNED TO THE PITCH, not floated near it. The panel used to sit at an arbitrary offset and
-      // read as a sticker dropped on top; its corner now lands on the touchline corner with one
+      // ALIGNED TO THE PITCH, not floated near it: the corner lands on the touchline corner with one
       // uniform margin, so it belongs to the same rectangle as everything else on screen.
       const PAD = 1.6, S = 0.335, PW = 105 * S, PH = 68 * S;
-      // The chrome is deliberately thin. A replay is the picture; the furniture around it should be
-      // legible and then get out of the way, and at the old 4.2 the header alone was a sixth of the
-      // panel and set in type taller than the centre circle.
-      const HEAD = 2.8, FOOT = 3.1, W = PW, H = HEAD + PH + FOOT;
-      const sw = 0.26 / S;                       // strokes drawn in the inset's own scaled units
+      // THE CHROME IS GONE. This carried a header band with a pulsing tally light and a REPLAY
+      // label, a hairline, and a footer holding the buttons -- three stacked strips around a picture
+      // a third of the panel's height. The post-match reel is the same clip with none of that and it
+      // reads better, so this is now the same thing: the pitch, a scrubber inside it, the two
+      // controls floating over the grass, and one caption line under it. The dark backing stays --
+      // unlike the post-match card this one sits ON the live pitch, and text over grass is unreadable.
+      const FOOT = 2.9, W = PW, H = PH + FOOT;
+      // Strokes in the inset's own units. Deliberately NOT divided by S any more: the old 0.26/S
+      // came out about three times heavier than the same lines on the post-match card, because a
+      // scaled unit here is already about the size of an unscaled one there.
+      const sw = 0.26;
       const pt = (f) => `${fx(f.bx).toFixed(1)},${f.by.toFixed(1)}`;
       const seen = F.slice(0, c.i + 1);
-      const trail = seen.map(pt).join(" ");
-      const recent = seen.slice(-7).map(pt).join(" ");
       // CLAMPED, because the last frame counts itself twice: meCelStep pins a to 1 when it reaches
       // the final index, so (i + a) runs one whole frame past the end. On a short clip that is a
-      // scrubber 14% longer than the panel it lives in, drawn straight out across the pitch.
+      // scrubber 14% longer than the panel it lives in.
       const prog = F.length < 2 ? 1 : Math.max(0, Math.min(1, (c.i + a) / (F.length - 1)));
-      const btn = (x, on, kids) => (
-        <g transform={`translate(${x} ${PAD + HEAD + PH + 1.85})`} onClick={on}
+      // Floated over the bottom-right of the grass, the way the post-match card floats its one
+      // button. Close is always there -- it is how the match resumes; play only once there is
+      // something to play again.
+      const btn = (dx, on, kids) => (
+        <g transform={`translate(${PAD + PW - dx} ${PAD + PH - 2.1})`} onClick={on}
            style={{ cursor: "pointer", pointerEvents: "auto" }}>
-          <circle r={0.98} fill="rgba(255,255,255,.09)" stroke="rgba(255,255,255,.28)" strokeWidth={0.12} />
+          <circle r={1.05} fill="rgba(0,0,0,.45)" stroke="rgba(255,255,255,.28)" strokeWidth={0.13} />
           {kids}
         </g>);
       return (
         <g style={{ pointerEvents: "none" }}>
-          {/* the body of the panel, one piece, so the header and footer are bands inside it rather
-              than separate boxes that can drift out of line */}
           <rect x={PAD + 0.3} y={PAD + 0.38} width={W} height={H} rx={0.9} fill="rgba(0,0,0,.34)" />
           <rect x={PAD} y={PAD} width={W} height={H} rx={0.9}
                 fill="#070c09" stroke="rgba(255,255,255,.26)" strokeWidth={0.14} />
-          {/* hairlines instead of filled bands: the bands read as three stacked boxes rather than
-              one object, and the panel is small enough that a rule is all the separation it needs */}
-          <line x1={PAD + 0.5} y1={PAD + HEAD} x2={PAD + W - 0.5} y2={PAD + HEAD}
-                stroke="rgba(255,255,255,.13)" strokeWidth={0.1} />
-
-          {/* the tally light. It pulses in SVG rather than in React so a held frame costs nothing. */}
-          <circle cx={PAD + 1.45} cy={PAD + HEAD / 2} r={0.48} fill="#ff3b30">
-            <animate attributeName="opacity" values="1;0.28;1" dur="1.4s" repeatCount="indefinite" />
-          </circle>
-          <text x={PAD + 2.45} y={PAD + HEAD / 2 + 0.5} fontSize={1.42} fill="#fff" fillOpacity={0.88}
-                fontWeight={700} style={{ letterSpacing: "0.17em" }}>REPLAY</text>
-          <text x={PAD + W - 1.1} y={PAD + HEAD / 2 + 0.5} fontSize={1.38} fill="#fff" fillOpacity={0.5}
-                textAnchor="end" style={{ letterSpacing: "0.04em" }}>{c.clip.min}&#39; &#183; {c.clip.score}</text>
-
-          <g transform={`translate(${PAD} ${PAD + HEAD}) scale(${S})`}>
-            <rect x={0} y={0} width={105} height={68} fill="#142c1a" />
-            {Array.from({ length: 6 }, (_, i) => (
-              <rect key={"rm" + i} x={i * 17.5} y={0} width={17.5} height={68}
-                    fill={i % 2 ? "#173119" : "#142c17"} />))}
-            <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
-              <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-              <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-              <circle cx={52.5} cy={34} r={9.15} />
-              <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-              <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-              <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-              <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+          <g transform={`translate(${PAD} ${PAD}) scale(${S})`}>
+            <clipPath id="me-cel-pitch"><rect x={0} y={0} width={105} height={68} rx={2.4} /></clipPath>
+            <g clipPath="url(#me-cel-pitch)">
+              <rect x={0} y={0} width={105} height={68} fill="#142c1a" />
+              {Array.from({ length: 6 }, (_, i) => (
+                <rect key={"rm" + i} x={i * 17.5} y={0} width={17.5} height={68}
+                      fill={i % 2 ? "#173119" : "#142c17"} />))}
+              <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
+                <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+                <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+                <circle cx={52.5} cy={34} r={9.15} />
+                <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+                <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+                <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+                <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+              </g>
+              {/* WHERE THE BALL HAS BEEN, twice: the whole move faint underneath and the last stretch
+                  bright on top. One flat line says the ball travelled; two say which way it is going. */}
+              {c.i > 0 && <polyline points={seen.map(pt).join(" ")} fill="none" stroke="#ffd166"
+                                    strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
+              {c.i > 0 && <polyline points={seen.slice(-7).map(pt).join(" ")} fill="none" stroke="#ffd166"
+                                    strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round"
+                                    strokeLinejoin="round" />}
+              {[0, 1].map(sd => Array.from({ length: 11 }, (_, i) => {
+                const k = sd * 22 + i * 2;
+                if (A.xy[k] < -50 || B.xy[k] < -50) return null;
+                return <circle key={"rp" + sd + i}
+                               cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
+                               r={1.02} fill={sd ? aPitchClr : hPitchClr}
+                               stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
+              }))}
+              <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={0.78}
+                      fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
+              {/* HOW FAR THROUGH, inside the picture along its bottom edge rather than in a strip of
+                  its own underneath it. */}
+              <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />
+              <rect x={0} y={67.2} width={105 * prog} height={0.8} fill="#ffd166" />
             </g>
-            {/* WHERE THE BALL HAS BEEN, twice: the whole move faint underneath and the last stretch
-                bright on top. One flat line says the ball travelled; two say which way it is going. */}
-            {c.i > 0 && <polyline points={trail} fill="none" stroke="#ffd166"
-                                  strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
-            {c.i > 0 && <polyline points={recent} fill="none" stroke="#ffd166"
-                                  strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round"
-                                  strokeLinejoin="round" />}
-            {[0, 1].map(sd => Array.from({ length: 11 }, (_, i) => {
-              const k = sd * 22 + i * 2;
-              if (A.xy[k] < -50 || B.xy[k] < -50) return null;
-              return <circle key={"rp" + sd + i}
-                             cx={fx(L(A.xy[k], B.xy[k]))} cy={L(A.xy[k + 1], B.xy[k + 1])}
-                             r={1.02} fill={sd ? aPitchClr : hPitchClr}
-                             stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
-            }))}
-            <circle cx={fx(L(A.bx, B.bx))} cy={L(A.by, B.by)} r={0.78}
-                    fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
           </g>
-
-          {/* HOW FAR THROUGH, sat flush against the bottom of the picture the way a scrubber does.
-              Floating it in the middle of the footer left it competing with the caption for the
-              same strip of space and winning neither. */}
-          <rect x={PAD} y={PAD + HEAD + PH} width={W} height={0.26} fill="rgba(255,255,255,.14)" />
-          <rect x={PAD} y={PAD + HEAD + PH} width={W * prog} height={0.26} fill="#ffd166" />
-          {c.clip.txt && <text x={PAD + 1.1} y={PAD + HEAD + PH + 2.3} fontSize={1.34} fill="#fff"
-                               fillOpacity={0.58}>{c.clip.txt.length > 40 ? c.clip.txt.slice(0, 39) + "\u2026" : c.clip.txt}</text>}
-          {/* A play triangle, not a circular arrow. At a radius of one unit an arrowhead is three
-              pixels and turns to mush; a triangle stays a triangle at any size, and after the clip
-              has stopped "play" and "play again" are the same instruction. */}
-          {btn(PAD + W - 3.9, () => meCelReplay(m), (
-            <path d="M -0.3 -0.46 L 0.44 0 L -0.3 0.46 Z" fill="#fff" fillOpacity={0.85} />))}
-          {btn(PAD + W - 1.5, () => meCelClose(m), (
-            <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.19} strokeLinecap="round">
-              <line x1={-0.36} y1={-0.36} x2={0.36} y2={0.36} />
-              <line x1={0.36} y1={-0.36} x2={-0.36} y2={0.36} />
+          {/* Minute, what happened, score: one line, the same three things the post-match reel puts
+              under its pitch. */}
+          <text x={PAD + 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.85}>
+            {c.clip.min}&#39;</text>
+          {c.clip.txt && <text x={PAD + 4.2} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.55}>
+            {c.clip.txt.length > 34 ? c.clip.txt.slice(0, 33) + "\u2026" : c.clip.txt}</text>}
+          <text x={PAD + W - 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.55}
+                textAnchor="end">{c.clip.score}</text>
+          {/* A play triangle, not a circular arrow. At this radius an arrowhead is three pixels and
+              turns to mush; a triangle stays a triangle at any size. */}
+          {c.done ? btn(4.7, () => meCelReplay(m), (
+            <path d="M -0.32 -0.49 L 0.47 0 L -0.32 0.49 Z" fill="#fff" fillOpacity={0.85} />)) : null}
+          {btn(2.1, () => meCelClose(m), (
+            <g stroke="#fff" strokeOpacity={0.85} strokeWidth={0.2} strokeLinecap="round">
+              <line x1={-0.38} y1={-0.38} x2={0.38} y2={0.38} />
+              <line x1={0.38} y1={-0.38} x2={-0.38} y2={0.38} />
             </g>))}
         </g>
       );
