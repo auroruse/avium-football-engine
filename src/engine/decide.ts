@@ -316,7 +316,21 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // space in front of him. Which is right is the passer's decision, not a property of the receiver.
     for (let mode = 0; mode < 2; mode++) {
     let aimX, aimY, thru = false;
-    if (mode === 0) { aimX = q.x; aimY = q.y; }
+    if (mode === 0) {
+      // LEAD HIM. A ball to feet was aimed at the square metre he was standing on, and his own
+      // velocity was never read in this branch -- so with a side breaking forward together, every
+      // ordinary pass was played behind its receiver and he had to check back onto it. That is the
+      // difference between a move that flows and one that stops on every touch. He is led by his
+      // own pace over the flight, at feetLeadFrac of it: short of the full solve, because the last
+      // half-stride is his to take and over-leading turns a simple pass into a through ball.
+      const qvx0 = (q.vx || 0) / ME_DT, qvy0 = (q.vy || 0) / ME_DT;
+      const qs0 = Math.hypot(qvx0, qvy0);
+      if (qs0 > CFG.feetMoveV) {
+        const d00 = Math.hypot(q.x - p.x, q.y - p.y);
+        const l0 = Math.min(CFG.feetLeadMax, qs0 * meGroundT(d00, d00) * CFG.feetLeadFrac);
+        aimX = q.x + qvx0 / qs0 * l0; aimY = q.y + qvy0 / qs0 * l0;
+      } else { aimX = q.x; aimY = q.y; }
+    }
     else {
       // Into space -- ALONG THE RUN THAT EXISTS. This used to invent one: a receiver on no run at
       // all was assumed to burst dead upfield at the moment of the pass, and the lead was solved
@@ -431,7 +445,14 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // lane and on the passer being closed down, but never on the man you were passing to being
     // picked up. With marking limited to a sensible few, that left every receiver free and
     // completion sat at 95% -- no turnovers, no shots, a match of endless sideways passing.
-    const rPress = mePressure(s, side, q.x, q.y);
+    // ...MEASURED WHERE THE BALL ARRIVES, not where he is standing now. Keyed on his current
+    // spot, a lead pass into space was charged for the man marking him at the moment of the
+    // decision, and a ball to his feet was NOT charged for the defender already sitting on the
+    // spot it was going to. The contest happens at the arrival point, so that is where the
+    // bodies are counted. TRIED AND REMOVED: an extra charge for the nearest opponent inside
+    // 2.6 m of the arrival point, on the theory that a 6 m count cannot tell a man on your back
+    // from one three metres off. It fired on 0.3% of passes and halving it moved nothing.
+    const rPress = mePressure(s, side, aimX, aimY);
     let val0 = 0;
     // ...and how much that marking MATTERS depends on whether the ball is coming to his feet or over
     // the man marking him. A defender standing on your toes is most of why a ball rolled in is cut
@@ -553,7 +574,14 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // what a stretched defence is giving away, and nothing was pricing it -- which is why the ball
     // never went into the gap you could see from the touchline. Ground gained into nobody is worth
     // taking; the same ground into a body is not, so the two are multiplied rather than added.
-    const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull);
+      // SPACE YOU CANNOT USE IS NOT SPACE. room is nearest-opponent distance, and the emptiest
+    // ground on any pitch is the corner by the touchline -- so the term paid its highest bonus for
+    // balls slid into exactly the place a receiver arrives with the line at his back, no angle and
+    // nowhere to go. Room is now discounted by how much of it is real: at the touchline it counts
+    // for nothing, and it is whole a sensible distance infield.
+    const edgeUse = Math.max(0, Math.min(1,
+      (Math.min(aimY, PITCH_W - aimY) - CFG.edgeMin) / CFG.edgeFull));
+    const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * (CFG.edgeLo + (1 - CFG.edgeLo) * edgeUse);
     val += room * Math.max(0, fwd) * CFG.roomFwd;
     // The mirror of carryShotW. Floored at zero, so a recycle to a man with no shot is byte-identical
     // and this can only ever re-rank, never inflate. It sits inside val, so the completion chance
@@ -707,6 +735,12 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
       const w = up - mePressure(s, side, q.x, q.y) * 12;
       if (w > cw) { cw = w; cx = q.x; cy = q.y; }
     }
+    {
+      const bx1 = cx - p.x, by1 = cy - p.y, bl1 = Math.hypot(bx1, by1) || 1;
+      const want1 = Math.max(CFG.clearMinD, bl1 + CFG.clearPast);
+      cx = Math.max(2, Math.min(PITCH_L - 2, p.x + bx1 / bl1 * want1));
+      cy = Math.max(2, Math.min(PITCH_W - 2, p.y + by1 / bl1 * want1));
+    }
     return { k: "clear", p: 0.5, cx, cy, sc: 9 };
   }
   // A clearance is RELIEF, so it only exists where there is something to be relieved of. The gate
@@ -725,8 +759,17 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
       const w = up - mePressure(s, side, q.x, q.y) * 9 - Math.abs(q.y - p.y) * 0.25;
       if (w > cw) { cw = w; cx = q.x; cy = q.y; }
     }
-    // Overhit on purpose when pressed: see CFG.clearOver.
-    cx = Math.max(2, Math.min(PITCH_L - 2, cx + dir * press * CFG.clearOver));
+    // AIMED AT THE FAR POINT, not at the man. The aim used to sit on the outlet's chest and the
+    // ball was then secretly solved for a 40 m carry, so the flight overshot him by twenty metres
+    // while the drawn line still ran to his feet -- a clearance that looked like a short pass and
+    // behaved like neither. The bearing to the best outlet is kept; the DISTANCE is a clearance's:
+    // at least clearMinD, and always past him. Line, physics and intent now agree.
+    {
+      const bx0 = cx - p.x, by0 = cy - p.y, bl0 = Math.hypot(bx0, by0) || 1;
+      const want0 = Math.max(CFG.clearMinD, bl0 + CFG.clearPast + press * CFG.clearOver);
+      cx = Math.max(2, Math.min(PITCH_L - 2, p.x + bx0 / bl0 * want0));
+      cy = Math.max(2, Math.min(PITCH_W - 2, p.y + by0 / bl0 * want0));
+    }
     const ok2 = CFG.clearOk;
     // The relief: how much danger it takes off your own goal. That is the whole point of a clearance
     // and it was the one thing not being counted.

@@ -270,7 +270,7 @@ export function meTimeToBallMs(p, tx, ty, vmax) {
 
 // Ball-side query: scan the forecast for the first slot this player can actually make, and return
 // where to run and how urgent it is. `run at where the ball WILL be` lives here.
-export function meIntercept(p, mp, vmax) {
+export function meIntercept(p, mp, vmax, hurry) {
   const pred = mp.pred;
   if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
   for (let i = 0; i < pred.length; i++) {
@@ -284,7 +284,12 @@ export function meIntercept(p, mp, vmax) {
     if (z >= (p.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(p), CFG))) continue;
     const t = i * ME_DT * 1000;
     const need = meTimeToBallMs(p, x, y, vmax);
-    if (need <= t + 60) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
+    // 60 ms is "I can be standing there when it arrives". A man who HURRIES does not need to be
+    // waiting -- the ball is still travelling through the point, so arriving inside the window it
+    // takes to pass is enough, and that lets him meet it metres earlier in the flight. This is
+    // what checking to the ball IS, and without a hurry allowance the engine could only ever
+    // model a receiver who waits for delivery.
+    if (need <= t + (hurry || 60)) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
   }
   const last = pred[pred.length - 1];
   return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax), slotMs: (pred.length - 1) * ME_DT * 1000 };

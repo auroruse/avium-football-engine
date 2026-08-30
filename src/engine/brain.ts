@@ -105,6 +105,13 @@ export function meRuns(s, side) {
   // bought that by making the rungs more alike. Do not re-attempt this; the counter-attack is not
   // what depth is missing.
   if (mp.idx < 0 || active >= runCap || ballDepth < minD) return;   // nothing to run onto
+  // TIMED OFF THE CARRIER. A run in behind is spent the moment it starts, and a man being
+  // smothered cannot deliver it -- so nobody breaks while the ball is under runFreeP of press.
+  // Runs already going keep going; this gates only the trigger.
+  if (mePressure(s, side, mp.bx, mp.by) > CFG.runFreeP) {
+    if (globalThis.__fire) globalThis.__fire.runHeld = (globalThis.__fire.runHeld || 0) + 1;
+    return;
+  }
   const carrier = us[mp.idx];
   for (let i = 0; i < us.length; i++) {
     const p = us[i];
@@ -377,7 +384,31 @@ export function meDuties(s, side) {
   // won against the run of play.
   const defending = mp.sp ? mp.sp.side !== side : mp.side !== side;
   const ballDepth = (mp.bx - own) * dir;
-  for (const p of us) { p._wasPress = p._duty === "press"; p._mk = -1;
+  for (const p of us) { p._wasPress = p._duty === "press"; p._wasCover = p._duty === "cover";
+    // WHO HE HAD, keyed on the MAN and not the duty label -- screen and intercept carry _mk too,
+    // and a single tick of either wiped the memory. Costs nothing: it is read only when he is
+    // being given a mark anyway, and never removes him from the pool the ball-chasing duties draw
+    // from. That distinction is the whole difference between this and the version below.
+    p._mkPrev = p._mk >= 0 ? p._mk : -1;
+    // MARKING IS A STANDING ASSIGNMENT, NOT A PER-TICK DERIVATION. This used to be `p._mk = -1`:
+    // every defender forgot his man four times a second and the whole back line was re-dealt from
+    // a re-sorted danger list, which is the entire "he went off to mark someone else" complaint.
+    // The mark now persists and is RELEASED FOR CAUSE below -- his man leaves, gets the ball, goes
+    // too far away, or he is beaten. Crucially the release list does NOT include "he was needed to
+    // press": ball-chasing duties are still dealt first from everybody, so no body is reserved and
+    // the tackle count is untouched, and his mark is waiting for him when the stint ends.
+    // TRIED AND REVERTED (31 Aug 2026): a RECLAIM pass -- _mkPrev, a reclaim pass that re-took
+    // your man before the ball-chasing duties were dealt, and a markStick discount in the
+    // Hungarian. The diagnosis behind it is sound and measured: duties are rebuilt from nothing
+    // every tick, and on 25.6% of marker-ticks a defender was marking somebody else a quarter of
+    // a second later. But every tuning of it (stick 0.20/D20 and 0.65/D8) cost the same 0.57
+    // goals a match (2.97 -> 3.54) and three to six tackles a side, because a man held onto his
+    // mark is a man not contesting the ball -- and tenure came out no better than the 1.35 s it
+    // started at. The trade is real: marking memory and ball contest pull against each other.
+    // Whatever fixes this has to buy tenure without spending the ball. The reclaim spent it: a
+    // man who has taken his mark back is not in free(), so press, cover and the hunt were a body
+    // short all match -- tackles fell from 19.9 to 14.2 a side. The stick discount below is the
+    // half that is free, and it is kept.
     if (p._beat > 0) p._beat--;
     p._duty = p.off ? "off" : p.pos === "GK" ? "gk" : "hold"; }
   // A man who has just been gone past cannot be the one who presses next -- that is what being
@@ -392,6 +423,32 @@ export function meDuties(s, side) {
       const b = p._bd ?? p._bd0 ?? 0;
       if (b > od) { od = b; oi = i; } }
     if (oi >= 0) us[oi]._duty = "outlet";
+  }
+  // RELEASE FOR CAUSE. Anything that survives this is a mark he keeps.
+  {
+    const seen = new Map();
+    for (let i2 = 0; i2 < us.length; i2++) {
+      const p2 = us[i2];
+      if (!p2 || p2.off || p2.pos === "GK") { if (p2) p2._mk = -1; continue; }
+      const j2 = p2._mk;
+      if (j2 == null || j2 < 0) { p2._mk = -1; continue; }
+      const q2 = them[j2];
+      const gone = !q2 || q2.off || q2.pos === "GK";
+      const hasBall = mp.idx === j2 && mp.side === meOther(side);       // press him, do not shadow him
+      const tooFar = !gone && Math.hypot(p2.x - q2.x, p2.y - q2.y) > CFG.markHoldD;
+      // BEING BEATEN IS NOT A REASON TO FORGET HIM -- it is the reason to chase him. It was in
+      // this list, so a defender who got skinned dropped the man who did it and was dealt a
+      // stranger the moment he recovered. He keeps the mark; the beaten branch below changes his
+      // JOB to recover or press, and free() already keeps him out of new assignments while he does
+      // it, so the man is still his when he gets back.
+      if (gone || hasBall || tooFar) { p2._mk = -1; continue; }
+      // ...and one man each. If two ended up on the same opponent, the nearer keeps him.
+      const prev = seen.get(j2);
+      if (prev === undefined) { seen.set(j2, i2); continue; }
+      const dPrev = Math.hypot(us[prev].x - q2.x, us[prev].y - q2.y);
+      const dNow = Math.hypot(p2.x - q2.x, p2.y - q2.y);
+      if (dNow < dPrev) { us[prev]._mk = -1; seen.set(j2, i2); } else p2._mk = -1;
+    }
   }
   const free = () => us.map((p, i) => i).filter(i => us[i]._duty === "hold" && !(us[i]._beat > 0));
   const nearest = (x, y, pool) => { let bi = -1, bd = Infinity;
@@ -428,6 +485,35 @@ export function meDuties(s, side) {
     // seconds while ten men hold shape and one designated chaser runs. That reads from the stand
     // as a defence with no idea pressing exists whenever nobody has the ball. Receiverless
     // flights are live; a pass to a man keeps its exclusion.
+    // THE MAN THROUGH ON GOAL IS CLAIMED BEFORE ANY OTHER JOB IS HANDED OUT. Every duty below --
+    // press, cover, intercept, the recovery run -- picks the man nearest the BALL, and during a
+    // break that is the same defender who should be going with the runner. Measured: on 20% of
+    // assignments the nearest defender to the most dangerous attacker was already unavailable when
+    // marking ran, three fifths of them taken by `cover` alone. The marking layer then did what it
+    // was told with whoever was left, which from the stand is a defender turning his back on the
+    // man clean through to go and stand near somebody harmless. Nothing downstream could fix this,
+    // which is why three attempts at the ranking never touched it. Reserve first, then carry on:
+    // at most markResN men, only for opponents nobody is covering, and only in our own half of the
+    // move -- a striker "through" in his own third is not a chance and does not deserve a shadow.
+    {
+      let taken = 0;
+      for (let j = 0; j < them.length && taken < CFG.markResN; j++) {
+        const q = them[j];
+        if (!q || q.off || q.pos === "GK") continue;
+        if (mp.idx === j && mp.side === meOther(side)) continue;      // the carrier is pressed, not shadowed
+        if ((q.x - own) * dir > CFG.markResDepth) continue;
+        if (meThruCover(s, meOther(side), q)) continue;               // somebody already covers him
+        let bi2 = -1, bd2 = Infinity;
+        for (const i2 of free()) {
+          const p2 = us[i2];
+          if (p2.pos === "GK") continue;
+          const d2 = Math.hypot(p2.x - q.x, p2.y - q.y);
+          if (d2 < bd2) { bd2 = d2; bi2 = i2; }
+        }
+        if (bi2 >= 0) { us[bi2]._duty = "mark"; us[bi2]._mk = j; taken++;
+          if (globalThis.__fire) globalThis.__fire.markReserve = (globalThis.__fire.markReserve || 0) + 1; }
+      }
+    }
     const ballLive = mp.idx >= 0 || (!mp.flight && !mp.sp)
       || (!mp.sp && mp.flight && mp.fj < 0)
       || (!mp.sp && mp.tick - (mp._loose ?? -99) < CFG.loosePressWin);
@@ -437,7 +523,11 @@ export function meDuties(s, side) {
       // a block and eleven men watching.
       const travel = ballDepth < loeM ? CFG.engageIn : CFG.engageOut;
       const [bi, bd] = nearest(mp.bx, mp.by, free());
-      if (bd <= travel) {
+      // ...and NOBODY presses a keeper with the ball in his hands. It cannot be won, so closing
+      // him down is a man out of the shape for nothing -- and on screen it is a striker standing
+      // over a keeper who is holding the ball, which is not a thing that happens.
+      const heldGk = mp.held && s.players[mp.side]?.[mp.idx]?.pos === "GK";
+      if (bd <= travel && !heldGk) {
         // Hysteresis: whoever was pressing keeps the job unless somebody is clearly better placed.
         const prev = us.findIndex(p => p._wasPress && p._duty === "hold" && p.pos !== "GK");
         const pd = prev >= 0 ? Math.hypot(us[prev].x - mp.bx, us[prev].y - mp.by) : Infinity;
@@ -531,7 +621,8 @@ export function meDuties(s, side) {
       if (!p._wasPress || p._duty !== "hold" || p.off || p.pos === "GK" || p._beat > 0) continue;
       if (Math.hypot(p.x - mp.bx, p.y - mp.by) < CFG.handEngage) p._duty = "cover";
     }
-    // ONE cover, goal-side of the ball.
+    // ONE cover, goal-side of the ball. (Hysteresis tried here and removed: 0.95 -> 0.96 s of
+    // marking tenure, which is noise.)
     const [ci] = nearest(mp.bx - dir * 8, mp.by, free());
     if (ci >= 0) us[ci]._duty = "cover";
     // A BEATEN MAN HAS A DECISION TO MAKE, and until now he made none: _beat drops him out of free()
@@ -567,7 +658,11 @@ export function meDuties(s, side) {
     // outfielder deeper than the man as cover, so a defender standing goal-side but two channels
     // wide -- a body that can never make the interception -- cancelled the through flag while the
     // runner ran on alone. meThruCover races every defender to the run itself.
-    const thruOf = (q) => !meThruCover(s, meOther(side), q);
+    const thruOf = (q) => {
+      const t = !meThruCover(s, meOther(side), q);
+      if (globalThis.__fire && t) globalThis.__fire.thruSeen = (globalThis.__fire.thruSeen || 0) + 1;
+      return t;
+    };
     for (let j = 0; j < them.length; j++) { const q = them[j]; if (q.pos === "GK") continue;
       if (j === mp.idx && mp.side === meOther(side)) continue;      // the man on the ball is pressed
       // An ACTIVE run is the most dangerous thing on the pitch regardless of where its owner
@@ -596,9 +691,22 @@ export function meDuties(s, side) {
     // One tick stale by construction -- meBlock writes the debt after meDuties reads it -- and that
     // is fine, a defence's memory of who it was tracking is stale too.
     const _debt = mp.blk?.[side]?.debt ?? 0;
-    const nMark = Math.max(1, Math.round(((ballDepth < CFG.markSiegeDepth ? CFG.markSiege
+    // ...AND IT MOVES ONE MAN AT A TIME. This is a step function of ball depth (5 / 4 / 2 / 1) plus
+    // a live runner count, recomputed from nothing four times a second -- and traced, it thrashed
+    // 1-4-5-2-1 inside two seconds. Every collapse demotes men who were marking to screening a
+    // lane, every rise hands the marks to DIFFERENT men, and because the threat list is re-sorted
+    // by danger each tick the screeners are re-dealt a different opponent too. That churn is the
+    // whole of "the defender went off to mark somebody else": nothing was pushing him, the budget
+    // under him kept changing size. Slewed one man per tick, a defence asked to pick two more up
+    // does it over half a second, and a ball crossing a depth boundary no longer re-deals the
+    // entire back line.
+    const nMarkRaw = Math.max(1, Math.round(((ballDepth < CFG.markSiegeDepth ? CFG.markSiege
                  : ballDepth < 34 ? 4 : ballDepth < 60 ? 2 : 1) + runners)
                  * (1 - _debt * CFG.debtMarkLoss)));
+    const nPrev = mp._nMark?.[side];
+    const nMark = nPrev === undefined ? nMarkRaw
+                : nMarkRaw > nPrev ? nPrev + 1 : nMarkRaw < nPrev ? nPrev - 1 : nPrev;
+    (mp._nMark = mp._nMark || {})[side] = nMark;
     // Assigned as one problem, not one pick at a time. Picking greedily hands the same region to
     // several defenders at once, which is what put six of them in the same square metre.
     {
@@ -609,10 +717,23 @@ export function meDuties(s, side) {
       // most dangerous opponent off the ball was marked 59.6% of the time and free 61.7%. Cutting
       // the list to the number of men available makes the ones we cannot cover the ones that
       // matter least, which is the decision a defence actually makes.
+      // THE MEN WHO ALREADY HAVE SOMEBODY KEEP HIM, and they count against the budget. Only the
+      // slots left over are dealt to new pairings, and only for opponents nobody is already on --
+      // so a defence that is holding four men picks up a fifth rather than re-shuffling all four.
+      let held = 0;
+      const claimed = new Set();
+      for (const p2 of us) {
+        if (!p2 || p2.off || p2._mk < 0) continue;
+        claimed.add(p2._mk);
+        if (p2._duty === "hold" && !(p2._beat > 0)) { p2._duty = "mark"; held++; }
+        else if (p2._duty === "mark") held++;
+      }
       const avail = free();
-      const pick = threats.slice(0, Math.min(nMark, threats.length, avail.length));
+      const pick = threats.filter(t => !claimed.has(t[1]))
+                          .slice(0, Math.max(0, Math.min(nMark - held, avail.length)));
       const n = Math.max(avail.length, pick.length);
       if (pick.length && avail.length) {
+        const topSc = Math.max(1e-6, pick[0][0]);      // threats are sorted, so pick[0] is the worst of them
         const cost = [];
         for (let a = 0; a < n; a++) {
           const row = new Float64Array(n);
@@ -632,7 +753,21 @@ export function meDuties(s, side) {
             // almost none of whom were marking him -- they were never engaged, so marking somebody
             // else is them doing their job. A man who is genuinely beaten is excluded from free()
             // and cannot be assigned a mark at all.
-            row[b] = (d + behind) * (d + behind);
+            // ...AND THE MOST DANGEROUS MAN GETS THE NEAREST DEFENDER. The Hungarian minimises the
+            // TOTAL cost, and this matrix said nothing about which attacker mattered: the danger
+            // ranking chose who made the shortlist and then every man on it was worth exactly the
+            // same. So the solver would hand the man through on goal a defender from forty metres
+            // away whenever that shaved a few metres off somebody else's pairing -- which is the
+            // defender who trots off to mark somebody harmless while the elephant runs through.
+            // Two previous attempts at this bug fixed the RANKING (trap-keyed, then cover-count,
+            // then the race in meThruCover) and never touched the assignment, which is why it
+            // survived all three. Scaling each pairing by its threat's share of the top score
+            // makes reaching the dangerous man dominate the sum: his marker is chosen first in
+            // everything but name, and the harmless are covered with whoever is left.
+            const prio = 1 + CFG.markPrio * Math.max(0, pick[b][0]) / topSc;
+            // TRIED AND REMOVED: a markStick discount for the pairing he already had. Tenure was
+            // 0.95 s with it and 0.95 s without -- the assignment is not where marks are decided.
+            row[b] = (d + behind) * (d + behind) * prio;
           }
           cost.push(row);
         }
@@ -640,6 +775,38 @@ export function meDuties(s, side) {
         for (let a = 0; a < Math.min(avail.length, n); a++) {
           const b = asg[a];
           if (b >= 0 && b < pick.length) { us[avail[a]]._duty = "mark"; us[avail[a]]._mk = pick[b][1]; }
+        }
+        // Behaviour audit: for the MOST dangerous man, how far away is the marker he was actually
+        // given, against the nearest defender who was available? A gap here is the elephant bug.
+        if (globalThis.__mkgap) {
+          const q0 = them[pick[0][1]];
+          let got = Infinity, best = Infinity;
+          for (let a = 0; a < Math.min(avail.length, n); a++) {
+            const pA = us[avail[a]], dA = Math.hypot(pA.x - q0.x, pA.y - q0.y);
+            if (dA < best) best = dA;
+            if (asg[a] === 0) got = dA;
+          }
+          if (got < Infinity && best < Infinity) globalThis.__mkgap.push(+(got - best).toFixed(2));
+          // ...and was the truly nearest man even AVAILABLE, or had press/cover/intercept taken
+          // him before marking ran? Those duties are handed out first and they pick the man
+          // nearest the ball, which during a break is often the last defender.
+          if (globalThis.__mkbusy) {
+            let bi2 = -1, bd2 = Infinity;
+            for (let z = 0; z < us.length; z++) {
+              const pz = us[z];
+              if (!pz || pz.off || pz.pos === "GK") continue;
+              const dz = Math.hypot(pz.x - q0.x, pz.y - q0.y);
+              if (dz < bd2) { bd2 = dz; bi2 = z; }
+            }
+            if (bi2 >= 0) {
+              globalThis.__mkbusy.n++;
+              if (!avail.includes(bi2)) {
+                globalThis.__mkbusy.busy++;
+                const dz = us[bi2]._duty || "?";
+                globalThis.__mkbusy[dz] = (globalThis.__mkbusy[dz] || 0) + 1;
+              }
+            }
+          }
         }
       }
     }
@@ -685,9 +852,92 @@ export function meDuties(s, side) {
     // job, and its absence is why switching the press off produced 96% passing and no shots.
     let k = 0;
     for (const i of free()) {
+      // ...and if the man he was marking is still on the threat list and nobody has him, he
+      // screens HIM. Same body, same job, no cost -- but he stops walking off to stand in a
+      // stranger's lane, which is the mark:1 -> screen:4 the incident capture kept catching.
+      // This list is re-sorted by danger every tick, so without it a screener is handed a
+      // different opponent four times a second -- and when his side is defending his target is
+      // his block slot pulled toward whoever _mk names, so the man under him changing identity
+      // IS the defender turning and walking away. Nothing pushed him; his assignment moved.
+      const kp = us[i]._mkPrev;
+      if (kp >= 0 && threats.some(t => t[1] === kp) && !us.some(p => p._mk === kp)) {
+        us[i]._duty = "screen"; us[i]._mk = kp; continue;
+      }
       while (k < threats.length && us.some(p => p._mk === threats[k][1])) k++;
       if (k >= threats.length) break;
       us[i]._duty = "screen"; us[i]._mk = threats[k][1]; k++;
+    }
+    // THE TRACE: one line per tick, the whole back line's duty:man vector, plus how many marks the
+    // budget allowed and how many men were free to take them. Four failed hypotheses in a row
+    // (assignment cost, reserve, reclaim, cover hysteresis) means the shape of the churn has to be
+    // read directly rather than reasoned about.
+    if (globalThis.__trace && globalThis.__trace.side === side && globalThis.__trace.rows.length < 34) {
+      const T = globalThis.__trace;
+      if (mp.idx >= 0 && mp.side === meOther(side)) {
+        T.rows.push(us.filter(q => !q.off && q.pos !== "GK").slice(0, 6)
+          .map(q => (q._duty || "?").slice(0, 4) + (q._mk >= 0 ? ":" + q._mk : "")).join(" ")
+          + "   | nMark " + nMark + " free " + free().length);
+      }
+    }
+    // MARK CHURN: does a defender KEEP the man he had? _duty and _mk are rebuilt from scratch every
+    // tick, so nothing makes yesterday's marker today's marker -- this counts how often a man who
+    // was marking somebody is marking somebody ELSE a quarter of a second later, and what took him.
+    if (globalThis.__churn) {
+      const C = globalThis.__churn;
+      for (let z = 0; z < us.length; z++) {
+        const p2 = us[z];
+        if (!p2 || p2.off || p2.pos === "GK") continue;
+        const had = p2._mkWas, now = p2._mk >= 0 ? p2._mk : -1;
+        // TENURE, not churn rate: how many consecutive ticks he holds ONE man. A rate is polluted
+        // by how many markers there are; a tenure is not. 4 ticks = one second.
+        if (now >= 0 && now === had) p2._mkRun = (p2._mkRun || 0) + 1;
+        else {
+          if (had !== undefined && had >= 0) {
+            C.runs.push((p2._mkRun || 0) + 1);
+            const tgt = them[had];
+            if (tgt && !tgt.off && !us.some(z2 => z2 !== p2 && !z2.off
+                && Math.hypot(z2.x - tgt.x, z2.y - tgt.y) < 6)) C.dropped++;   // nobody NEAR him
+            if (now < 0) C[p2._duty || "?"] = (C[p2._duty || "?"] || 0) + 1;
+          }
+          p2._mkRun = 0;
+        }
+        // THE INCIDENT: he was TIGHT on a man in a dangerous area, and a quarter of a second later
+        // he is doing something else and nobody is near that man. This is the thing being watched
+        // from the stand, captured verbatim rather than inferred from a rate.
+        if (had !== undefined && had >= 0 && now !== had && C.inc.length < 12) {
+          const tgt = them[had];
+          if (tgt && !tgt.off) {
+            const wasTight = Math.hypot(p2.x - tgt.x, p2.y - tgt.y) < 4;
+            const dangerous = (tgt.x - own) * dir > 62;
+            let near = Infinity;
+            for (const z2 of us) if (z2 !== p2 && !z2.off)
+              near = Math.min(near, Math.hypot(z2.x - tgt.x, z2.y - tgt.y));
+            if (wasTight && dangerous && near > 6) C.inc.push({
+              def: p2.name, was: "mark:" + had, now: p2._duty + (p2._mk >= 0 ? ":" + p2._mk : ""),
+              man: tgt.name, tightAt: +Math.hypot(p2.x - tgt.x, p2.y - tgt.y).toFixed(1),
+              nowNearest: +near.toFixed(1), depth: +((tgt.x - own) * dir).toFixed(0) });
+          }
+        }
+        p2._mkWas = now;
+      }
+    }
+    // THE ELEPHANT TEST, measured after every duty is handed out: a man nobody is covering, in
+    // our half, with the ball live -- does anybody have him? This is the question the complaint
+    // actually asks, and neither of the earlier metrics answered it: one measured the assignment
+    // among AVAILABLE men, and both went blind the moment a reserved marker stopped counting as
+    // available. Here the only thing that matters is whether some defender's _mk points at him.
+    if (globalThis.__eleph && mp.idx >= 0) {
+      for (let j = 0; j < them.length; j++) {
+        const q = them[j];
+        if (!q || q.off || q.pos === "GK") continue;
+        if (mp.idx === j && mp.side === meOther(side)) continue;
+        if ((q.x - own) * dir > CFG.markResDepth) continue;
+        if (meThruCover(s, meOther(side), q)) continue;
+        globalThis.__eleph.n++;
+        let md = Infinity;
+        for (const p2 of us) if (p2._mk === j) md = Math.min(md, Math.hypot(p2.x - q.x, p2.y - q.y));
+        if (md === Infinity) globalThis.__eleph.free++; else globalThis.__eleph.d.push(+md.toFixed(1));
+      }
     }
   } else {
     // ATTACK THE BOX AT YOUR OWN CORNER. The de-choreography rightly deleted the placed marks,
@@ -704,6 +954,14 @@ export function meDuties(s, side) {
     // In possession. Hold the width, put one man in behind, give the ball a short option.
     for (const i of free()) {
       const p = us[i];
+      // Probe: what job does a man who is CLEAN THROUGH actually hold? If he is holding width,
+      // his target is his touchline slot and he will drift to the wing with an open goal in front
+      // of him -- which is the complaint. Gated, so it costs nothing when unset.
+      if (globalThis.__fire && (p.x - own) * dir > 62 && !meThruCover(s, side, p)) {
+        const kf = "thru_" + (Math.abs(p._bw - ME_HALF_W) / ME_HALF_W > 0.40 ? "width"
+                   : p._bd > 62 ? "runner" : "other");
+        globalThis.__fire[kf] = (globalThis.__fire[kf] || 0) + 1;
+      }
       if (Math.abs(p._bw - ME_HALF_W) / ME_HALF_W > 0.40) p._duty = "width";
       else if (p._bd > 62) p._duty = "runner";
     }
@@ -1128,7 +1386,14 @@ export function meShape(s, side) {
   const st = s.strategy?.[side] || NO_INSTRUCTIONS, ps = s.players[side], mp = s.mePos;
   const dir = meDir(side), own = meGoalX(meOther(side));
   const ballDepth = (mp.bx - own) * dir;
-  const attacking = mp.side === side;
+  // AT A DEAD BALL, POSSESSION IS THE RESTARTING SIDE. Same law as meDuties (see `defending`
+  // there) and the same bug: a corner is conceded off a touch that can leave mp.side pointing at
+  // EITHER team, so the side about to take it ran the defending branch of this function -- every
+  // man took a block slot on the halfway line and hit the `continue` below, hundreds of lines
+  // before the corner station. Measured: 27% of corners were delivered into a box of fewer than
+  // three, every one of them a referee timeout with five men holding box duty they were never
+  // given a station for. Fixing meDuties alone was not enough; the duty is assigned here.
+  const attacking = mp.sp ? mp.sp.side === side : mp.side === side;
   // Blend the attacking and defending shapes by the lagged balance rather than snapping between
   // them, and let each player's own depth decide how much he commits: a centre-half stays honest
   // when his side attacks, a striker barely tracks back when it does not.
@@ -1236,9 +1501,11 @@ export function meShape(s, side) {
         const vmaxG = meSpeed(meAttrs(p), p.stamina) * CFG.gkRushV;
         const ic = meIntercept(p, mp, vmaxG);
         const outAt = Math.hypot(ic.x - own, ic.y - ME_HALF_W);
-        let theirs = Infinity;
-        for (const q of them) if (q.pos !== "GK")
-          theirs = Math.min(theirs, meTimeToBallMs(q, ic.x, ic.y, meSpeed(meAttrs(q), q.stamina)));
+        let theirs = Infinity, qNear = null;
+        for (const q of them) if (q.pos !== "GK" && !q.off) {
+          const tq = meTimeToBallMs(q, ic.x, ic.y, meSpeed(meAttrs(q), q.stamina));
+          if (tq < theirs) { theirs = tq; qNear = q; }
+        }
         // How much of an edge he needs before he commits, and it is not one number. Outside his
         // area he is a footballer with nothing behind him and no hands, so he wants a clear margin.
         // INSIDE it he is a keeper: he is bigger than the ball, he can pick it up, and there is a
@@ -1252,8 +1519,21 @@ export function meShape(s, side) {
         const mayHandle = outAt < CFG.gkBoxR && mp.lastSide !== side;
         const edge = mayHandle ? CFG.gkRushEdgeHands
                    : outAt < CFG.gkBoxR ? CFG.gkRushEdgeBox : CFG.gkRushEdge;
-        const canGet = ic.ms + edge < theirs && outAt < CFG.gkRushR;
+        // OUTSIDE HIS AREA, WINNING THE RACE IS NOT THE QUESTION. He was sweeping every loose
+        // ball he could reach first, including ones a defender had fully covered -- leaving the
+        // goal for a ball that was nobody's threat. Beyond the box he now goes only when the
+        // man who would win it is genuinely through (nobody else can get across: meThruCover);
+        // inside it the old law stands, hands and all.
+        const sweepOK = outAt < CFG.gkBoxR
+          || (qNear && !meThruCover(s, meOther(side), qNear));
+        const canGet = ic.ms + edge < theirs && outAt < CFG.gkRushR && sweepOK;
         // Once he has gone, he goes. Flip-flopping is worse than either choice.
+        if (globalThis.__fire && canGet && outAt >= CFG.gkBoxR) {
+          globalThis.__fire.gkSweepOut = (globalThis.__fire.gkSweepOut || 0) + 1;
+        }
+        if (globalThis.__fire && !canGet && ic.ms + edge < theirs && outAt < CFG.gkRushR && outAt >= CFG.gkBoxR) {
+          globalThis.__fire.gkSweepHeld = (globalThis.__fire.gkSweepHeld || 0) + 1;   // race won, stayed home
+        }
         if (canGet || (p._gkOut > 0 && outAt < CFG.gkMaxOut)) {
           p._gkOut = canGet ? CFG.gkRushHold : (p._gkOut || 0) - 1;
           p._tx = ic.x; p._ty = ic.y; p._closing = true;
@@ -1375,8 +1655,15 @@ export function meShape(s, side) {
         }
         p._tx = p._cutx; p._ty = p._cuty; p._closing = true; continue;
       }
+      // ANYBODY IN THE LANE MAY GO FOR IT, not just the man marking the receiver. This was gated
+      // on p._mk === mp.fj, so a defender standing in the ball's path -- nearer to it, quicker to
+      // it, and marking nobody in particular -- watched the pass go by because the interception
+      // was somebody else's job. That is most of why receiving looked unopposed. Any defender who
+      // beats the receiver to the point by cutEdge now commits, capped at cutMaxN a side so the
+      // shape is never emptied into one lane.
       const rcv = mp.flight && mp.fj >= 0 && mp.fside === meOther(side) ? them[mp.fj] : null;
-      if (rcv && p._mk === mp.fj) {
+      const cutN = rcv ? ps.reduce((a, z) => a + ((z._cut ?? 0) > 0 ? 1 : 0), 0) : 0;
+      if (rcv && (p._mk === mp.fj || cutN < CFG.cutMaxN)) {
         const ic = meIntercept(p, mp, meSpeed(meAttrs(p), p.stamina));
         // Both men measured the same way: how long each takes to GET THERE. meIntercept floors his
         // answer at the ball's own arrival time, so a defender who would be standing on the spot
@@ -1385,7 +1672,12 @@ export function meShape(s, side) {
         // point, so the only front-runs it allowed were the ones there was no need to make.
         const mine = meTimeToBallMs(p, ic.x, ic.y, meSpeed(meAttrs(p), p.stamina));
         const his = meTimeToBallMs(rcv, ic.x, ic.y, meSpeed(meAttrs(rcv), rcv.stamina));
-        if (mine + CFG.cutEdge < his) {
+        // A MAN WHO IS NOT MARKING HIM HAS TO BE CLEARLY QUICKER TO IT. At the marker's own edge
+        // every defender in the lane jumped every pass and completion fell five points league-wide
+        // (78.2 -> 72.7) with goals at 2.22 -- an interception is a read, not a right of way. The
+        // marker keeps the ordinary edge; anyone else needs cutEdgeOther on top.
+        const edgeC = (p._mk === mp.fj ? 0 : CFG.cutEdgeOther) + CFG.cutEdge;
+        if (mine + edgeC < his) {
           p._cut = CFG.cutHold; p._cutx = ic.x; p._cuty = ic.y;
           p._tx = ic.x; p._ty = ic.y; p._closing = true; continue;
         }
@@ -1550,7 +1842,14 @@ export function meShape(s, side) {
         const ox = mk.x + (mk.vx || 0) * 2, oy = mk.y + (mk.vy || 0) * 2;   // his pos + movement*0.5s
         const gx = meGoalX(meOther(side)), gdx = gx - ox, gdy = ME_HALF_W - oy;
         const gd = Math.max(0.5, Math.hypot(gdx, gdy));
-        const thresh = isCarrier ? CFG.shootThreshCarrier : CFG.shootThreshOther;
+        // A RESTART IS NOT OPEN PLAY. With the live brains running against a dead ball the marking
+        // is as tight at a halfway-line throw as it is in the six-yard box, so a side taking a
+        // routine throw-in or free kick had no free man anywhere and the restart became a
+        // fifty-fifty. Away from his own area a marker stands spMarkOff metres further off his
+        // man; near his own goal nothing changes, because that is where tight marking belongs.
+        const spSlack = (mp.sp && mp.sp.kind !== "corner"
+          && Math.hypot(mp.bx - own, mp.by - ME_HALF_W) > CFG.spMarkNear) ? CFG.spMarkOff : 0;
+        const thresh = (isCarrier ? CFG.shootThreshCarrier : CFG.shootThreshOther) - spSlack;
         const reachIn = Math.max(0.4, Math.min(52, gd - thresh));
         let spx = ox + gdx / gd * reachIn, spy = oy + gdy / gd * reachIn;
         // Never plan to defend behind our own trap line: re-derive on the line so the trap holds.
@@ -1587,6 +1886,11 @@ export function meShape(s, side) {
         tx = desX + (dfx - desX) * bias; ty = desY + (dfy - desY) * bias;
         break;
       }
+      // NOTE (31 Aug 2026): `mark`, `screen` and `intercept` in this switch are DEAD when the side
+      // is defending -- the block branch above returns first for every duty except press, cover and
+      // recover. Instrumented: the screen/intercept geometry executed 0 times in eight matches, so
+      // a stand-off clamp added here measured byte-identical. The live defending geometry, and the
+      // marking clamp, are in that block branch. Kept because they run for rest defence.
       case "screen": {                                          // stand IN the lane to your man
         if (!mk) break;
         const t = 0.62;                                         // nearer him than the ball
@@ -1672,12 +1976,18 @@ export function meShape(s, side) {
         // mouth so it dominates the flat surface only when he is actually through.
         const gx2 = meGoalX(side);
         let atGoal = 0;
+        // ...AND IT USES THE SAME TEST AS decide.ts, WHICH IS WHAT THE COMMENT ABOVE PROMISES.
+        // It was left on the old headcount -- any opponent goal-side within 20 m of his channel
+        // cancelled it, including one who could never get across -- while runAtGoal moved to the
+        // race in meThruCover. So the two disagreed: the shooting logic knew he was through and
+        // the STEERING did not, which drops the goalward term and hands the eight-way search back
+        // to the value surface. The value surface pays for empty grass, and on a pitch with the
+        // defence beaten the empty grass is the wing. That is the man clean through drifting to
+        // the touchline instead of running at the net.
         if (meLaneBlock(s, side, p.x, p.y, gx2, ME_HALF_W) < CFG.noBackLane) {
-          let gs2 = 0;
-          for (const o of them) if (o && !o.off && o.pos !== "GK"
-              && (o.x - p.x) * dir > 0 && Math.abs(o.y - p.y) < 20) gs2++;
-          if (gs2 === 0 || Math.abs(gx2 - p.x) < CFG.noBackRange) atGoal = 1;
+          if (!meThruCover(s, side, p) || Math.abs(gx2 - p.x) < CFG.noBackRange) atGoal = 1;
         }
+        if (globalThis.__fire && atGoal) globalThis.__fire.carryAtGoal = (globalThis.__fire.carryAtGoal || 0) + 1;
         const gd0 = atGoal ? Math.hypot(gx2 - p.x, ME_HALF_W - p.y) : 0;
         let bAng = null, bSc = -Infinity;
         for (let k = 0; k < 8; k++) {
@@ -1906,6 +2216,41 @@ export function meShape(s, side) {
       tx = meGoalX(side) - dir * zb[0];
       ty = ME_HALF_W + nearB * zb[1];
       p._closing = true;
+    }
+    // SHOWING FOR IT IS A MOVEMENT MADE BEFORE THE PASS, NOT AFTER. Tried and rejected first:
+    // yanking the intended receiver toward the ball at the moment of the strike. It measured as a
+    // real improvement in isolation -- a pressed man came 1.05 m to meet it against 0.39 -- and
+    // cost five points of league completion and a third of all goals (3.12 -> 2.16), because it
+    // takes him off a point he was certain to reach, onto one he may not, and walks him INTO the
+    // defender who is pressing him. A man cannot check to a ball that has already been played.
+    // So it lives here instead, in the off-ball shape: with his side in possession and somebody
+    // on his shoulder, his target drifts showStep metres toward the ball for as long as the
+    // pressure lasts. He is already moving when the pass comes, which is the whole of it.
+    if (attacking && !(mp.side === side && mp.idx === i) && p.pos !== "GK"
+        && (p._runT ?? 0) <= 0 && p._duty !== "press" && p._duty !== "cover") {
+      const bdS = Math.hypot(p.x - mp.bx, p.y - mp.by);
+      if (bdS > CFG.showMinD && bdS < CFG.showMaxD && meOppDist(s, meOther(side), p.x, p.y) < CFG.showPressR) {
+        const sx2 = mp.bx - tx, sy2 = mp.by - ty, sl2 = Math.hypot(sx2, sy2) || 1;
+        const st2 = Math.min(CFG.showStep, sl2 * 0.5);
+        tx += sx2 / sl2 * st2; ty += sy2 / sl2 * st2;
+        if (globalThis.__fire) globalThis.__fire.showFor = (globalThis.__fire.showFor || 0) + 1;
+      }
+    }
+    // A MAN CLEAN THROUGH RUNS AT THE GOAL, NOT AT HIS LANE. Measured: on 20% of the slices where
+    // an attacker in the final third had nobody covering him, he was holding WIDTH duty -- his
+    // target the touchline slot his formation gives him -- so he drifted to the wing with an open
+    // goal in front of him. The carry search already bends the man ON the ball at the net; this is
+    // the same law for the man running ONTO it. Placed here, after the leash and the restore, for
+    // the reason the corner station is: a target that abandons the zone by design cannot be set
+    // before the thing whose whole job is to drag targets back into it. He keeps a share of his
+    // own width (thruRunKeep) so he arcs in like a footballer instead of snapping to the centre.
+    if (attacking && p.pos !== "GK" && !(mp.side === side && mp.idx === i)
+        && (p.x - own) * dir > CFG.thruRunDepth && !meThruCover(s, side, p)) {
+      const gxT = meGoalX(side);
+      tx = gxT - dir * CFG.thruRunStop;
+      ty = ME_HALF_W + (p.y - ME_HALF_W) * CFG.thruRunKeep;
+      p._closing = true;
+      if (globalThis.__fire) globalThis.__fire.thruRun = (globalThis.__fire.thruRun || 0) + 1;
     }
     // A re-instructed man's own line and width, before the law: his defLine pushes his target
     // up or drops it, his width stretches him off the shape's lane. On-ball behaviour reads his

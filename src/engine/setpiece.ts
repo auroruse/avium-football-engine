@@ -111,7 +111,13 @@ export function meSPBegin(s, kind, side, out) {
   // that is what happens on a pitch. The restart cannot hang while he walks: spMaxTBy caps a
   // corner at 86 ticks and forces it away.
   else if (kind === "corner"
-           || (kind === "freekick" && Math.abs(meGoalX(meOther(side)) - x) < CFG.spTakerRange)) {
+           // ...MEASURED TO THE GOAL HE IS SHOOTING AT. meGoalX(meOther(side)) is his side's OWN
+           // goal, so this asked "is the free kick near the net we are defending" -- and handed
+           // every kick in a side's own third to the man with the best strike of a ball, who is a
+           // forward. That is the attacker jogging sixty metres back to take a routine free kick,
+           // and it also meant the kicks actually worth a specialist, the ones in shooting range,
+           // went to whoever happened to be nearest.
+           || (kind === "freekick" && Math.abs(meGoalX(side) - x) < CFG.spTakerRange)) {
     const want = kind === "corner" ? "pass" : "shoot";
     let best = -1, bsc = Infinity;
     for (let i = 0; i < us.length; i++) { const p = us[i];
@@ -718,6 +724,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // and for a delivery into the box being able to head it is worth as much as standing in the right
   // spot. strength is the aerial attribute; meAerial reads nothing else.
   const into = sp.kind === "corner" || sp.kind === "freekick";
+  const themT = s.players[meOther(side)] || [];
   const cands = [];
   for (let i = 0; i < us.length; i++) {
     if (i === sp.ti || us[i].pos === "GK") continue;
@@ -741,10 +748,27 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // the claim eats them. Real deliveries land in the scoring band around the spot, so a corner
     // scores its candidates by where the RUN puts them at contact (the run fires at the strike
     // and carries spCornerRun metres goalward before the ball lands), against cnAimD.
+    // A goal kick or a throw goes to a FREE man, not the near one: -d alone sent every goal
+    // kick to the closest centre-back with a striker standing on his toes. Separation from the
+    // nearest opponent buys distance at spFreeW per metre, capped so an empty far corner does
+    // not outbid the whole midfield.
+    // A DEEP FREE KICK IS A RESTART, NOT A DELIVERY. `into` lumped every free kick in with
+    // corners and aimed at the goalmouth regardless of who stood there, so one taken inside a
+    // side's own half was launched at a crowd. Only a kick within striking range of their goal
+    // is a delivery; the rest are played to a free man like a goal kick.
+    const deliv = sp.kind === "corner"
+      || (sp.kind === "freekick" && Math.abs(gx - sp.x) < CFG.spShootRange + 12);
+    let sepT = 0;
+    if (!deliv) {
+      sepT = Infinity;
+      for (const o of themT) { if (o.off) continue;
+        const so = Math.hypot(o.x - q.x, o.y - q.y); if (so < sepT) sepT = so; }
+      sepT = Math.min(sepT, 12);
+    }
     const v = sp.kind === "corner"
       ? -Math.abs(Math.hypot(gx - q.x, ME_HALF_W - q.y) - CFG.spCornerRun - CFG.cnAimD)
         - Math.abs(q.y - ME_HALF_W) * 0.1
-      : into ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d;
+      : deliv ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d + sepT * CFG.spFreeW;
     let w = Math.exp(v * CFG.spAimSharp);
     if (into) w *= 0.5 + meAttrs(q).strength / 99;
     cands.push([i, w]);
@@ -757,6 +781,12 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     if (ti < 0) ti = cands[cands.length - 1][0];
   }
   const them2 = s.players[meOther(side)];
+  if (globalThis.__rst && ti >= 0) {
+    let sepR = Infinity;
+    for (const o of them2) { if (o.off) continue;
+      const so = Math.hypot(o.x - us[ti].x, o.y - us[ti].y); if (so < sepR) sepR = so; }
+    (globalThis.__rst[sp.kind] = globalThis.__rst[sp.kind] || []).push(+Math.min(sepR, 40).toFixed(1));
+  }
   // Whether the keeper picks the right way. On a shot from open play he READS it -- the ball is
   // already gone and he is going with what he saw. On a penalty he is committing before it is
   // struck against a man who knows that, which is why a penalty is converted three times in four:
@@ -903,7 +933,24 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
       let defBox2 = 0;
       for (const q2 of s.players[meOther(side)]) { if (q2.off || q2.pos === "GK") continue;
         if (Math.abs(q2.x - gxP) < 16.5 && Math.abs(q2.y - ME_HALF_W) < 20.16) defBox2++; }
-      (globalThis.__sp.box = globalThis.__sp.box || []).push([inBox, ownHalf, phaseOK, boxD, defBox2]);
+      // WHY it went with an empty box: t is how long the ceremony ran, cap is what it was allowed,
+      // so t > cap is the referee forcing it away rather than the box being ready. quick bypasses
+      // the wait entirely. dutyD is how far the box men still are from their stations.
+      const capP = sp.maxT ?? CFG.spMaxTBy[sp.kind] ?? CFG.spMaxT;
+      let far = 0, farSum = 0;
+      for (const q2 of us) if (q2._duty === "box") {
+        const dd = Math.hypot(q2.x - (q2._tx ?? q2.x), q2.y - (q2._ty ?? q2.y));
+        farSum += dd; if (dd > 4) far++;
+      }
+      (globalThis.__sp.box = globalThis.__sp.box || []).push([inBox, ownHalf, phaseOK, boxD, defBox2,
+        sp.t, capP, sp.quick ? 1 : 0, far, +farSum.toFixed(1)]);
+      if (inBox < 3) {
+        (globalThis.__sp.thin = globalThis.__sp.thin || []).push(us.filter(q2 => q2._duty === "box")
+          .map(q2 => ({ k: q2._boxK,
+                        dx: +((q2.x - gxP) * dP).toFixed(1), dy: +(q2.y - ME_HALF_W).toFixed(1),
+                        ttx: +(((q2._tx ?? 0) - gxP) * dP).toFixed(1), tty: +((q2._ty ?? 0) - ME_HALF_W).toFixed(1),
+                        run: q2._run || "", spY: +sp.y.toFixed(0) })));
+      }
     }
   }
   meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);

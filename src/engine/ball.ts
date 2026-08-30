@@ -296,7 +296,15 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
   // through the receiver more often. A slow side plays it softer and safer into feet.
   const tmp = 1 + (tempo || 0) * CFG.tempoPace;
   if (type === "ground") { vxy = meGroundSpeed(d) * pow * tmp; vz = 0; }
-  else { const L = meLoftFor(type === "clear" ? Math.max(d, 30) : d); vxy = L.vxy * pow * tmp; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
+  else if (type === "clear") {
+    // Harder and flatter than any pass: solved at no less than clearMinD of carry, the launch
+    // sped up by clearPow and the arc cut by clearFlat, so it sails past the man it was pointed
+    // at and has to be chased. See the clearance block in config.ts.
+    const L = meLoftFor(d);                    // the aim already carries clearMinD; see decide.ts
+    vxy = L.vxy * CFG.clearPow * pow * tmp;
+    vz = L.vz * CFG.clearFlat * (1 + g2(rng) * CFG.powerNoise * 0.5);
+  }
+  else { const L = meLoftFor(d); vxy = L.vxy * pow * tmp; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
   mp.bvx = Math.cos(ang) * vxy; mp.bvy = Math.sin(ang) * vxy; mp.bvz = vz;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   meBallPredict(mp);

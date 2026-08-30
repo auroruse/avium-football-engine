@@ -80,6 +80,10 @@ export const SP = {
   // into a weighted draw. Higher is more predictable, 0 is a lottery. 0.22 keeps a man at the far
   // post several times likelier than one on the edge without making him certain.
   spAimSharp: 0.22,
+  // A restart is played to a FREE man, not the near one. The target value was -distance alone, so
+  // a goal kick went to the closest centre-back with a striker standing on him. Each metre of
+  // separation from the nearest opponent (capped at 12) buys spFreeW metres of distance.
+  spFreeW: 1.1,
   // ...and how far away the man he plays it to may be. A restart nobody can reach quickly is not a
   // quick restart, it is a long ball, and those are taken from a set position like everything else.
   spQuickTo: 30,
@@ -438,7 +442,7 @@ foulAggr: 0.25,
   // losing the argument to a dishonest pass. Passing for its own sake was this line.
   // Second iteration 29 Aug (the fit's own note says the chosen passes move with the belief):
   // L was still chasing at 3.87 on the new distribution -- late balls still over-believed.
-  passCal0: 2.22, passCalB: 1.15, passCalR: 1.62, passCalL: 3.87,
+  passCal0: 2.10, passCalB: 1.22, passCalR: 1.77, passCalL: 5.08,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -467,6 +471,12 @@ foulAggr: 0.25,
   // clearPanic: this deep it is always on the menu, pressure or not. Between there and clearDepth it
   // needs somebody actually on him. Beyond clearDepth it is not a clearance at all.
   clearPress: 1.1, clearPanic: 22, clearDepth: 40, clearOk: 0.46, clearMinUp: 12,
+  // A CLEARANCE IS NOT A PASS. It used to fly on the identical loft solver as a high ball to a
+  // teammate, so it arrived catchable on somebody's chest and read as a long pass. It is struck
+  // harder and flatter (clearPow on the launch, clearFlat off the arc), never solved for less
+  // than clearMinD of carry, and its landing is pushed clearPast metres BEYOND the outlet man --
+  // relief that has to be chased in their half, not received.
+  clearMinD: 40, clearPow: 1.18, clearFlat: 0.85, clearPast: 8,
   // What a clearance is actually WORTH: the danger it removes from your own goal. Scored as an
   // ordinary pass -- the value of the patch of grass it lands on, minus the cost of losing it there
   // -- it came out negative every single time, because meVal forty metres upfield is almost nothing
@@ -509,7 +519,7 @@ foulAggr: 0.25,
   // cardYellow swept against foulBase: at 0.16/0.24 with eleven fouls the yellows come out at
   // 1.44 / 2.25 a side. Straight reds cut to 0.002 because most dismissals here arrive as second
   // yellows and the two together were running about three times the real rate.
-  cardYellow: 0.18, cardStraightRed: 0.0065,
+  cardYellow: 0.148, cardStraightRed: 0.0065,
   // A BOOKED MAN IS A DIFFERENT PLAYER. Measured, second yellows came out at 0.265 a match against
   // a real 0.06 -- not because the yellow rate is wrong, 3.5 a match is right, but because nothing
   // here knew he was already on one, and independent rolls over eleven men predict 0.26 exactly.
@@ -543,7 +553,12 @@ foulAggr: 0.25,
   // here is rolled off how hard he came in, and the foul that denies a goal is usually the opposite
   // of that -- a shirt pulled, a heel clipped, nothing violent about it. Labelling produced DOGSO
   // on 5% of dismissals against a real third, because cynical fouls were never reaching the roll.
-  dogsoRed: 0.027, dogsoDanger: 0.045, dogsoCover: 1, flashP: 0.00044, flashViolent: 0.62,
+  // A genuine denial outside the area is a sending off almost every time -- the residue is the
+  // referee not seeing it that way. dogsoCover is retained only by the old headcount's ghost; the
+  // test is meThruCover now. spaDanger/cardSpa are stopping a promising attack, handCardY is the
+  // caution for a deliberate handball that did not deny a goal.
+  dogsoRed: 0.88, dogsoDanger: 0.34, dogsoCover: 1, spaDanger: 0.075, cardSpa: 0.30,
+  handCardY: 0.45, flashP: 0.00044, flashViolent: 0.62,
   // SUBSTITUTIONS. subFromTick is how far into the match before a manager makes a change for tired
   // legs -- an injury is replaced whenever it happens. subStamina is the level he goes at, and a man
   // carrying a knock is treated as this much more tired than he reads. subSamePos favours a like-for
@@ -1178,6 +1193,21 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // bonus (0.8) on purpose: being through does not time out the way a run's fourteen slices do,
   // and losing this man is losing the match. He also counts toward the nMark budget like a runner.
   markThruW: 1.2,
+  // How much more the assignment cares about reaching the DANGEROUS man than the harmless one.
+  // The Hungarian minimises a total, so without this every man on the shortlist was worth the
+  // same and the one through on goal could be handed a defender from the far side of the pitch.
+  markPrio: 2.5,
+  // How many men may be reserved to shadow opponents nobody is covering, before the ball-chasing
+  // duties are handed out, and how far up the pitch that reservation applies (metres from our own
+  // goal). Two is a defence keeping its head; more would be a side that stops defending the ball.
+  markResN: 2, markResDepth: 78,
+  // How far his man may get from him before a standing mark is released. Beyond this he is not
+  // marking anybody, he is following somebody around, and the assignment should be re-thought.
+  markHoldD: 26,
+  // A man with nobody covering him, this deep in the attacking half, runs at the goal instead of
+  // holding his lane: he aims thruRunStop short of the line and keeps thruRunKeep of his own
+  // width so the run arcs in rather than snapping to the middle.
+  thruRunDepth: 62, thruRunStop: 6, thruRunKeep: 0.35,
   // Through-on-goal is a race (meThruCover): the run to goal is sampled to thruShotAt short of the
   // goal, and a defender covers if he reaches a sample no later than the runner plus thruCovSlack
   // seconds -- arriving together is contesting. A goal-side man two channels wide no longer counts
@@ -1189,7 +1219,18 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // The press approach: how much of the closing distance bends toward the ball-to-own-goal line,
   // and the cap. Zero reproduces the tail-chase.
   pressCut: 0.35, pressCutMax: 6,
+  // When closing down is worth a sprint: inside pressSprintD of the ball (the last few metres,
+  // where the challenge is), or with the ball inside pressOwnD of your own goal. Everything else
+  // is closed at a working pace -- see the chase gate in meMove. A side told to press high sprints
+  // regardless, which is what the instruction buys.
+  pressSprintD: 7, pressOwnD: 40,
+  // How much further off his man a marker stands at a restart taken beyond spMarkNear of his own
+  // goal. Tight marking belongs in the box, not at a halfway-line throw-in.
+  spMarkNear: 30, spMarkOff: 3.5,
   runMax: 4,
+  // Runs are TIMED off the carrier: nobody breaks in behind while the man on the ball is being
+  // smothered past runFreeP of pressure -- he cannot deliver, and the run is spent for nothing.
+  runFreeP: 1.2,
   runCool: 28,
   // THE BOX IS OCCUPIED, at last. With the ball in the final third the side's most attacking men
   // take stations in the penalty area -- near post, penalty spot, far post -- clamped to the legal
@@ -1213,7 +1254,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // definition with the ball deep, so this number decides whether the engine can counter at all.
   runMinDepth: 30,
   runThirdDepth: 52,
-  offsideGrace: 2.2,
+  // How far beyond the line the PASSER will still play him. At 2.2 this was a standing gamble on
+  // a ball the rule flags at offTol 0.5 -- the engine deliberately playing men it knew were off,
+  // which from the stand is a side with no offside awareness at all. Just over the tolerance now:
+  // a runner arriving level is playable, a runner already gone is not.
+  offsideGrace: 0.9,
   // How far beyond the line he can misjudge it, at the bottom of the rating scale -- a top player
   // sees it almost exactly, a poor one is up to this many metres wrong in either direction. This is
   // what lets offside HAPPEN: with a perfect view nobody ever plays one, and the trap wins nothing.
@@ -1234,10 +1279,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // thruReact is the seconds of flight the receiver does not get to use (he has to see it played
   // before he runs), and thruLeadFrac aims the ball short of the solved limit so the last stride
   // belongs to the man, not the flight. Both shorten every lead; neither touches a ball to feet.
-  thruReact: 0.45, thruLeadFrac: 0.68,
+  thruReact: 0.35, thruLeadFrac: 0.85,
   // The gate and the cap on jog-leads: a receiver moving slower than thruMoveV (m/s) has no
   // into-space option at all, and one merely jogging is led at most thruJogMax metres.
-  thruMoveV: 1.6, thruJogMax: 7,
+  thruMoveV: 1.6, thruJogMax: 10,
+  // A pass to FEET still leads a moving man: above feetMoveV he is led by his own pace across the
+  // flight, at feetLeadFrac of the solve and never more than feetLeadMax metres -- enough that he
+  // runs onto it, short of the through ball that mode 1 exists to be.
+  feetMoveV: 1.2, feetLeadFrac: 0.55, feetLeadMax: 4.5,
+  // ...and space is only space if there is pitch around it. Within edgeMin of a touchline the room
+  // bonus is worth edgeLo of itself, whole again edgeFull metres infield.
+  edgeMin: 3.5, edgeFull: 13, edgeLo: 0.25,
   // How much of the real flight time a ball to a moving man is led by. Under one because he will not
   // hold his current line and pace for the whole flight -- he is running to meet it, not past it.
   // Swept 0.6 / 0.85 / 1.0: completion came out 79 / 78 / 76%, which is flat within noise at this
@@ -1495,12 +1547,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.65, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  rateSave: 0.65, gkExpPen: 0.71, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
   // derive sample holds under ten shots there and the instruction above says not to trust one.
-  gkExp: [[0.05, 0.11], [0.10, 0.14], [0.20, 0.13], [0.30, 0.33], [0.40, 0.76], [0.60, 0.55], [1.01, 0.82]],
+  gkExp: [[0.05, 0.07], [0.10, 0.12], [0.20, 0.13], [0.30, 0.34], [0.40, 0.74], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1610,7 +1662,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: 0.134, DEF: -0.609, MID: -0.572, FWD: -1.611 },
+  ratePos: { GK: -0.006, DEF: -0.644, MID: -0.532, FWD: -1.402 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1704,7 +1756,13 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // have headed it, which is 40% of the population. Swept 0 / 0.2 / 0.4 / 0.6 -> headers 12.3 / 10.4
   // / 8.7 / 6.6 a match against a 12-15 target, and knock-downs retained by the heading side
   // 41.1% / 49.5% / 56.2% / 41.8% against a real 35-50%. Zero is the only cell with both in band.
-  headHoldZ: 0,
+  // THE DROP-WAIT VETO, RE-ARMED. At 0 the test `zNext > headHoldZ` was true for any ball still
+  // off the grass next slice, so the veto it guards never fired and every ball above head height
+  // was headed -- including the 73% measured as reaching ordinary touch range a quarter-second
+  // later. A ball that will still be above this when he next touches it is genuinely a header;
+  // one dropping below it is a ball to take down. The duel arm still overrides in a crowd, which
+  // is what keeps corners headed.
+  headHoldZ: 1.15,
   // ...but a man throwing himself in front of a SHOT is not trying to trap it, he is trying to be in
   // the way, and he does not need a controlling touch to do it. Shrinking his reach to 0.7 m on a
   // struck ball meant nothing was ever blocked: about a third of real shots never reach the keeper,
@@ -1781,6 +1839,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // priced by the pass noise and risk terms, which is what makes this a release change and not a
   // buff. At press 1.8 the bar is gone entirely.
   holdBase: 5, holdPress: 1.4, actNow: 0.10, pressActNow: 0.55, firstTouchNoise: 1.75,
+  // A keeper with the ball IN HIS HANDS surveys before he distributes -- nobody may take it off
+  // him, so his budget gets gkHoldT extra slices and the press term is ignored while held. He was
+  // on the outfielder's five-slice budget, which is the instant punt and the bad kick after it.
+  gkHoldT: 10,
   // THE PATIENCE TERM. What an unpressed shooter pays for striking a chance that is still
   // maturing: (spAhead - sp) * shotWaitW, faded by pressure at shotWaitPress. On a free
   // breakaway at twenty metres the charge is comparable to the shot's whole score, so he
@@ -1943,6 +2005,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // before stepping in front is worth it -- a coin-flip read is not one a defender makes -- and
   // cutHold is how long the gamble commits you for, in slices. The commitment is what makes it cost
   // something: guess wrong and you are past the ball with your man behind you.
+  // How many men a side may commit to cutting one pass out. The gate used to be "only the
+  // receiver's marker", which left every other lane unguarded.
+  cutMaxN: 2, cutEdgeOther: 260,
+  // A receiver with an opponent inside recvPressR checks to the ball instead of waiting for it,
+  // meeting it as early in the flight as he can reach within recvHurry ms of the ball passing.
+  // Showing for the ball: a marked man between showMinD and showMaxD of it, with an opponent
+  // inside showPressR, drifts showStep metres toward it while his side has possession.
+  showMinD: 6, showMaxD: 34, showPressR: 5.0, showStep: 2.6,
   cutEdge: 150, cutHold: 3,
   // How close the race for a ball has to be before the man it was played to stops pacing himself
   // and simply goes and gets it, in milliseconds of margin over the best-placed opponent.
@@ -2309,7 +2379,7 @@ gkDiveV: 2.9,
   // dive near 8.3 m/s; the ends move. Conversion on target came back from 30.0% to 31.2% because
   // the worse keepers lose more than the better ones gain, and a 10-OVR step is now worth about
   // +0.13 goals a match on target with the gradient visible in his rating.
-  gkReactSlow: 0.27, gkReactFast: 0.14,      // seconds, worst keeper to best; cut with the reach
+  gkReactSlow: 0.30, gkReactFast: 0.11,      // seconds, worst keeper to best; cut with the reach
   // How often he picks the right side as it is struck, worst keeper to best.
   // Raised 29 Aug as the reach cut's compensation: he saves by being THERE, so committing to
   // the right side is most of goalkeeping now.
@@ -2440,6 +2510,8 @@ gkDiveV: 2.9,
   // the ball's current spot he chased balls that were already leaving, and judged by distance from
   // goal rather than by where he would meet it he was lured a long way out and then beaten. He also
   // commits: once he has gone he keeps going, rather than flip-flopping every slice.
+  // ...and OUTSIDE his box he sweeps only for a man who would actually be through -- the race
+  // being winnable is not a reason to leave the goal when a defender has the runner covered.
   gkRushR: 17, gkRushEdge: 280, gkRushV: 0.98, gkRushHold: 8, gkMaxOut: 21,
   // Inside his own area he goes for balls he would reach LATER than an opponent: he has hands, he is
   // bigger than the man, and the alternative is watching it roll in.
@@ -2618,7 +2690,12 @@ gkDiveV: 2.9,
   // reaction (gkReadMin/gkReactSlow below), which is what a keeper's rating is supposed to buy.
   // Partially restored once the crossing steer landed: a reach contact now turns the ball
   // round the post instead of carrying it in, so reach reads as saves again, not own-nets.
-  gkSaveReach: 0.47, gkSaveReachLo: 0.14, gkSaveReachHi: 0.56,
+  gkSaveReach: 0.42, gkSaveReachLo: 0.14, gkSaveReachHi: 0.69,
+  // How long after his reaction the arms take to reach full extension. With the ring now on a
+  // clock (see reachOf), THIS is what makes a good keeper good: gkReact* sets when he starts and
+  // this sets how fast he opens, so the save that separates levels is the one that was always
+  // going to be close. A ball arriving inside his reaction beats him whoever he is.
+  gkReachSpan: 0.17,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,
