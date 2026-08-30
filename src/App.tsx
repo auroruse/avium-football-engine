@@ -3816,6 +3816,17 @@ const presetCell = (p) => {
 // ═══ GOAL VISUALIZATIONS ═════════════════════════════════════════════════════
 const NAME_PFX = new Set(["van","de","del","di","da","dos","das","von","den","der","le","la","el","al","bin","ibn"]);
 const shortName = (n) => { const p = String(n||"").trim().split(/\s+/); if (p.length <= 1) return n; if (p.length === 2 && NAME_PFX.has(p[0].toLowerCase())) return n; for (let i = 1; i < p.length; i++) { if (!NAME_PFX.has(p[i].toLowerCase())) { let s = i; while (s > 1 && NAME_PFX.has(p[s-1].toLowerCase())) s--; return p.slice(s).join(" "); } } return p[p.length-1]; };
+// A goal caption is "Full Name" or "Full Name (Assist Full Name)" or "Full Name (OG)". The replay
+// inset is a third of the pitch wide and two full names do not fit in it -- the feed beside it still
+// carries them in full, so surnames here lose nothing. (OG) is a tag rather than a name and passes
+// through untouched.
+const clipNames = (txt) => {
+  const t = String(txt || "").trim();
+  const i = t.lastIndexOf(" (");
+  if (i < 0 || !t.endsWith(")")) return [shortName(t), null];
+  const par = t.slice(i + 2, -1);
+  return [shortName(t.slice(0, i)), par === "OG" ? "OG" : shortName(par)];
+};
 // Splits a full display name into {first, last}, using the same prefix-aware surname
 // boundary as shortName above, so "Kevin Van Der Berg" bolds as "Kevin **Van Der Berg**".
 const splitFullName = (n) => {
@@ -12607,8 +12618,16 @@ export default function App() {
               under its pitch. */}
           <text x={PAD + 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.85}>
             {c.clip.min}&#39;</text>
-          {c.clip.txt && <text x={PAD + 4.2} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.55}>
-            {c.clip.txt.length > 34 ? c.clip.txt.slice(0, 33) + "\u2026" : c.clip.txt}</text>}
+          {c.clip.txt && (() => {
+            const [who, par] = clipNames(c.clip.txt);
+            // The assist goes rather than wraps or runs into the score: who scored is the line.
+            const room = par && who.length + par.length + 3 <= 30;
+            return (
+              <text x={PAD + 4.2} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff">
+                <tspan fontWeight={700} fillOpacity={0.9}>{who}</tspan>
+                {room && <tspan fillOpacity={0.5}> ({par})</tspan>}
+              </text>);
+          })()}
           <text x={PAD + W - 1.1} y={PAD + PH + 1.95} fontSize={1.34} fill="#fff" fillOpacity={0.55}
                 textAnchor="end">{c.clip.score}</text>
           {/* A play triangle, not a circular arrow. At this radius an arrowhead is three pixels and
