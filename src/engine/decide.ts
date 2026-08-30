@@ -1,7 +1,7 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkSkill } from "./attributes";
-import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
+import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundMaxD, meGroundSpeed, meLoftFor } from "./ball";
 import { meMind, meTech } from "./attributes";
 import { meOppDist } from "./brain";
@@ -69,6 +69,13 @@ export function meShotP(s, side, p, x, y, rec) {
   const clearMax = 1 + (CFG.shotClear - 1)
     * Math.max(0, Math.min(1, 1 - (g.d - CFG.shotClearD) / CFG.shotClearFade));
   q *= Math.max(CFG.shotCrowd, Math.min(clearMax, clearMax - lane0 * CFG.shotLaneK));
+  // PACE IS PART OF THE CHANCE, and only from range. This is the same momentum meShootBall puts on
+  // the ball, priced so the decision believes what the physics is about to do -- otherwise a man
+  // running onto one hits it harder and still rates the shot as though he had not. It rides on top
+  // of the lane term above on purpose: a cannonball into somebody's shins is not a chance, so the
+  // crowding discount has already been taken before the momentum is paid.
+  q *= 1 + meRun01(p, side) * CFG.shotRunK
+         * Math.max(0, Math.min(1, (g.d - CFG.shotRunD) / CFG.shotRunFade));
   // The keeper -- and WHICH keeper term depends on who is asking. The decision layer gets the
   // estimate every choice in the engine was balanced against; making the estimate honest about a
   // beaten keeper re-tuned the whole game three runs in a row (shots a side fell from 10.0 to 7.6

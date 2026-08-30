@@ -5,7 +5,7 @@ import { GOAL_HALF_W, GOAL_H, meBallPredict, meBallStep, meKickBall, meKnock, me
 import { meBlock, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meXgCal, meDecide, meShotP } from "./decide";
-import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
+import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
 // Twenty-two players on a 105x68 pitch, advanced in quarter-second slices. No team rating appears
@@ -3063,18 +3063,22 @@ export function meTick(s, rng, out) {
     // side and no dive speed able to rescue it. He commits to a side as the ball leaves the foot.
     // Reading it right IS goalkeeping, and it is what his rating buys him; read it wrong and he is
     // going the other way with the whole goal open, which is also what goalkeeping looks like.
+    // What he is carrying into the strike, read once: it sets the pace, and the pace is how long the
+    // keeper has to read it.
+    const run = meRun01(p, side);
+    const runGate = run * Math.max(0, Math.min(1, (meShotGeom(side, p.x, p.y).d - CFG.shotRunD) / CFG.shotRunFade));
     if (gkp) {
       const rk = meGkSkill(meAttrs(gkp));
       // ...and the more time he has, the better he reads it. A shot from six metres is a guess; one
       // from twenty-five he can genuinely see and pick a side on.
-      const tAv = Math.hypot(gkp.x - p.x, gkp.y - p.y) / Math.max(8, CFG.shotV0 + sk * CFG.shotVSkill);
+      const tAv = Math.hypot(gkp.x - p.x, gkp.y - p.y) / Math.max(8, CFG.shotV0 + sk * CFG.shotVSkill + runGate * CFG.shotVRun);
       const bonus = Math.max(0, Math.min(1, (tAv - CFG.gkReadT0) / CFG.gkReadTSpan)) * CFG.gkReadTime;
       const readOk = rng.u() < Math.min(0.97, CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * rk + bonus);
       mp.shot.readY = readOk ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
     }
     // Tired legs mishit. Execution decays with stamina the same way for every man on the pitch,
     // so the bill lands hardest on whoever spent the most running -- which is the press.
-    meShootBall(mp, rng, gx, aimY, aimZ, sk * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) / (mp.firstTouch ? CFG.firstTouchNoise : 1), press);
+    meShootBall(mp, rng, gx, aimY, aimZ, sk * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) / (mp.firstTouch ? CFG.firstTouchNoise : 1), press, undefined, undefined, run);
     return;
   }
   if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, meDefPay(s, meSideOfP(s, p), p.x, p.y, CFG.rateClear));

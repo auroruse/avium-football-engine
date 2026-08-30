@@ -1547,12 +1547,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.71, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  rateSave: 0.65, gkExpPen: 0.67, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
   // derive sample holds under ten shots there and the instruction above says not to trust one.
-  gkExp: [[0.05, 0.07], [0.10, 0.12], [0.20, 0.13], [0.30, 0.34], [0.40, 0.74], [0.60, 0.57], [1.01, 0.89]],
+  gkExp: [[0.05, 0.09], [0.10, 0.09], [0.20, 0.13], [0.30, 0.26], [0.40, 0.70], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1662,7 +1662,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: -0.006, DEF: -0.730, MID: -0.532, FWD: -1.402 },
+  ratePos: { GK: -0.051, DEF: -0.692, MID: -0.549, FWD: -1.299 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -2332,6 +2332,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // funnel. Swept in test/convsweep.mjs.
   shotAimBase: 0.35, shotAimSkill: 0.55,
   shotV0: 17, shotVSkill: 11, shotNoiseDeg: 3.2, shotNoiseSkill: 7, shotNoisePress: 3.2,
+  // THE RUN-UP. shotRunV is the closing speed that buys all of it -- 5 m/s, which is a man properly
+  // running onto it rather than a man shuffling forward. shotVRun is what it adds to the strike and
+  // shotNoiseRun is what it costs in accuracy, because hitting one on the run is harder as well as
+  // harder-struck and a free +5 m/s would simply be a buff. shotRunK is what the DECISION is allowed
+  // to believe the momentum is worth, and it is gated to range: inside shotRunD the keeper has no
+  // time whatever the ball is doing, and by shotRunD + shotRunFade pace is most of what beats him.
+  // shotRunK is set from the flight, not swept: at twenty-two metres +5 m/s takes the ball's time to
+  // the goal line from 1.04 s to 0.87, a sixth of the keeper's window, and the decision is allowed to
+  // believe about that much. 0.45 was a guess and it cost goals -- an over-valued shot is a
+  // misjudged one, and the shot model is roughly right, so misjudging it can only lose.
+  shotRunV: 5, shotVRun: 5, shotNoiseRun: 0.6, shotRunK: 0.2, shotRunD: 11, shotRunFade: 8,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very
   // highest a shot could arrive was 2.67 m and 0.3% of them cleared a 2.44 m bar. Measured by

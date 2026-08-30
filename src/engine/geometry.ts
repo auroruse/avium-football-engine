@@ -1,5 +1,5 @@
 // The pitch, and every spatial question asked about it.
-import { CFG } from "./config";
+import { CFG, ME_DT } from "./config";
 import { meGroundSpeed, meRollK, meRollR } from "./ball";
 
 export const PITCH_L = 105, PITCH_W = 68, ME_HALF_W = PITCH_W / 2, ME_GOAL_W = 7.32;
@@ -10,6 +10,20 @@ export const ME_SIDES = ["home", "away"];
 export const meGoalX = (side) => side === "home" ? PITCH_L : 0;
 
 export const meOther = (side) => side === "home" ? "away" : "home";
+
+// HOW MUCH RUN-UP HE HAS: the part of his own velocity that points at the goal, in m/s, over the
+// speed at which a run-up is worth all it is going to be worth. Nothing in the shot read the
+// striker's velocity at all -- meShootBall set the pace from his finishing attribute and nothing
+// else -- so a man arriving onto a lay-off at six metres a second struck the ball at exactly the
+// pace he would have managed standing over it. That is most of why a shot from range never beat
+// anybody: at twenty-two metres, 25 m/s is 1.04 s of flight and 30 m/s is 0.87, and the difference
+// between those two is the dive the keeper does not reach.
+export function meRun01(p, side) {
+  const dx = meGoalX(side) - p.x, dy = ME_HALF_W - p.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const v = ((p.vx || 0) * dx + (p.vy || 0) * dy) / d / ME_DT;   // per-slice displacement -> m/s
+  return Math.max(0, Math.min(1, v / CFG.shotRunV));
+}
 
 export const meDir = (side) => side === "home" ? 1 : -1;
 

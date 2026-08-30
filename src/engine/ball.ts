@@ -313,7 +313,7 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
   // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
   // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
@@ -327,10 +327,19 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0) {
     const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r.u());
     return Math.max(-3, Math.min(3, z)) * CFG.shotSigma;
   };
-  // How hard he hits it is normally a property of the man. A free kick is the exception: the pace is
+  // How hard he hits it is a property of the man AND of the run he is on -- see meRun01. A free
+  // kick is the exception: the pace is
   // part of the SOLUTION, because clearing a wall and staying under the bar is two constraints and
   // an ordinary strike only has room for one. See meFkArc.
-  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill);
+  // ...AND ONLY FROM RANGE. Ungated this was worth +0.46 goals a match and put every one of them in
+  // the wrong place: measured over 80 fixtures, the share of goals from outside the box did not move
+  // (30.0% against 30.9%) and goals from 25 m+ did not move either (3 against 3). meRun01 reads
+  // closing speed toward goal, and the man with the most of that is a striker running clean through
+  // -- so a free +5 m/s landed on breakaways, which is exactly the shot that did not need it. A
+  // run-up becomes a cannonball at twenty-five metres and a placed finish at eight. Same gate the
+  // decision uses, because the two have to agree about what the momentum is worth.
+  const runD = (run || 0) * Math.max(0, Math.min(1, (d - CFG.shotRunD) / CFG.shotRunFade));
+  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill + runD * CFG.shotVRun);
   // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
   // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
   // Traced: a 20 m shot was down to 7 m/s and still three metres outside the six-yard box when the
@@ -338,7 +347,8 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0) {
   // 1D quadratic drag integrates exactly: x(t) = ln(1 + k*v0*t)/k, so t(d) = (e^(k d) - 1)/(k v0).
   const T = (Math.exp(CFG.ballDrag * d) - 1) / (CFG.ballDrag * v);
   const vz = (tz - mp.bz) / T + 4.905 * T;
-  const sigma = (CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress)
+  const sigma = (CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress
+                 + runD * CFG.shotNoiseRun)
               * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
   mp.bvx = Math.cos(ang) * v; mp.bvy = Math.sin(ang) * v;
