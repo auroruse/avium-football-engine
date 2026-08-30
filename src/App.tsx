@@ -2358,6 +2358,30 @@ function parseStatBoards(text) {
   });
   return boards;
 }
+// Goals, assists and saves are counting stats: the man at the top of those boards got there by
+// playing, so the board order IS the honour. Average rating is not, and MVP read straight off it
+// was going to whoever had one good afternoon -- 1934's international season handed it to a 8.6
+// across four games and 239 minutes, over a keeper who played all nine and every minute of them.
+// Award it the way a real one is awarded: clear a minutes bar first, then be the best of who did.
+const MVP_MIN_SHARE = 0.5;
+function seasonMVP(boards) {
+  const list = boards?.RTG || [];
+  if (!list.length) return null;
+  // The bar is half of however much football the competition actually had, read off whoever played
+  // the most of it. Archives written before the MIN column exists read 0 there, so games stand in.
+  const all = PSTATS_STAT_ORDER.flatMap(k => boards[k] || []);
+  const useMin = all.some(e => e.min > 0);
+  const load = (e) => useMin ? e.min : e.gp;
+  const bar = Math.max(0, ...all.map(load)) * MVP_MIN_SHARE;
+  const goals = new Map((boards.G || []).map(e => [e.player, e.v]));
+  // An RTG board of nothing but bit-part players clears nobody, and the honour still has to land
+  // somewhere: fall back to the whole board rather than printing a dash.
+  const pool = list.filter(e => load(e) >= bar);
+  return (pool.length ? pool : list).reduce((best, r) =>
+    ((r.v ?? -Infinity) - (best.v ?? -Infinity)
+     || (goals.get(r.player) ?? 0) - (goals.get(best.player) ?? 0)
+     || load(r) - load(best)) > 0 ? r : best);
+}
 function parseChangelog(text) {
   const rows = text.replace(/\r\n/g, "\n").split("\n").filter(r => r.trim()).map(r => r.split("\t"));
   return rows.slice(1)
@@ -10233,7 +10257,7 @@ export default function App() {
                             </span>) : <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}</td>
                           <td style={tdCell}>{playerCell(x, top("G"))}</td>
                           <td style={tdCell}>{playerCell(x, top("A"))}</td>
-                          <td style={tdCell}>{playerCell(x, top("RTG"))}</td>
+                          <td style={tdCell}>{playerCell(x, seasonMVP(b2))}</td>
                           <td style={tdCell}>{playerCell(x, top("SV"))}</td>
                         </tr>
                       </tbody>
