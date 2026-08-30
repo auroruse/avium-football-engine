@@ -1821,9 +1821,13 @@ function parseBulk(text) {
     let primaryColor = null, secondaryColor = null;
     if (meta.length > 0 && isHexColor(meta[0])) primaryColor = meta.shift();
     if (meta.length > 0 && isHexColor(meta[0])) secondaryColor = meta.shift();
-    let city = null, stadium = null;
+    let city = null, stadium = null, stadiumCap = null;
     if (meta.length > 0) city = stripVenue(meta.shift());
-    if (meta.length > 0) stadium = stripVenue(meta.shift());
+    // The capacity is split off rather than kept inline, because every reader of `stadium` -- image
+    // lookups, the venue index, the match backdrop -- assumes it is a bare name. Storing the number
+    // beside it is the only way the reader ever sees it without that invariant having to hold in
+    // ten places at once.
+    if (meta.length > 0) { const raw = meta.shift(); stadium = stripVenue(raw); stadiumCap = venueCap(raw); }
     // National teams carry their confederation in the last column. Clubs have no such column,
     // so meta is already empty for them and this is a no-op.
     const conference = meta.length > 0 ? meta.shift().trim() : null;
@@ -1831,7 +1835,7 @@ function parseBulk(text) {
     // Key off p.slot, not the array index: buildSquad drops unfilled bench slots, so a row with a
     // gap has a shorter squad than its column list and the two no longer line up positionally.
     squad.forEach(p => { const i = p.slot; if (playerFullNames[i]) p.fullName = playerFullNames[i]; if (playerNats[i]) p.nat = playerNats[i]; });
-    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(conference ? {conference} : {}), ...(manager ? {manager} : {}), ...(mgmt != null ? {mgmt} : {}), ...(managerNat ? {managerNat} : {}) };
+    return { ...base, style, formation, strategy, squad, ...(primaryColor ? {primaryColor} : {}), ...(secondaryColor ? {secondaryColor} : {}), ...(city ? {city} : {}), ...(stadium ? {stadium} : {}), ...(stadiumCap ? {stadiumCap} : {}), ...(conference ? {conference} : {}), ...(manager ? {manager} : {}), ...(mgmt != null ? {mgmt} : {}), ...(managerNat ? {managerNat} : {}) };
   }).filter(Boolean).map(t => { const sk = squadSkill(t.squad); return sk == null ? t : { ...t, skill: sk }; });
 }
 // A team is worth what its players are worth. This used to be an authored SKILL (T) column sitting
@@ -3308,15 +3312,27 @@ const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), 
 // Heliodrome @ TIU" was the only one: the file was correct, the encoding was correct and the server
 // answered 200 for the URL, but neither the picker thumbnail nor the match backdrop would load it —
 // so the "@" is off the wire entirely rather than debugged further. Display name keeps the "@".
-const stadiumBg = (name) => [name.normalize("NFC"), name.normalize("NFD")]
+const stadiumSrcs = (name) => [name.normalize("NFC"), name.normalize("NFD")]
   // Percent-encoded AND raw. encodeURIComponent escapes "@" to %40, which is correct but is a
   // different request path from the literal "@" — anything in front of the files that matches on
   // the raw path (a proxy, a CDN, a host that does not decode) sees the two as different names, and
   // only "Hikari Heliodrome @ TIU" has an "@" to trip on. The raw form is legal inside url("...");
   // the browser encodes the spaces itself and leaves the "@" alone.
   .flatMap(n => [encodeURIComponent(n), n])
-  .flatMap(n => [".jpg", ".jpeg"].map(ext => `url("${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}")`))
-  .join(", ");
+  .flatMap(n => [".jpg", ".jpeg"].map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`));
+const stadiumBg = (name) => stadiumSrcs(name).map(u => `url("${u}")`).join(", ");
+// A ground shown at its own aspect ratio has to be a real <img>: a background-image has no
+// intrinsic size, so a div can only ever be told a height. Same candidate list, walked on error
+// instead of by the CSS fallback chain.
+const StadiumImg = ({ name, style }) => {
+  const srcs = stadiumSrcs(name);
+  const [i, setI] = useState(0);
+  useEffect(() => setI(0), [name]);
+  return i < srcs.length
+    ? <img src={srcs[i]} alt="" onError={() => setI(n => n + 1)}
+           style={{ display: "block", width: "100%", height: "auto", borderRadius: 10, border: "1px solid var(--chrome-border-33)", ...style }} />
+    : null;
+};
 
 const PANEL_HEAD_INSET = 12;
 const LS = { tight: "0.08em", label: "0.12em", head: "0.16em", caps: "0.18em" };
@@ -9894,7 +9910,7 @@ export default function App() {
                   <div style={SECTION_RULE} />
                   {(() => {
                     const st = stripVenue(t.stadium || "");
-                    const cap = venueCap(t.stadium);
+                    const cap = venueCap(t.stadium) || t.stadiumCap || null;
                     // A club sits in the nation its league belongs to; a national side is that nation,
                     // and printing its own name after the city says nothing.
                     const nat = isIntlTeam ? null : leagueNation(t.league);
@@ -9902,7 +9918,7 @@ export default function App() {
                     // the ink has to follow the fill rather than the theme -- a navy kit and a white
                     // one cannot share a text colour.
                     const block = (label, body, style) => (
-                      <div style={{ border: "1px solid var(--chrome-border-33)", borderRadius: 10, padding: "10px 14px", minWidth: 0, ...style }}>
+                      <div style={{ border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "10px 14px", minWidth: 0, ...style }}>
                         <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>{label}</div>
                         {body}
                       </div>);
@@ -9921,12 +9937,11 @@ export default function App() {
                       {/* The ground is the page's one photograph, so it runs the full width and the
                           caption sits under it rather than beside it. Unphotographed grounds get no
                           frame -- the caption alone still reads. */}
-                      {STADIUM_IMAGES.includes(st) &&
-                        <div style={{ height: 300, borderRadius: 10, backgroundImage: stadiumBg(st), backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border-33)" }} />}
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "10px 2px 0" }}>
+                      {STADIUM_IMAGES.includes(st) && <StadiumImg name={st} />}
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "10px 0 0" }}>
                         <div style={{ minWidth: 0, fontSize: 15, fontWeight: 600, color: "var(--ui-text)" }}>
                           {ed
-                            ? <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="Stadium (capacity)" style={{ ...inp, padding: "4px 8px", fontSize: 13, width: 320 }} />
+                            ? <input value={t.stadium ? t.stadium + (cap ? ` (${cap})` : "") : ""} onChange={e => { const v = e.target.value; updateTeam(t.id, "stadium", stripVenue(v) || null); updateTeam(t.id, "stadiumCap", venueCap(v)); }} placeholder="Stadium (capacity)" style={{ ...inp, padding: "4px 8px", fontSize: 13, width: 320 }} />
                             : <>{st || <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}
                                 {cap && <span style={{ ...mono, marginLeft: 8, fontSize: 11, fontWeight: 400, color: "var(--chrome-muted)" }}>{cap}</span>}</>}
                         </div>
