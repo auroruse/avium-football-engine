@@ -3371,13 +3371,15 @@ function WorldToggle({ value, onChange, style, btnStyle }) {
 //
 // Every clip is turned so the scoring side attacks RIGHT, whichever way they were really kicking:
 // a reel that swaps ends between goals is a reel nobody can read.
+// A CARD DOES NOT PLAY ITSELF. Four of these on screen all running at once is four things moving
+// and nothing to watch; each holds on the first frame of its move until it is asked.
 const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
 function GoalReplay({ clip, hc, ac }) {
   const F = clip.frames, last = F.length - 1;
   const [pos, setPos] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const posRef = useRef(0);
-  useEffect(() => { posRef.current = 0; setPos(0); setPlaying(true); }, [clip]);
+  useEffect(() => { posRef.current = 0; setPos(0); setPlaying(false); }, [clip]);
   useEffect(() => {
     if (!playing || last < 1) return;
     let raf = 0, prev = 0;
@@ -3405,7 +3407,7 @@ function GoalReplay({ clip, hc, ac }) {
   const replay = () => { posRef.current = 0; setPos(0); setPlaying(true); };
   return (
     <div style={{ position: "relative" }}>
-      <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", borderRadius: 8, background: "#142c1a" }}>
+      <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", background: "#142c1a" }}>
         {Array.from({ length: 6 }, (_, k) => (
           <rect key={"m" + k} x={k * 17.5} y={0} width={17.5} height={68} fill={k % 2 ? "#173119" : "#142c17"} />))}
         <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
@@ -3433,13 +3435,19 @@ function GoalReplay({ clip, hc, ac }) {
         <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />
         <rect x={0} y={67.2} width={105 * (last < 1 ? 1 : pos / last)} height={0.8} fill="#ffd166" />
       </svg>
-      {/* One control, and it only appears once the clip has stopped: while it is running there is
-          nothing to ask for, and a pause button on a four-second replay is furniture. */}
+      {/* ONE CONTROL, in the middle, and only while the clip is at rest. Before the first press it
+          says play and after the last frame it says play again, which is the same instruction; a
+          pause button on a four-second replay is furniture. */}
       {!playing && (
-        <button onClick={replay} title="Play again"
-          style={{ position: "absolute", right: 8, bottom: 10, width: 26, height: 26, borderRadius: 13,
-                   border: "1px solid rgba(255,255,255,.28)", background: "rgba(0,0,0,.45)", cursor: "pointer",
-                   color: "#fff", fontSize: 11, lineHeight: "24px", padding: 0, fontFamily: "inherit" }}>&#9654;</button>)}
+        <button onClick={replay} title={pos > 0 ? "Play again" : "Play"} aria-label="Play"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
+                   background: pos > 0 ? "rgba(0,0,0,.18)" : "rgba(0,0,0,.28)", cursor: "pointer",
+                   display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+          <span style={{ width: 44, height: 44, borderRadius: 22, background: "rgba(0,0,0,.5)",
+                         border: "1px solid rgba(255,255,255,.34)", color: "#fff", fontSize: 16,
+                         display: "flex", alignItems: "center", justifyContent: "center",
+                         paddingLeft: 3, boxSizing: "border-box" }}>&#9654;</span>
+        </button>)}
     </div>);
 }
 // One labelled figure. Used in a row so a tournament's properties read as a stat block.
@@ -6306,9 +6314,6 @@ export default function App() {
   // inside .app-body — zoom breaks hover hit-testing on descendants — so the counts were readable
   // and the offending players were not. Click opens them instead.
   const [warnOpen, setWarnOpen] = useState(null);
-  // Which goal the post-match reel is playing. Reset by the key on GoalReplay rather than here:
-  // a new match rebuilds the clip list, and the key changing is what restarts the playback.
-  const [meClipI, setMeClipI] = useState(0);
   // Measure the real row height rather than hardcoding it — line-height differs between themes,
   // and a wrong constant makes the spacer rows drift out of sync with the scrollbar.
   useEffect(() => {
@@ -13102,35 +13107,31 @@ export default function App() {
                           {clips.length > 0 && (<>
                             {rule(3)}
                             {sect(clips.length === 1 ? "The Goal" : "The Goals")}
-                            {/* ONE VIEWER, NOT A WALL OF CARDS. A reel is picked from, not scanned:
-                                the goals are a strip of buttons and the one you press plays. The
-                                strip goes when there is only one goal to play -- a picker with a
-                                single option is a label pretending to be a control. */}
-                            {clips.length > 1 && (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 12 }}>
-                                {clips.map((c, gi) => { const on = gi === meClipI; return (
-                                  <button key={gi} onClick={() => setMeClipI(gi)}
-                                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 7,
-                                             cursor: on ? "default" : "pointer", fontFamily: "inherit", fontSize: 11,
-                                             border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
-                                             background: on ? "var(--chrome-brand-33)" : "transparent",
-                                             color: on ? "var(--ui-text)" : "var(--chrome-muted)" }}>
-                                    <span style={{ width: 7, height: 7, borderRadius: 4, background: c.side === "home" ? HC : AC }} />
-                                    <span style={{ ...mono, fontSize: 10 }}>{c.min}&#39;</span>
-                                    <span style={{ fontWeight: on ? 600 : 500 }}>{(c.txt || "").split(",")[0] || "Goal"}</span>
-                                    <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted-66)" }}>{c.score}</span>
-                                  </button>); })}
-                              </div>)}
-                            {(() => { const c = clips[Math.min(meClipI, clips.length - 1)];
-                              return (<div style={{ maxWidth: 560, margin: "0 auto" }}>
-                                <GoalReplay key={c.min + "-" + c.score} clip={c} hc={HC} ac={AC} />
-                                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8,
-                                              fontSize: 11, color: "var(--chrome-muted)" }}>
-                                  <span style={{ ...mono, color: "var(--ui-text)" }}>{c.min}&#39;</span>
-                                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.txt || ""}</span>
-                                  <span style={{ ...mono }}>{c.score}</span>
-                                </div>
-                              </div>); })()}
+                            {/* EVERY GOAL AT ONCE, each one a replay waiting to be asked. A grid,
+                                not a wrapping flex row: with flex-grow the last row's cards stretch
+                                to fill it, so a lone fourth goal came out half again as big as the
+                                three above it and centred under them. Grid tracks are the same width
+                                whether the row is full or not, and they start at the left. */}
+                            <div style={{ display: "grid", gap: 14, marginTop: 4,
+                                          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+                                          justifyContent: "start" }}>
+                              {clips.map((c, gi) => { const [who, par] = clipNames(c.txt);
+                                return (
+                                <div key={gi} style={{ minWidth: 0, background: "var(--chrome-panel)", borderRadius: 8,
+                                                       border: "1px solid var(--chrome-border)", overflow: "hidden" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px" }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0,
+                                                   background: c.side === "home" ? HC : AC }} />
+                                    <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.min}&#39;</span>
+                                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
+                                                   whiteSpace: "nowrap", fontSize: 12, color: "var(--ui-text)", fontWeight: 600 }}>
+                                      {who}{par && <span style={{ fontWeight: 400, color: "var(--chrome-muted)" }}> ({par})</span>}
+                                    </span>
+                                    <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)", flexShrink: 0 }}>{c.score}</span>
+                                  </div>
+                                  <GoalReplay clip={c} hc={HC} ac={AC} />
+                                </div>); })}
+                            </div>
                           </>)}
                         </div>);
                       })()}
