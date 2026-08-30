@@ -9892,47 +9892,59 @@ export default function App() {
                   </div>
                   </FitHeight>
                   <div style={SECTION_RULE} />
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 24, alignItems: "stretch" }}>
-                  <div />
                   {(() => {
                     const st = stripVenue(t.stadium || "");
-                    const row = (label, value, first) => (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, minHeight: 34, padding: "0 12px", borderTop: first ? "none" : "1px solid var(--chrome-border-33)" }}>
-                        <span style={{ ...cardLabel, textAlign: "left", flexShrink: 0 }}>{label}</span>
-                        <div style={{ minWidth: 0, textAlign: "right" }}>{value}</div>
-                      </div>);
                     const cap = venueCap(t.stadium);
                     // A club sits in the nation its league belongs to; a national side is that nation,
                     // and printing its own name after the city says nothing.
                     const nat = isIntlTeam ? null : leagueNation(t.league);
-                    return (
-                    <div style={{ borderLeft: "1px solid var(--chrome-border-33)", paddingLeft: 24 }}>
-                      {/* Only the photographed grounds get a picture; the column reads the same
-                          without one rather than holding an empty frame open. */}
+                    // The three blocks under the ground. Home and away wear the colour they name, so
+                    // the ink has to follow the fill rather than the theme -- a navy kit and a white
+                    // one cannot share a text colour.
+                    const block = (label, body, style) => (
+                      <div style={{ border: "1px solid var(--chrome-border-33)", borderRadius: 10, padding: "10px 14px", minWidth: 0, ...style }}>
+                        <div style={{ ...cardLabel, textAlign: "left", marginBottom: 6 }}>{label}</div>
+                        {body}
+                      </div>);
+                    const kit = (f, lbl, fallback) => {
+                      const hex = t[f] || fallback;
+                      const ink = (lumOf(hex) ?? 0) > 0.55 ? "#101418" : "#f3f6fa";
+                      return block(lbl,
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                          <span style={{ ...mono, fontSize: 13, letterSpacing: "0.06em", color: ink }}>{hex.toUpperCase()}</span>
+                          {ed && <input type="color" value={hex} onChange={e => updateTeam(t.id, f, e.target.value)}
+                                        style={{ width: 26, height: 26, border: `1px solid ${ink}44`, borderRadius: 6, cursor: "pointer", background: "none", flexShrink: 0 }} />}
+                        </div>,
+                        { background: hex, borderColor: `${ink}33` });
+                    };
+                    return (<>
+                      {/* The ground is the page's one photograph, so it runs the full width and the
+                          caption sits under it rather than beside it. Unphotographed grounds get no
+                          frame -- the caption alone still reads. */}
                       {STADIUM_IMAGES.includes(st) &&
-                        <div style={{ height: 132, marginTop: TH_PAD_Y, marginBottom: 4, borderRadius: 8, backgroundImage: stadiumBg(st), backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border-33)" }} />}
-                      {row("Code", ed
-                        ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "4px 8px", fontSize: 12, width: 72, textAlign: "right", letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} />
-                        : <RO mono style={{ letterSpacing: "0.08em" }}>{t.code || abbr(t.name, t.code)}</RO>, true)}
-                      {row("Stadium", ed
-                        ? <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="Stadium (capacity)" style={{ ...inp, padding: "4px 8px", fontSize: 12, width: "100%", textAlign: "right" }} />
-                        : <RO>{stripVenue(t.stadium)}{cap && <span style={{ ...mono, marginLeft: 8, fontSize: 11, color: "var(--chrome-muted)" }}>{cap}</span>}</RO>)}
-                      {row("Location", ed
-                        ? <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="City" style={{ ...inp, padding: "4px 8px", fontSize: 12, width: "100%", textAlign: "right" }} />
-                        : <RO>{t.city ? <CityLink name={t.city} /> : null}{t.city && nat ? ", " : ""}
-                            {nat && <span className="cell-link" onClick={() => openTeam(nat)} style={{ color: "var(--chrome-muted)" }}>{nat.name}</span>}</RO>)}
-                      {row("Colours",
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
-                          {[["primaryColor", "Home", "var(--ui-info)"], ["secondaryColor", "Away", t.primaryColor || "#2a3a50"]].map(([f, lbl, fallback]) => (
-                            <label key={f} style={{ display: "flex", gap: 6, alignItems: "center", cursor: ed ? "pointer" : "default" }}>
-                              <span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>{lbl}</span>
-                              {ed
-                                ? <input type="color" value={t[f] || fallback} onChange={e => updateTeam(t.id, f, e.target.value)} style={{ width: 24, height: 24, border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", background: "none" }} />
-                                : <span style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--chrome-border)", background: t[f] || fallback, flexShrink: 0 }} />}
-                            </label>))}
-                        </div>)}
-                    </div>); })()}
-                  </div>
+                        <div style={{ height: 300, borderRadius: 10, backgroundImage: stadiumBg(st), backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--chrome-border-33)" }} />}
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "10px 2px 0" }}>
+                        <div style={{ minWidth: 0, fontSize: 15, fontWeight: 600, color: "var(--ui-text)" }}>
+                          {ed
+                            ? <input value={t.stadium || ""} onChange={e => updateTeam(t.id, "stadium", e.target.value || null)} placeholder="Stadium (capacity)" style={{ ...inp, padding: "4px 8px", fontSize: 13, width: 320 }} />
+                            : <>{st || <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}
+                                {cap && <span style={{ ...mono, marginLeft: 8, fontSize: 11, fontWeight: 400, color: "var(--chrome-muted)" }}>{cap}</span>}</>}
+                        </div>
+                        <div style={{ minWidth: 0, fontSize: 12, color: "var(--chrome-muted)" }}>
+                          {ed
+                            ? <input value={t.city || ""} onChange={e => updateTeam(t.id, "city", e.target.value || null)} placeholder="City" style={{ ...inp, padding: "4px 8px", fontSize: 12, width: 200, textAlign: "right" }} />
+                            : <>{t.city ? <CityLink name={t.city} /> : null}{t.city && nat ? ", " : ""}
+                                {nat && <span className="cell-link" onClick={() => openTeam(nat)}>{nat.name}</span>}</>}
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12, marginTop: 12 }}>
+                        {block("Code", ed
+                          ? <input value={t.code ?? abbr(t.name, t.code)} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3); if (v && teams.some(o => o.id !== t.id && (o.code || abbr(o.name, o.code)) === v)) { setDupCodeId(t.id); setTimeout(() => setDupCodeId(id => id === t.id ? null : id), 1500); return; } updateTeam(t.id, "code", v); }} style={{ ...inp, padding: "4px 8px", fontSize: 13, width: 84, letterSpacing: "0.08em", borderColor: dupCodeId === t.id ? "var(--ui-danger)" : "var(--chrome-border)" }} />
+                          : <div style={{ ...mono, fontSize: 13, letterSpacing: "0.08em", color: "var(--ui-text)" }}>{t.code || abbr(t.name, t.code)}</div>)}
+                        {kit("primaryColor", "Home", "#81a1c1")}
+                        {kit("secondaryColor", "Away", t.primaryColor || "#2a3a50")}
+                      </div>
+                    </>); })()}
                 </>);
               })()}
                     {/* Read-only pages carry the tactics on the manager's card in the Squad
