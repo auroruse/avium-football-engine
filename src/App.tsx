@@ -3346,7 +3346,7 @@ function PanelTitle({ children, sub, accent, id }) {
 // The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
 // selections, the two live-match slots and a tournament's participants all survive a switch, which
 // is what makes an Avium side against an Arterra one a normal thing to set up rather than a mode.
-function WorldToggle({ value, onChange, style }) {
+function WorldToggle({ value, onChange, style, btnStyle }) {
   return (<div style={{ display: "flex", gap: 3, flexShrink: 0, ...style }}>
     {WORLDS.map(([id, label]) => { const on = value === id; return (
       <button key={id} onClick={() => onChange(id)}
@@ -3354,7 +3354,7 @@ function WorldToggle({ value, onChange, style }) {
                  fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap",
                  border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
                  background: on ? "var(--chrome-brand-33)" : "transparent",
-                 color: on ? "var(--chrome-brand)" : "var(--chrome-muted)" }}>{label}</button>); })}
+                 color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", ...btnStyle }}>{label}</button>); })}
   </div>);
 }
 // One labelled figure. Used in a row so a tournament's properties read as a stat block.
@@ -9943,9 +9943,10 @@ export default function App() {
 
           {/* ── Competitions ── */}
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: 5, borderBottom: "1px solid var(--chrome-border)" }}>
+            <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", display: "flex", alignItems: "center", position: "relative", borderBottom: "1px solid var(--chrome-border)" }}>
               <PanelTitle sub={`${lgRail.length}`}>Competitions</PanelTitle>
-              <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: PANEL_HEAD_INSET }} />
+              <WorldToggle value={world} onChange={setWorld} btnStyle={{ padding: "3px 7px", fontSize: 9 }}
+                style={{ position: "absolute", right: 14, bottom: 5 }} />
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {[["Directory", [
