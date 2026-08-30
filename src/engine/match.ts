@@ -1837,7 +1837,8 @@ export function meTick(s, rng, out) {
             dead: sh && !sh.p ? 1 : 0, noShot: sh ? 0 : 1,
             lt: sh ? (sh.lt ?? 1e9) : mp.tick - (mp._loose ?? -1e9),
             pt: sh ? (sh.pt ?? -1) : (mp.possT ?? -1),
-            d: sh ? sh.d : null, sgk: mp.tick - (mp._gkKick ?? -1e9) });
+            d: sh ? sh.d : null, gkd: sh ? sh.gkd : null, gko: sh ? sh.gko : null,
+            sgk: mp.tick - (mp._gkKick ?? -1e9) });
           if (globalThis.__prov) globalThis.__prov._parried = 0;
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
           // winner is scored as the goal that won it rather than as the one that made it 2-1.
@@ -3029,9 +3030,17 @@ export function meTick(s, rng, out) {
     mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: xgRec, t0: mp.tick, p,
                 lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1,
                 d: Math.hypot(gx - p.x, p.y - ME_HALF_W) };
-    // Shot genesis, harness-only: same gate pattern as __prov.
+    // Shot genesis, harness-only: same gate pattern as __prov. WHERE THE KEEPER WAS as well as
+    // where the shot came from -- a goal conceded with him twelve metres off his line and still
+    // committed to a ball he lost the race for is a different fact from a goal conceded on his line,
+    // and only the pair of them can say which is happening.
+    if (globalThis.__shots || globalThis.__prov) {
+      const gkD = (s.players[meOther(side)] || []).find(q => q && q.pos === "GK" && !q.off);
+      mp.shot.gkd = gkD ? Math.hypot(gkD.x - gx, gkD.y - ME_HALF_W) : -1;
+      mp.shot.gko = gkD && gkD._gkOut > 0 ? 1 : 0;
+    }
     if (globalThis.__shots) globalThis.__shots.push({ side, d: mp.shot.d, pt: mp.shot.pt,
-      lt: mp.shot.lt, press, xg: xgRec });
+      lt: mp.shot.lt, press, xg: xgRec, gkd: mp.shot.gkd, gko: mp.shot.gko });
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted

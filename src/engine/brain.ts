@@ -1516,9 +1516,21 @@ export function meShape(s, side) {
         // badly. A ball in his hands cannot be tackled, so collecting it does not merely win the
         // duel, it ends the attack outright. That is worth going for even when he would get there
         // after somebody else, because the alternative is a contest and this is not one.
-        const mayHandle = outAt < CFG.gkBoxR && mp.lastSide !== side;
-        const edge = mayHandle ? CFG.gkRushEdgeHands
-                   : outAt < CFG.gkBoxR ? CFG.gkRushEdgeBox : CFG.gkRushEdge;
+        // ...AND THE HANDICAP FADES WITH HOW FAR OUT HE WOULD MEET IT. The box concession is a flat
+        // -260 ms anywhere inside a 16.5 m radius, which is the licence to lose a race by a quarter
+        // of a second and go anyway. That is right for a ball rolling at his line -- the alternative
+        // really is watching it in -- and it is how a keeper ends up fifteen metres out, beaten, with
+        // the ball rolled into an empty net. Measured over 200 matches and 4,758 shots, holding SHOT
+        // DISTANCE FIXED: from 8-12 m he concedes 6.4% of shots taken with him 4-6.5 m off his line
+        // and 19.1% with him past 9 m; from 12-18 m, 3.9% against 16.0%. Three to four times worse on
+        // the same shot. So the concession is now anchored where it is true -- on his own line -- and
+        // ramps back to the ordinary margin at the edge of the area, where he is a long way from
+        // home and a 50/50 is a gamble he does not have to take.
+        const inBox = outAt < CFG.gkBoxR;
+        const mayHandle = inBox && mp.lastSide !== side;
+        const near = inBox ? Math.max(0, 1 - outAt / CFG.gkBoxR) : 0;
+        const boxEdge = mayHandle ? CFG.gkRushEdgeHands : CFG.gkRushEdgeBox;
+        const edge = inBox ? CFG.gkRushEdge + (boxEdge - CFG.gkRushEdge) * near : CFG.gkRushEdge;
         // OUTSIDE HIS AREA, WINNING THE RACE IS NOT THE QUESTION. He was sweeping every loose
         // ball he could reach first, including ones a defender had fully covered -- leaving the
         // goal for a ball that was nobody's threat. Beyond the box he now goes only when the
@@ -1589,13 +1601,35 @@ export function meShape(s, side) {
           const gb = Math.hypot(p.x - mp.bx, p.y - mp.by);
           if (bg > CFG.reach * CFG.playReach * CFG.gkPounceGap
               && gb < bg * (CFG.gkPounceLo + CFG.gkPounceMind * meMind(p))) {
+            // CLEARED, on the way past. The gate is a ratio of distances rather than a race, which
+            // looks like exactly the thing that sends a keeper out for a ball he cannot reach -- so
+            // it was instrumented with both times to the ball over 40 matches. It fires 0.8 times a
+            // match and he loses the race in 6.1% of them, never by more than 200 ms. Not the leak.
             p._tx = mp.bx; p._ty = mp.by; p._closing = true;
             continue;
           }
         }
+        // ...AND HE STAYS INSIDE HIS OWN CEILING. gkStand short of the BALL has no floor under it:
+        // a carrier at the edge of the area put his target 13 m off the goal line, and at the top of
+        // the D more than that. gkOutMax is already the answer to "the furthest off his line he ever
+        // stands" -- out2 below clamps to it hard, skill and all -- and this branch was the one
+        // place in the keeper that ignored it. Measured over 200 matches, 4,590 shots, holding SHOT
+        // DISTANCE FIXED so this is not just "he is out because the ball is close": from 8-12 m he
+        // conceded 6.4% of shots at 4-6.5 m off his line, 11.6% at 6.5-9 and 19.1% beyond 9; from
+        // 12-18 m, 3.9% / 5.8% / 16.0%. Three to four times worse on the same shots, and 63% of
+        // every open-play goal was struck with him more than 6.5 m out. Only this branch could put
+        // him there -- out2 cannot exceed the cap.
+        // Pulled back ALONG THE BISECTOR rather than straight at the goal, so he keeps the angle he
+        // came out to cover; coming out and being on his angle stay the same movement.
         const [mx3, my3] = meGkAngle(p, own, mp.bx, mp.by);
-        p._tx = mp.bx + mx3 * CFG.gkStand;
-        p._ty = mp.by + my3 * CFG.gkStand;
+        let tx3 = mp.bx + mx3 * CFG.gkStand, ty3 = mp.by + my3 * CFG.gkStand;
+        const out3 = Math.hypot(tx3 - own, ty3 - ME_HALF_W);
+        if (out3 > CFG.gkOutMax) {
+          const f3 = CFG.gkOutMax / out3;
+          tx3 = own + (tx3 - own) * f3;
+          ty3 = ME_HALF_W + (ty3 - ME_HALF_W) * f3;
+        }
+        p._tx = tx3; p._ty = ty3;
         p._closing = true;
         continue;
       }
