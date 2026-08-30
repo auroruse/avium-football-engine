@@ -2528,26 +2528,18 @@ const PRESET_CLUBS = Object.entries(NATION_TSV).flatMap(([nat, raw]) =>
 // Which continent each confederation covers, and the order the rail lists them in: strongest first.
 // Averaged off the catalog rather than the live roster, so the rail does not reshuffle under you
 // while you edit a team's skill.
-const CONFERENCE_CONTINENT = { CONSEAF: "Elysia", EUFA: "Evria", PFA: "Pelagonia", VAFC: "Valtheria",
-                              Eastern: "Eastern", Western: "Western" };
+const CONFERENCE_CONTINENT = { CONSEAF: "Elysia", EUFA: "Evria", PFA: "Pelagonia", VAFC: "Valtheria" };
 const confAvgSkill = (c) => {
   const ts = PRESET_AVIUM.filter(t => t.conference === c);
   return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0;
 };
 const CONFERENCE_NAMES = [...new Set(PRESET_AVIUM.map(t => t.conference).filter(Boolean))].sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
-const contAvgSkill = (c) => { const ts = PRESET_ARTERRA.filter(t => t.conference === c);
-  return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0; };
-const ARTERRA_CONTS = [...new Set(PRESET_ARTERRA.map(t => t.conference).filter(Boolean))]
-  .sort((a, b) => contAvgSkill(b) - contAvgSkill(a));
-const IS_CONFERENCE = new Set([...CONFERENCE_NAMES, ...ARTERRA_CONTS]);
-// Which world a rail row's art lives in. Both continents fall back to the Arterra crest below, so
-// one file covers the whole world until somebody draws a badge for a continent.
-const ARTERRA_RAIL = new Set([ARTERRA_LEAGUE, ...ARTERRA_CONTS]);
+const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 
 // A roster saved before the conference column existed comes back out of localStorage without one,
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
-const CONF_BY_CODE = new Map([...PRESET_AVIUM, ...PRESET_ARTERRA].filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
+const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
 const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "Liga-ye B\u0101lande": 2 };
 const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
@@ -2597,11 +2589,10 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
-  const w = ARTERRA_RAIL.has(lg) ? "arterra" : "avium";
+  const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
   return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
-    .concat(w === "arterra" ? [url("leagues", ARTERRA_LEAGUE)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
 // Shared by both roster headers so they line up. The right-hand one stacks a label over a value in
@@ -2714,10 +2705,11 @@ const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 
 const REAL_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) >= MIN_DIVISION);
 const MISC_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) < MIN_DIVISION);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
-const LEAGUE_ORDER = [...CONFERENCE_NAMES, ...ARTERRA_CONTS, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
+const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
-  ...PRESET_ARTERRA.map(t => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra" })),
+  ...PRESET_ARTERRA.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
+                                                     ...(conference ? { continent: conference } : null) })),
   ...PRESET_CLUBS.map(t => ({ ...t, world: "avium" })),
 ].map(({ conference, nat, ...t }) => ({
   ...t,
@@ -10278,7 +10270,7 @@ export default function App() {
                       return lgTeamSort.asc ? c : -c;
                     }).map((t, i) => {
                       const lg = railLeague(t);                       // the confederation for a nation, the league for a club
-                      const home = isIntlView ? (CONFERENCE_CONTINENT[lg] || "—") : (leagueNation(t.league)?.name || "—");
+                      const home = isIntlView ? (t.continent || CONFERENCE_CONTINENT[lg] || "—") : (leagueNation(t.league)?.name || "—");
                       const ln = teamLinesById.get(t.id) || { att: 0, mid: 0, def: 0 };
                       return (
                       <tr key={t.id} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
