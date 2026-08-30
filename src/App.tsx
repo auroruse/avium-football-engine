@@ -5,6 +5,7 @@ import headerImg from "./header.png";
 import { STADIUM_IMAGES } from "virtual:stadium-images";
 import { PSTATS_FILES } from "virtual:pstats";
 import aviumTSV from "./presets/AVIUM.tsv?raw";
+import arterraTSV from "./presets/ARTERRA.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
 import elvTSV from "./presets/ELV.tsv?raw";
@@ -933,7 +934,7 @@ function allocRandom(teams, ng, format, legs) {
 // divisions are one NCH — that is the point of keying off LEAGUE_NAT rather than the league.
 // A national team separates on its confederation. A team with neither key can never conflict,
 // and every group stays open to it.
-const drawNationKey = (t) => t.league === "Avium International" ? null : (LEAGUE_NAT[t.league] || t.league || null);
+const drawNationKey = (t) => isIntlLeague(t.league) ? null : (LEAGUE_NAT[t.league] || t.league || null);
 const drawConfKey = (t) => t.conference || CONF_BY_CODE.get(t.code) || null;
 // Frozen: this is spread as the default for every rule set, so its pins object is shared by every
 // config that never set one. Freezing turns an in-place edit into a throw instead of a leak.
@@ -1930,7 +1931,7 @@ function parseVenuePool(text) {
 // The scoreboard lifts its text off the stadium photo with this shadow. Shared so the DOM text and
 // the canvas-rendered numbers beside it can't drift apart.
 const SCOREBOARD_SHADOW = "0 1px 3px rgba(0,0,0,0.75)";
-// Crest: looks for an uploaded PNG at /badges/<CODE>.png first; falls back to a plain
+// Crest: looks for an uploaded PNG at /<world>/badges/<CODE>.png first; falls back to a plain
 // shield in the team's home color, outlined in its away color, if none exists.
 function TeamCrest({ team, size = 22, style }) {
   const code = abbr(team?.name, team?.code);
@@ -1944,7 +1945,7 @@ function TeamCrest({ team, size = 22, style }) {
   const dim = num ? null : { width: size, height: `calc(${size} * 1.1)` };
   const wh = num ? { width: size, height: size * 1.1 } : {};
   if (code && !imgFailed) {
-    return <img src={`${import.meta.env.BASE_URL}badges/${code}.png`} alt="" {...wh} style={{ objectFit: "contain", flexShrink: 0, ...dim, ...style }} onError={() => setImgFailed(true)} />;
+    return <img src={`${import.meta.env.BASE_URL}${worldOf(team)}/badges/${code}.png`} alt="" {...wh} style={{ objectFit: "contain", flexShrink: 0, ...dim, ...style }} onError={() => setImgFailed(true)} />;
   }
   const home = team?.primaryColor || "var(--chrome-muted)";
   const away = team?.secondaryColor || team?.primaryColor || "var(--chrome-border)";
@@ -2453,6 +2454,10 @@ function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, has
 // parseBulk reads that off the end of the metadata tail as `conference`, so it is kept rather than
 // filtered on.
 const PRESET_AVIUM = parsePresetTSV(aviumTSV, null, 1, false, true);
+// Arterra is a second world sharing the app and nothing else: its own nations, its own badge
+// art under public/arterra, and no clubs at all. Same sheet shape as AVIUM.tsv minus the
+// confederation column, so the metadata tail simply ends a field early and `conference` is null.
+const PRESET_ARTERRA = parsePresetTSV(arterraTSV, null, 1, false, true);
 // One file per nation, and every club row names its own league in the last column. The catalog is
 // grouped out of that rather than from a hardcoded list of divisions: adding a tier to a nation's
 // sheet is enough to make it appear in the rail and the tournament picker, with no code change.
@@ -2540,9 +2545,22 @@ const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
 // called "All Clubs" would otherwise silently take the view over.
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
+// TWO WORLDS, ONE APP. Avium and Arterra are separate settings with separate art and separate
+// nations, and the toggles in the three pickers filter what each one LISTS -- never what is already
+// picked. That is the whole point: a fixture or a tournament can span both, so a cross-RP game is
+// two ticks in two tabs rather than a mode you have to leave.
+const ARTERRA_LEAGUE = "Arterra International", AVIUM_LEAGUE = "Avium International";
+const WORLDS = [["avium", "Avium"], ["arterra", "Arterra"]];
+const INTL_LEAGUE = { avium: AVIUM_LEAGUE, arterra: ARTERRA_LEAGUE };
+const isIntlLeague = (lg) => lg === AVIUM_LEAGUE || lg === ARTERRA_LEAGUE;
+// A team saved before the worlds split comes back without the field, and every one of those is
+// Avium. Custom teams belong to neither -- nothing in a hand-built row could say which world it is
+// for -- so they list under both rather than being stranded in one.
+const worldOf = (t) => t?.world || (t?.league === ARTERRA_LEAGUE ? "arterra" : "avium");
+const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clubs" };
 const railLeague = (t) =>
-  (t.league === "Avium International" && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
+  (t.league === AVIUM_LEAGUE && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 // League badges in public/leagues, named after the rail row itself — "Nichirin League One.png",
 // "EUFA.png". No manifest and no slug map: LeagueCrest already falls back on a load error, so the
@@ -2567,7 +2585,8 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
-  const url = (dir, x) => `${import.meta.env.BASE_URL}${dir}/${encodeURIComponent(x)}.png`;
+  const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
+  const url = (dir, x) => `${import.meta.env.BASE_URL}${w}/${dir}/${encodeURIComponent(x)}.png`;
   return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER)]);
@@ -2682,15 +2701,16 @@ const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 
 const REAL_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) >= MIN_DIVISION);
 const MISC_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) < MIN_DIVISION);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
-const LEAGUE_ORDER = [...CONFERENCE_NAMES, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
+const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
 const PRESET_CATALOG = [
-  ...PRESET_AVIUM.map(t => ({ ...t, league: "Avium International" })),
-  ...PRESET_CLUBS,
+  ...PRESET_AVIUM.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
+  ...PRESET_ARTERRA.map(t => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra" })),
+  ...PRESET_CLUBS.map(t => ({ ...t, world: "avium" })),
 ].map(({ conference, nat, ...t }) => ({
   ...t,
   // A confederation belongs to a national team. Club rows have no such column, so a value landing
   // there is a stray cell — and an unrecognised one becomes its own row in the rail.
-  ...(t.league === "Avium International" && conference ? { conference } : null),
+  ...(t.league === AVIUM_LEAGUE && conference ? { conference } : null),
   id: t.league + "::" + (t.code || t.name),
 }));
 
@@ -3290,7 +3310,7 @@ const stadiumBg = (name) => [name.normalize("NFC"), name.normalize("NFD")]
   // only "Hikari Heliodrome @ TIU" has an "@" to trip on. The raw form is legal inside url("...");
   // the browser encodes the spaces itself and leaves the "@" alone.
   .flatMap(n => [encodeURIComponent(n), n])
-  .flatMap(n => [".jpg", ".jpeg"].map(ext => `url("${import.meta.env.BASE_URL}stadiums/${n}${ext}")`))
+  .flatMap(n => [".jpg", ".jpeg"].map(ext => `url("${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}")`))
   .join(", ");
 
 const PANEL_HEAD_INSET = 12;
@@ -3321,6 +3341,20 @@ function PanelTitle({ children, sub, accent, id }) {
     <span style={{ width: 3, height: 13, borderRadius: 3, background: accent || "var(--chrome-brand)", flexShrink: 0 }} />
     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", whiteSpace: "nowrap" }}>{children}</span>
     {sub != null && sub !== "" && <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 400 }}>{sub}</span>}
+  </div>);
+}
+// The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
+// selections, the two live-match slots and a tournament's participants all survive a switch, which
+// is what makes an Avium side against an Arterra one a normal thing to set up rather than a mode.
+function WorldToggle({ value, onChange, style }) {
+  return (<div style={{ display: "flex", gap: 3, flexShrink: 0, ...style }}>
+    {WORLDS.map(([id, label]) => { const on = value === id; return (
+      <button key={id} onClick={() => onChange(id)}
+        style={{ flex: 1, padding: "3px 9px", borderRadius: 6, fontFamily: "inherit", cursor: on ? "default" : "pointer",
+                 fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
+                 border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
+                 background: on ? "var(--chrome-brand-33)" : "transparent",
+                 color: on ? "var(--chrome-brand)" : "var(--chrome-muted)" }}>{label}</button>); })}
   </div>);
 }
 // One labelled figure. Used in a row so a tournament's properties read as a stat block.
@@ -3540,12 +3574,12 @@ const XI_STEP_MAX = 2, XI_OOP_PENALTY = 4;
 const xiSteps = (natural, slot) => XI_STEPS[natural]?.[slot] ?? Infinity;
 function buildPlayerIndex(teams) {
   const natNames = new Map();
-  teams.forEach(t => { if (t.league === "Avium International" && t.code) natNames.set(t.code, t.name); });
+  teams.forEach(t => { if (isIntlLeague(t.league) && t.code) natNames.set(t.code, t.name); });
   const resNat = (code) => code ? (natNames.get(code) || code) : null;
   const byName = new Map();
   teams.forEach(t => {
     if (!t.squad) return;
-    const isIntl = t.league === "Avium International";
+    const isIntl = isIntlLeague(t.league);
     t.squad.forEach(p => {
       if (!p.name || p.name.startsWith("#")) return;
       const key = p.fullName || p.name;
@@ -3586,7 +3620,7 @@ function buildPlayerIndex(teams) {
 // The XI is the exact assignment below, locked to the nation's own formation; the bench is filled
 // by broad group and then filled full stop.
 function pickNationalSquad(playerIndex, teams, nat) {
-  const natTeam = teams.find(t => t.league === "Avium International" && t.code === nat);
+  const natTeam = teams.find(t => isIntlLeague(t.league) && t.code === nat);
   const formation = natTeam?.formation || "4-3-3";
   // National teams play international rules, so the selector always picks a full 22:
   // the XI plus an 11-man bench. Nations without the depth simply leave slots empty.
@@ -3755,8 +3789,8 @@ const shotName = (n) => {
 const shotChain = (name) => {
   const b = shotName(name);
   return [...new Set([b.normalize("NFC"), b.normalize("NFD")])]
-    .map((n) => `${import.meta.env.BASE_URL}players/${encodeURIComponent(n)}.png`)
-    .concat(`${import.meta.env.BASE_URL}players/placeholder.jpg`);
+    .map((n) => `${import.meta.env.BASE_URL}avium/players/${encodeURIComponent(n)}.png`)
+    .concat(`${import.meta.env.BASE_URL}avium/players/placeholder.jpg`);
 };
 const PlayerShot = ({ name, size, style }) => {
   const chain = shotChain(name);
@@ -4296,7 +4330,7 @@ export default function App() {
     setTournamentTeamIds(found.map(t => t.id));
     // Open the rails the field came from, so it is visible rather than merely counted.
     setExpandedParticipantLeagues(sv => new Set([...sv,
-      ...found.map(t => t.league === "Avium International" ? t.conference : t.league).filter(Boolean)]));
+      ...found.map(t => railLeague(t)).filter(Boolean)]));
     // A name that no longer matches a team is dropped by the filter above, which would quietly load
     // a 31-team World Cup. Say so instead — renaming a nation is the likely cause and it is easy to
     // miss against a count nobody was checking.
@@ -4315,11 +4349,14 @@ export default function App() {
   // the squad editor still shows/edits each club's own stored number untouched.
   const natOvrMap = useMemo(() => {
     const m = new Map();
-    teams.forEach(t => { if (t.league !== "Avium International" || !t.squad) return; t.squad.forEach(p => { if (!p.name) return; const eff = p.ovr ?? t.skill; if (eff != null) m.set(p.fullName || p.name, eff); }); });
+    // Deliberately AVIUM_LEAGUE and not isIntlLeague: this is the pool that overwrites a club
+    // player's OVR with his national figure, and Arterra has no clubs to feed. Widening it would
+    // only let an Arterra name collide with an Avium one.
+    teams.forEach(t => { if (t.league !== AVIUM_LEAGUE || !t.squad) return; t.squad.forEach(p => { if (!p.name) return; const eff = p.ovr ?? t.skill; if (eff != null) m.set(p.fullName || p.name, eff); }); });
     return m;
   }, [teams]);
   const effTeams = useMemo(() => teams.map(t => {
-    if (t.league === "Avium International" || !t.squad) return t;
+    if (isIntlLeague(t.league) || !t.squad) return t;
     let changed = false;
     const squad = t.squad.map(p => {
       const nOvr = natOvrMap.get(p.fullName || p.name);
@@ -4342,14 +4379,18 @@ export default function App() {
   const editedStyle = (id) => editedTeams.has(id) ? { fontStyle: "italic" } : null;
   // Bulk import only ever creates Custom teams, so save/load belongs to that tab. The open panels
   // are gated on it too — otherwise switching leagues leaves an orphaned editor above the list.
+  const [world, setWorld] = useState("avium");
+  // Every picker lists out of this rather than out of `teams`. `teams` stays the whole roster, so
+  // nothing selected, saved or already on the pitch is touched by a switch.
+  const worldTeams = useMemo(() => teams.filter(t => inWorld(t, world)), [teams, world]);
   const customTab = teamLeagueFilter === "Custom";
   // Two whole-roster views sitting above the league list, the way All Players sits above the
   // nations. The sentinels cannot collide with a league name, and everything that keys off
   // teamLeagueFilter treats them as "not a league" rather than needing a separate mode flag.
   const isIntlView = teamLeagueFilter === ALL_INTL, isClubView = teamLeagueFilter === ALL_CLUBS;
   const isAllView = isIntlView || isClubView;
-  const allIntlTeams = useMemo(() => teams.filter(t => t.league === "Avium International"), [teams]);
-  const allClubTeams = useMemo(() => teams.filter(t => t.league !== "Avium International"), [teams]);
+  const allIntlTeams = useMemo(() => worldTeams.filter(t => t.league === INTL_LEAGUE[world]), [worldTeams, world]);
+  const allClubTeams = useMemo(() => worldTeams.filter(t => !isIntlLeague(t.league)), [worldTeams]);
   // The whole squad split by line, starters and backups alike, left unrounded — a column of
   // integers hides the difference between two squads a third of a point apart, which at this scale
   // is most of them. `avg` skips a line nobody carries rather than counting it as zero, which would
@@ -4400,7 +4441,7 @@ export default function App() {
   };
   const teamLinesById = useMemo(() => new Map(teams.map(t => [t.id, teamLines(t)])), [teams]);
   // Leagues that actually have teams, in LEAGUE_ORDER. Drives the roster's left rail.
-  const rosterLeagues = useMemo(() => groupByLeague(teams).filter(Boolean), [teams]);
+  const rosterLeagues = useMemo(() => groupByLeague(worldTeams).filter(Boolean), [worldTeams]);
   // Rail sections. Complete vs incomplete is a team count because nothing records a league's
   // intended size — the real divisions run 12-20 and the placeholder ones hold 2, so 8 sits in a
   // wide empty gap rather than near any real value. Custom is bucketed by the same rule as
@@ -4408,16 +4449,16 @@ export default function App() {
   const rosterSections = useMemo(() => {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
-      (IS_CONFERENCE.has(entry[0]) ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
-    const out = [["Avium International", intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
+      (IS_CONFERENCE.has(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+    const out = [[INTL_LEAGUE[world], intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
     // Each whole-roster view heads the section it summarises. The clubs one takes whichever club
     // section actually exists — normally Club Leagues, but a roster of nothing but placeholder
     // divisions only has Miscellaneous, and the view would otherwise have nowhere to sit.
-    const firstClub = out.find(s => s[0] !== "Avium International");
+    const firstClub = out.find(s => s[0] !== INTL_LEAGUE[world]);
     if (firstClub) firstClub[2] = ALL_CLUBS;
     return out;
-  }, [rosterLeagues]);
+  }, [rosterLeagues, world]);
   // The rail only lists leagues that have teams, so a filter pointing at one that does not exist
   // leaves nothing selected and an empty grid with no way back. Snap to the first real league —
   // covers a roster with no international pool, and any league that empties out.
@@ -4430,7 +4471,7 @@ export default function App() {
   // nations) and for Custom.
   const leagueNation = (lg) => {
     const code = LEAGUE_NAT[lg];
-    return code ? (teams.find(t => t.league === "Avium International" && t.code === code) || null) : null;
+    return code ? (teams.find(t => isIntlLeague(t.league) && t.code === code) || null) : null;
   };
   // The grounds the picker offers, grouped by the nation they stand in. A ground is in the picker
   // when it has been CURATED: either there is a photo of it, or stadiums.tsv names it. What is NOT
@@ -4442,8 +4483,8 @@ export default function App() {
   const venueIndex = useMemo(() => {
     const owner = new Map();
     for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !owner.has(st)) owner.set(st, t); }
-    const natOf = (t) => !t ? null : t.league === "Avium International" ? t : leagueNation(t.league);
-    const byCode = new Map(teams.filter(t => t.league === "Avium International" && t.code).map(t => [t.code, t]));
+    const natOf = (t) => !t ? null : isIntlLeague(t.league) ? t : leagueNation(t.league);
+    const byCode = new Map(teams.filter(t => isIntlLeague(t.league) && t.code).map(t => [t.code, t]));
     const groups = new Map();
     for (const st of [...new Set([...STADIUM_IMAGES, ...STADIUM_ROWS.map(r => r.stadium)])]) {
       const t = owner.get(st) || null;
@@ -4468,8 +4509,8 @@ export default function App() {
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
     const q = teamSearch.trim().toLowerCase();
-    const inView = (t) => teamLeagueFilter === ALL_INTL ? t.league === "Avium International"
-      : teamLeagueFilter === ALL_CLUBS ? t.league !== "Avium International"
+    const inView = (t) => teamLeagueFilter === ALL_INTL ? isIntlLeague(t.league)
+      : teamLeagueFilter === ALL_CLUBS ? !isIntlLeague(t.league)
       : !teamLeagueFilter || railLeague(t) === teamLeagueFilter;
     // A search is a lookup, not a filter of the row you happen to be standing on. A code names one
     // team in the whole game, so requiring you to already be in its league before "DYM" resolves is
@@ -4480,7 +4521,7 @@ export default function App() {
     // ...except in the two directories, which are each the whole of one kind: a search typed in
     // All National Teams finds nations and one typed in All Clubs finds clubs, never the other.
     const isDirView = teamLeagueFilter === ALL_INTL || teamLeagueFilter === ALL_CLUBS;
-    const out = q ? (isDirView ? teams.filter(inView) : teams).filter(hit) : teams.filter(inView);
+    const out = q ? (isDirView ? worldTeams.filter(inView) : worldTeams).filter(hit) : worldTeams.filter(inView);
     // Ranked by how well the query matches, so an exact code lands first: "WIN" has to reach Winscor
     // FC before Winscor Chaplains, and "ROM" reaches Romsa JK though its code is RSA.
     if (q) return out.sort((a, b) =>
@@ -4496,7 +4537,7 @@ export default function App() {
     const lineAvg = (t) => teamLinesById.get(t.id)?.avg || 0;
     return out.sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0)
       || lineAvg(b) - lineAvg(a) || a.name.localeCompare(b.name));
-  }, [teams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
+  }, [worldTeams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   // ---- positional match engine lab -------------------------------------------------------
@@ -4538,7 +4579,7 @@ export default function App() {
   // this inside its own closure for the team it is showing; the pre-match screen needs it for two
   // teams at once, so the same rule lives here as a factory.
   const sideOfFor = (t) => {
-    const isIntl = t?.league === "Avium International";
+    const isIntl = isIntlLeague(t?.league);
     return (p) => {
       const pe = playerByName.get(p.fullName || p.name);
       const oc = isIntl ? (pe?.clubs || []).find(c => c.name !== t.name) : null;
@@ -4869,6 +4910,8 @@ export default function App() {
                   <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
                     <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
                   </div>
+                  <WorldToggle value={world} onChange={setWorld}
+                    style={{ padding: "8px 10px", borderBottom: "1px solid var(--chrome-border)" }} />
                   <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                     {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
                     <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
@@ -4946,7 +4989,7 @@ export default function App() {
                   // Every stadium that has a picture, with the owning team's city where one matches.
                   const byStadium = new Map();
                   for (const t of teams) { const st = stripVenue(t.stadium || ""); if (st && !byStadium.has(st)) byStadium.set(st, t); }
-                  const place = (t) => { const nat = t?.league === "Avium International" ? t.name : leagueNation(t?.league)?.name;
+                  const place = (t) => { const nat = isIntlLeague(t?.league) ? t.name : leagueNation(t?.league)?.name;
                     if (!t?.city && !nat) return null;
                     return <>{t?.city && <CityLink name={t.city} />}{t?.city && nat ? ", " : ""}{nat || ""}</>; };
                   const withPlace = (lead, t) => { const pl = place(t); return pl ? <>{lead} &middot; {pl}</> : lead; };
@@ -6034,7 +6077,7 @@ export default function App() {
       const mdFiles = new Set(PSTATS_FILES.filter(f => /\.md$/i.test(f)).map(f => f.replace(/\.md$/i, "")));
       await Promise.all(PSTATS_FILES.map(async (f) => {
         if (/\.md$/i.test(f)) return;                             // reports are fetched when opened
-        const res = await fetch("pstats/" + f).catch(() => null);
+        const res = await fetch("avium/pstats/" + f).catch(() => null);
         if (!res || !res.ok) return;
         const text = await res.text();
         if (/(^|\/)changelog\.tsv$/i.test(f)) { changelog.push(...parseChangelog(text)); return; }
@@ -6083,7 +6126,7 @@ export default function App() {
         let lg = codes.size ? detectLeague(codes, null) : null;
         if (!lg && s.md) {
           const path = s.id.replace(/\.tsv$/i, ".md");
-          const res = await fetch("pstats/" + path).catch(() => null);
+          const res = await fetch("avium/pstats/" + path).catch(() => null);
           if (res && res.ok) { const text = await res.text(); mdSeed[path] = text; lg = detectLeague(null, clubNamesIn(text)); }
         }
         if (lg) s.comp = lg;
@@ -6127,22 +6170,25 @@ export default function App() {
     const fullBy = (name) => (pstats?.seasons || []).filter(s => s.comp === name && s.md && Object.keys(s.boards || {}).length).length;
     const ORD = new Map(LEAGUE_ORDER.filter(Boolean).map((l, i) => [l, i]));
     const avgOf = (ts) => ts.length ? Math.round(ts.reduce((a, x) => a + (Number(x.skill) || 0), 0) / ts.length) : 0;
-    const intl = teams.filter(tm => tm.league === "Avium International");
-    const clubLeagues = [...new Set(teams.filter(tm => tm.league && tm.league !== "Avium International").map(tm => tm.league))]
+    const intl = worldTeams.filter(tm => tm.league === INTL_LEAGUE[world]);
+    const clubLeagues = [...new Set(worldTeams.filter(tm => tm.league && !isIntlLeague(tm.league)).map(tm => tm.league))]
       .sort((a, b) => (ORD.get(a) ?? 999) - (ORD.get(b) ?? 999) || a.localeCompare(b));
     const natNames = new Map(intl.map(tm => [tm.code, tm.name]));
-    const allClubs = teams.filter(tm => tm.league !== "Avium International");
+    const allClubs = worldTeams.filter(tm => !isIntlLeague(tm.league));
     const scopeTeams = (sc) => sc === "intl" ? intl : sc === "clubs" ? allClubs : intl.filter(tm => railLeague(tm) === sc);
+    // Every competition in INTL_COMPS is an Avium one -- the World Cup, the Nations League, the four
+    // confederation championships. Arterra has none filed yet, so its rail is the directory alone
+    // until somebody plays a tournament worth archiving.
     return [
-      ...INTL_COMPS.map(c => { const ts = scopeTeams(c.scope);
+      ...(world === "avium" ? INTL_COMPS : []).map(c => { const ts = scopeTeams(c.scope);
         return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name), nFull: fullBy(c.name),
                  caption: c.scope === "intl" || c.scope === "clubs" ? "International" : c.scope }; }),
-      ...clubLeagues.map(l => { const ts = teams.filter(tm => tm.league === l);
+      ...clubLeagues.map(l => { const ts = worldTeams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l), nFull: fullBy(l),
                  caption: [natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014"),
                            leagueTier(l) ? `(D${leagueTier(l)})` : ""].filter(Boolean).join(" ") }; }),
     ];
-  }, [teams, pstats]);
+  }, [worldTeams, world, pstats]);
   // An international competition has no roster of its own -- its field is every nation, or one
   // confederation, and both live in the directory. So it shows its seasons and nothing else.
   const lgIntlComp = !!COMP_SCOPE[lgComp];
@@ -6150,10 +6196,15 @@ export default function App() {
   // The cup tab is the seasons face pointed at the cup's own competition.
   const lgSeasonComp = lgSubEff === "cup" ? (LEAGUE_CUPS[lgComp] || lgComp) : lgComp;
   const lgSeasonsFace = lgSubEff === "seasons" || lgSubEff === "cup";
+  // Nothing open, or open on something this world does not have -- switching to Arterra leaves you
+  // pointed at the World Cup, and Arterra has no clubs for the All Clubs directory to list. Both
+  // land back on the nations, which is the one row every world is guaranteed to have.
   useEffect(() => {
-    if (tab !== "leagues" || lgComp || !lgRail.length) return;
-    lgOpenComp(LG_ALL_NATS);
-  }, [tab, lgComp, lgRail]);
+    if (tab !== "leagues") return;
+    const shown = lgIsDir(lgComp) ? (lgComp !== LG_ALL_CLUBS || allClubTeams.length > 0)
+                                  : lgRail.some(c => c.name === lgComp);
+    if (!shown) lgOpenComp(LG_ALL_NATS);
+  }, [tab, lgComp, lgRail, allClubTeams]);
 
   const [playerSearch, setPlayerSearch] = useState("");
   // Which roster warning has its list open. These were native title tooltips, which never appear
@@ -7242,7 +7293,7 @@ export default function App() {
     const byCode = new Map();
     for (const tm of teams) if (tm.code && !byCode.has(tm.code + "|" + tm.league)) byCode.set(tm.code + "|" + tm.league, tm);
     const teamOf = (code) => byCode.get(code + "|" + s.comp)
-      || teams.find(tm => tm.code === code && tm.league !== "Avium International")
+      || teams.find(tm => tm.code === code && !isIntlLeague(tm.league))
       || teams.find(tm => tm.code === code) || null;
     const codes = [...new Set(all.map(r => r.team))].sort();
     const q = pFold(tournQ);
@@ -7550,7 +7601,7 @@ export default function App() {
     for (const s of (pstats?.seasons || []).filter(x => x.comp === lgSeasonComp && x.md)) {
       const path = s.id.replace(/\.tsv$/i, ".md");
       if (lgMd[path] !== undefined) continue;
-      fetch("pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
+      fetch("avium/pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
         .then(text => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: text }))
         .catch(() => setLgMd(m => m[path] !== undefined ? m : { ...m, [path]: false }));
     }
@@ -7563,7 +7614,7 @@ export default function App() {
     const path = s.id.replace(/\.tsv$/i, ".md");
     if (lgMd[path] !== undefined) return;
     let dead = false;
-    fetch("pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
+    fetch("avium/pstats/" + path).then(r => r.ok ? r.text() : Promise.reject())
       .then(text => { if (!dead) setLgMd(m => ({ ...m, [path]: text })); })
       .catch(() => { if (!dead) setLgMd(m => ({ ...m, [path]: false })); });
     return () => { dead = true; };
@@ -9313,7 +9364,7 @@ export default function App() {
     </div>
   );
 
-  const playerIndex = useMemo(() => buildPlayerIndex(teams), [teams]);
+  const playerIndex = useMemo(() => buildPlayerIndex(worldTeams), [worldTeams]);
   // ── Players tab ──────────────────────────────────────────────────────────
   // Nations rail, built the same shape as the league rail: an entry per nation with its player
   // count and average OVR. Sorted by squad size rather than alphabetically — the search box covers
@@ -9328,7 +9379,7 @@ export default function App() {
     // Two different numbers, both about the national team rather than the whole player pool:
     // natSkill is the side's rating (what the rail sorts and shows), ntAvg is the mean OVR of the
     // squad it actually picks. A nation with no national team sorts last.
-    const natTeams = new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t]));
+    const natTeams = new Map(teams.filter(t => isIntlLeague(t.league)).map(t => [t.code, t]));
     return [...by.values()]
       .map(n => {
         const nt = n.code ? natTeams.get(n.code) : null;
@@ -9348,7 +9399,7 @@ export default function App() {
   // Jumping to a team has to select its league too, or the Teams rail and pane disagree about
   // what is showing.
   const openTeam = (t) => { if (!t) return;
-    const comp = t.league === "Avium International" ? LG_ALL_NATS : (t.league || "Custom");
+    const comp = isIntlLeague(t.league) ? LG_ALL_NATS : (t.league || "Custom");
     lgOpenComp(comp, "teams"); setExpandedTeam(t.id); };
   // ── Where the user was when they opened a player page ──────────────────────────────────
   // A player is reachable from a season board, a squad, the rating changelog, the Hall of Fame,
@@ -9390,7 +9441,7 @@ export default function App() {
     const comp = here || (pp.clubs[0] ? (pp.clubs[0].league || "Custom") : LG_ALL_PLAYERS);
     setLgComp(comp); setLgSub("players"); setLgSeason(null);
     setPlayerOpen(name); setTab("leagues"); };
-  const natTeamByCode = useMemo(() => new Map(teams.filter(t => t.league === "Avium International").map(t => [t.code, t])), [teams]);
+  const natTeamByCode = useMemo(() => new Map(teams.filter(t => isIntlLeague(t.league)).map(t => [t.code, t])), [teams]);
   const teamByName = useMemo(() => new Map(teams.map(t => [t.name, t])), [teams]);
   // Roster faults, not per-nationality: a name in two squads, or one that parses as neither
   // "K. Fujise" nor a full name. Shown in the rail so they are visible whichever nationality is up.
@@ -9402,7 +9453,7 @@ export default function App() {
     // can be found without opening every team.
     const mismatch = [];
     teams.forEach(t => {
-      if (t.league === "Avium International" || !t.squad) return;
+      if (isIntlLeague(t.league) || !t.squad) return;
       t.squad.forEach(p => {
         if (!p.name || p.name.startsWith("#")) return;
         const nat = natOvrMap.get(p.fullName || p.name);
@@ -9564,7 +9615,7 @@ export default function App() {
   </>);
   const renderTeamDetail = (t) => { const ed = isEditableTeam(t); const strat = t.strategy || STRAT_DEF;
     const badSkill = t.skill === "" || t.skill < 25 || t.skill > 100;
-    const isIntlTeam = t.league === "Avium International"; return (<>
+    const isIntlTeam = isIntlLeague(t.league); return (<>
                   {/* The player page's header, in team colours: step back on the left, what kind
                       of page this is beside it, and the one action this page has on the right. The
                       crest, name, league and ratings are all on the band below. */}
@@ -9872,7 +9923,7 @@ export default function App() {
       })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
-          <img src={`${import.meta.env.BASE_URL}banners/app/${uiTheme}.png`}
+          <img src={`${import.meta.env.BASE_URL}avium/banners/app/${uiTheme}.png`}
                onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = headerImg; } }} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
             {[["leagues", "Registry"], ["live", "Live Match"],
@@ -9895,11 +9946,12 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
             <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, display: "flex", alignItems: "center", borderBottom: "1px solid var(--chrome-border)" }}>
               <PanelTitle sub={`${lgRail.length}`}>Competitions</PanelTitle>
+              <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: "auto" }} />
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               {[["Directory", [
                   { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} Nations`, dir: true, icon: "\uD83C\uDF10" },
-                  { name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" },
+                  ...(allClubTeams.length ? [{ name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" }] : []),
                   { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} Players`, dir: true, icon: "\uD83D\uDC64" },
                 ]], ["International", lgRail.filter(c => c.intl)],
                     ["Domestic", lgRail.filter(c => !c.intl && !c.misc)],
@@ -10361,7 +10413,7 @@ export default function App() {
                         <tbody>
                           {rows.map((r, i) => {
                             const ct = teams.find(tm => tm.code === r.team && tm.league === r.comp)
-                              || teams.find(tm => tm.code === r.team && tm.league !== "Avium International")
+                              || teams.find(tm => tm.code === r.team && !isIntlLeague(tm.league))
                               || teams.find(tm => tm.code === r.team) || null;
                             const d = r.neu - r.old, go = playerByName.has(r.player);
                             return (
@@ -10457,7 +10509,7 @@ export default function App() {
                 const hofRow = (pstats?.hof || []).find(h => pFold(h.player) === key) || null;
                 const p = playerIndex.find(x => (x.fullName || x.name) === playerOpen)
                   || (hofRow && { name: hofRow.player, fullName: hofRow.player, ovr: hofRow.ovr, pos: hofRow.pos, natCode: hofRow.nat,
-                                  clubs: hofRow.club ? [{ name: teams.find(tm => tm.code === hofRow.club && tm.league !== "Avium International")?.name || formerName(hofRow.club) }] : [] })
+                                  clubs: hofRow.club ? [{ name: teams.find(tm => tm.code === hofRow.club && !isIntlLeague(tm.league))?.name || formerName(hofRow.club) }] : [] })
                   || null;
                 const natT = p?.natCode ? natTeamByCode.get(p.natCode) : null;
                 const clubT = p ? teamByName.get(p.clubs[0]?.name) : null;
@@ -10465,7 +10517,7 @@ export default function App() {
                 // ratings too -- so the code falls through to the international list rather than
                 // rendering as a bare string. Club first, since a club competition is the common case.
                 const clubOf = (code, comp) => teams.find(tm => tm.code === code && tm.league === comp)
-                  || teams.find(tm => tm.code === code && tm.league !== "Avium International")
+                  || teams.find(tm => tm.code === code && !isIntlLeague(tm.league))
                   || teams.find(tm => tm.code === code) || null;
                 // One career row per season file this player appears in. GP boards can disagree by
                 // a match or two (a board only counts games with a recorded value), so take the max.
@@ -10853,20 +10905,21 @@ export default function App() {
                 <div style={{ ...panelBox, marginBottom: 0, padding: 0, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                   <div style={{ ...panelHead, padding: "18px 20px 0", marginBottom: 0, flexShrink: 0 }}>
                   <PanelTitle sub={`${tournamentTeamIds.length} selected`}>Participants</PanelTitle>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <WorldToggle value={world} onChange={setWorld} style={{ marginRight: 2 }} />
                     {PARTICIPANT_PRESETS.size > 0 && (
                       <select value="" onChange={e => { applyParticipantPreset(e.target.value); e.target.value = ""; }}
                           style={{ ...smBtn, color: "var(--ui-info)", background: "transparent", cursor: "pointer" }}>
                         <option value="" hidden>&#9776; Presets</option>
                         {[...PARTICIPANT_PRESETS].map(([name, p]) => <option key={name} value={name}>{name} ({p.teams.length}{p.groups ? ", drawn" : ""})</option>)}
                       </select>)}
-                    <button onClick={() => setTournamentTeamIds(teams.map(t => t.id))} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
+                    <button onClick={() => setTournamentTeamIds(ids => [...new Set([...ids, ...worldTeams.map(t => t.id)])])} style={{ ...smBtn, color: "var(--chrome-muted)" }}>Select All</button>
                     <button onClick={() => { setTournamentTeamIds([]); setPresetMsg(""); }} style={{ ...smBtn, color: "var(--ui-danger)" }}>Clear</button>
                   </div>
                 </div>
                 {presetMsg && <div onClick={() => setPresetMsg("")} style={{ margin: "0 20px", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 10, color: "var(--ui-warn)", background: "var(--ui-warn-33)", border: "1px solid var(--ui-warn)" }}>{presetMsg}</div>}
                   <div style={{ padding: "14px 20px 18px", flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                {groupByLeague(teams).map((entry, gi) => {
+                {groupByLeague(worldTeams).map((entry, gi) => {
                   if (entry === null) return <div key={"div"+gi} style={{ borderTop: "1px solid var(--chrome-border-33)", margin: "8px 0" }} />;
                   const [league, ts] = entry;
                   const selCount = ts.filter(t => tournamentTeamIds.includes(t.id)).length;
@@ -12522,7 +12575,7 @@ export default function App() {
             const _v = lmVenue();
             const venue = stripVenue(_v.stadium || "") || "";
             const _vHost = m.s?.homeAdv === "away" ? m.aT : m.s?.homeAdv === "home" ? m.hT : null;
-            const venueNat = _vHost ? (_vHost.league === "Avium International"
+            const venueNat = _vHost ? (isIntlLeague(_vHost.league)
               ? _vHost.name : leagueNation(_vHost.league)?.name) : "";
             const tabBtn = (id, label) => (
               <button key={id} onClick={() => setMePanel(mePanel === id ? null : id)}
@@ -13290,7 +13343,7 @@ export default function App() {
                         as one surface from the photograph down to the city. */}
                     {uiTheme !== "default" && (
                       <div style={{ padding: "12px 15px 2px" }}>
-                        <img src={`${import.meta.env.BASE_URL}banners/match/${uiTheme}.png`} alt=""
+                        <img src={`${import.meta.env.BASE_URL}avium/banners/match/${uiTheme}.png`} alt=""
                              onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
                              style={{ display: "block", width: "100%", height: "auto", maxHeight: 56,
                                       objectFit: "contain" }} />
@@ -13674,7 +13727,7 @@ export default function App() {
                             that is why the scroll moved onto it. */}
                         <div style={{ width: "100%", margin: "0 auto",
                                       maxWidth: `clamp(240px, calc((100vh - 516px) * ${(100 / PITCH_H).toFixed(3)} + 68px), ${PITCH_MAX_W + 68}px)` }}>
-                          {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), t.league === "Avium International")}
+                          {xiPitch(t, xi.map((q, i) => [q, i]), sideOfFor(t), isIntlLeague(t.league))}
                         </div>
                         {benchRow(t)}
                         {tacticsBlock(t)}

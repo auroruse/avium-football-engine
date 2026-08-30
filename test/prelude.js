@@ -28,7 +28,7 @@ const participantsTSV = readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avi
 // that touches the stadium browser. Read off the same directory the plugin reads.
 const STADIUM_IMAGES = (() => {
   const { readdirSync, existsSync } = require_fs_shim;
-  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/stadiums";
+  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/avium/stadiums";
   return existsSync(d) ? readdirSync(d).filter(f => /\.(jpe?g)$/i.test(f))
     .map(f => f.replace(/\.(jpe?g)$/i, "").normalize("NFC")).sort() : [];
 })();
@@ -37,7 +37,7 @@ const STADIUM_IMAGES = (() => {
 // reads the directory itself.
 const PSTATS_FILES = (() => {
   const { readdirSync, existsSync } = require_fs_shim;
-  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/pstats";
+  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/avium/pstats";
   return existsSync(d) ? readdirSync(d, { recursive: true })
     .map(f => String(f).replace(/\\/g, "/")).filter(f => /\.(tsv|md)$/i.test(f) && !/README\.md$/i.test(f))
     .map(f => f.normalize("NFC")).sort() : [];

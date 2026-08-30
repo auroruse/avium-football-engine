@@ -8,9 +8,9 @@ export default {
     build.onResolve({ filter: /^virtual:/ }, a => ({ path: a.path, namespace: "v" }));
     build.onLoad({ filter: /.*/, namespace: "v" }, a => {
       if (a.path === "virtual:pstats")
-        return { contents: `export const PSTATS_FILES = ${JSON.stringify(walk(ROOT + "/public/pstats").filter(f => /\.(tsv|md)$/i.test(f) && !/README/i.test(f)))};` };
+        return { contents: `export const PSTATS_FILES = ${JSON.stringify(walk(ROOT + "/public/avium/pstats").filter(f => /\.(tsv|md)$/i.test(f) && !/README/i.test(f)))};` };
       if (a.path === "virtual:stadium-images")
-        return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(walk(ROOT + "/public/stadiums").filter(f => /\.jpe?g$/i.test(f)).map(f => f.replace(/\.jpe?g$/i, "")))};` };
+        return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(walk(ROOT + "/public/avium/stadiums").filter(f => /\.jpe?g$/i.test(f)).map(f => f.replace(/\.jpe?g$/i, "")))};` };
       return { contents: "export default {};" };
     });
   },
