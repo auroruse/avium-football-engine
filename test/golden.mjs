@@ -12,23 +12,19 @@ import crypto from "node:crypto";
 import path from "path";
 
 const eng = await import("./engine.mjs");
-// The retired skill's load() throws on any preset row that yields no club, and NCH.tsv now
-// carries an in-progress collegiate division of exactly such rows. The engine's own catalog
-// parses them fine and yields the same clubs in the same order, so the pool comes from it.
-const __cat = eng.PRESET_CATALOG;
-const load = async (f) => ({ clubs: /AVIUM/.test(f)
-  ? __cat.filter(t => t.league === "Avium International")
-  : __cat.filter(t => t.league === "Nichirin League One" || t.league === "Nichirin League Two") });
-const PROJECT = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine";
-
 const BASE = new URL("./golden.json", import.meta.url);
 const MODE = process.argv[2] || "check";
 const N = +(process.argv[3] || 24);
 
-// A spread of fixtures rather than one repeated: styles differ, so the paths through the engine do.
-const { clubs } = await load(path.join(PROJECT, "src/presets/NCH.tsv"));
-const { clubs: intl } = await load(path.join(PROJECT, "src/presets/AVIUM.tsv"));
-const pool = [...clubs, ...intl];
+// FIXTURE TEAMS, FROZEN. This used to draw its sides out of PRESET_CATALOG, which meant every
+// transfer, every rating change and every promotion invalidated the baseline -- golden would fail
+// for reasons that had nothing to do with the engine, and the only fix was to re-record it, which
+// is exactly the ritual that trains people to re-record it without reading why it failed.
+// The twelve sides in golden-teams.json are made up: twelve styles and formations spanning the
+// engine's paths, players called "A. Player1". Nothing in src/presets can touch them, so a
+// divergence here now means one thing only -- the ENGINE plays football differently than it did.
+// Re-record only when that is the intention.
+const pool = JSON.parse(fs.readFileSync(new URL("./golden-teams.json", import.meta.url), "utf8"));
 
 const round = (v) => (typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v);
 const digest = (m) => {
