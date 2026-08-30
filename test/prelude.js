@@ -7,6 +7,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 const require_fs_shim = { readdirSync, existsSync };
 const __tsv = (f) => readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets/" + f, "utf8");
 const aviumTSV=__tsv("AVIUM.tsv"),
+      arterraTSV=__tsv("ARTERRA.tsv"),
       aleTSV=__tsv("ALE.tsv"),
       arvTSV=__tsv("ARV.tsv"),
       elvTSV=__tsv("ELV.tsv"),

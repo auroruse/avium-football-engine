@@ -3362,6 +3362,86 @@ function WorldToggle({ value, onChange, style, btnStyle }) {
                  color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", ...btnStyle }}>{label}</button>); })}
   </div>);
 }
+// THE GOALS, PLAYED BACK RATHER THAN DRAWN. What used to sit on the post-match screen was a diagram
+// per goal -- the ball's path as a carry, a pass and a shot, three strokes on a cropped pitch -- and
+// a diagram of a move is a worse picture of it than the move is. The app already banks the move:
+// every goal cuts the same tape the in-match replay runs on, straight into m.clips. So this plays
+// them. Same frames, same interpolation, its own clock, and no dependence on the match loop -- by
+// the post-match screen nothing is ticking any more.
+//
+// Every clip is turned so the scoring side attacks RIGHT, whichever way they were really kicking:
+// a reel that swaps ends between goals is a reel nobody can read.
+const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
+function GoalReplay({ clip, hc, ac }) {
+  const F = clip.frames, last = F.length - 1;
+  const [pos, setPos] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const posRef = useRef(0);
+  useEffect(() => { posRef.current = 0; setPos(0); setPlaying(true); }, [clip]);
+  useEffect(() => {
+    if (!playing || last < 1) return;
+    let raf = 0, prev = 0;
+    const step = (now) => {
+      if (prev) {
+        posRef.current = Math.min(last, posRef.current + (now - prev) / CLIP_MS);
+        setPos(posRef.current);
+        if (posRef.current >= last) { setPlaying(false); return; }
+      }
+      prev = now;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, clip, last]);
+
+  const flip = meGoalX(clip.side) < 52.5;
+  const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
+  const i = Math.min(last, Math.floor(pos)), a = i >= last ? 1 : pos - i;
+  const A = F[i], B = F[Math.min(last, i + 1)];
+  const L = (u, v) => u + (v - u) * a;
+  const pt = (f) => `${X(f.bx).toFixed(1)},${Y(f.by).toFixed(1)}`;
+  const seen = F.slice(0, i + 1);
+  const sw = 0.26;
+  const replay = () => { posRef.current = 0; setPos(0); setPlaying(true); };
+  return (
+    <div style={{ position: "relative" }}>
+      <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", borderRadius: 8, background: "#142c1a" }}>
+        {Array.from({ length: 6 }, (_, k) => (
+          <rect key={"m" + k} x={k * 17.5} y={0} width={17.5} height={68} fill={k % 2 ? "#173119" : "#142c17"} />))}
+        <g stroke="rgba(255,255,255,.24)" strokeWidth={sw} fill="none">
+          <rect x={0.6} y={0.6} width={103.8} height={66.8} />
+          <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
+          <circle cx={52.5} cy={34} r={9.15} />
+          <rect x={0.6} y={13.85} width={16.5} height={40.3} />
+          <rect x={87.9} y={13.85} width={16.5} height={40.3} />
+          <rect x={0.6} y={24.85} width={5.5} height={18.3} />
+          <rect x={98.9} y={24.85} width={5.5} height={18.3} />
+        </g>
+        {/* The whole move faint underneath, the last stretch bright on top: one flat line says the
+            ball travelled, two say which way it is going. */}
+        {i > 0 && <polyline points={seen.map(pt).join(" ")} fill="none" stroke="#ffd166"
+                            strokeOpacity={0.22} strokeWidth={sw * 1.5} strokeLinejoin="round" />}
+        {i > 0 && <polyline points={seen.slice(-7).map(pt).join(" ")} fill="none" stroke="#ffd166"
+                            strokeOpacity={0.8} strokeWidth={sw * 1.9} strokeLinecap="round" strokeLinejoin="round" />}
+        {[0, 1].map(sd => Array.from({ length: 11 }, (_, k) => {
+          const j = sd * 22 + k * 2;
+          if (A.xy[j] < -50 || B.xy[j] < -50) return null;
+          return <circle key={"p" + sd + k} cx={X(L(A.xy[j], B.xy[j]))} cy={Y(L(A.xy[j + 1], B.xy[j + 1]))}
+                         r={1.02} fill={sd ? ac : hc} stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
+        }))}
+        <circle cx={X(L(A.bx, B.bx))} cy={Y(L(A.by, B.by))} r={0.78} fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
+        <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />
+        <rect x={0} y={67.2} width={105 * (last < 1 ? 1 : pos / last)} height={0.8} fill="#ffd166" />
+      </svg>
+      {/* One control, and it only appears once the clip has stopped: while it is running there is
+          nothing to ask for, and a pause button on a four-second replay is furniture. */}
+      {!playing && (
+        <button onClick={replay} title="Play again"
+          style={{ position: "absolute", right: 8, bottom: 10, width: 26, height: 26, borderRadius: 13,
+                   border: "1px solid rgba(255,255,255,.28)", background: "rgba(0,0,0,.45)", cursor: "pointer",
+                   color: "#fff", fontSize: 11, lineHeight: "24px", padding: 0, fontFamily: "inherit" }}>&#9654;</button>)}
+    </div>);
+}
 // One labelled figure. Used in a row so a tournament's properties read as a stat block.
 function StatCell({ label, value, color }) {
   return (<div style={{ minWidth: 0 }}>
@@ -6215,6 +6295,9 @@ export default function App() {
   // inside .app-body — zoom breaks hover hit-testing on descendants — so the counts were readable
   // and the offending players were not. Click opens them instead.
   const [warnOpen, setWarnOpen] = useState(null);
+  // Which goal the post-match reel is playing. Reset by the key on GoalReplay rather than here:
+  // a new match rebuilds the clip list, and the key changing is what restarts the playback.
+  const [meClipI, setMeClipI] = useState(0);
   // Measure the real row height rather than hardcoding it — line-height differs between themes,
   // and a wrong constant makes the spacer rows drift out of sync with the scrollbar.
   useEffect(() => {
@@ -12811,142 +12894,6 @@ export default function App() {
                                              fontWeight: ai ? 700 : 400, color: ai ? AC : "var(--chrome-muted)" }}>{f(a)}</span>
                             </div>);
                         };
-                        // ── HOW EACH GOAL WAS SCORED ──────────────────────────────────────────
-                        // Every goal is drawn attacking left to right whichever way the side was
-                        // really kicking, because a highlights reel that alternates ends is a
-                        // highlights reel nobody can read.
-                        const SHOT_CLR = "#d8b45f";        // muted gold: the finish should read last, not shout
-                        const goalCard = (c, gi) => {
-                          const flip = meGoalX(c.side) < 52.5;
-                          const X = (v) => flip ? 105 - v : v, Y = (v) => flip ? 68 - v : v;
-                          const ch = (c.chain || []).filter(t => t.side === c.side);
-                          const pts = ch.map(t => [X(t.x), Y(t.y)]);
-                          // A GOAL CROSSES BETWEEN THE POSTS. c.end is the last recorded ball
-                          // position, and by that slice the engine has already set the restart up, so
-                          // it drifts toward the centre spot and dragged the marker into the corner
-                          // of the card with a shot line pointing at nothing. Clamped to the mouth,
-                          // which is where a goal physically is.
-                          const gx = 105.2;              // in the mouth: the card is always normalised to attack right
-                          const gy = Math.max(31.2, Math.min(36.8, Y(c.end?.y ?? 34)));
-                          // THE LINE IS THE BALL, NOT THE TOUCHES. Joining touch to touch was the
-                          // obvious thing and it is close to useless: mp.idx is -1 for every slice the
-                          // ball is travelling, so a tick-sampled chain catches a man only when the
-                          // ball happens to be at his feet as the slice lands. Measured over 107 real
-                          // goals it averaged 1.5 touches and 25 of them came back with NOTHING to
-                          // draw at all. The ball has a position in every single frame, so its own
-                          // path is dense, always present, and is in any case the truer picture of a
-                          // move -- the touches then mark who was involved along it.
-                          const path = (c.frames || []).map(f => [X(f.bx), Y(f.by)]);
-                          // CARRY, PASS, SHOT -- three different things, and the tape already knows
-                          // which is which. mp.idx names the man in possession, so a slice with a
-                          // carrier means the ball was at somebody's FEET and moved with him, and a
-                          // slice without one means it was travelling on its own. The strike is the
-                          // last slice anybody had it: everything after that is the ball on its way
-                          // in. Drawn as dashes for the carry, a thin line for a pass and a heavy
-                          // yellow one for the finish, so a solo run and a passing move do not come
-                          // out as the same picture.
-                          const held = (c.frames || []).map(f => f.ix >= 0);
-                          let strike = -1;
-                          for (let i = held.length - 1; i >= 0; i--) if (held[i]) { strike = i; break; }
-                          const shotPts = [...path.slice(strike < 0 ? Math.max(0, path.length - 2) : strike), [gx, gy]];
-                          const clr = c.side === "home" ? HC : AC;
-                          // CROP TO THE MOVE. Every card drew the whole 105 m pitch, so a tap-in
-                          // off a cutback was three dots in the corner of a mostly empty rectangle.
-                          // The frame is fitted to the path instead -- with a floor, so a six-yard
-                          // finish still shows enough pitch to place it, and a common aspect, so a
-                          // row of cards does not look like a row of different-shaped cards.
-                          const allPts = [...path, [gx, gy]];
-                          const PXW = 110, PXH = 71;                    // the drawable envelope
-                          const AR = PXW / PXH, MINW = 54, MINH = MINW / (PXW / PXH), PAD = 7;
-                          let x0 = Math.min(...allPts.map(q => q[0])) - PAD;
-                          let x1 = Math.max(...allPts.map(q => q[0])) + PAD;
-                          let y0 = Math.min(...allPts.map(q => q[1])) - PAD;
-                          let y1 = Math.max(...allPts.map(q => q[1])) + PAD;
-                          let vw = Math.max(x1 - x0, MINW), vh = Math.max(y1 - y0, MINH);
-                          if (vw / vh < AR) vw = vh * AR; else vh = vw / AR;
-                          const PX0 = -2.5, PX1 = PX0 + PXW, PY0 = -1.5, PY1 = PY0 + PXH;
-                          const cap = Math.min(1, PXW / vw, PXH / vh);   // shrink BOTH, never one
-                          vw *= cap; vh *= cap;
-                          const vx = Math.max(PX0, Math.min(PX1 - vw, (x0 + x1) / 2 - vw / 2));
-                          const vy = Math.max(PY0, Math.min(PY1 - vh, (y0 + y1) / 2 - vh / 2));
-                          // Zoomed in, a user-unit stays the same size on screen but covers less
-                          // grass, so text and strokes have to come down with the crop or a close-up
-                          // arrives in enormous lettering.
-                          const k = vw / 105;
-                          return (
-                            <div key={gi} style={{ minWidth: 0,
-                                                   background: "var(--chrome-panel)", borderRadius: 8,
-                                                   border: "1px solid var(--chrome-border)", overflow: "hidden" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px",
-                                            borderBottom: "1px solid var(--chrome-border-33)" }}>
-                                <span style={{ width: 7, height: 7, borderRadius: 4, background: clr, flexShrink: 0 }} />
-                                <span style={{ ...mono, fontSize: 12, fontWeight: 700 }}>{fmtMin(c.min, c.add)}</span>
-                                <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap",
-                                               overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
-                                  {ch.length ? ch[ch.length - 1].name : "Goal"}</span>
-                                <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.score}</span>
-                              </div>
-                              <svg viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="xMidYMid meet"
-                                   style={{ width: "100%", aspectRatio: String(AR), display: "block", background: "var(--ui-turf-out)" }}>
-                                {Array.from({ length: 8 }, (_, i) => (
-                                  <rect key={i} x={0.6 + i * 12.975} y={0.6} width={12.975} height={66.8}
-                                        fill={i % 2 ? "var(--ui-turf-a)" : "var(--ui-turf-b)"} />))}
-                                <g stroke="rgba(255,255,255,.26)" strokeWidth={0.26 * k} fill="none">
-                                  <rect x={0.6} y={0.6} width={103.8} height={66.8} />
-                                  <line x1={52.5} y1={0.6} x2={52.5} y2={67.4} />
-                                  <circle cx={52.5} cy={34} r={9.15} />
-                                  <rect x={0.6} y={13.85} width={16.5} height={40.3} />
-                                  <rect x={87.9} y={13.85} width={16.5} height={40.3} />
-                                  <rect x={0.6} y={24.85} width={5.5} height={18.3} />
-                                  <rect x={98.9} y={24.85} width={5.5} height={18.3} />
-                                  <path d="M 87.9 26.69 A 9.15 9.15 0 0 0 87.9 41.31" />
-                                  <path d="M 17.1 26.69 A 9.15 9.15 0 0 1 17.1 41.31" />
-                                </g>
-                                {/* THE GOAL ITSELF, which this card has been missing all along. Every
-                                    shot line ran to a small ring hanging in empty grass, because the
-                                    furniture here copied the boxes and the D and stopped -- no six
-                                    yard box, and no frame. A goal diagram whose goal is not drawn is
-                                    asking the reader to take the finish on trust. Netting is hinted
-                                    with a few uprights so the mouth reads as a mouth at any crop. */}
-                                <g>
-                                  <rect x={104.4} y={30.34} width={1.9} height={7.32}
-                                        fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.85)"
-                                        strokeWidth={0.34 * k} />
-                                  <rect x={-1.3} y={30.34} width={1.9} height={7.32}
-                                        fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.45)"
-                                        strokeWidth={0.3 * k} />
-                                  <g stroke="rgba(255,255,255,.4)" strokeWidth={0.12 * k}>
-                                    {[1.5, 3.0, 4.5, 6.0].map(o => (
-                                      <line key={o} x1={104.4} y1={30.34 + o} x2={106.3} y2={30.34 + o} />))}
-                                  </g>
-                                </g>
-                                {/* the build-up, segment by segment, then the finish over the top */}
-                                {path.slice(0, -1).map((q, i) => (strike >= 0 && i >= strike) ? null : (
-                                  <line key={"s" + i} x1={q[0]} y1={q[1]} x2={path[i + 1][0]} y2={path[i + 1][1]}
-                                        stroke={clr} strokeOpacity={held[i] ? 0.8 : 0.4}
-                                        strokeWidth={(held[i] ? 0.5 : 0.3) * k}
-                                        strokeLinecap="round" />))}
-                                <polyline points={shotPts.map(q => q.join(",")).join(" ")} fill="none"
-                                          stroke={SHOT_CLR} strokeOpacity={0.85} strokeWidth={0.62 * k}
-                                          strokeLinecap="round" strokeLinejoin="round" />
-                                {path.length > 0 && (
-                                  <circle cx={path[0][0]} cy={path[0][1]} r={0.75 * k} fill="none"
-                                          stroke={clr} strokeOpacity={0.5} strokeWidth={0.26 * k} />)}
-                                {pts.map((q, i) => (
-                                  <circle key={i} cx={q[0]} cy={q[1]} r={(i === pts.length - 1 ? 1.15 : 0.8) * k}
-                                          fill={clr} fillOpacity={i === pts.length - 1 ? 1 : 0.75}
-                                          stroke="rgba(0,0,0,.5)" strokeWidth={0.18 * k} />))}
-                                <circle cx={gx} cy={gy} r={1.05 * k} fill="none" stroke={SHOT_CLR}
-                                        strokeOpacity={0.9} strokeWidth={0.34 * k} />
-                                {pts.map((q, i) => ch[i]?.name ? (
-                                  <text key={"n" + i} x={Math.max(vx + 8 * k, Math.min(vx + vw - 8 * k, q[0]))}
-                                        y={q[1] - 2.6 * k}
-                                        textAnchor="middle" fontSize={2.7 * k} fill="#fff" fillOpacity={0.85}
-                                        stroke="rgba(0,0,0,.8)" strokeWidth={0.6 * k} paintOrder="stroke">
-                                    {ch[i].name}</text>) : null)}
-                              </svg>
-                            </div>);
-                        };
                         // ── THE PEOPLE ────────────────────────────────────────────────────────
                         // THE OLD PLAYER STATS PANEL, structurally. A ten-column grid rather than a
                         // table, full names with the surname bolded, POS and OVR ahead of the name,
@@ -13140,27 +13087,35 @@ export default function App() {
                           {clips.length > 0 && (<>
                             {rule(3)}
                             {sect(clips.length === 1 ? "The Goal" : "The Goals")}
-                            {/* Three strokes need saying once, not on every card. */}
-                            <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: -4,
-                                          marginBottom: 12, fontSize: 9.5, color: "var(--chrome-muted)",
-                                          letterSpacing: ".05em", textTransform: "uppercase" }}>
-                              {[["Carry", HC, 2.1, 0.8], ["Pass", HC, 1.2, 0.4], ["Shot", SHOT_CLR, 2.6, 0.85]].map(([lb, cl, w, op]) => (
-                                <span key={lb} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                  <svg width={20} height={6} style={{ display: "block" }}>
-                                    <line x1={0} y1={3} x2={20} y2={3} stroke={cl} strokeOpacity={op}
-                                          strokeWidth={w} strokeLinecap="round" />
-                                  </svg>{lb}
-                                </span>))}
-                            </div>
-                            {/* A GRID, not a wrapping flex row. With flex-grow the last row's cards
-                                stretched to fill it, so a lone fourth goal came out half again as
-                                big as the three above it and centred under them. Grid tracks are the
-                                same width whether the row is full or not, and they start at the left. */}
-                            <div style={{ display: "grid", gap: 14, marginTop: 4,
-                                          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-                                          justifyContent: "start" }}>
-                              {clips.map(goalCard)}
-                            </div>
+                            {/* ONE VIEWER, NOT A WALL OF CARDS. A reel is picked from, not scanned:
+                                the goals are a strip of buttons and the one you press plays. The
+                                strip goes when there is only one goal to play -- a picker with a
+                                single option is a label pretending to be a control. */}
+                            {clips.length > 1 && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 12 }}>
+                                {clips.map((c, gi) => { const on = gi === meClipI; return (
+                                  <button key={gi} onClick={() => setMeClipI(gi)}
+                                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 7,
+                                             cursor: on ? "default" : "pointer", fontFamily: "inherit", fontSize: 11,
+                                             border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)"),
+                                             background: on ? "var(--chrome-brand-33)" : "transparent",
+                                             color: on ? "var(--ui-text)" : "var(--chrome-muted)" }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: 4, background: c.side === "home" ? HC : AC }} />
+                                    <span style={{ ...mono, fontSize: 10 }}>{c.min}&#39;</span>
+                                    <span style={{ fontWeight: on ? 600 : 500 }}>{(c.txt || "").split(",")[0] || "Goal"}</span>
+                                    <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted-66)" }}>{c.score}</span>
+                                  </button>); })}
+                              </div>)}
+                            {(() => { const c = clips[Math.min(meClipI, clips.length - 1)];
+                              return (<div style={{ maxWidth: 560, margin: "0 auto" }}>
+                                <GoalReplay key={c.min + "-" + c.score} clip={c} hc={HC} ac={AC} />
+                                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8,
+                                              fontSize: 11, color: "var(--chrome-muted)" }}>
+                                  <span style={{ ...mono, color: "var(--ui-text)" }}>{c.min}&#39;</span>
+                                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.txt || ""}</span>
+                                  <span style={{ ...mono }}>{c.score}</span>
+                                </div>
+                              </div>); })()}
                           </>)}
                         </div>);
                       })()}
