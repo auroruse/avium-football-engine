@@ -2296,7 +2296,12 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       ao: "Alemannische Oberliga", ca: "Championnat Arvernois",
                       epl: "Elvesterian Premier League",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
-                      vafc: "VAFC Championship", conseaf: "CONSEAF Championship" };
+                      vafc: "VAFC Championship", conseaf: "CONSEAF Championship",
+                      // Played through 1934 and filed as 1935, because a qualifying campaign belongs
+                      // to the tournament it qualifies FOR. The folder names are the conference in
+                      // lower case; the competition names match INTL_COMPS, which builds them off
+                      // CONFERENCE_NAMES with " Conference" stripped.
+                      western: "Western WC Qualifiers", eastern: "Eastern WC Qualifiers" };
 // A season folder names two-digit years and the archive reaches back over a century boundary:
 // 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
 // HOW MUCH FOOTBALL A MAN PLAYED, for tiebreaks and for the rating gate. Minutes where they were
@@ -2308,7 +2313,10 @@ const tApps = (p) => (p.matches || 0) + (p.subApp || 0);
 const tTime = (p) => p.mins || tApps(p);
 const tGate = (all) => Math.max(1, ...all.map(tTime)) / 6;
 const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
-const PSTATS_KIND = { wc: 0, cwc: 2 };            // anything else is a league season
+// Sorts a season within its year: the World Cup first, then qualifying for the NEXT one, then the
+// leagues, then the Club World Cup. Qualifiers file under the year of the tournament they feed, so
+// 1935's sit above a 1935 league season and below the 1935 finals themselves.
+const PSTATS_KIND = { wc: 0, western: 0.5, eastern: 0.6, cwc: 2 };
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 // Slytlia has a badge and a record but no preset row yet, so it is a former side by the same
 // mechanism until it gets one. THO and LEC left when the records they appeared in were renamed.
