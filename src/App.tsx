@@ -1652,8 +1652,14 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 // never resolve — same root cause as the font, just missed when that was fixed. Single
 // source of truth for the literal fallback values, mirrored from theme.css, applied via
 // a find/replace pass over the finished SVG string right before each Blob is created.
-const UI_THEMES = [["default", "Standard"], ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"], ["wc1933", "1933 WC"], ["wc1934", "1934 WC"], ["stsc", "Sei'i Tai Shogun Cup"], ["cwc", "Club World Cup"]];
-const UI_THEME_IDS = new Set(UI_THEMES.map(t => t[0]));
+// Theme ids are the banner filenames in public/avium/banners, so a World Cup is keyed by the year
+// AND its host -- 1933nch is Nichirin's. null is a rule in the picker, not a theme.
+const UI_THEMES = [["default", "Standard"], null,
+                   ["1935skj", "1935 World Cup"], ["1934esu", "1934 World Cup"],
+                   ["1933nch", "1933 World Cup"], ["1932ale", "1932 World Cup"], null,
+                   ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"],
+                   ["stsc", "Sei'i Tai Shogun Cup"]];
+const UI_THEME_IDS = new Set(UI_THEMES.filter(Boolean).map(t => t[0]));
 // A var() that survives into a standalone .svg is invalid at computed-value time, and an invalid
 // fill falls back to black — which is exactly how the winner names and TBD exported black while
 // the four colours the old hand-kept substitution list happened to cover came out right. Resolving
@@ -1664,8 +1670,8 @@ const inlineVars = (svg) => {
 };
 
 function chromeExportColors(uiTheme) {
-  if (uiTheme === "wc1933") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
-  if (uiTheme === "wc1934") return { panel: "#0f0f43", border: "#23237a", muted: "#8f95c9", brand: "#1d3fd1" };
+  if (uiTheme === "1933nch") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
+  if (uiTheme === "1934esu") return { panel: "#0f0f43", border: "#23237a", muted: "#8f95c9", brand: "#1d3fd1" };
   return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
@@ -2502,15 +2508,6 @@ const isIntlLeague = (lg) => lg === AVIUM_LEAGUE || lg === ARTERRA_LEAGUE;
 // Avium. Custom teams belong to neither -- nothing in a hand-built row could say which world it is
 // for -- so they list under both rather than being stranded in one.
 const worldOf = (t) => t?.world || (t?.league === ARTERRA_LEAGUE ? "arterra" : "avium");
-// Arterra groups its nations by continent the way Avium groups its by conference. Both are the same
-// idea -- the rail row a national side sits under -- so they share every code path from here on, and
-// isConfRow is what asks the question. Ordered strongest first, off the catalog rather than the live
-// roster, so the rail does not reshuffle while you edit a team's skill.
-const artContAvg = (c) => { const ts = PRESET_ARTERRA.filter(t => t.conference === c);
-  return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0; };
-const ARTERRA_CONTINENTS = [...new Set(PRESET_ARTERRA.map(t => t.conference).filter(Boolean))]
-  .sort((a, b) => artContAvg(b) - artContAvg(a));
-const IS_ARTERRA_CONT = new Set(ARTERRA_CONTINENTS);
 const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 // One file per nation, and every club row names its own league in the last column. The catalog is
 // grouped out of that rather than from a hardcoded list of divisions: adding a tier to a nation's
@@ -2570,7 +2567,6 @@ const confAvgSkill = (c) => {
 };
 const CONFERENCE_NAMES = [...new Set(PRESET_AVIUM.map(t => t.conference).filter(Boolean))].sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
 const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
-const isConfRow = (name) => IS_CONFERENCE.has(name) || IS_ARTERRA_CONT.has(name);
 
 // A roster saved before the conference column existed comes back out of localStorage without one,
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
@@ -2592,7 +2588,9 @@ const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
   { name: "Club World Cup", scope: "clubs" },
-  ...CONFERENCE_NAMES.map(c => ({ name: c + " WC Qualifiers", scope: c })),
+  // The conference is "Western Conference" on the rail; its qualifying group is "Western WC
+  // Qualifiers", because "Western Conference WC Qualifiers" says conference twice and reads as neither.
+  ...CONFERENCE_NAMES.map(c => ({ name: c.replace(/ Conference$/, "") + " WC Qualifiers", scope: c })),
 ];
 // RETIRED COMPETITIONS, named outright because nothing in the roster generates them any more.
 // The four confederation championships were built off the conference column, which now carries the
@@ -2607,7 +2605,7 @@ const COMP_SCOPE = Object.fromEntries([...INTL_COMPS.map(c => [c.name, c.scope])
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
 const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clubs" };
 const railLeague = (t) =>
-  (isIntlLeague(t.league) && (t.conference || t.continent || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
+  (isIntlLeague(t.league) && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 // League badges in public/leagues, named after the rail row itself — "Nichirin League One.png",
 // "EUFA.png". No manifest and no slug map: LeagueCrest already falls back on a load error, so the
@@ -2632,11 +2630,9 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
-  const ac = IS_ARTERRA_CONT.has(n);
-  const w = lg === ARTERRA_LEAGUE || ac ? "arterra" : "avium";
+  const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
-  return [...new Set([...(ac ? [ARTERRA_LEAGUE] : []), n, deaccent(n), n.split(" ")[0],
-                      n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
+  return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
@@ -2750,7 +2746,7 @@ const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 
 const REAL_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) >= MIN_DIVISION);
 const MISC_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) < MIN_DIVISION);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
-const LEAGUE_ORDER = [...CONFERENCE_NAMES, ...ARTERRA_CONTINENTS, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
+const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
   ...PRESET_ARTERRA.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
@@ -4610,7 +4606,7 @@ export default function App() {
   const rosterSections = useMemo(() => {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
-      (isConfRow(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+      (IS_CONFERENCE.has(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
     const out = [[INTL_LEAGUE[world], intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
     // Each whole-roster view heads the section it summarises. The clubs one takes whichever club
@@ -6411,7 +6407,7 @@ export default function App() {
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
-    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "wc1934" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -6560,7 +6556,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
-    const fontStack = uiTheme === "wc1933" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "wc1934" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -10097,8 +10093,9 @@ export default function App() {
       })()}
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginBottom: 20, paddingBottom: 12 }}>
-          <img src={`${import.meta.env.BASE_URL}avium/banners/app/${uiTheme}.png`}
-               onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = headerImg; } }} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
+          {/* The wordmark does not follow the theme. It used to swap per theme out of banners/app,
+              which is now gone -- a theme dresses the MATCH, and the app keeps its own name. */}
+          <img src={headerImg} alt="Avium Football Engine" style={{ height: HEADER_H, width: "auto", flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 6, flex: "1 1 auto", minWidth: 0 }}>
             {[["leagues", "Registry"], ["live", "Live Match"],
               ...(TOURNAMENTS_ENABLED ? [["tournament", "Tournament"]] : []),
@@ -10378,7 +10375,7 @@ export default function App() {
                   : lgScoped ? lgComp : (ALL_VIEW_LABEL[teamLeagueFilter] || teamLeagueFilter);
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
-                const isConf = isConfRow(teamLeagueFilter);
+                const isConf = IS_CONFERENCE.has(teamLeagueFilter);
                 return (
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
@@ -10406,11 +10403,17 @@ export default function App() {
                 <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="&#128269; Search"
                   style={{ ...addBtn, flex: 1, background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
               </div>
-              {lgIsDir(lgComp) ? (
+              {lgIsDir(lgComp) ? (() => {
+              // Arterra files a continent against every nation and Avium files none, so the column
+              // appears when the sides on screen actually carry one. Asking the data rather than the
+              // world means a mixed cross-RP list still shows it, and Avium alone never holds a
+              // column of dashes open.
+              const showCont = visibleTeams.some(t => t.continent);
+              return (
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <colgroup>
-                    <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "44%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: "46%" }} />
+                    <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: showCont ? "34%" : "44%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} />{showCont && <col style={{ width: "26%" }} />}<col style={{ width: showCont ? "30%" : "46%" }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -10427,11 +10430,12 @@ export default function App() {
                       {/* A national side IS its nation and its rail row IS its conference, so this
                           would otherwise repeat something already on the row. Same switch the
                           tournament setup header makes. */}
+                      {showCont && <th style={{ ...thCellSticky, paddingLeft: 8 }}>Continent</th>}
                       <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Conference" : "League"}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleTeams.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</td></tr>}
+                    {visibleTeams.length === 0 && <tr><td colSpan={showCont ? 9 : 8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</td></tr>}
                     {[...visibleTeams].sort((a, b) => {
                       const la = teamLinesById.get(a.id) || {}, lb = teamLinesById.get(b.id) || {};
                       const va = lgTeamSort.k === "name" ? a.name : lgTeamSort.k === "ovr" ? (a.skill || 0) : (la[lgTeamSort.k] || 0);
@@ -10460,6 +10464,7 @@ export default function App() {
                         <td key={k} style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
                           {ln[k] ? <span style={{ ...ovrBlock(ln[k]), ...mono }}>{showOvr(ln[k])}</span>
                                  : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>))}
+                        {showCont && <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.continent || "\u2014"}</td>}
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                             <LeagueCrest league={lg} size={15} />
@@ -10470,7 +10475,7 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
-              ) : (
+              ); })() : (
               <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 {showExport && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
                 {showBulk && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ … ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
@@ -12447,7 +12452,8 @@ export default function App() {
           {THEMES_ENABLED && (<><div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Theme</PanelTitle></div>
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             <select value={uiTheme} onChange={e => setUiTheme(e.target.value)} style={{ ...inp, flex: 1 }}>
-              {UI_THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              {UI_THEMES.map((t, i) => t ? <option key={t[0]} value={t[0]}>{t[1]}</option>
+                                          : <option key={`r${i}`} disabled>{"\u2500".repeat(18)}</option>)}
             </select>
           </div></>)}
           {/* The Abstract Match Engine panel was here -- the last way into that simulation from
@@ -13387,7 +13393,7 @@ export default function App() {
                         as one surface from the photograph down to the city. */}
                     {uiTheme !== "default" && (
                       <div style={{ padding: "12px 15px 2px" }}>
-                        <img src={`${import.meta.env.BASE_URL}avium/banners/match/${uiTheme}.png`} alt=""
+                        <img src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt=""
                              onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
                              style={{ display: "block", width: "100%", height: "auto", maxHeight: 56,
                                       objectFit: "contain" }} />

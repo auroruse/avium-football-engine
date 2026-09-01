@@ -85,7 +85,7 @@
   --chrome-brand-44: #e4002b44;
   --chrome-brand-66: #e4002b66;
   --chrome-brand-88: #e4002b88;
-  /* champion banner accent — equals brand by default, real gold in wc1933 */
+  /* champion banner accent — equals brand by default, real gold in 1933nch */
   --chrome-gold: #e4002b;
   --chrome-gold-11: #e4002b11;
   --chrome-gold-22: #e4002b22;
@@ -198,7 +198,7 @@
 }
 
 /* 1933 World Cup special edition */
-[data-theme="wc1933"] {
+[data-theme="1933nch"] {
   --chrome-font: 'AviumNumerals','Aoboshi One','Neue Montreal','Inter','Helvetica Neue',sans-serif;
   /* line-height is an inherited property — setting it once here covers every element
      that doesn't already set its own (an explicit inline lineHeight, e.g. the scorer-row
@@ -248,7 +248,7 @@
    the banner itself (#000000 61%, #0f0f43 19%, #ffffff 13%) so the chrome and the masthead are the
    same three colours rather than an approximation of them. The navy is too dark to carry a button,
    so the brand steps up to the flag's own blue while the panels keep the banner's value. */
-[data-theme="wc1934"] {
+[data-theme="1934esu"] {
   --chrome-font: 'AviumNumerals','Agrandir','Neue Montreal','Inter','Helvetica Neue',sans-serif;
   --chrome-bg: #05050f;
   --chrome-bg-08: #05050f08;
