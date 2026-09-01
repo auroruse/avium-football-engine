@@ -13663,10 +13663,12 @@ export default function App() {
                           <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 2,
                                         display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                             <TeamCrest team={side === "home" ? m.hT : m.aT} size={11} />
+                            {/* All four are mono. The position was and the three counts were not,
+                                so "CM" and "1A" sat side by side in two different faces. */}
                             <span style={mono}>{p.spos || p.pos}</span>
-                            {!!p.goals && <span>{p.goals}G</span>}
-                            {!!p.assists && <span>{p.assists}A</span>}
-                            {!!p.saves && <span>{p.saves} saves</span>}
+                            {!!p.goals && <span style={mono}>{p.goals}G</span>}
+                            {!!p.assists && <span style={mono}>{p.assists}A</span>}
+                            {!!p.saves && <span style={mono}>{p.saves} saves</span>}
                           </div>
                         </div>
                         {/* Two decimals, like every other match statistic in the app. */}
