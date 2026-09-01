@@ -2502,6 +2502,15 @@ const isIntlLeague = (lg) => lg === AVIUM_LEAGUE || lg === ARTERRA_LEAGUE;
 // Avium. Custom teams belong to neither -- nothing in a hand-built row could say which world it is
 // for -- so they list under both rather than being stranded in one.
 const worldOf = (t) => t?.world || (t?.league === ARTERRA_LEAGUE ? "arterra" : "avium");
+// Arterra groups its nations by continent the way Avium groups its by conference. Both are the same
+// idea -- the rail row a national side sits under -- so they share every code path from here on, and
+// isConfRow is what asks the question. Ordered strongest first, off the catalog rather than the live
+// roster, so the rail does not reshuffle while you edit a team's skill.
+const artContAvg = (c) => { const ts = PRESET_ARTERRA.filter(t => t.conference === c);
+  return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0; };
+const ARTERRA_CONTINENTS = [...new Set(PRESET_ARTERRA.map(t => t.conference).filter(Boolean))]
+  .sort((a, b) => artContAvg(b) - artContAvg(a));
+const IS_ARTERRA_CONT = new Set(ARTERRA_CONTINENTS);
 const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 // One file per nation, and every club row names its own league in the last column. The catalog is
 // grouped out of that rather than from a hardcoded list of divisions: adding a tier to a nation's
@@ -2561,6 +2570,7 @@ const confAvgSkill = (c) => {
 };
 const CONFERENCE_NAMES = [...new Set(PRESET_AVIUM.map(t => t.conference).filter(Boolean))].sort((a, b) => confAvgSkill(b) - confAvgSkill(a));
 const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
+const isConfRow = (name) => IS_CONFERENCE.has(name) || IS_ARTERRA_CONT.has(name);
 
 // A roster saved before the conference column existed comes back out of localStorage without one,
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
@@ -2597,7 +2607,7 @@ const COMP_SCOPE = Object.fromEntries([...INTL_COMPS.map(c => [c.name, c.scope])
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
 const ALL_VIEW_LABEL = { [ALL_INTL]: "All National Teams", [ALL_CLUBS]: "All Clubs" };
 const railLeague = (t) =>
-  (isIntlLeague(t.league) && (t.conference || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
+  (isIntlLeague(t.league) && (t.conference || t.continent || CONF_BY_CODE.get(t.code))) || t.league || "Custom";
 const TRIM_SIZES = [2, 4, 8, 16, 20, 24, 32, 36, 48];
 // League badges in public/leagues, named after the rail row itself — "Nichirin League One.png",
 // "EUFA.png". No manifest and no slug map: LeagueCrest already falls back on a load error, so the
@@ -2622,9 +2632,11 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const leagueLogoCandidates = (lg) => {
   const n = String(lg || "").normalize("NFC");
   const nat = LEAGUE_NAT[lg];
-  const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
+  const ac = IS_ARTERRA_CONT.has(n);
+  const w = lg === ARTERRA_LEAGUE || ac ? "arterra" : "avium";
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
-  return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
+  return [...new Set([...(ac ? [ARTERRA_LEAGUE] : []), n, deaccent(n), n.split(" ")[0],
+                      n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
@@ -2738,7 +2750,7 @@ const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 
 const REAL_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) >= MIN_DIVISION);
 const MISC_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) < MIN_DIVISION);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
-const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
+const LEAGUE_ORDER = [...CONFERENCE_NAMES, ...ARTERRA_CONTINENTS, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
 const PRESET_CATALOG = [
   ...PRESET_AVIUM.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
   ...PRESET_ARTERRA.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
@@ -4598,7 +4610,7 @@ export default function App() {
   const rosterSections = useMemo(() => {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
-      (IS_CONFERENCE.has(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+      (isConfRow(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
     const out = [[INTL_LEAGUE[world], intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
     // Each whole-roster view heads the section it summarises. The clubs one takes whichever club
@@ -10366,7 +10378,7 @@ export default function App() {
                   : lgScoped ? lgComp : (ALL_VIEW_LABEL[teamLeagueFilter] || teamLeagueFilter);
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
-                const isConf = IS_CONFERENCE.has(teamLeagueFilter);
+                const isConf = isConfRow(teamLeagueFilter);
                 return (
                 <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
