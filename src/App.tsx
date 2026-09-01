@@ -1657,6 +1657,7 @@ function buildKnockoutRandom(teams, hasTP, rng) {
 const UI_THEMES = [["default", "Standard"], null,
                    ["1935skj", "1935 World Cup"], ["1934esu", "1934 World Cup"],
                    ["1933nch", "1933 World Cup"], ["1932ale", "1932 World Cup"], null,
+                   ["cwc", "Club World Cup"], null,
                    ["nl1", "Nichirin League One"], ["nl2", "Nichirin League Two"],
                    ["stsc", "Sei'i Tai Shogun Cup"]];
 const UI_THEME_IDS = new Set(UI_THEMES.filter(Boolean).map(t => t[0]));
@@ -1672,6 +1673,7 @@ const inlineVars = (svg) => {
 function chromeExportColors(uiTheme) {
   if (uiTheme === "1933nch") return { panel: "#211a10", border: "#a9843e", muted: "#a89684", brand: "#b23529" };
   if (uiTheme === "1934esu") return { panel: "#0f0f43", border: "#23237a", muted: "#8f95c9", brand: "#1d3fd1" };
+  if (uiTheme === "1935skj") return { panel: "#04182a", border: "#003159", muted: "#8fb0cc", brand: "#ffd700" };
   return { panel: "#141c2b", border: "#2a3a50", muted: "#7889a0", brand: "#e4002b" };
 }
 // ═══ PARSE ═══════════════════════════════════════════════════════════════════
@@ -6407,7 +6409,7 @@ export default function App() {
     // Exported as a standalone .svg file (Blob download, opened outside the app's DOM),
     // so CSS custom properties from theme.css never resolve here — needs the literal
     // font name baked in at generation time instead of var(--chrome-font).
-    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let firstReal = 0;
     for (let ri = 0; ri < nR - 1; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { firstReal = ri; break; } }
@@ -6556,7 +6558,7 @@ export default function App() {
   };
   const exportDEBracket = () => {
     const ko = tKO; if (!ko?.rounds?.length || !ko.losers) return;
-    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
+    const fontStack = uiTheme === "1933nch" ? "Aoboshi One,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1934esu" ? "Agrandir,Neue Montreal,Inter,Helvetica Neue,sans-serif" : uiTheme === "1935skj" ? "FreightText Pro,Neue Montreal,Inter,Helvetica Neue,serif" : "Neue Montreal,Inter,Helvetica Neue,sans-serif";
     const nR = ko.rounds.length;
     let wbFirst = 0;
     for (let ri = 0; ri < nR; ri++) { if (ko.rounds[ri].matches.some(m => !m.bye)) { wbFirst = ri; break; } }
@@ -12903,7 +12905,11 @@ export default function App() {
                     one layer, one property, nothing for the parser to drop. */}
                 <div style={{ flexShrink: 0, height: 72, display: "flex", alignItems: "center", gap: 22,
                               padding: "0 24px", backgroundImage: sbBg, backgroundColor: "var(--chrome-panel)",
-                              textShadow: SCOREBOARD_SHADOW, color: "var(--ui-on-accent)",
+                              // HARDCODED WHITE. This band sits on the two kit colours, not on the brand, so
+                              // --ui-on-accent was never the right variable for it -- it only ever looked right
+                              // because every theme happened to set that to white. 1935skj sets it dark for its
+                              // gold buttons, and every name, code, rating and the clock went dark with it.
+                              textShadow: SCOREBOARD_SHADOW, color: "#ffffff",
                               borderBottom: "1px solid var(--chrome-border)" }}>
                   {sbSide(m.hT, "home")}
                   <div style={{ flexShrink: 0, textAlign: "center", minWidth: 150 }}>

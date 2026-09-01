@@ -53,6 +53,14 @@
   font-weight: 700;
   font-display: swap;
 }
+/* The file is FreightText Pro Medium. Declared at 400 so it IS the regular face: there is no
+   lighter cut to fall back to, and the browser synthesises the bold. */
+@font-face {
+  font-family: 'FreightText Pro';
+  src: url('./fonts/freight_text_pro.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
 
 :root {
   --chrome-font: 'AviumNumerals','Neue Montreal','Inter','Helvetica Neue',sans-serif;
@@ -285,6 +293,54 @@
   --chrome-gold-44: #c8cdf044;
   --chrome-gold-66: #c8cdf066;
   --chrome-champion-glow: #131347;
+}
+
+/* 1935 World Cup — navy field, gold trim. #003159 is the RULE colour and #ffd700 the accent, so the
+   structure is navy and the gold is what the eye lands on. Panels sit a shade under the rule rather
+   than on it, because a border the same colour as the thing it outlines is not a border. The brand is the GOLD here
+   rather than a lifted blue, which is the one place this parts company with 1934esu: a gold button
+   on a navy panel is the whole look. That forces --ui-on-accent dark, because white on #ffd700 is
+   unreadable and every primary button draws its label with it. */
+[data-theme="1935skj"] {
+  --chrome-font: 'AviumNumerals','FreightText Pro','Neue Montreal','Inter','Helvetica Neue',serif;
+  --chrome-bg: #020a12;
+  --chrome-bg-08: #020a1208;
+  --chrome-bg-dd: #020a12dd;
+  --chrome-bg2: #01060c;
+  --chrome-bg3: #041220;
+  --chrome-panel: #04182a;
+  --chrome-panel-08: #04182a08;
+  --chrome-panel-66: #04182a66;
+  --chrome-border: #003159;
+  --chrome-border-33: #00315933;
+  --chrome-border-66: #00315966;
+  --chrome-border-88: #00315988;
+  --chrome-muted: #8fb0cc;
+  --chrome-muted-22: #8fb0cc22;
+  --chrome-muted-33: #8fb0cc33;
+  --chrome-muted-44: #8fb0cc44;
+  --chrome-muted-66: #8fb0cc66;
+  --chrome-muted-80: #8fb0cc80;
+  --chrome-muted-88: #8fb0cc88;
+  --chrome-brand: #ffd700;
+  --chrome-brand-11: #ffd70011;
+  --chrome-brand-14: #ffd70014;
+  --chrome-brand-1a: #ffd7001a;
+  --chrome-brand-20: #ffd70020;
+  --chrome-brand-22: #ffd70022;
+  --chrome-brand-33: #ffd70033;
+  --chrome-brand-44: #ffd70044;
+  --chrome-brand-66: #ffd70066;
+  --chrome-brand-88: #ffd70088;
+  --chrome-gold: #ffd700;
+  --chrome-gold-11: #ffd70011;
+  --chrome-gold-22: #ffd70022;
+  --chrome-gold-44: #ffd70044;
+  --chrome-gold-66: #ffd70066;
+  --chrome-champion-glow: #2a2408;
+  /* A gold button needs dark ink. Overridden here and nowhere else. */
+  --ui-on-accent: #00223d;
+  --ui-on-accent-cc: #00223dcc;
 }
 
 /* Nichirin League One declares no palette. It is a BANNER theme: selecting it swaps the masthead
