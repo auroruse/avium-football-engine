@@ -2553,10 +2553,8 @@ const PRESET_CLUBS = Object.entries(NATION_TSV).flatMap(([nat, raw]) =>
   [...nationLeagues(raw)].flatMap(([league, rows]) =>
     parseBulk(rows.join("\n")).map(t => ({ ...t, league, nat }))));
 
-// Which continent each confederation covers, and the order the rail lists them in: strongest first.
-// Averaged off the catalog rather than the live roster, so the rail does not reshuffle under you
-// while you edit a team's skill.
-const CONFERENCE_CONTINENT = { CONSEAF: "Elysia", EUFA: "Evria", PFA: "Pelagonia", VAFC: "Valtheria" };
+// The order the rail lists the conferences in: strongest first. Averaged off the catalog rather
+// than the live roster, so the rail does not reshuffle under you while you edit a team's skill.
 const confAvgSkill = (c) => {
   const ts = PRESET_AVIUM.filter(t => t.conference === c);
   return ts.length ? ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length : 0;
@@ -2584,9 +2582,16 @@ const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
   { name: "Club World Cup", scope: "clubs" },
-  ...CONFERENCE_NAMES.map(c => ({ name: c + " Championship", scope: c })),
+  ...CONFERENCE_NAMES.map(c => ({ name: c + " WC Qualifiers", scope: c })),
 ];
-const COMP_SCOPE = Object.fromEntries(INTL_COMPS.map(c => [c.name, c.scope]));
+// RETIRED COMPETITIONS, named outright because nothing in the roster generates them any more.
+// The four confederation championships were built off the conference column, which now carries the
+// two Avium conferences instead -- so CONFERENCE_NAMES no longer produces them and their thirteen
+// seasons apiece would drop off the rail entirely. They keep their own section under Miscellaneous:
+// no field, no roster, nothing but the record of what was played.
+const ARCHIVED_COMPS = ["CONSEAF Championship", "EUFA Championship", "PFA Championship", "VAFC Championship"];
+const COMP_SCOPE = Object.fromEntries([...INTL_COMPS.map(c => [c.name, c.scope]),
+                                       ...ARCHIVED_COMPS.map(n => [n, "archive"])]);
 // The roster rail's two whole-roster views. Colons keep them out of the league namespace — a league
 // called "All Clubs" would otherwise silently take the view over.
 const ALL_INTL = "::intl", ALL_CLUBS = "::clubs";
@@ -6326,6 +6331,9 @@ export default function App() {
       ...(world === "avium" ? INTL_COMPS : []).map(c => { const ts = scopeTeams(c.scope);
         return { name: c.name, intl: true, scope: c.scope, nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(c.name), nFull: fullBy(c.name),
                  caption: c.scope === "intl" || c.scope === "clubs" ? "International" : c.scope }; }),
+      ...(world === "avium" ? ARCHIVED_COMPS : []).map(n =>
+        ({ name: n, intl: false, arch: true, scope: "archive", nTeams: 0, avg: 0,
+           nSeasons: seasonsBy(n), nFull: fullBy(n), caption: "Retired" })),
       ...clubLeagues.map(l => { const ts = worldTeams.filter(tm => tm.league === l);
         return { name: l, intl: false, misc: !REAL_LEAGUES.includes(l), nTeams: ts.length, avg: avgOf(ts), nSeasons: seasonsBy(l), nFull: fullBy(l),
                  caption: [natNames.get(LEAGUE_NAT[l]) || (l === "Custom" ? "Custom" : "\u2014"),
@@ -10109,8 +10117,9 @@ export default function App() {
                   ...(allClubTeams.length ? [{ name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" }] : []),
                   { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} Players`, dir: true, icon: "\uD83D\uDC64" },
                 ]], ["International", lgRail.filter(c => c.intl)],
-                    ["Domestic", lgRail.filter(c => !c.intl && !c.misc)],
-                    ["Miscellaneous", lgRail.filter(c => c.misc)]].map(([label, cs]) => !cs.length ? null : (
+                    ["Domestic", lgRail.filter(c => !c.intl && !c.misc && !c.arch)],
+                    ["Miscellaneous", lgRail.filter(c => c.misc)],
+                    ["Archive", lgRail.filter(c => c.arch)]].map(([label, cs]) => !cs.length ? null : (
               <Fragment key={label}>
                 <div style={{ ...sectionLabel, fontSize: 9, color: "var(--chrome-muted)", padding: "10px 12px 4px" }}>{label}</div>
                 {cs.map(c => { const on = lgComp === c.name; return (
@@ -10366,8 +10375,8 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isIntlView ? "Nations" : isAllView || searching ? "Teams" : isConf ? "Continent" : "Nation"}</div>
-                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView || searching ? visibleTeams.length : isConf ? (CONFERENCE_CONTINENT[teamLeagueFilter] || "—") : (nat ? nat.name : "—")}</div>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isIntlView ? "Nations" : isAllView || searching ? "Teams" : "Nation"}</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView || searching || isConf ? visibleTeams.length : (nat ? nat.name : "—")}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
@@ -10389,7 +10398,7 @@ export default function App() {
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
                   <colgroup>
-                    <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: "26%" }} /><col style={{ width: "30%" }} />
+                    <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "44%" }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: 56 }} /><col style={{ width: "46%" }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -10403,15 +10412,14 @@ export default function App() {
                       {[["ovr", "OVR"], ["att", "ATT"], ["mid", "MID"], ["def", "DEF"]].map(([k, l]) => (
                       <th key={k} onClick={() => S(k)} style={{ ...thCellSticky, textAlign: "center", width: 56, minWidth: 56, cursor: "pointer", ...on(k) }}>{l}{A(k)}</th>))}
                         </>); })()}
-                      {/* A national side IS its nation, and its rail row IS its confederation, so
-                          both of these would otherwise repeat something already on the row. Same
-                          switch the tournament setup header makes. */}
-                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Continent" : "Nationality"}</th>
-                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Confederation" : "League"}</th>
+                      {/* A national side IS its nation and its rail row IS its conference, so this
+                          would otherwise repeat something already on the row. Same switch the
+                          tournament setup header makes. */}
+                      <th style={{ ...thCellSticky, paddingLeft: 8 }}>{isIntlView ? "Conference" : "League"}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleTeams.length === 0 && <tr><td colSpan={9} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</td></tr>}
+                    {visibleTeams.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</td></tr>}
                     {[...visibleTeams].sort((a, b) => {
                       const la = teamLinesById.get(a.id) || {}, lb = teamLinesById.get(b.id) || {};
                       const va = lgTeamSort.k === "name" ? a.name : lgTeamSort.k === "ovr" ? (a.skill || 0) : (la[lgTeamSort.k] || 0);
@@ -10420,7 +10428,6 @@ export default function App() {
                       return lgTeamSort.asc ? c : -c;
                     }).map((t, i) => {
                       const lg = railLeague(t);                       // the confederation for a nation, the league for a club
-                      const home = isIntlView ? (t.continent || CONFERENCE_CONTINENT[lg] || "—") : (leagueNation(t.league)?.name || "—");
                       const ln = teamLinesById.get(t.id) || { att: 0, mid: 0, def: 0 };
                       return (
                       <tr key={t.id} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
@@ -10441,7 +10448,6 @@ export default function App() {
                         <td key={k} style={{ ...tdCell, textAlign: "center", whiteSpace: "nowrap" }}>
                           {ln[k] ? <span style={{ ...ovrBlock(ln[k]), ...mono }}>{showOvr(ln[k])}</span>
                                  : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"–"}</span>}</td>))}
-                        <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{home}</td>
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                             <LeagueCrest league={lg} size={15} />
