@@ -1525,7 +1525,20 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // are the one currency concentrated in the players a season board is FOR -- the top scorers.
   // Uniform cuts to hub pay could never reorder the board (the positional par re-centers the
   // mean and hands most of it back); paying the striker's currency properly is the symmetric fix.
-  rateGoal: 1.15, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.6,
+  // THE SHAPE OF THE RATINGS CURVE. rateBody scales the performance deviation before the knee,
+  // rateKnee/rateTail shape what is left above it. Set together against a real distribution: peak
+  // near 6.6, roughly three quarters of performances between 6.0 and 7.5, about 1% at 8.5 or
+  // better, and a thin tail that still reaches 9 for a genuine monster.
+  // Measured, not guessed. The no-event body was never the problem: a full-match player with no
+  // goal and no assist sits at p50 6.72 and p90 7.47, which is right. Two things were wrong.
+  // A LONE GOAL WAS WORTH +1.15, putting 1G0A at a mean of 7.89 where a real curve puts it near
+  // 7.5 -- that single band is most of the excess above 8.0. And the knee at 7.1 CRUSHED exactly
+  // the performances that should reach nine: a brace topped out at 8.57 and a hat-trick at 8.89,
+  // so the ladder above one goal had almost no rungs left. Cheaper goals and a much later knee fix
+  // both at once -- one goal lands below the knee, a brace reaches the knee, and the third and
+  // fourth still climb. rateBody returns to 1.0 because the body needed no compression.
+  rateBodyUp: 0.76, rateBodyDn: 1.27, rateKnee: 8.0, rateTail: 1.10,
+  rateGoal: 0.80, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.46,
   // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
   // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
   // a busy keeper rated well for being busy, and the good keeper on the good side, facing three
@@ -1547,17 +1560,17 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.67, rateConcedeDef: 0.06, rateOwnGoal: 1.0,
+  rateSave: 0.65, gkExpPen: 0.67, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
   // derive sample holds under ten shots there and the instruction above says not to trust one.
-  gkExp: [[0.05, 0.09], [0.10, 0.09], [0.20, 0.13], [0.30, 0.26], [0.40, 0.70], [0.60, 0.57], [1.01, 0.89]],
-  rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.6,
+  gkExp: [[0.05, 0.10], [0.10, 0.10], [0.20, 0.12], [0.30, 0.23], [0.40, 0.75], [0.60, 0.60], [1.01, 0.89]],
+  rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
   // finally able to GAIN, which is the whole reason the position means were 0.42 apart.
-  rateError: 0.8, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
+  rateError: 1.0, rateErrWin: 32, rateBlock: 0.12, rateClear: 0.035, rateKeyPass: 0.08,
   // THE READER AND THE MOVE. An interception was the one defensive act that paid nothing: the passer
   // was charged and the man who stepped across the ball was paid nothing and counted nowhere, so
   // anticipation -- the channel `position` reaches the pitch through -- had no way into the rating.
@@ -1614,22 +1627,22 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ABOVE the 6.5 start, the left tail is thin, and the right tail is long and reaches 10. So the
   // routine positives are small and frequent, the routine punishments are smaller still, and only
   // goals, saves, errors and dismissals reach far from par.
-  ratePass: 0.023, ratePassProg: 0.0016, ratePassProgCap: 26, ratePassFail: 0.046,
+  ratePass: 0.023, ratePassProg: 0.0016, ratePassProgCap: 26, ratePassFail: 0.054,
   // A pass is PROGRESSIVE by the Wyscout rule: the gain toward the opponent's goal that counts
   // shrinks as play moves higher, so a defender lumping it forward from all that free grass does
   // not out-count a midfielder threading it in traffic. Both ends in own half: 28 m. Crossing
   // halves: 14 m. Both in the opponent's half: 9 m. Measured at a flat 10 m, DEF still topped the
   // table (2.4/match vs MID 1.5); tiered, the table belongs to the men who play forward.
   progOwn: 28, progCross: 14, progOpp: 9,
-  rateDuelWon: 0.066, rateDuelLost: 0.052, rateDribble: 0.094, rateBeaten: 0.062,
+  rateDuelWon: 0.066, rateDuelLost: 0.062, rateDribble: 0.094, rateBeaten: 0.075,
   rateAerial: 0.052, rateShotOn: 0.05, rateShotOff: 0.018,
   // A chance is big when the model says roughly a third of them go in. Creating one is worth more
   // than the key pass it already scores; spurning one is a real cost, and it is charged whether the
   // keeper saved it or it went wide, exactly as it is in the systems this is modelled on.
-  bigChanceXg: 0.30, rateBigChance: 0.20, rateBigMiss: 0.28, rateBigMissCap: 1.7,
+  bigChanceXg: 0.30, rateBigChance: 0.20, rateBigMiss: 0.40, rateBigMissCap: 1.7,
   // The moments that were missing. A penalty saved and a tackle made with nobody behind you are two
   // of the biggest single things a keeper or a defender can do in a match, and neither existed.
-  ratePenSave: 0.85, ratePenMiss: 0.80, rateLastMan: 0.28, tkLastManR: 34,
+  ratePenSave: 0.85, ratePenMiss: 1.00, rateLastMan: 0.28, tkLastManR: 34,
   // PHASE C. rateFullFrac is the share of a match a man has to play before his rating is taken at
   // face value; below it he is pulled back toward par. ratePos is the positional par itself,
   // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
@@ -1662,7 +1675,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: -0.051, DEF: -0.692, MID: -0.549, FWD: -1.299 },
+  ratePos: { GK: 0.159, DEF: -0.458, MID: -0.313, FWD: -0.579 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1716,7 +1729,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // here. Note for the next person: half the board's "midfielders" are creative winger/AM
   // profiles that real-world taxonomies list as forwards; the preset position labels understate
   // the board's true attacker share.
-  rateSpread: { GK: 1.28, DEF: 1.15, MID: 0.94, FWD: 1.55 },
+  // FWD 1.55 -> 1.30. With the curve reshaped, forwards held 8.6% of performances at 8.5 or
+  // better against 0.0% of defenders -- the whole of the remaining top-end excess was one position.
+  // 1.55 dates from when a striker needed the extra spread to reach the top of a season board at
+  // all; the projection to a full match now does that job, so this is double-counting it.
+  rateSpread: { GK: 1.28, DEF: 1.15, MID: 0.94, FWD: 1.30 },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in

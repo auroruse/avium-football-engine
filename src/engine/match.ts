@@ -832,7 +832,22 @@ export function meFinalise(s) {
       // top man was a substitute with nine appearances. The cap restores the confidence weighting:
       // a sixty-minute shift still projects to its per-ninety rate, and below that the shrink wins.
       const proj = p.rc ? 1 : Math.min(1 / Math.max(frac, 0.05), CFG.rateProjMax);
-      const dev = (p.rating - 6.5) * proj * (CFG.rateSpread?.[p.pos] ?? 1) * shrink
+      // BODY COMPRESSION, separate from the tail. Measured against the shipped curve, 6.3% of
+      // full-match performances came in at 8.5 or better where a real ratings distribution puts
+      // about 1.2%, and the 8.5-9.0 bin held as much mass as 8.0-8.5 -- a pile-up at the knee
+      // rather than a tail. Squashing the tail alone cannot fix it, because most of the mass above
+      // 8.0 arrives from BELOW the knee: it is the shoulder that is too fat, not the extreme. So
+      // the deviation is scaled first and shaped second. ratePos is added AFTER the scale, because
+      // it is the calibration offset rather than part of the performance.
+      // ASYMMETRIC. A symmetric squash cannot produce this curve: pull the body in hard enough to
+      // thin the 7.5-8.5 shoulder and the middle balloons past 80% while everything below 6.0
+      // disappears; leave it wide and the shoulder stays. A real ratings distribution is not
+      // symmetric either -- drifting DOWN for a poor afternoon is easy and drifting UP for a merely
+      // tidy one is not, so the two directions are scaled separately. Positive deviation is damped,
+      // negative deviation is amplified, and the two together thin the shoulder AND restore the
+      // left tail at once. ratePos is added after, because it is the calibration offset.
+      const dRaw = (p.rating - 6.5) * proj * (CFG.rateSpread?.[p.pos] ?? 1) * shrink;
+      const dev = dRaw * (dRaw >= 0 ? CFG.rateBodyUp : CFG.rateBodyDn)
                 + (CFG.ratePos[p.pos] ?? 0) * shrink;
       // THE TOP END COMPRESSES INSTEAD OF CLIPPING. The positional spread (rateSpread.FWD 1.55)
       // put an ordinary goal-plus-assist afternoon at 9.99, and the hard clamp then flattened every
@@ -849,7 +864,7 @@ export function meFinalise(s) {
       // body is linear. TAIL 0.55 was measured first and squeezed everything above a brace into
       // 9.2-9.37 -- a four-goal game printed what a good brace did; 0.7 is where the monsters
       // separate again without reopening the flood.
-      const rTop = 6.5 + dev, KNEE = 8.4, TAIL = 0.7;
+      const rTop = 6.5 + dev, KNEE = CFG.rateKnee, TAIL = CFG.rateTail;
       const rSoft = rTop > KNEE ? KNEE + TAIL * Math.log(1 + (rTop - KNEE)) : rTop;
       p.rating = Math.max(3, Math.min(10, +(rSoft.toFixed(2))));
     }
