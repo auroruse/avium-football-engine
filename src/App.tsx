@@ -7536,7 +7536,7 @@ export default function App() {
               <td style={{ ...tdCell, paddingRight: 0 }}><PlayerShot name={r.player} size={22} /></td>
               <td className={go ? "cell-link" : undefined} onClick={() => openPlayer(r.player)}
                   style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: go ? "pointer" : "default" }}>{boldSurname(r.player, r.player)}</td>
-              <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[r.pos] || "var(--chrome-muted)", ...mono }}>{r.pos}</td>
+              <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[exactPos(r.player, r.pos).split("/")[0]] || "var(--chrome-muted)", ...mono }}>{exactPos(r.player, r.pos)}</td>
               <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
                   style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -9668,6 +9668,12 @@ export default function App() {
   // those rows pointed at the wrong man. playerIndex is keyed by fullName throughout; this map was
   // the one place that disagreed.
   const playerByName = useMemo(() => new Map(playerIndex.map(p => [p.fullName || p.name, p])), [playerIndex]);
+  // THE POSITION HE PLAYS, not the band he was filed under. Every stats board and every changelog
+  // row stores one of GK/DEF/MID/FWD, because that is all the engine needs to rate him -- but the
+  // squad sheets know he is a right-back, and the roster shows it. Resolved off the index by name
+  // so nothing has to be rewritten on disk, and it falls back to the stored band for anyone the
+  // index no longer carries: a retired man, or one renamed since the season was filed.
+  const exactPos = (name, band) => playerByName.get(name)?.pos || band;
   const allPlayersAvg = useMemo(() => playerIndex.length
     ? Math.round(playerIndex.reduce((a, p) => a + (p.ovr || 0), 0) / playerIndex.length) : 0, [playerIndex]);
 
@@ -10628,7 +10634,7 @@ export default function App() {
                               <td className={go ? "cell-link" : undefined} onClick={() => go && openPlayer(r.player)}
                                   style={{ ...tdCell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: go ? "pointer" : "default" }}>
                                 {boldSurname(r.player, r.player)}</td>
-                              <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[r.pos] || "var(--chrome-muted)", ...mono }}>{r.pos}</td>
+                              <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[exactPos(r.player, r.pos).split("/")[0]] || "var(--chrome-muted)", ...mono }}>{exactPos(r.player, r.pos)}</td>
                               <td className={ct ? "cell-link" : undefined} onClick={() => ct && openTeam(ct)}
                                   style={{ ...tdCell, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)", cursor: ct ? "pointer" : "default" }}>
                                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -10853,7 +10859,7 @@ export default function App() {
                               <TeamCrest team={ct || { code: c.team }} size={15} />
                               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ct ? ct.name : formerName(c.team)}</span>
                             </span></td>
-                          <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[c.pos] || "var(--chrome-muted)", ...mono }}>{c.pos}</td>
+                          <td style={{ ...tdCell, textAlign: "center", fontSize: 9, fontWeight: 600, color: POS_CLR[exactPos(c.player, c.pos).split("/")[0]] || "var(--chrome-muted)", ...mono }}>{exactPos(c.player, c.pos)}</td>
                           <td style={tdCell} />
                           <td style={{ ...tdCell, whiteSpace: "nowrap", ...mono }}>
                             <span style={{ color: "var(--chrome-muted)" }}>{showOvr(c.old)}</span>
