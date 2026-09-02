@@ -113,7 +113,11 @@ export function meRuns(s, side) {
     return;
   }
   const carrier = us[mp.idx];
-  for (let i = 0; i < us.length; i++) {
+  // LEADERS RUN FIRST. runCap fixes how many break; this decides WHO, and it used to be shirt
+  // order. Stable sort, so with every role at zero it is shirt order still and nothing moves.
+  const order = us.map((_, i) => i);
+  if (CFG.roleRunOrder) order.sort((a, b) => (us[b]._role || 0) - (us[a]._role || 0));
+  for (const i of order) {
     const p = us[i];
     if (p === carrier || p.pos === "GK" || p._runT > 0 || p._cool > 0) continue;
     const ahead = (p.x - mp.bx) * dir;

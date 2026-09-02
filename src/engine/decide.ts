@@ -612,6 +612,9 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // line above only fires on the meMind DIFFERENCE, which inside a squad is small -- a six-OVR
     // gap is 0.14 of it -- so on its own it never made anybody the creator. See CFG.pmkRecvW.
     if (q._pmk && q !== p) val += q._pmk * CFG.pmkRecvW;
+    // ...and the man leading his UNIT today, whichever unit. Centred within the band so it only
+    // ever redistributes: the better full-back is fed a little more and the other a little less.
+    if (q._role && q !== p) val += q._role * CFG.roleRecvW;
     // ...AND WHETHER HE SEES IT AT ALL. Everything above prices the pass; nothing above asked who
     // is looking. passRecvW already sends the ball TO the best player, and judgeErr already makes a
     // poor man noisy -- but noise is symmetric, so across a season every midfielder found the same

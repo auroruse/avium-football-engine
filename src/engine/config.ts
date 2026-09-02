@@ -442,7 +442,7 @@ foulAggr: 0.25,
   // losing the argument to a dishonest pass. Passing for its own sake was this line.
   // Second iteration 29 Aug (the fit's own note says the chosen passes move with the belief):
   // L was still chasing at 3.87 on the new distribution -- late balls still over-believed.
-  passCal0: 2.10, passCalB: 1.22, passCalR: 1.77, passCalL: 5.08,
+  passCal0: 2.17, passCalB: 1.17, passCalR: 1.84, passCalL: 6.78,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -833,6 +833,12 @@ foulAggr: 0.25,
   // and how much of the pull back toward his formation slot he is released from. Both scale by
   // _pmk, so a squad with nobody who stands out plays exactly as it did.
   pmkDanger: 1.40, pmkRoam: 0.55,
+  // FORM AND UNIT ROLES -- see meRoles. roleFormSd is the per-match draw in compressed-OVR units:
+  // 1.6 puts a peer 2.4 points back ahead about one match in seven; three such peers leave the best man
+  // leading roughly three in five. roleSpan is the band gap that counts as
+  // fully leading the unit. roleRecvW is what a unit leader adds to a pass's value, less than a
+  // third of the hub's pmkRecvW and centred, so it moves the ball within a unit and never adds any.
+  roleFormSd: 1.6, roleSpan: 4, roleRecvW: 0.12, roleRunOrder: 1,
   patW: 0.045,
   spanDir: 5,
   // WHY POSSESSION FOOTBALL DOES NOT WORK IN THIS ENGINE. Written down because four separate
@@ -1560,12 +1566,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.67, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.68, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
   // derive sample holds under ten shots there and the instruction above says not to trust one.
-  gkExp: [[0.05, 0.10], [0.10, 0.10], [0.20, 0.12], [0.30, 0.23], [0.40, 0.75], [0.60, 0.60], [1.01, 0.89]],
+  gkExp: [[0.05, 0.10], [0.10, 0.08], [0.20, 0.12], [0.30, 0.31], [0.40, 0.71], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1675,7 +1681,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: 0.159, DEF: -0.458, MID: -0.313, FWD: -0.579 },
+  ratePos: { GK: 0.276, DEF: -0.386, MID: -0.306, FWD: -0.444 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a

@@ -112,35 +112,15 @@ export function meInit(s, slotsFor, rng) {
       p.x = Math.max(1.5, Math.min(PITCH_L - 1.5, p.x + jit(amp)));
       p.y = Math.max(1.5, Math.min(PITCH_W - 1.5, p.y + jit(amp)));
     }
-    // THE HUB. Every side plays through somebody, and until now no side played through anybody:
-    // measured over a full season, a club whose best midfielder was six OVR clear gave him 14% of
-    // its key passes and a club whose top four were within a point gave him 15% -- no correlation
-    // at all, because creation follows final-third TOUCHES and a formation hands those out about
-    // equally. So the best midfielder in the XI is named, and how much of a hub he is scales two
-    // ways: how good he is in absolute terms, and how far clear of his own midfield he is. A 90
-    // among 80s runs the team; an 84 among 84s is barely more than his share; a good player in a
-    // poor side is a hub for that side and still not much of one. Nothing here is a flag: _pmk is
-    // the strength itself, 0 to 1, and everything that reads it scales by it.
-    {
-      const out2 = ps.filter(q => q.pos !== "GK");
-      const mids = out2.filter(q => q.pos === "MID");
-      const cands = mids.length ? mids : out2;
-      let best = null;
-      for (const q of cands) if (!best || meOvr(q) > meOvr(best)) best = q;
-      if (best && out2.length > 1) {
-        // AGAINST HIS OWN PEERS, not the whole outfield. Measured against every outfielder, a
-        // defence drags the mean down and so EVERY competent midfielder reads as clear of his
-        // squad: Olabarria, one point above ISS's other three midfielders, came out running the
-        // side. What "he is the difference" means is that he is better than the men who play
-        // where he plays.
-        const peers = cands.filter(q => q !== best);
-        const rest = peers.length ? peers : out2.filter(q => q !== best);
-        const restMean = rest.reduce((t, q) => t + meOvr(q), 0) / rest.length;
-        const abs01 = Math.max(0, Math.min(1, (meOvr(best) - CFG.pmkAbsLo) / CFG.pmkAbsSpan));
-        const rel01 = Math.max(0, Math.min(1, (meOvr(best) - restMean) / CFG.pmkRelFull));
-        best._pmk = abs01 * (CFG.pmkRelLo + rel01 * (1 - CFG.pmkRelLo));
-      }
-    }
+    // FORM, then ROLES. Every man on the sheet -- bench included, so a substitute already has
+    // his -- draws one number for the match: a normal in compressed-OVR units, clamped at 2.5 sd.
+    // It never touches his attributes. It only decides who is the hub and who leads his unit
+    // TODAY, so the best man still leads on average and does not lead every time. Zero without
+    // an rng, which is what keeps the deterministic harnesses bit-identical.
+    const gauss = () => { if (!rng) return 0; const u1 = Math.max(1e-9, rng.u()), u2 = rng.u();
+      return Math.max(-2.5, Math.min(2.5, Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2))); };
+    for (const q of [...ps, ...(s.bench?.[side] || [])]) if (q) q._form = gauss() * CFG.roleFormSd;
+    meRoles(s, side);
     // mindSet: GF's one 0..1 role scalar (GK 0, CB 0, CM 0.5, CF 1 -- AIfunctions.cpp:1228-1249).
     // Derived from the formation instead of authored: your natural depth within the XI IS your role.
     let mn = Infinity, mx = -Infinity;
@@ -998,6 +978,7 @@ export function meRed(s, out, side, q, why, x, y) {
   q._offX = q.x; q._offY = q.y;
   q.y = -6; q.vx = 0; q.vy = 0; q._offAt = s.mePos.tick;
   (out.reds = out.reds || { home: 0, away: 0 })[side]++;
+  meRoles(s, side);                                   // ten men: somebody else is the hub now
   (out.sendOff = out.sendOff || { home: [], away: [] })[side].push(
     { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, add: out.add || 0, second: why === "second", why });
   meEvt(out, "red", side, x, y, x, y,
@@ -1086,6 +1067,69 @@ export function meTackle(s, rng, out) {
   }
 }
 
+// A SPECIFIC position folded to the unit he plays in. Full-backs contest each other, wingers
+// contest each other; a lone striker has no peers and gets no role. Falls back on the band when a
+// sheet carries no specific position.
+const ROLE_BAND = { GK: "GK", CB: "CB", LB: "FB", RB: "FB", LWB: "FB", RWB: "FB", DM: "DM",
+                    CM: "CM", LM: "CM", RM: "CM", AM: "AM", LW: "W", RW: "W", ST: "ST" };
+const roleBandOf = (p) => ROLE_BAND[(p.spos || "").split("/")[0]]
+                       || ({ DEF: "CB", MID: "CM", FWD: "ST", GK: "GK" })[p.pos] || "CM";
+const roleClamp01 = (x) => Math.max(0, Math.min(1, x));
+
+// WHO PLAYS THROUGH WHOM, TODAY. Called at kickoff, after every substitution and after every red
+// card, on the men who are actually on the pitch -- the hub used to be named once in meInit and
+// left there, so a side whose hub went off at seventy played the last twenty minutes through
+// nobody at all.
+//
+// THE HUB is the formula it always was, on form-perturbed rating: the best midfielder, scaled by
+// how good he is (abs01) and how clear of his own midfield he is (rel01). With form in the OVR the
+// argmax is contested -- a peer 2.4 compressed points behind overtakes about one match in five at
+// roleFormSd 2, three peers at that gap leave the best man leading roughly three in five, and a
+// 90 among 80s still leads better than nineteen in twenty. The strength varies with the win: a
+// narrow win is a weak hub, a rout is a strong one. E[_pmk] is what it was, so nothing calibrated
+// against it moves in expectation.
+//
+// THE ROLE is new and covers every unit: within his band, how far a man's form-perturbed rating
+// sits from the band mean, in [-1, 1], centred so the band sums to zero. It feeds only zero-sum
+// choices -- which receiver a passer prefers, who gets a run slot first -- because a term that
+// scales an objective is a buff and the best full-back running more must mean the other running
+// less, not the side running more. See roleRecvW and the run order in brain.ts.
+export function meRoles(s, side) {
+  const ps = s.players[side] || [];
+  const live = ps.filter(q => q && !q.off);
+  // ON THE LISTED RATING. p.ovr carries the drill and home-advantage nudges and moves during the
+  // match; ovr0 is the sheet. Keying roles off p.ovr made the hub depend on WHEN meRoles last ran
+  // -- a midfielder a fraction under the floor at the last substitution was a fraction over it at
+  // full time, and the side finished with nobody named. The sheet does not move.
+  const o = (q) => meOvr({ ovr: q.ovr0 ?? q.ovr }) + (q._form || 0);
+  for (const q of ps) if (q) { q._pmk = 0; q._role = 0; }
+  const out2 = live.filter(q => q.pos !== "GK");
+  const mids = out2.filter(q => q.pos === "MID");
+  const cands = mids.length ? mids : out2;
+  let best = null;
+  for (const q of cands) if (!best || o(q) > o(best)) best = q;
+  if (best && out2.length > 1) {
+    const peers = cands.filter(q => q !== best);
+    const rest = peers.length ? peers : out2.filter(q => q !== best);
+    const restMean = rest.reduce((t, q) => t + o(q), 0) / rest.length;
+    const abs01 = roleClamp01((o(best) - CFG.pmkAbsLo) / CFG.pmkAbsSpan);
+    const rel01 = roleClamp01((o(best) - restMean) / CFG.pmkRelFull);
+    best._pmk = abs01 * (CFG.pmkRelLo + rel01 * (1 - CFG.pmkRelLo));
+  }
+  const bands = new Map();
+  for (const q of live) { const b = roleBandOf(q); if (!bands.has(b)) bands.set(b, []); bands.get(b).push(q); }
+  for (const g of bands.values()) {
+    if (g.length < 2) continue;
+    const m = g.reduce((t, q) => t + o(q), 0) / g.length;
+    // Bounded by SCALING THE BAND, not by clipping the man: a clamp on one end leaves the unit
+    // summing to something, and a unit that sums positive has been buffed. Dividing everyone by
+    // the largest deviation keeps the sum at exactly zero and the ratios intact.
+    const dev = g.map(q => (o(q) - m) / CFG.roleSpan);
+    const top = Math.max(1, ...dev.map(Math.abs));
+    g.forEach((q, i) => { q._role = dev[i] / top; });
+  }
+}
+
 export function meSub(s, side, outIdx, benchIdx, out) {
   const ps = s.players[side], bench = s.bench?.[side];
   const gone = ps[outIdx], inn = bench && bench[benchIdx];
@@ -1107,6 +1151,7 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   s.subs = s.subs || { home: 0, away: 0 }; s.subs[side]++;
   (s.subbedOff = s.subbedOff || { home: [], away: [] })[side].push(gone);
   if (out) meEvt(out, "sub", side, inn.x, inn.y, inn.x, inn.y, `${inn.fullName || inn.name} on for ${gone.fullName || gone.name}`);
+  meRoles(s, side);                                   // the hub and every unit, on who is out there now
   return true;
 }
 
