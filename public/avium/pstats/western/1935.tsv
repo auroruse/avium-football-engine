@@ -136,7 +136,7 @@
 135	Robert Schlösser	FWD	PON	10	0	268	1		135	Tanvir Howlader	FWD	NHO	10	10	485	1		135	Raveendran Unnithan	MID	ARU	10	10	884	6.7		135	Odilon Borkono	MID	VAN	10	10	832	7		135	Pieter Van Dam	MID	ASG	10	10	859	31									
 136	August Rittenhouse	MID	PON	10	10	630	1		136	Tatsuki Akagawa	FWD	NHO	10	10	549	1		136	Ioannes Dongolawi	DEF	NRG	10	10	900	6.7		136	Judah Rangitāne	DEF	ANH	8	8	564	6		136	Albrecht Von Haast	MID	ANH	9	9	657	30									
 137	Sadao Garabin	MID	NKI	10	0	298	1		137	Josiah Halloway	DEF	SAL	10	10	900	1		137	Nawel Ñanculef	DEF	AKG	10	10	819	6.7		137	Dorian Roussel	MID	ARV	10	0	304	6		137	Pacôme Guébré	MID	VAN	9	9	696	30									
-138	Minoru Andō	FWD	NKI	10	1	357	1		138	Thaddeus Boone	MID	SAL	10	10	841	1		138	Coyam Cayupán	DEF	AKG	10	10	882	6.7		138	Félicien Couture	MID	ARV	10	0	260	6		138	Rocco De Luca	MID	ESU	10	10	753	30									
+138	Minoru Andō	FWD	NKI	10	1	357	1		138	Cyprian Regent	MID	SAL	10	10	841	1		138	Coyam Cayupán	DEF	AKG	10	10	882	6.7		138	Félicien Couture	MID	ARV	10	0	260	6		138	Rocco De Luca	MID	ESU	10	10	753	30									
 139	Odysseas Katsaros	MID	AST	10	0	274	1		139	Jonas Mercer	MID	SAL	10	10	856	1		139	Leftraru Painemal	MID	AKG	10	10	676	6.7		139	Kemar Browner	MID	HOL	10	10	736	6		139	Pau Puigcorbé	FWD	ASK	10	10	673	30									
 140	Epaminondas Mavromatis	MID	AST	10	10	746	1		140	Ronald Ward	FWD	SAL	10	10	900	1		140	Lemet Vesijärven	MID	KKM	10	10	810	6.7		140	Martino Marrese	MID	VIC	10	0	322	6		140	Matías Salcedo	FWD	ASK	10	10	693	30									
 141	Tanvir Howlader	FWD	NHO	10	10	485	1		141	Titus Calloway	FWD	SAL	10	0	125	1		141	Virsa Tuttonen	MID	KKM	10	10	817	6.7		141	Filippo Castiglione	DEF	VIC	10	10	889	6		141	Andrea Ferrari	DEF	VIC	10	10	825	30									
@@ -221,7 +221,7 @@
 																		220	Khagendra Mitra	DEF	NHO	10	10	811	6.5		220	Volkmar Scherer	FWD	PON	10	4	484	4		220	Gyan Hansda	MID	ENR	10	10	859	21									
 																		221	Kenji Nagase	FWD	NHO	10	10	659	6.5		221	Keigo Ikeda	DEF	NKI	10	10	847	4		221	Eben Nageak	DEF	MOR	10	10	900	21									
 																		222	Gcobani Nhlapo-Marais	MID	ASP	10	4	549	6.5		222	Yoshio Hanazawa	FWD	NHO	10	0	437	4		222	Gusztáv Molnár	DEF	GUP	10	10	898	21									
-																		223	Namú Suriá	DEF	NMZ	10	10	900	6.5		223	Thaddeus Boone	MID	SAL	10	10	841	4		223	Tivadar Lakatos	MID	GUP	10	10	896	21									
+																		223	Namú Suriá	DEF	NMZ	10	10	900	6.5		223	Cyprian Regent	MID	SAL	10	10	841	4		223	Tivadar Lakatos	MID	GUP	10	10	896	21									
 																		224	Tkabë Kichá	MID	NMZ	10	0	413	6.5		224	Cyrus Winslow	FWD	SAL	10	10	838	4		224	Kasun Gunawardena	DEF	ARU	10	10	831	21									
 																		225	Dowá Tuvöl	DEF	NMZ	10	10	771	6.5		225	Tshepo Motaung	FWD	ASP	10	0	381	4		225	Vigneswaran Arulampalam	DEF	ARU	10	10	900	21									
 																		226	Juní Börá	FWD	NMZ	10	10	573	6.5		226	Jatsó Bluköl	MID	NMZ	10	0	278	4		226	Theodoros Farasin	MID	NRG	10	10	751	21									
@@ -343,7 +343,7 @@
 																		342	Nélson Ferreira	FWD	ASK	10	0	192	6.3		342	Fidèle Mokossa	FWD	VAN	10	0	182	2		342	Massimo Visconti	GK	VIC	10	10	900	11									
 																		343	Susumu Uehara	DEF	NHO	10	10	766	6.3		343	Bienvenu Wongo	FWD	VAN	10	10	718	2		343	Nikolaos Papadopoulos	GK	AST	10	10	900	11									
 																		344	Josiah Halloway	DEF	SAL	10	10	900	6.3		344	Selpius Rumbekwan	DEF	ASG	10	10	900	2		344	Piers Skoronsky	GK	SAL	10	10	900	11									
-																		345	Thaddeus Boone	MID	SAL	10	10	841	6.3		345	Melky Mote	FWD	ASG	10	0	157	2		345	Thaddeus Boone	MID	SAL	10	10	841	11									
+																		345	Cyprian Regent	MID	SAL	10	10	841	6.3		345	Melky Mote	FWD	ASG	10	0	157	2		345	Cyprian Regent	MID	SAL	10	10	841	11									
 																		346	Vusumuzi Zoulou	MID	ASP	10	10	759	6.3		346	Neizan Escribano	MID	AUR	1	0	31	1		346	Jonas Mercer	MID	SAL	10	10	856	11									
 																		347	Jatsó Bluköl	MID	NMZ	10	0	278	6.3		347	Nikolaus Wagner	DEF	ANH	2	2	140	1		347	Talí Sabákö	MID	NMZ	10	0	351	11									
 																		348	Chanchal Ahmed	DEF	AWB	10	10	900	6.3		348	Yorgos Moustakellis	FWD	AST	2	0	28	1		348	Bibhuti Mohapatra	GK	ENR	10	10	900	11									
