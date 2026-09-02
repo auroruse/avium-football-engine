@@ -4675,7 +4675,11 @@ export default function App() {
   const leagueAvgSkill = (ts) => ts?.length ? Math.round(ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length) : 0;
   // One filter, read by both the header count and the list — they used to derive it separately.
   const visibleTeams = useMemo(() => {
-    const q = teamSearch.trim().toLowerCase();
+    // FOLDED, not just lowered: a roster this full of macrons and cedillas is unsearchable if
+    // "Ryugu" has to be typed "Ryūgu" and "Cetin" has to be typed "Çeti̇n". pFold strips the marks
+    // off both sides, so the plain spelling finds the accented one and the accented one still
+    // finds itself.
+    const q = pFold(teamSearch.trim());
     const inView = (t) => teamLeagueFilter === ALL_INTL ? isIntlLeague(t.league)
       : teamLeagueFilter === ALL_CLUBS ? !isIntlLeague(t.league)
       : !teamLeagueFilter || railLeague(t) === teamLeagueFilter;
@@ -4683,7 +4687,7 @@ export default function App() {
     // team in the whole game, so requiring you to already be in its league before "DYM" resolves is
     // the opposite of what you type a code for — and the box sits in the Leagues rail's own header,
     // above the league list, which reads as searching all of them.
-    const code = (t) => (t.code || "").toLowerCase(), name = (t) => t.name.toLowerCase();
+    const code = (t) => pFold(t.code || ""), name = (t) => pFold(t.name);
     const hit = (t) => name(t).includes(q) || code(t).includes(q);
     // ...except in the two directories, which are each the whole of one kind: a search typed in
     // All National Teams finds nations and one typed in All Clubs finds clubs, never the other.
@@ -10899,7 +10903,8 @@ export default function App() {
                     &#x26A0; {c.lines.length}</button>))}
               </div>
               {(() => {
-                const q = playerSearch.toLowerCase();
+                // Same fold as the team search: half this index is spelled with diacritics.
+                const q = pFold(playerSearch);
                 const filtered = playerIndex.filter(p => {
                   if (playerPosFilter !== "ALL") { const pl = p.pos.split("/"); const posMatch = ["DEF","MID","FWD"].includes(playerPosFilter) ? pl.some(x => POS_GROUP[x] === playerPosFilter) : pl.includes(playerPosFilter); if (!posMatch) return false; }
                   // The rail selects by display name, which is what the nations list is keyed on —
@@ -10912,7 +10917,7 @@ export default function App() {
                     else if (sc) { if (!p.capped || CONF_BY_CODE.get(p.natCode) !== sc) return false; }
                     else if (!p.clubs.some(c => (c.league || "Custom") === lgComp)) return false; }
                   if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
-                  if (q && !p.name.toLowerCase().includes(q) && !(p.fullName || "").toLowerCase().includes(q)) return false;
+                  if (q && !pFold(p.name).includes(q) && !pFold(p.fullName || "").includes(q)) return false;
                   return true;
                 });
                 // Visible slice + overscan. Spacer rows above/below preserve full scroll height.
