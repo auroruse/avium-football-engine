@@ -1,16 +1,16 @@
 #	PLAYER	POS	TEAM	GP	G		#	PLAYER	POS	TEAM	GP	A		#	PLAYER	POS	TEAM	GP	RTG
-1	Trent Hawthorne	FWD	ISS	38	31		1	Yeray Bengoetxea	MID	ISS	38	17		1	Octave Desjardins	MID	DYM	37	7.4
-2	Luca Higashiyama	MID	VIR	38	31		2	Octave Desjardins	MID	DYM	37	16		2	Trent Hawthorne	FWD	ISS	38	7.4
-3	Shō Itoshi	FWD	SPK	38	29		3	Rui Ōe	MID	DYM	38	15		3	Luca Higashiyama	MID	VIR	38	7.3
-4	Kenichi Mitsui	FWD	DYM	38	28		4	Hiro Oshiro	MID	DYM	38	13		4	Takeru Mikado	MID	SPK	38	7.3
-5	Masaru Jakamarra	FWD	SSK	38	25		5	Gonzalo Valbuena	MID	SPK	38	13		5	Kenichi Mitsui	FWD	DYM	38	7.3
-6	Ganzorig Erdene	FWD	ORU	38	24		6	Ngor Thon	FWD	NAG	38	13		6	Rui Ōe	MID	DYM	38	7.3
-7	Octave Desjardins	MID	DYM	37	18		7	Yoru Shirase	FWD	SPK	38	10		7	Masaru Jakamarra	FWD	SSK	38	7.3
-8	Rui Ōe	MID	DYM	38	16		8	Denis Kuznetsov	FWD	SPK	38	10		8	Shō Itoshi	FWD	SPK	38	7.3
-9	Tomer Mizrahi	FWD	VAL	38	16		9	Tōgo Tanioka	FWD	SHZ	38	10		9	Gonzalo Valbuena	MID	SPK	38	7.2
-10	Takeru Mikado	MID	SPK	38	14		10	Pedram Nazeri	FWD	TOY	38	10		10	Makoto Kishima	MID	SSK	38	7.2
-11	Denis Kuznetsov	FWD	SPK	38	14		11	Luca Higashiyama	MID	VIR	38	10		11	Denis Kuznetsov	FWD	SPK	38	7.2
-12	Tōgo Tanioka	FWD	SHZ	38	14		12	Ihor Kovalenko	FWD	SSK	36	9		12	Ganzorig Erdene	FWD	ORU	38	7.2
+1	Trent Hawthorne	FWD	ISS	38	31		1	Yeray Bengoetxea	MID	ISS	38	17		1	Octave Desjardins	MID	DYM	37	7.3
+2	Luca Higashiyama	MID	VIR	38	31		2	Octave Desjardins	MID	DYM	37	16		2	Trent Hawthorne	FWD	ISS	38	7.3
+3	Shō Itoshi	FWD	SPK	38	29		3	Rui Ōe	MID	DYM	38	15		3	Luca Higashiyama	MID	VIR	38	7.2
+4	Kenichi Mitsui	FWD	DYM	38	28		4	Hiro Oshiro	MID	DYM	38	13		4	Takeru Mikado	MID	SPK	38	7.2
+5	Masaru Jakamarra	FWD	SSK	38	25		5	Gonzalo Valbuena	MID	SPK	38	13		5	Kenichi Mitsui	FWD	DYM	38	7.2
+6	Ganzorig Erdene	FWD	ORU	38	24		6	Ngor Thon	FWD	NAG	38	13		6	Rui Ōe	MID	DYM	38	7.2
+7	Octave Desjardins	MID	DYM	37	18		7	Yoru Shirase	FWD	SPK	38	10		7	Masaru Jakamarra	FWD	SSK	38	7.2
+8	Rui Ōe	MID	DYM	38	16		8	Denis Kuznetsov	FWD	SPK	38	10		8	Shō Itoshi	FWD	SPK	38	7.2
+9	Tomer Mizrahi	FWD	VAL	38	16		9	Tōgo Tanioka	FWD	SHZ	38	10		9	Gonzalo Valbuena	MID	SPK	38	7.1
+10	Takeru Mikado	MID	SPK	38	14		10	Pedram Nazeri	FWD	TOY	38	10		10	Makoto Kishima	MID	SSK	38	7.1
+11	Denis Kuznetsov	FWD	SPK	38	14		11	Luca Higashiyama	MID	VIR	38	10		11	Denis Kuznetsov	FWD	SPK	38	7.1
+12	Tōgo Tanioka	FWD	SHZ	38	14		12	Ihor Kovalenko	FWD	SSK	36	9		12	Ganzorig Erdene	FWD	ORU	38	7.1
 13	Ngor Thon	FWD	NAG	38	14		13	Trent Hawthorne	FWD	ISS	38	9		13	Ngor Thon	FWD	NAG	38	7.1
 14	Hajime Morimoto	FWD	TOY	38	14		14	Makoto Kishima	MID	SSK	38	9		14	Yeray Bengoetxea	MID	ISS	38	7.1
 15	Rémi Gauthier	FWD	NIK	38	13		15	Farid Panganiban	MID	AYA	38	9		15	Filippo Castiglione	DEF	SPK	38	7.1
@@ -52,28 +52,28 @@
 51	Duol Akol	MID	FCH	36	2		51	Muzaffer Doğan	FWD	SUM	38	3		51	Bartosz Jastrzębski	FWD	SHZ	38	6.9
 52	Mateusz Kowalski	MID	SEN	36	2		52	Liang Wu	DEF	SUM	38	3		52	Jerzy Wiśniewski	DEF	VAL	38	6.9
 53	Ovidiu Popescu	DEF	VAL	37	2		53	Feng Ji	MID	SUM	38	3		53	Andrea Ferrari	DEF	MAK	38	6.9
-54	Akira Nagumo	DEF	DYM	38	2		54	Orkun Çeti̇n	MID	NAG	38	3		54	Kenneth Haugland	MID	VIR	38	6.8
-55	Shin Segawa	DEF	SSK	38	2		55	Levente Kovács	DEF	VIR	38	3		55	Taras Bondarenko	FWD	SEN	37	6.8
-56	Andrea Ferrari	DEF	MAK	38	2		56	Artem Tkachenko	MID	RYO	36	2		56	Takahiro Mikami	GK	RYO	38	6.8
-57	Gen Fija	DEF	AYA	38	2		57	Rémi Gauthier	FWD	NIK	38	2		57	Heng Kong	MID	SUM	38	6.8
-58	Raka Wijaya	DEF	AYA	38	2		58	Shin Segawa	DEF	SSK	38	2		58	Ovidiu Popescu	DEF	VAL	37	6.8
-							59	Masaru Jakamarra	FWD	SSK	38	2		59	Emil Hansen	DEF	FCH	38	6.8
-							60	Zixuan Wang	MID	SUM	38	2		60	Liang Wu	DEF	SUM	38	6.8
-							61	Tibor Horváth	FWD	MAK	38	2		61	Feng Ji	MID	SUM	38	6.8
-							62	Emil Hansen	DEF	FCH	38	2		62	Pedram Nazeri	FWD	TOY	38	6.8
-							63	Bartosz Jastrzębski	FWD	SHZ	38	2		63	Pavel Sokolov	MID	MAK	38	6.8
-							64	Heng Kong	MID	SUM	38	2		64	Zixuan Wang	MID	SUM	38	6.8
-							65	Takeo Kinoshita	MID	RYO	25	1		65	Drake Kessler	MID	NIK	38	6.8
-							66	Minoru Andō	DEF	NIK	31	1		66	Vasyl Nalyvaiko	DEF	KOS	38	6.8
-							67	Matvei Popov	DEF	RYO	38	1		67	Kōhei Gushiken	MID	AYA	24	6.8
-							68	Vasyl Nalyvaiko	DEF	KOS	38	1		68	Attila Hegedűs	MID	SEN	38	6.7
-														69	Muzaffer Doğan	FWD	SUM	38	6.7
-														70	Minoru Andō	DEF	NIK	31	6.7
-														71	Duol Akol	MID	FCH	36	6.7
-														72	Xiang Qian	MID	SUM	25	6.7
-														73	Bence Zsolnay	MID	KOS	38	6.7
-														74	Artem Tkachenko	MID	RYO	36	6.6
-														75	Matvei Popov	DEF	RYO	38	6.6
-														76	Danylo Perebyinis	MID	RYO	38	6.6
-														77	Mateusz Kowalski	MID	SEN	36	6.6
-														78	Takeo Kinoshita	MID	RYO	25	6.4
+54	Akira Nagumo	DEF	DYM	38	2		54	Orkun Çeti̇n	MID	NAG	38	3		54	Kenneth Haugland	MID	VIR	38	6.9
+55	Shin Segawa	DEF	SSK	38	2		55	Levente Kovács	DEF	VIR	38	3		55	Taras Bondarenko	FWD	SEN	37	6.9
+56	Andrea Ferrari	DEF	MAK	38	2		56	Artem Tkachenko	MID	RYO	36	2		56	Takahiro Mikami	GK	RYO	38	6.9
+57	Gen Fija	DEF	AYA	38	2		57	Rémi Gauthier	FWD	NIK	38	2		57	Heng Kong	MID	SUM	38	6.9
+58	Raka Wijaya	DEF	AYA	38	2		58	Shin Segawa	DEF	SSK	38	2		58	Ovidiu Popescu	DEF	VAL	37	6.9
+							59	Masaru Jakamarra	FWD	SSK	38	2		59	Emil Hansen	DEF	FCH	38	6.9
+							60	Zixuan Wang	MID	SUM	38	2		60	Liang Wu	DEF	SUM	38	6.9
+							61	Tibor Horváth	FWD	MAK	38	2		61	Feng Ji	MID	SUM	38	6.9
+							62	Emil Hansen	DEF	FCH	38	2		62	Pedram Nazeri	FWD	TOY	38	6.9
+							63	Bartosz Jastrzębski	FWD	SHZ	38	2		63	Pavel Sokolov	MID	MAK	38	6.9
+							64	Heng Kong	MID	SUM	38	2		64	Zixuan Wang	MID	SUM	38	6.9
+							65	Takeo Kinoshita	MID	RYO	25	1		65	Drake Kessler	MID	NIK	38	6.9
+							66	Minoru Andō	DEF	NIK	31	1		66	Vasyl Nalyvaiko	DEF	KOS	38	6.9
+							67	Matvei Popov	DEF	RYO	38	1		67	Kōhei Gushiken	MID	AYA	24	6.9
+							68	Vasyl Nalyvaiko	DEF	KOS	38	1		68	Attila Hegedűs	MID	SEN	38	6.8
+														69	Muzaffer Doğan	FWD	SUM	38	6.8
+														70	Minoru Andō	DEF	NIK	31	6.8
+														71	Duol Akol	MID	FCH	36	6.8
+														72	Xiang Qian	MID	SUM	25	6.8
+														73	Bence Zsolnay	MID	KOS	38	6.8
+														74	Artem Tkachenko	MID	RYO	36	6.7
+														75	Matvei Popov	DEF	RYO	38	6.7
+														76	Danylo Perebyinis	MID	RYO	38	6.7
+														77	Mateusz Kowalski	MID	SEN	36	6.7
+														78	Takeo Kinoshita	MID	RYO	25	6.6

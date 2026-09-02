@@ -1,26 +1,26 @@
 #	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
-1	Haydar Şen	FWD	SEL	13	13	753	10		1	Orkun Çeti̇n	MID	SEL	13	13	722	11		1	Yerrin Chindura	MID	NKI	10	10	489	8.2		1	Sudhir Chakraborty	MID	NHO	10	10	629	31		1	Tanjin Tsukahara	DEF	NKI	10	10	847	56		1	Basem Shenouda	GK	NRG	9	9	810	64
-2	Yerrin Chindura	MID	NKI	10	10	489	7		2	Stephanos Ballana	MID	NRG	9	9	624	6		2	Sepideh Shakibaii	MID	VAR	11	11	540	8.2		2	Sepideh Shakibaii	MID	VAR	11	11	540	28		2	Vural Surlu	MID	SEL	12	12	977	55		2	Vahid Lorestani	GK	VAR	11	11	990	36
-3	Yoshio Hanazawa	FWD	NHO	10	0	337	6		3	Sudhir Chakraborty	MID	NHO	10	10	629	6		3	Lakhdar Hamidi	MID	ADV	7	7	514	8.1		3	Orkun Çeti̇n	MID	SEL	13	13	722	28		3	Sarp Sayda	DEF	SEL	12	12	1016	52		3	Ahmet Aydin	GK	SEL	13	13	1170	36
-4	Kenji Nagase	FWD	NHO	10	10	554	6		4	Tadros Amenemhat	MID	KMT	9	9	673	4		4	Sarapamon Nakhtmin	FWD	KMT	7	7	440	7.9		4	Yerrin Chindura	MID	NKI	10	10	489	24		4	Muzaffer Doğan	DEF	SEL	13	13	1170	52		4	Shenoute Nebamun	GK	KMT	9	9	810	35
-5	Sepideh Shakibaii	MID	VAR	11	11	540	6		5	Sepideh Shakibaii	MID	VAR	11	11	540	4		5	Sudhir Chakraborty	MID	NHO	10	10	629	7.9		5	Simphiwe Chabalala	MID	ASP	7	7	426	15		5	Orkun Çeti̇n	MID	SEL	13	13	722	51		5	Amaru Calfuqueo	GK	AKG	7	7	630	30
-6	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	5		6	Zeki Nari̇n	MID	SEL	12	0	248	4		6	Orkun Çeti̇n	MID	SEL	13	13	722	7.8		6	Masaru Jakamarra	FWD	NKI	9	9	432	14		6	Touraj Hayaii	DEF	VAR	11	11	942	47		6	Dural Tanumura	GK	NKI	10	10	900	29
-7	Sarapamon Nakhtmin	FWD	KMT	7	7	440	5		7	Batuhan Balyoz	MID	SEL	12	12	844	4		7	Haydar Şen	FWD	SEL	13	13	753	7.8		7	Ashkan Mahdavi	MID	VAR	11	11	619	14		7	Anirban Goswami	DEF	NHO	10	10	900	45		7	Ashim Bhattacharya	GK	NHO	10	10	900	29
-8	Rhulani Khouza	FWD	ASP	7	7	455	5		8	Masaru Jakamarra	FWD	NKI	9	9	432	3		8	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	7.7		8	Yavuz Koç	MID	SEL	13	13	875	13		8	Warrik Wirandaru	DEF	NKI	10	10	900	44		8	Thirumal Annamalai	GK	ARU	7	7	630	25
-9	Saīd Farzan	FWD	VAR	11	0	440	5		9	Ashkan Mahdavi	MID	VAR	11	11	619	3		9	Anoup Ptahmose	MID	KMT	9	9	621	7.7		9	Dvir Alon	MID	SHI	7	7	557	12		9	Daru Jafari	MID	VAR	11	11	828	44		9	Pranab Hazarika	GK	GUP	7	7	630	25
-10	Pedram Nazeri	FWD	VAR	11	11	550	5		10	Selçuk Demirci	MID	SEL	13	13	851	3		10	Ashkan Mahdavi	MID	VAR	11	11	619	7.5		10	Tadros Amenemhat	MID	KMT	9	9	673	12		10	Haydar Şen	FWD	SEL	13	13	753	43		10	Bibhuti Mohapatra	GK	ENR	7	7	630	23
-11	Serhat Di̇lbaz	MID	SEL	12	0	294	5		11	Hamad Zahrani	MID	VAR	6	0	193	2		11	Simphiwe Chabalala	MID	ASP	7	7	426	7.4		11	Anoup Ptahmose	MID	KMT	9	9	621	12		11	Merkurios Kudanbes	DEF	NRG	8	8	670	42		11	Kerem Janabi	GK	ADV	7	7	630	23
-12	Pita Rata	FWD	ANH	7	7	492	4		12	Tshepo Motaung	FWD	ASP	6	0	179	2		12	Merkurios Kudanbes	DEF	NRG	8	8	670	7.4		12	Daru Jafari	MID	VAR	11	11	828	12		12	Yerrin Chindura	MID	NKI	10	10	489	41		12	Kamal Rahman	GK	AWB	7	7	630	22
-13	Eruera Waititi	FWD	ANH	7	7	489	4		13	Natarajan Madhavan	FWD	ARU	7	7	416	2		13	Basem Shenouda	GK	NRG	9	9	810	7.4		13	Haydar Şen	FWD	SEL	13	13	753	12		13	Sepideh Shakibaii	MID	VAR	11	11	540	41		13	Yonatan Cohen	GK	SHI	6	6	503	20
-14	Masaru Jakamarra	FWD	NKI	9	9	432	4		14	Wanguelen Sayhueque	MID	AKG	7	7	597	2		14	Dvir Alon	MID	SHI	7	7	557	7.3		14	Pisenti Ramose	MID	KMT	9	9	674	11		14	Susumu Uehara	DEF	NHO	10	10	837	40		14	Jabulani Dlamini	GK	ASP	7	7	630	20
-15	Damianos Faragab	MID	NRG	9	9	610	4		15	Gyan Hansda	MID	ENR	7	7	586	2		15	Neçirvan Barzani	FWD	ADV	7	7	495	7.3		15	Kolthe Harkhuf	MID	KMT	9	9	653	11		15	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	40		15	Gareth Tipene	GK	ANH	7	7	630	17
-16	Stephanos Ballana	MID	NRG	9	9	624	4		16	Xebat Hawrami	FWD	ADV	7	7	538	2		16	Rhulani Khouza	FWD	ASP	7	7	455	7.2		16	Eijiro Matsumoto	MID	NKI	10	10	848	11		16	Phani Kyaithang	DEF	NHO	10	10	819	39		16	Herman Kogoya	GK	ASG	7	7	630	14
-17	Tanvir Howlader	FWD	NHO	10	10	557	4		17	Yaqub Ghattas	MID	ADV	7	7	609	2		17	Tadros Amenemhat	MID	KMT	9	9	673	7.2		17	Selçuk Demirci	MID	SEL	13	13	851	11		17	Anoup Ptahmose	MID	KMT	9	9	621	38		17	Iddo Avni	GK	SHI	2	1	127	6
-18	Tatsuki Akagawa	FWD	NHO	10	10	635	4		18	Mlungisi Ndlovu	DEF	ASP	7	7	630	2		18	Pisenti Ramose	MID	KMT	9	9	674	7.2		18	Pradip Chowdhury	FWD	NHO	9	0	354	10		18	Osamu Matsumoto	MID	NKI	10	10	600	38									
-19	Darven Miçkas	FWD	SEL	13	0	417	4		19	Lebogang Du Phiri	MID	ASP	7	7	538	2		19	Kolthe Harkhuf	MID	KMT	9	9	653	7.2		19	Tatsuki Akagawa	FWD	NHO	10	10	635	10		19	Eskandar Dehghan	DEF	VAR	10	10	829	36									
-20	Selçuk Demirci	MID	SEL	13	13	851	4		20	Phib Bakenkhons	FWD	KMT	9	2	292	2		20	Masaru Jakamarra	FWD	NKI	9	9	432	7.2		20	Zeki Nari̇n	MID	SEL	12	0	248	9		20	Sudhir Chakraborty	MID	NHO	10	10	629	36									
-21	Yavuz Koç	MID	SEL	13	13	875	4		21	Anoup Ptahmose	MID	KMT	9	9	621	2		21	Tanjin Tsukahara	DEF	NKI	10	10	847	7.2		21	Batuhan Balyoz	MID	SEL	12	12	844	9		21	Junichiro Tarugara	MID	NKI	10	10	679	35									
-22	Gilad Dahan	FWD	SHI	7	7	458	3		22	Nirrim Biryara	MID	NKI	9	0	315	2		22	Tanvir Howlader	FWD	NHO	10	10	557	7.2		22	Neçirvan Barzani	FWD	ADV	7	7	495	8		22	Ashkan Mahdavi	MID	VAR	11	11	619	33									
+1	Haydar Şen	FWD	SEL	13	13	753	10		1	Orkun Çeti̇n	MID	SEL	13	13	722	11		1	Yerrin Chindura	MID	NKI	10	10	489	7.8		1	Sudhir Chakraborty	MID	NHO	10	10	629	31		1	Tanjin Tsukahara	DEF	NKI	10	10	847	56		1	Basem Shenouda	GK	NRG	9	9	810	64
+2	Yerrin Chindura	MID	NKI	10	10	489	7		2	Stephanos Ballana	MID	NRG	9	9	624	6		2	Sepideh Shakibaii	MID	VAR	11	11	540	7.8		2	Sepideh Shakibaii	MID	VAR	11	11	540	28		2	Vural Surlu	MID	SEL	12	12	977	55		2	Vahid Lorestani	GK	VAR	11	11	990	36
+3	Yoshio Hanazawa	FWD	NHO	10	0	337	6		3	Sudhir Chakraborty	MID	NHO	10	10	629	6		3	Lakhdar Hamidi	MID	ADV	7	7	514	7.7		3	Orkun Çeti̇n	MID	SEL	13	13	722	28		3	Sarp Sayda	DEF	SEL	12	12	1016	52		3	Ahmet Aydin	GK	SEL	13	13	1170	36
+4	Kenji Nagase	FWD	NHO	10	10	554	6		4	Tadros Amenemhat	MID	KMT	9	9	673	4		4	Sarapamon Nakhtmin	FWD	KMT	7	7	440	7.6		4	Yerrin Chindura	MID	NKI	10	10	489	24		4	Muzaffer Doğan	DEF	SEL	13	13	1170	52		4	Shenoute Nebamun	GK	KMT	9	9	810	35
+5	Sepideh Shakibaii	MID	VAR	11	11	540	6		5	Sepideh Shakibaii	MID	VAR	11	11	540	4		5	Sudhir Chakraborty	MID	NHO	10	10	629	7.6		5	Simphiwe Chabalala	MID	ASP	7	7	426	15		5	Orkun Çeti̇n	MID	SEL	13	13	722	51		5	Amaru Calfuqueo	GK	AKG	7	7	630	30
+6	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	5		6	Zeki Nari̇n	MID	SEL	12	0	248	4		6	Orkun Çeti̇n	MID	SEL	13	13	722	7.5		6	Masaru Jakamarra	FWD	NKI	9	9	432	14		6	Touraj Hayaii	DEF	VAR	11	11	942	47		6	Dural Tanumura	GK	NKI	10	10	900	29
+7	Sarapamon Nakhtmin	FWD	KMT	7	7	440	5		7	Batuhan Balyoz	MID	SEL	12	12	844	4		7	Haydar Şen	FWD	SEL	13	13	753	7.5		7	Ashkan Mahdavi	MID	VAR	11	11	619	14		7	Anirban Goswami	DEF	NHO	10	10	900	45		7	Ashim Bhattacharya	GK	NHO	10	10	900	29
+8	Rhulani Khouza	FWD	ASP	7	7	455	5		8	Masaru Jakamarra	FWD	NKI	9	9	432	3		8	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	7.5		8	Yavuz Koç	MID	SEL	13	13	875	13		8	Warrik Wirandaru	DEF	NKI	10	10	900	44		8	Thirumal Annamalai	GK	ARU	7	7	630	25
+9	Saīd Farzan	FWD	VAR	11	0	440	5		9	Ashkan Mahdavi	MID	VAR	11	11	619	3		9	Anoup Ptahmose	MID	KMT	9	9	621	7.5		9	Dvir Alon	MID	SHI	7	7	557	12		9	Daru Jafari	MID	VAR	11	11	828	44		9	Pranab Hazarika	GK	GUP	7	7	630	25
+10	Pedram Nazeri	FWD	VAR	11	11	550	5		10	Selçuk Demirci	MID	SEL	13	13	851	3		10	Ashkan Mahdavi	MID	VAR	11	11	619	7.3		10	Tadros Amenemhat	MID	KMT	9	9	673	12		10	Haydar Şen	FWD	SEL	13	13	753	43		10	Bibhuti Mohapatra	GK	ENR	7	7	630	23
+11	Serhat Di̇lbaz	MID	SEL	12	0	294	5		11	Hamad Zahrani	MID	VAR	6	0	193	2		11	Simphiwe Chabalala	MID	ASP	7	7	426	7.3		11	Anoup Ptahmose	MID	KMT	9	9	621	12		11	Merkurios Kudanbes	DEF	NRG	8	8	670	42		11	Kerem Janabi	GK	ADV	7	7	630	23
+12	Pita Rata	FWD	ANH	7	7	492	4		12	Tshepo Motaung	FWD	ASP	6	0	179	2		12	Merkurios Kudanbes	DEF	NRG	8	8	670	7.3		12	Daru Jafari	MID	VAR	11	11	828	12		12	Yerrin Chindura	MID	NKI	10	10	489	41		12	Kamal Rahman	GK	AWB	7	7	630	22
+13	Eruera Waititi	FWD	ANH	7	7	489	4		13	Natarajan Madhavan	FWD	ARU	7	7	416	2		13	Basem Shenouda	GK	NRG	9	9	810	7.3		13	Haydar Şen	FWD	SEL	13	13	753	12		13	Sepideh Shakibaii	MID	VAR	11	11	540	41		13	Yonatan Cohen	GK	SHI	6	6	503	20
+14	Masaru Jakamarra	FWD	NKI	9	9	432	4		14	Wanguelen Sayhueque	MID	AKG	7	7	597	2		14	Dvir Alon	MID	SHI	7	7	557	7.2		14	Pisenti Ramose	MID	KMT	9	9	674	11		14	Susumu Uehara	DEF	NHO	10	10	837	40		14	Jabulani Dlamini	GK	ASP	7	7	630	20
+15	Damianos Faragab	MID	NRG	9	9	610	4		15	Gyan Hansda	MID	ENR	7	7	586	2		15	Neçirvan Barzani	FWD	ADV	7	7	495	7.2		15	Kolthe Harkhuf	MID	KMT	9	9	653	11		15	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	40		15	Gareth Tipene	GK	ANH	7	7	630	17
+16	Stephanos Ballana	MID	NRG	9	9	624	4		16	Xebat Hawrami	FWD	ADV	7	7	538	2		16	Rhulani Khouza	FWD	ASP	7	7	455	7.1		16	Eijiro Matsumoto	MID	NKI	10	10	848	11		16	Phani Kyaithang	DEF	NHO	10	10	819	39		16	Herman Kogoya	GK	ASG	7	7	630	14
+17	Tanvir Howlader	FWD	NHO	10	10	557	4		17	Yaqub Ghattas	MID	ADV	7	7	609	2		17	Tadros Amenemhat	MID	KMT	9	9	673	7.1		17	Selçuk Demirci	MID	SEL	13	13	851	11		17	Anoup Ptahmose	MID	KMT	9	9	621	38		17	Iddo Avni	GK	SHI	2	1	127	6
+18	Tatsuki Akagawa	FWD	NHO	10	10	635	4		18	Mlungisi Ndlovu	DEF	ASP	7	7	630	2		18	Pisenti Ramose	MID	KMT	9	9	674	7.1		18	Pradip Chowdhury	FWD	NHO	9	0	354	10		18	Osamu Matsumoto	MID	NKI	10	10	600	38									
+19	Darven Miçkas	FWD	SEL	13	0	417	4		19	Lebogang Du Phiri	MID	ASP	7	7	538	2		19	Kolthe Harkhuf	MID	KMT	9	9	653	7.1		19	Tatsuki Akagawa	FWD	NHO	10	10	635	10		19	Eskandar Dehghan	DEF	VAR	10	10	829	36									
+20	Selçuk Demirci	MID	SEL	13	13	851	4		20	Phib Bakenkhons	FWD	KMT	9	2	292	2		20	Masaru Jakamarra	FWD	NKI	9	9	432	7.1		20	Zeki Nari̇n	MID	SEL	12	0	248	9		20	Sudhir Chakraborty	MID	NHO	10	10	629	36									
+21	Yavuz Koç	MID	SEL	13	13	875	4		21	Anoup Ptahmose	MID	KMT	9	9	621	2		21	Tanjin Tsukahara	DEF	NKI	10	10	847	7.1		21	Batuhan Balyoz	MID	SEL	12	12	844	9		21	Junichiro Tarugara	MID	NKI	10	10	679	35									
+22	Gilad Dahan	FWD	SHI	7	7	458	3		22	Nirrim Biryara	MID	NKI	9	0	315	2		22	Tanvir Howlader	FWD	NHO	10	10	557	7.1		22	Neçirvan Barzani	FWD	ADV	7	7	495	8		22	Ashkan Mahdavi	MID	VAR	11	11	619	33									
 23	Inti Loncón	FWD	AKG	7	7	543	3		23	Pradip Chowdhury	FWD	NHO	9	0	354	2		23	Kamal Rahman	GK	AWB	7	7	630	7.1		23	Eruera Waititi	FWD	ANH	7	7	489	8		23	Psote Neferhotep	MID	KMT	9	9	776	32									
 24	Madhusudan Patnaik	FWD	ENR	7	7	472	3		24	Yohannis Mina	MID	NRG	9	9	676	2		24	Kerem Janabi	GK	ADV	7	7	630	7.1		24	Osamu Matsumoto	MID	NKI	10	10	600	8		24	Georgios Artigasha	DEF	NRG	9	9	764	32									
 25	Nilambar Senapati	FWD	ENR	7	7	526	3		25	Warrik Wirandaru	DEF	NKI	10	10	900	2		25	Daru Jafari	MID	VAR	11	11	828	7.1		25	Touraj Hayaii	DEF	VAR	11	11	942	8		25	Kurt Mueller	DEF	ANH	7	7	630	31									
@@ -47,239 +47,239 @@
 46	Osamu Matsumoto	MID	NKI	10	10	600	2		46	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	1		46	Kenji Nagase	FWD	NHO	10	10	554	6.9		46	Sarapamon Nakhtmin	FWD	KMT	7	7	440	6		46	Tanvir Howlader	FWD	NHO	10	10	557	25									
 47	Sanat Barua	MID	NHO	10	10	900	2		47	Oviyan Venkataraman	MID	ARU	7	7	479	1		47	Touraj Hayaii	DEF	VAR	11	11	942	6.9		47	Julian Patrick	MID	ENR	7	7	610	6		47	Vigneswaran Arulampalam	DEF	ARU	7	7	630	24									
 48	Kaan Erdoğmuş	MID	SEL	13	2	641	2		48	Asela Dissanayake	MID	ARU	7	7	492	1		48	Kaan Erdoğmuş	MID	SEL	13	2	641	6.9		48	Vusumuzi Zoulou	MID	ASP	7	7	568	6		48	Hemanta Saikia	MID	GUP	7	7	591	24									
-49	Orkun Çeti̇n	MID	SEL	13	13	722	2		49	Humayun Piker	MID	AWB	7	7	552	1		49	Eren Peretz	DEF	SHI	7	7	630	6.8		49	Psote Neferhotep	MID	KMT	9	9	776	6		49	Neçirvan Barzani	FWD	ADV	7	7	495	24									
-50	Nyunda Yiribaru	MID	NKI	2	0	80	1		50	Sarapamon Nakhtmin	FWD	KMT	7	7	440	1		50	Didar Sikder	MID	AWB	7	7	619	6.8		50	Nirrim Biryara	MID	NKI	9	0	315	6		50	Simphiwe Chabalala	MID	ASP	7	7	426	24									
-51	Sigmund Reindl	FWD	ANH	5	0	144	1		51	Pier Hoekstra	MID	AKG	7	7	558	1		51	Pier Hoekstra	MID	AKG	7	7	558	6.8		51	Eskandar Dehghan	DEF	VAR	10	10	829	6		51	Yerucham Lehrer	MID	SHI	7	7	532	23									
-52	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	1		52	Orkeke Inacayal	FWD	AKG	7	7	518	1		52	Archibald Bamford	MID	ENR	7	7	621	6.8		52	Tanvir Howlader	FWD	NHO	10	10	557	6		52	Mlungisi Ndlovu	DEF	ASP	7	7	630	23									
-53	Eren Peretz	DEF	SHI	7	7	630	1		53	Bijoy Rajkhowa	FWD	GUP	7	0	140	1		53	Tamer Khalil	MID	ADV	7	7	592	6.8		53	Ernst Braunschweig	MID	ANH	5	0	162	5		53	Kolthe Harkhuf	MID	KMT	9	9	653	23									
-54	Segev Even-Khen	MID	SHI	7	7	587	1		54	Tivadar Lakatos	MID	GUP	7	7	578	1		54	Jabulani Dlamini	GK	ASP	7	7	630	6.8		54	Maoz Shaked	MID	SHI	7	7	530	5		54	Tatsuki Akagawa	FWD	NHO	10	10	635	23									
-55	Yishai Galili	MID	SHI	7	1	246	1		55	Lehel Balogh	MID	GUP	7	7	548	1		55	Pakhom Userhat	DEF	KMT	9	9	785	6.8		55	Humayun Piker	MID	AWB	7	7	552	5		55	Didar Sikder	MID	AWB	7	7	619	22									
-56	Bilya Garlett	MID	ARU	7	7	510	1		56	Nilambar Senapati	FWD	ENR	7	7	526	1		56	Damianos Faragab	MID	NRG	9	9	610	6.8		56	Inti Loncón	FWD	AKG	7	7	543	5		56	Pakhom Userhat	DEF	KMT	9	9	785	21									
-57	Prasanna Abeywardena	FWD	ARU	7	0	232	1		57	Lakhan Hembrom	MID	ENR	7	7	616	1		57	Tarran Nyaruguru	MID	NKI	10	0	384	6.8		57	Archibald Bamford	MID	ENR	7	7	621	5		57	Pishoy Djehuty	DEF	KMT	9	9	810	21									
-58	Natarajan Madhavan	FWD	ARU	7	7	416	1		58	Julian Patrick	MID	ENR	7	7	610	1		58	Eijiro Matsumoto	MID	NKI	10	10	848	6.8		58	Madhusudan Patnaik	FWD	ENR	7	7	472	5		58	Minoru Andō	FWD	NKI	9	1	496	21									
-59	Humayun Piker	MID	AWB	7	7	552	1		59	Viktor Kohlmann	MID	ADV	7	7	630	1		59	Kiyoshi Murandin	MID	NKI	10	10	645	6.8		59	Lakhan Hembrom	MID	ENR	7	7	616	5		59	Yohannis Sukkoti	DEF	NRG	9	9	773	21									
-60	Mangin Tripailaf	MID	AKG	7	7	630	1		60	Lakhdar Hamidi	MID	ADV	7	7	514	1		60	Phani Kyaithang	DEF	NHO	10	10	819	6.8		60	Lebogang Du Phiri	MID	ASP	7	7	538	5		60	Itsuki Goto	FWD	NKI	10	10	534	21									
-61	Jenő Szántó	FWD	GUP	7	0	209	1		61	Neçirvan Barzani	FWD	ADV	7	7	495	1		61	Sanat Barua	MID	NHO	10	10	900	6.8		61	Walther Meyer	MID	ANH	7	7	542	5		61	Khagendra Mitra	DEF	NHO	10	10	850	21									
-62	Amarjyoti Bhuyan	FWD	GUP	7	7	477	1		62	Teunis Slootman	MID	ASG	7	0	201	1		62	Tatsuki Akagawa	FWD	NHO	10	10	635	6.8		62	Nyilan Shikishima	FWD	NKI	8	0	338	5		62	Madhusudan Patnaik	FWD	ENR	7	7	472	20									
-63	Fulgens Tirkey	DEF	ENR	7	7	630	1		63	Vusumuzi Zoulou	MID	ASP	7	7	568	1		63	Vahid Lorestani	GK	VAR	11	11	990	6.8		63	Warrik Wirandaru	DEF	NKI	10	10	900	5		63	Nilambar Senapati	FWD	ENR	7	7	526	20									
-64	Gyan Hansda	MID	ENR	7	7	586	1		64	Rhulani Khouza	FWD	ASP	7	7	455	1		64	Batuhan Balyoz	MID	SEL	12	12	844	6.8		64	Keigo Ikeda	DEF	NKI	10	10	857	5		64	Lakhan Hembrom	MID	ENR	7	7	616	20									
-65	Julian Patrick	MID	ENR	7	7	610	1		65	Albrecht Von Haast	MID	ANH	7	7	543	1		65	Darven Miçkas	FWD	SEL	13	0	417	6.8		65	Tarran Nyaruguru	MID	NKI	10	0	384	5		65	Masaru Jakamarra	FWD	NKI	9	9	432	20									
-66	Jangir Barwari	DEF	ADV	7	7	630	1		66	Walther Meyer	MID	ANH	7	7	542	1		66	Fazlul Miah	MID	AWB	6	6	498	6.7		66	Anirban Goswami	DEF	NHO	10	10	900	5		66	Otto Ahmadi	MID	VAR	11	11	745	20									
-67	Melky Mote	FWD	ASG	7	0	154	1		67	Pita Rata	FWD	ANH	7	7	492	1		67	Segev Even-Khen	MID	SHI	7	7	587	6.7		67	Pedram Nazeri	FWD	VAR	11	11	550	5		67	Lajos Újföldi	MID	GUP	7	7	488	19									
-68	Yustus Tekege	MID	ASG	7	7	515	1		68	Eruera Waititi	FWD	ANH	7	7	489	1		68	Vigneswaran Arulampalam	DEF	ARU	7	7	630	6.7		68	Cihan Kartaca	MID	SEL	13	0	315	5		68	Weynand Pakage	DEF	ASG	7	7	602	19									
-69	Moüses Kyrillos	FWD	NRG	8	8	474	1		69	Pakhom Userhat	DEF	KMT	9	9	785	1		69	Raveendran Unnithan	MID	ARU	7	7	506	6.7		69	Yishai Galili	MID	SHI	7	1	246	4		69	Isak Wetipo	DEF	ASG	7	7	551	19									
-70	Psote Neferhotep	MID	KMT	9	9	776	1		70	Pisenti Ramose	MID	KMT	9	9	674	1		70	Mangin Tripailaf	MID	AKG	7	7	630	6.7		70	Gilad Dahan	FWD	SHI	7	7	458	4		70	Albrecht Von Haast	MID	ANH	7	7	543	19									
-71	Girgis Ipuwer	MID	KMT	9	0	160	1		71	Yohannis Sukkoti	DEF	NRG	9	9	773	1		71	Gusztáv Molnár	DEF	GUP	7	7	600	6.7		71	Bilya Garlett	MID	ARU	7	7	510	4		71	Joost Brouwer	DEF	ASG	7	7	630	18									
-72	Abanoub Sethnakht	MID	KMT	9	0	270	1		72	Petros Nogedi	MID	NRG	9	9	698	1		72	Lajos Újföldi	MID	GUP	7	7	488	6.7		72	Vibhas Talukder	MID	AWB	7	7	617	4		72	Judah Rangitāne	DEF	ANH	7	7	630	18									
-73	Phib Bakenkhons	FWD	KMT	9	2	292	1		73	Tadros Sonqi	MID	NRG	9	0	361	1		73	Julian Patrick	MID	ENR	7	7	610	6.7		73	Pier Hoekstra	MID	AKG	7	7	558	4		73	Petros Nogedi	MID	NRG	9	9	698	18									
-74	Tadros Amenemhat	MID	KMT	9	9	673	1		74	Damianos Faragab	MID	NRG	9	9	610	1		74	Yaqub Ghattas	MID	ADV	7	7	609	6.7		74	Orkeke Inacayal	FWD	AKG	7	7	518	4		74	Theodoros Farasin	MID	NRG	9	9	554	18									
-75	Pradip Chowdhury	FWD	NHO	9	0	354	1		75	Tarran Nyaruguru	MID	NKI	10	0	384	1		75	Pishoy Djehuty	DEF	KMT	9	9	810	6.7		75	Xebat Hawrami	FWD	ADV	7	7	538	4		75	Erdem Polat	DEF	SEL	13	13	1170	18									
-76	Tarran Nyaruguru	MID	NKI	10	0	384	1		76	Osamu Matsumoto	MID	NKI	10	10	600	1		76	Psote Neferhotep	MID	KMT	9	9	776	6.7		76	Yaqub Ghattas	MID	ADV	7	7	609	4		76	Darven Miçkas	FWD	SEL	13	0	417	18									
-77	Eijiro Matsumoto	MID	NKI	10	10	848	1		77	Kiyoshi Murandin	MID	NKI	10	10	645	1		77	Nirrim Biryara	MID	NKI	9	0	315	6.7		77	Rhulani Khouza	FWD	ASP	7	7	455	4		77	Fazlul Miah	MID	AWB	6	6	498	17									
-78	Itsuki Goto	FWD	NKI	10	10	534	1		78	Siavash Mehrian	MID	VAR	10	0	415	1		78	Georgios Artigasha	DEF	NRG	9	9	764	6.7		78	Hone Wihongi	MID	ANH	7	7	543	4		78	Naguib Sharawi	DEF	ADV	7	7	630	17									
-79	Junichiro Tarugara	MID	NKI	10	10	679	1		79	Anirban Goswami	DEF	NHO	10	10	900	1		79	Theodoros Farasin	MID	NRG	9	9	554	6.7		79	Merkurios Kudanbes	DEF	NRG	8	8	670	4		79	Eruera Waititi	FWD	ANH	7	7	489	17									
-80	Jatin Sudatta	FWD	NHO	10	0	285	1		80	Tanvir Howlader	FWD	NHO	10	10	557	1		80	Keigo Ikeda	DEF	NKI	10	10	857	6.7		80	Pakhom Userhat	DEF	KMT	9	9	785	4		80	Basem Shenouda	GK	NRG	9	9	810	17									
-81	Sudhir Chakraborty	MID	NHO	10	10	629	1		81	Kamal Bodhipal	FWD	NHO	10	10	686	1		81	Junichiro Tarugara	MID	NKI	10	10	679	6.7		81	Moyse Amenmose	MID	KMT	9	0	131	4		81	Stephanos Ballana	MID	NRG	9	9	624	17									
-82	Touraj Hayaii	DEF	VAR	11	11	942	1		82	Touraj Hayaii	DEF	VAR	11	11	942	1		82	Ashim Bhattacharya	GK	NHO	10	10	900	6.7		82	Abanoub Sethnakht	MID	KMT	9	0	270	4		82	Kamal Bodhipal	FWD	NHO	10	10	686	17									
-83	Daru Jafari	MID	VAR	11	11	828	1		83	Rostam Khalili	MID	VAR	11	0	387	1		83	Susumu Uehara	DEF	NHO	10	10	837	6.7		83	Phib Bakenkhons	FWD	KMT	9	2	292	4		83	Ritupon Gogoi	DEF	GUP	5	5	378	16									
-84	Rostam Khalili	MID	VAR	11	0	387	1		84	Ziyad Subaie	MID	VAR	11	11	871	1		84	Rostam Khalili	MID	VAR	11	0	387	6.7		84	Minoru Andō	FWD	NKI	9	1	496	4		84	Pier Hoekstra	MID	AKG	7	7	558	16									
-85	Mehran Shahi	MID	VAR	11	0	342	1		85	Pedram Nazeri	FWD	VAR	11	11	550	1		85	Serhat Di̇lbaz	MID	SEL	12	0	294	6.7		85	Damianos Faragab	MID	NRG	9	9	610	4		85	Khagen Basumatary	DEF	GUP	7	7	630	16									
-86	Otto Ahmadi	MID	VAR	11	11	745	1		86	Vural Surlu	MID	SEL	12	12	977	1		86	Ahmet Aydin	GK	SEL	13	13	1170	6.7		86	Theodoros Farasin	MID	NRG	9	9	554	4		86	Swrang Narzary	DEF	GUP	7	7	630	16									
-87	Batuhan Balyoz	MID	SEL	12	12	844	1		87	Kaan Erdoğmuş	MID	SEL	13	2	641	1		87	Muzaffer Doğan	DEF	SEL	13	13	1170	6.7		87	Junichiro Tarugara	MID	NKI	10	10	679	4		87	Tivadar Lakatos	MID	GUP	7	7	578	16									
-									88	Haydar Şen	FWD	SEL	13	13	753	1		88	Kalidurut Bishoy	DEF	NRG	5	0	210	6.6		88	Phani Kyaithang	DEF	NHO	10	10	819	4		88	Rupert Cavendish	DEF	ENR	7	7	585	16									
-									89	Yavuz Koç	MID	SEL	13	13	875	1		89	Yonatan Cohen	GK	SHI	6	6	503	6.6		89	Susumu Uehara	DEF	NHO	10	10	837	4		89	Lakhdar Hamidi	MID	ADV	7	7	514	16									
-																		90	Ravid Biton	MID	SHI	6	6	450	6.6		90	Khagendra Mitra	DEF	NHO	10	10	850	4		90	Tamer Khalil	MID	ADV	7	7	592	16									
-																		91	Senthil Thiruvengadam	DEF	ARU	7	7	572	6.6		91	Sanat Barua	MID	NHO	10	10	900	4		91	Nirrim Biryara	MID	NKI	9	0	315	16									
-																		92	Bilya Garlett	MID	ARU	7	7	510	6.6		92	Kamal Bodhipal	FWD	NHO	10	10	686	4		92	Kenji Nagase	FWD	NHO	10	10	554	16									
-																		93	Natarajan Madhavan	FWD	ARU	7	7	416	6.6		93	Saīd Farzan	FWD	VAR	11	0	440	4		93	Tomer Mizrahi	DEF	SHI	6	6	531	15									
-																		94	Liakat Chowdhury	DEF	AWB	7	7	630	6.6		94	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	4		94	Kasun Gunawardena	DEF	ARU	7	7	630	15									
-																		95	Vibhas Talukder	MID	AWB	7	7	617	6.6		95	Darven Miçkas	FWD	SEL	13	0	417	4		95	Liakat Chowdhury	DEF	AWB	7	7	630	15									
-																		96	Palash Bhuiyan	FWD	AWB	7	7	499	6.6		96	Fazlul Miah	MID	AWB	6	6	498	3		96	Jahangir Hossain	DEF	AWB	7	7	605	15									
-																		97	Inti Loncón	FWD	AKG	7	7	543	6.6		97	Jomo Mocoéna	DEF	ASP	6	6	522	3		97	Enamul Islam	DEF	AWB	7	7	630	15									
-																		98	Leftraru Painemal	MID	AKG	7	7	556	6.6		98	Tshepo Motaung	FWD	ASP	6	0	179	3		98	Lehel Balogh	MID	GUP	7	7	548	15									
-																		99	Fulgens Tirkey	DEF	ENR	7	7	630	6.6		99	Didar Sikder	MID	AWB	7	7	619	3		99	Xebat Hawrami	FWD	ADV	7	7	538	15									
-																		100	Naguib Sharawi	DEF	ADV	7	7	630	6.6		100	Hemanta Saikia	MID	GUP	7	7	591	3		100	Agustinus Klafle	MID	ASG	7	7	561	15									
-																		101	Lebogang Du Phiri	MID	ASP	7	7	538	6.6		101	Darsing Teron	FWD	GUP	7	7	434	3		101	Celani Buthelézi	DEF	ASP	7	7	537	15									
-																		102	Celani Buthelézi	DEF	ASP	7	7	537	6.6		102	Nilambar Senapati	FWD	ENR	7	7	526	3		102	Fraser Te Rangi	DEF	ANH	7	7	630	15									
-																		103	Gareth Tipene	GK	ANH	7	7	630	6.6		103	Tamer Khalil	MID	ADV	7	7	592	3		103	Rolf Hoffmann	DEF	ANH	7	7	630	15									
-																		104	Albrecht Von Haast	MID	ANH	7	7	543	6.6		104	Butros Sedhom	FWD	NRG	7	1	290	3		104	Hor Senedjem	DEF	KMT	9	9	810	15									
-																		105	Abanoub Sethnakht	MID	KMT	9	0	270	6.6		105	Judah Rangitāne	DEF	ANH	7	7	630	3		105	Tadros Amenemhat	MID	KMT	9	9	673	15									
-																		106	Eskandar Dehghan	DEF	VAR	10	10	829	6.6		106	Albrecht Von Haast	MID	ANH	7	7	543	3		106	Yohannis Mina	MID	NRG	9	9	676	15									
-																		107	Khagendra Mitra	DEF	NHO	10	10	850	6.6		107	Yohannis Sukkoti	DEF	NRG	9	9	773	3		107	Tarran Nyaruguru	MID	NKI	10	0	384	15									
-																		108	Kamal Bodhipal	FWD	NHO	10	10	686	6.6		108	Tanjin Tsukahara	DEF	NKI	10	10	847	3		108	Sadao Garabin	MID	NKI	10	0	433	15									
-																		109	Mehran Shahi	MID	VAR	11	0	342	6.6		109	Sadao Garabin	MID	NKI	10	0	433	3		109	Siavash Mehrian	MID	VAR	10	0	415	15									
-																		110	Saīd Farzan	FWD	VAR	11	0	440	6.6		110	Itsuki Goto	FWD	NKI	10	10	534	3		110	Rostam Khalili	MID	VAR	11	0	387	15									
-																		111	Ziyad Subaie	MID	VAR	11	11	871	6.6		111	Jatin Sudatta	FWD	NHO	10	0	285	3		111	Mehran Shahi	MID	VAR	11	0	342	15									
-																		112	Otto Ahmadi	MID	VAR	11	11	745	6.6		112	Soumitro Ganguly	MID	NHO	1	0	16	2		112	Parviz Tahmasb	DEF	VAR	6	1	275	14									
-																		113	Sarp Sayda	DEF	SEL	12	12	1016	6.6		113	Bonginkosi Mthembou	FWD	ASP	4	0	95	2		113	Eren Peretz	DEF	SHI	7	7	630	14									
-																		114	Vural Surlu	MID	SEL	12	12	977	6.6		114	Sigmund Reindl	FWD	ANH	5	0	144	2		114	Segev Even-Khen	MID	SHI	7	7	587	14									
-																		115	Zeki Nari̇n	MID	SEL	12	0	248	6.6		115	Kosti Serrani	MID	NRG	5	0	116	2		115	Gilad Dahan	FWD	SHI	7	7	458	14									
-																		116	Tomer Mizrahi	DEF	SHI	6	6	531	6.5		116	Tomer Mizrahi	DEF	SHI	6	6	531	2		116	Murugan Shivaswamy	DEF	ARU	7	7	630	14									
-																		117	Yishai Galili	MID	SHI	7	1	246	6.5		117	Rofiqul Khandaker	FWD	AWB	6	6	395	2		117	Vibhas Talukder	MID	AWB	7	7	617	14									
-																		118	Maoz Shaked	MID	SHI	7	7	530	6.5		118	Fouad Tikriti	FWD	ADV	6	0	92	2		118	Nawel Ñanculef	DEF	AKG	7	7	630	14									
-																		119	Gilad Dahan	FWD	SHI	7	7	458	6.5		119	Parviz Tahmasb	DEF	VAR	6	1	275	2		119	Mangin Tripailaf	MID	AKG	7	7	630	14									
-																		120	Chanchal Ahmed	DEF	AWB	7	7	630	6.5		120	Asaf Bar-Lev	DEF	SHI	7	7	630	2		120	Amarjyoti Bhuyan	FWD	GUP	7	7	477	14									
-																		121	Nawel Ñanculef	DEF	AKG	7	7	630	6.5		121	Kasun Gunawardena	DEF	ARU	7	7	630	2		121	Fulgens Tirkey	DEF	ENR	7	7	630	14									
-																		122	Gerben Verhoeven	DEF	AKG	7	7	630	6.5		122	Senthil Thiruvengadam	DEF	ARU	7	7	572	2		122	Gyan Hansda	MID	ENR	7	7	586	14									
-																		123	Wanguelen Sayhueque	MID	AKG	7	7	597	6.5		123	Jarrah Nannup	MID	ARU	7	0	180	2		123	Herman Kogoya	GK	ASG	7	7	630	14									
-																		124	Pranab Hazarika	GK	GUP	7	7	630	6.5		124	Raveendran Unnithan	MID	ARU	7	7	506	2		124	Pieter Van Dam	MID	ASG	7	7	544	14									
-																		125	Khagen Basumatary	DEF	GUP	7	7	630	6.5		125	Asela Dissanayake	MID	ARU	7	7	492	2		125	Vusumuzi Zoulou	MID	ASP	7	7	568	14									
-																		126	Tivadar Lakatos	MID	GUP	7	7	578	6.5		126	Mangin Tripailaf	MID	AKG	7	7	630	2		126	Hone Wihongi	MID	ANH	7	7	543	14									
-																		127	Lehel Balogh	MID	GUP	7	7	548	6.5		127	Leftraru Painemal	MID	AKG	7	7	556	2		127	Kalidurut Bishoy	DEF	NRG	5	0	210	13									
-																		128	Nilambar Senapati	FWD	ENR	7	7	526	6.5		128	Jenő Szántó	FWD	GUP	7	0	209	2		128	Maoz Shaked	MID	SHI	7	7	530	13									
-																		129	Azad Doski	DEF	ADV	7	7	630	6.5		129	Amarjyoti Bhuyan	FWD	GUP	7	7	477	2		129	Jangir Barwari	DEF	ADV	7	7	630	13									
-																		130	Vusumuzi Zoulou	MID	ASP	7	7	568	6.5		130	Lajos Újföldi	MID	GUP	7	7	488	2		130	Viktor Kohlmann	MID	ADV	7	7	630	13									
-																		131	Olwethu Makhanya	FWD	ASP	7	7	398	6.5		131	Lehel Balogh	MID	GUP	7	7	548	2		131	Yaqub Ghattas	MID	ADV	7	7	609	13									
-																		132	Judah Rangitāne	DEF	ANH	7	7	630	6.5		132	Viktor Kohlmann	MID	ADV	7	7	630	2		132	Eliezer Desap	MID	ASG	7	7	462	13									
-																		133	Kurt Mueller	DEF	ANH	7	7	630	6.5		133	Mlungisi Ndlovu	DEF	ASP	7	7	630	2		133	Olwethu Makhanya	FWD	ASP	7	7	398	13									
-																		134	Yohannis Sukkoti	DEF	NRG	9	9	773	6.5		134	Celani Buthelézi	DEF	ASP	7	7	537	2		134	Matthias Becker	MID	ANH	7	7	569	13									
-																		135	Ioannes Dongolawi	DEF	NRG	9	9	779	6.5		135	Olwethu Makhanya	FWD	ASP	7	7	398	2		135	Nyilan Shikishima	FWD	NKI	8	0	338	13									
-																		136	Tadros Sonqi	MID	NRG	9	0	361	6.5		136	Matthias Becker	MID	ANH	7	7	569	2		136	Phib Bakenkhons	FWD	KMT	9	2	292	13									
-																		137	Siavash Mehrian	MID	VAR	10	0	415	6.5		137	Pishoy Djehuty	DEF	KMT	9	9	810	2		137	Saīd Farzan	FWD	VAR	11	0	440	13									
-																		138	Ardalan Danesh	DEF	VAR	11	11	895	6.5		138	Haripada Bagchi	MID	NHO	9	0	271	2		138	Ravid Biton	MID	SHI	6	6	450	12									
-																		139	Asaf Bar-Lev	DEF	SHI	7	7	630	6.4		139	Ioannes Dongolawi	DEF	NRG	9	9	779	2		139	Palash Bhuiyan	FWD	AWB	7	7	499	12									
-																		140	Kumaran Sivanathan	MID	ARU	7	0	244	6.4		140	Petros Nogedi	MID	NRG	9	9	698	2		140	Gerben Verhoeven	DEF	AKG	7	7	630	12									
-																		141	Asela Dissanayake	MID	ARU	7	7	492	6.4		141	Tadros Sonqi	MID	NRG	9	0	361	2		141	Neles Wanimbo	MID	ASG	7	7	630	12									
-																		142	Amaru Calfuqueo	GK	AKG	7	7	630	6.4		142	Yoshio Hanazawa	FWD	NHO	10	0	337	2		142	Asaf Bar-Lev	DEF	SHI	7	7	630	11									
-																		143	Diethelm Brunner	DEF	AKG	7	7	630	6.4		143	Ardalan Danesh	DEF	VAR	11	11	895	2		143	Raveendran Unnithan	MID	ARU	7	7	506	11									
-																		144	Coyam Cayupán	DEF	AKG	7	7	630	6.4		144	Serhat Di̇lbaz	MID	SEL	12	0	294	2		144	Oviyan Venkataraman	MID	ARU	7	7	479	11									
-																		145	Hemanta Saikia	MID	GUP	7	7	591	6.4		145	Muzaffer Doğan	DEF	SEL	13	13	1170	2		145	Wanguelen Sayhueque	MID	AKG	7	7	597	11									
-																		146	Rupert Cavendish	DEF	ENR	7	7	585	6.4		146	Shinji Tadayama	MID	NKI	1	0	28	1		146	Pranab Hazarika	GK	GUP	7	7	630	11									
-																		147	Mariwan Nerweyi	DEF	ADV	7	7	630	6.4		147	Nyunda Yiribaru	MID	NKI	2	0	80	1		147	Darsing Teron	FWD	GUP	7	7	434	11									
-																		148	Viktor Kohlmann	MID	ADV	7	7	630	6.4		148	Iqbal Kazi	FWD	AWB	5	0	85	1		148	Haripada Bagchi	MID	NHO	9	0	271	11									
-																		149	Teunis Slootman	MID	ASG	7	0	201	6.4		149	Amiya Majumdar	DEF	NHO	5	0	194	1		149	Tadros Sonqi	MID	NRG	9	0	361	11									
-																		150	Fraser Te Rangi	DEF	ANH	7	7	630	6.4		150	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	1		150	Serhat Di̇lbaz	MID	SEL	12	0	294	11									
-																		151	Walther Meyer	MID	ANH	7	7	542	6.4		151	Elicura Panguilef	FWD	AKG	6	0	85	1		151	Amiya Majumdar	DEF	NHO	5	0	194	10									
-																		152	Pita Rata	FWD	ANH	7	7	492	6.4		152	Clive Forsyth	FWD	ENR	6	0	97	1		152	Thirumal Annamalai	GK	ARU	7	7	630	10									
-																		153	Matthias Becker	MID	ANH	7	7	569	6.4		153	Bassam Khafaji	MID	ADV	6	0	44	1		153	Bilya Garlett	MID	ARU	7	7	510	10									
-																		154	Haripada Bagchi	MID	NHO	9	0	271	6.4		154	Peshraw Rekabi	FWD	ADV	6	0	135	1		154	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	10									
-																		155	Petros Nogedi	MID	NRG	9	9	698	6.4		155	Pitso Modisé	MID	ASP	6	0	219	1		155	Asela Dissanayake	MID	ARU	7	7	492	10									
-																		156	Sadao Garabin	MID	NKI	10	0	433	6.4		156	Boaz Ben-Ami	FWD	SHI	7	0	173	1		156	Diethelm Brunner	DEF	AKG	7	7	630	10									
-																		157	Erfan Rastkar	DEF	VAR	11	11	990	6.4		157	Vigneswaran Arulampalam	DEF	ARU	7	7	630	1		157	Mariwan Nerweyi	DEF	ADV	7	7	630	10									
-																		158	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	6.4		158	Murugan Shivaswamy	DEF	ARU	7	7	630	1		158	Enhle Khumalo	DEF	ASP	7	7	630	10									
-																		159	Cihan Kartaca	MID	SEL	13	0	315	6.4		159	Kumaran Sivanathan	MID	ARU	7	0	244	1		159	Rolihlahla Mbeki	FWD	ASP	7	7	503	10									
-																		160	Ritupon Gogoi	DEF	GUP	5	5	378	6.3		160	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	1		160	Rhulani Khouza	FWD	ASP	7	7	455	10									
-																		161	Jomo Mocoéna	DEF	ASP	6	6	522	6.3		161	Oviyan Venkataraman	MID	ARU	7	7	479	1		161	Gareth Tipene	GK	ANH	7	7	630	10									
-																		162	Pitso Modisé	MID	ASP	6	0	219	6.3		162	Jahangir Hossain	DEF	AWB	7	7	605	1		162	Papnoute Kenamun	DEF	KMT	9	9	810	10									
-																		163	Kasun Gunawardena	DEF	ARU	7	7	630	6.3		163	Jamal Sardar	MID	AWB	7	0	78	1		163	Girgis Ipuwer	MID	KMT	9	0	160	10									
-																		164	Enamul Islam	DEF	AWB	7	7	630	6.3		164	Menas Wennefer	MID	KMT	7	0	93	1		164	Abanoub Sethnakht	MID	KMT	9	0	270	10									
-																		165	Swrang Narzary	DEF	GUP	7	7	630	6.3		165	Nawel Ñanculef	DEF	AKG	7	7	630	1		165	Pradip Chowdhury	FWD	NHO	9	0	354	10									
-																		166	Jenő Szántó	FWD	GUP	7	0	209	6.3		166	Wanguelen Sayhueque	MID	AKG	7	7	597	1		166	Damianos Faragab	MID	NRG	9	9	610	10									
-																		167	Bibhuti Mohapatra	GK	ENR	7	7	630	6.3		167	Gusztáv Molnár	DEF	GUP	7	7	600	1		167	Yoshio Hanazawa	FWD	NHO	10	0	337	10									
-																		168	Somaru Markam	DEF	ENR	7	7	630	6.3		168	Bijoy Rajkhowa	FWD	GUP	7	0	140	1		168	Selpius Rumbekwan	DEF	ASG	4	4	319	9									
-																		169	Xebat Hawrami	FWD	ADV	7	7	538	6.3		169	Tivadar Lakatos	MID	GUP	7	7	578	1		169	Rofiqul Khandaker	FWD	AWB	6	6	395	9									
-																		170	Neles Wanimbo	MID	ASG	7	7	630	6.3		170	Fulgens Tirkey	DEF	ENR	7	7	630	1		170	Natarajan Madhavan	FWD	ARU	7	7	416	9									
-																		171	Yustus Tekege	MID	ASG	7	7	515	6.3		171	Azad Doski	DEF	ADV	7	7	630	1		171	Chanchal Ahmed	DEF	AWB	7	7	630	9									
-																		172	Enhle Khumalo	DEF	ASP	7	7	630	6.3		172	Teunis Slootman	MID	ASG	7	0	201	1		172	Humayun Piker	MID	AWB	7	7	552	9									
-																		173	Siyabonga Mazibouko	FWD	ASP	7	0	260	6.3		173	Dominggus Imbiri	FWD	ASG	7	7	476	1		173	Leftraru Painemal	MID	AKG	7	7	556	9									
-																		174	Butros Sedhom	FWD	NRG	7	1	290	6.3		174	Yustus Tekege	MID	ASG	7	7	515	1		174	Julian Patrick	MID	ENR	7	7	610	9									
-																		175	Rolf Hoffmann	DEF	ANH	7	7	630	6.3		175	Jabulani Dlamini	GK	ASP	7	7	630	1		175	Azad Doski	DEF	ADV	7	7	630	9									
-																		176	Merki Essili	MID	NRG	8	0	222	6.3		176	Enhle Khumalo	DEF	ASP	7	7	630	1		176	Yustus Tekege	MID	ASG	7	7	515	9									
-																		177	Hor Senedjem	DEF	KMT	9	9	810	6.3		177	Siyabonga Mazibouko	FWD	ASP	7	0	260	1		177	Walther Meyer	MID	ANH	7	7	542	9									
-																		178	Phib Bakenkhons	FWD	KMT	9	2	292	6.3		178	Kurt Mueller	DEF	ANH	7	7	630	1		178	Moüses Kyrillos	FWD	NRG	8	8	474	9									
-																		179	Minoru Andō	FWD	NKI	9	1	496	6.3		179	Pita Rata	FWD	ANH	7	7	492	1		179	Shenoute Nebamun	GK	KMT	9	9	810	9									
-																		180	Pradip Chowdhury	FWD	NHO	9	0	354	6.3		180	Moüses Kyrillos	FWD	NRG	8	8	474	1		180	Ashim Bhattacharya	GK	NHO	10	10	900	9									
-																		181	Erdem Polat	DEF	SEL	13	13	1170	6.3		181	Hor Senedjem	DEF	KMT	9	9	810	1		181	Ahmet Aydin	GK	SEL	13	13	1170	9									
-																		182	Selpius Rumbekwan	DEF	ASG	4	4	319	6.2		182	Papnoute Kenamun	DEF	KMT	9	9	810	1		182	Sipho Mashabané	DEF	ASP	2	0	93	8									
-																		183	Thirumal Annamalai	GK	ARU	7	7	630	6.2		183	Erdem Polat	DEF	SEL	13	13	1170	1		183	Manda Ōkubo	DEF	NKI	2	0	96	8									
-																		184	Murugan Shivaswamy	DEF	ARU	7	7	630	6.2											184	Jomo Mocoéna	DEF	ASP	6	6	522	8									
-																		185	Oviyan Venkataraman	MID	ARU	7	7	479	6.2											185	Somaru Markam	DEF	ENR	7	7	630	8									
-																		186	Jahangir Hossain	DEF	AWB	7	7	605	6.2											186	Nilotpal Konwar	DEF	GUP	2	2	180	7									
-																		187	Hone Wihongi	MID	ANH	7	7	543	6.2											187	Yulius Mabel	DEF	ASG	3	0	100	7									
-																		188	Nyilan Shikishima	FWD	NKI	8	0	338	6.2											188	Yishai Galili	MID	SHI	7	1	246	7									
-																		189	Papnoute Kenamun	DEF	KMT	9	9	810	6.2											189	Kumaran Sivanathan	MID	ARU	7	0	244	7									
-																		190	Oded Levi	DEF	SHI	7	7	630	6.1											190	Inti Loncón	FWD	AKG	7	7	543	7									
-																		191	Rubel Munshi	FWD	AWB	7	1	214	6.1											191	Bibhuti Mohapatra	GK	ENR	7	7	630	7									
-																		192	Amarjyoti Bhuyan	FWD	GUP	7	7	477	6.1											192	Dominggus Imbiri	FWD	ASG	7	7	476	7									
-																		193	Kailash Rath	DEF	ENR	7	7	630	6.1											193	Butros Sedhom	FWD	NRG	7	1	290	7									
-																		194	Agustinus Klafle	MID	ASG	7	7	561	6.1											194	Zeki Nari̇n	MID	SEL	12	0	248	7									
-																		195	Pieter Van Dam	MID	ASG	7	7	544	6.1											195	Orgenes Biwar	DEF	ASG	3	3	270	6									
-																		196	Eliezer Desap	MID	ASG	7	7	462	6.1											196	Kamal Rahman	GK	AWB	7	7	630	6									
-																		197	Moüses Kyrillos	FWD	NRG	8	8	474	6.0											197	Rubel Munshi	FWD	AWB	7	1	214	6									
-																		198	Jatin Sudatta	FWD	NHO	10	0	285	6.0											198	Jenő Szántó	FWD	GUP	7	0	209	6									
-																		199	Prasanna Abeywardena	FWD	ARU	7	0	232	5.9											199	Kailash Rath	DEF	ENR	7	7	630	6									
-																		200	Itsuki Goto	FWD	NKI	10	10	534	5.9											200	Siyabonga Mazibouko	FWD	ASP	7	0	260	6									
-																		201	Orkeke Inacayal	FWD	AKG	7	7	518	5.8											201	Pita Rata	FWD	ANH	7	7	492	6									
-																		202	Orgenes Biwar	DEF	ASG	3	3	270	5.7											202	Jatin Sudatta	FWD	NHO	10	0	285	6									
-																		203	Dominggus Imbiri	FWD	ASG	7	7	476	5.5											203	Vahid Lorestani	GK	VAR	11	11	990	6									
-																		204	Isak Wetipo	DEF	ASG	7	7	551	5.5											204	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	5									
-																		205	Rolihlahla Mbeki	FWD	ASP	7	7	503	5.5											205	Yonatan Cohen	GK	SHI	6	6	503	5									
-																		206	Rofiqul Khandaker	FWD	AWB	6	6	395	5.4											206	Fouad Tikriti	FWD	ADV	6	0	92	5									
-																		207	Darsing Teron	FWD	GUP	7	7	434	5.4											207	Pitso Modisé	MID	ASP	6	0	219	5									
-																		208	Joost Brouwer	DEF	ASG	7	7	630	5.3											208	Boaz Ben-Ami	FWD	SHI	7	0	173	5									
-																		209	Weynand Pakage	DEF	ASG	7	7	602	4.9											209	Amaru Calfuqueo	GK	AKG	7	7	630	5									
-																		210	Herman Kogoya	GK	ASG	7	7	630	3.5											210	Coyam Cayupán	DEF	AKG	7	7	630	5									
-																		211	Manda Ōkubo	DEF	NKI	2	0	96	7.2											211	Mridul Payeng	MID	GUP	7	0	158	5									
+49	Orkun Çeti̇n	MID	SEL	13	13	722	2		49	Humayun Piker	MID	AWB	7	7	552	1		49	Eren Peretz	DEF	SHI	7	7	630	6.9		49	Psote Neferhotep	MID	KMT	9	9	776	6		49	Neçirvan Barzani	FWD	ADV	7	7	495	24									
+50	Nyunda Yiribaru	MID	NKI	2	0	80	1		50	Sarapamon Nakhtmin	FWD	KMT	7	7	440	1		50	Didar Sikder	MID	AWB	7	7	619	6.9		50	Nirrim Biryara	MID	NKI	9	0	315	6		50	Simphiwe Chabalala	MID	ASP	7	7	426	24									
+51	Sigmund Reindl	FWD	ANH	5	0	144	1		51	Pier Hoekstra	MID	AKG	7	7	558	1		51	Pier Hoekstra	MID	AKG	7	7	558	6.9		51	Eskandar Dehghan	DEF	VAR	10	10	829	6		51	Yerucham Lehrer	MID	SHI	7	7	532	23									
+52	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	1		52	Orkeke Inacayal	FWD	AKG	7	7	518	1		52	Archibald Bamford	MID	ENR	7	7	621	6.9		52	Tanvir Howlader	FWD	NHO	10	10	557	6		52	Mlungisi Ndlovu	DEF	ASP	7	7	630	23									
+53	Eren Peretz	DEF	SHI	7	7	630	1		53	Bijoy Rajkhowa	FWD	GUP	7	0	140	1		53	Tamer Khalil	MID	ADV	7	7	592	6.9		53	Ernst Braunschweig	MID	ANH	5	0	162	5		53	Kolthe Harkhuf	MID	KMT	9	9	653	23									
+54	Segev Even-Khen	MID	SHI	7	7	587	1		54	Tivadar Lakatos	MID	GUP	7	7	578	1		54	Jabulani Dlamini	GK	ASP	7	7	630	6.9		54	Maoz Shaked	MID	SHI	7	7	530	5		54	Tatsuki Akagawa	FWD	NHO	10	10	635	23									
+55	Yishai Galili	MID	SHI	7	1	246	1		55	Lehel Balogh	MID	GUP	7	7	548	1		55	Pakhom Userhat	DEF	KMT	9	9	785	6.9		55	Humayun Piker	MID	AWB	7	7	552	5		55	Didar Sikder	MID	AWB	7	7	619	22									
+56	Bilya Garlett	MID	ARU	7	7	510	1		56	Nilambar Senapati	FWD	ENR	7	7	526	1		56	Damianos Faragab	MID	NRG	9	9	610	6.9		56	Inti Loncón	FWD	AKG	7	7	543	5		56	Pakhom Userhat	DEF	KMT	9	9	785	21									
+57	Prasanna Abeywardena	FWD	ARU	7	0	232	1		57	Lakhan Hembrom	MID	ENR	7	7	616	1		57	Tarran Nyaruguru	MID	NKI	10	0	384	6.9		57	Archibald Bamford	MID	ENR	7	7	621	5		57	Pishoy Djehuty	DEF	KMT	9	9	810	21									
+58	Natarajan Madhavan	FWD	ARU	7	7	416	1		58	Julian Patrick	MID	ENR	7	7	610	1		58	Eijiro Matsumoto	MID	NKI	10	10	848	6.9		58	Madhusudan Patnaik	FWD	ENR	7	7	472	5		58	Minoru Andō	FWD	NKI	9	1	496	21									
+59	Humayun Piker	MID	AWB	7	7	552	1		59	Viktor Kohlmann	MID	ADV	7	7	630	1		59	Kiyoshi Murandin	MID	NKI	10	10	645	6.9		59	Lakhan Hembrom	MID	ENR	7	7	616	5		59	Yohannis Sukkoti	DEF	NRG	9	9	773	21									
+60	Mangin Tripailaf	MID	AKG	7	7	630	1		60	Lakhdar Hamidi	MID	ADV	7	7	514	1		60	Phani Kyaithang	DEF	NHO	10	10	819	6.9		60	Lebogang Du Phiri	MID	ASP	7	7	538	5		60	Itsuki Goto	FWD	NKI	10	10	534	21									
+61	Jenő Szántó	FWD	GUP	7	0	209	1		61	Neçirvan Barzani	FWD	ADV	7	7	495	1		61	Sanat Barua	MID	NHO	10	10	900	6.9		61	Walther Meyer	MID	ANH	7	7	542	5		61	Khagendra Mitra	DEF	NHO	10	10	850	21									
+62	Amarjyoti Bhuyan	FWD	GUP	7	7	477	1		62	Teunis Slootman	MID	ASG	7	0	201	1		62	Tatsuki Akagawa	FWD	NHO	10	10	635	6.9		62	Nyilan Shikishima	FWD	NKI	8	0	338	5		62	Madhusudan Patnaik	FWD	ENR	7	7	472	20									
+63	Fulgens Tirkey	DEF	ENR	7	7	630	1		63	Vusumuzi Zoulou	MID	ASP	7	7	568	1		63	Vahid Lorestani	GK	VAR	11	11	990	6.9		63	Warrik Wirandaru	DEF	NKI	10	10	900	5		63	Nilambar Senapati	FWD	ENR	7	7	526	20									
+64	Gyan Hansda	MID	ENR	7	7	586	1		64	Rhulani Khouza	FWD	ASP	7	7	455	1		64	Batuhan Balyoz	MID	SEL	12	12	844	6.9		64	Keigo Ikeda	DEF	NKI	10	10	857	5		64	Lakhan Hembrom	MID	ENR	7	7	616	20									
+65	Julian Patrick	MID	ENR	7	7	610	1		65	Albrecht Von Haast	MID	ANH	7	7	543	1		65	Darven Miçkas	FWD	SEL	13	0	417	6.9		65	Tarran Nyaruguru	MID	NKI	10	0	384	5		65	Masaru Jakamarra	FWD	NKI	9	9	432	20									
+66	Jangir Barwari	DEF	ADV	7	7	630	1		66	Walther Meyer	MID	ANH	7	7	542	1		66	Fazlul Miah	MID	AWB	6	6	498	6.8		66	Anirban Goswami	DEF	NHO	10	10	900	5		66	Otto Ahmadi	MID	VAR	11	11	745	20									
+67	Melky Mote	FWD	ASG	7	0	154	1		67	Pita Rata	FWD	ANH	7	7	492	1		67	Segev Even-Khen	MID	SHI	7	7	587	6.8		67	Pedram Nazeri	FWD	VAR	11	11	550	5		67	Lajos Újföldi	MID	GUP	7	7	488	19									
+68	Yustus Tekege	MID	ASG	7	7	515	1		68	Eruera Waititi	FWD	ANH	7	7	489	1		68	Vigneswaran Arulampalam	DEF	ARU	7	7	630	6.8		68	Cihan Kartaca	MID	SEL	13	0	315	5		68	Weynand Pakage	DEF	ASG	7	7	602	19									
+69	Moüses Kyrillos	FWD	NRG	8	8	474	1		69	Pakhom Userhat	DEF	KMT	9	9	785	1		69	Raveendran Unnithan	MID	ARU	7	7	506	6.8		69	Yishai Galili	MID	SHI	7	1	246	4		69	Isak Wetipo	DEF	ASG	7	7	551	19									
+70	Psote Neferhotep	MID	KMT	9	9	776	1		70	Pisenti Ramose	MID	KMT	9	9	674	1		70	Mangin Tripailaf	MID	AKG	7	7	630	6.8		70	Gilad Dahan	FWD	SHI	7	7	458	4		70	Albrecht Von Haast	MID	ANH	7	7	543	19									
+71	Girgis Ipuwer	MID	KMT	9	0	160	1		71	Yohannis Sukkoti	DEF	NRG	9	9	773	1		71	Gusztáv Molnár	DEF	GUP	7	7	600	6.8		71	Bilya Garlett	MID	ARU	7	7	510	4		71	Joost Brouwer	DEF	ASG	7	7	630	18									
+72	Abanoub Sethnakht	MID	KMT	9	0	270	1		72	Petros Nogedi	MID	NRG	9	9	698	1		72	Lajos Újföldi	MID	GUP	7	7	488	6.8		72	Vibhas Talukder	MID	AWB	7	7	617	4		72	Judah Rangitāne	DEF	ANH	7	7	630	18									
+73	Phib Bakenkhons	FWD	KMT	9	2	292	1		73	Tadros Sonqi	MID	NRG	9	0	361	1		73	Julian Patrick	MID	ENR	7	7	610	6.8		73	Pier Hoekstra	MID	AKG	7	7	558	4		73	Petros Nogedi	MID	NRG	9	9	698	18									
+74	Tadros Amenemhat	MID	KMT	9	9	673	1		74	Damianos Faragab	MID	NRG	9	9	610	1		74	Yaqub Ghattas	MID	ADV	7	7	609	6.8		74	Orkeke Inacayal	FWD	AKG	7	7	518	4		74	Theodoros Farasin	MID	NRG	9	9	554	18									
+75	Pradip Chowdhury	FWD	NHO	9	0	354	1		75	Tarran Nyaruguru	MID	NKI	10	0	384	1		75	Pishoy Djehuty	DEF	KMT	9	9	810	6.8		75	Xebat Hawrami	FWD	ADV	7	7	538	4		75	Erdem Polat	DEF	SEL	13	13	1170	18									
+76	Tarran Nyaruguru	MID	NKI	10	0	384	1		76	Osamu Matsumoto	MID	NKI	10	10	600	1		76	Psote Neferhotep	MID	KMT	9	9	776	6.8		76	Yaqub Ghattas	MID	ADV	7	7	609	4		76	Darven Miçkas	FWD	SEL	13	0	417	18									
+77	Eijiro Matsumoto	MID	NKI	10	10	848	1		77	Kiyoshi Murandin	MID	NKI	10	10	645	1		77	Nirrim Biryara	MID	NKI	9	0	315	6.8		77	Rhulani Khouza	FWD	ASP	7	7	455	4		77	Fazlul Miah	MID	AWB	6	6	498	17									
+78	Itsuki Goto	FWD	NKI	10	10	534	1		78	Siavash Mehrian	MID	VAR	10	0	415	1		78	Georgios Artigasha	DEF	NRG	9	9	764	6.8		78	Hone Wihongi	MID	ANH	7	7	543	4		78	Naguib Sharawi	DEF	ADV	7	7	630	17									
+79	Junichiro Tarugara	MID	NKI	10	10	679	1		79	Anirban Goswami	DEF	NHO	10	10	900	1		79	Theodoros Farasin	MID	NRG	9	9	554	6.8		79	Merkurios Kudanbes	DEF	NRG	8	8	670	4		79	Eruera Waititi	FWD	ANH	7	7	489	17									
+80	Jatin Sudatta	FWD	NHO	10	0	285	1		80	Tanvir Howlader	FWD	NHO	10	10	557	1		80	Keigo Ikeda	DEF	NKI	10	10	857	6.8		80	Pakhom Userhat	DEF	KMT	9	9	785	4		80	Basem Shenouda	GK	NRG	9	9	810	17									
+81	Sudhir Chakraborty	MID	NHO	10	10	629	1		81	Kamal Bodhipal	FWD	NHO	10	10	686	1		81	Junichiro Tarugara	MID	NKI	10	10	679	6.8		81	Moyse Amenmose	MID	KMT	9	0	131	4		81	Stephanos Ballana	MID	NRG	9	9	624	17									
+82	Touraj Hayaii	DEF	VAR	11	11	942	1		82	Touraj Hayaii	DEF	VAR	11	11	942	1		82	Ashim Bhattacharya	GK	NHO	10	10	900	6.8		82	Abanoub Sethnakht	MID	KMT	9	0	270	4		82	Kamal Bodhipal	FWD	NHO	10	10	686	17									
+83	Daru Jafari	MID	VAR	11	11	828	1		83	Rostam Khalili	MID	VAR	11	0	387	1		83	Susumu Uehara	DEF	NHO	10	10	837	6.8		83	Phib Bakenkhons	FWD	KMT	9	2	292	4		83	Ritupon Gogoi	DEF	GUP	5	5	378	16									
+84	Rostam Khalili	MID	VAR	11	0	387	1		84	Ziyad Subaie	MID	VAR	11	11	871	1		84	Rostam Khalili	MID	VAR	11	0	387	6.8		84	Minoru Andō	FWD	NKI	9	1	496	4		84	Pier Hoekstra	MID	AKG	7	7	558	16									
+85	Mehran Shahi	MID	VAR	11	0	342	1		85	Pedram Nazeri	FWD	VAR	11	11	550	1		85	Serhat Di̇lbaz	MID	SEL	12	0	294	6.8		85	Damianos Faragab	MID	NRG	9	9	610	4		85	Khagen Basumatary	DEF	GUP	7	7	630	16									
+86	Otto Ahmadi	MID	VAR	11	11	745	1		86	Vural Surlu	MID	SEL	12	12	977	1		86	Ahmet Aydin	GK	SEL	13	13	1170	6.8		86	Theodoros Farasin	MID	NRG	9	9	554	4		86	Swrang Narzary	DEF	GUP	7	7	630	16									
+87	Batuhan Balyoz	MID	SEL	12	12	844	1		87	Kaan Erdoğmuş	MID	SEL	13	2	641	1		87	Muzaffer Doğan	DEF	SEL	13	13	1170	6.8		87	Junichiro Tarugara	MID	NKI	10	10	679	4		87	Tivadar Lakatos	MID	GUP	7	7	578	16									
+									88	Haydar Şen	FWD	SEL	13	13	753	1		88	Kalidurut Bishoy	DEF	NRG	5	0	210	6.7		88	Phani Kyaithang	DEF	NHO	10	10	819	4		88	Rupert Cavendish	DEF	ENR	7	7	585	16									
+									89	Yavuz Koç	MID	SEL	13	13	875	1		89	Yonatan Cohen	GK	SHI	6	6	503	6.7		89	Susumu Uehara	DEF	NHO	10	10	837	4		89	Lakhdar Hamidi	MID	ADV	7	7	514	16									
+																		90	Ravid Biton	MID	SHI	6	6	450	6.7		90	Khagendra Mitra	DEF	NHO	10	10	850	4		90	Tamer Khalil	MID	ADV	7	7	592	16									
+																		91	Senthil Thiruvengadam	DEF	ARU	7	7	572	6.7		91	Sanat Barua	MID	NHO	10	10	900	4		91	Nirrim Biryara	MID	NKI	9	0	315	16									
+																		92	Bilya Garlett	MID	ARU	7	7	510	6.7		92	Kamal Bodhipal	FWD	NHO	10	10	686	4		92	Kenji Nagase	FWD	NHO	10	10	554	16									
+																		93	Natarajan Madhavan	FWD	ARU	7	7	416	6.7		93	Saīd Farzan	FWD	VAR	11	0	440	4		93	Tomer Mizrahi	DEF	SHI	6	6	531	15									
+																		94	Liakat Chowdhury	DEF	AWB	7	7	630	6.7		94	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	4		94	Kasun Gunawardena	DEF	ARU	7	7	630	15									
+																		95	Vibhas Talukder	MID	AWB	7	7	617	6.7		95	Darven Miçkas	FWD	SEL	13	0	417	4		95	Liakat Chowdhury	DEF	AWB	7	7	630	15									
+																		96	Palash Bhuiyan	FWD	AWB	7	7	499	6.7		96	Fazlul Miah	MID	AWB	6	6	498	3		96	Jahangir Hossain	DEF	AWB	7	7	605	15									
+																		97	Inti Loncón	FWD	AKG	7	7	543	6.7		97	Jomo Mocoéna	DEF	ASP	6	6	522	3		97	Enamul Islam	DEF	AWB	7	7	630	15									
+																		98	Leftraru Painemal	MID	AKG	7	7	556	6.7		98	Tshepo Motaung	FWD	ASP	6	0	179	3		98	Lehel Balogh	MID	GUP	7	7	548	15									
+																		99	Fulgens Tirkey	DEF	ENR	7	7	630	6.7		99	Didar Sikder	MID	AWB	7	7	619	3		99	Xebat Hawrami	FWD	ADV	7	7	538	15									
+																		100	Naguib Sharawi	DEF	ADV	7	7	630	6.7		100	Hemanta Saikia	MID	GUP	7	7	591	3		100	Agustinus Klafle	MID	ASG	7	7	561	15									
+																		101	Lebogang Du Phiri	MID	ASP	7	7	538	6.7		101	Darsing Teron	FWD	GUP	7	7	434	3		101	Celani Buthelézi	DEF	ASP	7	7	537	15									
+																		102	Celani Buthelézi	DEF	ASP	7	7	537	6.7		102	Nilambar Senapati	FWD	ENR	7	7	526	3		102	Fraser Te Rangi	DEF	ANH	7	7	630	15									
+																		103	Gareth Tipene	GK	ANH	7	7	630	6.7		103	Tamer Khalil	MID	ADV	7	7	592	3		103	Rolf Hoffmann	DEF	ANH	7	7	630	15									
+																		104	Albrecht Von Haast	MID	ANH	7	7	543	6.7		104	Butros Sedhom	FWD	NRG	7	1	290	3		104	Hor Senedjem	DEF	KMT	9	9	810	15									
+																		105	Abanoub Sethnakht	MID	KMT	9	0	270	6.7		105	Judah Rangitāne	DEF	ANH	7	7	630	3		105	Tadros Amenemhat	MID	KMT	9	9	673	15									
+																		106	Eskandar Dehghan	DEF	VAR	10	10	829	6.7		106	Albrecht Von Haast	MID	ANH	7	7	543	3		106	Yohannis Mina	MID	NRG	9	9	676	15									
+																		107	Khagendra Mitra	DEF	NHO	10	10	850	6.7		107	Yohannis Sukkoti	DEF	NRG	9	9	773	3		107	Tarran Nyaruguru	MID	NKI	10	0	384	15									
+																		108	Kamal Bodhipal	FWD	NHO	10	10	686	6.7		108	Tanjin Tsukahara	DEF	NKI	10	10	847	3		108	Sadao Garabin	MID	NKI	10	0	433	15									
+																		109	Mehran Shahi	MID	VAR	11	0	342	6.7		109	Sadao Garabin	MID	NKI	10	0	433	3		109	Siavash Mehrian	MID	VAR	10	0	415	15									
+																		110	Saīd Farzan	FWD	VAR	11	0	440	6.7		110	Itsuki Goto	FWD	NKI	10	10	534	3		110	Rostam Khalili	MID	VAR	11	0	387	15									
+																		111	Ziyad Subaie	MID	VAR	11	11	871	6.7		111	Jatin Sudatta	FWD	NHO	10	0	285	3		111	Mehran Shahi	MID	VAR	11	0	342	15									
+																		112	Otto Ahmadi	MID	VAR	11	11	745	6.7		112	Soumitro Ganguly	MID	NHO	1	0	16	2		112	Parviz Tahmasb	DEF	VAR	6	1	275	14									
+																		113	Sarp Sayda	DEF	SEL	12	12	1016	6.7		113	Bonginkosi Mthembou	FWD	ASP	4	0	95	2		113	Eren Peretz	DEF	SHI	7	7	630	14									
+																		114	Vural Surlu	MID	SEL	12	12	977	6.7		114	Sigmund Reindl	FWD	ANH	5	0	144	2		114	Segev Even-Khen	MID	SHI	7	7	587	14									
+																		115	Zeki Nari̇n	MID	SEL	12	0	248	6.7		115	Kosti Serrani	MID	NRG	5	0	116	2		115	Gilad Dahan	FWD	SHI	7	7	458	14									
+																		116	Tomer Mizrahi	DEF	SHI	6	6	531	6.7		116	Tomer Mizrahi	DEF	SHI	6	6	531	2		116	Murugan Shivaswamy	DEF	ARU	7	7	630	14									
+																		117	Yishai Galili	MID	SHI	7	1	246	6.7		117	Rofiqul Khandaker	FWD	AWB	6	6	395	2		117	Vibhas Talukder	MID	AWB	7	7	617	14									
+																		118	Maoz Shaked	MID	SHI	7	7	530	6.7		118	Fouad Tikriti	FWD	ADV	6	0	92	2		118	Nawel Ñanculef	DEF	AKG	7	7	630	14									
+																		119	Gilad Dahan	FWD	SHI	7	7	458	6.7		119	Parviz Tahmasb	DEF	VAR	6	1	275	2		119	Mangin Tripailaf	MID	AKG	7	7	630	14									
+																		120	Chanchal Ahmed	DEF	AWB	7	7	630	6.7		120	Asaf Bar-Lev	DEF	SHI	7	7	630	2		120	Amarjyoti Bhuyan	FWD	GUP	7	7	477	14									
+																		121	Nawel Ñanculef	DEF	AKG	7	7	630	6.7		121	Kasun Gunawardena	DEF	ARU	7	7	630	2		121	Fulgens Tirkey	DEF	ENR	7	7	630	14									
+																		122	Gerben Verhoeven	DEF	AKG	7	7	630	6.7		122	Senthil Thiruvengadam	DEF	ARU	7	7	572	2		122	Gyan Hansda	MID	ENR	7	7	586	14									
+																		123	Wanguelen Sayhueque	MID	AKG	7	7	597	6.7		123	Jarrah Nannup	MID	ARU	7	0	180	2		123	Herman Kogoya	GK	ASG	7	7	630	14									
+																		124	Pranab Hazarika	GK	GUP	7	7	630	6.7		124	Raveendran Unnithan	MID	ARU	7	7	506	2		124	Pieter Van Dam	MID	ASG	7	7	544	14									
+																		125	Khagen Basumatary	DEF	GUP	7	7	630	6.7		125	Asela Dissanayake	MID	ARU	7	7	492	2		125	Vusumuzi Zoulou	MID	ASP	7	7	568	14									
+																		126	Tivadar Lakatos	MID	GUP	7	7	578	6.7		126	Mangin Tripailaf	MID	AKG	7	7	630	2		126	Hone Wihongi	MID	ANH	7	7	543	14									
+																		127	Lehel Balogh	MID	GUP	7	7	548	6.7		127	Leftraru Painemal	MID	AKG	7	7	556	2		127	Kalidurut Bishoy	DEF	NRG	5	0	210	13									
+																		128	Nilambar Senapati	FWD	ENR	7	7	526	6.7		128	Jenő Szántó	FWD	GUP	7	0	209	2		128	Maoz Shaked	MID	SHI	7	7	530	13									
+																		129	Azad Doski	DEF	ADV	7	7	630	6.7		129	Amarjyoti Bhuyan	FWD	GUP	7	7	477	2		129	Jangir Barwari	DEF	ADV	7	7	630	13									
+																		130	Vusumuzi Zoulou	MID	ASP	7	7	568	6.7		130	Lajos Újföldi	MID	GUP	7	7	488	2		130	Viktor Kohlmann	MID	ADV	7	7	630	13									
+																		131	Olwethu Makhanya	FWD	ASP	7	7	398	6.7		131	Lehel Balogh	MID	GUP	7	7	548	2		131	Yaqub Ghattas	MID	ADV	7	7	609	13									
+																		132	Judah Rangitāne	DEF	ANH	7	7	630	6.7		132	Viktor Kohlmann	MID	ADV	7	7	630	2		132	Eliezer Desap	MID	ASG	7	7	462	13									
+																		133	Kurt Mueller	DEF	ANH	7	7	630	6.7		133	Mlungisi Ndlovu	DEF	ASP	7	7	630	2		133	Olwethu Makhanya	FWD	ASP	7	7	398	13									
+																		134	Yohannis Sukkoti	DEF	NRG	9	9	773	6.7		134	Celani Buthelézi	DEF	ASP	7	7	537	2		134	Matthias Becker	MID	ANH	7	7	569	13									
+																		135	Ioannes Dongolawi	DEF	NRG	9	9	779	6.7		135	Olwethu Makhanya	FWD	ASP	7	7	398	2		135	Nyilan Shikishima	FWD	NKI	8	0	338	13									
+																		136	Tadros Sonqi	MID	NRG	9	0	361	6.7		136	Matthias Becker	MID	ANH	7	7	569	2		136	Phib Bakenkhons	FWD	KMT	9	2	292	13									
+																		137	Siavash Mehrian	MID	VAR	10	0	415	6.7		137	Pishoy Djehuty	DEF	KMT	9	9	810	2		137	Saīd Farzan	FWD	VAR	11	0	440	13									
+																		138	Ardalan Danesh	DEF	VAR	11	11	895	6.7		138	Haripada Bagchi	MID	NHO	9	0	271	2		138	Ravid Biton	MID	SHI	6	6	450	12									
+																		139	Asaf Bar-Lev	DEF	SHI	7	7	630	6.6		139	Ioannes Dongolawi	DEF	NRG	9	9	779	2		139	Palash Bhuiyan	FWD	AWB	7	7	499	12									
+																		140	Kumaran Sivanathan	MID	ARU	7	0	244	6.6		140	Petros Nogedi	MID	NRG	9	9	698	2		140	Gerben Verhoeven	DEF	AKG	7	7	630	12									
+																		141	Asela Dissanayake	MID	ARU	7	7	492	6.6		141	Tadros Sonqi	MID	NRG	9	0	361	2		141	Neles Wanimbo	MID	ASG	7	7	630	12									
+																		142	Amaru Calfuqueo	GK	AKG	7	7	630	6.6		142	Yoshio Hanazawa	FWD	NHO	10	0	337	2		142	Asaf Bar-Lev	DEF	SHI	7	7	630	11									
+																		143	Diethelm Brunner	DEF	AKG	7	7	630	6.6		143	Ardalan Danesh	DEF	VAR	11	11	895	2		143	Raveendran Unnithan	MID	ARU	7	7	506	11									
+																		144	Coyam Cayupán	DEF	AKG	7	7	630	6.6		144	Serhat Di̇lbaz	MID	SEL	12	0	294	2		144	Oviyan Venkataraman	MID	ARU	7	7	479	11									
+																		145	Hemanta Saikia	MID	GUP	7	7	591	6.6		145	Muzaffer Doğan	DEF	SEL	13	13	1170	2		145	Wanguelen Sayhueque	MID	AKG	7	7	597	11									
+																		146	Rupert Cavendish	DEF	ENR	7	7	585	6.6		146	Shinji Tadayama	MID	NKI	1	0	28	1		146	Pranab Hazarika	GK	GUP	7	7	630	11									
+																		147	Mariwan Nerweyi	DEF	ADV	7	7	630	6.6		147	Nyunda Yiribaru	MID	NKI	2	0	80	1		147	Darsing Teron	FWD	GUP	7	7	434	11									
+																		148	Viktor Kohlmann	MID	ADV	7	7	630	6.6		148	Iqbal Kazi	FWD	AWB	5	0	85	1		148	Haripada Bagchi	MID	NHO	9	0	271	11									
+																		149	Teunis Slootman	MID	ASG	7	0	201	6.6		149	Amiya Majumdar	DEF	NHO	5	0	194	1		149	Tadros Sonqi	MID	NRG	9	0	361	11									
+																		150	Fraser Te Rangi	DEF	ANH	7	7	630	6.6		150	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	1		150	Serhat Di̇lbaz	MID	SEL	12	0	294	11									
+																		151	Walther Meyer	MID	ANH	7	7	542	6.6		151	Elicura Panguilef	FWD	AKG	6	0	85	1		151	Amiya Majumdar	DEF	NHO	5	0	194	10									
+																		152	Pita Rata	FWD	ANH	7	7	492	6.6		152	Clive Forsyth	FWD	ENR	6	0	97	1		152	Thirumal Annamalai	GK	ARU	7	7	630	10									
+																		153	Matthias Becker	MID	ANH	7	7	569	6.6		153	Bassam Khafaji	MID	ADV	6	0	44	1		153	Bilya Garlett	MID	ARU	7	7	510	10									
+																		154	Haripada Bagchi	MID	NHO	9	0	271	6.6		154	Peshraw Rekabi	FWD	ADV	6	0	135	1		154	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	10									
+																		155	Petros Nogedi	MID	NRG	9	9	698	6.6		155	Pitso Modisé	MID	ASP	6	0	219	1		155	Asela Dissanayake	MID	ARU	7	7	492	10									
+																		156	Sadao Garabin	MID	NKI	10	0	433	6.6		156	Boaz Ben-Ami	FWD	SHI	7	0	173	1		156	Diethelm Brunner	DEF	AKG	7	7	630	10									
+																		157	Erfan Rastkar	DEF	VAR	11	11	990	6.6		157	Vigneswaran Arulampalam	DEF	ARU	7	7	630	1		157	Mariwan Nerweyi	DEF	ADV	7	7	630	10									
+																		158	Tunç Kenaanoğlu	DEF	SEL	13	13	1170	6.6		158	Murugan Shivaswamy	DEF	ARU	7	7	630	1		158	Enhle Khumalo	DEF	ASP	7	7	630	10									
+																		159	Cihan Kartaca	MID	SEL	13	0	315	6.6		159	Kumaran Sivanathan	MID	ARU	7	0	244	1		159	Rolihlahla Mbeki	FWD	ASP	7	7	503	10									
+																		160	Ritupon Gogoi	DEF	GUP	5	5	378	6.5		160	Dhanushkodi Thuraisingam	FWD	ARU	7	7	443	1		160	Rhulani Khouza	FWD	ASP	7	7	455	10									
+																		161	Jomo Mocoéna	DEF	ASP	6	6	522	6.5		161	Oviyan Venkataraman	MID	ARU	7	7	479	1		161	Gareth Tipene	GK	ANH	7	7	630	10									
+																		162	Pitso Modisé	MID	ASP	6	0	219	6.5		162	Jahangir Hossain	DEF	AWB	7	7	605	1		162	Papnoute Kenamun	DEF	KMT	9	9	810	10									
+																		163	Kasun Gunawardena	DEF	ARU	7	7	630	6.5		163	Jamal Sardar	MID	AWB	7	0	78	1		163	Girgis Ipuwer	MID	KMT	9	0	160	10									
+																		164	Enamul Islam	DEF	AWB	7	7	630	6.5		164	Menas Wennefer	MID	KMT	7	0	93	1		164	Abanoub Sethnakht	MID	KMT	9	0	270	10									
+																		165	Swrang Narzary	DEF	GUP	7	7	630	6.5		165	Nawel Ñanculef	DEF	AKG	7	7	630	1		165	Pradip Chowdhury	FWD	NHO	9	0	354	10									
+																		166	Jenő Szántó	FWD	GUP	7	0	209	6.5		166	Wanguelen Sayhueque	MID	AKG	7	7	597	1		166	Damianos Faragab	MID	NRG	9	9	610	10									
+																		167	Bibhuti Mohapatra	GK	ENR	7	7	630	6.5		167	Gusztáv Molnár	DEF	GUP	7	7	600	1		167	Yoshio Hanazawa	FWD	NHO	10	0	337	10									
+																		168	Somaru Markam	DEF	ENR	7	7	630	6.5		168	Bijoy Rajkhowa	FWD	GUP	7	0	140	1		168	Selpius Rumbekwan	DEF	ASG	4	4	319	9									
+																		169	Xebat Hawrami	FWD	ADV	7	7	538	6.5		169	Tivadar Lakatos	MID	GUP	7	7	578	1		169	Rofiqul Khandaker	FWD	AWB	6	6	395	9									
+																		170	Neles Wanimbo	MID	ASG	7	7	630	6.5		170	Fulgens Tirkey	DEF	ENR	7	7	630	1		170	Natarajan Madhavan	FWD	ARU	7	7	416	9									
+																		171	Yustus Tekege	MID	ASG	7	7	515	6.5		171	Azad Doski	DEF	ADV	7	7	630	1		171	Chanchal Ahmed	DEF	AWB	7	7	630	9									
+																		172	Enhle Khumalo	DEF	ASP	7	7	630	6.5		172	Teunis Slootman	MID	ASG	7	0	201	1		172	Humayun Piker	MID	AWB	7	7	552	9									
+																		173	Siyabonga Mazibouko	FWD	ASP	7	0	260	6.5		173	Dominggus Imbiri	FWD	ASG	7	7	476	1		173	Leftraru Painemal	MID	AKG	7	7	556	9									
+																		174	Butros Sedhom	FWD	NRG	7	1	290	6.5		174	Yustus Tekege	MID	ASG	7	7	515	1		174	Julian Patrick	MID	ENR	7	7	610	9									
+																		175	Rolf Hoffmann	DEF	ANH	7	7	630	6.5		175	Jabulani Dlamini	GK	ASP	7	7	630	1		175	Azad Doski	DEF	ADV	7	7	630	9									
+																		176	Merki Essili	MID	NRG	8	0	222	6.5		176	Enhle Khumalo	DEF	ASP	7	7	630	1		176	Yustus Tekege	MID	ASG	7	7	515	9									
+																		177	Hor Senedjem	DEF	KMT	9	9	810	6.5		177	Siyabonga Mazibouko	FWD	ASP	7	0	260	1		177	Walther Meyer	MID	ANH	7	7	542	9									
+																		178	Phib Bakenkhons	FWD	KMT	9	2	292	6.5		178	Kurt Mueller	DEF	ANH	7	7	630	1		178	Moüses Kyrillos	FWD	NRG	8	8	474	9									
+																		179	Minoru Andō	FWD	NKI	9	1	496	6.5		179	Pita Rata	FWD	ANH	7	7	492	1		179	Shenoute Nebamun	GK	KMT	9	9	810	9									
+																		180	Pradip Chowdhury	FWD	NHO	9	0	354	6.5		180	Moüses Kyrillos	FWD	NRG	8	8	474	1		180	Ashim Bhattacharya	GK	NHO	10	10	900	9									
+																		181	Erdem Polat	DEF	SEL	13	13	1170	6.5		181	Hor Senedjem	DEF	KMT	9	9	810	1		181	Ahmet Aydin	GK	SEL	13	13	1170	9									
+																		182	Selpius Rumbekwan	DEF	ASG	4	4	319	6.5		182	Papnoute Kenamun	DEF	KMT	9	9	810	1		182	Sipho Mashabané	DEF	ASP	2	0	93	8									
+																		183	Thirumal Annamalai	GK	ARU	7	7	630	6.5		183	Erdem Polat	DEF	SEL	13	13	1170	1		183	Manda Ōkubo	DEF	NKI	2	0	96	8									
+																		184	Murugan Shivaswamy	DEF	ARU	7	7	630	6.5											184	Jomo Mocoéna	DEF	ASP	6	6	522	8									
+																		185	Oviyan Venkataraman	MID	ARU	7	7	479	6.5											185	Somaru Markam	DEF	ENR	7	7	630	8									
+																		186	Jahangir Hossain	DEF	AWB	7	7	605	6.5											186	Nilotpal Konwar	DEF	GUP	2	2	180	7									
+																		187	Hone Wihongi	MID	ANH	7	7	543	6.5											187	Yulius Mabel	DEF	ASG	3	0	100	7									
+																		188	Nyilan Shikishima	FWD	NKI	8	0	338	6.5											188	Yishai Galili	MID	SHI	7	1	246	7									
+																		189	Papnoute Kenamun	DEF	KMT	9	9	810	6.5											189	Kumaran Sivanathan	MID	ARU	7	0	244	7									
+																		190	Oded Levi	DEF	SHI	7	7	630	6.4											190	Inti Loncón	FWD	AKG	7	7	543	7									
+																		191	Rubel Munshi	FWD	AWB	7	1	214	6.4											191	Bibhuti Mohapatra	GK	ENR	7	7	630	7									
+																		192	Amarjyoti Bhuyan	FWD	GUP	7	7	477	6.4											192	Dominggus Imbiri	FWD	ASG	7	7	476	7									
+																		193	Kailash Rath	DEF	ENR	7	7	630	6.4											193	Butros Sedhom	FWD	NRG	7	1	290	7									
+																		194	Agustinus Klafle	MID	ASG	7	7	561	6.4											194	Zeki Nari̇n	MID	SEL	12	0	248	7									
+																		195	Pieter Van Dam	MID	ASG	7	7	544	6.4											195	Orgenes Biwar	DEF	ASG	3	3	270	6									
+																		196	Eliezer Desap	MID	ASG	7	7	462	6.4											196	Kamal Rahman	GK	AWB	7	7	630	6									
+																		197	Moüses Kyrillos	FWD	NRG	8	8	474	6.3											197	Rubel Munshi	FWD	AWB	7	1	214	6									
+																		198	Jatin Sudatta	FWD	NHO	10	0	285	6.3											198	Jenő Szántó	FWD	GUP	7	0	209	6									
+																		199	Prasanna Abeywardena	FWD	ARU	7	0	232	6.3											199	Kailash Rath	DEF	ENR	7	7	630	6									
+																		200	Itsuki Goto	FWD	NKI	10	10	534	6.3											200	Siyabonga Mazibouko	FWD	ASP	7	0	260	6									
+																		201	Orkeke Inacayal	FWD	AKG	7	7	518	6.2											201	Pita Rata	FWD	ANH	7	7	492	6									
+																		202	Orgenes Biwar	DEF	ASG	3	3	270	6.1											202	Jatin Sudatta	FWD	NHO	10	0	285	6									
+																		203	Dominggus Imbiri	FWD	ASG	7	7	476	6.0											203	Vahid Lorestani	GK	VAR	11	11	990	6									
+																		204	Isak Wetipo	DEF	ASG	7	7	551	6.0											204	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	5									
+																		205	Rolihlahla Mbeki	FWD	ASP	7	7	503	6.0											205	Yonatan Cohen	GK	SHI	6	6	503	5									
+																		206	Rofiqul Khandaker	FWD	AWB	6	6	395	5.9											206	Fouad Tikriti	FWD	ADV	6	0	92	5									
+																		207	Darsing Teron	FWD	GUP	7	7	434	5.9											207	Pitso Modisé	MID	ASP	6	0	219	5									
+																		208	Joost Brouwer	DEF	ASG	7	7	630	5.9											208	Boaz Ben-Ami	FWD	SHI	7	0	173	5									
+																		209	Weynand Pakage	DEF	ASG	7	7	602	5.6											209	Amaru Calfuqueo	GK	AKG	7	7	630	5									
+																		210	Herman Kogoya	GK	ASG	7	7	630	4.7											210	Coyam Cayupán	DEF	AKG	7	7	630	5									
+																		211	Manda Ōkubo	DEF	NKI	2	0	96	7.1											211	Mridul Payeng	MID	GUP	7	0	158	5									
 																		212	Shinji Tadayama	MID	NKI	1	0	28	7.0											212	Jabulani Dlamini	GK	ASP	7	7	630	5									
 																		213	Tshepo Motaung	FWD	ASP	6	0	179	6.9											213	Moyse Amenmose	MID	KMT	9	0	131	5									
-																		214	Nyunda Yiribaru	MID	NKI	2	0	80	6.8											214	Cihan Kartaca	MID	SEL	13	0	315	5									
-																		215	Sipho Mashabané	DEF	ASP	2	0	93	6.7											215	Sidhom Irinefer	DEF	KMT	4	0	104	4									
-																		216	Amiya Majumdar	DEF	NHO	5	0	194	6.7											216	Gautam Das	MID	AWB	5	1	109	4									
-																		217	Nilotpal Konwar	DEF	GUP	2	2	180	6.6											217	Ranjit Mohanty	FWD	ENR	6	0	165	4									
-																		218	Soumitro Ganguly	MID	NHO	1	0	16	6.6											218	Bassam Khafaji	MID	ADV	6	0	44	4									
-																		219	Jamal Sardar	MID	AWB	7	0	78	6.5											219	Tshepo Motaung	FWD	ASP	6	0	179	4									
-																		220	Menas Wennefer	MID	KMT	7	0	93	6.5											220	Bhupen Narishita	FWD	NHO	6	0	171	4									
-																		221	Girgis Ipuwer	MID	KMT	9	0	160	6.5											221	Uriel Mazor	MID	SHI	7	0	133	4									
-																		222	Foye Huenchullán	MID	AKG	3	0	21	6.5											222	Jarrah Nannup	MID	ARU	7	0	180	4									
-																		223	Hamad Zahrani	MID	VAR	6	0	193	6.5											223	Kalyan Borah	MID	GUP	7	0	110	4									
-																		224	Trilochan Khuntia	MID	ENR	5	0	31	6.5											224	Siti Gemai	MID	NRG	8	0	190	4									
-																		225	Sanatan Jena	MID	ENR	2	0	12	6.5											225	Fikile Hadebé	DEF	ASP	1	1	90	3									
-																		226	Safwan Azzawi	MID	ADV	5	0	14	6.5											226	Bram Hoogland	DEF	ASG	2	0	48	3									
-																		227	Bassam Khafaji	MID	ADV	6	0	44	6.5											227	Dhruba Bordoloi	DEF	GUP	3	0	102	3									
-																		228	Fouad Tikriti	FWD	ADV	6	0	92	6.5											228	Hamad Zahrani	MID	VAR	6	0	193	3									
-																		229	Yulius Mabel	DEF	ASG	3	0	100	6.5											229	Peshraw Rekabi	FWD	ADV	6	0	135	3									
-																		230	Bram Hoogland	DEF	ASG	2	0	48	6.5											230	Prasanna Abeywardena	FWD	ARU	7	0	232	3									
-																		231	Ernst Braunschweig	MID	ANH	5	0	162	6.5											231	Jamal Sardar	MID	AWB	7	0	78	3									
-																		232	Tapan Barua	MID	AWB	1	0	10	6.5											232	Orkeke Inacayal	FWD	AKG	7	7	518	3									
-																		233	Gautam Das	MID	AWB	5	1	109	6.5											233	Dural Tanumura	GK	NKI	10	10	900	3									
-																		234	Fikile Hadebé	DEF	ASP	1	1	90	6.5											234	Tapan Barua	MID	AWB	1	0	10	2									
-																		235	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	6.5											235	Ioannes Qustul	DEF	NRG	1	1	90	2									
-																		236	Hannes Zimmermann	GK	AKG	1	0	0	6.5											236	Nadav Tzur	DEF	SHI	1	1	90	2									
-																		237	Berat Çankaya	MID	SEL	3	0	57	6.5											237	Shinji Tadayama	MID	NKI	1	0	28	2									
-																		238	Uriel Mazor	MID	SHI	7	0	133	6.4											238	Nyunda Yiribaru	MID	NKI	2	0	80	2									
-																		239	Elkana Rotem	MID	SHI	7	0	65	6.4											239	Berat Çankaya	MID	SEL	3	0	57	2									
-																		240	Jarrah Nannup	MID	ARU	7	0	180	6.4											240	Otene Kereopa	FWD	ANH	4	0	79	2									
-																		241	Moyse Amenmose	MID	KMT	9	0	131	6.4											241	Bhagaban Pradhan	MID	ENR	5	0	44	2									
-																		242	Toki Quilaqueo	MID	AKG	4	0	40	6.4											242	Manaia Tūhoe	MID	ANH	5	0	83	2									
-																		243	Namuncura Lienlaf	MID	AKG	6	0	118	6.4											243	Lachlan Ihimaera	MID	ANH	5	0	70	2									
-																		244	Jogesh Brahma	MID	GUP	3	0	48	6.4											244	Sigmund Reindl	FWD	ANH	5	0	144	2									
-																		245	Kalyan Borah	MID	GUP	7	0	110	6.4											245	Elicura Panguilef	FWD	AKG	6	0	85	2									
-																		246	Bhagaban Pradhan	MID	ENR	5	0	44	6.4											246	Raed Enezi	MID	ADV	6	0	118	2									
-																		247	Raed Enezi	MID	ADV	6	0	118	6.4											247	Elkana Rotem	MID	SHI	7	0	65	2									
-																		248	Kornelis Wenda	MID	ASG	7	0	128	6.4											248	Waalitj Bropho	FWD	ARU	7	0	169	2									
-																		249	Siti Gemai	MID	NRG	8	0	190	6.4											249	Menas Wennefer	MID	KMT	7	0	93	2									
-																		250	Manaia Tūhoe	MID	ANH	5	0	83	6.4											250	Kerem Janabi	GK	ADV	7	7	630	2									
-																		251	Lachlan Ihimaera	MID	ANH	5	0	70	6.4											251	Teunis Slootman	MID	ASG	7	0	201	2									
-																		252	Zamir Peled	MID	SHI	4	0	38	6.4											252	Sohrab Bozorgi	DEF	VAR	1	0	22	1									
-																		253	Dhruba Bordoloi	DEF	GUP	3	0	102	6.4											253	Debendra Sahoo	DEF	ENR	2	0	45	1									
-																		254	Gerson Mandosir	MID	ASG	4	0	44	6.4											254	Kutay Bulut	DEF	SEL	2	1	154	1									
-																		255	Debendra Sahoo	DEF	ENR	2	0	45	6.4											255	Foye Huenchullán	MID	AKG	3	0	21	1									
-																		256	Dolev Nagar	MID	SHI	1	0	12	6.4											256	Toki Quilaqueo	MID	AKG	4	0	40	1									
-																		257	Armin Dieffenbach	MID	ANH	1	0	8	6.4											257	Bonginkosi Mthembou	FWD	ASP	4	0	95	1									
-																		258	Jagan Krishnamurthy	MID	ARU	5	0	109	6.3											258	Zamir Peled	MID	SHI	4	0	38	1									
-																		259	Elicura Panguilef	FWD	AKG	6	0	85	6.3											259	Jagan Krishnamurthy	MID	ARU	5	0	109	1									
-																		260	Mridul Payeng	MID	GUP	7	0	158	6.3											260	Ernst Braunschweig	MID	ANH	5	0	162	1									
-																		261	Clive Forsyth	FWD	ENR	6	0	97	6.3											261	Kosti Serrani	MID	NRG	5	0	116	1									
-																		262	Chandran Rajapaksha	DEF	ARU	2	0	58	6.3											262	Namuncura Lienlaf	MID	AKG	6	0	118	1									
-																		263	Sidhom Irinefer	DEF	KMT	4	0	104	6.3											263	Kurt Eberle	FWD	AKG	6	0	114	1									
-																		264	Barnabas Wandik	MID	ASG	5	0	65	6.3											264	Clive Forsyth	FWD	ENR	6	0	97	1									
-																		265	Shafiqul Molla	DEF	AWB	1	0	25	6.3											265	Oded Levi	DEF	SHI	7	7	630	1									
-																		266	Kosti Serrani	MID	NRG	5	0	116	6.3											266	Bijoy Rajkhowa	FWD	GUP	7	0	140	1									
-																		267	Hloni Bhéngu	MID	ASP	1	0	21	6.3											267	Kornelis Wenda	MID	ASG	7	0	128	1									
-																		268	Nadav Tzur	DEF	SHI	1	1	90	6.3											268	Melky Mote	FWD	ASG	7	0	154	1									
-																		269	Kutay Bulut	DEF	SEL	2	1	154	6.3											269	Merki Essili	MID	NRG	8	0	222	1									
-																		270	Sohrab Bozorgi	DEF	VAR	1	0	22	6.3																											
-																		271	Boaz Ben-Ami	FWD	SHI	7	0	173	6.2																											
-																		272	Kurt Eberle	FWD	AKG	6	0	114	6.2																											
-																		273	Bijoy Rajkhowa	FWD	GUP	7	0	140	6.2																											
-																		274	Peshraw Rekabi	FWD	ADV	6	0	135	6.2																											
-																		275	Bonginkosi Mthembou	FWD	ASP	4	0	95	6.2																											
-																		276	Iddo Avni	GK	SHI	2	1	127	6.2																											
-																		277	Melky Mote	FWD	ASG	7	0	154	6.1																											
-																		278	Otene Kereopa	FWD	ANH	4	0	79	6.1																											
-																		279	Sigmund Reindl	FWD	ANH	5	0	144	6.1																											
-																		280	Iqbal Kazi	FWD	AWB	5	0	85	6.1																											
-																		281	Ranjit Mohanty	FWD	ENR	6	0	165	6.0																											
-																		282	Ioannes Qustul	DEF	NRG	1	1	90	6.0																											
-																		283	Waalitj Bropho	FWD	ARU	7	0	169	5.9																											
-																		284	Bhupen Narishita	FWD	NHO	6	0	171	5.9																											
+																		214	Nyunda Yiribaru	MID	NKI	2	0	80	6.9											214	Cihan Kartaca	MID	SEL	13	0	315	5									
+																		215	Sipho Mashabané	DEF	ASP	2	0	93	6.8											215	Sidhom Irinefer	DEF	KMT	4	0	104	4									
+																		216	Amiya Majumdar	DEF	NHO	5	0	194	6.8											216	Gautam Das	MID	AWB	5	1	109	4									
+																		217	Nilotpal Konwar	DEF	GUP	2	2	180	6.7											217	Ranjit Mohanty	FWD	ENR	6	0	165	4									
+																		218	Soumitro Ganguly	MID	NHO	1	0	16	6.7											218	Bassam Khafaji	MID	ADV	6	0	44	4									
+																		219	Jamal Sardar	MID	AWB	7	0	78	6.7											219	Tshepo Motaung	FWD	ASP	6	0	179	4									
+																		220	Menas Wennefer	MID	KMT	7	0	93	6.7											220	Bhupen Narishita	FWD	NHO	6	0	171	4									
+																		221	Girgis Ipuwer	MID	KMT	9	0	160	6.7											221	Uriel Mazor	MID	SHI	7	0	133	4									
+																		222	Foye Huenchullán	MID	AKG	3	0	21	6.7											222	Jarrah Nannup	MID	ARU	7	0	180	4									
+																		223	Hamad Zahrani	MID	VAR	6	0	193	6.7											223	Kalyan Borah	MID	GUP	7	0	110	4									
+																		224	Trilochan Khuntia	MID	ENR	5	0	31	6.7											224	Siti Gemai	MID	NRG	8	0	190	4									
+																		225	Sanatan Jena	MID	ENR	2	0	12	6.7											225	Fikile Hadebé	DEF	ASP	1	1	90	3									
+																		226	Safwan Azzawi	MID	ADV	5	0	14	6.7											226	Bram Hoogland	DEF	ASG	2	0	48	3									
+																		227	Bassam Khafaji	MID	ADV	6	0	44	6.7											227	Dhruba Bordoloi	DEF	GUP	3	0	102	3									
+																		228	Fouad Tikriti	FWD	ADV	6	0	92	6.7											228	Hamad Zahrani	MID	VAR	6	0	193	3									
+																		229	Yulius Mabel	DEF	ASG	3	0	100	6.7											229	Peshraw Rekabi	FWD	ADV	6	0	135	3									
+																		230	Bram Hoogland	DEF	ASG	2	0	48	6.7											230	Prasanna Abeywardena	FWD	ARU	7	0	232	3									
+																		231	Ernst Braunschweig	MID	ANH	5	0	162	6.7											231	Jamal Sardar	MID	AWB	7	0	78	3									
+																		232	Tapan Barua	MID	AWB	1	0	10	6.7											232	Orkeke Inacayal	FWD	AKG	7	7	518	3									
+																		233	Gautam Das	MID	AWB	5	1	109	6.7											233	Dural Tanumura	GK	NKI	10	10	900	3									
+																		234	Fikile Hadebé	DEF	ASP	1	1	90	6.7											234	Tapan Barua	MID	AWB	1	0	10	2									
+																		235	Gcobani Nhlapo-Marais	MID	ASP	5	0	118	6.7											235	Ioannes Qustul	DEF	NRG	1	1	90	2									
+																		236	Hannes Zimmermann	GK	AKG	1	0	0	6.7											236	Nadav Tzur	DEF	SHI	1	1	90	2									
+																		237	Berat Çankaya	MID	SEL	3	0	57	6.7											237	Shinji Tadayama	MID	NKI	1	0	28	2									
+																		238	Uriel Mazor	MID	SHI	7	0	133	6.6											238	Nyunda Yiribaru	MID	NKI	2	0	80	2									
+																		239	Elkana Rotem	MID	SHI	7	0	65	6.6											239	Berat Çankaya	MID	SEL	3	0	57	2									
+																		240	Jarrah Nannup	MID	ARU	7	0	180	6.6											240	Otene Kereopa	FWD	ANH	4	0	79	2									
+																		241	Moyse Amenmose	MID	KMT	9	0	131	6.6											241	Bhagaban Pradhan	MID	ENR	5	0	44	2									
+																		242	Toki Quilaqueo	MID	AKG	4	0	40	6.6											242	Manaia Tūhoe	MID	ANH	5	0	83	2									
+																		243	Namuncura Lienlaf	MID	AKG	6	0	118	6.6											243	Lachlan Ihimaera	MID	ANH	5	0	70	2									
+																		244	Jogesh Brahma	MID	GUP	3	0	48	6.6											244	Sigmund Reindl	FWD	ANH	5	0	144	2									
+																		245	Kalyan Borah	MID	GUP	7	0	110	6.6											245	Elicura Panguilef	FWD	AKG	6	0	85	2									
+																		246	Bhagaban Pradhan	MID	ENR	5	0	44	6.6											246	Raed Enezi	MID	ADV	6	0	118	2									
+																		247	Raed Enezi	MID	ADV	6	0	118	6.6											247	Elkana Rotem	MID	SHI	7	0	65	2									
+																		248	Kornelis Wenda	MID	ASG	7	0	128	6.6											248	Waalitj Bropho	FWD	ARU	7	0	169	2									
+																		249	Siti Gemai	MID	NRG	8	0	190	6.6											249	Menas Wennefer	MID	KMT	7	0	93	2									
+																		250	Manaia Tūhoe	MID	ANH	5	0	83	6.6											250	Kerem Janabi	GK	ADV	7	7	630	2									
+																		251	Lachlan Ihimaera	MID	ANH	5	0	70	6.6											251	Teunis Slootman	MID	ASG	7	0	201	2									
+																		252	Zamir Peled	MID	SHI	4	0	38	6.6											252	Sohrab Bozorgi	DEF	VAR	1	0	22	1									
+																		253	Dhruba Bordoloi	DEF	GUP	3	0	102	6.6											253	Debendra Sahoo	DEF	ENR	2	0	45	1									
+																		254	Gerson Mandosir	MID	ASG	4	0	44	6.6											254	Kutay Bulut	DEF	SEL	2	1	154	1									
+																		255	Debendra Sahoo	DEF	ENR	2	0	45	6.6											255	Foye Huenchullán	MID	AKG	3	0	21	1									
+																		256	Dolev Nagar	MID	SHI	1	0	12	6.6											256	Toki Quilaqueo	MID	AKG	4	0	40	1									
+																		257	Armin Dieffenbach	MID	ANH	1	0	8	6.6											257	Bonginkosi Mthembou	FWD	ASP	4	0	95	1									
+																		258	Jagan Krishnamurthy	MID	ARU	5	0	109	6.5											258	Zamir Peled	MID	SHI	4	0	38	1									
+																		259	Elicura Panguilef	FWD	AKG	6	0	85	6.5											259	Jagan Krishnamurthy	MID	ARU	5	0	109	1									
+																		260	Mridul Payeng	MID	GUP	7	0	158	6.5											260	Ernst Braunschweig	MID	ANH	5	0	162	1									
+																		261	Clive Forsyth	FWD	ENR	6	0	97	6.5											261	Kosti Serrani	MID	NRG	5	0	116	1									
+																		262	Chandran Rajapaksha	DEF	ARU	2	0	58	6.5											262	Namuncura Lienlaf	MID	AKG	6	0	118	1									
+																		263	Sidhom Irinefer	DEF	KMT	4	0	104	6.5											263	Kurt Eberle	FWD	AKG	6	0	114	1									
+																		264	Barnabas Wandik	MID	ASG	5	0	65	6.5											264	Clive Forsyth	FWD	ENR	6	0	97	1									
+																		265	Shafiqul Molla	DEF	AWB	1	0	25	6.5											265	Oded Levi	DEF	SHI	7	7	630	1									
+																		266	Kosti Serrani	MID	NRG	5	0	116	6.5											266	Bijoy Rajkhowa	FWD	GUP	7	0	140	1									
+																		267	Hloni Bhéngu	MID	ASP	1	0	21	6.5											267	Kornelis Wenda	MID	ASG	7	0	128	1									
+																		268	Nadav Tzur	DEF	SHI	1	1	90	6.5											268	Melky Mote	FWD	ASG	7	0	154	1									
+																		269	Kutay Bulut	DEF	SEL	2	1	154	6.5											269	Merki Essili	MID	NRG	8	0	222	1									
+																		270	Sohrab Bozorgi	DEF	VAR	1	0	22	6.5																											
+																		271	Boaz Ben-Ami	FWD	SHI	7	0	173	6.5																											
+																		272	Kurt Eberle	FWD	AKG	6	0	114	6.5																											
+																		273	Bijoy Rajkhowa	FWD	GUP	7	0	140	6.5																											
+																		274	Peshraw Rekabi	FWD	ADV	6	0	135	6.5																											
+																		275	Bonginkosi Mthembou	FWD	ASP	4	0	95	6.5																											
+																		276	Iddo Avni	GK	SHI	2	1	127	6.5																											
+																		277	Melky Mote	FWD	ASG	7	0	154	6.4																											
+																		278	Otene Kereopa	FWD	ANH	4	0	79	6.4																											
+																		279	Sigmund Reindl	FWD	ANH	5	0	144	6.4																											
+																		280	Iqbal Kazi	FWD	AWB	5	0	85	6.4																											
+																		281	Ranjit Mohanty	FWD	ENR	6	0	165	6.3																											
+																		282	Ioannes Qustul	DEF	NRG	1	1	90	6.3																											
+																		283	Waalitj Bropho	FWD	ARU	7	0	169	6.3																											
+																		284	Bhupen Narishita	FWD	NHO	6	0	171	6.3																											
