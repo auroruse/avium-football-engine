@@ -13,12 +13,11 @@ import karTSV from "./presets/KAR.tsv?raw";
 import kfkTSV from "./presets/KFK.tsv?raw";
 import kkmTSV from "./presets/KKM.tsv?raw";
 import nchTSV from "./presets/NCH.tsv?raw";
-import rudTSV from "./presets/RUD.tsv?raw";
 import shiTSV from "./presets/SHI.tsv?raw";
 import skjTSV from "./presets/SKJ.tsv?raw";
 import turTSV from "./presets/TUR.tsv?raw";
 import varTSV from "./presets/VAR.tsv?raw";
-import vicTSV from "./presets/VIC.tsv?raw";
+import miscTSV from "./presets/MISC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_KEY_ROLE, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeRoleFit, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
@@ -1711,6 +1710,16 @@ function parseBulk(text) {
   // input (the in-app export, old registries, hand-pasted squads) has no manager column and
   // parses exactly as it always did.
   const hasManager = _hdr ? /\bMANAGER\b/i.test(_hdr) : false;
+  // HOW WIDE THE PLAYER BLOCK IS, declared by the header the same way the instructions and the
+  // manager are. A club sheet names #1..#16, an international one #1..#11 then SUB #1..SUB #11.
+  // Sniffing it from the row instead was wrong for any club with no kit colours: nothing
+  // terminated the block, the scan ran off the end into LOCATION and STADIUM, and Kuybyshev and
+  // Yedinstva Arena Kuybyshev were signed as a right wing-back and an attacking midfielder.
+  const _hdrSlots = _hdr ? _hdr.split("\t").filter(c => /^(SUB\s*)?#\s*\d+$/i.test(c.trim())).length : 0;
+  // ...and whether it declares the two kit-colour columns. They were being identified by shape, so
+  // a club that simply has not been given colours yet left two blanks that nothing consumed, and
+  // its city was read as its ground while the ground fell off the end.
+  const _hdrColors = _hdr ? _hdr.split("\t").filter(c => /^(home|away)$/i.test(c.trim())).length : 0;
   const stratKeys = _fromHdr.length ? _fromHdr
     : ["approachPlay","passingDir","chanceCreation","dribbling","creativity","timeWasting","possLost","possWon","gkDist","pressingLOE","defLine","dlBehavior","tackling"];
   const stratLookup = {};
@@ -1791,7 +1800,9 @@ function parseBulk(text) {
     // block; only the two legal widths are accepted, so a malformed row falls back to 16 rather
     // than silently eating a city name as a substitute.
     let PLAYER_SLOTS = 16;
-    { let e = PLAYER_START;
+    if (_hdrSlots === 16 || _hdrSlots === 22) PLAYER_SLOTS = _hdrSlots;
+    else { // headerless input -- the in-app export, an old registry, a hand-pasted squad
+      let e = PLAYER_START;
       while (e < p.length && e < PLAYER_START + 22 && !isHexColor(p[e])) e++;
       const n = e - PLAYER_START;
       // Exactly 22 when a colour terminates the block. When the row simply ends instead (the
@@ -1827,8 +1838,16 @@ function parseBulk(text) {
     // blank simply fails isHexColor rather than needing the gap closed.
     for (let i = PLAYER_START + PLAYER_SLOTS; i < p.length; i++) meta.push(p[i]?.trim() ?? "");
     let primaryColor = null, secondaryColor = null;
-    if (meta.length > 0 && isHexColor(meta[0])) primaryColor = meta.shift();
-    if (meta.length > 0 && isHexColor(meta[0])) secondaryColor = meta.shift();
+    if (_hdrColors) {
+      // Declared columns are consumed whether or not they hold anything, because the fields after
+      // them are positional. Shape is still checked, so a blank simply yields no colour.
+      for (let i = 0; i < _hdrColors; i++) { const v = meta.shift() ?? "";
+        if (!isHexColor(v)) continue;
+        if (!primaryColor) primaryColor = v; else if (!secondaryColor) secondaryColor = v; }
+    } else {
+      if (meta.length > 0 && isHexColor(meta[0])) primaryColor = meta.shift();
+      if (meta.length > 0 && isHexColor(meta[0])) secondaryColor = meta.shift();
+    }
     let city = null, stadium = null, stadiumCap = null;
     if (meta.length > 0) city = stripVenue(meta.shift());
     // The capacity is split off rather than kept inline, because every reader of `stadium` -- image
@@ -2525,8 +2544,8 @@ const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 // Column 1 holds the club badge — an image floating over the cell, so it exports blank — and both
 // it and the league column are stripped before parseBulk sees the row.
 const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
-                     KKM: kkmTSV, NCH: nchTSV, RUD: rudTSV, SHI: shiTSV, SKJ: skjTSV,
-                     TUR: turTSV, VAR: varTSV, VIC: vicTSV };
+                     KKM: kkmTSV, MISC: miscTSV, NCH: nchTSV, SHI: shiTSV, SKJ: skjTSV,
+                     TUR: turTSV, VAR: varTSV };
 // Divisions whose sheets carry no per-player ratings. Every player in them inherits his club's team
 // skill, which is a default rather than an assessment of anyone — so they all read identically, and
 // in national-team selection they displace real, individually-rated players with placeholder names.
@@ -2544,7 +2563,12 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kf
 // THE SECONDARY LEAGUE CAME BACK TOO, on the same condition: all ten of its clubs carry a full
 // sixteen rated players, so nobody in it inherits a team default. Kolmonen stays off -- its sheet
 // still lists at most one name per club, which is the whole reason the list exists.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen"]);
+// The 2. Alemannische Oberliga is the same case and worse: not one of its 378 player cells
+// carries a rating, so the sheet's own average formula divides by zero and all eighteen clubs
+// come through with an OVR of "#DIV/0!". That is what put a 25 in the rail. The top flight
+// above it is healthy -- 288 of its 378 cells are rated -- so this keys on the league, not the
+// file. Put ratings in the sheet and take the name back out.
+const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "2. Alemannische Oberliga"]);
 function nationLeagues(raw) {
   const out = new Map();
   const _lines = raw.split("\n");
@@ -2565,9 +2589,25 @@ function nationLeagues(raw) {
   }
   return out;
 }
+// MISC.tsv is the pool for nations with no modelled division, and its LEAGUE column names each
+// club's own competition or nation rather than one league -- eight values across twelve clubs. They
+// list as ONE entry, under the name the pool carried before it was split into per-nation files.
+// The column is still the only record of where a club is from, so it is read for the nationality
+// its players inherit when their own cell carries no [TAG] and they sit on no national sheet:
+// without that every invented man in the file would come back stateless.
+const MISC_LEAGUE = "Miscellaneous Aviumite";
+// The column holds one of two things: the name of a competition the club plays in, or -- for a
+// club that plays in none -- the bare name of its country. A nation name is therefore the marker
+// for NON-LEAGUE, and the two competitions that are named after neither their nation nor its
+// adjective have to be spelled out.
+const MISC_NAT = { "Divisione Prima Viciliana": "VIC", "Rudanian First League": "RUD" };
+const miscNat = (lg) => MISC_NAT[lg] || PRESET_AVIUM.find(t => t.name === lg)?.code || null;
+const miscComp = (lg) => (MISC_NAT[lg] || !PRESET_AVIUM.some(t => t.name === lg)) ? lg : null;
 const PRESET_CLUBS = Object.entries(NATION_TSV).flatMap(([nat, raw]) =>
   [...nationLeagues(raw)].flatMap(([league, rows]) =>
-    parseBulk(rows.join("\n")).map(t => ({ ...t, league, nat }))));
+    parseBulk(rows.join("\n")).map(t => nat === "MISC"
+      ? ({ ...t, league: MISC_LEAGUE, comp: miscComp(league), nat: miscNat(league) })
+      : ({ ...t, league, nat }))));
 
 // The order the rail lists the conferences in: strongest first. Averaged off the catalog rather
 // than the live roster, so the rail does not reshuffle under you while you edit a team's skill.
@@ -2735,7 +2775,7 @@ function LeagueCrest({ league, size = 20, style }) {
 // Which nation each league belongs to — read off the file it came out of, so a renamed or added
 // division needs no edit here. Nichirin One and Two both map to NCH, which is what the draw's
 // nation separation keys on.
-const LEAGUE_NAT = Object.fromEntries(PRESET_CLUBS.map(t => [t.league, t.nat]));
+const LEAGUE_NAT = Object.fromEntries(PRESET_CLUBS.map(t => [t.league === MISC_LEAGUE ? t.comp : t.league, t.nat]).filter(([k]) => k));
 // National-team codes grouped by Avium confederation — drives the tournament setup
 // Conference preset (select every team in a confederation with one click).
 const leagueAvgSkill = (lg) => {
@@ -2753,8 +2793,9 @@ const CLUB_LEAGUES = [...new Set(PRESET_CLUBS.map(t => t.league))].sort((a, b) =
 // doing delicate work, and a nation that grows a real league crosses it on its own.
 const MIN_DIVISION = 6;
 const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 1 : 0), 0);
-const REAL_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) >= MIN_DIVISION);
-const MISC_LEAGUES = CLUB_LEAGUES.filter(l => leagueSize(l) < MIN_DIVISION);
+const isMiscLeague = (l) => l === MISC_LEAGUE || leagueSize(l) < MIN_DIVISION;
+const REAL_LEAGUES = CLUB_LEAGUES.filter(l => !isMiscLeague(l));
+const MISC_LEAGUES = CLUB_LEAGUES.filter(isMiscLeague);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
 const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
 const PRESET_CATALOG = [
@@ -2764,6 +2805,10 @@ const PRESET_CATALOG = [
   ...PRESET_CLUBS.map(t => ({ ...t, world: "avium" })),
 ].map(({ conference, nat, ...t }) => ({
   ...t,
+  // A club's nation, kept for the roster's nationality fallback. Only the merged pool needs it --
+  // every other file is one nation, so its league answers -- but carrying it on all of them keeps
+  // the two paths the same.
+  ...(nat && !isIntlLeague(t.league) ? { nat } : null),
   // A confederation belongs to a national team. Club rows have no such column, so a value landing
   // there is a stray cell — and an unrecognised one becomes its own row in the rail.
   ...(t.league === AVIUM_LEAGUE && conference ? { conference } : null),
@@ -3756,7 +3801,7 @@ function buildPlayerIndex(teams) {
       const sp = p.spos || p.pos;
       if (sp) { if (!isIntl) e.clubPos.add(sp); else if (!p.bench) e.natPos.add(sp); else e.bandPos.add(sp); }
       if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
-      else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
+      else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league || "Custom" }); if (!e.nationality) { const nc = p.nat || t.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
     });
   });
   const posOrd = ["GK","LWB","LB","CB","RB","RWB","DM","LM","CM","RM","AM","LW","ST","RW"];
@@ -4616,7 +4661,8 @@ export default function App() {
   const rosterSections = useMemo(() => {
     const intl = [], full = [], stub = [];
     for (const entry of rosterLeagues)
-      (IS_CONFERENCE.has(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl : entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
+      (IS_CONFERENCE.has(entry[0]) || entry[0] === ARTERRA_LEAGUE ? intl
+        : entry[0] !== MISC_LEAGUE && entry[1].length >= LEAGUE_COMPLETE_MIN ? full : stub).push(entry);
     const out = [[INTL_LEAGUE[world], intl, ALL_INTL], ["Club Leagues", full], ["Miscellaneous Clubs", stub]]
       .filter(([, xs]) => xs.length);
     // Each whole-roster view heads the section it summarises. The clubs one takes whichever club
@@ -6222,6 +6268,10 @@ export default function App() {
   // One flip rule for both tables: names start ascending, numbers start descending.
   const lgSortFlip = (set) => (k) => set(p => p.k === k ? { k, asc: !p.asc } : { k, asc: k === "name" });
   const lgIsDir = (c) => typeof c === "string" && c.startsWith("::");
+  // A DIVISION gets cards; a POOL gets the list. Miscellaneous Aviumite is twelve clubs from eight
+  // countries -- there is no shared nation to head the panel and no season they all play -- so it
+  // reads the way All Clubs reads rather than pretending to be a league.
+  const lgIsPool = (c) => lgIsDir(c) || c === MISC_LEAGUE;
   const lgOpenComp = (name, sub) => {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
     setLgSub(name === LG_ALL_PLAYERS ? "players" : COMP_SCOPE[name] ? "seasons" : lgIsDir(name) ? "teams" : (sub || "teams"));
@@ -6332,6 +6382,8 @@ export default function App() {
     return <td style={{ ...st, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600, ...mono,
                         color: !a ? "var(--chrome-muted-66)" : ok ? ratingColor(a.v) : "var(--chrome-muted)" }}>{a ? a.v.toFixed(2) : "\u2013"}</td>; };
   const [playerLeagueFilter, setPlayerLeagueFilter] = useState("");
+  // "" every player, "FA" the ones on no club sheet at all, otherwise one club by name.
+  const [playerClubFilter, setPlayerClubFilter] = useState("");
   // Below the states it reads: pstats and the filters are declared just above, and a memo runs
   // during render, where a reference upward into the temporal dead zone is a black screen.
   const lgRail = useMemo(() => {
@@ -6394,7 +6446,7 @@ export default function App() {
   useEffect(() => {
     if (plScrollRef.current) plScrollRef.current.scrollTop = 0;
     setPlScroll(0);
-  }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerSearch]);
+  }, [playerPosFilter, playerNatFilter, playerLeagueFilter, playerClubFilter, playerSearch]);
   const [dupCodeId, setDupCodeId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -9580,6 +9632,25 @@ export default function App() {
     // "" is the All Players row, which is always valid. Anything else must name a real nation.
     if (playerNatFilter && !playerNatFilter.startsWith("C|") && !playerNations.some(n => n.name === playerNatFilter)) setPlayerNatFilter("");
   }, [playerNations, playerNatFilter]);
+  // Every club that actually has somebody in the index, grouped under its league for the select.
+  // Built from the index rather than from `teams` so a club with an empty sheet cannot offer an
+  // option that returns nothing.
+  const playerClubs = useMemo(() => {
+    const by = new Map();
+    for (const p of playerIndex) for (const c of p.clubs) {
+      const lg = c.league || "Custom";
+      if (!by.has(lg)) by.set(lg, new Set());
+      by.get(lg).add(c.name);
+    }
+    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([lg, set]) => [lg, [...set].sort((a, b) => a.localeCompare(b))]);
+  }, [playerIndex]);
+  // Same guard as the nation filter: a club that leaves the roster would otherwise strand the
+  // list empty with no way back. "FA" is not a club and is always valid.
+  useEffect(() => {
+    if (!playerClubs.length || !playerClubFilter || playerClubFilter === "FA") return;
+    if (!playerClubs.some(([, cs]) => cs.includes(playerClubFilter))) setPlayerClubFilter("");
+  }, [playerClubs, playerClubFilter]);
   // Jumping to a team has to select its league too, or the Teams rail and pane disagree about
   // what is showing.
   const openTeam = (t) => { if (!t) return;
@@ -9594,13 +9665,15 @@ export default function App() {
   // Everything openPlayer itself overwrites is in here, which is what made the old behaviour
   // unrecoverable: by the time the page rendered, the state that knew the answer was gone.
   const navSnap = () => ({ tab, lgComp, lgSub, lgSeason, lgRound, lgTTab, expandedTeam, clOpen,
-                           posF: playerPosFilter, natF: playerNatFilter, lgF: playerLeagueFilter, q: playerSearch });
+                           posF: playerPosFilter, natF: playerNatFilter, lgF: playerLeagueFilter,
+                           clubF: playerClubFilter, q: playerSearch });
   const navRestore = (b) => {
     setPlayerOpen(null); setPlayerBack(null);
     if (!b) return;
     setLgComp(b.lgComp); setLgSub(b.lgSub); setLgSeason(b.lgSeason); setLgRound(b.lgRound); setLgTTab(b.lgTTab);
     setExpandedTeam(b.expandedTeam); setClOpen(b.clOpen);
-    setPlayerPosFilter(b.posF); setPlayerNatFilter(b.natF); setPlayerLeagueFilter(b.lgF); setPlayerSearch(b.q);
+    setPlayerPosFilter(b.posF); setPlayerNatFilter(b.natF); setPlayerLeagueFilter(b.lgF);
+    setPlayerClubFilter(b.clubF || ""); setPlayerSearch(b.q);
     setTab(b.tab);
   };
   // What the button says. The page's own name, in the order the page is nested: another tab
@@ -9618,7 +9691,7 @@ export default function App() {
   const showPlayer = (name) => { setPlayerBack(navSnap()); setPlayerOpen(name); };
   const openPlayer = (name) => { if (!name || !playerByName.has(name)) return;
     setPlayerBack(navSnap());
-    setPlayerNatFilter(""); setPlayerSearch("");
+    setPlayerNatFilter(""); setPlayerClubFilter(""); setPlayerSearch("");
     // Stay in the competition already open; from anywhere else the player's own club decides it.
     const pp = playerByName.get(name);
     const here = tab === "leagues" && lgComp && !COMP_SCOPE[lgComp] ? lgComp : null;
@@ -10401,9 +10474,10 @@ export default function App() {
                 // While a search is running the list is drawn from every league, so naming the
                 // selected one would be a lie about what is on screen.
                 const searching = !!teamSearch.trim();
-                const lgScoped = lgComp && !lgIsDir(lgComp);
+                const lgScoped = lgComp && !lgIsPool(lgComp);
                 const lgLabel = searching ? `Search “${teamSearch.trim()}”`
                   : lgScoped ? lgComp : (ALL_VIEW_LABEL[teamLeagueFilter] || teamLeagueFilter);
+                const pooled = lgIsPool(lgComp);
                 const nat = leagueNation(teamLeagueFilter);
                 const avg = leagueAvgSkill(visibleTeams);
                 const isConf = IS_CONFERENCE.has(teamLeagueFilter);
@@ -10415,8 +10489,8 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isIntlView ? "Nations" : isAllView || searching ? "Teams" : "Nation"}</div>
-                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView || searching || isConf ? visibleTeams.length : (nat ? nat.name : "—")}</div>
+                      <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>{isIntlView ? "Nations" : isAllView || pooled || searching ? "Teams" : "Nation"}</div>
+                      <div style={{ fontSize: 12, color: "var(--ui-text)", ...(isAllView ? mono : null) }}>{isAllView || pooled || searching || isConf ? visibleTeams.length : (nat ? nat.name : "—")}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Skill</div>
@@ -10434,7 +10508,7 @@ export default function App() {
                 <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="&#128269; Search"
                   style={{ ...addBtn, flex: 1, background: "transparent", color: teamSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
               </div>
-              {lgIsDir(lgComp) ? (() => {
+              {lgIsPool(lgComp) ? (() => {
               // Arterra files a continent against every nation and Avium files none, so the column
               // appears when the sides on screen actually carry one. Asking the data rather than the
               // world means a mixed cross-RP list still shows it, and Avium alone never holds a
@@ -10498,8 +10572,18 @@ export default function App() {
                         {showCont && <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.continent || "\u2014"}</td>}
                         <td style={{ ...tdCell, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                            <LeagueCrest league={lg} size={15} />
-                            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{lg}</span>
+                            {(() => {
+                              // A pooled club plays in its own competition or in none at all. "Non-League"
+                              // is not a league and has no crest, so its country's badge stands in -- the
+                              // only badge that means anything for a side with no division.
+                              const pooled = t.league === MISC_LEAGUE;
+                              const label = pooled ? (t.comp || "Non-League") : lg;
+                              const natT = pooled && !t.comp ? natTeamByCode.get(t.nat) : null;
+                              return (<>
+                                {natT ? <TeamCrest team={natT} size={15} style={{ height: 15 }} />
+                                      : <LeagueCrest league={label} size={15} />}
+                                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+                              </>); })()}
                           </span>
                         </td>
                       </tr>); })}
@@ -10902,6 +10986,14 @@ export default function App() {
                   <optgroup label="Confederation">{CONFERENCE_NAMES.map(cf => <option key={cf} value={"C|" + cf}>{cf}</option>)}</optgroup>
                   <optgroup label="Nation">{[...playerNations].sort((a, b) => a.name.localeCompare(b.name)).map(n => <option key={n.name} value={n.name}>{n.name}</option>)}</optgroup>
                 </select>
+                {/* A quarter of the index plays for no club -- men who exist on a national sheet
+                    and nowhere else -- and there was no way to see them as a group. */}
+                <select value={playerClubFilter} onChange={e => setPlayerClubFilter(e.target.value)} style={{ ...smBtn, color: playerClubFilter ? "var(--chrome-brand)" : "var(--chrome-muted)", background: "transparent", cursor: "pointer", maxWidth: 190 }}>
+                  <option value="">Club</option>
+                  <option value="FA">Free agents</option>
+                  {playerClubs.map(([lg, cs]) => (
+                    <optgroup key={lg} label={lg}>{cs.map(c => <option key={lg + "|" + c} value={c}>{c}</option>)}</optgroup>))}
+                </select>
                 {warnChips.map(c => (
                   <button key={c.key} onClick={() => setWarnOpen(w => w === c.key ? null : c.key)}
                     style={{ fontSize: 9, color: c.color, background: "transparent", border: "1px solid " + c.color,
@@ -10923,6 +11015,8 @@ export default function App() {
                     else if (sc) { if (!p.capped || CONF_BY_CODE.get(p.natCode) !== sc) return false; }
                     else if (!p.clubs.some(c => (c.league || "Custom") === lgComp)) return false; }
                   if (playerLeagueFilter && !p.clubs.some(c => (c.league || "Custom") === playerLeagueFilter)) return false;
+                  if (playerClubFilter === "FA") { if (p.clubs.length) return false; }
+                  else if (playerClubFilter && !p.clubs.some(c => c.name === playerClubFilter)) return false;
                   if (q && !pFold(p.name).includes(q) && !pFold(p.fullName || "").includes(q)) return false;
                   return true;
                 });
@@ -10936,7 +11030,10 @@ export default function App() {
                     if (d) return d;
                   }
                   const sv = (x) => lgPlayerSort.k === "name" ? fullDisplayName(x.fullName || x.name)
-                    : lgPlayerSort.k === "rtg" ? (careerRtgOf(x.fullName || x.name)?.v ?? -1) : (x.ovr || 0);
+                    : lgPlayerSort.k === "rtg" ? (careerRtgOf(x.fullName || x.name)?.v ?? -1)
+                    // Free agents have no club to sort on; they collect at one end rather than
+                    // scattering through the alphabet under a blank.
+                    : lgPlayerSort.k === "club" ? (x.clubs[0]?.name || "\uFFFF") : (x.ovr || 0);
                   const va = sv(a), vb = sv(b);
                   const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
                   if (c) return lgPlayerSort.asc ? c : -c;
@@ -10977,7 +11074,7 @@ export default function App() {
                           </>); })()}
                         <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
-                        <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
+                        <th onClick={() => lgSortFlip(setLgPlayerSort)("club")} style={{ ...thStyle, paddingLeft: 8, cursor: "pointer", ...(lgPlayerSort.k === "club" ? { color: "var(--chrome-brand)" } : null) }}>Club{lgPlayerSort.k === "club" ? (lgPlayerSort.asc ? " \u25B4" : " \u25BE") : ""}</th>
                       </tr>
                     </thead>
                     <tbody>

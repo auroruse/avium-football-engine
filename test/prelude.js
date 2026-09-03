@@ -14,13 +14,21 @@ const aviumTSV=__tsv("AVIUM.tsv"),
       karTSV=__tsv("KAR.tsv"),
       kfkTSV=__tsv("KFK.tsv"),
       kkmTSV=__tsv("KKM.tsv"),
+      miscTSV=__tsv("MISC.tsv"),
       nchTSV=__tsv("NCH.tsv"),
-      rudTSV=__tsv("RUD.tsv"),
       shiTSV=__tsv("SHI.tsv"),
       skjTSV=__tsv("SKJ.tsv"),
       turTSV=__tsv("TUR.tsv"),
-      varTSV=__tsv("VAR.tsv"),
-      vicTSV=__tsv("VIC.tsv");
+      varTSV=__tsv("VAR.tsv");
+// This list is hand-kept and App.tsx's is not, so the two drift apart the day a preset is added,
+// renamed or merged away -- and the failure lands as an ENOENT from deep inside the bundle with
+// nothing naming the cause. Say it here instead.
+{
+  const onDisk = readdirSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets").filter(f => f.endsWith(".tsv")).sort();
+  const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
+  const missing = onDisk.filter(f => !stubbed.includes(f));
+  if (missing.length) throw new Error(`test/prelude.js does not stub ${missing.join(", ")} -- add it beside the others, and to NATION_TSV in App.tsx`);
+}
 const stadiumsTSV = readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/stadiums.tsv", "utf8");
 const participantsTSV = readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/participants.tsv", "utf8");
 
