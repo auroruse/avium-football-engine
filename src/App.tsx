@@ -2563,12 +2563,10 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kf
 // THE SECONDARY LEAGUE CAME BACK TOO, on the same condition: all ten of its clubs carry a full
 // sixteen rated players, so nobody in it inherits a team default. Kolmonen stays off -- its sheet
 // still lists at most one name per club, which is the whole reason the list exists.
-// The 2. Alemannische Oberliga is the same case and worse: not one of its 378 player cells
-// carries a rating, so the sheet's own average formula divides by zero and all eighteen clubs
-// come through with an OVR of "#DIV/0!". That is what put a 25 in the rail. The top flight
-// above it is healthy -- 288 of its 378 cells are rated -- so this keys on the league, not the
-// file. Put ratings in the sheet and take the name back out.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen", "2. Alemannische Oberliga"]);
+// The 2. Alemannische Oberliga was here for the same reason and came back off it the way this
+// says to: all 288 of its player cells now carry a rating, so nothing in it divides by zero and
+// nobody inherits a team default.
+const LEAGUES_OFF = new Set(["Karjanian Kolmonen"]);
 function nationLeagues(raw) {
   const out = new Map();
   const _lines = raw.split("\n");
