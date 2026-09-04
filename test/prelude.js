@@ -10,6 +10,7 @@ const aviumTSV=__tsv("AVIUM.tsv"),
       arterraTSV=__tsv("ARTERRA.tsv"),
       aleTSV=__tsv("ALE.tsv"),
       arvTSV=__tsv("ARV.tsv"),
+      askTSV=__tsv("ASK.tsv"),
       elvTSV=__tsv("ELV.tsv"),
       karTSV=__tsv("KAR.tsv"),
       kfkTSV=__tsv("KFK.tsv"),
@@ -25,7 +26,7 @@ const aviumTSV=__tsv("AVIUM.tsv"),
 // nothing naming the cause. Say it here instead.
 {
   const onDisk = readdirSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets").filter(f => f.endsWith(".tsv")).sort();
-  const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
+  const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","ASK.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
   const missing = onDisk.filter(f => !stubbed.includes(f));
   if (missing.length) throw new Error(`test/prelude.js does not stub ${missing.join(", ")} -- add it beside the others, and to NATION_TSV in App.tsx`);
 }

@@ -8,6 +8,7 @@ import aviumTSV from "./presets/AVIUM.tsv?raw";
 import arterraTSV from "./presets/ARTERRA.tsv?raw";
 import aleTSV from "./presets/ALE.tsv?raw";
 import arvTSV from "./presets/ARV.tsv?raw";
+import askTSV from "./presets/ASK.tsv?raw";
 import elvTSV from "./presets/ELV.tsv?raw";
 import karTSV from "./presets/KAR.tsv?raw";
 import kfkTSV from "./presets/KFK.tsv?raw";
@@ -2543,7 +2544,7 @@ const inWorld = (t, w) => t?.league === "Custom" || worldOf(t) === w;
 // sheet is enough to make it appear in the rail and the tournament picker, with no code change.
 // Column 1 holds the club badge — an image floating over the cell, so it exports blank — and both
 // it and the league column are stripped before parseBulk sees the row.
-const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
+const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ASK: askTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
                      KKM: kkmTSV, MISC: miscTSV, NCH: nchTSV, SHI: shiTSV, SKJ: skjTSV,
                      TUR: turTSV, VAR: varTSV };
 // Divisions whose sheets carry no per-player ratings. Every player in them inherits his club's team
