@@ -25,7 +25,10 @@ const aviumTSV=__tsv("AVIUM.tsv"),
 // renamed or merged away -- and the failure lands as an ENOENT from deep inside the bundle with
 // nothing naming the cause. Say it here instead.
 {
-  const onDisk = readdirSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets").filter(f => f.endsWith(".tsv")).sort();
+  // ANCC.tsv is a cup field and Slots.tsv is a formation-to-slot lookup: they arrive with the
+  // registry export but are not squad data, and nothing in the app reads them.
+  const NOT_A_PRESET = ["ANCC.tsv", "Slots.tsv"];
+  const onDisk = readdirSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets").filter(f => f.endsWith(".tsv") && !NOT_A_PRESET.includes(f)).sort();
   const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","ASK.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
   const missing = onDisk.filter(f => !stubbed.includes(f));
   if (missing.length) throw new Error(`test/prelude.js does not stub ${missing.join(", ")} -- add it beside the others, and to NATION_TSV in App.tsx`);

@@ -2310,7 +2310,7 @@ function fullDisplayName(raw) {
 // tables name belong to one preset league -- so a new league is a folder drop and nothing else.
 // nl1 and nl2 stay because changelog.tsv keys its rows on them.
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
-                      stsc: "Sei'i Tai Shogun Cup", cwc: "Club World Cup",
+                      stsc: "Sei'i Tai Shogun Cup", cwc: "Club World Cup", cws: "Club World Shield",
                       // A domestic cup is entered from more than one division, so its clubs never
                       // vote for one league: the Karjanian Cup's own record carries eight Premier
                       // sides, a Secondary one and a Frederikka guest, and detectLeague would file
@@ -2343,7 +2343,7 @@ const pstatsYear = (yy) => (+yy >= 50 ? 1800 : 1900) + +yy;
 // Sorts a season within its year: the World Cup first, then qualifying for the NEXT one, then the
 // leagues, then the Club World Cup. Qualifiers file under the year of the tournament they feed, so
 // 1935's sit above a 1935 league season and below the 1935 finals themselves.
-const PSTATS_KIND = { wc: 0, western: 0.5, eastern: 0.6, cwc: 2 };
+const PSTATS_KIND = { wc: 0, western: 0.5, eastern: 0.6, cwc: 2, cws: 2.5 };
 const PSTATS_STAT_ORDER = ["G", "A", "RTG", "CC", "DC", "SV"];
 // Slytlia has a badge and a record but no preset row yet, so it is a former side by the same
 // mechanism until it gets one. THO and LEC left when the records they appeared in were renamed.
@@ -2644,6 +2644,7 @@ const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
   { name: "Club World Cup", scope: "clubs" },
+  { name: "Club World Shield", scope: "clubs" },
   // The conference is "Western Conference" on the rail; its qualifying group is "Western WC
   // Qualifiers", because "Western Conference WC Qualifiers" says conference twice and reads as neither.
   ...CONFERENCE_NAMES.map(c => ({ name: c.replace(/ Conference$/, "") + " WC Qualifiers", scope: c })),
