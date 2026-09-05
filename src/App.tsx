@@ -2689,7 +2689,12 @@ const leagueLogoCandidates = (lg) => {
   const nat = LEAGUE_NAT[lg];
   const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
-  return [...new Set([n, deaccent(n), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
+  // A qualifying group wears its conference's badge. INTL_COMPS builds "Eastern WC Qualifiers" by
+  // stripping " Conference" off the conference name, and this is the inverse of that: the scope IS
+  // the conference. It used to fall out of the first-word candidate instead, back when the badge on
+  // disk was "Eastern.png", and renaming the conferences quietly took that away.
+  const conf = IS_CONFERENCE.has(COMP_SCOPE[n]) ? COMP_SCOPE[n] : null;
+  return [...new Set([n, deaccent(n), ...(conf ? [conf] : []), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
@@ -3462,6 +3467,28 @@ function PanelTitle({ children, sub, accent, id }) {
     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", whiteSpace: "nowrap" }}>{children}</span>
     {sub != null && sub !== "" && <span style={{ fontSize: 10, color: "var(--chrome-muted)", fontWeight: 400 }}>{sub}</span>}
   </div>);
+}
+// A NAME THAT DOES NOT FIT SLIDES INSTEAD OF TRUNCATING. The box measures its own overflow once
+// it has painted; a name that fits is left alone, and one that spills gets the scoreboard's
+// marquee -- a slow slide to the end and back -- under a mask that fades the clipped edge rather
+// than cutting it. The rail's league names were ellipsised to "Nichirin League..." at 190px, which
+// is the one width most of them need a few more pixels than.
+function SlideName({ text, style, textStyle }) {
+  const box = useRef(null), span = useRef(null);
+  const [over, setOver] = useState(0);
+  useEffect(() => {
+    const b = box.current, s = span.current; if (!b || !s) return;
+    setOver(Math.max(0, s.scrollWidth - b.clientWidth));
+  }, [text]);
+  // Parked at the start, so no left fade: this is also what a reduced-motion reader keeps, since
+  // .slide-fade is switched off there and the animation is the only thing that ever moves it.
+  const mask = over ? "linear-gradient(90deg,transparent 0,#000 0px,#000 calc(100% - 14px),transparent 100%)" : undefined;
+  return (
+    <div ref={box} className={over ? "slide-fade" : undefined}
+         style={{ minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", WebkitMaskImage: mask, maskImage: mask, ...style }}>
+      <span ref={span} className={over ? "marquee-name" : undefined}
+            style={{ display: "inline-block", "--marquee-dist": `-${over + 14}px`, ...textStyle }}>{text}</span>
+    </div>);
 }
 // The world switch, in the three pickers that list teams. It filters the LIST and nothing else:
 // selections, the two live-match slots and a tournament's participants all survive a switch, which
@@ -4411,6 +4438,26 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
 .lg-card{transition:border-color 0.12s,background 0.12s;}
 .lg-card:hover:not(.on){border-color:var(--chrome-muted-66) !important;background:var(--chrome-muted-22) !important;}
 .lg-card:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
+/* The fixture hero on the match setup screen. A pick slides its card in from its own end and
+   pulses a halo behind the crest; a hover preview only fades; tiles stagger in when the league
+   changes. Fill-mode is backwards, not both, on everything that is hovered afterwards: a finished
+   animation that keeps hold of transform sits on top of the tile's hover lift for good. */
+@keyframes tileIn{from{opacity:0;transform:translateY(8px) scale(0.97)}to{opacity:1;transform:none}}
+.tile-in{animation:tileIn 0.32s cubic-bezier(0.22,1,0.36,1) backwards;}
+@keyframes pickIn{0%{opacity:0;transform:translateX(var(--pick-dx,-16px)) scale(0.97)}60%{opacity:1;transform:translateX(calc(var(--pick-dx,-16px) * -0.18)) scale(1.01)}100%{opacity:1;transform:none}}
+.pick-in{animation:pickIn 0.45s cubic-bezier(0.22,1,0.36,1) backwards;}
+@keyframes pvIn{from{opacity:0}to{opacity:1}}
+.pv-in{animation:pvIn 0.18s ease-out backwards;}
+@keyframes haloPulse{0%{opacity:0;transform:scale(0.4)}35%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+.pick-halo{animation:haloPulse 0.85s ease-out both;}
+@keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.bar-fill{transform-origin:left;animation:barGrow 0.5s cubic-bezier(0.22,1,0.36,1) backwards;}
+.slot-card{transition:border-color 0.18s,box-shadow 0.18s,transform 0.18s;}
+.slot-card:not(.on):hover{transform:translateY(-1px);border-color:var(--chrome-muted-66) !important;}
+.slot-card:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
+.vs-swap{transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),border-color 0.15s,box-shadow 0.15s;}
+.vs-swap:hover:not(:disabled){transform:rotate(180deg);border-color:var(--chrome-brand) !important;box-shadow:0 0 0 4px var(--chrome-brand-22),0 2px 10px var(--ui-shadow-3) !important;}
+.vs-swap:active:not(:disabled){transform:rotate(180deg) scale(0.92);}
 input[type=number]{-moz-appearance:textfield;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[type=color]{-webkit-appearance:none;appearance:none;padding:0;}
@@ -4426,6 +4473,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--chrome-brand) !import
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes marqueeScroll{0%,20%{transform:translateX(0)}50%,70%{transform:translateX(var(--marquee-dist))}100%{transform:translateX(0)}}
 .marquee-name{animation:marqueeScroll 7s ease-in-out infinite;}
+/* Fades only the edge a name is actually clipped at. marqueeScroll parks 0-20% at the start and
+   50-70% at the end, so the left edge is flush for the first and the right edge for the second;
+   both are clipped only while it is travelling. Structurally identical gradients, which is what
+   lets the stops interpolate rather than snap.
+   The two legs are deliberately not symmetric. Going out, the right fade shrinks over blank space
+   the tail has already left, so nobody sees it. Coming back, the LEFT fade shrinks over the first
+   characters as they arrive, which is the one retraction that is watched -- so it gets 22% of the
+   cycle and three intermediate stops instead of one straight run into the parked frame. */
+@keyframes slideFade{0%,18%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 0px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 0px,#000 calc(100% - 14px),transparent 100%)}34%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}50%,68%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 0px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 0px),transparent 100%)}78%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}86%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%)}93%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 5px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 5px,#000 calc(100% - 14px),transparent 100%)}100%{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 0px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 0px,#000 calc(100% - 14px),transparent 100%)}}
+.slide-fade{animation:slideFade 7s linear infinite;}
 .ev-enter{animation:slideIn 0.3s ease;}
 .goal-flash{animation:goalPunch 0.6s ease-out, goalGlow 1.2s ease-out;}
 .tick-btn{transition:all 0.12s ease;}
@@ -4496,6 +4553,7 @@ details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
   .draw-ballet,.draw-shuffle,.draw-picked,.draw-bowl-shake,.draw-ball-out,.draw-stamp,.draw-await,.draw-land{animation:none !important;}
   .ev-enter,.goal-flash,.tick-btn,.live-dot,.card-slam,.sparkle-pop,.injury-shake,.sub-on-line,.sub-off-line{animation:none !important;}
+  .tile-in,.pick-in,.pv-in,.pick-halo,.bar-fill,.marquee-name,.slide-fade{animation:none !important;}
   .gv-anim{animation-duration:0.01ms !important;animation-delay:0ms !important;}
   *{transition-duration:0.01ms !important;}
 }
@@ -5183,93 +5241,222 @@ export default function App() {
   const matchSetupScreen = () => (
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16, alignItems: "stretch", flex: 1, minHeight: 0 }}>
 
-            {/* Left: the fixture, built like the Teams tab — a league rail driving a tile grid.
-                A flat list of every team in the game is a scroll with no landmarks; leagues are the
-                landmarks, and the tiles carry the crest and skill you actually choose on. */}
+            {/* Left: the fixture the way a console's Select Sides screen reads it. The two chosen
+                sides face each other across a VS, the rail under them wears the registry's own
+                league cards, and the grid beside it is where you browse. Hovering a tile previews it
+                in the open slot, clicking locks it, and the VS swaps the ends. */}
             <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", gap: 12, pointerEvents: lmLocked ? "none" : undefined }}>
-
-              {/* The two slots sit above both panes rather than in either header: at half the page
-                  width neither header has room for a team name beside its own title. */}
-              <div style={{ ...panelBox, marginBottom: 0, padding: "10px 12px", flexShrink: 0, display: "flex", gap: 8 }}>
-                {["home","away"].map(side => { const t = teamById(side === "home" ? lmH : lmA); const on = lmPick === side;
-                  return (<div key={side} onClick={() => setLmPick(side)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: "5px 10px", borderRadius: 7,
-                      background: on ? "var(--chrome-panel-66)" : "transparent", border: "1px solid " + (on ? "var(--chrome-brand)" : "var(--chrome-border)") }}>
-                    <div style={{ fontSize: 7, letterSpacing: "0.16em", color: on ? "var(--chrome-brand)" : "var(--chrome-muted)", fontWeight: 700 }}>{side === "home" ? "TEAM 1" : "TEAM 2"}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      {t && <TeamCrest team={t} size={14} />}
-                      <span style={{ fontSize: 11, color: "var(--ui-text)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t?.name || "—"}</span>
-                    </div>
-                  </div>);
-                })}
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "186px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch", opacity: lmLocked ? 0.5 : 1 }}>
-
-                {/* ── Leagues ── */}
-                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: 5, borderBottom: "1px solid var(--chrome-border)" }}>
-                    <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
-                    <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: PANEL_HEAD_INSET }} />
-                  </div>
-                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                    {rosterSections.map(([section, entries], si) => (<Fragment key={section}>
-                    <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted-66)", padding: "10px 10px 5px",
-                                  borderTop: si === 0 ? "none" : "1px solid var(--chrome-border)", marginTop: si === 0 ? 0 : 4 }}>{section}</div>
-                    {entries.map(([val, ts]) => { const on = lmLeague === val;
-                      return (
-                      <div key={val} onClick={() => setLmLeague(val)}
-                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
-                                 borderLeft: `2px solid ${on ? "var(--chrome-brand)" : "transparent"}`,
-                                 background: on ? "var(--chrome-panel-66)" : "transparent" }}>
-                        <LeagueCrest league={val} size={17} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--chrome-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{val}</div>
-                          <div style={{ fontSize: 8, color: "var(--chrome-muted-66)", ...mono }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
-                        </div>
-                      </div>); })}</Fragment>))}
-                  </div>
-                </div>
-
-                {/* ── Clubs of that league ── */}
-                <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...panelHead, margin: 0, padding: `0 16px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <LeagueCrest league={lmLeague} size={24} />
-                      <PanelTitle>{lmLeague}</PanelTitle>
-                    </div>
-                    <span style={{ fontSize: 9, color: "var(--chrome-muted)", flexShrink: 0, ...ui }}>Picking {lmPick === "home" ? "Team 1" : "Team 2"}</span>
-                  </div>
-                  <div style={{ padding: 14, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10 }}>
-                      {(rosterLeagues.find(([lg]) => lg === lmLeague)?.[1] || []).map(t => {
-                        const isH = t.id === lmH, isA = t.id === lmA, taken = lmPick === "home" ? isA : isH;
-                        // Same clamp the scoreboard uses — a near-white strip would wash the tile
-                        // out into the panel behind it.
-                        const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
-                        // The badge art is a 500px square with the crest inset a tenth top and
-                        // bottom, so cancelling that pulls the whole content group up.
-                        const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
-                        const ring = isH ? hClr : isA ? aClr : null;
-                        return (
-                        <div key={t.id} role="button" tabIndex={taken ? -1 : 0}
-                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
-                          onClick={() => !taken && lmPickTeam(t.id)} className="team-tile"
-                          style={{ position: "relative", borderRadius: 10, border: "1px solid " + (ring || "var(--chrome-border)"), cursor: taken ? "not-allowed" : "pointer", opacity: taken ? 0.3 : 1,
-                                   boxShadow: ring ? `0 0 0 1px ${ring}` : "none",
-                                   padding: "16px 8px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
-                                   background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
-                          {ring && <span style={{ position: "absolute", top: 4, left: 5, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: ring, ...mono }}>{isH ? "1" : "2"}</span>}
-                          <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
-                            <span style={{ fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)", ...mono }}>{t.code || abbr(t.name, t.code)}</span>
-                            <OvrBadge v={t.skill} />
+              {(() => {
+                const hT = teamById(lmH), aT = teamById(lmA);
+                const q = pFold(lmQuery.trim());
+                const other = lmPick === "home" ? lmA : lmH;
+                // Strongest first, the registry's own order, so a league reads as a ranking.
+                const byOvr = (a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0) || a.name.localeCompare(b.name);
+                const hit = (t) => [t.name, t.code, t.city].some(x => x && pFold(x).includes(q));
+                // A search runs over every league in the world at once and keeps the league headings,
+                // because where a club plays is half of what you learn by finding it.
+                const sections = q
+                  ? rosterLeagues.map(([lg, ts]) => [lg, ts.filter(hit).sort(byOvr)]).filter(([, ts]) => ts.length)
+                  : [[lmLeague, [...(rosterLeagues.find(([lg]) => lg === lmLeague)?.[1] || [])].sort(byOvr)]];
+                const shown = sections.flatMap(([, ts]) => ts);
+                const pickRandom = () => { const pool = shown.filter(t => t.id !== other);
+                  if (pool.length) lmPickTeam(pool[Math.floor(Math.random() * pool.length)].id); };
+                // The ground behind the fixture, once one is chosen and there is a photograph of it.
+                const venueImg = (() => {
+                  const host = (side) => stripVenue((side === "home" ? hT : side === "away" ? aT : null)?.stadium || "");
+                  const st = lmLocked && lmVc ? (lmVc.venue?.stadium || host(lmVc.homeAdv))
+                           : (lmNeutralVenueName.trim() || host(lmHomeAdv));
+                  return st && STADIUM_IMAGES.includes(st) ? st : null;
+                })();
+                // A kit colour that is a CSS variable (a side with none set) cannot take an alpha suffix.
+                const tint = (c, a) => /^#[0-9a-f]{6}$/i.test(c) ? c + a : c;
+                // 60 to 90 across the bar, the same window the team sheet's strength bars use.
+                const bar = (v) => Math.max(4, Math.min(100, (v - 60) / 30 * 100));
+                const slot = (side) => {
+                  const away = side === "away", t = away ? aT : hT, on = lmPick === side, ring = away ? aClr : hClr;
+                  // Only the open slot previews, and only a side that is not already in it.
+                  const pv = on && lmHover && lmHover !== t?.id ? teamById(lmHover) : null;
+                  const s = pv || t;
+                  const kit = ensureMaxLum(s?.primaryColor || "#2a3a50");
+                  const ln = (s && teamLinesById.get(s.id)) || { att: 0, mid: 0, def: 0 };
+                  const lg = s ? railLeague(s) : "";
+                  const end = away ? "flex-end" : "flex-start";
+                  return (
+                    <div key={side} role="button" tabIndex={0} className={"slot-card" + (on ? " on" : "")}
+                      onClick={() => setLmPick(side)}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLmPick(side); } }}
+                      style={{ flex: 1, minWidth: 0, position: "relative", overflow: "hidden", borderRadius: 9, cursor: on ? "default" : "pointer",
+                               border: "1px solid " + (on ? ring : "var(--chrome-border-66)"),
+                               boxShadow: on ? `0 0 0 1px ${ring}, 0 0 24px ${tint(ring, "33")}` : "none",
+                               background: `linear-gradient(${away ? 270 : 90}deg, ${tint(kit, "59")} 0%, ${tint(kit, "1f")} 58%, var(--chrome-panel-66) 100%)` }}>
+                      {/* Two wrappers, one per kind of change. The outer remounts on a PICK and slides
+                          in from its own end of the screen; the inner remounts whenever the face
+                          changes and only fades -- so a hover preview, and the return from it, never
+                          replay the pick. The halo sits in the outer one for the same reason. */}
+                      <div key={lmSeq[side]} className="pick-in" style={{ "--pick-dx": away ? "16px" : "-16px", height: "100%", position: "relative" }}>
+                        {t && <span aria-hidden className="pick-halo"
+                          style={{ position: "absolute", top: "50%", marginTop: -65, width: 130, height: 130, borderRadius: "50%", pointerEvents: "none",
+                                   background: `radial-gradient(circle, ${tint(ring, "66")} 0%, ${tint(ring, "22")} 35%, transparent 68%)`,
+                                   ...(away ? { right: 45, marginRight: -65 } : { left: 45, marginLeft: -65 }) }} />}
+                        <div key={s?.id || "none"} className="pv-in" style={{ position: "relative", display: "flex", flexDirection: away ? "row-reverse" : "row", alignItems: "center", gap: 14, padding: "10px 14px", height: "100%", minWidth: 0 }}>
+                          <div style={{ width: 62, height: 62, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {s ? <TeamCrest team={s} size={60} />
+                               : <span style={{ width: 40, height: 46, borderRadius: 8, border: "1px dashed var(--chrome-muted-66)" }} />}
                           </div>
-                        </div>); })}
+                          <div style={{ flex: 1, minWidth: 0, textAlign: away ? "right" : "left" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: end }}>
+                              <span style={{ ...mono, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.18em", color: on ? "var(--ui-text)" : "var(--chrome-muted)" }}>{away ? "TEAM 2" : "TEAM 1"}</span>
+                              {pv ? <span style={{ ...mono, fontSize: 7, fontWeight: 700, letterSpacing: "0.14em", color: "var(--chrome-muted)" }}>PREVIEW</span>
+                                  : on && <span style={{ ...mono, fontSize: 7, fontWeight: 700, letterSpacing: "0.14em", color: "var(--ui-text)", display: "inline-flex", alignItems: "center" }}>
+                                      <span className="live-dot" style={{ background: "var(--ui-text)" }} />PICKING</span>}
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ui-text)", lineHeight: 1.2, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s?.name || "Choose a side"}</div>
+                            {s && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, justifyContent: end, minWidth: 0, fontSize: 9, whiteSpace: "nowrap" }}>
+                              <LeagueCrest league={lg} size={13} />
+                              <SlideName text={lg} style={{ color: "var(--chrome-muted)" }} />
+                              <span style={{ color: "var(--chrome-border)" }}>|</span>
+                              <span style={{ ...mono, fontWeight: 700, color: FORM_CLR[s.formation || "4-3-3"] || "var(--chrome-muted)" }}>{s.formation || "4-3-3"}</span>
+                              <span style={{ fontWeight: 700, color: STYLE_CLR[s.style || "balanced"] }}>{STYLE_LBL[s.style || "balanced"]}</span>
+                            </div>}
+                            {s && <div style={{ display: "flex", gap: 7, marginTop: 7, justifyContent: end }}>
+                              {[["OVR", s.skill], ["ATT", ln.att], ["MID", ln.mid], ["DEF", ln.def]].map(([k, v], i) => (
+                                <div key={k} style={{ width: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                                  <span style={{ ...mono, fontSize: 7, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>{k}</span>
+                                  {v ? <span style={{ ...ovrBlock(v, "sm"), ...mono, minWidth: 30 }}>{showOvr(v)}</span>
+                                     : <span style={{ ...mono, fontSize: 10, color: "var(--chrome-muted-66)", lineHeight: 1.3, padding: "2px 0" }}>{"–"}</span>}
+                                  <div style={{ width: "100%", height: 3, borderRadius: 2, background: "var(--chrome-border)", overflow: "hidden" }}>
+                                    <div className="bar-fill" style={{ width: `${v ? bar(v) : 0}%`, height: "100%", background: ovrHex(v), animationDelay: `${i * 50}ms` }} />
+                                  </div>
+                                </div>))}
+                            </div>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>);
+                };
+                return (<>
+                  <div style={{ ...panelBox, marginBottom: 0, padding: 0, flexShrink: 0, position: "relative", overflow: "hidden" }}>
+                    {venueImg && <div aria-hidden style={{ position: "absolute", inset: -14, backgroundImage: stadiumBg(venueImg), backgroundSize: "cover", backgroundPosition: "center",
+                                                          filter: "blur(7px) saturate(0.7)", opacity: 0.3, pointerEvents: "none" }} />}
+                    <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 0%, var(--chrome-panel-66) 100%)", pointerEvents: "none" }} />
+                    <div style={{ position: "relative", display: "flex", alignItems: "stretch", gap: 10, padding: 10, height: 128 }}>
+                      {slot("home")}
+                      <div data-tip="Swap ends" style={{ flexShrink: 0, width: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                        <button onClick={lmSwap} disabled={!hT || !aT || lmH === lmA} className="vs-swap"
+                          style={{ width: 44, height: 44, borderRadius: "50%", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                                   border: "1px solid var(--chrome-border)", background: "var(--chrome-bg)", color: "var(--ui-text)",
+                                   display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px var(--ui-shadow-3)" }}>
+                          <span style={{ ...mono, fontSize: 12, fontWeight: 700, letterSpacing: "0.1em" }}>VS</span>
+                        </button>
+                        <span style={{ ...mono, fontSize: 6.5, fontWeight: 700, letterSpacing: "0.16em", color: "var(--chrome-muted-66)" }}>SWAP</span>
+                      </div>
+                      {slot("away")}
                     </div>
                   </div>
-                </div>
-              </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "190px minmax(0,1fr)", gap: 12, flex: 1, minHeight: 0, alignItems: "stretch", opacity: lmLocked ? 0.5 : 1 }}>
+                    {/* ── Leagues, in the registry's own cards ── */}
+                    <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+                      <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${12 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", flexDirection: "column", justifyContent: "center", alignItems: "flex-start", gap: 5, borderBottom: "1px solid var(--chrome-border)" }}>
+                        <PanelTitle sub={`${rosterLeagues.length}`}>Leagues</PanelTitle>
+                        <WorldToggle value={world} onChange={setWorld} style={{ marginLeft: PANEL_HEAD_INSET }} />
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", padding: "0 8px 8px" }}>
+                        {rosterSections.map(([section, entries]) => (<Fragment key={section}>
+                          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, padding: "12px 4px 6px" }}>
+                            <span style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted)" }}>{section}</span>
+                            <span style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)" }}>{entries.length}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            {entries.map(([val, ts]) => { const on = !q && lmLeague === val;
+                              const avg = ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length;
+                              return (
+                              <div key={val} role="button" tabIndex={0} className={"lg-card" + (on ? " on" : "")}
+                                onClick={() => { setLmLeague(val); setLmQuery(""); }}
+                                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                                style={{ borderRadius: 9, minWidth: 0, overflow: "hidden", cursor: on ? "default" : "pointer",
+                                         border: "1px solid " + (on ? "var(--chrome-brand-66)" : "var(--chrome-border-66)"),
+                                         boxShadow: on ? "inset 3px 0 0 var(--chrome-brand)" : "none",
+                                         background: on ? "linear-gradient(90deg, var(--chrome-brand-1a) 0%, var(--chrome-brand-11) 45%, var(--ui-text-08) 100%)" : "var(--ui-text-08)" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", minWidth: 0 }}>
+                                  <LeagueCrest league={val} size={22} />
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <SlideName text={val} style={{ fontSize: 11, fontWeight: on ? 600 : 500, color: on ? "var(--ui-text)" : "var(--ui-text-cc)" }} />
+                                    <div style={{ ...mono, fontSize: 8, color: "var(--chrome-muted-66)", marginTop: 1 }}>{ts.length} {ts.length === 1 ? "team" : "teams"}</div>
+                                  </div>
+                                  {avg > 0 && <OvrBadge v={avg} xs />}
+                                </div>
+                              </div>); })}
+                          </div>
+                        </Fragment>))}
+                      </div>
+                    </div>
+
+                    {/* ── The grid: one league, or every hit across the world ── */}
+                    <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+                      <div style={{ ...panelHead, margin: 0, padding: `0 12px 0 ${16 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, flexWrap: "nowrap", borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          {q ? <span style={{ width: 24, textAlign: "center", fontSize: 14, flexShrink: 0 }}>{"🔍"}</span> : <LeagueCrest league={lmLeague} size={24} />}
+                          <PanelTitle sub={`${shown.length}`}>{q ? "Search" : lmLeague}</PanelTitle>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          <input value={lmQuery} onChange={e => setLmQuery(e.target.value)} placeholder="🔍 Search"
+                            onKeyDown={e => { if (e.key === "Escape") setLmQuery("");
+                                              else if (e.key === "Enter") { const f = shown.find(t => t.id !== other); if (f) lmPickTeam(f.id); } }}
+                            style={{ ...inp, width: 170, padding: "5px 9px", fontSize: 10.5, background: "var(--ui-text-08)" }} />
+                          <button onClick={pickRandom} disabled={!shown.some(t => t.id !== other)} style={{ ...smBtn, whiteSpace: "nowrap" }}>{"🎲"} Random</button>
+                        </div>
+                      </div>
+                      <div style={{ padding: 14, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }} onMouseLeave={() => setLmHover(null)}>
+                        {!shown.length && <div style={{ padding: 28, fontSize: 11, color: "var(--chrome-muted-66)", textAlign: "center" }}>No team matches &ldquo;{lmQuery.trim()}&rdquo;.</div>}
+                        {sections.map(([lg, ts]) => (<Fragment key={lg + "|" + world}>
+                          {q && <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 7, padding: "4px 2px 8px" }}>
+                            <LeagueCrest league={lg} size={14} /><span>{lg}</span>
+                            <span style={{ ...mono, fontWeight: 400, color: "var(--chrome-muted-66)" }}>{ts.length}</span></div>}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))", gap: 10, marginBottom: q ? 16 : 0 }}>
+                            {ts.map((t, i) => {
+                              const isH = t.id === lmH, isA = t.id === lmA, taken = t.id === other;
+                              // Same clamp the scoreboard uses -- a near-white strip would wash the tile
+                              // out into the panel behind it.
+                              const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
+                              // The badge art is a 500px square with the crest inset a tenth top and
+                              // bottom, so cancelling that pulls the whole content group up.
+                              const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
+                              const ring = isH ? hClr : isA ? aClr : null;
+                              return (
+                              <div key={t.id} role="button" tabIndex={taken ? -1 : 0} className="team-tile tile-in"
+                                onMouseEnter={() => { if (!taken) setLmHover(t.id); }}
+                                onMouseLeave={() => setLmHover(h => h === t.id ? null : h)}
+                                onFocus={() => { if (!taken) setLmHover(t.id); }}
+                                onBlur={() => setLmHover(h => h === t.id ? null : h)}
+                                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                                onClick={() => !taken && lmPickTeam(t.id)}
+                                style={{ position: "relative", borderRadius: 10, border: "1px solid " + (ring || "var(--chrome-border)"), cursor: taken ? "not-allowed" : "pointer", opacity: taken ? 0.35 : 1,
+                                         boxShadow: ring ? `0 0 0 1px ${ring}, 0 0 16px ${tint(ring, "44")}` : "none",
+                                         // The stagger is for a league arriving; a search result arrives on every keystroke.
+                                         animationDelay: q ? "0ms" : `${Math.min(i, 30) * 14}ms`,
+                                         padding: "16px 8px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                                         background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
+                                {ring && (() => {
+                                  const bg = t.secondaryColor || t.primaryColor || ring, c = hexToRgb(bg);
+                                  const light = c ? (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255 > 0.6 : false;
+                                  return <span style={{ position: "absolute", top: 5, left: 5, ...mono, fontSize: 6.5, fontWeight: 700, letterSpacing: "0.1em",
+                                                        color: light ? "#0a0e17" : "#ffffff", background: bg, border: "1px solid " + (light ? "#0a0e1733" : "#ffffff44"),
+                                                        borderRadius: 4, padding: "1px 5px" }}>{isH ? "TEAM 1" : "TEAM 2"}</span>; })()}
+                                <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: TILE_NAME_GAP - TILE_GAP }}>
+                                  <span style={{ ...mono, fontSize: 8, letterSpacing: "0.1em", color: "var(--chrome-muted)" }}>{t.code || abbr(t.name, t.code)}</span>
+                                  <OvrBadge v={t.skill} />
+                                </div>
+                              </div>); })}
+                          </div>
+                        </Fragment>))}
+                      </div>
+                    </div>
+                  </div>
+                </>);
+              })()}
             </div>
 
             {/* Right: where it is played on top, how it is played underneath. Home advantage used
@@ -8204,8 +8391,24 @@ export default function App() {
     // A side cannot play itself; the tile is already disabled, this is the guard behind it.
     if (id === (lmPick === "home" ? lmA : lmH)) return;
     (lmPick === "home" ? setLmH : setLmA)(id);
+    setLmSeq(s => ({ ...s, [lmPick]: s[lmPick] + 1 }));
     // The active slot deliberately does NOT flip: clicking twice should correct the slot you are
     // filling, not silently move to the other one.
+  };
+  // The setup grid's search; the tile under the cursor, which the open slot previews and never
+  // commits; and a per-slot counter that moves only on a PICK. The slot card keys its entrance
+  // animation on that counter, so a hover preview cannot replay the pick.
+  const [lmQuery, setLmQuery] = useState("");
+  const [lmHover, setLmHover] = useState(null);
+  const [lmSeq, setLmSeq] = useState({ home: 0, away: 0 });
+  const lmSwap = () => {
+    if (!lmH || !lmA || lmH === lmA) return;
+    setLmH(lmA); setLmA(lmH);
+    // The venue names a SLOT, so it swaps with the teams or Team 1's ground would quietly become
+    // Team 2's. The first-leg score is written in slot order too.
+    setLmHomeAdv(v => v === "home" ? "away" : v === "away" ? "home" : v);
+    setLmStartScore(([x, y]) => [y, x]);
+    setLmSeq(s => ({ home: s.home + 1, away: s.away + 1 }));
   };
   // ─── TOURNAMENT ───
   const tPerGroup = tournamentTeams.length > 0 && tConfig.numGroups > 0 ? Math.floor(tournamentTeams.length / tConfig.numGroups) : 0;

@@ -1,22 +1,26 @@
-// THE NATIONAL-TEAM TACTICS SEARCH: successive halving over the 13x11 style-by-formation grid
+// THE TACTICS SEARCH for any side in any league: successive halving over the 13x11 style-by-formation grid
 // (Park The Bus left out, it has never once been viable). Rounds of [matches a cell, survivors]:
 // every cell plays 30, the top 48 play 50 more, the top 16 play 120 more, the top 8 play 400
 // more. A cell's rounds accumulate, so each finalist has been played 600 times against the same
 // fixtures and seeds as every other finalist. The side's CURRENT cell is carried into every round
 // whatever its rank, topped up to the same k, so the decision is a paired comparison at full n.
 //
-//   node test/nt-drive.mjs NCH,NKI,NHO,NMZ,NRG [workers=10]
+//   node test/nt-drive.mjs NCH,NKI,NHO,NMZ,NRG [workers=10] [league]
+//   node test/nt-drive.mjs NAG,SSK 10 "Nichirin League One"
+//
+// The league defaults to the international pool. Output goes to $NT_OUT, or the temp dir.
 //
 // Jobs are chunks of 30 matches pulled from one queue by W workers, so a slow core just takes
 // fewer chunks. Progress goes to scratch/nt-progress.log and results to scratch/nt-summary.json,
 // one entry a side, written as each side finishes. Nothing is written to src/.
 import { spawn } from "node:child_process";
 import { writeFileSync, appendFileSync } from "node:fs";
-import { PRESET_CATALOG } from "./engine.mjs";
+import { tmpdir } from "node:os";
+import { PRESET_CATALOG, STRAT_DEF, STYLE_PRESET, IDENTITY_KEYS, refitLineup } from "./engine.mjs";
 
-const S = "/private/tmp/claude-505/-Users-zli-Documents-NICHIRIN/7774b8ca-690c-4ada-80b6-ab474a09fb09/scratchpad";
-const [codesS, wS] = process.argv.slice(2);
-const CODES = (codesS || "NCH").split(","), W = +(wS || 10);
+const S = process.env.NT_OUT || tmpdir();
+const [codesS, wS, leagueS] = process.argv.slice(2);
+const CODES = (codesS || "NCH").split(","), W = +(wS || 10), LEAGUE = leagueS || "Avium International";
 const ROUNDS = [[30, 48], [50, 16], [120, 8], [400, 0]], CHUNK = 30;
 const STYLES13 = ["gegenpress", "verticaltiki", "lanuestra", "wingplay", "secondball", "routeone", "balanced",
                   "tikitaka", "possession", "cholismo", "counterattack", "zonamista", "catenaccio"];
@@ -44,19 +48,26 @@ const cellStr = (c) => `${c.style}/${c.formation} ${ppm(c).toFixed(3)} (n=${c.n}
 
 const summary = {};
 for (const code of CODES) {
-  const base = PRESET_CATALOG.find(t => t.league === "Avium International" && t.code === code);
+  const base = PRESET_CATALOG.find(t => t.league === LEAGUE && t.code === code);
   if (!base) { log(`${code}: no such side`); continue; }
+  const strat = { ...STRAT_DEF, timeWasting: base.strategy.timeWasting, gkDist: base.strategy.gkDist, dlBehavior: base.strategy.dlBehavior };
+  for (const k of IDENTITY_KEYS) strat[k] = STYLE_PRESET[base.style]?.[k] ?? 0;
+  const bad = Object.keys(base.strategy).filter(k => strat[k] !== base.strategy[k]);
+  if (bad.length) throw new Error(`${code}: S0 strategy mismatch on ${bad.join(",")}`);
+  const refit = refitLineup(base.squad, base.formation === "4-4-2" ? "3-5-2" : "4-4-2");
+  const nm = (sq) => sq.map(p => p.name).sort().join("|"), ovr = (sq) => sq.reduce((a, p) => a + Number(p.ovr || 0), 0);
+  if (nm(refit) !== nm(base.squad) || Math.abs(ovr(refit) - ovr(base.squad)) > 1e-9) throw new Error(`${code}: S0 refit moved the squad`);
   const t0 = Date.now();
   let cells = STYLES13.flatMap(s => FORMS.map(f => ({ style: s, formation: f, k: 0, n: 0, pts: 0, w: 0, d: 0, gf: 0, ga: 0 })));
   const cur = cells.find(c => c.style === base.style && c.formation === base.formation);
   if (!cur) throw new Error(`${code}: current tactic ${base.style}/${base.formation} is not on the grid`);
-  log(`${code}: ${base.style}/${base.formation} now; ${cells.length} cells on ${W} workers`);
+  log(`${code} (${base.name}): ${base.style}/${base.formation} now; ${cells.length} cells on ${W} workers`);
   let target = 0;
   for (const [per, keep] of ROUNDS) {
     target += per;
     const jobs = [], owner = [];
     for (const c of cells) for (let left = target - c.k; left > 0; left -= CHUNK) {
-      const n = Math.min(CHUNK, left); jobs.push([code, c.style, c.formation, c.k, n]); owner.push(c); c.k += n;
+      const n = Math.min(CHUNK, left); jobs.push([code, c.style, c.formation, c.k, n, LEAGUE]); owner.push(c); c.k += n;
     }
     const t1 = Date.now();
     const rs = await runQueue(jobs);
