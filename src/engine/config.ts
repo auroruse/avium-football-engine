@@ -3067,6 +3067,43 @@ export const ME_HOME_ADV = {
   guest: {},
 };
 
+// SQUAD FIT, SPENT AS RATING. computeStyleFit says how well the squad can carry out the system it
+// has been given: 1 when its strength sits where the system needs it and the shape supplies the
+// bodies, below when it does not, a little above when it is built for exactly this. It used to be
+// spent by damping the instructions, which only ever said how LOUDLY a side played its stamp; see
+// meStrategyFor for what that measured. Rating is the channel the engine turns into goals (about
+// 0.09 a point, the same path the drill and the crowd already use), so it goes there, two-sided.
+// ovr is rating points per unit of fit. The band is clamped so that a system the squad cannot
+// supply at all costs exactly the drill floor -- as bad as no plan, and no worse -- and a squad
+// built precisely for its system plays up to eight points above itself.
+export const ME_FIT = { ovr: 40, lo: 0.75, hi: 1.20 };
+
+// WHAT EACH SYSTEM COSTS AT THE DOOR, in rating points. The engine's physics under-charges
+// aggression: pressing from a low line, winning it and breaking, clearing into space and shooting
+// early are all net gains in play, while patience and depth are net costs, and on a neutral squad
+// the thirteen stamps came out 1.0 points a game apart -- 39 league points a season, with the
+// twenty NL1 clubs agreeing on the order at rho 0.77. No squad-dependent term can overturn a main
+// effect that size, so until the physics charges for aggression the drill settles the account
+// here: the styles the engine favours pay in, the ones it penalises are made whole, and what is
+// left to decide between systems is whether the squad suits them. Zero-mean over the thirteen
+// real styles, Park The Bus included; Balanced is the drill's own business and pays nothing here.
+// MEASURED, never authored: test/style-ladder.mjs plays every NL1 club in every style against the
+// division with this table zeroed and prints the row. Re-measure after any engine change that
+// moves the ladder -- the numbers decay like every other calibration constant in this file.
+// Measured 5 September 2026: 20 NL1 clubs x 14 styles x 30 fixtures with the stamps un-damped and
+// ME_FIT.ovr at zero, 0.61 points a game per goal of goal difference, so one rating point is worth
+// 0.056 points a game and the 1.06 ppm spread below is 19 rating points end to end.
+// SECOND PASS, damped. The row is a fixed point of the field it is applied to: once every side in the
+// division carried its price and its fit, the field moved by -7.4 rating on average and unevenly
+// (thirteen of twenty NL1 clubs had been steered onto the four styles the bias favoured), and the
+// re-measured ladder put Gegenpress +0.38 and La Nuestra -0.37 where the first row predicted level.
+// This row is the midpoint of the first pass and the full correction the second ladder printed.
+export const ME_STYLE_PRICE = {
+  gegenpress: 5.2, verticaltiki: 5.8, secondball: 5.5, lanuestra: 5.2, routeone: 2.9, wingplay: 1.7,
+  cholismo: 1.4, parkthebus: -1.0, catenaccio: -1.9, tikitaka: -3.8, counterattack: -3.9,
+  possession: -8.6, zonamista: -8.6,
+};
+
 // What the UI could legally set. A chase must not push an instruction somewhere a manager could not.
 // THE STYLE STAMPS, moved here from App.tsx so the engine itself can restamp a side (the
 // half-time emergency switch in meChase). App.tsx imports this back; there is one copy.

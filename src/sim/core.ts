@@ -100,67 +100,48 @@ export const CM = {
 
 export const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2","4-1-4-1","4-3-2-1","5-3-2"];
 
-// ponytail: style fit — key-position OVR determines how much of a style's bonus you actually get
-// Squad-fit scaled a style's modifiers by how well the players suited it. With no modifiers left to
-// scale it has nothing to do, and a side that wants to press now says so on the pressing slider.
-// WHICH PLAYERS A STYLE ACTUALLY LEANS ON. computeStyleFit weights the starting XI by these, maps
-// the result through (avg - 65) / 20 and scales the style's modifiers by it -- so a style is strong
-// when you have the players for it and damps toward Balanced when you do not.
-//
-// Only counterattack had an entry, so every other style returned a flat 1 and NO squad could ever
-// be built to suit it: a side with world-class wingers got nothing from Wing Play. Measured at the
-// time, Wing Play, Gegenpress and Tiki-Taka all sat within 0.0006 ppm of Balanced -- three styles
-// that were, functionally, the same style with different names.
-//
-// Weights sum to 1.0 in every entry, or the (avg - 65) / 20 mapping is not comparable between
-// styles and one of them silently gets a higher ceiling. Balanced deliberately has NO entry: it is
-// the style that asks nothing of your squad, which is what makes it the honest fallback.
-// `mid` and `span` CENTRE the fit. The old mapping was a hardcoded (avg - 65) / 20, so fit reached
-// 1.00 only at a weighted average of 85 and hit the 0.30 floor at 71 -- and the median international
-// squad measures 70-73 on every one of these weight sets. Every style with an entry was therefore
-// damped to about a THIRD of its designed strength for a typical side, Counter included; it merely
-// looked healthy because only elite squads ever cleared the floor. Measured after adding entries for
-// the other four, Wing Play and Gegenpress went from balanced to -0.018 ppm, which is that handicap.
-//
-// So each style carries its own centre: mid is the median squad on ITS OWN key positions, meaning a
-// typical side plays its chosen style at full strength, and span is sized so the best-suited squad
-// in the world reaches about 1.20 rather than clamping. Below the median a style damps toward
-// Balanced, which is the intended behaviour -- a system you do not have the players for.
+// WHICH PLAYERS A STYLE LEANS ON, and how hard. Weights sum to 1.0 in every entry so fits are
+// comparable between styles; span is the rating gap (times FIT_SPAN) that moves fit by one.
+// EVERY STYLE HAS ITS OWN ROW. Four of them used to share a neighbour's curve -- Possession as
+// Tiki-Taka, Route One and Second Ball as Counter, Catenaccio and Zona Mista as Park The Bus,
+// La Nuestra as Gegenpress -- which made each shared pair indistinguishable to fit by construction:
+// no squad could be built for Route One rather than Second Ball, so whichever of the pair carried
+// the stronger stamp was the right choice for every side in the game. Across NL1 that left seven
+// of thirteen styles as nobody's best, and nothing about a squad could ever have changed it.
+// Balanced deliberately has NO entry: it asks nothing of your squad, which is what makes it the
+// honest fallback, and it collects no fit rating either way.
 export const STYLE_FIT_SPOS = {
   // Width wins it: the wide men, and the full-backs who overlap them.
-  wingplay:      { wide: 0.45, fb: 0.20, fwd: 0.20, gk: 0.15, mid: 72.4, span: 74 },
+  wingplay:      { wide: 0.45, fb: 0.20, fwd: 0.20, gk: 0.15, span: 74 },
   // Everything runs through the middle third.
-  tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 },
+  tikitaka:      { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, span: 63 },
+  // Builds from the back: the centre-halves and the keeper are on the ball as much as midfield is.
+  possession:    { cmid: 0.40, def: 0.30, gk: 0.15, fwd: 0.15, span: 63 },
+  // Tiki-Taka pointed at goal: the men beyond the ball matter as much as the men on it.
+  verticaltiki:  { cmid: 0.35, fwd: 0.30, wide: 0.15, def: 0.10, gk: 0.10, span: 63 },
   // There is nowhere to hide in a press -- every outfielder has to be able to do it.
-  // cmid is weighted, not just needed: computeStyleFit only charges a shortfall on a role the style
-  // WEIGHTS, so a need on an unweighted role is silently dead. Gegenpress asked for a midfield
-  // overload it never weighted and scored a flat 1.000 for every shape in the game.
-  // Weights still sum to 1.0, which the (avg - own) mapping depends on.
-  gegenpress:    { all: 0.40, cmid: 0.20, def: 0.20, gk: 0.20, mid: 74.7, span: 58 },
-  // Absorb, then hurt them: the front men who finish it and the back line that survives until then.
-  counterattack: { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },
+  gegenpress:    { all: 0.40, cmid: 0.20, def: 0.20, gk: 0.20, span: 58 },
+  // La gambeta: the dribblers, wide and through the middle, and the men they play in.
+  lanuestra:     { cmid: 0.30, wide: 0.25, fwd: 0.25, def: 0.10, gk: 0.10, span: 58 },
+  // Absorb, then hurt them: pace to break with, and a back line that survives until then.
+  counterattack: { fwd: 0.40, wide: 0.20, def: 0.25, gk: 0.15, span: 63 },
+  // A target man, and a back line that can launch it. Midfield is bypassed.
+  routeone:      { fwd: 0.45, def: 0.30, gk: 0.15, cmid: 0.10, span: 63 },
+  // The knock-down is a midfield fight: the front men win the first ball, midfield the second.
+  secondball:    { fwd: 0.35, cmid: 0.35, def: 0.20, gk: 0.10, span: 63 },
+  // The block, the keeper behind it, and the one man who finishes the break.
+  catenaccio:    { def: 0.45, gk: 0.25, fwd: 0.20, cmid: 0.10, span: 60 },
+  // The deep block that builds rather than clears: midfield is on the ball.
+  zonamista:     { def: 0.40, gk: 0.20, cmid: 0.25, fwd: 0.15, span: 60 },
   // A back line and a goalkeeper, and enough legs in front of them to screen it.
-  parkthebus:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },
-  // The four styles added later share a curve with their nearest measured neighbour rather than
-  // getting four freshly-fitted mid/span pairs. That is deliberate: the curve answers "which
-  // players does this ask for", and two styles built on the same players should ask for the same
-  // ones. Fitting each separately would also mean four more calibration runs to buy nothing.
-  possession:    { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 }, // as tikitaka
-  verticaltiki:  { cmid: 0.50, def: 0.20, fwd: 0.15, gk: 0.15, mid: 74.5, span: 63 }, // as tikitaka
-  routeone:      { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },             // as counterattack
-  catenaccio:    { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
-  secondball:    { fwd: 0.55, def: 0.30, gk: 0.15, mid: 75.2, span: 63 },             // as counterattack
-  zonamista:     { def: 0.55, gk: 0.30, cmid: 0.15, mid: 74.8, span: 60 },            // as parkthebus
-  lanuestra:     { all: 0.40, cmid: 0.20, def: 0.20, gk: 0.20, mid: 74.7, span: 58 }, // as gegenpress
-  // A mid-block is the one shape here that is genuinely midfield-AND-defence led, so it does not
-  // inherit cleanly from either the cmid-heavy or the def-heavy curve. Weights are its own; mid and
-  // span are interpolated between the two it sits between rather than fitted from scratch.
-  cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, mid: 74.5, span: 61 },
+  parkthebus:    { def: 0.55, gk: 0.30, cmid: 0.15, span: 60 },
+  // A mid-block is midfield-AND-defence led.
+  cholismo:      { cmid: 0.40, def: 0.35, gk: 0.15, fwd: 0.10, span: 61 },
 };
 
 // What a full weight of missing personnel costs. 0.60 puts a style whose entire key group is absent
-// at roughly 0.73 fit, which is well inside applyStyleFit's damping toward Balanced without being a
-// death sentence -- you can play a system you are not built for, badly.
+// at roughly 0.73 fit, which through ME_FIT is the whole of the drill floor: playing a system you
+// have none of the players for is as bad as having no plan, and no worse.
 export const FIT_MISS = 0.60;
 
 // A SYSTEM IS LIMITED BY ITS WORST KEY MAN, NOT ITS AVERAGE ONE. Fit took the mean of a role group,
@@ -202,18 +183,6 @@ export const fitEffOvr = (p) => {
   if (!a || !b) return o;
   return Math.max(20, o - Math.abs(a[0] - b[0]) * FIT_OOP_DEPTH - Math.abs(a[1] - b[1]) * FIT_OOP_SIDE);
 };
-
-// WHICH ROLE POWERS WHICH INSTRUCTION. meStrategyFor scaled all eleven identity axes by ONE number,
-// so a side with no wide men had its pressing line damped exactly as hard as its width -- which says
-// squad suitability is a volume knob rather than a statement about what you can and cannot do.
-// One generic mapping rather than one per style: width and running at people come from the wide men,
-// the build-up axes from midfield, shooting from the forwards, the press from everybody, and the
-// line and the challenge from the defence. A style that wants something its squad has not got now
-// loses THAT, and keeps the rest.
-export const FIT_KEY_ROLE = { width: "wide", dribbling: "wide",
-                       passingDir: "cmid", approachPlay: "cmid", possWon: "cmid", possLost: "cmid",
-                       creativity: "cmid", chanceCreation: "fwd",
-                       pressingLOE: "all", tackling: "def", defLine: "def" };
 
 // A WING-BACK IS NOT A WINGER, AND A DM IS NOT AN ATTACKING MIDFIELDER. Membership of a role used to
 // be a yes/no: six different positions all counted as fully "wide", so a 3-5-2's wing-backs made it a
@@ -261,33 +230,31 @@ export const STYLE_FIT_NEED = {
   //   3-5-2     1.20   3.00   4.40   2.00
   // Two actual wingers with the full-backs behind them. A 3-5-2 supplies 1.2 of it.
   wingplay:      { wide: 2.5, fb: 2, fwd: 1 },
-  // A midfield overload: more than the three a 4-3-3 gives, so only a shape built around the middle
-  // clears it. A 4-4-2 diamond (DM, two CM, AM) supplies 3.65.
   tikitaka:      { cmid: 3.5, def: 4, fwd: 1 },
-  possession:    { cmid: 3.5, def: 4, fwd: 1 },
-  verticaltiki:  { cmid: 3.5, def: 4, fwd: 1 },
+  possession:    { cmid: 3.2, def: 4, fwd: 1 },
+  // Somebody beyond the striker: an AM is 0.3 of a forward, so a 4-2-3-1 supplies exactly this.
+  verticaltiki:  { cmid: 3.0, fwd: 1.3, def: 4 },
   cholismo:      { cmid: 3.2, def: 4, fwd: 1 },
-  // Pressing is legs in midfield as much as a back line -- there is nowhere to hide in it, and a
-  // side with two holders and nobody ahead of them cannot sustain one.
-  // 3.4, not 3: at 3 every common shape cleared it and Gegenpress scored a flat 1.000 for all of
-  // them -- a style that asks nothing of your squad, which is the whole defect this table exists to
-  // fix. Sustaining a press is a midfield overload for the same reason Tiki-Taka is.
+  // Pressing is legs in midfield as much as a back line -- there is nowhere to hide in it. 3.4, not
+  // 3: at 3 every common shape cleared it and Gegenpress asked nothing of anybody.
   gegenpress:    { def: 4, cmid: 3.4 },
-  lanuestra:     { def: 4, cmid: 3.4 },
-  // A front two AND somebody arriving. A flat 4-4-2 supplies exactly 2.0 and is a shade short.
-  counterattack: { fwd: 2.2, def: 4 },
+  // Actual wide dribblers, not wing-backs: a 3-5-2 supplies 1.2 of the 2.
+  lanuestra:     { cmid: 3.0, wide: 2.0, def: 4 },
+  // A front two and runners wide of them.
+  counterattack: { fwd: 2.0, wide: 1.5, def: 4 },
+  // The target man and his partner. A flat 4-4-2 supplies exactly 2.0 and is a shade short.
   routeone:      { fwd: 2.2, def: 4 },
-  secondball:    { fwd: 2.2, def: 4 },
+  // A front two AND bodies arriving on the knock-down.
+  secondball:    { fwd: 2.0, cmid: 3.0, def: 4 },
   // Five at the back, which is what these shapes are for: a back four supplies 4.0 against 4.5, a
   // back five with wing-backs 4.4. Plus a screen in front of it rather than a lone holder.
   parkthebus:    { def: 4.5, cmid: 2.5 },
   catenaccio:    { def: 4.5, cmid: 2.5 },
-  zonamista:     { def: 4.5, cmid: 2.5 },
+  // ...and for the block that builds, the extra man in midfield is who builds.
+  zonamista:     { def: 4.5, cmid: 3.0 },
 };
 
-// One pass over the XI, resolved PER ROLE. Both the scalar fit (which the abstract engine's
-// applyStyleFit still wants) and the per-role fit the positional engine damps instructions with are
-// collapses of the same numbers, so they cannot disagree about a squad.
+// One pass over the XI, resolved per role, then collapsed into the one number meFitFor hands the match.
 // Ratings here are fitEffOvr, not raw OVR: a man in the wrong position is not the player his rating
 // says he is, and until now nothing in the project charged for that.
 export function _fitParts(style, squad) {
@@ -342,17 +309,6 @@ export function computeStyleFit(style, squad) {
   return _fitOf(avg - pen, miss, P.own, P.span);
 }
 
-// The same question asked one role at a time, so an instruction can be damped by the men who
-// actually carry it out rather than by a single number standing for the whole squad.
-export function computeRoleFit(style, squad) {
-  const P = _fitParts(style, squad);
-  const out = { overall: P ? computeStyleFit(style, squad) : 1 };
-  if (!P) return out;
-  for (const k of ["wide", "fwd", "cmid", "def", "all"])
-    out[k] = _fitOf(P.roles[k].avg - (P.roles[k].pen - P.penBar), P.roles[k].miss, P.own, P.span);
-  return out;
-}
-
 export const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pressingLOE:0, defLine:0, possWon:0, approachPlay:0, dribbling:0, creativity:0, timeWasting:0, possLost:0, gkDist:0, dlBehavior:0, tackling:0 };
 
 // A team's identity is its playstyle and its formation. These ten axes ARE that identity, so they
@@ -363,38 +319,23 @@ export const STRAT_DEF = { tempo:0, width:0, passingDir:0, chanceCreation:0, pre
 export const IDENTITY_KEYS = ["approachPlay","passingDir","width","chanceCreation","dribbling","creativity",
                        "possLost","possWon","pressingLOE","defLine","tackling"];
 
-// STYLE FIT, ON THE ENGINE THAT ACTUALLY PLAYS THE MATCHES. computeStyleFit has existed since the
-// abstract engine and is called from nowhere inside src/engine -- so the term built to stop a side
-// playing a system it has not got the players for, calibrated at ~3.6 points a season and
-// deliberately set ABOVE the style spread so that squad matters more than system, was worth exactly
-// zero on the positional engine. The designed hierarchy was missing a leg.
-// It lands on the INSTRUCTION MAGNITUDES here rather than on modifier tables, because the positional
-// engine has no modifier tables. A side that does not suit its system carries its instructions out
-// weakly and drifts toward all-zero, which is precisely Balanced -- the same thing applyStyleFit
-// does by interpolating toward the Balanced row, expressed in the only currency this engine has.
-// Safe because every identity axis is read arithmetically in brain/decide/match: no array is indexed
-// by one, no branch switches on an exact value, and the one boolean gate (possLost > 0) keeps its
-// sign under a positive scale factor.
-// The three EDITABLE axes are deliberately untouched. Time-wasting, GK distribution and how the line
-// behaves are execution choices a manager makes; they are not claims about whether the squad suits
-// the system, so squad suitability has no business damping them.
-// ...AND IT DAMPS PER ROLE, not by one number. Scaling all eleven identity axes by a single scalar
-// said squad suitability is a volume knob: a side with no wide men had its pressing line, its
-// tackling and its defensive line pulled toward zero exactly as hard as its width, which is not a
-// claim anybody would make about a football team. What a squad without wingers cannot do is play
-// wide; it can still press. FIT_KEY_ROLE maps each axis to the men who carry it out.
-export const meStrategyFor = (t) => {
-  const st = { ...STRAT_DEF, ...(t?.strategy || {}) };
-  const rf = computeRoleFit(t?.style || "balanced", t?.squad || []);
-  for (const k of IDENTITY_KEYS) {
-    const f = rf[FIT_KEY_ROLE[k]] ?? rf.overall;
-    if (st[k] && f !== 1) st[k] = st[k] * f;
-  }
-  return st;
-};
+// THE STAMP IS THE STAMP. Squad fit used to damp every identity axis toward zero here, which made
+// suitability a volume knob on the style's own instructions rather than a claim about whether the
+// system suits the squad: a side built for a weak stamp executed it more faithfully and lost MORE,
+// and one that did not suit it drifted toward Balanced and lost less. Measured on the built-for-it
+// harness (XI mean held identical, only where the quality sits moved), the squad built FOR a style
+// played it worse than the squad built AGAINST it for all four styles tried, by 0.12 to 0.34 points
+// a game. Fit now lands as rating in meInit (ME_FIT), and the instructions are carried out at full
+// strength whoever the players are -- which is also what keeps thirteen styles looking like
+// thirteen styles instead of thirteen distances from Balanced.
+export const meStrategyFor = (t) => ({ ...STRAT_DEF, ...(t?.strategy || {}) });
+
+// How well this squad can carry out this system, as the one number meInit spends as rating.
+// Computed here beside the strategy because src/engine does not import the sim core.
+export const meFitFor = (t) => computeStyleFit(t?.style || "balanced", t?.squad || []);
 
 export function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, teamForm:{home:0,away:0}, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},fit:{home:1,away:1},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, teamForm:{home:0,away:0}, injuriesEnabled:true };
 }
 
 // The second leg is played with the sides swapped into the home and away slots, so what a tie is
@@ -613,6 +554,7 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
   st.formations = { home: hT.formation || "4-3-3", away: aT.formation || "4-3-3" };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+  st.fit = { home: meFitFor(hT), away: meFitFor(aT) };
   st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
   st.styles = { home: hT.style || "balanced", away: aT.style || "balanced" };
   st.teamSkill = { home: hT.skill, away: aT.skill };
@@ -663,6 +605,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   st.subCap = { home: st.bench.home.length >= 11 ? 5 : 3, away: st.bench.away.length >= 11 ? 5 : 3 };
   st.formations = { home: hT.formation, away: aT.formation };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
+  st.fit = { home: meFitFor(hT), away: meFitFor(aT) };
   st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
   st.styles = { home: hT.style, away: aT.style };
   st.teamSkill = { home: homeSkill, away: awaySkill };

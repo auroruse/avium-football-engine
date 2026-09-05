@@ -21,7 +21,7 @@ import varTSV from "./presets/VAR.tsv?raw";
 import miscTSV from "./presets/MISC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
-import { CM, FIT_KEY_ROLE, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeRoleFit, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
+import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
 import { CFG as ME_CFG, ME_DT, STYLE_PRESET, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
@@ -2501,6 +2501,18 @@ function refitLineup(squad, formation) {
   return [...order(xi), ...(bench.length === 11 ? order(bench) : bench)];
 }
 
+// A FORMATION CHANGE, COMPLETE. refitLineup only reorders the men into the new slots; the squad is
+// then rebuilt from the shape so every slot carries its own label and duty, and each man's rating,
+// name and natural position are carried across. The harnesses call this too, so a side re-shaped
+// for a tactics search is re-shaped exactly the way the app does it -- without the rebuild a winger
+// re-slotted at centre-half still read LW to squad fit and to the rating bands.
+function refitAs(squad, formation) {
+  const old = refitLineup(squad, formation);
+  const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize);
+  nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; });
+  return nsq;
+}
+
 
 function parsePresetTSV(raw, filterLeagues, skipStart = 1, hasSuffix = true, hasHeader = true) {
   const all = raw.split("\n");
@@ -4444,6 +4456,10 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
    animation that keeps hold of transform sits on top of the tile's hover lift for good. */
 @keyframes tileIn{from{opacity:0;transform:translateY(8px) scale(0.97)}to{opacity:1;transform:none}}
 .tile-in{animation:tileIn 0.32s cubic-bezier(0.22,1,0.36,1) backwards;}
+@keyframes regCrest{0%{opacity:0;transform:scale(0.92)}35%{opacity:1;transform:none}65%{opacity:1;transform:none}100%{opacity:0;transform:scale(1.06)}}
+.reg-crest{animation:regCrest 0.8s ease-in-out both;}
+@keyframes regVeil{0%,65%{opacity:1}100%{opacity:0}}
+.reg-veil{animation:regVeil 0.8s ease-in-out both;}
 @keyframes pickIn{0%{opacity:0;transform:translateX(var(--pick-dx,-16px)) scale(0.97)}60%{opacity:1;transform:translateX(calc(var(--pick-dx,-16px) * -0.18)) scale(1.01)}100%{opacity:1;transform:none}}
 .pick-in{animation:pickIn 0.45s cubic-bezier(0.22,1,0.36,1) backwards;}
 @keyframes pvIn{from{opacity:0}to{opacity:1}}
@@ -4553,7 +4569,7 @@ details{border:none;border-bottom:none;}
 @media(prefers-reduced-motion:reduce){
   .draw-ballet,.draw-shuffle,.draw-picked,.draw-bowl-shake,.draw-ball-out,.draw-stamp,.draw-await,.draw-land{animation:none !important;}
   .ev-enter,.goal-flash,.tick-btn,.live-dot,.card-slam,.sparkle-pop,.injury-shake,.sub-on-line,.sub-off-line{animation:none !important;}
-  .tile-in,.pick-in,.pv-in,.pick-halo,.bar-fill,.marquee-name,.slide-fade{animation:none !important;}
+  .tile-in,.pick-in,.pv-in,.pick-halo,.bar-fill,.marquee-name,.slide-fade,.reg-crest,.reg-veil{animation:none !important;}
   .gv-anim{animation-duration:0.01ms !important;animation-delay:0ms !important;}
   *{transition-duration:0.01ms !important;}
 }
@@ -4861,6 +4877,20 @@ export default function App() {
   const toggleVenueNation = (code) => setOpenVenueNations(sv => { const n = new Set(sv); n.has(code) ? n.delete(code) : n.add(code); return n; });
   const leagueAvgSkill = (ts) => ts?.length ? Math.round(ts.reduce((a, t) => a + (Number(t.skill) || 0), 0) / ts.length) : 0;
   // One filter, read by both the header count and the list — they used to derive it separately.
+  // FIT THE HEIGHT. The Registry grid is capped at four rows and no longer scrolls, so when the panel
+  // is too short for four rows of cards the grid is scaled down as a whole (a transform anchored at the
+  // top, so nothing re-flows and every league starts at the same height) until it fits, with the
+  // panel's own padding left below it instead of a clipped bottom row. room is what the panel gives it after padding and whatever sits above it;
+  // want is the grid's own layout height. The observer catches the panel resizing, the effect below
+  // catches the league changing under it.
+  const regBox = useRef(null), regEl = useRef(null), regRo = useRef(null), [regFit, setRegFit] = useState(1);
+  const [regPhase, setRegPhase] = useState("cards");   // "crest" while the league's badge plays, then "cards"
+  const regMeasure = () => { const box = regBox.current, el = regEl.current; if (!box || !el) return;
+    const taken = [...box.children].filter(c => c !== el).reduce((a, c) => a + c.offsetHeight + 14, 0);
+    const room = box.clientHeight - 32 - taken, want = el.offsetHeight;
+    setRegFit(want > 0 ? Math.min(1, Math.max(0.3, room / want)) : 1); };
+  const regBoxRef = useRef((el) => { regRo.current?.disconnect(); regRo.current = null; regBox.current = el; if (!el) return;
+    regRo.current = new ResizeObserver(regMeasure); regRo.current.observe(el); regMeasure(); }).current;
   const visibleTeams = useMemo(() => {
     // FOLDED, not just lowered: a roster this full of macrons and cedillas is unsearchable if
     // "Ryugu" has to be typed "Ryūgu" and "Cetin" has to be typed "Çeti̇n". pFold strips the marks
@@ -4896,6 +4926,7 @@ export default function App() {
     return out.sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0)
       || lineAvg(b) - lineAvg(a) || a.name.localeCompare(b.name));
   }, [worldTeams, teamLeagueFilter, teamSearch, isAllView, teamLinesById]);
+  useEffect(regMeasure, [visibleTeams, regPhase]);
   const [bulkText, setBulkText] = useState("");
   const [expandedTeam, setExpandedTeam] = useState(null);
   // ---- positional match engine lab -------------------------------------------------------
@@ -5639,6 +5670,7 @@ export default function App() {
     // Squad fit off the eleven that is actually available, the way the instant sim computes it: a
     // system suits the players you can pick, not the ones serving a ban.
     st.strategy = { home: meStrategyFor(hTm), away: meStrategyFor(aTm) };
+  st.fit = { home: meFitFor(hTm), away: meFitFor(aTm) };
     // THE VENUE AND THE STAKES, which this builder never carried. Everything above is about the two
     // squads; these three are about the match, and without them the ground you pick on the setup
     // screen did nothing at all to a live match. The values were being computed and written onto
@@ -6544,8 +6576,11 @@ export default function App() {
   const lgIsPool = (c) => lgIsDir(c) || c === MISC_LEAGUE;
   const lgOpenComp = (name, sub) => {
     setLgComp(name); setLgSeason(null); setPlayerOpen(null); setPlayerBack(null);
+    // A league keeps the face you were on when you come from another league, but not from an
+    // international competition: those have no Teams face, so their "seasons" was forced rather than
+    // chosen, and carrying it over opened every league on its season list.
     setLgSub(name === LG_ALL_PLAYERS ? "players" : COMP_SCOPE[name] ? (sub === "winners" ? "winners" : "seasons")
-                                                 : lgIsDir(name) ? "teams" : (sub || "teams"));
+                                                 : lgIsDir(name) || COMP_SCOPE[lgComp] ? "teams" : (sub || "teams"));
     setPlayerNatFilter(""); setPlayerLeagueFilter(""); setTeamSearch("");
     const sc = COMP_SCOPE[name];
     setTeamLeagueFilter(name === LG_ALL_NATS || sc === "intl" ? ALL_INTL
@@ -6684,6 +6719,15 @@ export default function App() {
   // confederation, and both live in the directory. So it shows its seasons and nothing else.
   const lgIntlComp = !!COMP_SCOPE[lgComp];
   const lgSubEff = lgIntlComp && lgSub !== "winners" ? "seasons" : lgSub;
+  // SWITCHING COMPETITIONS OR FACES. The competition's badge fades in and out over the panel and the
+  // new face is revealed behind it as it goes -- rendered at the same time, seen a beat later; on the
+  // Teams face the cards then arrive with the same stagger the team picker uses. A layout effect, so
+  // the veil is up before the browser paints the new content rather than a frame after it. The veil
+  // is keyed by what changed (see regKey), so switching again mid-animation remounts it and the
+  // badge plays from the start. regLeague is the league the card grid shows, as the header does.
+  const regLeague = lgComp && !lgIsPool(lgComp) ? lgComp : teamLeagueFilter;
+  const regKey = lgComp + "|" + lgSubEff;
+  useLayoutEffect(() => { setRegPhase("crest"); const t = setTimeout(() => setRegPhase("cards"), 800); return () => clearTimeout(t); }, [regKey]);
   // The cup tab is the seasons face pointed at the cup's own competition.
   const lgSeasonComp = lgSubEff === "cup" ? (LEAGUE_CUPS[lgComp] || lgComp) : lgComp;
   const lgSeasonsFace = lgSubEff === "seasons" || lgSubEff === "cup";
@@ -7261,7 +7305,7 @@ export default function App() {
       // team is hidden behind a label. Import does not come through here: a preset file's own tactic
       // columns are already the resolved values and must not be overwritten by its style name.
       if (f === "style") nt.strategy = { ...STRAT_DEF, ...(STYLE_PRESET[v] || {}) };
-      if (f === "formation") { const old = refitLineup(tm.squad, v); nt.squad = buildSquad(v, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize); nt.squad.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; }); } return nt; })); };
+      if (f === "formation") nt.squad = refitAs(tm.squad, v); return nt; })); };
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
 
@@ -10590,6 +10634,8 @@ export default function App() {
                          borderTop: on ? "2px solid var(--chrome-brand)" : "2px solid transparent",
                          marginBottom: on ? -1 : 0, borderBottomColor: "var(--chrome-panel)" }}>{l}</button>); })}
             </div>
+            {/* The faces, under one relative box so the badge veil can cover whichever is showing. */}
+            <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {lgSeasonsFace && (() => {
           const list = (pstats?.seasons || []).filter(s => s.comp === lgSeasonComp).sort((a, b) => b.ord - a.ord);
           const s = lgSeason ? list.find(x => x.id === lgSeason) : null;
@@ -10958,11 +11004,24 @@ export default function App() {
                 </table>
               </div>
               ); })() : (
-              <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+              // No scrolling: the grid never runs past four rows, so the whole division is in view and a
+              // reserved scrollbar gutter would only steal card width. Top-aligned, so every league starts
+              // at the same height, and scaled to fit when the panel is shorter than four rows -- see
+              // regMeasure. A 24-team division with its smaller cards leaves its spare room at the bottom.
+              <div ref={regBoxRef} style={{ padding: 16, flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 {showExport && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Copy this text and paste into Bulk Import to restore teams.</p><textarea readOnly value={exportTeamsText()} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7, fontSize: 9 }} onClick={e => e.target.select()} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => { navigator.clipboard?.writeText(exportTeamsText()); setShowExport(false); }} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Copy to Clipboard</button></div></div>)}
                 {showBulk && customTab && (<div style={{ background: "var(--chrome-bg)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: 14, marginBottom: 14 }}><p style={{ fontSize: 10, color: "var(--chrome-muted)", margin: "0 0 8px" }}>Tab-separated: CODE ⇥ NATION ⇥ SKILL ⇥ PLAYSTYLE ⇥ FORMATION ⇥ … ⇥ HOME COLOR ⇥ AWAY COLOR ⇥ LOCATION ⇥ STADIUM</p><textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={8} style={{ ...inp, width: "100%", resize: "vertical", lineHeight: 1.7 }} /><div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={importBulk} style={{ ...addBtn, background: "var(--chrome-brand)", color: "var(--ui-on-accent)", border: "none", padding: "6px 16px" }}>Import {(()=>{const n=parseBulk(bulkText).length;return n>0?`(${n})`:""})()}</button><span style={{ fontSize: 10, color: "var(--chrome-muted)" }}>Merges into the roster as Custom teams</span></div></div>)}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(196px, 1fr))", gap: 12 }}>
-                  {visibleTeams.map(t => {
+                {/* FOUR ROWS AT MOST. A 24-team division lays out as four rows of six rather than five rows
+                    of five: past twenty teams the column count is fixed at what four rows need, the cards
+                    share the width, and their contents scale down with them -- so a whole league sits on one
+                    screen whatever its size. Up to twenty the grid auto-fills at the full card width as
+                    before. Fixed rather than a shrunken auto-fill minimum: a percentage inside
+                    repeat(auto-fill) resolves a few pixels wide and quietly floors to one column fewer. */}
+                {(() => { const cols = Math.max(1, Math.ceil(visibleTeams.length / 4)), sc = Math.min(1, 5 / cols), gap = Math.round(12 * sc);
+                return (
+                <div key={regLeague} ref={regEl} style={{ display: "grid", gridTemplateColumns: cols > 5 ? `repeat(${cols}, minmax(0, 1fr))` : "repeat(auto-fill, minmax(196px, 1fr))", gap, flexShrink: 0,
+                              transform: regFit < 1 ? `scale(${regFit})` : undefined, transformOrigin: "top center" }}>
+                  {visibleTeams.map((t, i) => {
                     // The kit colour is clamped the same way the scoreboard clamps it — a near-white
                     // strip would otherwise wash the tile out into the panel behind it.
                     const kit = ensureMaxLum(t.primaryColor || "#2a3a50");
@@ -10970,22 +11029,22 @@ export default function App() {
                     // a tenth of the rendered box is empty above and below it and the whole content
                     // group reads low. Cancelling that pulls the crest and everything under it up.
                     // Proportional rather than a flat pixel figure so it stays right at any size.
-                    const crestPad = Math.round(TILE_CREST * CREST_PAD_RATIO);
+                    const crest = Math.round(TILE_CREST * sc), crestPad = Math.round(crest * CREST_PAD_RATIO);
                     return (
                     <div key={t.id} role="button" tabIndex={0}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
-                      onClick={() => setExpandedTeam(t.id)} className="team-tile"
-                      style={{ position: "relative", borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer",
+                      onClick={() => setExpandedTeam(t.id)} className="team-tile tile-in"
+                      style={{ position: "relative", borderRadius: 10, border: "1px solid var(--chrome-border)", cursor: "pointer", animationDelay: `${520 + Math.min(i, 30) * 14}ms`,   // after the badge veil lifts
                                /* Symmetric on purpose. The crest's negative margin cancels the badge art's
                                   transparent inset, so padding-top IS the visible gap above the crest — 18 over
                                   12 read as a tile sagging, and the taller rating strip made it plainer. */
-                               padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP, minWidth: 0, overflow: "hidden",
+                               padding: `${Math.round(14 * sc)}px ${Math.round(10 * sc)}px`, display: "flex", flexDirection: "column", alignItems: "center", gap: TILE_GAP * sc, minWidth: 0, overflow: "hidden",
                                background: `linear-gradient(158deg, ${kit}66 0%, ${kit}22 46%, var(--chrome-panel) 100%)` }}>
-                      <TeamCrest team={t} size={TILE_CREST} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
-                      <div style={{ marginTop: TILE_NAME_GAP - TILE_GAP }}>{ratingStrip(t, true)}</div>
+                      <TeamCrest team={t} size={crest} style={{ marginTop: -crestPad, marginBottom: -crestPad }} />
+                      <div style={{ fontSize: 12 * sc, fontWeight: 600, color: "var(--ui-text)", textAlign: "center", lineHeight: 1.25, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                      <div style={{ marginTop: (TILE_NAME_GAP - TILE_GAP) * sc }}>{ratingStrip(t, true)}</div>
                     </div>); })}
-                </div>
+                </div>); })()}
                 {visibleTeams.length === 0 && <div style={{ padding: 28, fontSize: 11, color: "var(--chrome-muted-66)", textAlign: "center" }}>No teams found.</div>}
                 {teamErrors && <div style={{ fontSize: 10, color: "var(--ui-danger)", padding: "10px 2px 0" }}>Skill values must be between 25 and 100.</div>}
               </div>)}
@@ -11481,6 +11540,11 @@ export default function App() {
               </>)}
           </div>
             </>)}
+            {regPhase === "crest" && (
+              <div key={regKey} className="reg-veil" style={{ position: "absolute", inset: 0, zIndex: 5, background: "var(--chrome-panel)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="reg-crest"><LeagueCrest league={lgComp} size={120} /></div>
+              </div>)}
+            </div>
             </>)}
           </div>
         </div>

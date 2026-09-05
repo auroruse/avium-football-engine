@@ -14,7 +14,7 @@ import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meCl
 // what succeeds, so every setting costs something somewhere -- turn the press up and the space
 // behind it is really there for someone to run into. That is the whole reason for the rewrite.
 export { ME_HZ, ME_DT, ME_TPM } from "./config";
-import { STYLE_PRESET, ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_HOME_ADV, ME_MGR, ME_RED_SAID, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute, mePickInjury } from "./config";
+import { STYLE_PRESET, ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_FIT, ME_HOME_ADV, ME_MGR, ME_STYLE_PRICE, ME_RED_SAID, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute, mePickInjury } from "./config";
 
 // ---- setup ------------------------------------------------------------------------------
 // Positions live ON the player records, not in a side table, so cloneState already deep-copies them
@@ -47,10 +47,10 @@ export const ME_DEF_FORM = {
 // already varied properly -- 40 of 40 distinct eight-touch openings, 19 distinct scorelines -- which
 // is why this is deliberately confined to the kickoff and adds no noise anywhere else.
 export function meInit(s, slotsFor, rng) {
-  // WHAT THE SIDE HAS DRILLED. Read off the instructions as stamped and fit-damped, and spent as
-  // effective rating on everyone who plays -- bench included, since a substitute has been at the
-  // same training ground. A side with no instructions gets exactly nothing here, which is the whole
-  // design: no plan is the floor, rather than the safest option it used to be.
+  // WHAT THE SIDE HAS DRILLED, whether its squad suits the system (ME_FIT), and what the system
+  // costs at the door (ME_STYLE_PRICE): three properties of this match, all spent as effective
+  // rating on everyone who plays -- bench included, since a substitute has been at the same
+  // training ground. A side with no instructions pays the full drill floor and nothing else.
   // Applied BEFORE the home-advantage nudge below so the two simply add, and before _att is ever
   // read, since meAttrs memoises off ovr the first time anybody asks.
   // THE RATING THE CLUB LISTS, kept before anything bends it. meInit adds the drill penalty below
@@ -64,7 +64,8 @@ export function meInit(s, slotsFor, rng) {
       { if (p.ovr0 === undefined) p.ovr0 = p.ovr ?? 70;
         p._chB = 0; }                              // the chance-build cap is per match
   for (const side of ME_SIDES) {
-    const d = meDrill(s.strategy?.[side]);
+    const fit = Math.max(ME_FIT.lo, Math.min(ME_FIT.hi, s.fit?.[side] ?? 1));
+    const d = meDrill(s.strategy?.[side]) + ME_FIT.ovr * (fit - 1) - (ME_STYLE_PRICE[s.styles?.[side]] || 0);
     if (!d) continue;
     for (const p of [...(s.players[side] || []), ...(s.bench?.[side] || [])]) {
       p.ovr = (p.ovr ?? 70) + d; p._att = null;

@@ -16,12 +16,16 @@
 import { spawn } from "node:child_process";
 import { writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { PRESET_CATALOG, STRAT_DEF, STYLE_PRESET, IDENTITY_KEYS, refitLineup } from "./engine.mjs";
+import { PRESET_CATALOG, STRAT_DEF, STYLE_PRESET, IDENTITY_KEYS, refitAs } from "./engine.mjs";
 
 const S = process.env.NT_OUT || tmpdir();
 const [codesS, wS, leagueS] = process.argv.slice(2);
 const CODES = (codesS || "NCH").split(","), W = +(wS || 10), LEAGUE = leagueS || "Avium International";
-const ROUNDS = [[30, 48], [50, 16], [120, 8], [400, 0]], CHUNK = 30;
+// Rounds of [matches a cell, survivors]. Overridable as NT_ROUNDS="30:48,50:16,120:0" -- the
+// 400-match round crowns a winner inside a plateau that is already tied, so dropping it costs
+// nothing but the name at the top and saves a third of the run.
+const ROUNDS = (process.env.NT_ROUNDS || "30:48,50:16,120:8,400:0").split(",").map(s => s.split(":").map(Number));
+const CHUNK = 30;
 const STYLES13 = ["gegenpress", "verticaltiki", "lanuestra", "wingplay", "secondball", "routeone", "balanced",
                   "tikitaka", "possession", "cholismo", "counterattack", "zonamista", "catenaccio"];
 const FORMS = ["3-4-1-2", "3-4-3", "3-5-2", "4-1-2-1-2", "4-1-4-1", "4-2-3-1", "4-2-4", "4-3-2-1", "4-3-3", "4-4-2", "5-3-2"];
@@ -54,7 +58,7 @@ for (const code of CODES) {
   for (const k of IDENTITY_KEYS) strat[k] = STYLE_PRESET[base.style]?.[k] ?? 0;
   const bad = Object.keys(base.strategy).filter(k => strat[k] !== base.strategy[k]);
   if (bad.length) throw new Error(`${code}: S0 strategy mismatch on ${bad.join(",")}`);
-  const refit = refitLineup(base.squad, base.formation === "4-4-2" ? "3-5-2" : "4-4-2");
+  const refit = refitAs(base.squad, base.formation === "4-4-2" ? "3-5-2" : "4-4-2");
   const nm = (sq) => sq.map(p => p.name).sort().join("|"), ovr = (sq) => sq.reduce((a, p) => a + Number(p.ovr || 0), 0);
   if (nm(refit) !== nm(base.squad) || Math.abs(ovr(refit) - ovr(base.squad)) > 1e-9) throw new Error(`${code}: S0 refit moved the squad`);
   const t0 = Date.now();

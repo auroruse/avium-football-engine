@@ -12,7 +12,7 @@
 //
 // The field is the opposition the side would actually meet: for a league, every other club in it;
 // for the international pool, every side within 15 OVR (at least the 16 nearest). Both ways round.
-import { PRESET_CATALOG, STRAT_DEF, STYLE_PRESET, IDENTITY_KEYS, refitLineup, runPositionalMatch } from "./engine.mjs";
+import { PRESET_CATALOG, STRAT_DEF, STYLE_PRESET, IDENTITY_KEYS, refitAs, runPositionalMatch } from "./engine.mjs";
 
 const [CODE, style, formation, k0S, nS, leagueS] = process.argv.slice(2);
 const K0 = +k0S, N = +nS, LEAGUE = leagueS || "Avium International";
@@ -30,7 +30,7 @@ const F = field.length;
 const strategy = { ...STRAT_DEF, timeWasting: base.strategy.timeWasting, gkDist: base.strategy.gkDist, dlBehavior: base.strategy.dlBehavior };
 for (const k of IDENTITY_KEYS) strategy[k] = STYLE_PRESET[style]?.[k] ?? 0;
 const T = { ...base, style, formation, strategy,
-  squad: formation === base.formation ? base.squad : refitLineup(base.squad, formation) };
+  squad: formation === base.formation ? base.squad : refitAs(base.squad, formation) };
 let pts = 0, w = 0, d = 0, gf = 0, ga = 0;
 for (let k = K0; k < K0 + N; k++) {
   const opp = field[k % F], home = Math.floor(k / F) % 2 === 0;
