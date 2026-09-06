@@ -4085,6 +4085,26 @@ const StratIcon = ({ k }) => (
        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
        style={{ flexShrink: 0, opacity: 0.85 }}>{STRAT_ICON[k]}</svg>
 );
+// All four print, so the row reads as a full set of instructions rather than as whatever
+// happens to be non-default -- the untouched ones just sit muted.
+const StratChips = ({ strategy, center, style }) => {
+  return (
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4, justifyContent: center ? "center" : undefined, ...style }}>
+    {STRAT_EDITABLE.map(k => {
+      const v = (strategy || STRAT_DEF)[k] ?? 0, L = STRAT_LABELS[k];
+      const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
+      return (
+        <span key={k} title={L?.name}
+              style={{ display: "inline-flex", alignItems: "center", gap: 3.5,
+                       fontSize: 8, fontWeight: 600, letterSpacing: "0.04em", whiteSpace: "nowrap",
+                       color: clr, border: `1px solid ${clr}`, borderRadius: 4,
+                       padding: "1px 5px", opacity: v === 0 ? 0.55 : 0.9 }}>
+          <StratIcon k={k} />
+          {L?.vals?.find(([vv]) => vv === v)?.[1] || L?.name}
+        </span>);
+    })}
+  </div>);
+};
 // The dugout log's card faces: one glyph and one label per kind of change a manager makes.
 const MGR_LOG_KIND = {
   switch: { lbl: "Playstyle switch", clr: "var(--ui-warn)",
@@ -4252,25 +4272,9 @@ const ManagerCard = ({ t, dense, center, wide, bare, style }) => {
           <span style={{ fontSize: 9.5, fontWeight: 600, color: STYLE_CLR[t.style || "balanced"] }}>{STYLE_LBL[t.style || "balanced"]}</span>
           <span style={{ ...mono, fontSize: 9.5, fontWeight: 600, color: FORM_CLR[t.formation || "4-3-3"] || "var(--chrome-muted)" }}>{t.formation || "4-3-3"}</span>
         </div>
-        {/* His own calls, under the football he plays: the four a manager still sets by hand.
-            All four print, so the row reads as a full set of instructions rather than as
-            whatever happens to be non-default -- the untouched ones just sit muted. Suppressed
-            where the instructions are already on screen as controls (`bare`). */}
-        {!bare && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4, justifyContent: center ? "center" : undefined }}>
-          {STRAT_EDITABLE.map(k => {
-            const v = (t.strategy || STRAT_DEF)[k] ?? 0, L = STRAT_LABELS[k];
-            const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
-            return (
-              <span key={k} title={L?.name}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 3.5,
-                             fontSize: 8, fontWeight: 600, letterSpacing: "0.04em", whiteSpace: "nowrap",
-                             color: clr, border: `1px solid ${clr}`, borderRadius: 4,
-                             padding: "1px 5px", opacity: v === 0 ? 0.55 : 0.9 }}>
-                <StratIcon k={k} />
-                {L?.vals?.find(([vv]) => vv === v)?.[1] || L?.name}
-              </span>);
-          })}
-        </div>}
+        {/* His own calls, under the football he plays. Suppressed where the instructions are
+            already on screen as controls (`bare`). */}
+        {!bare && <StratChips strategy={t.strategy} center={center} />}
       </div>
     </div>);
 };
@@ -6563,8 +6567,15 @@ export default function App() {
   const [lgRound, setLgRound] = useState(null);                  // selected report round; null = the last one
   const [lgTTab, setLgTTab] = useState(0);                       // selected tournament tab
   const [clOpen, setClOpen] = useState(null);                    // opened rating-changelog batch
+  const [mgrSearch, setMgrSearch] = useState("");
+  const [mgrStyleF, setMgrStyleF] = useState("ALL");
+  const [mgrSeatF, setMgrSeatF] = useState("");                  // "" all, "NT" nation only, "CLUB" club only
+  const [mgrSort, setMgrSort] = useState({ k: "ovr", asc: false });
   const [clSort, setClSort] = useState({ k: "d", asc: false });  // and how its table is sorted
   const LG_ALL_NATS = "::all-nations", LG_ALL_CLUBS = "::all-clubs", LG_ALL_PLAYERS = "::all-players";
+  // A directory has no badge to play, so its emoji is what the opening animation shows. The rail
+  // draws the same glyph, so the thing that grows out of the rail is the thing that was in it.
+  const LG_DIR_ICON = { [LG_ALL_NATS]: "\uD83C\uDF10", [LG_ALL_CLUBS]: "\uD83C\uDFDF\uFE0F", [LG_ALL_PLAYERS]: "\uD83D\uDC64" };
   const [lgTeamSort, setLgTeamSort] = useState({ k: "ovr", asc: false });
   const [lgPlayerSort, setLgPlayerSort] = useState({ k: "ovr", asc: false });
   // One flip rule for both tables: names start ascending, numbers start descending.
@@ -10038,6 +10049,30 @@ export default function App() {
     setPlayerOpen(name); setTab("leagues"); };
   const natTeamByCode = useMemo(() => new Map(teams.filter(t => isIntlLeague(t.league)).map(t => [t.code, t])), [teams]);
   const teamByName = useMemo(() => new Map(teams.map(t => [t.name, t])), [teams]);
+  // ONE ROW A MAN, not one a bench. The same manager can hold a club seat and a national one, and
+  // they carry separate football and separate instructions, so both sides stay on his row. His
+  // playstyle is the club's where he has one -- that is the job he does every week.
+  const managerIndex = useMemo(() => {
+    const by = new Map();
+    for (const t of worldTeams) {
+      if (!t.manager) continue;
+      const k = pFold(t.manager);
+      let m = by.get(k);
+      if (!m) by.set(k, m = { key: k, name: t.manager, abbr: t.managerAbbr || null, ovr: null, natCode: null, club: null, nat: null });
+      if (isIntlLeague(t.league)) { if (!m.nat) m.nat = t; } else if (!m.club) m.club = t;
+      if (m.ovr == null && t.mgmt != null) m.ovr = t.mgmt;
+      if (!m.natCode && t.managerNat) m.natCode = t.managerNat;
+    }
+    // A bracketed code on the cell means he is FOREIGN to the side. No bracket is not a missing
+    // nationality, it is the local one -- the nation he manages, or the nation whose league he
+    // manages in -- so the column read blank for four managers in five. The national seat settles
+    // it where he holds both. Every club row carries its own `nat`, pooled or not, which
+    // LEAGUE_NAT does not: a pool club whose column names its country rather than a competition
+    // has no comp to be keyed on and drops out of that map entirely.
+    return [...by.values()].map(m => ({ ...m,
+      natCode: m.natCode || m.nat?.code || m.club?.nat || null,
+      style: (m.club || m.nat)?.style || "balanced" }));
+  }, [worldTeams]);
   // Roster faults, not per-nationality: a name in two squads, or one that parses as neither
   // "K. Fujise" nor a full name. Shown in the rail so they are visible whichever nationality is up.
   const playerWarnings = useMemo(() => {
@@ -10572,9 +10607,9 @@ export default function App() {
               const ORDINAL = ["One", "Two", "Three", "Four"];
               const sections = [
                 ["Directory", [
-                  { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} Nations`, dir: true, icon: "\uD83C\uDF10" },
-                  ...(allClubTeams.length ? [{ name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: "\uD83C\uDFDF\uFE0F" }] : []),
-                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} Players`, dir: true, icon: "\uD83D\uDC64" },
+                  { name: LG_ALL_NATS, label: "All National Teams", sub2: `${allIntlTeams.length} Nations`, dir: true, icon: LG_DIR_ICON[LG_ALL_NATS] },
+                  ...(allClubTeams.length ? [{ name: LG_ALL_CLUBS, label: "All Clubs", sub2: `${allClubTeams.length} Clubs`, dir: true, icon: LG_DIR_ICON[LG_ALL_CLUBS] }] : []),
+                  { name: LG_ALL_PLAYERS, label: "All Players", sub2: `${playerIndex.length} Players`, dir: true, icon: LG_DIR_ICON[LG_ALL_PLAYERS] },
                 ]],
                 ["International", lgRail.filter(c => c.intl)],
                 ...tiers.map(t => [`Division ${ORDINAL[t - 1] || t}`, real.filter(c => c.tier === t)]),
@@ -10619,7 +10654,7 @@ export default function App() {
           <div style={{ ...panelBox, padding: 0, marginBottom: 0, overflow: "hidden", minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
             {lgComp && (<>
             <div style={{ display: (lgIsDir(lgComp) && lgComp !== LG_ALL_PLAYERS) ? "none" : "flex", alignItems: "stretch", flexShrink: 0, background: "var(--chrome-bg-08)", borderBottom: "1px solid var(--chrome-border)" }}>
-              {(lgComp === LG_ALL_PLAYERS ? [["players", "Players"], ["changelog", "Rating Changelog"], ["hof", "Hall of Fame"]]
+              {(lgComp === LG_ALL_PLAYERS ? [["players", "Players"], ["managers", "Managers"], ["changelog", "Rating Changelog"], ["hof", "Hall of Fame"]]
                 : lgIsDir(lgComp) ? []
                 : lgIntlComp ? [["seasons", "Seasons"], ["winners", "Winners"]]
                 : [["teams", "Teams"], ["players", "Players"], ["seasons", "Seasons"],
@@ -11054,6 +11089,107 @@ export default function App() {
             {/* ── EVERY RATING CHANGE EVER FILED ──────────────────────────────────────────
                 One box per batch — a competition adjusted a set of players at one moment — in the
                 same shape the Seasons list uses, newest first, opening onto its own table. */}
+            {lgSubEff === "managers" && (() => {
+              const q = pFold(mgrSearch);
+              const filtered = managerIndex.filter(m => {
+                if (mgrStyleF !== "ALL" && m.style !== mgrStyleF) return false;
+                if (mgrSeatF === "NT" && (m.club || !m.nat)) return false;
+                if (mgrSeatF === "CLUB" && (m.nat || !m.club)) return false;
+                if (q && !pFold(m.name).includes(q)) return false;
+                return true;
+              });
+              filtered.sort((a, b) => {
+                const sv = (x) => mgrSort.k === "name" ? fullDisplayName(x.name) : (x.ovr || 0);
+                const va = sv(a), vb = sv(b);
+                const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+                if (c) return mgrSort.asc ? c : -c;
+                return (b.ovr || 0) - (a.ovr || 0);
+              });
+              const rated = managerIndex.filter(m => m.ovr != null);
+              const avg = rated.length ? rated.reduce((a, m) => a + m.ovr, 0) / rated.length : 0;
+              const S = lgSortFlip(setMgrSort);
+              const A = (k) => mgrSort.k === k ? (mgrSort.asc ? " \u25B4" : " \u25BE") : "";
+              const on = (k) => mgrSort.k === k ? { color: "var(--chrome-brand)" } : null;
+              const thStyle = thCellSticky, tdStyle = tdCell;
+              // A seat: the crest and the side, then the four calls he makes there. Both seats are
+              // drawn the same way so a man holding one reads as a man missing the other.
+              const seat = (t) => t ? (
+                <span className="cell-link" onClick={(e) => { e.stopPropagation(); openTeam(t); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: "pointer" }}>
+                    <TeamCrest team={t} size={15} />
+                    <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</span>
+                  </span>)
+                : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"\u2013"}</span>;
+              return (<>
+              <div style={{ ...panelHead, margin: 0, padding: `0 20px 0 ${20 - PANEL_HEAD_INSET}px`, height: ROSTER_HEAD_H, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                <PanelTitle>All Managers</PanelTitle>
+                <div style={{ display: "flex", alignItems: "center", gap: 22, flexShrink: 0 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Managers</div>
+                    <div style={{ fontSize: 12, color: "var(--ui-text)", ...mono }}>{managerIndex.length}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 2 }}>Avg Mgmt</div>
+                    <div><OvrBadge v={avg} /></div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 14px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
+                <input value={mgrSearch} onChange={e => setMgrSearch(e.target.value)} placeholder="&#128269; Search"
+                  style={{ ...addBtn, flex: 1, background: "transparent", color: mgrSearch ? "var(--chrome-brand)" : "var(--chrome-muted)", cursor: "text" }} />
+                <FilterSelect label="Playstyle" value={mgrStyleF} onChange={setMgrStyleF}
+                  groups={[[null, [["ALL", "All Playstyles"]]],
+                           ["Playstyle", Object.keys(STYLE_LBL).map(k => [k, STYLE_LBL[k]])]]} />
+                <FilterSelect label="Seat" width={160} value={mgrSeatF} onChange={setMgrSeatF}
+                  groups={[[null, [["", "All Managers"], ["NT", "NT Only"], ["CLUB", "Club Only"]]]]} />
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <colgroup>
+                    {/* The four the players table also has are its widths exactly, and Playstyle
+                        takes the 149px RTG and POS occupy there, so switching tabs moves nothing
+                        left of Nationality. Club and National Team then split what is left; giving
+                        Nationality its 26% too would leave 15% a side and ellipsis every club. */}
+                    <col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: "34%" }} /><col style={{ width: 75 }} /><col style={{ width: 149 }} /><col style={{ width: "16%" }} /><col style={{ width: "20%" }} /><col style={{ width: "20%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>#</th>
+                      <th style={thStyle} />
+                      <th onClick={() => S("name")} style={{ ...thStyle, cursor: "pointer", ...on("name") }}>Manager{A("name")}</th>
+                      <th onClick={() => S("ovr")} style={{ ...thStyle, textAlign: "center", cursor: "pointer", ...on("ovr") }}>OVR{A("ovr")}</th>
+                      <th style={{ ...thStyle, paddingLeft: 8 }}>Playstyle</th>
+                      <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
+                      <th style={{ ...thStyle, paddingLeft: 8 }}>Club</th>
+                      <th style={{ ...thStyle, paddingLeft: 8 }}>National Team</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, fontSize: 10, color: "var(--chrome-muted-66)", textAlign: "center" }}>No managers found.</td></tr>}
+                    {filtered.map((m, i) => { const natT = m.natCode ? natTeamByCode.get(m.natCode) : null;
+                      return (
+                      <tr key={m.key} style={{ background: i % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                        <td style={{ ...tdStyle, color: "var(--chrome-muted)", fontSize: 10, whiteSpace: "nowrap", ...mono }}>{i + 1}</td>
+                        <td style={{ ...tdStyle, paddingRight: 0 }}><PlayerShot name={m.name} size={24} /></td>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(m.name, m.abbr)}</td>
+                        <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
+                          {m.ovr != null ? <span style={{ ...ovrBlock(m.ovr), ...mono }}>{showOvr(m.ovr)}</span>
+                                         : <span style={{ color: "var(--chrome-muted-66)", ...mono }}>{"\u2013"}</span>}</td>
+                        <td style={{ ...tdStyle, paddingLeft: 8, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: STYLE_CLR[m.style] }}>{STYLE_LBL[m.style]}</td>
+                        <td className={natT ? "cell-link" : undefined} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}
+                          style={{ ...tdStyle, paddingLeft: 8, color: "var(--chrome-muted)", fontSize: 10, cursor: natT ? "pointer" : "default" }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                            {natT ? <TeamCrest team={natT} size={15} /> : <span style={{ width: 15, flexShrink: 0 }} />}
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{natT?.name || "\u2014"}</span>
+                          </span></td>
+                        <td style={{ ...tdStyle, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)" }}>{seat(m.club)}</td>
+                        <td style={{ ...tdStyle, paddingLeft: 8, fontSize: 10, color: "var(--chrome-muted)" }}>{seat(m.nat)}</td>
+                      </tr>); })}
+                  </tbody>
+                </table>
+              </div>
+              </>);
+            })()}
             {lgSubEff === "changelog" && (() => {
               const log = pstats?.changelog || [];
               const batches = [];
@@ -11542,7 +11678,9 @@ export default function App() {
             </>)}
             {regPhase === "crest" && (
               <div key={regKey} className="reg-veil" style={{ position: "absolute", inset: 0, zIndex: 5, background: "var(--chrome-panel)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div className="reg-crest"><LeagueCrest league={lgComp} size={120} /></div>
+                <div className="reg-crest">{lgIsDir(lgComp)
+                  ? <span style={{ fontSize: 96, lineHeight: 1.15, display: "block" }}>{LG_DIR_ICON[lgComp]}</span>
+                  : <LeagueCrest league={lgComp} size={120} />}</div>
               </div>)}
             </div>
             </>)}

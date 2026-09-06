@@ -62,7 +62,9 @@ for (const code of CODES) {
   const nm = (sq) => sq.map(p => p.name).sort().join("|"), ovr = (sq) => sq.reduce((a, p) => a + Number(p.ovr || 0), 0);
   if (nm(refit) !== nm(base.squad) || Math.abs(ovr(refit) - ovr(base.squad)) > 1e-9) throw new Error(`${code}: S0 refit moved the squad`);
   const t0 = Date.now();
-  let cells = STYLES13.flatMap(s => FORMS.map(f => ({ style: s, formation: f, k: 0, n: 0, pts: 0, w: 0, d: 0, gf: 0, ga: 0 })));
+  // NT_FORMS=current searches the styles alone, at the side's own formation.
+  const forms = process.env.NT_FORMS === "current" ? [base.formation] : FORMS;
+  let cells = STYLES13.flatMap(s => forms.map(f => ({ style: s, formation: f, k: 0, n: 0, pts: 0, w: 0, d: 0, gf: 0, ga: 0 })));
   const cur = cells.find(c => c.style === base.style && c.formation === base.formation);
   if (!cur) throw new Error(`${code}: current tactic ${base.style}/${base.formation} is not on the grid`);
   log(`${code} (${base.name}): ${base.style}/${base.formation} now; ${cells.length} cells on ${W} workers`);
