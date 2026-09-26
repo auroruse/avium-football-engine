@@ -588,10 +588,10 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
 //     reads the game with. In the abstract sim both were multipliers on effectiveness -- form was
 //     two per cent, well under the noise floor, and urgency only ever moved a tactic label. Here
 //     they move where the team stands and what it looks for, which is what they always meant.
-//   HOME ADVANTAGE is territory, handled by ME_HOME_ADV in meInit. The abstract sim's `hE *= 1.03`
-//     and the rating bump that first replaced it both said a crowd makes the players better, which
-//     it does not; it pushes one side up the pitch and pins the other back. Passed through as
-//     st.homeAdv and applied to the instructions, not to anybody's numbers.
+//   HOME ADVANTAGE is ME_HOME_ADV: the host plays with its tail up, and the referee's marginal
+//     calls lean its way. The abstract sim's `hE *= 1.03` and the rating bump that followed it both
+//     said a crowd makes the players better, which it does not. Passed through as st.homeAdv and
+//     applied to the instructions and the whistle, never to anybody's numbers.
 export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm,
                             awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad,
                             matchUrg, teamForm, injuriesOn) {

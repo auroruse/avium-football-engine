@@ -2790,8 +2790,8 @@ export const NO_INSTRUCTIONS = { passingDir:0, chanceCreation:0, pressingLOE:0, 
 // accuracy and it had nowhere near enough leverage: blocked over 80 fixtures a style, exactly one
 // style of fourteen moved in the predicted direction above two standard errors, one moved against
 // it, and Balanced did not sink at all. Rating is the channel this engine actually turns into
-// goals, it is already measured at 0.077 goals a point, and meInit already applies a rating nudge
-// for home advantage, so it is the same code path.
+// goals, it is already measured at 0.077 goals a point, and meInit spends fit and the style price
+// the same way, so it is one code path.
 export const ME_AXIS_MAX = { defLine: 2, pressingLOE: 2, passingDir: 2, width: 2, tempo: 2,
   approachPlay: 1, chanceCreation: 1, creativity: 1, dribbling: 1, possLost: 1, possWon: 1,
   tackling: 1, timeWasting: 2, gkDist: 1, dlBehavior: 2 };
@@ -3037,32 +3037,32 @@ export const ME_CHASE_W = {
 // opposite directions cancels. A visitor made cautious instead was worth +0.113, and both together
 // +0.075, which is worse than either alone; all three sit inside their own error.
 //
-// What is left is what measured: the host plays with its tail up, quicker and shooting earlier, and
-// a rating nudge to carry the magnitude the instructions cannot. Calibrated on the shipped path,
-// 320 blocked fixtures a row, goal difference against the same fixture at a neutral venue:
-//   behaviour alone      +0.125 (se 0.13)   45.0/20.9/34.1
-//   behaviour + 2 ovr    +0.219 (se 0.12)   42.5/23.8/33.8
-//   behaviour + 3 ovr    +0.359 (se 0.13)   48.1/19.1/32.8    shipped
-//   behaviour + 4 ovr    +0.553 (se 0.13)   50.0/23.1/26.9
-//   behaviour + 6 ovr    +0.666 (se 0.12)   51.6/24.1/24.4
-// Against a real-football +0.35 and a 45/25/30 home record.
+// What is left is the host playing with its tail up, quicker and shooting earlier, and the referee.
+// The rating nudge that used to sit beside the tilt said a crowd makes every man on the pitch
+// better. It had also drifted: its three points were calibrated at +0.36 goals and, measured again
+// on 26 September 2026, came to +0.62 a match, nearly twice real football, because the rating
+// channel grew under it (the style-fit rework spends fit as rating too). It is gone.
 //
-// Measure this on the SHIPPED path or not at all. A first calibration bumped the ratings on the
-// squad before the match was built, which fed computeRoleFit as well, so the crowd was also making
-// the squad better suited to its own system and un-damping its instructions. That read +0.328 for a
-// nudge genuinely worth +0.219. The bump belongs after fit is computed, which is where it now is.
+// THE REFEREE. The marginal call goes the host's way: the visitor's challenges are whistled and
+// booked a little more readily and the host's a little less (`ref`, a fraction each way, on the foul
+// roll and the discretionary cards in match.ts); a denied goalscoring chance is the law and is left
+// alone. Measured with test/homeadv.mjs, every ordered NL1 pair once a cycle, 1,520 matches an arm,
+// host goal difference, team strength cancelling across the two orders:
+//   neutral venue          -0.023 (se 0.050)   37.0/25.5/37.5   the harness itself is fair
+//   tilt alone             +0.113 (se 0.052)   40.8/24.1/35.1
+//   tilt + ref 0.30        +0.163 (se 0.051)   fouls 7.1/11.9 a side, yellows 1.0/2.4
+//   tilt + ref 0.60        +0.215 (se 0.050)   fouls 4.2/14.3, yellows 0.6/3.3
+//   tilt + 3 ovr (old)     +0.621 (se 0.051)   49.3/24.1/26.6
+// The referee buys about 0.017 goals per 0.1 of lean, and the foul count goes lopsided long before
+// it buys much: +0.18 needed a visitor committing twice the fouls and three times the cards. 0.15 is
+// where it still looks like refereeing, a quarter more fouls and half again the cards against the
+// host, for about +0.14 overall. A deliberate nerf, chosen over matching real football. Confirmed
+// on its own run of 1,520: +0.145 (se 0.052), 39.7/25.4/34.9, fouls 8.3/10.7, yellows 1.3/2.0.
 //
-// It also prices what this replaced: the old adapter's flat 2 points with no behaviour at all sat
-// between the rows above at roughly +0.15 goals, under half of real football's home advantage. The
-// brute carry was not only blunt, it was badly calibrated, and nobody had ever checked.
-//
-// k scales the whole thing, shape and rating together, so it is one dial. k=1 is real football.
-// Not modelled, deliberately: the referee. Marginal fouls and cards do go the home side's way in
-// real football, and it is probably the largest single cause, but a thumb on the whistle is its own
-// mechanic and this is not the place for it.
+// k scales the whole thing, tilt and referee together, so it is one dial.
 export const ME_HOME_ADV = {
   k: 1,
-  ovr: 3,
+  ref: 0.15,
   host:  { chanceCreation: 0.50, tempo: 0.50, passingDir: 0.40 },
   guest: {},
 };

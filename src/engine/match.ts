@@ -51,10 +51,9 @@ export function meInit(s, slotsFor, rng) {
   // costs at the door (ME_STYLE_PRICE): three properties of this match, all spent as effective
   // rating on everyone who plays -- bench included, since a substitute has been at the same
   // training ground. A side with no instructions pays the full drill floor and nothing else.
-  // Applied BEFORE the home-advantage nudge below so the two simply add, and before _att is ever
-  // read, since meAttrs memoises off ovr the first time anybody asks.
-  // THE RATING THE CLUB LISTS, kept before anything bends it. meInit adds the drill penalty below
-  // and the home-advantage nudge after it, both properties of THIS MATCH -- so a side carrying no
+  // Applied before _att is ever read, since meAttrs memoises off ovr the first time anybody asks.
+  // THE RATING THE CLUB LISTS, kept before anything bends it. meInit adds the drill penalty below,
+  // a property of THIS MATCH -- so a side carrying no
   // instructions showed every player about ten points under the number on his own page, and the
   // squad average with him. Taken for EVERY side before the loop that applies the penalty, because
   // that loop returns early when a side has none to apply, and a fully committed side needs its
@@ -85,11 +84,7 @@ export function meInit(s, slotsFor, rng) {
     };
     tilt(host, ME_HOME_ADV.host);
     tilt(meOther(host), ME_HOME_ADV.guest);
-    // Bench included: a substitute is playing in front of the same crowd as the man he replaced.
-    // _att is memoised off ovr the first time anybody reads it, so it has to be dropped with it.
-    if (ME_HOME_ADV.ovr) for (const p of [...(s.players[host] || []), ...(s.bench?.[host] || [])]) {
-      p.ovr = (p.ovr ?? 70) + ME_HOME_ADV.ovr * k; p._att = null;
-    }
+    // Nobody's rating moves. The rest of the advantage is the referee, at the foul roll.
   }
   // Zero-mean, triangular, and drawn only here: it perturbs where a man STANDS, never how he plays.
   const jit = (a) => rng ? (rng.u() + rng.u() - 1) * a : 0;
@@ -1098,7 +1093,7 @@ const roleClamp01 = (x) => Math.max(0, Math.min(1, x));
 export function meRoles(s, side) {
   const ps = s.players[side] || [];
   const live = ps.filter(q => q && !q.off);
-  // ON THE LISTED RATING. p.ovr carries the drill and home-advantage nudges and moves during the
+  // ON THE LISTED RATING. p.ovr carries the drill nudge and moves during the
   // match; ovr0 is the sheet. Keying roles off p.ovr made the hub depend on WHEN meRoles last ran
   // -- a midfielder a fraction under the floor at the last substitution was a fraction over it at
   // full time, and the side finished with nobody named. The sheet does not move.
@@ -2870,7 +2865,14 @@ export function meTick(s, rng, out) {
     // match against a real 0.28.
     const dGoal0 = meGoalX(side);
     const inArea0 = Math.abs(p.x - dGoal0) < CFG.gkBoxR && Math.abs(p.y - ME_HALF_W) < CFG.boxHalfW;
+    // THE REFEREE AT A GROUND THAT IS NOT NEUTRAL. The marginal call goes the host's way: the
+    // visitor's challenges are whistled and booked a little more readily, the host's a little less.
+    // It rides on the foul and on the discretionary cards only; a denied goalscoring chance is the
+    // law and is left alone below.
+    const host = s.homeAdv === "home" || s.homeAdv === "away" ? s.homeAdv : null;
+    const lean = host ? Math.max(-1, ME_HOME_ADV.ref * ME_HOME_ADV.k * (meOther(side) === host ? -1 : 1)) : 0;
     const rate = CFG.foulBase * (1 + closeV * CFG.foulPace)
+               * (1 + lean)
                * (1 - qa2.tackle / 99 * CFG.foulSkill)
                * (1 + (dSt.tackling || 0) * CFG.foulAggr)
                * (inArea0 ? CFG.foulBoxScale : 1)
@@ -2907,9 +2909,9 @@ export function meTick(s, rng, out) {
       }
       // STOPPING A PROMISING ATTACK is its own caution in the laws, and was not modelled at all:
       // a cynical trip on a man breaking away scored exactly as a trip in midfield does.
-      else if (meDanger(side, p.x, p.y) > CFG.spaDanger && rng.u() < CFG.cardSpa) card = "yellow";
-      else if (rng.u() < CFG.cardStraightRed * sev) card = "red";
-      else if (rng.u() < CFG.cardYellow * (0.4 + sev)) card = "yellow";
+      else if (meDanger(side, p.x, p.y) > CFG.spaDanger && rng.u() < CFG.cardSpa * (1 + lean)) card = "yellow";
+      else if (rng.u() < CFG.cardStraightRed * sev * (1 + lean)) card = "red";
+      else if (rng.u() < CFG.cardYellow * (0.4 + sev) * (1 + lean)) card = "yellow";
       meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
       // Giving a penalty away is its own thing, separate from whatever card came with it, and the
       // man who drew it gets the credit for it.
