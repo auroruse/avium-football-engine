@@ -3724,12 +3724,21 @@ function MatchTimeline({ w, h, events, hT, aT, hc, ac, et, pens }) {
     return _tlCtx.measureText(txt).width;
   };
   const AX = Math.round(h / 2), LH = 16, LG = 2, NEAR = 6;   // axis, lane height, lane gap, clearance
-  const X0 = 112, XR = w - 24 - (pens.length ? 176 : 0), X1 = XR - 20;
-  const END = et ? 120 : 90;
-  // Added time goes into the tenth of a minute after the period's number, so 45+3 still lands before
-  // the 46th minute rather than on top of it.
-  const xOf = (min, add) => X0 + Math.min(END + 1.5, (min || 0) + (add ? Math.min(add, 9) / 10 : 0))
-                                 / (END + 2) * (X1 - X0);
+  const XR = w - 24 - (pens.length ? 176 : 0);
+  // HALF TIME IN THE MIDDLE OF THE PAGE, under the score. The axis is laid out from the centre
+  // outward, as wide as the narrower side allows, and each half has its own side whatever its
+  // length -- so extra time is squeezed into the right-hand half rather than pushing the break
+  // off the middle. The final whistle is the right-hand end.
+  const C = w / 2, HALF = Math.min(C - 112, XR - 20 - C), X0 = C - HALF, X1 = C + HALF;
+  const END = (et ? 120 : 90) + 1;
+  // Added time goes into the tenth of a minute after the period's number, so 60+3 still lands before
+  // the 61st minute; the first half's own added time stays on the first half's side of the break.
+  const xOf = (min, add) => {
+    min = min || 0;
+    if (min === 45 && add) return C - 2;
+    const t = Math.min(END - 0.1, min + (add ? Math.min(add, 9) / 10 : 0));
+    return t <= 45 ? X0 + t / 45 * (C - X0) : C + (t - 45) / (END - 45) * (X1 - C);
+  };
   // A side that runs out of room drops its assists and is laid out again: a 16-0 has more goals than
   // two lanes of full labels can hold, and the last of them were being pushed off the page.
   const place = (mine, lean) => {
@@ -3785,9 +3794,9 @@ function MatchTimeline({ w, h, events, hT, aT, hc, ac, et, pens }) {
       {team(aT, ac, "away")}
       <div style={{ position: "absolute", left: X0, width: X1 - X0, top: AX - 1, height: 2,
                     background: "var(--chrome-border)" }} />
-      {mark(xOf(45), "HT")}
-      {mark(xOf(90), et ? "90" : "FT")}
-      {et && mark(xOf(120), "AET")}
+      {mark(C, "HT")}
+      {et && mark(xOf(90), "90")}
+      {mark(X1, et ? "AET" : "FT")}
       {laid.map((e, i) => (
         <span key={"d" + i} style={{ position: "absolute", left: e.x - 4, top: AX - 4, width: 8, height: 8,
                                      borderRadius: 4, background: e.side === "home" ? hc : ac,
@@ -14185,7 +14194,15 @@ export default function App() {
                         </div>
                         <div style={{ flexShrink: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 24 }}>
                           <div>{statsWith(zBar)}</div>
-                          <div>{statsWithout(zBar)}</div>
+                          <div>
+                            {statsWithout(zBar)}
+                            {/* How many times the fixture was kicked off, on the page for good, in the
+                                slot under Reds that the shorter column leaves. It is what a screenshot of a
+                                result is for, so it never hides with the buttons. */}
+                            {m.tourn && (
+                              <div style={{ height: zBar.rowH, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>)}
+                          </div>
                         </div>
                         {topMan && topMan[0] && <div style={{ flexShrink: 0, ...panel }}>{topCard(TOP_FT)}</div>}
                       </div>
@@ -14238,7 +14255,6 @@ export default function App() {
                                         alignItems: "center", gap: 8, padding: 8, borderRadius: 10,
                                         background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)",
                                         boxShadow: "0 8px 28px rgba(0,0,0,.5)" }}>
-                      {m.tourn && <div style={{ padding: "0 6px" }}><RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>}
                       {m.tourn ? (<>
                         <button onClick={meImport} style={{ ...btn, border: "none", color: "var(--ui-on-accent)",
                                                            background: "var(--chrome-brand)" }}>Import</button>
