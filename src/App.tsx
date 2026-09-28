@@ -1508,6 +1508,26 @@ function buildKnockoutSeeded(teams, hasTP) {
   for (let i = 0; i < n2; i += 2) { const h = seeds[i] <= sorted.length ? sorted[seeds[i]-1] : null, a = seeds[i+1] <= sorted.length ? sorted[seeds[i+1]-1] : null; first.push({ home: h || a, away: h && a ? a : null, result: null, ...((!h || !a) ? {bye:true} : {}) }); }
   return buildKOShell(first, hasTP);
 }
+// The World Cup's own bracket: no seeding and no draw, the slots are fixed before a ball is kicked.
+// Groups pair off in order, A with B and C with D. Each winner plays the other group's runner-up,
+// and a pair's two ties go to opposite halves, so two sides from one group can only meet again in
+// the final. Eight groups give 1A-2B, 1C-2D, 1E-2F, 1G-2H over 1B-2A, 1D-2C, 1F-2E, 1H-2G, which is
+// the 1935 pick'em's bracket slot for slot. Null unless the field is exactly the top two of an even
+// number of groups filling the bracket, and the caller seeds instead.
+function buildKnockoutCrossover(teams, hasTP) {
+  const labels = [], at = new Map();
+  for (const t of teams) {
+    if (!labels.includes(t.groupLabel)) labels.push(t.groupLabel);
+    at.set(`${t.groupPos}|${t.groupLabel}`, t);
+  }
+  const n = labels.length * 2;
+  if (labels.length < 2 || labels.length % 2 || (n & (n - 1)) || teams.length !== n
+      || labels.some(l => l == null || !at.has(`1|${l}`) || !at.has(`2|${l}`))) return null;
+  const tie = (w, r) => ({ home: at.get(`1|${w}`), away: at.get(`2|${r}`), result: null });
+  const top = [], bottom = [];
+  for (let i = 0; i < labels.length; i += 2) { top.push(tie(labels[i], labels[i + 1])); bottom.push(tie(labels[i + 1], labels[i])); }
+  return buildKOShell([...top, ...bottom], hasTP);
+}
 function bracketSeeds(n) {
   let s = [1]; while (s.length < n) { const m = s.length * 2 + 1; const e = []; for (const v of s) { e.push(v); e.push(m - v); } s = e; } return s;
 }
@@ -4588,6 +4608,9 @@ const T_PRESETS = {
   _divider1: { label: "──────────", divider: true },
   oldUCL: { label: "Legacy UCL", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 2, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: false, koLegs: 2, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
   oldWC: { label: "Legacy WC", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "seed", koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
+  // Legacy WC on the pick'em's fixed bracket. Rounds to Draw is cleared because it survives a format
+  // change, and one drawn quarter-final would break the bracket every entry was picked on.
+  wc1935: { label: "1935 World Cup", config: { mode: "double", singleType: "groups", numGroups: 8, matchFormat: "roundRobin", rrLegs: 1, allocMode: "draw", homeAdvGroup: "off", homeAdvKO: "off", thirdPlace: true, koLegs: 1, koAwayGoals: true, koFormat: "single", homeAdvTeams: [], advPerGroup: 2, numPots: 4, swissRounds: 5, koAllocMode: "crossover", koDrawRounds: [], koByeMode: "manual", injuries: true, tiebreakers: ['gd', 'gf', 'h2h', 'wins', 'manual'], qualZones: [{ anchor: "top", from: 1, to: 2, label: "Qualification", color: "#5e9c6b", type: "advance" }] } },
 };
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -8524,7 +8547,8 @@ export default function App() {
         setTGroups([]); setTKoDrawSetup({ teams: genTeams, hasTP, bracket: koSize, source: "cup" });
         setTPhase("ko_draw_setup"); setLoading(false); return;
       }
-      if (km === "seed") { const ko=buildKnockoutSeeded(genTeams, hasTP); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
+      // Crossover needs groups to cross, and a straight knockout has none, so it seeds.
+      if (km === "seed" || km === "crossover") { const ko=buildKnockoutSeeded(genTeams, hasTP); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "random") { const ko=buildKnockoutRandom(genTeams, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
       else if (km === "manual") { let n2=1; while(n2<genTeams.length)n2*=2; setTKOManual({ pool: [...genTeams], matches: Array.from({ length: n2/2 }, () => ({ home: null, away: null })), numByes: n2-genTeams.length }); setTPhase("ko_manual"); }
       setTGroups([]); setLoading(false); return;
@@ -9176,8 +9200,8 @@ export default function App() {
       setTKoDrawSetup({ teams: qualified, hasTP, bracket: firstSize, source: "groups" });
       setTPhase("ko_draw_setup"); return;
     }
-    if (km === "seed") {
-      const ko = buildKnockoutSeeded(qualified, hasTP);
+    if (km === "seed" || km === "crossover") {
+      const ko = (km === "crossover" && buildKnockoutCrossover(qualified, hasTP)) || buildKnockoutSeeded(qualified, hasTP);
       applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout");
     } else {
       if (km === "random") { const ko=buildKnockoutRandom(qualified, hasTP, new RNG(Date.now())); applyDE(ko); propagateKO(ko); setTKO(ko); setTPhase("knockout"); }
@@ -11956,7 +11980,7 @@ export default function App() {
                     </div>}
                     <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginBottom: 6 }}>Allocation</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"]].map(([id, l]) => (
+                      {[["seed", "Seed"], ["random", "Random"], ["manual", "Manual"], ["draw", "Draw"], ...(tConfig.mode === "double" ? [["crossover", "Crossover"]] : [])].map(([id, l]) => (
                         <button key={id} onClick={() => setTConfig(c => ({ ...c, koAllocMode: id }))} className={tConfig.koAllocMode === id ? "gbtn" : ""} style={{ ...chip, background: tConfig.koAllocMode === id ? "var(--chrome-brand)" : "var(--chrome-panel)", color: tConfig.koAllocMode === id ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>
                       ))}
                     </div>
