@@ -3317,7 +3317,8 @@ const OvrBadge = ({ v, sm, xs, text, style }) => {
 // it is proof against the tampering that actually happens.
 // Colours come off the live stylesheet through the canvas itself, so it follows the theme like
 // every other element rather than carrying its own hardcoded pair.
-function RcBadge({ n, theme }) {
+// `k` is extra resolution for a badge drawn inside a scaled surface, which would otherwise blur.
+function RcBadge({ n, theme, k = 1 }) {
   const ref = useRef(null);
   useEffect(() => {
     const cv = ref.current; if (!cv) return;
@@ -3331,7 +3332,7 @@ function RcBadge({ n, theme }) {
     g.font = LBL; const wl = g.measureText(label).width + label.length * 1.6;
     g.font = VAL; const wv = g.measureText(val).width;
     const W = Math.ceil(wl + GAP + wv);
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = (window.devicePixelRatio || 1) * Math.max(1, k);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.width = W + "px"; cv.style.height = H + "px";
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -3347,7 +3348,7 @@ function RcBadge({ n, theme }) {
     try { g.letterSpacing = "0px"; } catch {}
     // A fixture played once is a fixture; played twice it is a result somebody went back for.
     g.font = VAL; g.fillStyle = n > 1 ? warn : muted; g.fillText(val, wl + GAP, H / 2 + 0.5);
-  }, [n, theme]);
+  }, [n, theme, k]);
   return <canvas ref={ref} aria-label={"Played live " + n + " times"}
                  style={{ display: "block", height: 15 }} />;
 }
@@ -3546,14 +3547,16 @@ function WorldToggle({ value, onChange, style, btnStyle }) {
 // Every clip is turned so the scoring side attacks RIGHT, whichever way they were really kicking:
 // a reel that swaps ends between goals is a reel nobody can read.
 // A CARD DOES NOT PLAY ITSELF. Four of these on screen all running at once is four things moving
-// and nothing to watch; each holds on the first frame of its move until it is asked.
+// and nothing to watch. At rest each is the finished move: the ball's whole path into the net and
+// the players where they stood when it went in. The pointer over it, or focus, plays it from the
+// start; leaving puts the still back.
 const CLIP_MS = 150;                           // per tape slice, so a move plays back at replay pace
 function GoalReplay({ clip, hc, ac }) {
   const F = clip.frames, last = F.length - 1;
-  const [pos, setPos] = useState(0);
+  const [pos, setPos] = useState(last);
   const [playing, setPlaying] = useState(false);
-  const posRef = useRef(0);
-  useEffect(() => { posRef.current = 0; setPos(0); setPlaying(false); }, [clip]);
+  const posRef = useRef(last);
+  useEffect(() => { posRef.current = last; setPos(last); setPlaying(false); }, [clip, last]);
   useEffect(() => {
     if (!playing || last < 1) return;
     let raf = 0, prev = 0;
@@ -3578,9 +3581,13 @@ function GoalReplay({ clip, hc, ac }) {
   const pt = (f) => `${X(f.bx).toFixed(1)},${Y(f.by).toFixed(1)}`;
   const seen = F.slice(0, i + 1);
   const sw = 0.26;
-  const replay = () => { posRef.current = 0; setPos(0); setPlaying(true); };
+  const play = () => { posRef.current = 0; setPos(0); setPlaying(true); };
+  const rest = () => { setPlaying(false); posRef.current = last; setPos(last); };
   return (
-    <div style={{ position: "relative" }}>
+    <div className="goal-play" tabIndex={0} role="button" aria-label="Play the goal"
+         onMouseEnter={play} onMouseLeave={rest} onFocus={play} onBlur={rest} onClick={play}
+         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(); } }}
+         style={{ position: "relative", cursor: "pointer" }}>
       <svg viewBox="0 0 105 68" style={{ width: "100%", display: "block", background: "#142c1a" }}>
         {Array.from({ length: 6 }, (_, k) => (
           <rect key={"m" + k} x={k * 17.5} y={0} width={17.5} height={68} fill={k % 2 ? "#173119" : "#142c17"} />))}
@@ -3606,22 +3613,199 @@ function GoalReplay({ clip, hc, ac }) {
                          r={1.02} fill={sd ? ac : hc} stroke="rgba(0,0,0,.6)" strokeWidth={sw * 0.7} />;
         }))}
         <circle cx={X(L(A.bx, B.bx))} cy={Y(L(A.by, B.by))} r={0.78} fill="#fff" stroke="#000" strokeWidth={sw * 0.7} />
-        <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />
-        <rect x={0} y={67.2} width={105 * (last < 1 ? 1 : pos / last)} height={0.8} fill="#ffd166" />
+        {playing && <rect x={0} y={67.2} width={105} height={0.8} fill="rgba(255,255,255,.14)" />}
+        {playing && <rect x={0} y={67.2} width={105 * (last < 1 ? 1 : pos / last)} height={0.8} fill="#ffd166" />}
       </svg>
-      {/* ONE CONTROL, in the middle, and only while the clip is at rest. Before the first press it
-          says play and after the last frame it says play again, which is the same instruction; a
-          pause button on a four-second replay is furniture. */}
-      {!playing && (
-        <button onClick={replay} title={pos > 0 ? "Play again" : "Play"} aria-label="Play"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
-                   background: pos > 0 ? "rgba(0,0,0,.18)" : "rgba(0,0,0,.28)", cursor: "pointer",
-                   display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-          <span style={{ width: 44, height: 44, borderRadius: 22, background: "rgba(0,0,0,.5)",
-                         border: "1px solid rgba(255,255,255,.34)", color: "#fff", fontSize: 16,
-                         display: "flex", alignItems: "center", justifyContent: "center",
-                         paddingLeft: 3, boxSizing: "border-box" }}>&#9654;</span>
-        </button>)}
+      {/* A corner mark on the still, so it reads as something that plays rather than a diagram. */}
+      {!playing && <span aria-hidden="true" style={{ position: "absolute", right: 6, bottom: 4, fontSize: 9,
+                                                   lineHeight: 1, color: "rgba(255,255,255,.55)" }}>&#9654;</span>}
+    </div>);
+}
+// ONE SCALE, EVERY SHAPE. Scales a layout designed around a w x h page by as much as the window
+// can hold of that page, then hands the layout the window's own shape in those units -- w by h at
+// least, more along whichever side the window has spare -- so it fills the window edge to edge at
+// the type size a w:h window would get, and the layout decides what the spare room is for. Nothing
+// is letterboxed and nothing scrolls. The child is called with (scale, width, height).
+function FitCanvas({ w, h, children }) {
+  const ref = useRef(null);
+  const [box, setBox] = useState(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const fit = () => { const W = el.clientWidth, H = el.clientHeight;
+                        if (W && H) setBox({ k: Math.min(W / w, H / h), W, H }); };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [w, h]);
+  const dw = box ? box.W / box.k : w, dh = box ? box.H / box.k : h;
+  return (
+    <div ref={ref} style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      {box && (
+        <div style={{ position: "absolute", left: 0, top: 0, width: dw, height: dh,
+                      transform: `scale(${box.k})`, transformOrigin: "0 0" }}>
+          {children(box.k, dw, dh)}
+        </div>)}
+    </div>);
+}
+// CONTROLS THAT KEEP OUT OF THE PICTURE. A report gets screenshotted, so its buttons are not part of
+// it: they rise while the mouse is moving, stay while the pointer or focus is on them, and sink away
+// after a couple of seconds of stillness. Shown on arrival, so the way out is seen once.
+function HoverDock({ children, style }) {
+  const [on, setOn] = useState(true);
+  const hold = useRef(false);
+  useEffect(() => {
+    let t = 0;
+    const wake = () => { setOn(true); clearTimeout(t);
+                         t = setTimeout(() => { if (!hold.current) setOn(false); }, 2200); };
+    wake();
+    window.addEventListener("mousemove", wake);
+    window.addEventListener("keydown", wake);
+    return () => { clearTimeout(t); window.removeEventListener("mousemove", wake); window.removeEventListener("keydown", wake); };
+  }, []);
+  return (
+    <div onMouseEnter={() => { hold.current = true; setOn(true); }} onMouseLeave={() => { hold.current = false; }}
+         onFocus={() => { hold.current = true; setOn(true); }} onBlur={() => { hold.current = false; }}
+         style={{ ...style, opacity: on ? 1 : 0, transform: on ? "none" : "translateY(8px)",
+                  transition: "opacity .25s, transform .25s", pointerEvents: on ? "auto" : "none" }}>
+      {children}
+    </div>);
+}
+// THE MATCH ON ONE LINE. Kick-off to the whistle left to right, and every event that turned it
+// pinned at its minute: the home side's above the line and the away side's below, each label
+// opening on its own minute. Two lanes a side, so events close together stack instead of printing
+// over each other, and one that finds both lanes taken waits to the right of whatever is in its
+// way. Laid out in the report's fixed pixels, so every label is measured once and nothing reflows.
+let _tlCtx = null;
+const tlIcon = (k) => {
+  const S = { width: 12, height: 12, flexShrink: 0, display: "block" };
+  if (k === "yellow" || k === "red") return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <rect x={3} y={1.5} width={6.5} height={9} rx={1.2} fill={k === "red" ? "var(--ui-danger)" : "var(--ui-warn)"} /></svg>);
+  if (k === "red2") return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <rect x={1.5} y={1} width={6} height={8.5} rx={1.1} fill="var(--ui-warn)" />
+      <rect x={4.5} y={2.5} width={6} height={8.5} rx={1.1} fill="var(--ui-danger)" /></svg>);
+  if (k === "injury") return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <path d="M4.6 1.5h2.8v3.1h3.1v2.8H7.4v3.1H4.6V7.4H1.5V4.6h3.1z" fill="var(--ui-injury)" /></svg>);
+  // A PENALTY WEARS THE GOAL FRAME, the way the match feed's does, and the outcome is its colour:
+  // green in, red saved or missed. The shootout's kicks use the same one.
+  if (k === "pen" || k === "penmiss") {
+    const c = k === "pen" ? "var(--ui-ok)" : "var(--ui-danger)";
+    return (
+      <svg viewBox="0 0 12 12" style={S}>
+        <path d="M3.6 2.6v7.6M6 2.6v7.6M8.4 2.6v7.6M1.4 5.2h9.2M1.4 7.8h9.2" stroke={c} strokeWidth={0.55} strokeOpacity={0.6} />
+        <path d="M1.4 10.6V1.8h9.2v8.8" fill="none" stroke={c} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>);
+  }
+  // A ball for a goal from open play; an own goal's is ringed red.
+  return (
+    <svg viewBox="0 0 12 12" style={S}>
+      <circle cx={6} cy={6} r={4.6} fill="#fff" stroke={k === "og" ? "var(--ui-danger)" : "rgba(0,0,0,.55)"}
+              strokeWidth={k === "og" ? 1.3 : 0.8} />
+      <path d="M6 3.9l2 1.45-.76 2.35H4.76L4 5.35z" fill="#1c1c1c" />
+    </svg>);
+};
+function MatchTimeline({ w, h, events, hT, aT, hc, ac, et, pens }) {
+  const ref = useRef(null);
+  // The label font is the theme's, which only resolves inside the themed tree, so it is read off
+  // this element before the first paint and the labels are measured in it.
+  const [fam, setFam] = useState("");
+  useLayoutEffect(() => {
+    if (ref.current) setFam(getComputedStyle(ref.current).getPropertyValue("--chrome-font").trim());
+  }, []);
+  const MONO = "'JetBrains Mono','Fira Code',monospace", FAM = fam || "sans-serif";
+  const measure = (txt, font) => {
+    if (!txt) return 0;
+    if (!_tlCtx) _tlCtx = document.createElement("canvas").getContext("2d");
+    if (!_tlCtx) return txt.length * 7;
+    _tlCtx.font = font;
+    return _tlCtx.measureText(txt).width;
+  };
+  const AX = Math.round(h / 2), LH = 16, LG = 2, NEAR = 6;   // axis, lane height, lane gap, clearance
+  const X0 = 112, XR = w - 24 - (pens.length ? 176 : 0), X1 = XR - 20;
+  const END = et ? 120 : 90;
+  // Added time goes into the tenth of a minute after the period's number, so 45+3 still lands before
+  // the 46th minute rather than on top of it.
+  const xOf = (min, add) => X0 + Math.min(END + 1.5, (min || 0) + (add ? Math.min(add, 9) / 10 : 0))
+                                 / (END + 2) * (X1 - X0);
+  // A side that runs out of room drops its assists and is laid out again: a 16-0 has more goals than
+  // two lanes of full labels can hold, and the last of them were being pushed off the page.
+  const place = (mine, lean) => {
+    const lanes = [-Infinity, -Infinity], got = [];
+    let crowded = false;
+    for (const e0 of mine) {
+      const e = lean && e0.k === "goal" ? { ...e0, det: "" } : e0;
+      const x = xOf(e.min, e.add);
+      const wid = measure(fmtMin(e.min, e.add), `700 10px ${MONO}`) + 4 + 12 + 4
+                + measure(e.who, `700 11.5px ${FAM}`) + (e.det ? 5 + measure(e.det, `400 10px ${FAM}`) : 0);
+      let start = Math.max(8, Math.min(x - 3, XR - wid));
+      let lane = lanes.findIndex(r => r + 10 <= start);
+      if (lane < 0) {
+        lane = lanes[0] <= lanes[1] ? 0 : 1;
+        start = lanes[lane] + 10;
+        if (start + wid > XR) { crowded = true; start = XR - wid; }
+      }
+      lanes[lane] = start + wid;
+      got.push({ ...e, x, start, lane });
+    }
+    return { got, crowded };
+  };
+  const laid = [];
+  for (const side of ["home", "away"]) {
+    const mine = events.filter(e => e.side === side).sort((a, b) => a.min - b.min || (a.add || 0) - (b.add || 0));
+    const full = place(mine, false);
+    laid.push(...(full.crowded ? place(mine, true).got : full.got));
+  }
+  const top = (side, lane) => side === "home" ? AX - NEAR - LH - lane * (LH + LG) : AX + NEAR + lane * (LH + LG);
+  const mark = (x, txt) => (
+    <span key={txt} style={{ position: "absolute", left: x, top: AX, transform: "translate(-50%, -50%)",
+                             padding: "0 5px", background: "var(--chrome-bg)", fontSize: 8.5, fontWeight: 700,
+                             letterSpacing: ".14em", lineHeight: "12px", color: "var(--chrome-muted)" }}>{txt}</span>);
+  const team = (t, clr, side) => (
+    <div style={{ position: "absolute", left: 24, top: side === "home" ? 4 : AX + NEAR, height: AX - NEAR - 4,
+                  display: "flex", alignItems: "center", gap: 7 }}>
+      <TeamCrest team={t} size={16} />
+      <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: clr }}>
+        {t?.code || abbr(t?.name, t?.code)}</span>
+    </div>);
+  // THE SHOOTOUT, after the axis rather than on it: it has no minutes. A goal frame a kick in the
+  // order they were taken, green in and red out, the taker on hover.
+  const pH = pens.filter(p => p.side === "home"), pA = pens.filter(p => p.side === "away");
+  const PX = XR + 20, kickW = Math.min(15, (w - 24 - PX - 44) / Math.max(1, pH.length, pA.length));
+  const kick = (p, i, side) => (
+    <span key={side + i} title={`${p.full || p.name}, ${p.scored ? "scored" : "missed"}`}
+          style={{ position: "absolute", left: PX + 44 + i * kickW,
+                   top: side === "home" ? AX - NEAR - LH / 2 - 6 : AX + NEAR + LH / 2 - 6 }}>
+      {tlIcon(p.scored ? "pen" : "penmiss")}</span>);
+  return (
+    <div ref={ref} style={{ position: "relative", width: w, height: h }}>
+      {team(hT, hc, "home")}
+      {team(aT, ac, "away")}
+      <div style={{ position: "absolute", left: X0, width: X1 - X0, top: AX - 1, height: 2,
+                    background: "var(--chrome-border)" }} />
+      {mark(xOf(45), "HT")}
+      {mark(xOf(90), et ? "90" : "FT")}
+      {et && mark(xOf(120), "AET")}
+      {laid.map((e, i) => (
+        <span key={"d" + i} style={{ position: "absolute", left: e.x - 4, top: AX - 4, width: 8, height: 8,
+                                     borderRadius: 4, background: e.side === "home" ? hc : ac,
+                                     boxShadow: "0 0 0 2px var(--chrome-bg)" }} />))}
+      {laid.map((e, i) => (
+        <div key={"l" + i} style={{ position: "absolute", left: e.start, top: top(e.side, e.lane), height: LH,
+                                    display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+          <span style={{ ...mono, fontSize: 10, fontWeight: 700, color: e.side === "home" ? hc : ac }}>
+            {fmtMin(e.min, e.add)}</span>
+          {tlIcon(e.k)}
+          <span style={{ fontSize: 11.5, fontWeight: 700 }}>{e.who}</span>
+          {e.det && <span style={{ fontSize: 10, color: "var(--chrome-muted)", marginLeft: 1 }}>{e.det}</span>}
+        </div>))}
+      {pens.length > 0 && <>
+        {mark(PX + 18, "PENS")}
+        {pH.map((p, i) => kick(p, i, "home"))}
+        {pA.map((p, i) => kick(p, i, "away"))}
+      </>}
     </div>);
 }
 // One labelled figure. Used in a row so a tournament's properties read as a stat block.
@@ -4474,6 +4658,7 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
 .lg-card{transition:border-color 0.12s,background 0.12s;}
 .lg-card:hover:not(.on){border-color:var(--chrome-muted-66) !important;background:var(--chrome-muted-22) !important;}
 .lg-card:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
+.goal-play:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:-2px;}
 /* The fixture hero on the match setup screen. A pick slides its card in from its own end and
    pulses a halo behind the crest; a hover preview only fades; tiles stagger in when the league
    changes. Fill-mode is backwards, not both, on everything that is hovered afterwards: a finished
@@ -5803,7 +5988,7 @@ export default function App() {
     const last = frames[frames.length - 1];
     // "pen" as well as "goal": a penalty IS a goal and the engine tags it separately, so every
     // penalty in the game reached the highlights with a blank caption.
-    const clip = { min: m.out.min, side, frames, txt: ev && (ev.k === "goal" || ev.k === "pen") ? ev.txt : null,
+    const clip = { min: m.out.min, add: m.out.add || 0, side, frames, txt: ev && (ev.k === "goal" || ev.k === "pen") ? ev.txt : null,
                    score: `${m.out.goals.home}-${m.out.goals.away}`,
                    // resolved now, while the names still line up with the indices -- see meChain
                    chain: meChain(m.s, frames), end: { x: last.bx, y: last.by } };
@@ -13517,7 +13702,10 @@ export default function App() {
             // 66 in a 72px strip, with the inset cancelled, so the crest fills the bar's height
             // instead of sitting in it. row-reverse mirrors the away side without a second copy of
             // the markup: the badge stays outboard and the name reads in toward the score on both.
-            const SB_CREST = 66, SB_CREST_PAD = Math.round(SB_CREST * CREST_PAD_RATIO);
+            // Two sizes of the same board: the live strip, and the full-time report's, which has the
+            // band to itself.
+            const SB_LIVE = { name: 14, sub: 10, crest: 66, gap: 13, score: 30, clock: 13, small: 11, tag: 9, minW: 150 };
+            const SB_FT = { name: 19, sub: 11.5, crest: 76, gap: 16, score: 46, clock: 12, small: 12, tag: 10, minW: 190 };
             // THE ELEVEN ON THE PITCH, not the squad. Read off st.players, so it moves when a
             // substitute comes on and when a man is sent off -- which is the only reason to put it on
             // a live scoreboard rather than showing the team's static rating. One decimal, because
@@ -13531,23 +13719,25 @@ export default function App() {
               const ps = st?.players?.[side] || [];
               return ps.length ? ps.reduce((a, p) => a + (p.ovr0 ?? p.ovr ?? 0), 0) / ps.length : 0;
             };
-            const sbSide = (t, side) => (
-              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13,
+            const sbSide = (t, side, z = SB_LIVE) => {
+              const pad = Math.round(z.crest * CREST_PAD_RATIO);
+              return (
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: z.gap,
                             flexDirection: side === "home" ? "row" : "row-reverse",
                             justifyContent: "flex-end" }}>
                 <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1,
                               alignItems: side === "home" ? "flex-end" : "flex-start" }}>
-                  <span style={teamName}>{t?.name}</span>
-                  <div style={{ ...mono, fontSize: 10, fontWeight: 700, display: "flex",
+                  <span style={{ ...teamName, fontSize: z.name }}>{t?.name}</span>
+                  <div style={{ ...mono, fontSize: z.sub, fontWeight: 700, display: "flex",
                                 alignItems: "baseline", gap: 9 }}>
                     <span style={{ letterSpacing: ".16em", opacity: 0.72 }}>{t?.code || abbr(t?.name, t?.code)}</span>
                     <span style={{ opacity: 0.95 }}>{xiOvr(side).toFixed(1)}</span>
                   </div>
                 </div>
-                <TeamCrest team={t} size={SB_CREST} style={{ flexShrink: 0,
-                           marginTop: -SB_CREST_PAD, marginBottom: -SB_CREST_PAD }} />
-              </div>
-            );
+                <TeamCrest team={t} size={z.crest} style={{ flexShrink: 0,
+                           marginTop: -pad, marginBottom: -pad }} />
+              </div>);
+            };
             // MINUTES AND SECONDS. meMinute floors to the minute and clamps at 90, which is right for
             // a timestamp on an event but reads as a stopped clock on a scoreboard. This one is not
             // clamped, so added time runs on past 90:00 the way a real one does.
@@ -13620,6 +13810,455 @@ export default function App() {
             // been kicked. A shared best is not a best.
             const topMan = meBest && meRated.filter(x => (x[0]?.rating ?? 0) === (meBest[0]?.rating ?? 0)).length === 1
               ? meBest : null;
+            const sbScore = (z = SB_LIVE) => (
+                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: z.minW }}>
+                    <div style={{ fontSize: z.score, fontWeight: 800, letterSpacing: ".06em", lineHeight: 1.05, ...mono }}>
+                      {out.goals.home}&ndash;{out.goals.away}</div>
+                    <div style={{ fontSize: z.clock, fontWeight: 700, letterSpacing: ".12em", ...mono,
+                                  color: "var(--ui-on-pitch)", opacity: brk ? 1 : 0.85 }}>
+                      {brk || clock}
+                      {/* Added time alongside, not folded into the clock: the number the period
+                          is played to stays legible and what is being played beyond it reads as
+                          the separate thing it is. */}
+                      {!brk && added && <span style={{ marginLeft: 6, color: "var(--ui-warn)",
+                        fontSize: z.small, letterSpacing: ".08em" }}>{added}</span>}</div>
+                    {/* A shootout is not part of the scoreline -- the goals are put back -- so the
+                        kicks are reported beside it rather than added to it. One line for both
+                        states: it counts up live off the shootout's own tally and then stands as
+                        the result, so it never changes shape or place on the board. Amber is the
+                        same white as the score: the shootout is part of the result, not a footnote
+                        beside it. */}
+                    {(m.pk || m.pens) && (() => {
+                      const sc = m.pk ? m.pk.st.sc : m.pens;
+                      return <div style={{ ...mono, fontSize: z.small, fontWeight: 800, letterSpacing: ".14em",
+                                           color: "var(--ui-on-pitch)" }}>
+                        {sc.home}&ndash;{sc.away} PENS</div>;
+                    })()}
+                    {!m.pk && !m.pens && m.et && <div style={{ ...mono, fontSize: z.tag, fontWeight: 700,
+                                                      letterSpacing: ".16em", opacity: 0.75 }}>
+                      {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
+                    {/* A second leg is not played against the scoreline in front of you. */}
+                    {m.tourn?.agg && <div style={{ ...mono, fontSize: z.tag, fontWeight: 700,
+                                                   letterSpacing: ".14em", opacity: 0.75 }}>
+                      AGG {out.goals.home + m.tourn.agg[0]}&ndash;{out.goals.away + m.tourn.agg[1]}</div>}
+                  </div>);
+            // ── THE REPORT'S PARTS ────────────────────────────────────────────────────────────────
+            // Shared by the Stats tab while a match runs and by the full-time report after it: the
+            // same bars, team sheets and markers at two sizes, so the two can never disagree about a row.
+            const HC = hPitchClr, AC = aPitchClr;
+            const pcH = Math.round(100 * out.poss.home / pt), pcA = 100 - pcH;
+            const num = (v) => (v == null ? 0 : v);
+            // A rate, not a count: 0 attempts reads as 0 rather than as NaN%.
+            const pctOf = (ok, tries) => tries ? Math.round(100 * (ok || 0) / tries) : 0;
+            // value | bar | LABEL | bar | value, the two bars growing away from the
+            // middle so the comparison is the shape rather than the arithmetic.
+            const Z_BAR = { valW: 46, valFs: 12, labW: 104, labFs: 9.5, barH: 5, pad: "3px 0", gap: 9 };
+            const repBar = (z, label, h, a, dp) => {
+              h = num(h); a = num(a);
+              const pc = /%$/.test(label);
+              const mx = pc ? 100 : Math.max(h, a, 1);
+              const f = (v) => (dp ? v.toFixed(dp) : v) + (pc ? "%" : "");
+              const hi = h > a, ai = a > h;
+              const seg = (v, lead, clr, right) => (
+                <div style={{ flex: 1, display: "flex", justifyContent: right ? "flex-start" : "flex-end" }}>
+                  <div style={{ width: `${100 * v / mx}%`, minWidth: v ? 2 : 0, height: z.barH,
+                                borderRadius: 2, background: lead ? clr : "var(--chrome-muted-33)",
+                                transition: "width .3s" }} />
+                </div>);
+              return (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: z.gap, padding: z.pad,
+                                          ...(z.rowH ? { height: z.rowH } : {}) }}>
+                  <span style={{ width: z.valW, textAlign: "right", ...mono, fontSize: z.valFs,
+                                 fontWeight: hi ? 700 : 400, color: hi ? HC : "var(--chrome-muted)" }}>{f(h)}</span>
+                  {seg(h, hi, HC, false)}
+                  <span style={{ width: z.labW, textAlign: "center", fontSize: z.labFs, letterSpacing: ".07em",
+                                 textTransform: "uppercase", color: "var(--chrome-muted)" }}>{label}</span>
+                  {seg(a, ai, AC, true)}
+                  <span style={{ width: z.valW, ...mono, fontSize: z.valFs,
+                                 fontWeight: ai ? 700 : 400, color: ai ? AC : "var(--chrome-muted)" }}>{f(a)}</span>
+                </div>);
+            };
+            // Two groups: what each side did with the ball, and what it did without it.
+            const statsWith = (z) => (<>
+              {repBar(z, "xG", out.xgS?.home, out.xgS?.away, 2)}
+              {repBar(z, "Shots", out.shots.home, out.shots.away)}
+              {repBar(z, "On target", out.onTarget.home, out.onTarget.away)}
+              {repBar(z, "Woodwork", out.woodworkSide?.home, out.woodworkSide?.away)}
+              {repBar(z, "Corners", out.corners.home, out.corners.away)}
+              {repBar(z, "Passes", out.passSide?.home, out.passSide?.away)}
+              {repBar(z, "Pass %", pctOf(out.passOkSide?.home, out.passSide?.home),
+                                   pctOf(out.passOkSide?.away, out.passSide?.away))}
+              {repBar(z, "Carries", out.carriesSide?.home, out.carriesSide?.away)}
+              {repBar(z, "Offsides", out.offside?.home, out.offside?.away)}
+            </>);
+            const statsWithout = (z) => (<>
+              {repBar(z, "Saves", out.saves.home, out.saves.away)}
+              {repBar(z, "Blocks", out.blockedSide?.home, out.blockedSide?.away)}
+              {repBar(z, "Clearances", out.clearsSide?.home, out.clearsSide?.away)}
+              {repBar(z, "Tackles won", out.tackleWonSide?.home, out.tackleWonSide?.away)}
+              {repBar(z, "Tackle %", pctOf(out.tackleWonSide?.home, out.tackleTrySide?.home),
+                                     pctOf(out.tackleWonSide?.away, out.tackleTrySide?.away))}
+              {repBar(z, "Fouls", out.fouls.home, out.fouls.away)}
+              {repBar(z, "Yellows", out.yellows?.home, out.yellows?.away)}
+              {repBar(z, "Reds", out.reds?.home, out.reds?.away)}
+            </>);
+            // ── THE PEOPLE ────────────────────────────────────────────────────────────────────────
+            // THE OLD PLAYER STATS PANEL, structurally. A ten-column grid rather than a
+            // table, full names with the surname bolded, POS and OVR ahead of the name,
+            // the chances/defensive/saves trio, rating last, and the starters ruled off
+            // from the bench. Grid over <table> for the same reason the original used
+            // one: the columns have to line up between the two sides of the panel, and
+            // fixed pixel tracks do that where auto-layout cannot.
+            // The middle two columns are what this engine can honestly count per man.
+            // The abstract screen had C (chances created) and D (defensive actions).
+            // Chances needed a key-pass model, and every cut of it read badly -- keyed on
+            // the intended receiver it was nonsense, keyed on the passer it still put a
+            // quarter of all chances on centre-halves hitting a forward who did the rest
+            // himself. Dropped rather than shipped half-right. The slots hold the two
+            // things this engine already resolves exactly instead: CC is CHANCES
+            // CREATED -- passes that led to a shot, assists included, credited when the
+            // shot is struck -- and DC is defensive contributions, tackles won plus clearances. A block is
+            // neither of those, so it is not in there.
+            const Z_MEN = { cols: "20px 26px 1fr 15px 15px 26px 24px 18px 26px 11px", fs: 9.5, gap: 2, pad: "1.5px 0",
+                            posFs: 8, headFs: 7, badge: "xs", mark: [5, 7], tagFs: 7 };
+            const repMen = (z, side) => {
+              // WHO STARTED IS A FACT ABOUT THE TEAM SHEET, not about who happens to be on
+              // the pitch at the whistle. Splitting on the live array put a starter who
+              // was taken off down among the substitutes and left the man who replaced
+              // him up in the XI -- the two of them swapped sections. _onAt is only ever
+              // stamped on a man who came ON, so it answers the question directly for
+              // both arrays at once.
+              const all = [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])];
+              const bd = (q) => q._bd0 ?? q._bd ?? 0;
+              const start = all.filter(q => q._onAt === undefined).sort((u, v) => bd(u) - bd(v));
+              const came = all.filter(q => q._onAt !== undefined).sort((u, v) => bd(u) - bd(v));
+              // The bench that never got on. meSub nulls a used slot, so what is left in
+              // s.bench IS the unused bench -- greyed, with a dash where a rating would
+              // be, exactly as the old screen treated a man who never played.
+              const unused = (m.s.bench?.[side] || []).filter(Boolean);
+              const cellBase = { padding: z.pad, minWidth: 0, overflow: "hidden" };
+              const val = (v, bold) => (
+                <span style={{ ...cellBase, textAlign: "center", ...mono,
+                               fontWeight: v && bold ? 700 : 400,
+                               color: v ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{v || "-"}</span>);
+              const card = (clr) => (
+                <span style={{ display: "inline-block", width: z.mark[0], height: z.mark[1], marginLeft: 4,
+                               background: clr, verticalAlign: "middle" }} />);
+              const row = (q, i, benched, sat) => {
+                const played = !sat;
+                return (
+                  <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: z.cols,
+                              alignItems: "center", fontSize: z.fs, gap: z.gap,
+                              opacity: played ? 1 : 0.5, ...(z.rowH ? { height: z.rowH } : {}) }}>
+                    <span style={{ ...cellBase, ...mono, fontSize: z.posFs, fontWeight: 700,
+                                   color: POS_CLR[q.pos] || "var(--chrome-muted)" }}>{q.pos}</span>
+                    {/* AN OUTFIELD MAN IN GOAL IS HALF THE PLAYER. Every other row shows
+                        the base rating, because a man is not worse for having run ninety
+                        minutes -- but this one is not fatigue, it is a centre-half in the
+                        gloves, and the number has to say so or the goals he lets in look
+                        like his fault as a defender. His real rating is untouched
+                        underneath; only what he is playing at changes. */}
+                    <span
+                          style={{ ...cellBase, padding: 0, textAlign: "center",
+                                   fontStyle: q.inGoal ? "italic" : "normal" }}>
+                      <OvrBadge v={q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)}
+                                xs={z.badge === "xs"} sm={z.badge === "sm"} /></span>
+                    <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                      {boldSurname(q.fullName || q.name, q.name)}
+                      {q.rc ? card("var(--ui-danger)") : null}
+                      {!q.rc && q.yc ? card("var(--ui-warn)") : null}
+                      {q.inj ? <span style={{ marginLeft: 4, fontSize: z.tagFs, color: "var(--ui-warn)" }}>INJ</span> : null}
+                    </span>
+                    {val(q.goals, true)}
+                    {val(q.assists, true)}
+                    {val(q.cc)}
+                    {val(q.defActs)}
+                    {val(q.pos === "GK" ? q.saves : 0)}
+                    <span style={{ ...cellBase, textAlign: "center", ...mono, fontWeight: 700,
+                                   color: played ? ratingColor(q.rating ?? 6.5) : "var(--chrome-muted-66)" }}>
+                      {played ? (q.rating ?? 6.5).toFixed(1) : "-"}</span>
+                    <span style={{ ...cellBase, fontSize: z.tagFs, textAlign: "center",
+                                   color: q._offAt !== undefined ? "var(--ui-danger)" : "var(--ui-ok)" }}>
+                      {sat ? "" : q._offAt !== undefined ? "▼" : benched ? "▲" : ""}</span>
+                  </div>);
+              };
+              return (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: z.cols, gap: z.gap, fontSize: z.headFs,
+                                letterSpacing: ".08em", color: "var(--chrome-muted)",
+                                padding: "0 0 3px", borderBottom: "1px solid var(--chrome-border-33)" }}>
+                    {["", "OVR", "PLAYER", "G", "A", "CC", "DC", "SV", "RTG", ""].map((h, i) => (
+                      <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
+                  </div>
+                  <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>
+                  {(came.length || unused.length) ? (
+                    <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border)" }}>
+                      {came.map((q, i) => row(q, i, true))}
+                      {unused.map((q, i) => row(q, 200 + i, true, true))}
+                    </div>) : null}
+                </div>);
+            };
+            // The caption on a goal's card. An own goal banks no caption with its clip -- the feed line
+            // meCelebrate reads is a goal's or a penalty's -- so it is found in out.owns, which files it
+            // against the side that conceded.
+            const clipWho = (c) => {
+              if (c.txt) return clipNames(c.txt);
+              const og = (out.owns?.[c.side === "home" ? "away" : "home"] || []).find(o => o.min === c.min);
+              return og ? [shortName(og.full || og.name), "OG"] : ["", null];
+            };
+            // The best game anyone had, as a card: the sidebar's while a match runs, the report's after.
+            const TOP_SIDE = { pad: "12px 15px", shot: 36, gap: 11, lab: 8, name: 11.5, meta: 9, crest: 11, rate: 14 };
+            const TOP_FT = { pad: "9px 14px", shot: 42, gap: 13, lab: 8.5, name: 14, meta: 10.5, crest: 13, rate: 20 };
+            const topCard = (z) => {
+              if (!topMan || !topMan[0]) return null;
+              const [p, side] = topMan;
+              return (
+                <div style={{ flexShrink: 0, padding: z.pad, display: "flex",
+                              alignItems: "center", gap: z.gap }}>
+                  <PlayerShot name={p.fullName || p.name} size={z.shot} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ ...sectionLabel, fontSize: z.lab, color: "var(--chrome-muted)",
+                                  marginBottom: 3 }}>Top Player</div>
+                    <div style={{ fontSize: z.name, fontWeight: 700, whiteSpace: "nowrap",
+                                  overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                    <div style={{ fontSize: z.meta, color: "var(--chrome-muted)", marginTop: 2,
+                                  display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                      <TeamCrest team={side === "home" ? m.hT : m.aT} size={z.crest} />
+                      {/* All four are mono. The position was and the three counts were not,
+                          so "CM" and "1A" sat side by side in two different faces. */}
+                      <span style={mono}>{p.spos || p.pos}</span>
+                      {!!p.goals && <span style={mono}>{p.goals}G</span>}
+                      {!!p.assists && <span style={mono}>{p.assists}A</span>}
+                      {!!p.saves && <span style={mono}>{p.saves} saves</span>}
+                    </div>
+                  </div>
+                  {/* Two decimals, like every other match statistic in the app. */}
+                  <span style={{ ...mono, fontSize: z.rate, fontWeight: 800, flexShrink: 0,
+                                 color: ratingColor(p.rating ?? 6.5) }}>{(p.rating ?? 6.5).toFixed(2)}</span>
+                </div>);
+            };
+
+            // ── FULL TIME ─────────────────────────────────────────────────────────────────────────
+            // ONE PAGE AT ONE SIZE, filling the window. Designed around 1600 x 900 and scaled by as much
+            // of that as the window holds, so type is the same size at any window shape; the spare
+            // width goes to the centre column and the timeline, the spare height mostly to the goals and
+            // the rest to the ground's photo. The live layout it replaces reflowed with the window: on a
+            // short one the goals fell below the fold, on a tall one the sidebar opened a gap. Top down:
+            // the result, when things happened, the team sheets either side of the ground and the
+            // numbers, and every goal. The buttons stay out of the picture until the mouse moves.
+            const FT_W = 1600, FT_H = 900, FT_BAND = 88, FT_LINE = 88, FT_GOALS = 214;
+            const ftReport = () => {
+              const other = (sd) => sd === "home" ? "away" : "home";
+              // The timeline's events, off the engine's own ledgers rather than the feed: the feed keeps
+              // its last 200 lines, and by full time the first half has usually scrolled out of it.
+              const evs = [];
+              for (const sd of ["home", "away"]) {
+                for (const g of out.scorers?.[sd] || [])
+                  evs.push({ side: sd, min: g.min, add: g.add, k: g.pen ? "pen" : "goal", who: shortName(g.full || g.name),
+                             det: !g.pen && g.assist ? `(${shortName(g.assist)})` : "" });
+                // An own goal counts for the other side, so it sits in their lane, under its scorer's name.
+                for (const o of out.owns?.[sd] || [])
+                  evs.push({ side: other(sd), min: o.min, add: o.add, k: "og", who: shortName(o.full || o.name), det: "(OG)" });
+                for (const q of out.penMiss?.[sd] || [])
+                  evs.push({ side: sd, min: q.min, add: q.add, k: "penmiss", who: shortName(q.full || q.name),
+                             det: q.saved ? `saved by ${shortName(q.saved)}` : "missed" });
+                for (const b of out.bookings?.[sd] || [])
+                  evs.push({ side: sd, min: b.min, add: b.add, k: "yellow", who: shortName(b.full || b.name), det: "" });
+                for (const r of out.sendOff?.[sd] || [])
+                  evs.push({ side: sd, min: r.min, add: r.add, k: r.second ? "red2" : "red", who: shortName(r.full || r.name),
+                             det: ME_RED_WHY[r.why] || (r.second ? "2nd Yellow" : "Sent off") });
+                for (const j of out.injured?.[sd] || [])
+                  evs.push({ side: sd, min: j.min, add: j.add, k: "injury", who: shortName(j.full || j.name),
+                             det: j.part ? j.part[0].toUpperCase() + j.part.slice(1) : "Injured" });
+              }
+              const rowsOf = (sd) => (m.s.players[sd] || []).length + (m.s.subbedOff?.[sd] || []).length
+                                   + (m.s.bench?.[sd] || []).filter(Boolean).length;
+              const nRows = Math.max(11, rowsOf("home"), rowsOf("away"));
+              const zBar = { valW: 38, valFs: 12.5, labW: 90, labFs: 9.5, barH: 6, pad: 0, gap: 7, rowH: 21 };
+              const panel = { background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8 };
+              const clips = m.clips || [];
+              const rk = m.tourn ? (m.tourn.replayKey || (fixtureKey(m.tourn.target) + (m.tourn.target?.flipped ? "_L2" : ""))) : null;
+              const btn = { ...addBtn, padding: "8px 18px", fontSize: 12, background: "var(--chrome-panel)",
+                            color: "var(--ui-text)" };
+              const hasPhoto = !!venue && STADIUM_IMAGES.includes(venue);
+              const page = (k, dw, dh) => {
+                // Spare height: six parts in ten to the goals, the rest to the middle band.
+                const goalsH = FT_GOALS + Math.round((dh - FT_H) * 0.6);
+                const MID = dh - FT_BAND - FT_LINE - goalsH - 26;
+                // The team sheets are the tallest thing in the middle band, so their row height is what
+                // gives: about 19 px a man for a 22-man squad, tighter for a bigger one, never a scrollbar.
+                const rowH = Math.max(12, Math.min(22, Math.floor((MID - 26 - 16 - 3 - 9) / nRows)));
+                const zMen = { cols: "26px 32px 1fr 22px 22px 28px 28px 24px 36px 14px", gap: 3, pad: 0, rowH,
+                               fs: rowH >= 18 ? 11.5 : rowH >= 15 ? 10.5 : 9.5, posFs: 9.5, headFs: 8.5,
+                               badge: rowH >= 18 ? "sm" : "xs", mark: [6, 9], tagFs: 8.5 };
+                // THE GOALS, as big as the strip allows: one row, or two or three when that makes every
+                // card bigger, which it does once a tall window has height to spare for a lot of goals.
+                const n = clips.length, GAP = 14, cardsH = goalsH - 18 - 22;
+                let fit = { cw: 0, per: n };
+                for (let rows = 1; rows <= 3 && n; rows++) {
+                  const per = Math.ceil(n / rows);
+                  const byW = (dw - 48 - GAP * (per - 1)) / per;
+                  const byH = (head) => ((cardsH - GAP * (rows - 1)) / rows - head - 2) * 105 / 68;
+                  let cw = Math.min(byW, byH(26), 360);
+                  if (cw < 170) cw = Math.min(byW, byH(38), 360);
+                  if (cw > fit.cw) fit = { cw: Math.floor(cw), per };
+                }
+                const cw = fit.cw, narrow = cw < 170;
+                const sheet = (sd) => {
+                  const t = sd === "home" ? m.hT : m.aT;
+                  return (
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, height: 20, marginBottom: 6 }}>
+                        <TeamCrest team={t} size={18} />
+                        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase",
+                                       color: sd === "home" ? HC : AC, whiteSpace: "nowrap", overflow: "hidden",
+                                       textOverflow: "ellipsis" }}>{t?.name}</span>
+                      </div>
+                      {repMen(zMen, sd)}
+                    </div>);
+                };
+                return (
+                  <div style={{ position: "relative", width: dw, height: dh, display: "flex", flexDirection: "column",
+                                color: "var(--ui-text)" }}>
+
+                    {/* THE RESULT and nothing else, the live board's kit colours running out from each
+                        half to the edges of the window. */}
+                    <div style={{ height: FT_BAND, flexShrink: 0, display: "flex", alignItems: "center", gap: 22,
+                                  padding: "0 32px", backgroundColor: "var(--chrome-panel)", backgroundImage: sbBg,
+                                  textShadow: SCOREBOARD_SHADOW, color: "#ffffff",
+                                  borderBottom: "1px solid var(--chrome-border)" }}>
+                      {sbSide(m.hT, "home", SB_FT)}
+                      {sbScore(SB_FT)}
+                      {sbSide(m.aT, "away", SB_FT)}
+                    </div>
+
+                    <div style={{ height: FT_LINE, flexShrink: 0, borderBottom: "1px solid var(--chrome-border)" }}>
+                      <MatchTimeline w={dw} h={FT_LINE} events={evs} hT={m.hT} aT={m.aT} hc={HC} ac={AC}
+                                     et={!!m.et} pens={out.pens || []} />
+                    </div>
+
+                    {/* The people either side, and between them the ground and the numbers. */}
+                    <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "440px minmax(0,1fr) 440px",
+                                  gap: 24, padding: "14px 24px 12px" }}>
+                      {sheet("home")}
+                      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* THE GROUND. No photo on file gets mown stripes in the goal replays' greens. */}
+                        <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden", borderRadius: 8,
+                                      border: "1px solid var(--chrome-border)", backgroundColor: "#142c1a",
+                                      backgroundSize: hasPhoto ? "cover" : "auto", backgroundPosition: "center",
+                                      backgroundImage: hasPhoto ? stadiumBg(venue)
+                                        : "repeating-linear-gradient(90deg, #142c17 0 52px, #173119 52px 104px)" }}>
+                          {/* THE COMPETITION, over the ground it is played at: top left on the same inset as
+                              the ground's name below, a strip's height so the stand still shows, and on a
+                              shade of its own so it reads against a bright sky. */}
+                          {uiTheme !== "default" && (
+                            <div style={{ position: "absolute", left: 0, right: 0, top: 0, padding: "13px 16px 26px",
+                                          background: "linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0))" }}>
+                              <img src={`${import.meta.env.BASE_URL}avium/banners/${uiTheme}.png`} alt=""
+                                   onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                                   style={{ display: "block", height: 40, width: "auto", maxWidth: "46%",
+                                            objectFit: "contain", objectPosition: "left center",
+                                            filter: "drop-shadow(0 1px 2px rgba(0,0,0,.7))" }} />
+                            </div>)}
+                          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "28px 16px 11px",
+                                        background: "linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.74))",
+                                        color: "#ffffff", textShadow: SCOREBOARD_SHADOW }}>
+                            <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden",
+                                          textOverflow: "ellipsis" }}>{venue || "Neutral Venue"}</div>
+                            <div style={{ fontSize: 11, opacity: 0.86, marginTop: 2, whiteSpace: "nowrap" }}>
+                              {_v.city && <CityLink name={_v.city} />}
+                              {_v.city && venueNat ? " · " : ""}{venueNat || ""}</div>
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ ...mono, width: 40, fontSize: 13, fontWeight: 700, color: HC }}>{pcH}%</span>
+                            <div style={{ flex: 1, display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                              <div style={{ width: `${pcH}%`, background: HC }} />
+                              <div style={{ width: `${pcA}%`, background: AC }} />
+                            </div>
+                            <span style={{ ...mono, width: 40, textAlign: "right", fontSize: 13, fontWeight: 700,
+                                           color: AC }}>{pcA}%</span>
+                          </div>
+                          <div style={{ fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
+                                        color: "var(--chrome-muted)", marginTop: 5 }}>Possession</div>
+                        </div>
+                        <div style={{ flexShrink: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 24 }}>
+                          <div>{statsWith(zBar)}</div>
+                          <div>{statsWithout(zBar)}</div>
+                        </div>
+                        {topMan && topMan[0] && <div style={{ flexShrink: 0, ...panel }}>{topCard(TOP_FT)}</div>}
+                      </div>
+                      {sheet("away")}
+                    </div>
+
+                    {/* EVERY GOAL, each card resting on its move and playing it under the pointer. */}
+                    <div style={{ height: goalsH, flexShrink: 0, padding: "0 24px 18px", display: "flex",
+                                  flexDirection: "column" }}>
+                      <div style={{ height: 22, flexShrink: 0, display: "flex", alignItems: "center", gap: 14,
+                                    fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
+                                    color: "var(--chrome-muted)" }}>
+                        <div style={{ flex: 1, height: 1, background: "var(--chrome-border)" }} />
+                        {n === 1 ? "The Goal" : n ? "The Goals" : "No Goals"}
+                        <div style={{ flex: 1, height: 1, background: "var(--chrome-border)" }} />
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: fit.per * cw + GAP * (fit.per - 1), display: "flex", flexWrap: "wrap",
+                                      justifyContent: "center", gap: GAP }}>
+                          {clips.map((c, gi) => { const [who, par] = clipWho(c);
+                            const dot = <span style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0,
+                                                       background: c.side === "home" ? HC : AC }} />;
+                            const minute = <span style={{ ...mono, fontSize: 10.5, color: "var(--chrome-muted)", flexShrink: 0 }}>
+                                             {fmtMin(c.min, c.add)}</span>;
+                            const score = <span style={{ ...mono, fontSize: 10.5, color: "var(--chrome-muted)", flexShrink: 0,
+                                                         marginLeft: "auto" }}>{c.score}</span>;
+                            const name = <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap", fontSize: 11.5, fontWeight: 600 }}>
+                                           {who}{par && (!narrow || par === "OG") &&
+                                             <span style={{ fontWeight: 400, color: "var(--chrome-muted)" }}> ({par})</span>}</span>;
+                            return (
+                            <div key={gi} style={{ width: cw, flexShrink: 0, overflow: "hidden", ...panel }}>
+                              {/* A narrow card gives the scorer a line of his own: squeezed in beside the
+                                  minute and the score he came out as a single letter. The assist goes. */}
+                              {narrow ? (
+                                <div style={{ padding: "5px 8px 4px" }}>
+                                  <div style={{ height: 13, display: "flex", alignItems: "center", gap: 6 }}>{dot}{minute}{score}</div>
+                                  <div style={{ height: 16, display: "flex", alignItems: "center" }}>{name}</div>
+                                </div>
+                              ) : (
+                                <div style={{ height: 26, display: "flex", alignItems: "center", gap: 7, padding: "0 10px" }}>
+                                  {dot}{minute}{name}{score}</div>)}
+                              <GoalReplay clip={c} hc={HC} ac={AC} />
+                            </div>); })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <HoverDock style={{ position: "absolute", right: 24, bottom: 16, zIndex: 2, display: "flex",
+                                        alignItems: "center", gap: 8, padding: 8, borderRadius: 10,
+                                        background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)",
+                                        boxShadow: "0 8px 28px rgba(0,0,0,.5)" }}>
+                      {m.tourn && <div style={{ padding: "0 6px" }}><RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>}
+                      {m.tourn ? (<>
+                        <button onClick={meImport} style={{ ...btn, border: "none", color: "var(--ui-on-accent)",
+                                                           background: "var(--chrome-brand)" }}>Import</button>
+                        <button onClick={meReplay} style={btn}>Replay</button>
+                        <button onClick={() => meLeave(true)} style={{ ...btn, color: "var(--ui-danger)",
+                                                                      borderColor: "var(--ui-danger-44)" }}>Abandon</button>
+                      </>) : (<>
+                        <button onClick={() => meLeave(false)} style={{ ...btn, border: "none", color: "var(--ui-on-accent)",
+                                                                       background: "var(--chrome-brand)" }}>New</button>
+                        <button onClick={meReplay} style={btn}>Replay</button>
+                      </>)}
+                    </HoverDock>
+                  </div>);
+              };
+              return (
+                <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)" }}>
+                  <FitCanvas w={FT_W} h={FT_H}>{page}</FitCanvas>
+                </div>);
+            };
+            if (m.ftDone && meView === "post") return ftReport();
             return (
               <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)",
                             display: "flex", flexDirection: "column" }}>
@@ -13639,37 +14278,7 @@ export default function App() {
                               textShadow: SCOREBOARD_SHADOW, color: "#ffffff",
                               borderBottom: "1px solid var(--chrome-border)" }}>
                   {sbSide(m.hT, "home")}
-                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 150 }}>
-                    <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: ".06em", lineHeight: 1.05, ...mono }}>
-                      {out.goals.home}&ndash;{out.goals.away}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".12em", ...mono,
-                                  color: "var(--ui-on-pitch)", opacity: brk ? 1 : 0.85 }}>
-                      {brk || clock}
-                      {/* Added time alongside, not folded into the clock: the number the period
-                          is played to stays legible and what is being played beyond it reads as
-                          the separate thing it is. */}
-                      {!brk && added && <span style={{ marginLeft: 6, color: "var(--ui-warn)",
-                        fontSize: 11, letterSpacing: ".08em" }}>{added}</span>}</div>
-                    {/* A shootout is not part of the scoreline -- the goals are put back -- so the
-                        kicks are reported beside it rather than added to it. One line for both
-                        states: it counts up live off the shootout's own tally and then stands as
-                        the result, so it never changes shape or place on the board. Amber is the
-                        same white as the score: the shootout is part of the result, not a footnote
-                        beside it. */}
-                    {(m.pk || m.pens) && (() => {
-                      const sc = m.pk ? m.pk.st.sc : m.pens;
-                      return <div style={{ ...mono, fontSize: 11, fontWeight: 800, letterSpacing: ".14em",
-                                           color: "var(--ui-on-pitch)" }}>
-                        {sc.home}&ndash;{sc.away} PENS</div>;
-                    })()}
-                    {!m.pk && !m.pens && m.et && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
-                                                      letterSpacing: ".16em", opacity: 0.75 }}>
-                      {m.ftDone ? "AET" : "EXTRA TIME"}</div>}
-                    {/* A second leg is not played against the scoreline in front of you. */}
-                    {m.tourn?.agg && <div style={{ ...mono, fontSize: 9, fontWeight: 700,
-                                                   letterSpacing: ".14em", opacity: 0.75 }}>
-                      AGG {out.goals.home + m.tourn.agg[0]}&ndash;{out.goals.away + m.tourn.agg[1]}</div>}
-                  </div>
+                  {sbScore()}
                   {sbSide(m.aT, "away")}
                 </div>
 
@@ -13690,131 +14299,7 @@ export default function App() {
                         // (chances created), which needs a key-pass model this engine does not have,
                         // and a column of zeroes is worse than no column. What it does know that the
                         // old one never did is stamina, so that takes the slot.
-                        const pt = (out.poss.home + out.poss.away) || 1;
-                        const pcH = Math.round(100 * out.poss.home / pt), pcA = 100 - pcH;
-                        const HC = hPitchClr, AC = aPitchClr;
-                        const num = (v) => (v == null ? 0 : v);
-                        // A rate, not a count: 0 attempts reads as 0 rather than as NaN%.
-                        const pctOf = (ok, tries) => tries ? Math.round(100 * (ok || 0) / tries) : 0;
-                        // value | bar | LABEL | bar | value, the two bars growing away from the
-                        // middle so the comparison is the shape rather than the arithmetic.
-                        const bar = (label, h, a, dp) => {
-                          h = num(h); a = num(a);
-                          const pc = /%$/.test(label);
-                          const mx = pc ? 100 : Math.max(h, a, 1);
-                          const f = (v) => (dp ? v.toFixed(dp) : v) + (pc ? "%" : "");
-                          const hi = h > a, ai = a > h;
-                          const seg = (v, lead, clr, right) => (
-                            <div style={{ flex: 1, display: "flex", justifyContent: right ? "flex-start" : "flex-end" }}>
-                              <div style={{ width: `${100 * v / mx}%`, minWidth: v ? 2 : 0, height: 5,
-                                            borderRadius: 2, background: lead ? clr : "var(--chrome-muted-33)",
-                                            transition: "width .3s" }} />
-                            </div>);
-                          return (
-                            <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "3px 0" }}>
-                              <span style={{ width: 46, textAlign: "right", ...mono, fontSize: 12,
-                                             fontWeight: hi ? 700 : 400, color: hi ? HC : "var(--chrome-muted)" }}>{f(h)}</span>
-                              {seg(h, hi, HC, false)}
-                              <span style={{ width: 104, textAlign: "center", fontSize: 9.5, letterSpacing: ".07em",
-                                             textTransform: "uppercase", color: "var(--chrome-muted)" }}>{label}</span>
-                              {seg(a, ai, AC, true)}
-                              <span style={{ width: 46, ...mono, fontSize: 12,
-                                             fontWeight: ai ? 700 : 400, color: ai ? AC : "var(--chrome-muted)" }}>{f(a)}</span>
-                            </div>);
-                        };
-                        // ── THE PEOPLE ────────────────────────────────────────────────────────
-                        // THE OLD PLAYER STATS PANEL, structurally. A ten-column grid rather than a
-                        // table, full names with the surname bolded, POS and OVR ahead of the name,
-                        // the chances/defensive/saves trio, rating last, and the starters ruled off
-                        // from the bench. Grid over <table> for the same reason the original used
-                        // one: the columns have to line up between the two sides of the panel, and
-                        // fixed pixel tracks do that where auto-layout cannot.
-                        // The middle two columns are what this engine can honestly count per man.
-                        // The abstract screen had C (chances created) and D (defensive actions).
-                        // Chances needed a key-pass model, and every cut of it read badly -- keyed on
-                        // the intended receiver it was nonsense, keyed on the passer it still put a
-                        // quarter of all chances on centre-halves hitting a forward who did the rest
-                        // himself. Dropped rather than shipped half-right. The slots hold the two
-                        // things this engine already resolves exactly instead: CC is CHANCES
-                        // CREATED -- passes that led to a shot, assists included, credited when the
-                        // shot is struck -- and DC is defensive contributions, tackles won plus clearances. A block is
-                        // neither of those, so it is not in there.
-                        const COLS = "20px 26px 1fr 15px 15px 26px 24px 18px 26px 11px";
-                        const men = (side, clr) => {
-                          // WHO STARTED IS A FACT ABOUT THE TEAM SHEET, not about who happens to be on
-                          // the pitch at the whistle. Splitting on the live array put a starter who
-                          // was taken off down among the substitutes and left the man who replaced
-                          // him up in the XI -- the two of them swapped sections. _onAt is only ever
-                          // stamped on a man who came ON, so it answers the question directly for
-                          // both arrays at once.
-                          const all = [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])];
-                          const bd = (q) => q._bd0 ?? q._bd ?? 0;
-                          const start = all.filter(q => q._onAt === undefined).sort((u, v) => bd(u) - bd(v));
-                          const came = all.filter(q => q._onAt !== undefined).sort((u, v) => bd(u) - bd(v));
-                          // The bench that never got on. meSub nulls a used slot, so what is left in
-                          // s.bench IS the unused bench -- greyed, with a dash where a rating would
-                          // be, exactly as the old screen treated a man who never played.
-                          const unused = (m.s.bench?.[side] || []).filter(Boolean);
-                          const cellBase = { padding: "1.5px 0", minWidth: 0, overflow: "hidden" };
-                          const val = (v, bold) => (
-                            <span style={{ ...cellBase, textAlign: "center", ...mono,
-                                           fontWeight: v && bold ? 700 : 400,
-                                           color: v ? "var(--ui-text)" : "var(--chrome-muted-66)" }}>{v || "-"}</span>);
-                          const row = (q, i, benched, sat) => {
-                            const played = !sat;
-                            return (
-                              <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: COLS,
-                                          alignItems: "center", fontSize: 9.5, gap: 2,
-                                          opacity: played ? 1 : 0.5 }}>
-                                <span style={{ ...cellBase, ...mono, fontSize: 8, fontWeight: 700,
-                                               color: POS_CLR[q.pos] || "var(--chrome-muted)" }}>{q.pos}</span>
-                                {/* AN OUTFIELD MAN IN GOAL IS HALF THE PLAYER. Every other row shows
-                                    the base rating, because a man is not worse for having run ninety
-                                    minutes -- but this one is not fatigue, it is a centre-half in the
-                                    gloves, and the number has to say so or the goals he lets in look
-                                    like his fault as a defender. His real rating is untouched
-                                    underneath; only what he is playing at changes. */}
-                                <span
-                                      style={{ ...cellBase, padding: 0, textAlign: "center",
-                                               fontStyle: q.inGoal ? "italic" : "normal" }}>
-                                  <OvrBadge v={q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)} xs /></span>
-                                <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                                  {boldSurname(q.fullName || q.name, q.name)}
-                                  {q.rc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
-                                                         background: "var(--ui-danger)", verticalAlign: "middle" }} /> : null}
-                                  {!q.rc && q.yc ? <span style={{ display: "inline-block", width: 5, height: 7, marginLeft: 4,
-                                                         background: "var(--ui-warn)", verticalAlign: "middle" }} /> : null}
-                                  {q.inj ? <span style={{ marginLeft: 4, fontSize: 7, color: "var(--ui-warn)" }}>INJ</span> : null}
-                                </span>
-                                {val(q.goals, true)}
-                                {val(q.assists, true)}
-                                {val(q.cc)}
-                                {val(q.defActs)}
-                                {val(q.pos === "GK" ? q.saves : 0)}
-                                <span style={{ ...cellBase, textAlign: "center", ...mono, fontWeight: 700,
-                                               color: played ? ratingColor(q.rating ?? 6.5) : "var(--chrome-muted-66)" }}>
-                                  {played ? (q.rating ?? 6.5).toFixed(1) : "-"}</span>
-                                <span style={{ ...cellBase, fontSize: 7, textAlign: "center",
-                                               color: q._offAt !== undefined ? "var(--ui-danger)" : "var(--ui-ok)" }}>
-                                  {sat ? "" : q._offAt !== undefined ? "▼" : benched ? "▲" : ""}</span>
-                              </div>);
-                          };
-                          return (
-                            <div>
-                              <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 2, fontSize: 7,
-                                            letterSpacing: ".08em", color: "var(--chrome-muted)",
-                                            padding: "0 0 3px", borderBottom: "1px solid var(--chrome-border-33)" }}>
-                                {["", "OVR", "PLAYER", "G", "A", "CC", "DC", "SV", "RTG", ""].map((h, i) => (
-                                  <span key={i} style={{ textAlign: i === 2 || i === 0 ? "left" : "center" }}>{h}</span>))}
-                              </div>
-                              <div style={{ paddingTop: 3 }}>{start.map((q, i) => row(q, i, false))}</div>
-                              {(came.length || unused.length) ? (
-                                <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--chrome-border)" }}>
-                                  {came.map((q, i) => row(q, i, true))}
-                                  {unused.map((q, i) => row(q, 200 + i, true, true))}
-                                </div>) : null}
-                            </div>);
-                        };
+                        const men = (side) => repMen(Z_MEN, side);
                         // Three weights, because the breaks are not equal: a hairline inside a
                         // section, a normal rule between sections, and a heavy one before the goals,
                         // which are the part you scroll to rather than the part you read.
@@ -13872,29 +14357,8 @@ export default function App() {
                           {rule(1)}
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                         gap: 46, alignItems: "start", marginBottom: 4 }}>
-                            <div>
-                              {bar("xG", out.xgS?.home, out.xgS?.away, 2)}
-                              {bar("Shots", out.shots.home, out.shots.away)}
-                              {bar("On target", out.onTarget.home, out.onTarget.away)}
-                              {bar("Woodwork", out.woodworkSide?.home, out.woodworkSide?.away)}
-                              {bar("Corners", out.corners.home, out.corners.away)}
-                              {bar("Passes", out.passSide?.home, out.passSide?.away)}
-                              {bar("Pass %", pctOf(out.passOkSide?.home, out.passSide?.home),
-                                            pctOf(out.passOkSide?.away, out.passSide?.away))}
-                              {bar("Carries", out.carriesSide?.home, out.carriesSide?.away)}
-                              {bar("Offsides", out.offside?.home, out.offside?.away)}
-                            </div>
-                            <div>
-                              {bar("Saves", out.saves.home, out.saves.away)}
-                              {bar("Blocks", out.blockedSide?.home, out.blockedSide?.away)}
-                              {bar("Clearances", out.clearsSide?.home, out.clearsSide?.away)}
-                              {bar("Tackles won", out.tackleWonSide?.home, out.tackleWonSide?.away)}
-                              {bar("Tackle %", pctOf(out.tackleWonSide?.home, out.tackleTrySide?.home),
-                                               pctOf(out.tackleWonSide?.away, out.tackleTrySide?.away))}
-                              {bar("Fouls", out.fouls.home, out.fouls.away)}
-                              {bar("Yellows", out.yellows?.home, out.yellows?.away)}
-                              {bar("Reds", out.reds?.home, out.reds?.away)}
-                            </div>
+                            <div>{statsWith(Z_BAR)}</div>
+                            <div>{statsWithout(Z_BAR)}</div>
                           </div>
 
                           {rule(2)}
@@ -13923,14 +14387,14 @@ export default function App() {
                             <div style={{ display: "grid", gap: 14, marginTop: 4,
                                           gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
                                           justifyContent: "start" }}>
-                              {clips.map((c, gi) => { const [who, par] = clipNames(c.txt);
+                              {clips.map((c, gi) => { const [who, par] = clipWho(c);
                                 return (
                                 <div key={gi} style={{ minWidth: 0, background: "var(--chrome-panel)", borderRadius: 8,
                                                        border: "1px solid var(--chrome-border)", overflow: "hidden" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px" }}>
                                     <span style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0,
                                                    background: c.side === "home" ? HC : AC }} />
-                                    <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{c.min}&#39;</span>
+                                    <span style={{ ...mono, fontSize: 11, color: "var(--chrome-muted)" }}>{fmtMin(c.min, c.add)}</span>
                                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis",
                                                    whiteSpace: "nowrap", fontSize: 12, color: "var(--ui-text)", fontWeight: 600 }}>
                                       {who}{par && <span style={{ fontWeight: 400, color: "var(--chrome-muted)" }}> ({par})</span>}
@@ -14351,33 +14815,7 @@ export default function App() {
                   </div>
                   <div style={DIV} />
 
-                  {topMan && topMan[0] && (() => {
-                    const [p, side] = topMan;
-                    return (
-                      <div style={{ flexShrink: 0, padding: "12px 15px", display: "flex",
-                                    alignItems: "center", gap: 11 }}>
-                        <PlayerShot name={p.fullName || p.name} size={36} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ ...sectionLabel, fontSize: 8, color: "var(--chrome-muted)",
-                                        marginBottom: 3 }}>Top Player</div>
-                          <div style={{ fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap",
-                                        overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                          <div style={{ fontSize: 9, color: "var(--chrome-muted)", marginTop: 2,
-                                        display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                            <TeamCrest team={side === "home" ? m.hT : m.aT} size={11} />
-                            {/* All four are mono. The position was and the three counts were not,
-                                so "CM" and "1A" sat side by side in two different faces. */}
-                            <span style={mono}>{p.spos || p.pos}</span>
-                            {!!p.goals && <span style={mono}>{p.goals}G</span>}
-                            {!!p.assists && <span style={mono}>{p.assists}A</span>}
-                            {!!p.saves && <span style={mono}>{p.saves} saves</span>}
-                          </div>
-                        </div>
-                        {/* Two decimals, like every other match statistic in the app. */}
-                        <span style={{ ...mono, fontSize: 14, fontWeight: 800, flexShrink: 0,
-                                       color: ratingColor(p.rating ?? 6.5) }}>{(p.rating ?? 6.5).toFixed(2)}</span>
-                      </div>);
-                  })()}
+                  {topCard(TOP_SIDE)}
                   <div style={DIV} />
 
                   <div style={{ flexShrink: 0, padding: "12px 15px 14px", display: "flex",
