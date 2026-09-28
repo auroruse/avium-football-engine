@@ -932,7 +932,8 @@ const meCarry = (s, out, p) => {
   mp._carryBy = key;
   out.carries++; meBump(out, "carriesSide", meSideOfP(s, p));
 };
-const mePenRes = (out, sh, mp) => {
+// `gk` is the keeper when his hands ended it, so the report can say who saved it.
+const mePenRes = (out, sh, mp, gk) => {
   if (!sh || sh._pd) return;
   sh._pd = 1;
   // A BIG CHANCE SPURNED. This function is reached by every ending a shot can have except the one
@@ -947,7 +948,8 @@ const mePenRes = (out, sh, mp) => {
   if (!sh.pen) return;
   if (sh.p) meRate(sh.p, -CFG.ratePenMiss);
   const pmList = (out.penMiss = out.penMiss || { home: [], away: [] })[sh.side];
-  pmList.push({ name: sh.name, full: sh.full || sh.name, min: out.min ?? 0, add: out.add || 0 });
+  pmList.push({ name: sh.name, full: sh.full || sh.name, min: out.min ?? 0, add: out.add || 0,
+                saved: gk ? (gk.fullName || gk.name) : null });
   // A PARRIED PENALTY THAT STILL GOES IN WAS NEVER MISSED. It is logged here because the
   // keeper's hand ended the shot, and that it finished in the net is not known for several
   // slices yet -- so leave the trail the revocation needs instead of the entry standing beside
@@ -961,6 +963,14 @@ const mePenRes = (out, sh, mp) => {
   // penalty.
   if (mp) meEvt(out, "penmiss", sh.side, mp.bx, mp.by, mp.bx, mp.by,
                 `${sh.full || sh.name} misses the penalty`);
+};
+
+// THE BOOKINGS, NAMED. out.yellows only counts them, and the feed that names them keeps its last
+// 200 lines, so by full time a first-half caution has usually scrolled out of it. A second yellow
+// is not listed here: it is a sending off, and meRed files it with the reason.
+const meBook = (out, side, q) => {
+  (out.bookings = out.bookings || { home: [], away: [] })[side].push(
+    { name: q.name, full: q.fullName || q.name, min: out.min ?? 0, add: out.add || 0 });
 };
 
 // EVERY DISMISSAL GOES THROUGH HERE. There were three sites writing the flag, the counter, the
@@ -1618,7 +1628,7 @@ export function meTick(s, rng, out) {
           // tick, so anything reading it back sees whatever was written last and reports zero.
           out.wasteYc = (out.wasteYc || 0) + 1;
           meEvt(out, "yellow", wS, wX, wY, wX, wY, `${q.fullName || q.name} booked for time-wasting`);
-          if (q.yc >= 2) meRed(s, out, wS, q, "second", wX, wY);
+          if (q.yc >= 2) meRed(s, out, wS, q, "second", wX, wY); else meBook(out, wS, q);
         }
       }
       // TEMPERS AT A DEAD BALL. Every other card in this engine comes out of a challenge, so
@@ -2220,7 +2230,7 @@ export function meTick(s, rng, out) {
             meRate(q, -CFG.rateYellow);
             (out.yellows = out.yellows || { home: 0, away: 0 })[bs]++;
             meEvt(out, "yellow", bs, mp.bx, mp.by, mp.bx, mp.by, `Booked, ${q.fullName || q.name}`);
-            if (q.yc >= 2) meRed(s, out, bs, q, "second", mp.bx, mp.by);
+            if (q.yc >= 2) meRed(s, out, bs, q, "second", mp.bx, mp.by); else meBook(out, bs, q);
           }
           if (!hbGoal) meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.fullName || q.name}`);
           meDead(s, "penalty", meOther(bs), 470, out);
@@ -2409,7 +2419,7 @@ export function meTick(s, rng, out) {
           if (shp) { out.onTarget[shp.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
             meRate(q, meSaveBonus(shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0));
             if (shp.p) meRate(shp.p, CFG.rateShotOn);
-            mePenRes(out, shp);
+            mePenRes(out, shp, null, q);
                      // A MISSED PENALTY IS THE TAKER'S EVENT. Named for the keeper it read as
                      // his save in a feed whose penalty lines are otherwise the taker's, so the
                      // panel showed one man for a scored penalty and another for a missed one.
@@ -2506,7 +2516,7 @@ export function meTick(s, rng, out) {
           out.onTarget[mp.shot.side]++; out.saves[bs]++; q.saves = (q.saves || 0) + 1;
           meRate(q, meSaveBonus(mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePenSave : 0));
           if (mp.shot.p) meRate(mp.shot.p, CFG.rateShotOn);
-          mePenRes(out, mp.shot);
+          mePenRes(out, mp.shot, null, q);
           // The SIDE on an event is whose event it is, and a save is the keeper's. Tagged with the
           // shooter it drew the wrong club badge and the wrong colour in the feed, so a goalkeeper
           // keeping his side in it read as something the other lot had done.
@@ -2919,7 +2929,7 @@ export function meTick(s, rng, out) {
       if (card === "yellow") {
         q.yc = (q.yc || 0) + 1;
         (out.yellows = out.yellows || { home: 0, away: 0 })[fSide]++;
-        if (q.yc >= 2) card = "red2";
+        if (q.yc >= 2) card = "red2"; else meBook(out, fSide, q);
       }
       if (card === "red" || card === "red2") {
         const why = card === "red2" ? "second" : dogso ? "dogso" : "sfp";
@@ -2945,6 +2955,9 @@ export function meTick(s, rng, out) {
           // is not an ankle he rolled, and the competition's injury counter spends the difference.
           const { sev, part } = mePickInjury(rng);
           p.rc = false; p.off = true; p.inj = true; p.injSev = sev.id; p.injPart = part;
+          // Named for the report; out.injuries above counts knocks as well, and only this is a man lost.
+          (out.injured = out.injured || { home: [], away: [] })[side].push(
+            { name: p.name, full: p.fullName || p.name, min: out.min ?? 0, add: out.add || 0, part, sev: sev.id });
           p._offX = p.x; p._offY = p.y;
           p.y = -6; p.vx = 0; p.vy = 0; p._offAt = s.mePos.tick;
           meEvt(out, "injury", side, p.x, p.y, p.x, p.y,
