@@ -69,9 +69,11 @@ ok("a hand-edited store is refused", tampered.get(key(g0)) === 0, tampered.get(k
 // The effect body, run against a context that records what it was asked to do.
 console.log("\nthe drawing");
 const body = (() => {
-  const i = SRC.indexOf("function RcBadge({ n, theme }) {");
+  const i = SRC.indexOf("function RcBadge({ n, theme, k = 1 }) {");
   const a = SRC.indexOf("const cv = ref.current;", i);
-  const b = SRC.indexOf("}, [n, theme]);", i);
+  const b = SRC.indexOf("}, [n, theme, k]);", i);
+  // A missed anchor sliced to the end of the file and failed as a syntax error in the component.
+  if (i < 0 || a < 0 || b < 0) throw new Error("RcBadge anchors not found: the component's signature changed");
   return SRC.slice(a, b);
 })();
 
@@ -101,8 +103,8 @@ const draw = (n) => {
     set height(v) { this._h = v; },
     getContext: () => ctx,
   };
-  new Function("n", "ref", "window", "getComputedStyle", body)(
-    n, { current: cv }, { devicePixelRatio: 2 },
+  new Function("n", "k", "ref", "window", "getComputedStyle", body)(
+    n, 1, { current: cv }, { devicePixelRatio: 2 },
     () => ({ getPropertyValue: (k) => ({ "--chrome-muted": " #8a8a8a ", "--ui-warn": " #d9a441 " })[k] || "" }));
   return { calls, cv, texts: calls.filter(c => c[0] === "fillText") };
 };
