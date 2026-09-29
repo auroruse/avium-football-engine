@@ -706,6 +706,7 @@ export function meScramble(s, rng) {
   const mp = s.mePos; let bi = -1, bs = "home", bd = Infinity;
   for (const side of ME_SIDES) for (let i = 0; i < s.players[side].length; i++) {
     const q = s.players[side][i];
+    if (!q || q.off) continue;                     // parked off the pitch: never handed the ball
     // Who reads the loose ball first. On position/99 this was worth 3% between a 70 and a 90 --
     // an attribute called positioning deciding almost nothing about who gets there. Same fix the
     // interception reach already had (cutAntLo/cutAntW): over the band a footballer occupies, with
@@ -2318,7 +2319,7 @@ export function meTick(s, rng, out) {
                         lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1, d: dGoalA, hdr: 1 };
             if (globalThis.__shots) globalThis.__shots.push({ side: bs, d: dGoalA, pt: mp.possT ?? -1,
               lt: mp.tick - (mp._loose ?? -1e9), press: 0, xg: hp, hdr: 1 });
-            const gkH = s.players[meOther(bs)].find(z => z.pos === "GK");
+            const gkH = meKeeper(s.players[meOther(bs)]);
             if (gkH) {
               const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
               mp.shot.readY = okH ? aimY : ME_HALF_W - (aimY - ME_HALF_W);

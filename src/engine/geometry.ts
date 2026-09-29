@@ -135,8 +135,8 @@ export function meInfluence(p, x, y, r) {
 export function meCtrl(s, side, x, y) {
   const mp = s.mePos, r = meInfR(Math.hypot(x - mp.bx, y - mp.by));
   let us = 0, them = 0;
-  for (const p of s.players[side]) if (p.pos !== "GK") us += meInfluence(p, x, y, r);
-  for (const q of s.players[meOther(side)]) if (q.pos !== "GK") them += meInfluence(q, x, y, r);
+  for (const p of s.players[side]) if (p.pos !== "GK" && !p.off) us += meInfluence(p, x, y, r);
+  for (const q of s.players[meOther(side)]) if (q.pos !== "GK" && !q.off) them += meInfluence(q, x, y, r);
   return (us - them) / (us + them + 0.35);
 }
 

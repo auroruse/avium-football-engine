@@ -143,7 +143,7 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
   // shoots or he runs at it. He does not turn round, whatever the arithmetic says about a safe ball.
   let goalSide = 0;
   for (const q of s.players[meOther(side)]) {
-    if (q.pos === "GK") continue;
+    if (q.pos === "GK" || q.off) continue;
     if ((q.x - p.x) * dir > 0 && Math.abs(q.y - p.y) < 20) goalSide++;
   }
   // THROUGH ON GOAL IS A SITUATION, NOT A DISTANCE. Capping the rule at 32 m from goal meant a man
@@ -319,6 +319,9 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
   for (let j = 0; j < ps.length; j++) {
     if (j === i) continue;
     const q = ps[j];
+    // NOT A MAN OFF THE PITCH. A sent-off player, or an injured one with nobody left to replace him,
+    // is parked six metres beyond the touchline, and a ball to his feet was a throw to the other side.
+    if (!q || q.off) continue;
     // Two different balls to the same man, scored against each other: one to his feet, one into the
     // space in front of him. Which is right is the passer's decision, not a property of the receiver.
     for (let mode = 0; mode < 2; mode++) {
@@ -739,7 +742,7 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
   if (isGK && ownDepth > CFG.gkSafeOut) {
     let cx = Math.max(2, Math.min(PITCH_L - 2, p.x + dir * 40)), cy = ME_HALF_W, cw = -Infinity;
     for (const q of ps) {
-      if (q === p) continue;
+      if (q === p || q.off) continue;
       const up = (q.x - p.x) * dir;
       if (up < 8) continue;
       const w = up - mePressure(s, side, q.x, q.y) * 12;
@@ -763,7 +766,7 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // Aimed, not hoofed blind: the best-placed man upfield, discounted for whoever is near him.
     let cx = Math.max(2, Math.min(PITCH_L - 2, p.x + dir * 40)), cy = ME_HALF_W, cw = -Infinity;
     for (const q of ps) {
-      if (q === p || q.pos === "GK") continue;
+      if (q === p || q.pos === "GK" || q.off) continue;
       const up = (q.x - p.x) * dir;
       if (up < CFG.clearMinUp) continue;
       const w = up - mePressure(s, side, q.x, q.y) * 9 - Math.abs(q.y - p.y) * 0.25;

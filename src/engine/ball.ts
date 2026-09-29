@@ -131,6 +131,8 @@ function hitBodies(b, players, ctrl, skip) {
     // foot about a metre from his centre, so any pass whose line went back across him ricocheted off
     // the passer -- which on screen is a player passing in the wrong direction for no reason.
     if (skip && skip.indexOf(q) >= 0) continue;
+    // Nor does a man parked beyond the touchline, who could bounce a ball back into play.
+    if (q.off) continue;
     const dx = b.bx - q.x, dy = b.by - q.y;
     let d = Math.hypot(dx, dy);
     if (d >= R) continue;

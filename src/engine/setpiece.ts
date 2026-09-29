@@ -456,7 +456,7 @@ export function meSPShape(s) {
   }
 
   // ---- the defending side
-  const dfree = them.map((p, i) => i).filter(i => them[i].pos !== "GK");
+  const dfree = them.map((p, i) => i).filter(i => them[i].pos !== "GK" && !them[i].off);
   const dplace = (i, tx, ty) => { const p = them[i]; p._tx = clampX(tx); p._ty = clampY(ty); p._spSet = true; p._closing = true; };
   const dtake = (tx, ty) => {
     let bi = -1, bd = Infinity;
@@ -691,7 +691,8 @@ export function meSPReady(s) {
   if (mp._pk) return true;
   let set = 0, n = 0;
   for (const sd of ME_SIDES) for (const p of s.players[sd]) {
-    if (p === taker) continue;
+    // A man off the pitch never walks to his mark, so counting him could hold a restart to the cap.
+    if (p === taker || p.off) continue;
     // A man whose job is nowhere near this restart does not hold it up -- except at a kickoff, where
     // the whole pitch has to be set and both sides in their own half before it can be taken.
     if (sp.kind !== "kickoff"
@@ -727,7 +728,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const themT = s.players[meOther(side)] || [];
   const cands = [];
   for (let i = 0; i < us.length; i++) {
-    if (i === sp.ti || us[i].pos === "GK") continue;
+    // A man parked off the pitch was the likeliest target for any throw-in taken near him.
+    if (i === sp.ti || us[i].pos === "GK" || us[i].off) continue;
     // Never level with or behind the ball at a goal kick. The weighted draw below is exp(-d), so a
     // man standing two metres away owns it whoever else is free -- and a man behind the ball spot
     // is a pass struck at his own net. The shape floor above should leave nobody there; this is

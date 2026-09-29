@@ -667,14 +667,14 @@ export function meDuties(s, side) {
       if (globalThis.__fire && t) globalThis.__fire.thruSeen = (globalThis.__fire.thruSeen || 0) + 1;
       return t;
     };
-    for (let j = 0; j < them.length; j++) { const q = them[j]; if (q.pos === "GK") continue;
+    for (let j = 0; j < them.length; j++) { const q = them[j]; if (q.pos === "GK" || q.off) continue;
       if (j === mp.idx && mp.side === meOther(side)) continue;      // the man on the ball is pressed
       // An ACTIVE run is the most dangerous thing on the pitch regardless of where its owner
       // currently stands -- unmarked runners were arriving alone at the far post all match.
       const runBonus = (q._runT ?? 0) > 0 ? 0.8 : 0;
       threats.push([meDanger(meOther(side), q.x, q.y) + runBonus + (thruOf(q) ? CFG.markThruW : 0), j]); }
     threats.sort((a, b) => b[0] - a[0]);
-    const runners = them.filter(q => ((q._runT ?? 0) > 0 || thruOf(q)) && q.pos !== "GK").length;
+    const runners = them.filter(q => ((q._runT ?? 0) > 0 || thruOf(q)) && q.pos !== "GK" && !q.off).length;
     // TRIED AND REJECTED: scaling the marker budget with how many men are actually back, so a deep
     // block's surplus bodies pick opponents up instead of standing in the shape. nMark keys on where
     // the BALL is and nothing else, so a block on defLine -2 with 5.83 men in its own area marked as
@@ -1000,7 +1000,7 @@ export const ME_SPACE_R = 9, ME_SPACE_W = 0.55;
 export function meOppDist(s, side, x, y) {
   let d = Infinity;
   for (const q of s.players[side === "home" ? "away" : "home"]) {
-    if (q.pos === "GK") continue;
+    if (q.pos === "GK" || q.off) continue;
     const qd = Math.hypot(q.x - x, q.y - y); if (qd < d) d = qd;
   }
   return d;
@@ -1089,7 +1089,7 @@ export function meFindSpace(s, side, p, baseX, baseY, off) {
     if (cx < 2 || cx > PITCH_L - 2 || cy < 2 || cy > PITCH_W - 2) continue;
     if ((cx - off) * dir > 0 && (cx - mp.bx) * dir > 0) continue;          // would be offside
     let crowd = 0;
-    for (const q of s.players[side]) { if (q === p || q.pos === "GK") continue;
+    for (const q of s.players[side]) { if (q === p || q.pos === "GK" || q.off) continue;
       const d = Math.hypot(q.x - cx, q.y - cy); if (d < cr) crowd += (cr - d) / cr; }
     const sc = meCtrl(s, side, cx, cy) * 1.00                    // do we own it
              // ...and the HUB wants it more. A playmaker is the man who finds the pocket between
@@ -1252,7 +1252,9 @@ export function meBlock(s, side) {
 
   const idx = [];
   // The outlet is not in the block -- that is the whole trade. The nine that remain re-space.
-  for (let i = 0; i < us.length; i++) if (us[i].pos !== "GK" && us[i]._duty !== "outlet") idx.push(i);
+  // Nor is a man who is off: a sent-off defender kept his slot, the row never closed round the hole,
+  // and the zonal pick below could hand him an attacker he would never move to mark.
+  for (let i = 0; i < us.length; i++) if (us[i].pos !== "GK" && us[i]._duty !== "outlet" && !us[i].off) idx.push(i);
   let mn = Infinity, mx = -Infinity;
   // THE LIVE SLOT, NOT THE ONE HE STARTED IN. These read _bd0, which match.ts:32 writes once at
   // kickoff and nothing but a substitution ever touches -- so which band a man belonged to was fixed
@@ -1354,7 +1356,7 @@ export function meBlock(s, side) {
   const cand = [];
   for (let j = 0; j < them.length; j++) {
     const q = them[j];
-    if (q.pos === "GK") continue;
+    if (q.pos === "GK" || q.off) continue;
     if (mp.side === meOther(side) && j === mp.idx) continue;     // the man on the ball is pressed
     cand.push([meDanger(meOther(side), q.x, q.y) + ((q._runT ?? 0) > 0 ? 0.5 : 0), j]);
   }
