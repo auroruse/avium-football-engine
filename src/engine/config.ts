@@ -336,7 +336,10 @@ foulAggr: 0.25,
   // ...and the third: a stationary ball further than this from the man who nominally holds it is
   // nobody's ball. Control reach is 0.70; the slack covers a settling touch without ever letting
   // "possession" stand for a ball the holder cannot reach.
-  holdLostR: 1.6,
+  // ...and a touch now PLACES it (touch.ts): a first touch into space stops a stride or two ahead of a
+  // man who was standing when he took it, and he is on his way to it. At 1.6 m that was taken off him
+  // as he set off, 25 times a match; 3.0 still lets go of a ball he has genuinely left behind.
+  holdLostR: 3.0,
   interceptW: 1.9,
   // Only the man actually going for the ball runs flat out. Everyone else -- markers, the man
   // getting back into shape, a runner in behind -- works hard but does not sprint, because a
@@ -442,7 +445,15 @@ foulAggr: 0.25,
   // losing the argument to a dishonest pass. Passing for its own sake was this line.
   // Second iteration 29 Aug (the fit's own note says the chosen passes move with the belief):
   // L was still chasing at 3.87 on the new distribution -- late balls still over-believed.
-  passCal0: 2.17, passCalB: 1.17, passCalR: 1.84, passCalL: 6.78,
+  // Refit 30 Sep 2026 after the touch rebuild (real grass, timed contests, receivers who watch the
+  // ball in): fitted 2.32 / 1.30 / 1.32 / 13.78 against shipped 2.17 / 1.17 / 1.84 / 6.78, with balls
+  // believed at 0.42 completing 0.55. A late receiver now costs twice what it did -- the pass is
+  // quicker, so arriving late for it matters more -- and lane risk less, for the same reason.
+  // NOT TAKEN: a second iteration once the economy settled fitted 2.80 / 1.63 / 1.29 / 12.42 -- the
+  // belief still four points pessimistic where most passes live -- and shipping it made passing
+  // braver and scoring rise from 2.73 to 3.01 a match. Passing is rebuilt next and refits then; until
+  // it is, the slight caution holds the scorelines.
+  passCal0: 2.32, passCalB: 1.30, passCalR: 1.32, passCalL: 13.78,
   // Completion lost per metre of pass length -- see meDecide, the sole price of directness.
   // Swept 0.0072 / 0.0100 / 0.0130 against Much More Direct: its edge held at +0.167 / +0.162 /
   // +0.258 and its territory at 45.3 / 46.3 / 46.7 m. Making long balls fail more does NOT price
@@ -1140,7 +1151,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Swept 0.60 / 0.78 / 0.84 / 0.88: attempts a side 103.9 / 27.3 / 9.3 / 2.8 and won 57 / 62 / 62
   // / 68%. A real match is 15-20 tackles a side at about 65%, and this engine runs a fifth of a real
   // one's event volume, so 4-6 attempts is the target -- 0.86.
-  tkGo: 0.76, tkGoSkill: 0.16, tkGoInstr: 0.02,
+  // 0.72 since the touch rebuild: a dribbler now keeps the ball a stride from his feet instead of
+  // tripping over it, and at 0.76 defenders went in a third less often than they had -- 25 tackles won
+  // a match against 37. This restores the duel count, and it does not move the scoring.
+  tkGo: 0.72, tkGoSkill: 0.16, tkGoInstr: 0.02,
   // tkGo was 0.86 and the whole game tackled 7.1 times a MATCH across both sides, winning 81% of
   // them, because the threshold only ever let through the near-certain challenge. Real football is
   // 15-20 tackles a side at 50-60%. The gate is violently non-linear -- 0.86 gives 2.5 outfield
@@ -1346,7 +1360,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Ball physics (ball.cpp:167-232). Drag is quadratic on the 3D speed; the linear bounce and
   // rolling terms are what let the ball come to rest in finite time.
   ballDrag: 0.015, ballBounce: 0.62, ballBounceLin: 0.06,
-  ballFric: 0.055, ballFricLin: 2.1, grassH: 0.025, ballR: 0.11,
+  // REAL GRASS. The rolling ball lost 0.07v^2 + 2.1 m/s^2, several times a real pitch: no ground
+  // pass could reach past 19 m and a 30 m/s strike stopped dead at 24.5 m, so every longer ball had
+  // to be lofted and every touch died at the man's feet. A cut lawn is rolling resistance of about
+  // 0.6 m/s^2 (a ball off the FIFA test ramp at 3.4 m/s rolls 6-10 m) on top of the air drag
+  // ballDrag already takes, with next to no extra speed term from the grass itself.
+  ballFric: 0.002, ballFricLin: 0.65, grassH: 0.025, ballR: 0.11,
   // Grip on the BOUNCE. A ball in the air only ever met air drag, and a bouncing ball spends nearly
   // all its time above the grass band -- so a lofted pass landed and skidded on almost unchecked.
   // Turf takes a real bite out of the horizontal every time the ball hits it.
@@ -1354,9 +1373,15 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // second, so a ball sitting on the grass counted as bouncing continuously and lost 26% of its pace
   // each time: it died in three tenths of a second.
   bounceGrip: 0.74, bounceMin: 1.2,
-  // Kicking. A ground pass is aimed to ARRIVE at passArrive m/s; execution noise replaces the old
-  // outcome roll -- degrees of aim error by skill and pressure, and a power wobble.
-  passArrive: 6, passMaxV: 30, passNoiseDeg: 2.5, passNoiseSkill: 6.8, passNoisePress: 2.5,
+  // Kicking. A ground pass is aimed to ARRIVE at passArriveLo + passArriveK * d m/s, capped at
+  // passArriveHi; execution noise replaces the old outcome roll -- degrees of aim error by skill and
+  // pressure, and a power wobble. The arrival grows with the distance because a real pass does: on
+  // real grass a flat 6 m/s left a fifteen-metre ball two seconds in the lane, where a crisp one is
+  // struck at 12 m/s and still carries 8 when it arrives, 1.3 s later. Firmer than this and every
+  // pass a receiver just missed ran on over the touchline: at 7 + 0.22 d, six passes a match went
+  // out for throws and completion fell to 78.6%; here it is 82% with passes out as before.
+  passArriveLo: 5.5, passArriveK: 0.18, passArriveHi: 13,
+  passMaxV: 30, passNoiseDeg: 2.5, passNoiseSkill: 6.8, passNoisePress: 2.5,
   // Weight, trimmed 26 Aug 2026 as part of the completion rework: at 0.05 + 0.15 the mean player
   // put +-20% swings on the ball and the overrun tail fed the ran-past-the-receiver class above.
   // The skill slope stays meaningful -- weight is still the half of passing that separates levels.
@@ -1377,7 +1402,63 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // of the receiver's own reach, so 27% of all interceptions were clean picks AT the target man's
   // feet -- real markers arrive a beat late and tackle after the touch instead. The anticipation
   // span (cutAntLo/W below) still separates a reader of the game from a statue.
-  reach: 0.70, cutReach: 0.53, controlV: 11, controlVSkill: 6,
+  // controlV is now only the ball NOBODY controls -- a shot, a clearance, a hammered cross -- which
+  // comes off whoever it hits. Everything slower goes through the first touch below, where how hard
+  // it is to take and how good he is decide it together, instead of one speed line for everybody.
+  reach: 0.70, cutReach: 0.53, controlV: 17, controlVSkill: 6,
+  // How far a defender throws himself at a shot: a leg out, a slide. See reachOf.
+  blockReach: 0.60,
+  // ---- THE TOUCH (see touch.ts) ------------------------------------------------------------------
+  // A first touch is a PLACEMENT: he picks where he wants the ball and plays it there, and how well
+  // depends on how hard the ball is to take and how good he is. Difficulty D starts at ftD0 and adds:
+  //   ftDv  the ball's pace against his own, nothing below ftVEasy m/s, all of it by ftVEasy+ftVSpan;
+  //   ftDz  a ball off the grass -- thigh, chest, a bouncing one -- by its height and how fast it drops;
+  //   ftDs  a ball at the end of his reach, on the square of the stretch;
+  //   ftDt  turning his body onto the line he wants, on (1 - cos turn) / 2, only ftTurnLo of it
+  //         with nobody near him;
+  //   ftDp  a man on him, all of it inside a metre and none of it past 1 + ftPressR.
+  ftD0: 0.05, ftDv: 0.35, ftVEasy: 6, ftVSpan: 12, ftDz: 0.30, ftChestZ: 0.45, ftDs: 0.25, ftDt: 0.25,
+  ftTurnLo: 0.35, ftDp: 0.30, ftPressR: 2.7,
+  // The line a first touch takes costs ftTurnCost per radian per m/s of his pace to leave his run by.
+  ftTurnCost: 0.008,
+  // Whether it sticks at all: ftFailK * D^2 * (1 - ftFailTech * touch)^1.5, capped at ftFailMax. The
+  // square on D and the power on skill are the "big gap": an elite man loses an ordinary ball about
+  // once in two hundred and a poor one about once in fifteen, while a hard ball troubles everybody.
+  ftFailK: 1.2, ftFailTech: 0.92, ftFailMax: 0.9,
+  // A miscontrol comes off him at ftMissV0-ftMissV1 of its pace, within ftMissArc radians of its line.
+  ftMissV0: 0.2, ftMissV1: 0.5, ftMissArc: 0.8,
+  // A controlled touch still carries error, per unit of difficulty: ftAng0 + ftAngTech * (1-touch)^2
+  // radians of direction, ftW0 + ftWTech * (1-touch)^2 of weight. The weight error is the heavy touch.
+  ftAng0: 0.08, ftAngTech: 0.6, ftW0: 0.10, ftWTech: 0.9,
+  // How far ahead of himself he puts it: touchLeadK of the room in front, between touchLeadMin and
+  // touchLeadMax; with a man inside touchPressR it is touchCloseL, kept at his feet. The roll it plans
+  // stays touchEdge inside every line.
+  touchLeadK: 0.05, touchLeadNear: 0.15, touchLeadMin: 0.35, touchLeadMax: 0.9, touchPressR: 5.5,
+  touchCloseL: 0.1,
+  touchEdge: 1.0,
+  // ...judged on where it will be touchLook seconds on, plus the lead: the next touch's worth of travel.
+  touchLook: 1.0,
+  // DRIBBLING IS TOUCHES. He plays it again when it is back inside dribTouchR of him and not running
+  // away, never twice inside dribGap seconds, and follows dribBehindD behind it along his line. Each
+  // touch aims it at where he will be dribTClose seconds on with a man inside touchPressR, otherwise
+  // dribTK seconds per metre of room in front, between dribTMin and dribTMax; a first touch looks ftT
+  // seconds on when he is free.
+  dribTouchR: 0.95, dribGap: 0.25, dribBehindD: 0.35, dribCloseV: 0.7,
+  // ...and no touch sends it quicker than dribCapV of the pace he means to carry it at, plus the push.
+  dribCapV: 1.05,
+  // A ball of his own more than dribSprintGap ahead of him is a ball he sprints after at full pace --
+  // he is not carrying it, he is getting back onto it.
+  dribSprintGap: 2.0,
+  dribTClose: 0.35, dribTK: 0.04, dribTMin: 0.45, dribTMax: 0.7, ftT: 0.5,
+  // Dribble difficulty: drD0, plus drDv at full pace (drVSpan m/s), drDp with a man on him, drDt for
+  // turning it; errors drAng0 + drAngTech * (1-touch)^2 radians, drW0 + drWTech * (1-touch)^2 weight.
+  drD0: 0.10, drDv: 0.30, drVSpan: 8, drDp: 0.40, drPressR: 3, drDt: 0.30,
+  drAng0: 0.05, drAngTech: 0.5, drW0: 0.08, drWTech: 0.8,
+  // MEETING THE BALL. The man it is played to stopped dead a stride short and let it come; he now
+  // walks into it at recvMeetV, quicker by recvMeetPress with a man on him.
+  recvMeetV: 1.5, recvMeetPress: 1.0,
+  // ...and plans his route to it with rcvLag of the reaction time a defender reading the pass is given.
+  rcvLag: 0.3,
   // How much of the pass-cutting reach is anticipation. cutAntLo + meTech(position) * cutAntW,
   // anchored to 1.0 at a 75-rated centre-half (position attr ~81, meTech ~0.82) so the calibrated
   // baseline is untouched and only the spread across bands is new.
@@ -1408,57 +1489,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // from his centre. Everything drawn on the pitch reads these, so the hitbox and the dot can never
   // disagree again.
   bodyR: 0.28, bodyH: 1.9, bodyE: 0.45,
-  // A TOUCH is not a bump. When the man in control reaches the ball he plays it where he is going,
-  // a little quicker than he is running, and then chases it down again -- which is what dribbling
-  // is, and it is the only way the ball ends up in FRONT of him rather than dragging at his heel.
-  // A touch pushes the ball a little quicker than he is running, so it draws a metre or two ahead and
-  // then decelerates back onto his stride. At 1.35x his pace PLUS 2.4 it left his foot at nearly
-  // double his speed -- that is the slingshot: a man receives a dead ball and it rockets away from
-  // him. Just over his own pace is a touch; half again is a kick.
-  touchGain: 1.0, touchMin: 2.5,
-  // Where a touch PUTS the ball: in front of him, on the line he is taking it. The collision was
-  // ejecting it along the contact normal, so a man who ran onto the ball from behind had it placed
-  // BEHIND him -- the velocity went forward and the position did not, and that is the ball dragging
-  // at his heel however hard he pushed it.
-  // 0.60, INSIDE dribCtrl. The comment below states the contract -- dribCtrl must exceed dribSet --
-  // and it was 0.70 against 1.10, so the control law steered the ball to a point at which it
-  // switched itself off. Every carry pushed the ball out of its own control radius and left it
-  // free on the grass until he caught it up or it ran out of play, which is the losing-it-while-
-  // dribbling nobody could place. The comment even names the resolution -- 'dribSet moves instead'
-  // -- and then the sweep that followed moved dribCtrl and left this where it was.
-  // Swept 1.10 / 0.85 / 0.65 / 0.55 at the fixed radius: goals 2.75 / 2.63 / 2.63 / 2.98, carries
-  // and completion flat. Aggregates cannot see this, which is expected -- it is a possession-
-  // quality fault, not a scoring one -- so the value is chosen for margin inside 0.70, not fitted.
-  dribSet: 0.60,
-  // How far out the man in control still has the ball under his feet. MUST exceed dribSet, or the
-  // setpoint is outside the zone the control law operates in and the ball can never reach it.
-  // It cannot be widened past reach to buy that, though, and the two are not independent: control
-  // out to 1.4 m means the carrier steers a ball a defender is nearer to, so nobody can take it off
-  // him. Swept, it reads as a straight trade of realism for a broken match -- the ball sits 0.9 m in
-  // front of him and conversion goes to 22-30%, fouls halve to 4.3 a side and shots collapse to 5.5.
-  // 1.0 / 1.15 / 1.3 measured 12 / 10 / 11 on the regression against 14. dribSet moves instead.
-  dribCtrl: 0.70,
-  // ctrlPull is deliberately WEAK and ctrlForce strong: he matches the ball's pace rather than
-  // yanking it to a spot. A hard positional pull is what made it look like it was sliding on ice --
-  // the ball being dragged sideways to a target instead of running with him.
-  // Close control is CONTINUOUS. A footballer has two feet and makes many small contacts; he does not
-  // shove the ball once every quarter of a second. Setting its position outright teleported it up to
-  // a metre in the middle of a smooth roll -- measured, one slice in ten moved the ball somewhere its
-  // own velocity never took it, which is the sliding. He steers it instead, and the rate at which he
-  // can steer it IS his close control: a good technician keeps it tighter through a turn.
-  ctrlPull: 0.9, ctrlForce: 15, ctrlSkill: 17,
-  // A FIRST TOUCH cushions the ball, it does not kill it dead. Taking possession used to zero the
-  // ball's velocity outright, so every reception began with a stationary ball and a man walking over
-  // to it -- that is the stopping and thinking -- and then a full-power touch to get it going again,
-  // which is the slingshot. He now takes the pace off it and rolls it into his stride.
-  ftKeep: 0.32, ftMax: 4.5, ftAhead: 1.1,
-  // How CLEAN the touch is, which is the whole of a first touch. Taking the ball used to be binary:
-  // anything that came within reach, at any pace, from any angle, was instantly his and instantly
-  // redirected along the way he was facing -- the ball snapping onto him from a metre away. It now
-  // depends on how far he had to stretch, how hard it arrived and what his technique is. At his feet
-  // he sets it exactly where he wants; at the limit of his reach he gets a toe to it and it keeps
-  // going roughly where it was already going. Below ftFail it is not a touch at all: it squirts on
-  // and it is anybody's ball.
+  // The old steering force (touchGain, touchMin, dribSet, dribCtrl, ctrlPull/Force/Skill) and the old
+  // first-touch formula (ftKeep/Max/Ahead, ftStretch/Hot/Pace/Fail/Squirt, ftStretchTech) went with the
+  // touch rebuild of 30 Sep 2026: a touch is a placement now -- see the touch block by controlV, and
+  // touch.ts. Their history is in git.
   // Checking his run for a ball that has arrived behind him: how much of his pace he sheds, and how
   // far behind him it has to be (metres of his own direction, so 0 is level with him).
   // ftCheckDot is METRES of ball ahead along his own line, not a cosine: below it he checks.
@@ -1466,11 +1500,6 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slows INTERCEPTING defenders as much as receivers, and a defender braked to 30% on his own
   // cut is re-pressed and stripped. Leave it on the strictly-behind ball.
   ftCheck: 0.30, ftCheckDot: 0,
-  ftStretch: 0.55, ftHot: 18, ftPace: 0.5, ftFail: 0.30, ftSquirt: 0.5, ftSquirtArc: 1.2,
-  // How much of the stretch penalty technique buys back: at 0.5 an 85-technique man halves it
-  // (full-stretch clean 0.53 against the flat model's 0.29) and a 60 keeps most of it. This is
-  // the bad-touch dial for quick-succession build-up.
-  ftStretchTech: 0.5,
   // ---- the ball is its own object -----------------------------------------------------------
   // It is never attached to anybody. A man in possession pushes it ahead of himself and runs onto
   // it, which is what dribbling IS, and a defender takes it by getting to the BALL -- not by winning
@@ -1480,28 +1509,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // 3.2 m at which that roll was allowed to fire.
   touchZ: 1.6,         // and how low it has to be
   touchStick: 0.55,    // head start, in metres, for the man already running with it
-  // Dribbling is a CONTINUOUS force, not a series of punts. Knocking it a fixed 3.4 m ahead at his
-  // own pace plus two and a half metres a second meant the ball simply outran him -- it was always
-  // quicker than he was until it had drifted past the range he could keep it in, so nobody could
-  // dribble at all. He now keeps NUDGING it: it travels at his pace a stride in front of him, and he
-  // can only correct it as fast as his technique allows. Turn sharply and it takes a moment to come
-  // round with you. That is the degree of stickiness -- it is not attached, it is being controlled.
-  // How far behind the ball he runs. This MUST be inside contact range (bodyR + ballR = 0.39) or he
-  // settles into a spot he can never touch the ball from, and pursuit then faithfully matches the
-  // ball's speed of zero -- man and ball at rest, half a metre apart, which is the stall exactly.
+  // Dribbling is TOUCHES (touch.ts), each placed where he will next meet it; what is left here is how
+  // he runs after his own ball.
   // Pursuit. How hard he closes the remaining gap, in 1/seconds: at 2.6 a metre of lag is worth
   // 2.6 m/s of extra pace. This is the term that replaces the arrival ramp for the man on the ball,
   // and it is why his speed no longer depends on how near his own target happens to be.
   pursueGain: 2.6,
-  // How near the ball he settles, and how hard he can brake to do it. standoff MUST sit between
-  // bodyR + ballR (0.39, where the collision starts shoving the ball around) and reach (0.70, where
-  // he can still control it) -- that band is the only place a man can run with the ball in front of
-  // him rather than under his feet.
-  // Swept together: with a weak brake and the ordinary contact-normal ejection there were 20
-  // sustained moonwalks a match, the longest a full second of a man gliding backwards with the ball
-  // stuck to him. At 0.45 / 3.0, with the ball always knocked out in front, there are none -- and
-  // completion and shots are unchanged, so it costs nothing.
-  standoff: 0.45, recvBrake: 3.0,
+  // How hard he can brake as he settles on his mark, a boot's length behind the ball (dribBehindD).
+  recvBrake: 3.0,
   touchWin: 0.35,      // how much of an edge strength buys in a shoulder-to-shoulder for a loose ball
   // How much further a good tackler gets a foot in, in metres, when challenging a man in possession.
   // The carrier holds it out at touchStick + strength; this is the other half of that duel, and the
@@ -1566,7 +1581,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.68, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.77, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
@@ -1681,7 +1696,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: 0.276, DEF: -0.386, MID: -0.306, FWD: -0.444 },
+  ratePos: { GK: 0.262, DEF: -0.316, MID: -0.213, FWD: -0.318 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -1798,15 +1813,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ball costs him top speed and nothing else. Before this he was excluded from the movement system
   // and could only shuffle 0.14 m per slice -- measured, 84% of all ball-possession time was
   // somebody walking at 0.56 m/s, which is the "slow nudging" that made the match unwatchable.
-  carrySpeed: 0.86, carryLook: 6,
+  // ...0.72 SINCE THE TOUCH WORKS. At 0.86 the old dribble's trips over its own ball kept the real pace
+  // down around 5.2 m/s; once the ball stayed with him he ran at the whole 0.86 -- 6.5 m/s at the
+  // median, outrunning the man pressing him, and tackles halved while shots came under less pressure.
+  carrySpeed: 0.72, carryLook: 6,
   // Running onto one. strideT is how many touches the momentum survives, strideVTol how far the
   // ball's pace may miss his before he has to check, strideMinV the speed below which he is not
   // running onto anything, and strideTouch what the worst technician in the game still gets.
   strideT: 3, strideVTol: 7, strideMinV: 2.2, strideTouch: 0.55,
-  // How far BEYOND the ball the carrier is aimed, along the line he has picked. Zero is a target
-  // on the ball itself, which is not a bearing at all -- see meShape. Too far and the run stops
-  // being a dribble and becomes him leaving it behind, so it is swept, not guessed.
-  carryAim: 2,
   // He commits to a direction and runs with it for about a second before looking up again, and
   // turning costs him. Re-solving an eight-way argmax every quarter-second in a steep value field is
   // what made him shuffle: measured, the steering reversed by more than 90 degrees on 13% of the
@@ -2062,16 +2076,6 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ran straight over it -- inside gatherR of a ball receding along his approach, his pace is
   // capped at the ball's plus gatherOver, so he arrives with it playable instead of behind him.
   gatherR: 2.5, gatherOver: 1.5,
-  // A clean claim on the move puts the FIRST TOUCH in front, along the line he is running --
-  // claims land anywhere inside reach, including 0.6 m behind a sprinting man, and the ball was
-  // simply left there (or ejected along the claim direction, which can be backwards). Below this
-  // speed in m/s he is standing and the claim spot stands with him.
-  ftFwdV: 1.5,
-  // ...and how fast that touch degrades with the pressure on the receiver. The effect of the
-  // forward touch is binary (once the ball is out of the behind-cone the drag never starts), so
-  // the only honest price is the situations in which it is denied: a man receiving under a
-  // tackler's shadow scuffs it under himself whoever he is. At press 1.25 the touch is gone.
-  ftFwdPress: 0.8,
   // How near a man COMMITTED to a spot has to get before he counts as arrived. It was 1.6 -- LOOSER
   // than the 1.3 for a man committed to nothing -- left over from set pieces, which take the mp.sp
   // branch above it and have not needed it for a long time. That spare metre and a half is what kept
@@ -2387,6 +2391,14 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // It concentrates goals in the good sides and the good strikers rather than floating the whole
   // league, which is what the keeper dial does. 0.90 overshoots and flattens again.
   shotElevErr: 8.0, shotElevSkill: 0.95,
+  // OPEN PLAY ONLY (a dead ball keeps its own calibration): shotNoiseOpen degrees more aim error and
+  // shotElevOpen times the elevation error. On the old heavy pitch a low shot that bounced before the
+  // line lost most of its pace to the grass and died, which quietly did the work of misses; on real
+  // grass it carries on, and with the touch rebuild's cleaner chances goals rose to 3.9 a match. This
+  // puts open-play finishing back where the scorelines were: 2.73 goals a match against the 2.62
+  // before the rebuild, draws 23% against 25%, 27% of shots off target against 25% -- still less
+  // wayward than the real game, where about 40% miss.
+  shotNoiseOpen: 6.8, shotElevOpen: 2.0,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -2724,12 +2736,19 @@ gkDiveV: 2.9,
   // reaction (gkReadMin/gkReactSlow below), which is what a keeper's rating is supposed to buy.
   // Partially restored once the crossing steer landed: a reach contact now turns the ball
   // round the post instead of carrying it in, so reach reads as saves again, not own-nets.
-  gkSaveReach: 0.42, gkSaveReachLo: 0.14, gkSaveReachHi: 0.69,
+  // RAISED 30 Sep with the timed contest. The ring used to be tested against the keeper's whole
+  // slice of movement at once; he now has to be where the ball is when it is there, and the dive
+  // reach below the set keeper's (gkSetReach) never came into play. With open-play finishing
+  // recalibrated (shotNoiseOpen) this lands 2.69 goals a match against 2.65 before the rebuild, draws
+  // 27% against 25%; parry-ins stay at 3%.
+  gkSaveReach: 0.42, gkSaveReachLo: 0.65, gkSaveReachHi: 1.15,
   // How long after his reaction the arms take to reach full extension. With the ring now on a
   // clock (see reachOf), THIS is what makes a good keeper good: gkReact* sets when he starts and
   // this sets how fast he opens, so the save that separates levels is the one that was always
   // going to be close. A ball arriving inside his reaction beats him whoever he is.
   gkReachSpan: 0.17,
+  // The set keeper's reach before he has reacted: gkSetReach, gkSetLo of it for the worst. See reachOf.
+  gkSetReach: 0.75, gkSetLo: 0.8,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,

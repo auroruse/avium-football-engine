@@ -1385,6 +1385,72 @@ export function meBlock(s, side) {
   for (const p of us) p._mkPrev = p._mk;
 }
 
+// WHICH WAY HE TAKES IT. The eight directions a man on the ball can carry it, scored on what the
+// ground is worth with the bodies there, the lines, and -- when he is through -- the goal. The
+// dribble re-picks it every carryCommit slices; the FIRST TOUCH asks it once, as the ball arrives,
+// so that a man takes the ball the way he is about to run with it. `prevA` is the line he is on, which
+// it costs turnW per radian to leave (carryTurn unless the caller says otherwise).
+export function meCarryPick(s, side, p, prevA, turnW) {
+  const mp = s.mePos, dir = meDir(side), own = meGoalX(meOther(side));
+  const off = CFG.carrierOffside ? meOffsideLine(s, side) : 0;
+  // A CLEAR RUN AT GOAL BENDS THE CARRY AT THE GOAL. The eight directions below are scored
+  // on meValHere minus pressure, and the arithmetic of that pair is why a man clean through
+  // never ran at the net: the value surface gains about 0.083 (at carryVal) for the goalward
+  // step from twenty metres out, and the keeper standing in it is worth up to 0.075 of
+  // pressure -- the one body left on the pitch cancelled the entire reason to go there, and
+  // any loose body near the goalward ray beat it from further out. So the search literally
+  // steered AWAY from the keeper, which from the stand is a man declining an open goal.
+  // Same corridor test as decide.ts runAtGoal, priced per metre of ground gained on the goal
+  // mouth so it dominates the flat surface only when he is actually through.
+  const gx2 = meGoalX(side);
+  let atGoal = 0;
+  // ...AND IT USES THE SAME TEST AS decide.ts, WHICH IS WHAT THE COMMENT ABOVE PROMISES.
+  // It was left on the old headcount -- any opponent goal-side within 20 m of his channel
+  // cancelled it, including one who could never get across -- while runAtGoal moved to the
+  // race in meThruCover. So the two disagreed: the shooting logic knew he was through and
+  // the STEERING did not, which drops the goalward term and hands the eight-way search back
+  // to the value surface. The value surface pays for empty grass, and on a pitch with the
+  // defence beaten the empty grass is the wing. That is the man clean through drifting to
+  // the touchline instead of running at the net.
+  if (meLaneBlock(s, side, p.x, p.y, gx2, ME_HALF_W) < CFG.noBackLane) {
+    if (!meThruCover(s, side, p) || Math.abs(gx2 - p.x) < CFG.noBackRange) atGoal = 1;
+  }
+  if (globalThis.__fire && atGoal) globalThis.__fire.carryAtGoal = (globalThis.__fire.carryAtGoal || 0) + 1;
+  const gd0 = atGoal ? Math.hypot(gx2 - p.x, ME_HALF_W - p.y) : 0;
+  let bAng = null, bSc = -Infinity;
+  for (let k = 0; k < 8; k++) {
+    const ang = k * Math.PI / 4;
+    const cx = p.x + Math.cos(ang) * CFG.carryLook, cy = p.y + Math.sin(ang) * CFG.carryLook;
+    if (CFG.carrierOffside && (cx - off) * dir > 0.4) continue;
+    // Where he takes it is worth what it is worth WITH the bodies there, and a footballer
+    // does not turn on a sixpence: holding your line is cheaper than reversing it.
+    let sc2 = meValHere(s, side, cx, cy) * CFG.carryVal - mePressure(s, side, cx, cy) * CFG.carryAvoid;
+    if (atGoal) sc2 += (gd0 - Math.hypot(gx2 - cx, ME_HALF_W - cy)) * CFG.carryGoalW;
+    // Running it out of play is a real cost, and it is not the same cost everywhere. A throw
+    // near halfway is almost nothing; a goal kick hands them the ball; a defender who puts it
+    // behind for a corner has conceded the most dangerous restart in football. Measured, 7.4
+    // restarts a match were a man dribbling it over a line, 1.6 of them corners off his own
+    // byline. A flat margin would have stopped wingers running the touchline, which is real
+    // football -- so it is priced, and the winger stays willing while the defender does not.
+    const eSide = Math.min(cy, PITCH_W - cy), eOwn = Math.abs(cx - own), eFar = Math.abs(cx - meGoalX(side));
+    if (eSide < CFG.outSee) sc2 -= (1 - eSide / CFG.outSee) * CFG.outThrow;
+    if (eFar  < CFG.outSee) sc2 -= (1 - eFar  / CFG.outSee) * CFG.outGoalkick;
+    if (eOwn  < CFG.outSee) sc2 -= (1 - eOwn  / CFG.outSee) * CFG.outCorner;
+    // OFF THE PITCH IS NOT AN OPTION, and it used to be removed from the search rather than
+    // scored -- `continue` on any point outside a 2 m margin. A man already inside that margin
+    // therefore had every one of his eight directions vetoed, the search returned nothing, and
+    // he simply held his previous committed angle: straight over the line. Measured, 5.5 balls
+    // a match were carried out, 36% of every ball that left the pitch, and the median carrier
+    // was 1.2 m from the touchline at the moment he committed. Priced instead of vetoed, the
+    // search always has an answer and the answer always points back onto the grass.
+    const outBy = Math.max(0, 2 - Math.min(eSide, cx, PITCH_L - cx));
+    if (outBy > 0) sc2 -= CFG.outHard * (1 + outBy);
+    if (prevA != null) sc2 -= Math.abs(Math.atan2(Math.sin(ang - prevA), Math.cos(ang - prevA))) * (turnW ?? CFG.carryTurn);
+    if (sc2 > bSc) { bSc = sc2; bAng = ang; }
+  }
+  return bAng;
+}
+
 // ---- shape ------------------------------------------------------------------------------
 // The zonal skeleton, then the job on top of it. Nobody's position is implicit any more: every
 // outfielder is doing exactly one thing the coordinator told him to do.
@@ -2005,61 +2071,7 @@ export function meShape(s, side) {
       // A dribble is a committed movement, not an argmax re-solved four times a second.
       if ((p._drbT ?? 0) > 0) p._drbT--;
       else {
-        // A CLEAR RUN AT GOAL BENDS THE CARRY AT THE GOAL. The eight directions below are scored
-        // on meValHere minus pressure, and the arithmetic of that pair is why a man clean through
-        // never ran at the net: the value surface gains about 0.083 (at carryVal) for the goalward
-        // step from twenty metres out, and the keeper standing in it is worth up to 0.075 of
-        // pressure -- the one body left on the pitch cancelled the entire reason to go there, and
-        // any loose body near the goalward ray beat it from further out. So the search literally
-        // steered AWAY from the keeper, which from the stand is a man declining an open goal.
-        // Same corridor test as decide.ts runAtGoal, priced per metre of ground gained on the goal
-        // mouth so it dominates the flat surface only when he is actually through.
-        const gx2 = meGoalX(side);
-        let atGoal = 0;
-        // ...AND IT USES THE SAME TEST AS decide.ts, WHICH IS WHAT THE COMMENT ABOVE PROMISES.
-        // It was left on the old headcount -- any opponent goal-side within 20 m of his channel
-        // cancelled it, including one who could never get across -- while runAtGoal moved to the
-        // race in meThruCover. So the two disagreed: the shooting logic knew he was through and
-        // the STEERING did not, which drops the goalward term and hands the eight-way search back
-        // to the value surface. The value surface pays for empty grass, and on a pitch with the
-        // defence beaten the empty grass is the wing. That is the man clean through drifting to
-        // the touchline instead of running at the net.
-        if (meLaneBlock(s, side, p.x, p.y, gx2, ME_HALF_W) < CFG.noBackLane) {
-          if (!meThruCover(s, side, p) || Math.abs(gx2 - p.x) < CFG.noBackRange) atGoal = 1;
-        }
-        if (globalThis.__fire && atGoal) globalThis.__fire.carryAtGoal = (globalThis.__fire.carryAtGoal || 0) + 1;
-        const gd0 = atGoal ? Math.hypot(gx2 - p.x, ME_HALF_W - p.y) : 0;
-        let bAng = null, bSc = -Infinity;
-        for (let k = 0; k < 8; k++) {
-          const ang = k * Math.PI / 4;
-          const cx = p.x + Math.cos(ang) * CFG.carryLook, cy = p.y + Math.sin(ang) * CFG.carryLook;
-          if (CFG.carrierOffside && (cx - off) * dir > 0.4) continue;
-          // Where he takes it is worth what it is worth WITH the bodies there, and a footballer
-          // does not turn on a sixpence: holding your line is cheaper than reversing it.
-          let sc2 = meValHere(s, side, cx, cy) * CFG.carryVal - mePressure(s, side, cx, cy) * CFG.carryAvoid;
-          if (atGoal) sc2 += (gd0 - Math.hypot(gx2 - cx, ME_HALF_W - cy)) * CFG.carryGoalW;
-          // Running it out of play is a real cost, and it is not the same cost everywhere. A throw
-          // near halfway is almost nothing; a goal kick hands them the ball; a defender who puts it
-          // behind for a corner has conceded the most dangerous restart in football. Measured, 7.4
-          // restarts a match were a man dribbling it over a line, 1.6 of them corners off his own
-          // byline. A flat margin would have stopped wingers running the touchline, which is real
-          // football -- so it is priced, and the winger stays willing while the defender does not.
-          const eSide = Math.min(cy, PITCH_W - cy), eOwn = Math.abs(cx - own), eFar = Math.abs(cx - meGoalX(side));
-          if (eSide < CFG.outSee) sc2 -= (1 - eSide / CFG.outSee) * CFG.outThrow;
-          if (eFar  < CFG.outSee) sc2 -= (1 - eFar  / CFG.outSee) * CFG.outGoalkick;
-          if (eOwn  < CFG.outSee) sc2 -= (1 - eOwn  / CFG.outSee) * CFG.outCorner;
-          // OFF THE PITCH IS NOT AN OPTION, and it used to be removed from the search rather than
-          // scored -- `continue` on any point outside a 2 m margin. A man already inside that margin
-          // therefore had every one of his eight directions vetoed, the search returned nothing, and
-          // he simply held his previous committed angle: straight over the line. Measured, 5.5 balls
-          // a match were carried out, 36% of every ball that left the pitch, and the median carrier
-          // was 1.2 m from the touchline at the moment he committed. Priced instead of vetoed, the
-          // search always has an answer and the answer always points back onto the grass.
-          const outBy = Math.max(0, 2 - Math.min(eSide, cx, PITCH_L - cx));
-          if (outBy > 0) sc2 -= CFG.outHard * (1 + outBy);
-          if (p._drbA != null) sc2 -= Math.abs(Math.atan2(Math.sin(ang - p._drbA), Math.cos(ang - p._drbA))) * CFG.carryTurn;
-          if (sc2 > bSc) { bSc = sc2; bAng = ang; }
-        }
+        const bAng = meCarryPick(s, side, p, p._drbA);
         if (bAng !== null) { p._drbWant = bAng; p._drbT = CFG.carryCommit; }
       }
       // Turn INTO it rather than snapping. His feet, and the line the ball is running on, come round
@@ -2141,9 +2153,17 @@ export function meShape(s, side) {
       // is on the far side of it, so he runs THROUGH the ball, and the touch is what puts it back in
       // front. He cannot outrun it either -- the touch leaves his foot touchMin quicker than he is
       // going, every time.
-      const ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
-      p._tx = mp.bx + Math.cos(ca) * CFG.carryAim;
-      p._ty = mp.by + Math.sin(ca) * CFG.carryAim;
+      // ...WHICH WAS TRUE WHILE THE BALL WAS STEERED BY A FORCE. It is now TOUCHED (touch.ts): he plays
+      // it on when it comes back to his feet, and what he needs from his running is to arrive there,
+      // a boot's length behind it on the line he is taking it -- so that is where he is aimed. A
+      // target beyond the ball made him run through it every slice and lean on the body shove to put
+      // it back in front of him.
+      // Behind it along the way it is ROLLING, not along the line he wants: a ball going off his line
+      // is chased from behind, not run alongside.
+      let ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
+      if (Math.hypot(mp.bvx, mp.bvy) > 0.5) ca = Math.atan2(mp.bvy, mp.bvx);
+      p._tx = mp.bx - Math.cos(ca) * CFG.dribBehindD;
+      p._ty = mp.by - Math.sin(ca) * CFG.dribBehindD;
       continue;                                                    // no leash, no trap, no offside clamp
     }
     // A committed run overrides the job for as long as it lasts -- but a man going in behind holds

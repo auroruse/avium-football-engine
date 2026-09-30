@@ -4,6 +4,7 @@ export * from "./attributes";
 export * from "./assignment";
 export * from "./geometry";
 export * from "./ball";
+export * from "./touch";
 export * from "./decide";
 export * from "./brain";
 export * from "./setpiece";

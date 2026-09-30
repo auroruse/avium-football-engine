@@ -257,7 +257,7 @@ export function meOffsideLine(s, side) {
 // running away from the ball is now genuinely further from it than one standing still.
 import { CFG, ME_DT } from "./config";
 import { meAerial, meAttrs, meSpeed } from "./attributes";
-export function meTimeToBallMs(p, tx, ty, vmax) {
+export function meTimeToBallMs(p, tx, ty, vmax, lagMul) {
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT;      // per-slice displacement -> m/s
   const rawD = Math.hypot(tx - p.x, ty - p.y);
   // Beyond 16 m the fine structure is noise; GF itself switches to a straight-line estimate.
@@ -276,7 +276,7 @@ export function meTimeToBallMs(p, tx, ty, vmax) {
   // else. Here it reaches every query in the engine at once: intercepting, marking, chasing a loose
   // ball, closing a carrier down. A defender who reads it commits a quarter of a second sooner than
   // one who does not, and over a match that is the difference between getting there and watching.
-  const lag = CFG.ttbChangeMs * (1 - (meAttrs(p).position / 99 - 0.5) * CFG.ttbAnticip);
+  const lag = CFG.ttbChangeMs * (1 - (meAttrs(p).position / 99 - 0.5) * CFG.ttbAnticip) * (lagMul ?? 1);
   const over = d - r;
   return over > 0 ? lag + over / vm * 1000
                   : lag * (d / Math.max(r, 0.01));
@@ -284,9 +284,9 @@ export function meTimeToBallMs(p, tx, ty, vmax) {
 
 // Ball-side query: scan the forecast for the first slot this player can actually make, and return
 // where to run and how urgent it is. `run at where the ball WILL be` lives here.
-export function meIntercept(p, mp, vmax, hurry) {
+export function meIntercept(p, mp, vmax, hurry, lagMul) {
   const pred = mp.pred;
-  if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
+  if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax, lagMul); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
   for (let i = 0; i < pred.length; i++) {
     const [x, y, z] = pred[i];
     // Over HIS head there -- not over a flat 1.6 m that nobody could ever reach. Without this he
@@ -297,7 +297,7 @@ export function meIntercept(p, mp, vmax, hurry) {
     // That is most of why he would not come for crosses.
     if (z >= (p.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(p), CFG))) continue;
     const t = i * ME_DT * 1000;
-    const need = meTimeToBallMs(p, x, y, vmax);
+    const need = meTimeToBallMs(p, x, y, vmax, lagMul);
     // 60 ms is "I can be standing there when it arrives". A man who HURRIES does not need to be
     // waiting -- the ball is still travelling through the point, so arriving inside the window it
     // takes to pass is enough, and that lets him meet it metres earlier in the flight. This is
@@ -306,7 +306,7 @@ export function meIntercept(p, mp, vmax, hurry) {
     if (need <= t + (hurry || 60)) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
   }
   const last = pred[pred.length - 1];
-  return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax), slotMs: (pred.length - 1) * ME_DT * 1000 };
+  return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax, lagMul), slotMs: (pred.length - 1) * ME_DT * 1000 };
 }
 
 // Can anybody actually get to this ball before it arrives? This is the SAME question the resolution

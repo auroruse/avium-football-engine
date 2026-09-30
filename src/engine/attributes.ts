@@ -4,11 +4,16 @@ import { DEFAULT_OVR } from "./config";
 // One OVR is all the data there is, and it stays the absolute currency -- these are tilts around it,
 // never a rescale. A 70 is a 70 wherever he stands; his position decides what he is a 70 AT. atkW is
 // the same attacking weight the rest of the app already carries, so nothing new has to be authored.
+// TOUCH is first touch and close control, split off `pass` so that a position can be worse at one
+// than the other. On `pass` a 90-rated forward controlled the ball like a 73-rated midfielder, which
+// made every striker's first touch a coin toss. Midfielders stay the best technicians; a forward is
+// a few points behind the midfielder of the same rating, a defender a little further, and a keeper's
+// feet are a keeper's feet.
 export const ME_TILT = {
-  GK:  { pace:-16, pass:-8, shoot:-34, tackle:-22, position:  6, strength: 2, reflex: 18 },
-  DEF: { pace: -2, pass:-5, shoot:-16, tackle: 11, position:  6, strength: 7, reflex:-34 },
-  MID: { pace:  0, pass: 7, shoot: -3, tackle:  1, position:  2, strength: 0, reflex:-34 },
-  FWD: { pace:  5, pass:-3, shoot: 11, tackle:-11, position: -2, strength: 3, reflex:-34 },
+  GK:  { pace:-16, pass:-8, shoot:-34, tackle:-22, position:  6, strength: 2, reflex: 18, touch:-10 },
+  DEF: { pace: -2, pass:-5, shoot:-16, tackle: 11, position:  6, strength: 7, reflex:-34, touch:  2 },
+  MID: { pace:  0, pass: 7, shoot: -3, tackle:  1, position:  2, strength: 0, reflex:-34, touch:  7 },
+  FWD: { pace:  5, pass:-3, shoot: 11, tackle:-11, position: -2, strength: 3, reflex:-34, touch:  4 },
 };
 
 // atkW is NOT a 0..1 weight -- it runs 0 for a keeper to about 42 for a striker. Treating it as a
@@ -36,7 +41,7 @@ export function meAttrs(p) {
   const c = (v) => Math.max(20, Math.min(99, v));
   return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * 16),
     tackle: c(o + t.tackle - aw * 12), position: c(o + t.position), strength: c(o + t.strength),
-    reflex: c(o + t.reflex) });
+    reflex: c(o + t.reflex), touch: c(o + t.touch) });
 }
 
 // Top speed in m/s. Stamina is applied here rather than baked into the attribute so that a tiring

@@ -225,7 +225,8 @@ sub("meRate(q2, meSaveBonus(mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePe
 sub("if (q2.pos === \"GK\") meRate(q2, -meConcedePen(xg, !!(sh && sh.pen)));", "if (q2.pos === \"GK\") meRate(q2, (globalThis.__gc.push([xg, q2, !!(sh && sh.pen)]), -meConcedePen(xg, !!(sh && sh.pen))));");
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
-sub("        resolvePending(bs);\n        mp.flight = false;", "        mp._pickI = bi; resolvePending(bs); mp._pickI = -1;\n        mp.flight = false;");
+// Indentation-free: the contest moved into its own function and the bundle re-indents it.
+sub("resolvePending(bs);", "mp._pickI = bi; resolvePending(bs); mp._pickI = -1;");
 const engPath = path.join(HERE, "engine-ratings.mjs");
 fs.writeFileSync(engPath, code);
 const CFG = (await import(engPath)).CFG;
