@@ -5,6 +5,7 @@ export * from "./assignment";
 export * from "./geometry";
 export * from "./ball";
 export * from "./touch";
+export * from "./pass";
 export * from "./decide";
 export * from "./brain";
 export * from "./setpiece";

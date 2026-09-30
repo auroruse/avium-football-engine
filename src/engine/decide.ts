@@ -2,7 +2,9 @@
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meGroundMaxD, meGroundSpeed, meLoftFor } from "./ball";
+import { meGroundMaxD, meLoftT } from "./ball";
+import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
+import { meTouchNear } from "./touch";
 import { meMind, meTech } from "./attributes";
 import { meOppDist } from "./brain";
 import { meSpeed } from "./attributes";
@@ -117,6 +119,34 @@ export function meShotP(s, side, p, x, y, rec) {
   return Math.max(0, Math.min(0.95, q));
 }
 
+// HOW CLEANLY HE CAN STRIKE IT, from everything around the shot but the ball itself (the ball's own
+// difficulty -- first time, bouncing, turning it -- is mePassExecD's). A shot used to be struck the same
+// with a man on top of him as in ten yards of grass, give or take a few degrees for a 6 m headcount, so
+// half of all shots hit the target where real football manages about a third. Now it is:
+//   CLOSED DOWN: every opponent inside sitFar, fully at sitNear, sitBehind of that for a man chasing
+//     rather than standing in front of him (the one in front takes the angle and the backlift);
+//   ACROSS HIS RUN: how fast he is going (full at sitRunV) times how far the shot turns from his run;
+//   STRETCHING: the ball further from him than sitReach0, fully at sitReach0 + sitReachSpan.
+// The sum widens the strike, sends it higher and takes pace off it (meShootBall), and the man deciding
+// whether to shoot knows it (shotSitLoss) -- so a pressured shot is both worse and rarer.
+export function meShotSit(s, side, p, tx, ty) {
+  const mp = s.mePos;
+  const ox = tx - p.x, oy = ty - p.y, ol = Math.hypot(ox, oy) || 1, ux = ox / ol, uy = oy / ol;
+  let pr = 0;
+  for (const q of s.players[meOther(side)]) {
+    if (!q || q.off || q.pos === "GK") continue;
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+    if (d >= CFG.sitFar) continue;
+    const close = Math.min(1, (CFG.sitFar - d) / (CFG.sitFar - CFG.sitNear));
+    const front = d > 0.05 ? Math.max(0, (dx * ux + dy * uy) / d) : 1;
+    pr += close * (CFG.sitBehind + (1 - CFG.sitBehind) * front);
+  }
+  const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT, v = Math.hypot(vx, vy);
+  const body = v > 0.5 ? Math.min(1, v / CFG.sitRunV) * (1 - (vx * ux + vy * uy) / v) / 2 : 0;
+  const reachD = Math.max(0, Math.min(1, (Math.hypot(mp.bx - p.x, mp.by - p.y) - CFG.sitReach0) / CFG.sitReachSpan));
+  return CFG.sitPressW * Math.min(CFG.sitPressCap, pr) + CFG.sitBodyW * body + CFG.sitReachW * reachD;
+}
+
 // ---- the decision -----------------------------------------------------------------------
 // Every option is scored as "how much is the ball worth after this, times the chance it comes off".
 // Instructions move the SCORES, never the success rolls. Asking for more direct passing really does
@@ -130,7 +160,9 @@ export let ME_DBG = null;
 export const meSetDbg = (v) => { ME_DBG = v; };
 
 // `dwell` is how many slices he is PAST his touch budget. Zero means he still has time to look up.
-export function meDecide(s, rng, side, i, dwell, noCarry) {
+// `ft` is set when the ball is ARRIVING rather than at his feet -- { bvx, bvy, bz }, the ball as it
+// reaches him -- and asks what he would do with it first time (see meFirstTime in match.ts).
+export function meDecide(s, rng, side, i, dwell, noCarry, ft) {
   // A man the manager has re-instructed (p._ci) decides on the side's orders plus his own.
   const ps = s.players[side], p = ps[i], a = meAttrs(p), st = meCoachSt(s.strategy?.[side] || NO_INSTRUCTIONS, p);
   const isGK = p.pos === "GK";
@@ -208,8 +240,18 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
   const cls = { shot: (rng.u() + rng.u() - 1), pass: (rng.u() + rng.u() - 1),
                 carry: (rng.u() + rng.u() - 1), clear: (rng.u() + rng.u() - 1) };
   const jit = (c) => (clsW * cls[c] + ownW * (rng.u() + rng.u() - 1)) * miss;
+  // HOW HARD THE BALL IS TO STRIKE, as it is: arriving, if this is first time, or rolling off his last
+  // touch. A ball he has stopped costs nothing; one coming at him, or that he has to send off square
+  // to the way it is travelling, is harder to place, and he knows it -- the difficulty comes off what
+  // he believes each option is worth, and the kick is struck with the same number (mePassExecD).
+  const sbx = ft ? ft.bvx : mp.bvx, sby = ft ? ft.bvy : mp.bvy, sbz = ft ? ft.bz : mp.bz;
+  const spvx = (p.vx || 0) / ME_DT, spvy = (p.vy || 0) / ME_DT, snear = meTouchNear(s, side, p.x, p.y);
+  const exD = (ox, oy) => mePassExecD(sbx, sby, sbz, spvx, spvy, ox, oy, snear);
   // Shoot.
-  const sp = meShotP(s, side, p, p.x, p.y);
+  const shotD = exD(meGoalX(side) - p.x, ME_HALF_W - p.y);
+  const shotSit = meShotSit(s, side, p, meGoalX(side), ME_HALF_W);
+  const sp = meShotP(s, side, p, p.x, p.y) * Math.max(0, 1 - shotD * CFG.execShotLoss)
+           * Math.max(0, 1 - shotSit * CFG.shotSitLoss);
   // What the shot becomes if he takes it a stride nearer. Hoisted out of the shot branch because the
   // CARRY needs it too -- see the drive-at-goal term below.
   // ...AND A CARRY IS NOT FREE. carryAdv is eight metres, roughly 1.6 s at a dribbler's pace, and in
@@ -313,67 +355,38 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
              - offWant * CFG.shotWantW - waitCost;
     if (ME_DBG) ME_DBG.shot = sc;
     const j = sc + jit("shot");
-    if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp }; }
+    if (j > bestSc) { bestSc = j; best = { k: "shot", p: sp, execD: shotD }; }
   }
   // Pass.
-  for (let j = 0; j < ps.length; j++) {
-    if (j === i) continue;
-    const q = ps[j];
-    // NOT A MAN OFF THE PITCH. A sent-off player, or an injured one with nobody left to replace him,
-    // is parked six metres beyond the touchline, and a ball to his feet was a throw to the other side.
-    if (!q || q.off) continue;
-    // Two different balls to the same man, scored against each other: one to his feet, one into the
-    // space in front of him. Which is right is the passer's decision, not a property of the receiver.
-    for (let mode = 0; mode < 2; mode++) {
-    let aimX, aimY, thru = false;
-    if (mode === 0) {
-      // LEAD HIM. A ball to feet was aimed at the square metre he was standing on, and his own
-      // velocity was never read in this branch -- so with a side breaking forward together, every
-      // ordinary pass was played behind its receiver and he had to check back onto it. That is the
-      // difference between a move that flows and one that stops on every touch. He is led by his
-      // own pace over the flight, at feetLeadFrac of it: short of the full solve, because the last
-      // half-stride is his to take and over-leading turns a simple pass into a through ball.
-      const qvx0 = (q.vx || 0) / ME_DT, qvy0 = (q.vy || 0) / ME_DT;
-      const qs0 = Math.hypot(qvx0, qvy0);
-      if (qs0 > CFG.feetMoveV) {
-        const d00 = Math.hypot(q.x - p.x, q.y - p.y);
-        const l0 = Math.min(CFG.feetLeadMax, qs0 * meGroundT(d00, d00) * CFG.feetLeadFrac);
-        aimX = q.x + qvx0 / qs0 * l0; aimY = q.y + qvy0 / qs0 * l0;
-      } else { aimX = q.x; aimY = q.y; }
-    }
-    else {
-      // Into space -- ALONG THE RUN THAT EXISTS. This used to invent one: a receiver on no run at
-      // all was assumed to burst dead upfield at the moment of the pass, and the lead was solved
-      // to the far end of that imaginary sprint. Measured, that manufactured a league where 31% of
-      // all passes were into-space balls completing 47%, and half of every interception was the
-      // ball running past its own receiver. A committed runner gets the full solve; a man already
-      // moving gets a short ball led along his ACTUAL velocity; a standing man gets no into-space
-      // option, because the ball to his feet is already on the menu as mode 0.
-      const committed = q._runT > 0 && q._run === "behind";
-      const qvx = (q.vx || 0) / ME_DT, qvy = (q.vy || 0) / ME_DT;
-      const qsp = Math.hypot(qvx, qvy);
-      let rvx, rvy;
-      if (committed) { rvx = q._rx - q.x; rvy = q._ry - q.y; }
-      else if (qsp > CFG.thruMoveV && qvx * dir > -0.3) { rvx = qvx; rvy = qvy; }
-      else continue;
-      const rl = Math.hypot(rvx, rvy);
-      if (rl < 0.5) continue;
-      const ux = rvx / rl, uy = rvy / rl;
-      const d0 = Math.hypot(q.x + ux * CFG.thruMax - p.x, q.y + uy * CFG.thruMax - p.y);
-      const tB = meGroundT(d0, d0);
-      // He runs onto it. A man already sprinting uses the whole flight; a man being INVITED to
-      // extend his jog loses thruReact of it, and either way the ball is aimed thruLeadFrac short
-      // of the solved limit so the last stride is his. A jog-lead is also capped at thruJogMax:
-      // the invitation is a ball in front of him, not a punt to his sprint horizon.
-      const tUse = Math.max(0.2, tB - (committed ? 0 : CFG.thruReact));
-      const lead = Math.max(CFG.thruMin, Math.min(committed ? CFG.thruMax : CFG.thruJogMax,
-        meSpeed(meAttrs(q), q.stamina) * tUse * CFG.thruLeadFrac));
-      aimX = q.x + ux * lead; aimY = q.y + uy * lead;
-      if (aimX < 2 || aimX > PITCH_L - 2 || aimY < 2 || aimY > PITCH_W - 2) continue;
-      thru = true;
-    }
+  // EVERY KIND OF BALL, each scored the same way. A pass used to be one of two things -- a ball to his
+  // feet, or one led into space by a guess -- and whether it went in the air was a rule about its
+  // length. What is played now is chosen from the balls a footballer actually has: along the floor to
+  // feet, into a runner's stride, over the top, a switch driven across the field, a cross to a head,
+  // out of the keeper's hands. Each one is solved for where it will meet its man (pass.ts) and carries
+  // its own flight into the scoring, so the risk is judged on the ball that will be struck.
+  const toLine = Math.abs(meGoalX(side) - p.x);
+  // OUT WIDE, NEAR THEIR LINE: somewhere a cross comes from.
+  const crossZone = toLine < CFG.crossFromX && Math.abs(p.y - ME_HALF_W) > CFG.crossFromY;
+  // IN HIS HANDS. A keeper who has caught it rolls it, throws it or kicks it out of his hands; he does
+  // not drop it and pass it like a centre-half.
+  const inHands = isGK && mp.held && mp.side === side && mp.idx === i;
+  const passTech = meTech(a.pass);
+  // THE BALL IS HARDER TO HIT THAN IT LOOKS. Each kind of ball leaves the boot kindNoise times as wide
+  // of its aim and its weight as a pass along the floor (meKickBall), and nothing told the man choosing
+  // it: a chip over the top was weighed as if he could land it as surely as he rolls a ball ten yards.
+  // This is the skill that would miss an ordinary ball by as much -- so the choice knows the cost.
+  const kindTech = (t, kn) => kn === 1 ? t
+    : Math.max(0, Math.min(1, 1 - kn * (1 - t) - (kn - 1) * CFG.passNoiseDeg / CFG.passNoiseSkill));
+  // Past this a ball to feet goes in the air (see the ball to feet below, where it is explained).
+  const loftAt = Math.min(CFG.loftD - (st.passingDir || 0) * CFG.loftDir, meGroundMaxD());
+  const inBox = (x, y) => Math.abs(meGoalX(side) - x) < CFG.crossBoxX && Math.abs(y - ME_HALF_W) < CFG.crossBoxY;
+  // c: { ax, ay, k, high, kind, zEnd, va, tb, thru, blk } -- where it is aimed, what kind of ball it is,
+  // its flight (kind and arrival height in the air, arrival pace on the ground), how long it takes,
+  // whether it is played into space, and the bodies in its lane.
+  const consider = (q, j, c) => {
+    const aimX = c.ax, aimY = c.ay;
     const dx = aimX - p.x, dy = aimY - p.y, d = Math.hypot(dx, dy) || 0.1;
-    if (d > 55) continue;
+    if (d > (c.kind === "punt" ? 65 : 55)) return;
     // OFFSIDE, AS HE SEES IT. A man running in behind gets the benefit of the doubt for a couple of
     // metres, which is what makes a through ball possible at all. But where the line IS, at the
     // moment he strikes it, is a judgement made at speed by somebody facing the other way -- he is
@@ -386,17 +399,10 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // match.ts, which asks for both -- so the decision was refusing balls the referee would have
     // allowed: a man at the byline is beyond the last defender by definition, and every team-mate in
     // the area is too, so the veto fired on all of them. A cross is exactly that ball.
-    // It did NOT restore crossing, and the measurement is here so nobody runs it again: 0.9 balls a
-    // match from a wide attacking spot into the area against 1.4 before, which is noise on 30
-    // matches. Crossing is not being declined -- there is nobody to cross to. 74% of every pass
-    // struck in the final third has ZERO team-mates in the box, because the whole attacking shape is
-    // clamped to the offside line (see meShape) and the offside line sits at 16.7 m while the area
-    // starts at 16.5. Standing in the box is illegal for the entire match. That is a question about
-    // how deep the defending block sits, and it lives in meAnchor.
-    const slack = thru ? CFG.offsideGrace : 0.4;
+    const slack = c.thru ? CFG.offsideGrace : 0.4;
     const seen = (q.x - off) * dir + (rng.u() + rng.u() - 1) * CFG.offBlind * (1 - meMind(p));
-    if (seen > slack && (q.x - p.x) * dir > 0 && (q.x - PITCH_L / 2) * dir > 0) continue;
-    const fwd = (aimX - p.x) * meDir(side);
+    if (seen > slack && (q.x - p.x) * dir > 0 && (q.x - PITCH_L / 2) * dir > 0) return;
+    const fwd = (aimX - p.x) * dir;
     // Never backwards from a shooting position. Square and forward balls stay available -- a
     // team-mate better placed is a real reason to pass; turning round is not.
     // WHAT THIS PASS CREATES, which nothing has ever asked. The carry branch knows that moving the
@@ -406,50 +412,25 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // Measured, that is what a box entry does: 39-46% of them end with the ball simply played back
     // OUT, against about 20% in the real game, while only 2-5% win a set piece against a real 10%.
     // The cutback is the most valuable ball in football and this engine could not see it.
-    const spq = meShotP(s, side, q, aimX, aimY);
+    // A CROSS IS MET WITH A HEAD, and a header from a spot is worth less than a shot from it: that
+    // discount is what stops a winger crossing to a man he could simply have played in.
+    const spq = meShotP(s, side, q, aimX, aimY) * (c.k === "cross" ? CFG.crossHeadK : 1);
     // ...and the backward veto has to know about it too, or the cutback is thrown out of the menu
     // before it can be scored. noBackShot is 0.035, which anywhere inside about seventeen metres is
     // every passer alive, so a man who could shoot was forbidden from squaring it to someone better
     // placed. The comment on this rule always said a team-mate better placed is a real reason to
     // pass; it just used ground gained as the proxy for it.
-    if (fwd < -CFG.noBackDist && (sp > CFG.noBackShot || runAtGoal) && spq <= sp) continue;
+    if (fwd < -CFG.noBackDist && (sp > CFG.noBackShot || runAtGoal) && spq <= sp) return;
     // ...and when he is through, a SQUARE ball has to be earned as well. Rolling it across to a man
     // who is no better placed is handing off a chance for nothing -- the only reasons to pass from
     // there are that he has a better sight of goal or fewer bodies on him, so those are the only two
     // things that will do it. Anything that genuinely advances the ball is exempt.
     if (runAtGoal && fwd < CFG.sideAdvance) {
-      const betterSight = meShotP(s, side, q, aimX, aimY) > sp * CFG.sideBetter;
+      const betterSight = spq > sp * CFG.sideBetter;
       const freer = mePressure(s, side, aimX, aimY) < press - CFG.sideFreer;
-      if (!betterSight && !freer) continue;
+      if (!betterSight && !freer) return;
     }
-    let blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY);
-    // The lofted alternative: over the press instead of through it. Ground physics makes a long
-    // ground ball futile anyway (it arrives dead or needs an absurd strike), so past 26 m the loft
-    // is the only real option; in between, it pays a flat tax so a ground pass wins any tie.
-    let isHigh = false;
-    // Tried and rejected: deriving this crossover from meGroundMaxD -- the distance past which the
-    // launch the ODE asks for exceeds passMaxV, about 19 m -- instead of the literal 26, on the
-    // grounds that the 19-26 m band is ground passes that physically cannot arrive. With the flight
-    // time now honest they already score as the slow balls they are, and forcing the loft on top of
-    // that read 12/21 against 13. The rule is redundant once the physics stops lying.
-    // ...AND WHERE THAT CROSSOVER SITS IS A TACTIC. A ball went long on pure geometry, so nothing a
-    // style could say ever made it go over the top: measured across the fourteen, the lofted share
-    // ran 27-38% and was INVERTED -- Gegenpress hit more long balls than Route One, whose entire
-    // description is skipping the middle third. Directness moves the crossover, which is what
-    // choosing to play over a midfield rather than through it actually is.
-    // ...AND NEVER LATER THAN THE GRASS ALLOWS. The launch cap makes a ground ball past
-    // meGroundMaxD (about 19 m) arrive below walking pace -- at 23 m it reaches the man at
-    // 2.7 m/s and at 25 it stops dead on the way -- while the crossover sat at 26, and at 29
-    // for a short-passing side. Every through ball executed in that band was understruck by
-    // construction. The old note rejected this clamp as redundant for SCORING, which it is;
-    // the balls still being CHOSEN out of that window executed dead, and that is what the
-    // clamp is for.
-    const loftAt = Math.min(CFG.loftD - (st.passingDir || 0) * CFG.loftDir, meGroundMaxD());
-    if (d > loftAt) { blk = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true); isHigh = true; }
-    else if (d > 10) {
-      const blkH = meLaneBlock(s, side, p.x, p.y, aimX, aimY, true);
-      if (blkH * CFG.laneK + CFG.loftBar < blk * CFG.laneK) { blk = blkH; isHigh = true; }
-    }
+    const blk = c.blk;
     // Longer balls and covered lanes fail more. This is the only place directness is ever paid for.
     // Whether the RECEIVER is marked, which is the thing that was missing: success depended on the
     // lane and on the passer being closed down, but never on the man you were passing to being
@@ -470,15 +451,10 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // know the difference, so a lofted ball into a defended box was priced at a defended box's
     // ground-pass completion. The gates were never the problem: 82% of every candidate cross reached
     // the decision menu and was simply outscored, 95% of the time by carrying it instead.
-    // STILL OUT BY FIFTEEN POINTS, and the number is here so the next person starts from it rather
-    // than from a theory. Checked against the engine's own resolution -- what the decision believed
-    // a ball into the box was worth, against what then happened to it -- the model expects 28-31%
-    // and the physics delivers 43-50%, at every setting of this coefficient from 1.40 down to 0.15.
-    // So this is not the term causing it. What is left is the pair that both count bodies near the
-    // TARGET: the airborne lane block in meLaneBlock, which charges a dropping ball for every
-    // defender within 4.5 m of where it lands using a ground pass's radius, and mePassRisk, which
-    // charges for the same men again on the same geometry.
-    const rp = isHigh ? CFG.recvPressHigh : CFG.recvPress;
+    // ...except a ball over the top, which comes down to his FEET with the man tracking him right
+    // there to contest where it lands. Priced as the ball above his head it was the safest pass on the
+    // pitch to a marked man, and it was being played twenty times a match.
+    const rp = c.high && c.k !== "over" ? CFG.recvPressHigh : CFG.recvPress;
     // WHAT A LONG BALL COSTS, and it is the only thing directness ever pays. Measured on the isolated
     // axis, Much More Direct plays SEVEN METRES further up the pitch, scores 0.34 more a match and
     // concedes 0.10 LESS, for three and a half points of completion -- a free lunch rather than a
@@ -494,27 +470,32 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // Scoped to the man actually RUNNING in behind: applied to every into-space ball it made the
     // whole league punt (completion 72% to 58% in the smoke fixtures) -- the ordinary mode-1 lead
     // pass is aimed at a jogging man and deserves its full charge.
-    const distK = CFG.passDistK * (1 - (thru && q._run === "behind" ? Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * CFG.escDistRelief : 0));
-    const okBase = (CFG.passBase - d * distK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + meTech(a.pass) * CFG.passSkillW)
+    const distK = CFG.passDistK * (1 - (c.thru && q._run === "behind" ? Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * CFG.escDistRelief : 0));
+    // THE STRIKE ITSELF: how hard this ball is to hit where he wants it, first time or off a rolling
+    // ball, comes off the skill he believes he has for it.
+    const xD = exD(dx, dy);
+    const tech = kindTech(passTech, c.high ? (CFG.kindNoise[c.kind] ?? 1) : 1) * Math.max(0, 1 - xD * CFG.execSkillLoss);
+    const okBase = (CFG.passBase - d * distK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + tech * CFG.passSkillW)
            * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp))
            * (CFG.rcvPosLo + meTech(meAttrs(q).position) * CFG.rcvPosW);
     let ok = okBase;
-    // The decision now asks the resolution's own question: can anyone reach this ball first? A
-    // lofted ball is only cuttable near its ends, so it is judged on a straighter, faster line.
-    const spd = isHigh ? meLoftFor(d).vxy : meGroundSpeed(d);
-    const risk = mePassRisk(s, side, p.x, p.y, aimX, aimY, spd, isHigh) * (isHigh ? CFG.riskHigh : 1);
+    // The decision now asks the resolution's own question: can anyone reach this ball first? Judged
+    // on the ball that will be struck -- the roll at the pace it is weighted for, or the arc of the
+    // flight it is going to have, so a man it passes over is no threat and one under its far end is.
+    const loft = c.high ? { T: c.tb, z1: c.zEnd ?? CFG.ballR } : null;
+    const risk = mePassRisk(s, side, p.x, p.y, aimX, aimY, c.high ? d / c.tb : 0, c.high, c.va, loft)
+               * (c.high ? CFG.riskHigh : 1);
     const okRisk = 1 - risk * CFG.riskW;          // NOT riskM: that is the side's risk appetite, in scope above
     ok *= okRisk;
     // THE MAN IT IS PLAYED TO HAS TO GET THERE AS WELL. Every opponent was charged for the race to
     // the ball and the receiver alone was exempt, so a ball rolled into space he had no chance of
-    // reaching scored the same as one laid into his feet. Worse, the lead above is solved off his TOP
-    // speed while he is actually jogging at whatever off-ball job he has been given, and for a man
-    // not on a committed run the direction is a guess -- straight up the pitch. Measured: balls into
-    // space were predicted at 71% and landed at 52%, and they were a third of every pass played,
-    // while balls to feet were already completing at 84%. The whole deficit was here.
-    // Free for a ball to his feet, which is why those were calibrated all along.
-    const tBall = (isHigh ? d / Math.max(1, spd) : meGroundT(d, d)) * 1000;
-    const late = meTimeToBallMs(q, aimX, aimY, meSpeed(meAttrs(q), q.stamina)) - tBall;
+    // reaching scored the same as one laid into his feet. Measured: balls into space were predicted
+    // at 71% and landed at 52%, and they were a third of every pass played, while balls to feet were
+    // already completing at 84%. The whole deficit was here.
+    // ...and he is WATCHING IT, which a defender reading somebody else's pass is not: he pays rcvLag
+    // of the moment it takes to react, the same share he is given once it is in the air (meTick).
+    const tBall = c.tb * 1000;
+    const late = meTimeToBallMs(q, aimX, aimY, meSpeed(meAttrs(q), q.stamina), CFG.rcvLag) - tBall;
     const okLate = late > CFG.rcvLateMs ? 1 - Math.min(1, (late - CFG.rcvLateMs) / CFG.riskSpanMs) * CFG.riskW : 1;
     ok *= okLate;
     if (isGK) {
@@ -532,7 +513,9 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     ok = 1 / (1 + Math.exp(-(CFG.passCal0 + CFG.passCalB * Math.log(Math.max(0.01, okBase))
                                          + CFG.passCalR * Math.log(Math.max(0.01, okRisk))
                                          + CFG.passCalL * Math.log(Math.max(0.01, okLate)))));
-    if (isGK && d < CFG.gkRollD) ok *= CFG.gkRollOk;
+    // A keeper's hands: a throw goes where he means it to, and a rolled ball barely less so.
+    if (c.k === "throw") ok *= CFG.gkThrowOk;
+    else if (isGK && !c.high && d < CFG.gkRollD) ok *= CFG.gkRollOk;
     ok = Math.max(CFG.passFloor, Math.min(0.985, ok));   // floor is ~0: see config
     // What the pass is WORTH, before instructions.
     // Keeping the ball is worth more when it is a SAFE ball -- but ONLY when the way forward is
@@ -549,26 +532,16 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // Directness: bias toward balls that gain ground. Work-ball-in does the reverse. These are the
     // only lines an instruction touches, and they move what is ATTEMPTED, never whether it lands.
     val += fwd * CFG.fwdPull;
-    // DIRECTNESS IS THE RANGE HE IS LOOKING IN. It used to scale fwdPull -- the worth of a metre of
-    // ground -- which meant Much Shorter instructed a side to value the right thing wrongly. Against
-    // an objective that is already about right, distorting it can only make a team worse, and that
-    // is precisely what it measured as: at the short end 0.54 xG created and 0.78 conceded, at the
-    // direct end 0.74 and 0.62, a buff of 1.08 goals wearing a tactic's name. No amount of tuning
-    // fixes that shape, because the coefficient IS the team's judgement.
-    // A preferred length is a constraint instead. Both ends play the best ball they can see; they
-    // are looking at different balls, and each pays for it -- short forgoes ground, long forgoes
-    // completion. That is a trade, which is what a tactic is supposed to be.
-    // A BAND HE IS LOOKING IN, not a tax on every ball he is not. As a flat penalty on |d - want|
-    // this could not bite: at passWantW 0.0006 a ball ten metres off the preferred length cost 0.006
-    // against option scores that differ by 0.05, so the preference was stated and then outvoted.
-    // Measured, mean pass length across all fourteen styles ran 17.6 m to 20.2 -- Route One sat one
-    // metre from Tiki-Taka. Inside the band a ball is free, and the charge only starts where the
-    // side stops looking. That is a constraint on the option set rather than a distortion of the
-    // objective, which is the only shape of instruction that has ever worked in here.
-    // ...UNLESS IT SPRINGS HIM. A preferred length is a constraint on the option set, which is what
-    // makes it a tactic rather than a buff -- but no side alive declines the ball that puts a man
-    // clean through because it was told to keep it short. Off entirely when nobody but the keeper is
-    // left, so the instruction shapes the build-up and never the last ball.
+    // DIRECTNESS IS THE RANGE HE IS LOOKING IN. A preferred length is a constraint on the option set
+    // -- short forgoes ground, long forgoes completion -- and only where the side stops looking does
+    // it start to cost; inside the band a ball is free. (It used to scale fwdPull, which instructed
+    // a side to value the right thing wrongly: at the short end 0.54 xG created and 0.78 conceded, at
+    // the direct end 0.74 and 0.62, a buff of 1.08 goals wearing a tactic's name. As a flat penalty on
+    // |d - want| it could not bite at all: mean pass length across all fourteen styles ran 17.6 m to
+    // 20.2, Route One one metre from Tiki-Taka.)
+    // ...UNLESS IT SPRINGS HIM. No side alive declines the ball that puts a man clean through because
+    // it was told to keep it short. Off entirely when nobody but the keeper is left, so the instruction
+    // shapes the build-up and never the last ball.
     const want = CFG.passWant + st.passingDir * CFG.passWantStep;
     // ...AND NOT ON THE BREAK. A counter-attacking side's first ball after winning it is however
     // long the out-ball is -- taxing a 45 m pass to the outlet because the stamp prefers 24 m
@@ -584,15 +557,21 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // what a stretched defence is giving away, and nothing was pricing it -- which is why the ball
     // never went into the gap you could see from the touchline. Ground gained into nobody is worth
     // taking; the same ground into a body is not, so the two are multiplied rather than added.
-      // SPACE YOU CANNOT USE IS NOT SPACE. room is nearest-opponent distance, and the emptiest
+    // SPACE YOU CANNOT USE IS NOT SPACE. room is nearest-opponent distance, and the emptiest
     // ground on any pitch is the corner by the touchline -- so the term paid its highest bonus for
     // balls slid into exactly the place a receiver arrives with the line at his back, no angle and
     // nowhere to go. Room is now discounted by how much of it is real: at the touchline it counts
     // for nothing, and it is whole a sensible distance infield.
     const edgeUse = Math.max(0, Math.min(1,
       (Math.min(aimY, PITCH_W - aimY) - CFG.edgeMin) / CFG.edgeFull));
-    const room = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * (CFG.edgeLo + (1 - CFG.edgeLo) * edgeUse);
+    const roomRaw = Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull);
+    const room = roomRaw * (CFG.edgeLo + (1 - CFG.edgeLo) * edgeUse);
     val += room * Math.max(0, fwd) * CFG.roomFwd;
+    // A SWITCH IS WORTH THE ROOM IT FINDS. Moving the ball across the field gains no ground, so the
+    // line above pays it nothing -- but the whole point of it is that the far side is empty, and a
+    // man receiving it there has time to do something. Paid only on the switch itself, and only for
+    // room that is really there.
+    if (c.k === "switch") val += roomRaw * CFG.switchW;
     // The mirror of carryShotW. Floored at zero, so a recycle to a man with no shot is byte-identical
     // and this can only ever re-rank, never inflate. It sits inside val, so the completion chance
     // multiplies it: you are paid for the chance you create only if the ball actually arrives.
@@ -603,7 +582,7 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // actually creates is the run that follows into whatever is left between the last man and
     // the keeper. Count the outfield men goal-side of the aim: one cover man halves it, two kill
     // it, and against a deep block there are always two, so only height concedes the bonus.
-    if (thru && q._run === "behind") {
+    if (c.thru && q._run === "behind") {
       const _gs = meCoverGoalSide(s, side, aimX);
       val += Math.max(0, 1 - _gs / 2) * CFG.escThruW;
     }
@@ -618,15 +597,12 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
     // ...and the man leading his UNIT today, whichever unit. Centred within the band so it only
     // ever redistributes: the better full-back is fed a little more and the other a little less.
     if (q._role && q !== p) val += q._role * CFG.roleRecvW;
-    // ...AND WHETHER HE SEES IT AT ALL. Everything above prices the pass; nothing above asked who
-    // is looking. passRecvW already sends the ball TO the best player, and judgeErr already makes a
-    // poor man noisy -- but noise is symmetric, so across a season every midfielder found the same
-    // number of killer balls and no side had a creator. The hard ball is the one that has to be
-    // seen: through the line, across a blocked lane, or a long way. A poor player systematically
-    // does not find it and plays the simple one instead; an elite one gives it up for nothing.
-    // This is a DISCOUNT on the hard option, never a bonus on the easy one, so it can only ever
-    // stop a pass being played -- it cannot manufacture a chance that was not there.
-    const seeHard = Math.min(1, (thru ? CFG.visThru : 0) + blk * CFG.visLane
+    // ...AND WHETHER HE SEES IT AT ALL. The hard ball is the one that has to be seen: through the
+    // line, across a blocked lane, or a long way. A poor player systematically does not find it and
+    // plays the simple one instead; an elite one gives it up for nothing. This is a DISCOUNT on the
+    // hard option, never a bonus on the easy one, so it can only ever stop a pass being played -- it
+    // cannot manufacture a chance that was not there.
+    const seeHard = Math.min(1, (c.thru ? CFG.visThru : 0) + blk * CFG.visLane
                                 + Math.max(0, d - CFG.visD0) / CFG.visDSpan);
     val -= CFG.visMiss * seeHard * (1 - meMind(p));
     // THE PATTERN. Everything above prices this pass on its own; this prices what it SETS UP. A
@@ -652,8 +628,146 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
              + (q.pos === "GK" ? -0.020 : 0);
     if (ME_DBG) ME_DBG.pass = Math.max(ME_DBG.pass ?? -1, sc);
     const jsc = sc + jit("pass");
-    if (jsc > bestSc) { bestSc = jsc; best = { k: "pass", j, p: ok, ax: aimX, ay: aimY, high: isHigh, thru,
+    if (jsc > bestSc) { bestSc = jsc; best = { k: "pass", j, p: ok, ax: aimX, ay: aimY, high: c.high, thru: !!c.thru,
+                                               pk: c.k, kind: c.kind, zEnd: c.zEnd, va: c.va, execD: xD,
                                                c: [okBase, okRisk, okLate, d, blk, press, rPress] }; }
+  };
+  for (let j = 0; j < ps.length; j++) {
+    if (j === i) continue;
+    const q = ps[j];
+    // NOT A MAN OFF THE PITCH. A sent-off player, or an injured one with nobody left to replace him,
+    // is parked six metres beyond the touchline, and a ball to his feet was a throw to the other side.
+    if (!q || q.off) continue;
+    const qvx = (q.vx || 0) / ME_DT, qvy = (q.vy || 0) / ME_DT, qsp = Math.hypot(qvx, qvy);
+    const qTop = meSpeed(meAttrs(q), q.stamina);
+    // ---- TO HIS FEET ----------------------------------------------------------------------------
+    // LEAD HIM. A ball to feet was aimed at the square metre he was standing on, and his own
+    // velocity was never read in this branch -- so with a side breaking forward together, every
+    // ordinary pass was played behind its receiver and he had to check back onto it. That is the
+    // difference between a move that flows and one that stops on every touch. He is led by his
+    // own pace over the flight, at feetLeadFrac of it: short of the full solve, because the last
+    // half-stride is his to take and over-leading turns a simple pass into a through ball.
+    {
+      let fx = q.x, fy = q.y;
+      if (qsp > CFG.feetMoveV) {
+        const d00 = Math.hypot(q.x - p.x, q.y - p.y);
+        const l0 = Math.min(CFG.feetLeadMax, qsp * meGroundT(d00, d00) * CFG.feetLeadFrac);
+        fx = q.x + qvx / qsp * l0; fy = q.y + qvy / qsp * l0;
+      }
+      const fd = Math.hypot(fx - p.x, fy - p.y);
+      if (inHands) {
+        // Rolled to a man near him, thrown to one further off, kicked out of his hands past that.
+        // THE FREE MAN. A roll or a throw goes to somebody with room: one with an opponent on him was
+        // being picked whenever the sums liked his position, and it is how a keeper hands the ball
+        // straight back. Nobody short free, nothing short at all -- and the kick long is what is left.
+        if (fd <= CFG.gkThrowMax && meOppDist(s, side, fx, fy) < CFG.gkFreeR) { /* marked: not an option */ }
+        else if (fd <= CFG.gkRollMax)
+          consider(q, j, { ax: fx, ay: fy, k: "feet", high: false, tb: meGroundT(fd, fd),
+                           blk: meLaneBlock(s, side, p.x, p.y, fx, fy) });
+        else {
+          // HIS THROW IS BOWLED IN ON THE BOUNCE. Aimed to arrive at the man's shins, a throw-in's arc
+          // came over his head at two metres and landed behind him, and a flatter one reached him at
+          // twenty metres a second: either way the ball ran on to whoever was behind him. It pitches
+          // gkThrowShort in front of him and bounces into his feet.
+          const kd = fd <= CFG.gkThrowMax ? "throw" : "punt";
+          const sh = kd === "throw" ? Math.min(CFG.gkThrowShort, fd * 0.2) / Math.max(0.1, fd) : 0;
+          consider(q, j, { ax: fx - (fx - p.x) * sh, ay: fy - (fy - p.y) * sh, k: kd === "throw" ? "throw" : "long", high: true, kind: kd,
+                           zEnd: undefined, tb: meLoftT(fd, kd),
+                           blk: meLaneBlock(s, side, p.x, p.y, fx, fy, true) });
+        }
+      } else {
+        // The lofted alternative: over the press instead of through it. Past loftAt the ball goes
+        // up; in between, it pays a flat tax (loftBar) so a ground pass wins any tie.
+        // ...AND WHERE THAT CROSSOVER SITS IS A TACTIC. A ball went long on pure geometry, so nothing
+        // a style could say ever made it go over the top: measured across the fourteen, the lofted
+        // share ran 27-38% and was INVERTED -- Gegenpress hit more long balls than Route One, whose
+        // entire description is skipping the middle third. Directness moves the crossover, which is
+        // what choosing to play over a midfield rather than through it actually is.
+        // ...AND NEVER LATER THAN THE GRASS ALLOWS: past meGroundMaxD a ball along the floor cannot
+        // arrive at a receivable pace, so it is not a ground pass whatever the tactic says.
+        const blkG = meLaneBlock(s, side, p.x, p.y, fx, fy);
+        let high = fd > loftAt, blk = blkG;
+        if (high) blk = meLaneBlock(s, side, p.x, p.y, fx, fy, true);
+        else if (fd > 10) {
+          const blkH = meLaneBlock(s, side, p.x, p.y, fx, fy, true);
+          if (blkH * CFG.laneK + CFG.loftBar < blkG * CFG.laneK) { blk = blkH; high = true; }
+        }
+        // A KEEPER PLAYING IT OUT WITH HIS FEET finds the free man too, for the same reason as out of his
+        // hands: a short ball to a defender with somebody on him is the goal given away.
+        if (isGK && fd <= CFG.gkThrowMax && meOppDist(s, side, fx, fy) < CFG.gkFreeR) { /* marked */ }
+        else if (!high) consider(q, j, { ax: fx, ay: fy, k: "feet", high: false, tb: meGroundT(fd, fd), blk });
+        else {
+          // ACROSS THE FIELD IT IS DRIVEN, not floated: a switch hangs in the air for as long as it
+          // takes the block to shift across and meet it, so it goes flatter and quicker than a long
+          // ball -- but it has to be a ball he can take. The first cut reached him at 16-18 m/s at
+          // waist height, right where a ball comes off a man instead of sticking, and switches found
+          // their man 44% of the time; it is now flighted to come down at his shins (zEnd 0.25) on a
+          // flight that reaches him at about 14.
+          const lat = Math.abs(fy - p.y);
+          const sw = lat > CFG.switchLat && fd > CFG.switchD && lat > Math.abs(fx - p.x);
+          const kd = sw ? "driven" : "loft";
+          consider(q, j, { ax: fx, ay: fy, k: sw ? "switch" : "long", high: true, kind: kd,
+                           zEnd: sw ? 0.25 : undefined, tb: meLoftT(fd, kd), blk });
+        }
+      }
+    }
+    if (inHands) continue;
+    // ---- INTO HIS RUN ---------------------------------------------------------------------------
+    // ALONG THE RUN THAT EXISTS. A man on a run is played into it; a man already moving forward can be
+    // played into his stride; a standing man has no ball into space, because the ball to his feet is
+    // already on the menu. (This once invented a run for everybody -- a burst dead upfield at the
+    // moment of the pass -- and 31% of all passes became balls into space completing 47%.)
+    {
+      const rk = (q._runT ?? 0) > 0 ? q._run : null;
+      let ux = 0, uy = 0, vd = 0, committed = false;
+      if (rk === "behind" || rk === "wall" || rk === "overlap" || rk === "third") {
+        const rx = q._rx - q.x, ry = q._ry - q.y, rl = Math.hypot(rx, ry);
+        if (rl > 0.5) { ux = rx / rl; uy = ry / rl; vd = qTop; committed = true; }
+      }
+      if (!committed && qsp > CFG.thruMoveV && qvx * dir > -0.3) {
+        ux = qvx / qsp; uy = qvy / qsp; vd = Math.max(qsp, qTop * CFG.spaceVd);
+      }
+      if (vd > 0) {
+        const g = meMeetGround(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd);
+        const gOk = !!g && g.d <= CFG.groundMaxD;
+        const gBlk = gOk ? meLaneBlock(s, side, p.x, p.y, g.ax, g.ay) : Infinity;
+        if (gOk)
+          consider(q, j, { ax: g.ax, ay: g.ay, k: committed ? "through" : "space", high: false, va: g.va,
+                           tb: g.t, thru: true, blk: gBlk });
+        // OVER THE TOP, for a man running in behind: chipped to drop just in front of him. It is the
+        // ball for when the floor is shut, and ONLY then -- the same rule the ball to feet obeys:
+        // offered when there is no ball along the ground into his run, when the meeting is further
+        // than this side plays along the floor (loftAt, which directness moves), or when the air is
+        // clearly clearer than the grass (loftBar). Offered for every runner on every slice, it
+        // outscored the ball along the ground three to one: twenty-one a match, a quarter of them
+        // headed and four breakaways a match off the rest.
+        if (committed && (rk === "behind" || rk === "wall")) {
+          const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd, "over", CFG.overLand);
+          if (o && o.d >= CFG.overMinD) {
+            const oBlk = meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true);
+            if (!gOk || o.d > loftAt || oBlk * CFG.laneK + CFG.loftBar < gBlk * CFG.laneK)
+              consider(q, j, { ax: o.ax, ay: o.ay, k: "over", high: true, kind: "over", tb: meLoftT(o.d, "over"),
+                               thru: true, blk: oBlk });
+          }
+        }
+      }
+    }
+    // ---- THE CROSS ------------------------------------------------------------------------------
+    // From out wide to a man in the area, flighted to arrive at his head where he is going to meet it:
+    // his run if he is on one, otherwise a step toward the goal mouth, which is what attacking a cross
+    // is. A ball along the floor across the six-yard box, and the cutback, are balls to feet and into
+    // space above -- this is the one that goes in the air.
+    if (crossZone && inBox(q.x, q.y)) {
+      let ux, uy, vd;
+      if (qsp > 1.5) { ux = qvx / qsp; uy = qvy / qsp; vd = Math.max(qsp, qTop * 0.7); }
+      else {
+        const gx6 = meGoalX(side) - dir * 6, tl = Math.hypot(gx6 - q.x, ME_HALF_W - q.y) || 1;
+        ux = (gx6 - q.x) / tl; uy = (ME_HALF_W - q.y) / tl; vd = qTop * 0.6;
+      }
+      const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd, "cross", 0);
+      if (o && inBox(o.ax, o.ay))
+        consider(q, j, { ax: o.ax, ay: o.ay, k: "cross", high: true, kind: "cross", zEnd: CFG.crossZ,
+                         tb: meLoftT(o.d, "cross"), blk: meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true) });
     }
   }
   // THE MAN HIMSELF IS THROUGH. Same waiver as the pass band: a side told not to dribble should not
@@ -726,7 +840,10 @@ export function meDecide(s, rng, side, i, dwell, noCarry) {
             - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, p.y));
   if (ME_DBG) { ME_DBG.carry = dsc; ME_DBG.press = press; ME_DBG.nopts = ps.length; }
   // Run At Defence / Be More Disciplined, on the choice itself.
-  const jdsc = dsc + (thruMe ? 0 : CFG.carryInstrW * obey * (st.dribbling || 0)) + jit("carry");
+  // ...and a man with a clear run at goal RUNS AT IT. Scored on the metres it gains and the shot it
+  // improves, the carry lost to any forward pass that looked a shade better on paper, so a striker
+  // through with nobody to beat squared it or laid it off instead of going on (user, 30 Sep).
+  const jdsc = dsc + (thruMe ? CFG.carryThruW * drb : CFG.carryInstrW * obey * (st.dribbling || 0)) + jit("carry");
   // noCarry is the hard release (see holdHardT in match.ts): the geometric dwell tax drives a
   // camped carry's score to zero, but zero still beats a menu where every pass is negative --
   // a weak carrier against an elite screen wall -- so "never off the menu" needs one exception.

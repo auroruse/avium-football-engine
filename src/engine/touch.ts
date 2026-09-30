@@ -64,7 +64,13 @@ function onHisWay(px, py, pvx, pvy, ux, uy, vd, T) {
  *  instead, and a metre and a half of lead over half a second is three metres a second of excess:
  *  the ball arrived where he would be still going far quicker than he was, and ran on over the line. */
 function touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L) {
-  const mp = s.mePos, m = CFG.touchEdge, vd = dribPace(p, near);
+  // A KEEPER WITH IT AT HIS FEET STOPS IT. Touched like a dribbler's -- a stride on, at his running pace
+  // -- the ball stayed out of the reach he can play it from, so he never had to part with it: traced,
+  // one took a throw-in in his area and chased his own touches twelve metres up the pitch into a
+  // striker. He means to stand still with it, so it is played to where he stops, with no push.
+  const gkF = p.pos === "GK";
+  if (gkF) L = 0;
+  const mp = s.mePos, m = CFG.touchEdge, vd = gkF ? 0 : dribPace(p, near);
   const [wx, wy, hx, hy] = onHisWay(px, py, pvx, pvy, ux, uy, vd, T);
   // WHERE HE WILL BE IS NOT ALWAYS ON THE PITCH. His momentum can carry him at the line, and he is
   // held half a metre inside it while the ball is not -- so the meeting point is kept touchEdge inside

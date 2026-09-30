@@ -1,12 +1,13 @@
 // The tick loop, the ball, restarts, and match setup.
 import { CFG } from "./config";
 import { meAerial, meAttrs, meDuel, meGkSkill, meMind, meOvr, meSpeed, meTech } from "./attributes";
-import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meLoftFor, meShootBall } from "./ball";
+import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
+import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
-import { meXgCal, meDecide, meShotP } from "./decide";
-import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meDanger, meDir, meGoalX, meGroundT, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
+import { meXgCal, meDecide, meShotP, meShotSit } from "./decide";
+import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meCtrl, meDanger, meDir, meGoalX, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
 // Twenty-two players on a 105x68 pitch, advanced in quarter-second slices. No team rating appears
@@ -234,11 +235,26 @@ export function meMove(s, rng) {
     // readiness gate waited on him and the timeout fired the kick from a man ten metres away;
     // a defender whose intercept sat in the box was driven in by this and walked out by the
     // referee, in a loop. One gate at the choke point protects every restart from every caller.
-    let scramble = (mp.idx < 0 || mp.flight) && !mp.sp ? mp.desig[side] : -1;
+    // ...and NOBODY CHASES A SHOT. It has no receiver, so the quickest man to its path was sent after
+    // it -- usually the man who had just hit it -- and a shot on target is going into the net, so he
+    // followed it in. Until it is saved, blocked, off the frame or in, the keeper deals with it and
+    // everybody else holds where the shape has him; the rebound is a loose ball like any other.
+    let scramble = (mp.idx < 0 || mp.flight) && !mp.sp && !mp.shot ? mp.desig[side] : -1;
     if (mp.flight && mp.fside === side && mp.fj >= 0) scramble = mp.fj;
     for (let i = 0; i < ps.length; i++) {
       const p = ps[i];
       if (p.off) { p.vx = 0; p.vy = 0; continue; }  // sent off
+      // A keeper making a save is where the save puts him (keeper.ts), at the end of this slice.
+      const gp = mp.shot?.gk ?? mp.gkPlan;
+      if (gp && gp.side === side && gp.i === i) {
+        const [lx, ly] = meGkAt(gp, Math.max(0, (mp.tick - gp.t0) * ME_DT));
+        p.vx = lx - p.x; p.vy = ly - p.y; p.x = lx; p.y = ly; p._gkPl = true;
+        continue;
+      }
+      // A SAVE ENDS WITH HIM ON THE GROUND, not still travelling at diving pace. Carrying the dive's
+      // velocity out of it, he had to brake and turn it round like a sprinter before he could go back
+      // for a ball that had dropped dead a stride from him -- 0.3 m in three slices, traced.
+      if (p._gkPl) { p._gkPl = false; p.vx = 0; p.vy = 0; }
       let tx = p._tx, ty = p._ty;
       // The man on the ball is steered like everybody else. He used to be skipped entirely, which
       // left him shuffling 0.14 m a slice -- 84% of all ball-possession time was somebody walking
@@ -252,7 +268,8 @@ export function meMove(s, rng) {
       // reason every change to the read model landed in _tx/_ty and was thrown away one function
       // later. He is not chasing this ball down. He is getting across it.
       const gkShot = p.pos === "GK" && mp.shot && mp.shot.side !== side;
-      if (i === scramble && !gkShot) {
+      // The keeper is sent by his own judgement (brain.ts), which already names the spot he is going to.
+      if (i === scramble && !gkShot && p.pos !== "GK") {
         // Run at where the ball WILL be, not where it is, and spend only the effort the race needs:
         // a man with time jogs to the spot, a man who is late sprints (AIfunctions.cpp:827-838).
         if (mp.idx < 0 && p._icx !== undefined) { tx = p._icx; ty = p._icy; budget = p._icMs || 0; }
@@ -350,8 +367,14 @@ export function meMove(s, rng) {
           tx = mp.bx; ty = mp.by; dx = bdx; dy = bdy; d = bd;
         }
       }
+      // ...and ONLY WHILE IT IS COMING TO HIM. Chasing a ball that is running away from him -- an
+      // opponent's through ball he is racing a striker to -- the stand-off stopped him dead a stride
+      // short of his meeting point every slice: he stopped, the ball rolled on, he started again from
+      // nothing. Traced, a defender 0.7 m from a through ball was down to 2.7 m/s and let the striker
+      // arriving behind him take it. That is the jockeying.
+      const coming = mp.bvx * (p.x - mp.bx) + mp.bvy * (p.y - mp.by) > 0;
       const stopAt = (mp.sp && p._spSet) ? 0.12 : p.pos === "GK" ? 0.25 : onBall ? 0
-                   : i === scramble ? (deadBall || !onLine || meet ? 0 : CFG.scrambleStop)
+                   : i === scramble ? (deadBall || !onLine || meet || !coming ? 0 : CFG.scrambleStop)
                    : p._closing ? CFG.closeStop : 1.3;
       if (d < stopAt) { p.vx = 0; p.vy = 0; continue; }   // arrived; stop rather than jiggle on the spot
       // GetLazyVelocity (elizacontroller.cpp:437-474): how hard you run depends on who you are, what
@@ -424,8 +447,12 @@ export function meMove(s, rng) {
         // under a quarter of a second the man the ball was played to was below three-quarter pace on
         // 95% of slices: he was jogging to a spot to arrive on schedule while a defender sprinted at
         // the same ball. Nobody who is being raced for it arrives on schedule; he goes and gets it.
-        if (rival - need < CFG.contestMs) vCap = sp;
-        else vCap = Math.max(2.2, Math.min(sp, sp * need / Math.max(1, Math.min(budget, rival + 100))));
+        // ...and paced to arrive BEFORE him, by contestMs. It was paced to rival + 100: a defender with
+        // "time" on a through ball jogged to arrive a tenth of a second after the striker he was racing,
+        // which is the defender strolling alongside it until the striker catches up and takes it.
+        const target = Math.min(budget, rival - CFG.contestMs);
+        if (rival - need < CFG.contestMs || target <= need) vCap = sp;
+        else vCap = Math.max(2.2, Math.min(sp, sp * need / Math.max(1, target)));
       }
       // THE GATHER. Both arms above can leave him at a flat sprint onto a ball that is dying in
       // front of him -- a through ball arrives at 2.3 m/s and he closes at 8, which is how the
@@ -435,8 +462,12 @@ export function meMove(s, rng) {
       // and a CONTESTED ball is never gathered at all: slowing a man who is racing somebody to it
       // hands the race over (first cut of this clamped the defender closing on an interception,
       // and shots went up 28% league-wide because through balls stopped being cut out).
+      // ...and only for a ball of his OWN side's, or one nobody else is anywhere near. On the other
+      // side's through ball it had the defender behind it shortening his stride to its pace -- walking
+      // after it -- while the striker sprinted up and took it off him.
       if (i === scramble && !gkShot && !deadBall
-          && mp.ttbBest[meOther(side)] - (p._ttbMs ?? 0) >= CFG.contestMs) {
+          && (mp.flight ? mp.fside === side : true)
+          && mp.ttbBest[meOther(side)] - (p._ttbMs ?? 0) >= CFG.contestMs * (mp.flight ? 1 : 3)) {
         const bvG = Math.hypot(mp.bvx, mp.bvy);
         const gdx = mp.bx - p.x, gdy = mp.by - p.y, gd = Math.hypot(gdx, gdy);
         if (bvG > CFG.deadBallV && gd > 0.01 && gd < CFG.gatherR
@@ -487,6 +518,14 @@ export function meMove(s, rng) {
           diving = true;
         }
       }
+      // ...AND AT A LOOSE BALL NEAR HIM. Going for one, inside gkBurstR, he throws himself at it too. On
+      // the ordinary steering he turned like a sprinter: a parry or a ricochet that died a stride away
+      // after he had been running the other way was 0.3 m nearer three slices later, and the striker
+      // coming onto it had it first.
+      if (!diving && p.pos === "GK" && p._gkGo && d < CFG.gkBurstR) {
+        vCap = Math.max(vCap, CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmin) * meGkSkill(a));
+        diving = true;
+      }
       const step = Math.min(d, vCap * ME_DT);
       let wx = dx / d * step, wy = dy / d * step;          // what he wants to be doing
       // PURSUIT, for the man on the ball. Everyone else eases into a spot they are walking to, and
@@ -536,6 +575,10 @@ export function meMove(s, rng) {
       // Walking onto a set-piece mark: no momentum, so he arrives on it rather than orbiting it.
       if (mp.sp && d < CFG.spArrive) acc = 1;
       if (diving) acc = 1;                       // he throws himself; there is no wind-up
+      // A KEEPER SHUFFLES. Adjusting his angle is side-steps, not a sprinter's turn: on the runner's
+      // momentum a reversal kept 19% of the change a slice, and a pass across the box moved his spot a
+      // metre while he moved ten centimetres toward it -- still a stride nearer the post when it was hit.
+      else if (p.pos === "GK" && !mp.sp) acc = Math.max(acc, CFG.gkAccel);
       // Tried and rejected: a turn-rate cap on the velocity update, turnLat/v radians a second, on
       // the theory that nothing limits how fast a man's DIRECTION may change and men near the ball
       // were measured spinning at 354 deg/s at the ninetieth percentile. It moves that figure by
@@ -600,6 +643,13 @@ function mePoses(s) {
     if (!q) continue;
     q._pvx = q.off ? 0 : (q.vx || 0); q._pvy = q.off ? 0 : (q.vy || 0); q._pext = 0;
     if (q.pos !== "GK" || q.off) continue;
+    // The planned save draws him along its own law (keeper.ts); the contest reads it off the clock.
+    const gp = mp.shot?.gk ?? mp.gkPlan;
+    if (gp && gp.side === sd && s.players[sd][gp.i] === q) {
+      const [lx, ly] = meGkAt(gp, Math.max(0, (mp.tick - gp.t0) * ME_DT));
+      q._pvx = lx - q.x; q._pvy = ly - q.y;
+      continue;
+    }
     let gvx = q._pvx, gvy = q._pvy;
     if (q._closing && mp.shot && mp.shot.side !== sd) {
       const gk = meGkSkill(meAttrs(q));
@@ -689,7 +739,7 @@ export function meBallTo(s, side, i, x, y) {
   if (mp.shot && mp.shot.pen && !mp.shot._pd) mp._penGone = mp.shot;
   mp._carryBy = null;                          // a fresh claim opens a fresh episode
   mp.bz = 0.11; mp.bvx = 0; mp.bvy = 0; mp.bvz = 0; mp.lastSide = side; mp.passPending = null; mp.shot = null;
-  mp.kickBy = null;
+  mp.kickBy = null; mp.gkPlan = null; mp.bpass = null;
   mp.held = false;              // any new possession is with the feet until proven otherwise
 }
 
@@ -1703,6 +1753,36 @@ export function meTick(s, rng, out) {
   // the next thing that happens to the ball -- a man reaching it, a touch, a line -- which is settled
   // there and then before the ball goes on.
   meBallSlice(mp);
+  // A BALL GOING IN IS SAVED LIKE A SHOT, whoever sent it on its way (keeper.ts): a cross nobody
+  // touched, a cutback, a ricochet. Planned from where the ball is now, so he reacts from now.
+  // ...and given up, too, once the ball has slowed to one he can go and get: planned when it was
+  // quick, a cutback dying to a roll held him set in the middle of his goal for nearly two seconds.
+  if (mp.gkPlan && ((mp.tick - mp.gkPlan.t0) * ME_DT > CFG.gkPlanMax
+                    || Math.hypot(mp.bvx, mp.bvy) < CFG.gkPlanV * CFG.gkPlanSlow)) mp.gkPlan = null;
+  // Only a ball coming quicker than gkPlanV: one rolling at him he goes and gets (brain.ts). A save
+  // planned against a slow ball froze him where he stood while it trickled past him into the net.
+  // ...and only one nobody else gets to first. A long ball dropping thirty metres out was saved like a
+  // shot the moment its forecast ended in the net, and the keeper was held on his line while a striker
+  // brought it down in the box. (_ttbMs is each man's first touch, from the slice before.)
+  if (!mp.sp && mp.idx < 0 && !mp.shot && !mp.gkPlan && Math.hypot(mp.bvx, mp.bvy) > CFG.gkPlanV) {
+    const into = meIntoGoal(mp);
+    if (into) {
+      let first = Infinity;
+      for (const sd of ME_SIDES) for (const q of s.players[sd]) if (!q.off && q.pos !== "GK") first = Math.min(first, q._ttbMs ?? Infinity);
+      if (mp._intoMs < first) mePlanSaveBall(s, into);
+    }
+  }
+  // A BALL OF OURS RUNNING INTO OUR OWN NET, gone beyond the man it belongs to, is the keeper's to take
+  // (the probe below; brain.ts sends him). Still "possessed" by the defender whose heavy touch sent it
+  // goalward, it was nobody else's on his side to touch, and it rolled in past a keeper standing aside.
+  mp._ownIn = null;
+  // Which goal the ball is on its way into, if any, read once for the probe's keeper hands below.
+  mp._inGoal = mp.sp ? null : meIntoGoal(mp);
+  if (!mp.sp && mp.idx >= 0 && !mp.held) {
+    const hp = s.players[mp.side]?.[mp.idx];
+    if (hp && hp.pos !== "GK" && Math.hypot(hp.x - mp.bx, hp.y - mp.by) > CFG.reach * CFG.playReach
+        && meIntoGoal(mp) === mp.side) mp._ownIn = mp.side;
+  }
   mePoses(s);
   const NSUB = Math.round(ME_DT / BALL_SUB), all = s.players.home.concat(s.players.away);
   const subNow = (jj) => mp.tick * NSUB + jj;
@@ -1739,6 +1819,9 @@ export function meTick(s, rng, out) {
     // out at 70.6% against a true 78.3%, which is the difference between failing this target and
     // meeting it, and it was the bookkeeping rather than the football.
     out.passes++;
+    // Harness-only ledger by kind of ball: attempts, completions, and the same two for first time.
+    if (globalThis.__pk) { const K = globalThis.__pk, kk = pp.k || "set", e = K[kk] || (K[kk] = [0, 0, 0, 0]);
+      e[0]++; if (okSide === pp.side) e[1]++; if (pp.ft) { e[2]++; if (okSide === pp.side) e[3]++; } }
     // Per side as well, when the harness asks: pooled completion hides exactly the thing a
     // mismatch is about -- who is completing and who is coughing it up.
     if (out.passSide) out.passSide[pp.side]++;
@@ -1748,6 +1831,7 @@ export function meTick(s, rng, out) {
     // with 261 passes. Airtime is not control. A pass that reaches a team-mate was your possession
     // the whole way; a hoof that gets headed clear never was.
     if (okSide === pp.side) { out.passOk++; if (out.passOkSide) out.passOkSide[pp.side]++;
+                              if ((globalThis.__shots || globalThis.__gfrom) && pp.fj >= 0) { const rq = s.players[pp.side]?.[pp.fj]; if (rq) { rq._rcvK = pp.k || "set"; rq._rcvT = mp.tick; } }
                               // The played-through press: a defender who had committed to the
                               // ball at the strike and watched it complete forward past him is
                               // beaten, exactly as a missed tackle leaves him. See config.
@@ -1817,6 +1901,7 @@ export function meTick(s, rng, out) {
           }
         }
         if (sh) out.onTarget[sh.side]++;
+        if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
         if (sh && globalThis.__svd) globalThis.__svd.push([sh.d, 0]);
         else if (mp.lastSide === scorer) { out.shots[scorer]++; out.onTarget[scorer]++; }
         // Parried in. The shot was counted when he struck it, so it only needs the on-target credit
@@ -1942,7 +2027,12 @@ export function meTick(s, rng, out) {
             lt: sh ? (sh.lt ?? 1e9) : mp.tick - (mp._loose ?? -1e9),
             pt: sh ? (sh.pt ?? -1) : (mp.possT ?? -1),
             d: sh ? sh.d : null, gkd: sh ? sh.gkd : null, gko: sh ? sh.gko : null,
-            sgk: mp.tick - (mp._gkKick ?? -1e9) });
+            sgk: mp.tick - (mp._gkKick ?? -1e9),
+            // what put it in when nobody shot: the last touches, what last made it loose, how hard it
+            // was going and where the keeper was
+            why: mp._looseWhy || "", v: +Math.hypot(mp.bvx, mp.bvy).toFixed(1),
+            last: (mp.tlog || []).slice(-3).map(e2 => (e2.s === scorer ? "A" : "D") + (s.players[e2.s]?.[e2.i]?.pos === "GK" ? "k" : "") + (e2.d ? "~" : "") + (mp.tick - e2.t)).join(" "),
+            gkb: (() => { const g2 = meKeeper(s.players[cross.conceding]); return g2 ? +Math.hypot(g2.x - mp.bx, g2.y - mp.by).toFixed(1) : -1; })() });
           if (globalThis.__prov) globalThis.__prov._parried = 0;
           // ...and what it was worth to them. The context is read BEFORE this goal is counted, so a
           // winner is scored as the goal that won it rather than as the one that made it 2-1.
@@ -2105,7 +2195,9 @@ export function meTick(s, rng, out) {
           // fifth. Measured: 2.91 -> 2.33 with hands against everything, 2.84 loose-only.
           // A fresh ricochet counts as loose whatever the flight flag and last touch say.
           const loose = mp.tick - (mp._loose ?? -99) < CFG.gkLooseWin;
-          if ((!mp.flight || loose) && zAt < CFG.handMinZ && (mp.lastSide !== sd || loose)
+          // ...and a ball on its way into his net is his to stop with his hands, whoever struck it and
+          // however: a cross running in at his knees went past a keeper allowed only his boots for it.
+          if ((!mp.flight || loose || mp._inGoal === sd) && zAt < CFG.handMinZ && (mp.bpass !== sd || loose)
               && Math.hypot(q.x - meGoalX(meOther(sd)), q.y - ME_HALF_W) < CFG.gkBoxR)
             return CFG.gkClaimReach;
           // THE CROSS IS HIS. Above handMinZ he had bodyR + ballR -- 0.51 m, LESS than an
@@ -2116,7 +2208,7 @@ export function meTick(s, rng, out) {
           // ...never against a live shot: the save branch above deliberately excludes penalties
           // (their duel has its own calibration), so a penalty fell through to here and was
           // "claimed" mid-flight with 1.15 m hands -- conversion went 85% to 71% in one check.
-          if (!mp.shot && zAt >= CFG.handMinZ && zAt < CFG.gkHigh && mp.lastSide !== sd
+          if (!mp.shot && zAt >= CFG.handMinZ && zAt < CFG.gkHigh && mp.bpass !== sd
               && Math.hypot(q.x - meGoalX(meOther(sd)), q.y - ME_HALF_W) < CFG.gkBoxR)
             return CFG.gkClaimAir;
           // No hands does not mean no feet. Body-only here had him WORSE at kicking a ground ball
@@ -2193,6 +2285,35 @@ export function meTick(s, rng, out) {
           // It is in his hands. There is no contest for that -- which is exactly why collecting it is
           // the safest thing a keeper can do, and why he should want to.
           if (mp.held && !(mp.idx === i && mp.side === sd)) continue;
+          // THE PLANNED SAVE (keeper.ts), on the clock of the substep: set until he reacts, then across
+          // to where the ball is going, stretching to full length. Standing he covers his set reach;
+          // diving, his body along the dive and a hand's grab beyond it. Nothing over his head.
+          const gp = mp.shot?.gk ?? mp.gkPlan;
+          if (gp && gp.side === sd && gp.i === i) {
+            if (mp.bz > CFG.gkReachZ) continue;
+            const tS = Math.max(0, (mp.tick - gp.t0 - 1 + f) * ME_DT);
+            const [gcx, gcy, gux, guy, gext] = meGkAt(gp, tS);
+            const ax = gcx - gux * gext, ay = gcy - guy * gext, ex = 2 * gux * gext, ey = 2 * guy * gext, e2 = ex * ex + ey * ey;
+            const tt = e2 > 1e-6 ? Math.max(0, Math.min(1, ((mp.bx - ax) * ex + (mp.by - ay) * ey) / e2)) : 0;
+            const dg = Math.hypot(mp.bx - (ax + ex * tt), mp.by - (ay + ey * tt));
+            // Standing -- before he goes, or when there is nowhere to go -- he covers his set reach.
+            // Stretched out, his body along the dive and a hand's grab past it. Shrinking to the
+            // grab alone the moment he had reacted left a ball struck straight at him to bounce
+            // off his chest instead of being saved.
+            // ...and at full stretch the CORNERS are the hard part: a ball in the top corner or along the
+            // floor by the post is further from a body flying flat across the goal than one at his
+            // waist, which is what a finish placed there is for.
+            const stretch = gext / CFG.gkSpan;
+            const dzH = Math.max(0, mp.bz - CFG.gkZHi) + Math.max(0, CFG.gkZLo - mp.bz);
+            // ...but only a LONG dive lays him flat. The cost was charged on any dive at all, so a keeper
+            // who stepped 0.8 m across was as flat as one who flew to the post: at full stretch his
+            // reach came to 0.5 m less a metre for every metre over 1.7, and a free kick dipping in at
+            // 2.25 m straight at his chest could not be saved by anybody. A dive gkFlatL long pays it all.
+            const flat = Math.min(1, (gp.L ?? CFG.gkFlatL) / CFG.gkFlatL);
+            const rg = gp.set + (gp.grab + CFG.bodyR - gp.set) * stretch - dzH * stretch * flat * CFG.gkZCost;
+            if (dg < rg && dg - rg < bm) { bm = dg - rg; best = { kind: "reach", q, sd, i, d: dg, r: rg, qx: gcx, qy: gcy, z: mp.bz }; }
+            continue;
+          }
           const qx = q.x + (q._pvx ?? 0) * f, qy = q.y + (q._pvy ?? 0) * f;
           let d = Math.hypot(mp.bx - qx, mp.by - qy);
           if (q.pos === "GK" && q._pext > 0) {
@@ -2209,7 +2330,7 @@ export function meTick(s, rng, out) {
           if (r < 0 || d >= r) continue;             // he cannot get to it at all
           const m = d - r;
           if (mp.idx === i && mp.side === sd) { carM = m; continue; }
-          if (mp.idx >= 0 && sd === mp.side) continue;
+          if (mp.idx >= 0 && sd === mp.side && !(q.pos === "GK" && mp._ownIn === sd)) continue;
           if (m < bm) { bm = m; best = { kind: "reach", q, sd, i, d, r, qx, qy, z: mp.bz }; }
         }
         if (best && (mp.idx < 0 || bm < carM)) return best;
@@ -2230,6 +2351,8 @@ export function meTick(s, rng, out) {
       };
       const respond = (c) => {
       const bi = c.i, bs = c.sd, bd = c.d, br = c.r;
+      mp.gkPlan = null;                              // whoever touched it, the ball is a new ball
+      if (mp.bpass && mp.bpass !== bs) mp.bpass = null;    // an opponent's touch ends a back-pass
       // Harness-only ledger of how the ball changes hands (gated like __fire; the app never sets it).
       if (globalThis.__rx && mp.idx >= 0 && mp.side !== bs) globalThis.__rx.steal = (globalThis.__rx.steal || 0) + 1;
       const isGK = s.players[bs][bi].pos === "GK";
@@ -2237,6 +2360,16 @@ export function meTick(s, rng, out) {
       {
         const q = s.players[bs][bi], qa = meAttrs(q);
         const v2d = Math.hypot(mp.bvx, mp.bvy);
+        // Harness-only: the FIRST contact with a ball somebody passed -- who got there, how far from
+        // where it was aimed, how high and how fast. Gated like __fire.
+        if (globalThis.__pres && mp.passPending && mp.passPending.k && !mp.passPending._seen) {
+          const pp0 = mp.passPending; pp0._seen = 1;
+          globalThis.__pres.push({ k: pp0.k, who: bs !== pp0.side ? "opp" : bi === pp0.fj ? "rcv" : "mate",
+            d: +Math.hypot(mp.bx - (pp0.ax ?? mp.bx), mp.by - (pp0.ay ?? mp.by)).toFixed(1),
+            past: pp0.ax === undefined ? 0 : +(((mp.bx - pp0.sx) * (pp0.ax - pp0.sx) + (mp.by - pp0.sy) * (pp0.ay - pp0.sy))
+                  / Math.max(0.1, Math.hypot(pp0.ax - pp0.sx, pp0.ay - pp0.sy)) - Math.hypot(pp0.ax - pp0.sx, pp0.ay - pp0.sy)).toFixed(1),
+            z: +mp.bz.toFixed(1), v: +v2d.toFixed(1), t: pp0.t,
+            late: bi === pp0.fj && bs === pp0.side ? 0 : +Math.hypot(s.players[pp0.side][pp0.fj]?.x - mp.bx, s.players[pp0.side][pp0.fj]?.y - mp.by).toFixed(1) }); }
         // HANDBALL. Only askable now that the ball is an object with a height: it struck him above
         // waist height, inside his own area, off an opponent's touch. An event engine had nothing to
         // test -- there was no ball and no arm for it to hit.
@@ -2316,9 +2449,14 @@ export function meTick(s, rng, out) {
           // sailed through him, then came back out in the new direction. That is the backwards
           // clip. Contact is at bt along the swept path, at the height the gate already computed.
           mp.bz = Math.max(CFG.ballR, zHit);
+          mp.bpass = null;                             // a header back to him he may pick up
           const gxA = meGoalX(bs), ownA = meGoalX(meOther(bs));
           const dGoalA = Math.hypot(gxA - q.x, ME_HALF_W - q.y);
           const power = CFG.headLo + meAttrs(q).strength / 99 * (1 - CFG.headLo);
+          if (globalThis.__hdr) { const pp0 = mp.passPending;
+            globalThis.__hdr.push({ k: pp0 ? (pp0.k || "set") : mp.shot ? "shot" : mp.flight && mp.fj < 0 ? (mp._looseWhy || "clear") : "loose",
+                                    mine: pp0 ? (pp0.side === bs ? 1 : 0) : -1, rcv: pp0 && pp0.side === bs && pp0.fj === bi ? 1 : 0,
+                                    z: +zHit.toFixed(2), duel: duel ? 1 : 0 }); }
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
           q.aerials = (q.aerials || 0) + 1; meRate(q, CFG.rateAerial);
           mp.idx = -1; mp.flight = true; mp.fside = bs; mp.fj = -1; mp.passPending = null;
@@ -2348,11 +2486,7 @@ export function meTick(s, rng, out) {
                         lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1, d: dGoalA, hdr: 1 };
             if (globalThis.__shots) globalThis.__shots.push({ side: bs, d: dGoalA, pt: mp.possT ?? -1,
               lt: mp.tick - (mp._loose ?? -1e9), press: 0, xg: hp, hdr: 1, why: mp._looseWhy });
-            const gkH = meKeeper(s.players[meOther(bs)]);
-            if (gkH) {
-              const okH = rng.u() < CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * meGkSkill(meAttrs(gkH));
-              mp.shot.readY = okH ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
-            }
+
             // Headers goalwards are frequent and mostly speculative; the ones that matter
             // arrive as a save, a miss or a goal a moment later and those still report.
             meEvt(out, "shot", bs, q.x, q.y, gxA, aimY, null);
@@ -2367,7 +2501,20 @@ export function meTick(s, rng, out) {
                 if (e2.i !== bi) { const kp2 = s.players[bs]?.[e2.i];
                   if (kp2) kp2.cc = (kp2.cc || 0) + 1; break; }
               } }
-            meKnock(mp, rng, gxA, aimY, CFG.headV * power, 0.35);
+            // A HEADER IS NOT A LASER. It was knocked at its target with no error at all, so every
+            // header at goal went exactly where it was meant to, low, at 0.55 of the way to the post.
+            // How wide it goes is the man (a strong header of a ball is a good one), whether somebody
+            // is jumping with him, and how hard the ball was coming.
+            {
+              const hs = meAttrs(q).strength / 99;
+              const hw = CFG.headNoise * (1 - CFG.headNoiseSkill * hs) * (1 + (duel ? CFG.headNoiseDuel : 0))
+                       * (1 + Math.min(1, inV / 20) * CFG.headNoisePace) * Math.PI / 180;
+              const ha = Math.atan2(aimY - q.y, gxA - q.x) + (rng.u() + rng.u() - 1) * hw;
+              const hd = Math.hypot(gxA - q.x, aimY - q.y);
+              meKnock(mp, rng, q.x + Math.cos(ha) * hd, q.y + Math.sin(ha) * hd, CFG.headV * power,
+                      0.35 + (rng.u() - 0.5) * CFG.headNoiseZ * (1 + (duel ? CFG.headNoiseDuel : 0)));
+            }
+            mePlanSave(s, mp.shot);
           } else {
             // A HEADER AT HALFWAY IS NOT A CLEARANCE. Every won aerial duel outside heading range of
             // goal was counted in out.clears, given the clearance rating bonus and drawn on the pitch
@@ -2398,6 +2545,7 @@ export function meTick(s, rng, out) {
               mp._loose = mp.tick; mp._looseWhy = "relief header";
               return true;
             }
+            if (meFlick(s, rng, out, bs, bi, q, power)) return true;
             // Neither a flick-on nor a header away is commentary. Measured, captioned events ran
             // 142 a match against a feed that holds 60, so the routine kinds were literally pushing
             // the goals off the end of the buffer -- which is what the "only second half" summary
@@ -2423,10 +2571,14 @@ export function meTick(s, rng, out) {
         // ...and it now is by construction: the contact is found at the substep it happens, so the ball
         // is where he touched it and nothing has to be wound back.
         if (!(mp.idx === bi && mp.side === bs) && isGK && mp.bx > 0.05 && mp.bx < PITCH_L - 0.05) mp._gkTouch = mp.tick;
-        // HANDS: in his own area, and only if the last man to touch it was not a team-mate. A
-        // deliberate ball back from his own defender he has to play with his feet like anybody else.
-        const inBox = isGK && Math.abs(q.x - meGoalX(meOther(bs))) < CFG.gkBoxR;
-        const canHandle = isGK && inBox && mp.lastSide !== bs;
+        // HANDS: in his own area, and not off a team-mate's deliberate kick or throw -- the back-pass law.
+        // It used to ask who touched it LAST, so a shot deflected off his own defender, a ricochet off a
+        // team-mate's shin and a header back to him all had to be kicked, which the law forbids none of,
+        // and he was booting clear balls he should simply have picked up. mp.bpass is set by a kick or a
+        // throw and cleared by any other touch. The area is the area: forty metres wide, not a radius.
+        const ownG = meGoalX(meOther(bs));
+        const inBox = isGK && Math.abs(q.x - ownG) < CFG.gkAreaD && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW;
+        const canHandle = isGK && inBox && mp.bpass !== bs;
         // How far beyond his own wingspan he had to go. THAT is what decides whether he holds it:
         // inside his arms he barely moved and he catches it, past them he has dived, and a dive is
         // a deflection. Ball speed does not come into it.
@@ -2438,7 +2590,24 @@ export function meTick(s, rng, out) {
         // outstretched arm it comes back off him, and that is where rebounds come from.
         const dive = isGK ? Math.max(0, Math.hypot(mp.bx - c.qx, mp.by - c.qy) - CFG.gkCatchR)
                           : Math.max(0, bd - CFG.gkCatchR);
-        if (isGK && (dive > CFG.gkCatchDive || !canHandle) && v2d > CFG.gkLiveV) {
+        // CATCH IT WHEN HE CAN. It was a line: anything that struck him more than gkCatchDive off his middle
+        // was palmed away however gently it came, and with the save now made by his whole stretched body
+        // most balls meet him there -- so he punched crosses he could have held and parried shots at his
+        // chest. Now it is how hard the take is -- how far from his middle, how hard it is coming, how many
+        // bodies are round him -- against how good his hands are. A slow ball he always holds.
+        let hold = false;
+        if (canHandle) {
+          if (v2d <= CFG.gkLiveV) hold = true;
+          else {
+            let crowd = 0;
+            for (const o of s.players[meOther(bs)]) if (o && !o.off && Math.hypot(o.x - c.qx, o.y - c.qy) < CFG.gkCatchCrowdR) crowd++;
+            const dc = Math.max(0, dive - CFG.gkCatchEasy) / CFG.gkCatchSpan + Math.max(0, v2d - CFG.gkCatchV0) / CFG.gkCatchVSpan
+                     + Math.min(2, crowd) * CFG.gkCatchCrowd;
+            hold = rng.u() < 1 - dc * (CFG.gkCatchLo - CFG.gkCatchSkill * meGkSkill(qa));
+          }
+        }
+        if (globalThis.__gkh && isGK) { const H = globalThis.__gkh, w = !canHandle ? "no hands" : v2d <= CFG.gkLiveV ? "slow, held" : hold ? "held" : "parried"; H[w] = (H[w] || 0) + 1; }
+        if (isGK && !hold && v2d > CFG.gkLiveV) {
           // Too hot to hold: parried away, still live. This is where rebounds come from.
           const shp = mp.shot;
           if (shp && globalThis.__svd) globalThis.__svd.push([shp.d, 1]);
@@ -2465,6 +2634,11 @@ export function meTick(s, rng, out) {
           if (shp) mp._parry = { side: bs, q, t: mp.tick,
                                  credit: meSaveBonus(shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0) };
           mePenRes(out, mp.shot); mp.shot = null; mp.lastSide = bs; meKickedBy(mp, bs, bi);
+          // ...and HE MAY GO STRAIGHT BACK FOR IT. The lock that stops a man re-winning his own kick held
+          // the keeper off his own parry for three slices, so one that dropped at his feet and trickled
+          // toward the line went in 0.4 m from him. He is kept off it for gkParryLock slices, long
+          // enough for the parry to leave his hands.
+          mp.kickBy[0].t = mp.tick - CFG.kickLock + CFG.gkParryLock;
           // A REFLECTION off his hands. The surface is square to the line from him to the ball, so
           // angle in equals angle out -- that is the whole geometry of a parry and there is nothing
           // random in it. What varies is how much of a HAND he got on it, and that is how far he had
@@ -2584,7 +2758,7 @@ export function meTick(s, rng, out) {
             mePenRes(out, mp.shot); mp.shot = null; }
           // A block ends the move: a goal off the rebound is nobody's assist. A deflection of a pass
           // does not, so the chain reads through it to the man who played the ball.
-          mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlock);
+          mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlock); mp.bpass = null;
           mp._loose = mp.tick; mp._looseWhy = "deflection";  // a squirt off a man: loose, not a backpass
           // Biased off the goalward line -- see CFG.deflectAway.
           const ownX = meGoalX(meOther(bs));
@@ -2613,6 +2787,7 @@ export function meTick(s, rng, out) {
           mePenRes(out, mp.shot); mp.shot = null;
         }
         const _cut = !!(mp.passPending && mp.passPending.side !== bs);
+        if (globalThis.__pftk) mp._lastPk = mp.passPending && mp.passPending.side === bs && mp.passPending.fj === bi ? mp.passPending.k : "-";
         resolvePending(bs);
         mp.flight = false;
         if (mp.idx === bi && mp.side === bs) return false;    // still his: not a new touch
@@ -2639,6 +2814,21 @@ export function meTick(s, rng, out) {
           mp.bvx = 0; mp.bvy = 0; meBallPredict(mp);
           return true;
         }
+        // FIRST TIME (meFirstTime): the lay-off, the wall pass, the ball round the corner, the tap-in --
+        // played on at the substep it reaches him, from where he met it, before anything is stopped.
+        if (!isGK && zHit < CFG.ftMaxZ) {
+          const fa = meFirstTime(s, rng, bs, bi, zHit);
+          if (fa) {
+            payRead();
+            const z0 = mp.bz;
+            meBallTo(s, bs, bi, mp.bx, mp.by);
+            mp.bz = Math.max(CFG.ballR, z0);
+            q._tchAt = subNow(c.at);
+            if (globalThis.__pk) globalThis.__pk._ft = (globalThis.__pk._ft || 0) + 1;
+            mePlay(s, rng, out, bs, bi, fa, mePressure(s, bs, q.x, q.y), false);
+            return true;
+          }
+        }
         // THE FIRST TOUCH (touch.ts). He takes it the way he is about to run with it -- the same
         // eight-way search the dribble uses -- and how hard the ball is to take, against how good his
         // touch is, decides whether it sticks and how close to his line and his lead it goes. It used
@@ -2656,12 +2846,13 @@ export function meTick(s, rng, out) {
         const uAng = meCarryPick(s, bs, q, pvm > 1 ? Math.atan2(pvy, pvx) : null, CFG.carryTurn + CFG.ftTurnCost * pvm)
                   ?? Math.atan2(pvy, pvx);
         const ft = meFirstTouch(s, rng, bs, q, c.qx, c.qy, pvx, pvy, zHit, reach, uAng);
+        if (globalThis.__pftk) globalThis.__pftk.push({ k: mp._lastPk || "-", ok: ft.ok ? 1 : 0, D: +ft.D.toFixed(2) });
         if (globalThis.__rx) { const R = globalThis.__rx; (R.ft = R.ft || []).push([+meTouchTech(q).toFixed(2), +ft.D.toFixed(2), ft.ok ? 1 : 0, mp.flight ? 1 : 0]); }
         if (!ft.ok) {
           // It comes off him. Not his -- and the move it interrupted is not over either: logged as a
           // deflection so the assist walk reads through it, unless it was a block, which really does
           // end a move.
-          mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlockSlow);
+          mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlockSlow); mp.bpass = null;
           mp._loose = mp.tick; mp._looseWhy = "miscontrol";
           mp.bvx = ft.vx; mp.bvy = ft.vy; mp.bvz = mp.bz > CFG.ballR + 0.05 ? Math.min(0, mp.bvz) * 0.3 : 0;
           meBallPredict(mp);
@@ -2712,6 +2903,7 @@ export function meTick(s, rng, out) {
     if (!ev) break;
     jj = ev.at + 1;
     if (ev.kind === "dribble") {
+      mp.gkPlan = null;
       if (globalThis.__rx) globalThis.__rx.drib = (globalThis.__rx.drib || 0) + 1;
       const car = ev.c;
       const t = meDribbleTouch(s, rng, mp.side, car, ev.cx, ev.cy, (car._pvx ?? 0) / ME_DT, (car._pvy ?? 0) / ME_DT);
@@ -2736,6 +2928,21 @@ export function meTick(s, rng, out) {
     cross = ev; endOfPlay(); holdFrame(); return;
   }
   meBallPredict(mp);
+  // A SHOT THAT HAS STOPPED BEING ONE IS A LOOSE BALL. Nobody chases a shot (meMove) and the keeper
+  // is held in his save while it lives, so one that clipped a defender and ran back up the pitch lay
+  // dead in the centre circle, unchased, from the 75th minute to the whistle. Once it has died, has
+  // been turned away from goal by a touch, or is older than shotMaxT, it is over.
+  // A PASS THAT HAS HIT SOMEBODY IS A LOOSE BALL, not a pass still on its way to the man it was meant
+  // for: it kept that man's head start and kept the keeper to his boots, so one that came off a
+  // defender's shins and died at the keeper's feet was never his to pick up.
+  if (mp.flight && !mp.shot && mp.idx < 0 && mp.hitP) { mp.flight = false; mp._loose = mp.tick; mp._looseWhy = "deflect"; }
+  if (mp.shot && !mp.shot.pen) {
+    const turned = mp.hitP && mp.hitP !== mp.shot.p && meIntoGoal(mp) !== meOther(mp.shot.side);
+    if (turned || Math.hypot(mp.bvx, mp.bvy) < CFG.shotOverV || (mp.tick - mp.shot.t0) * ME_DT > CFG.shotMaxT) {
+      mePenRes(out, mp.shot); mp.shot = null;
+    // ...and one that clipped somebody and is still going in is read again by the keeper (keeper.ts).
+    } else if (mp.shot.gk && mp.hitP && mp.hitP.pos !== "GK" && mp.hitP !== mp.shot.p) meReplanSave(s);
+  }
   // NOTHING IS HAPPENING. A ball nobody owns that nobody is moving is not a slow passage of play,
   // it is a dead match -- and a dead match is worse than any wrong decision the engine could make
   // instead. The one cause of it is fixed in meMove above, but any future gap between "I have
@@ -2782,7 +2989,10 @@ export function meTick(s, rng, out) {
       else { const ic = meIntercept(q, mp, vmax, undefined, mp.flight && mp.fside === sd && mp.fj === i ? CFG.rcvLag : 1);
              q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms; }
       q._ttbMs = ms;
-      if (ms < bms) { bms = ms; bi = i; }
+      // ...and THE KEEPER IS NOT THE MAN SENT AFTER A LOOSE BALL unless he has decided to come for it
+      // (brain.ts, _gkOut). Nearest to it near his own area, he was being sent after every one, whatever
+      // his own judgement said -- out to the flank, past the ball, and the goal left empty behind him.
+      if (ms < bms && !(q.pos === "GK" && !(q._gkOut > 0))) { bms = ms; bi = i; }
     }
     mp.desig[sd] = bi; mp.ttbBest[sd] = bms;
   }
@@ -2830,8 +3040,11 @@ export function meTick(s, rng, out) {
   if (mp.held && mp.idx >= 0) {
     const h = s.players[mp.side][mp.idx];
     if (h) {
-      let hx = h.vx || 0, hy = h.vy || 0, hl = Math.hypot(hx, hy);
-      if (hl < 1e-3) { hx = mp.bx - h.x; hy = mp.by - h.y; hl = Math.hypot(hx, hy) || 1; }
+      // Out in front of him TOWARD THE PITCH (brain.ts faces him up it while he holds it), not along
+      // whatever way he was moving: pinned against his own goal line by the momentum of the catch, the
+      // ball was held on the line itself, 0.79 m from him and out of the reach he can play from.
+      const fa = h._drbA != null ? h._drbA : meDir(mp.side) > 0 ? 0 : Math.PI;
+      let hx = Math.cos(fa), hy = Math.sin(fa), hl = 1;
       mp.bx = h.x + hx / hl * CFG.gkHoldOut; mp.by = h.y + hy / hl * CFG.gkHoldOut;
       mp.bvx = 0; mp.bvy = 0; mp.bvz = 0; mp.bz = CFG.ballR + 0.5;
       meBallPredict(mp);
@@ -2859,7 +3072,10 @@ export function meTick(s, rng, out) {
   // He has to still be NEAR it. Possession is not a flag you hold until somebody rolls it off you:
   // if the ball has run away from him, or somebody has got to it first, he simply does not have it.
   // He keeps it while it is still HIS -- inside the range of his own touch, and with nobody nearer.
-  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.touchKeep) {
+  // A KEEPER DOES NOT DRIBBLE, so a ball more than gkKeepR from his feet is not his: kept "his" out to
+  // touchKeep, a team-mate running into it knocked it goalward and nobody else was allowed to touch it
+  // while it rolled four metres into the net ahead of him.
+  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > (p.pos === "GK" && !mp.held ? CFG.gkKeepR : CFG.touchKeep)) {
     if (globalThis.__rx) globalThis.__rx.away = (globalThis.__rx.away || 0) + 1;
     mp.idx = -1; return; }
   out.poss[side]++;
@@ -2876,7 +3092,8 @@ export function meTick(s, rng, out) {
   // of slices while it is inside his control radius and on 74.6% while it is outside -- because
   // outside it nothing steers it at all, and he was free to keep "dribbling" anyway.
   // He is already pursuing it in meMove; this just stops him kicking what he cannot touch.
-  if (Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { meCarry(s, out, p); return; }
+  // (A ball in the keeper's hands he can always play: it goes where he goes.)
+  if (!(mp.held && p.pos === "GK") && Math.hypot(p.x - mp.bx, p.y - mp.by) > CFG.reach * CFG.playReach) { meCarry(s, out, p); return; }
   const a = meAttrs(p), sp = meSpeed(a, p.stamina), opp = s.players[meOther(side)];
   // A challenge is one against one: only the CLOSEST opponent in range rolls the duel. Letting every
   // body within 3.2 m roll independently meant a second presser doubled the dispossession rate and
@@ -3079,8 +3296,12 @@ export function meTick(s, rng, out) {
   // Carrying is not a terminal state. It used to be -- if `carry` scored best he simply never let
   // go of it, so a man could dribble in the box indefinitely, which is exactly what it looked like.
   // Once his time is up the carry is off the menu and he plays the best ball there is.
-  const forced = mp.hold >= natural;
-  let act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1);
+  // A KEEPER WITH IT AT HIS FEET DOES NOT DRIBBLE. On the outfielder's budget, with carry on the menu,
+  // he took a back-pass and walked it up his area with a striker closing, and was robbed twelve metres
+  // from his own goal. He gets gkFeetT slices to pick his ball, and carrying is not one of them.
+  const gkFeet = p.pos === "GK" && !mp.held;
+  const forced = mp.hold >= (gkFeet ? Math.min(natural, CFG.gkFeetT) : natural);
+  let act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1, gkFeet);
   if (act.k === "carry") {
     // ...but not FOREVER. The dwell tax shrinks a camped carry toward zero, and zero still wins
     // against a menu of all-negative passes, so this return was a bypass around the forced
@@ -3091,8 +3312,34 @@ export function meTick(s, rng, out) {
     act = meDecide(s, rng, side, mp.idx, mp.hold - natBase + 1, true);
     if (act.k === "carry") { meCarry(s, out, p); return; }           // nothing else exists at all
   }
+  // THE KEEPER WITH IT IN HIS HANDS HOLDS IT while his side spreads out, unless the break is on NOW:
+  // a free man well up the pitch with their side caught forward, and then he throws it at once. He
+  // used to let it go the moment anything scored well enough, which out of a crowded area was usually
+  // a man with somebody on him. Waiting is capped by his budget, and at the end of it he plays the best
+  // there is -- long, if nobody short is free.
+  if (mp.held && p.pos === "GK" && !forced && mp.hold < CFG.gkSettleT) {
+    let quick = false;
+    if (act.k === "pass" && act.ax !== undefined && (act.ax - p.x) * meDir(side) > CFG.gkQuickFwd
+        && meOppDist(s, side, act.ax, act.ay) > CFG.gkFreeR * 1.3) {
+      let up = 0;
+      for (const o of s.players[meOther(side)]) if (o && !o.off && o.pos !== "GK" && (o.x - PITCH_L / 2) * meDir(side) < 0) up++;
+      quick = up >= CFG.gkCounterN;
+    }
+    if (!quick) return;
+  }
   if (!forced && (act.sc ?? 0) <= CFG.actNow * Math.max(0, 1 - pressN * CFG.pressActNow)) return;
-  mp.firstTouch = mp.hold <= 1;
+  mePlay(s, rng, out, side, mp.idx, act, press, forced);
+}
+
+// THE STRIKE: whatever he decided, played from where the ball is. Out of the tick's own on-ball step
+// so that a ball can also be played the instant it arrives -- first time, in the contest -- through the
+// same code as one he has stopped. act.execD is how hard the ball was to strike (mePassExecD), which the
+// decision has already charged against his skill and the kick now spends as noise. It replaced a flat
+// division of every quick pass's skill by 1.75, which charged the lay-off into a man's stride what it
+// charged a ball driven at his shins.
+export function mePlay(s, rng, out, side, i, act, press, forced) {
+  const mp = s.mePos, ps = s.players[side], p = ps[i], a = meAttrs(p);
+  const exD = act.execD || 0;
   mp.hold = 0;
   if (act.k === "shot") {
     // He strikes it, and that is the whole of his involvement. No goal roll, no save roll, none of
@@ -3164,6 +3411,7 @@ export function meTick(s, rng, out) {
     mp.shot = { side, name: p.name, full: p.fullName || p.name, i: shooter, xg: xgRec, t0: mp.tick, p,
                 lt: mp.tick - (mp._loose ?? -1e9), pt: mp.possT ?? -1,
                 d: Math.hypot(gx - p.x, p.y - ME_HALF_W) };
+    if (globalThis.__gfrom) mp.shot.from = (p._rcvT !== undefined && mp.tick - p._rcvT <= 8 ? p._rcvK : "-") + (act.ft ? " first time" : "");
     // Shot genesis, harness-only: same gate pattern as __prov. WHERE THE KEEPER WAS as well as
     // where the shot came from -- a goal conceded with him twelve metres off his line and still
     // committed to a ball he lost the race for is a different fact from a goal conceded on his line,
@@ -3174,7 +3422,8 @@ export function meTick(s, rng, out) {
       mp.shot.gko = gkD && gkD._gkOut > 0 ? 1 : 0;
     }
     if (globalThis.__shots) globalThis.__shots.push({ side, d: mp.shot.d, pt: mp.shot.pt,
-      lt: mp.shot.lt, press, xg: xgRec, gkd: mp.shot.gkd, gko: mp.shot.gko, why: mp._looseWhy });
+      lt: mp.shot.lt, press, xg: xgRec, gkd: mp.shot.gkd, gko: mp.shot.gko, why: mp._looseWhy,
+      ft: act.ft ? 1 : 0, exD: +exD.toFixed(2), from: p._rcvT !== undefined && mp.tick - p._rcvT <= 8 ? p._rcvK : "-" });
     // THE PASS THAT MADE IT. An assist is only credited when the thing goes in; a man who puts a
     // team-mate through six times and watches him miss six times did that six times. Credited on
     // every shot, so an assist on a goal is this plus the goal bonus, which is how it is counted
@@ -3191,35 +3440,25 @@ export function meTick(s, rng, out) {
           // the walk fires on the shot's creation, before anyone knows how it ends.
           if (kp) kp.cc = (kp.cc || 0) + 1; break; }
       } }
-    // THE READ. A keeper cannot wait to see a shot. From twelve metres it is past him before his
-    // reaction and his travel have both been paid for, so waiting is being beaten by geometry every
-    // time -- which, with the reach ring gone, is exactly what was happening: five to seven goals a
-    // side and no dive speed able to rescue it. He commits to a side as the ball leaves the foot.
-    // Reading it right IS goalkeeping, and it is what his rating buys him; read it wrong and he is
-    // going the other way with the whole goal open, which is also what goalkeeping looks like.
-    // What he is carrying into the strike, read once: it sets the pace, and the pace is how long the
-    // keeper has to read it.
+    // What he is carrying into the strike, read once: it sets the pace.
     const run = meRun01(p, side);
-    const runGate = run * Math.max(0, Math.min(1, (meShotGeom(side, p.x, p.y).d - CFG.shotRunD) / CFG.shotRunFade));
-    if (gkp) {
-      const rk = meGkSkill(meAttrs(gkp));
-      // ...and the more time he has, the better he reads it. A shot from six metres is a guess; one
-      // from twenty-five he can genuinely see and pick a side on.
-      const tAv = Math.hypot(gkp.x - p.x, gkp.y - p.y) / Math.max(8, CFG.shotV0 + sk * CFG.shotVSkill + runGate * CFG.shotVRun);
-      const bonus = Math.max(0, Math.min(1, (tAv - CFG.gkReadT0) / CFG.gkReadTSpan)) * CFG.gkReadTime;
-      const readOk = rng.u() < Math.min(0.97, CFG.gkReadMin + (CFG.gkReadMax - CFG.gkReadMin) * rk + bonus);
-      mp.shot.readY = readOk ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
-    }
     // Tired legs mishit. Execution decays with stamina the same way for every man on the pitch,
     // so the bill lands hardest on whoever spent the most running -- which is the press.
-    meShootBall(mp, rng, gx, aimY, aimZ, sk * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) / (mp.firstTouch ? CFG.firstTouchNoise : 1), press, undefined, undefined, run);
+    // What is around him when he hits it: see meShotSit.
+    const sit = meShotSit(s, side, p, gx, aimY);
+    if (globalThis.__shots) globalThis.__shots[globalThis.__shots.length - 1].sit = +sit.toFixed(2);
+    meShootBall(mp, rng, gx, aimY, aimZ, sk * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) * Math.max(0, 1 - exD * CFG.execShotLoss), sit, undefined, undefined, run);
+    // THE KEEPER WATCHES IT. He used to commit to a side as it left the foot, right as often as his
+    // rating said, and a right guess put him on the spot the shooter aimed at; see keeper.ts for what
+    // that did to the balance between a finish and a keeper. He sets, reacts, and goes to the ball.
+    mePlanSave(s, mp.shot);
     return;
   }
   if (act.k === "clear") { out.clears++; meBump(out, "clearsSide", meSideOfP(s, p)); meRate(p, meDefPay(s, meSideOfP(s, p), p.x, p.y, CFG.rateClear));
     p.defActs = (p.defActs || 0) + 1;
     meEvt(out, "clear", side, p.x, p.y, act.cx ?? p.x, act.cy ?? p.y, null);
     meKickedBy(mp, side, mp.idx);
-    mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
+    mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null; mp.bpass = side;
     if (globalThis.__clr) globalThis.__clr.push(Math.hypot((act.cx ?? p.x) - p.x, (act.cy ?? p.y) - p.y));
     meKickBall(mp, rng, act.cx ?? (p.x + meDir(side) * 36), act.cy ?? (p.y + (rng.u() - 0.5) * 30),
                "clear", meTech(a.pass), press);
@@ -3229,38 +3468,25 @@ export function meTick(s, rng, out) {
     const sy = p.y < ME_HALF_W ? -4 : PITCH_W + 4;
     meEvt(out, "clear", side, p.x, p.y, p.x + meDir(side) * 6, sy, null);
     meKickedBy(mp, side, mp.idx);
-    mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null;
+    mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = -1; mp.lastSide = side; mp.passPending = null; mp.bpass = side;
     meKickBall(mp, rng, p.x + meDir(side) * 6, sy, "clear", meTech(a.pass), press);
     return; }
-  const q = ps[act.j], dist = Math.hypot((act.ax ?? q.x) - p.x, (act.ay ?? q.y) - p.y);
-  if (globalThis.__pmark) globalThis.__pmark.push(+meOppDist(s, side, act.ax ?? q.x, act.ay ?? q.y).toFixed(2));
-  // Pass to where he WILL be, leading his current movement across the estimated flight.
-  // A ball to his FEET is led by his movement across the flight. A ball into SPACE is not: the aim
-  // point already IS the meeting point, solved for his run, and leading it again on top of that is
-  // what sent every through ball skidding past him.
-  // How long it will ACTUALLY take. A ground ball sheds pace the whole way: a twenty metre pass is
-  // in flight for 1.90 s, not the 1.18 s a flat 17 m/s says, and an eight metre one for 1.02 s
-  // against 0.47 -- so leading a moving receiver off that estimate aimed the ball at where he would
-  // be barely half way through the flight, and it arrived behind him. Every other part of the engine
-  // already solves this: the kick speed inverts the rolling ODE, the risk model integrates it, and
-  // the receiver is charged against it. The one place that aims the pass was using a constant.
-  const flight = act.high ? meLoftFor(dist).T : meGroundT(dist, dist);
-  const est = Math.max(1, Math.min(20, flight / ME_DT));
-  const baseX = act.ax ?? q.x, baseY = act.ay ?? q.y;
-  // ...AND THE DECISION ALREADY DID. Since 30 Aug meDecide leads a ball to feet by the receiver's own
-  // pace over the flight (feetLeadFrac) and hands that point here as act.ax/ay -- and this line led it
-  // AGAIN, so every pass to a moving man was struck a second lead ahead of the point that was scored.
-  // On the old heavy pitch the overhit ball died near him; on real grass it ran on past him and out,
-  // and passes became the main source of throw-ins. The point the decision scored is the point struck.
-  const ld = act.thru || act.ax !== undefined ? 0 : est * CFG.leadFrac;
-  const lx = Math.max(1, Math.min(PITCH_L - 1, baseX + (q.vx || 0) * ld));
-  const ly = Math.max(1, Math.min(PITCH_W - 1, baseY + (q.vy || 0) * ld));
+  const q = ps[act.j];
+  // THE POINT THE DECISION SCORED IS THE POINT STRUCK. Every kind of ball arrives here already solved
+  // -- a ball to feet led by his own pace over the flight, a ball into space aimed at where he and it
+  // meet, a lofted one at where it comes down to him -- with the weight and the flight it was scored
+  // on. This line used to lead the ball again on top of the decision's lead, so every pass to a
+  // moving man was struck a second lead ahead of the point that was scored; on real grass that ran on
+  // past him and out, and passes became the main source of throw-ins.
+  const lx = Math.max(1, Math.min(PITCH_L - 1, act.ax ?? q.x)), ly = Math.max(1, Math.min(PITCH_W - 1, act.ay ?? q.y));
+  const dist = Math.hypot(lx - p.x, ly - p.y);
+  if (globalThis.__pmark) globalThis.__pmark.push(+meOppDist(s, side, lx, ly).toFixed(2));
   // No completion roll. The kick carries execution noise (skill and pressure turn into degrees of
   // aim error and a power wobble) and then the flight is geometry's problem: whoever reaches the
   // path first gets it. A lofted ball goes over the midfield instead of through it.
   meEvt(out, "pass", side, p.x, p.y, lx, ly, null);
   meKickedBy(mp, side, mp.idx);
-  mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = act.j; mp.lastSide = side;
+  mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = act.j; mp.lastSide = side; mp.bpass = side;
   // What he THOUGHT would happen, carried alongside the ball. A completion model nobody ever
   // checks against the resolution is a model that drifts: the decision scored passes with one set
   // of assumptions while physics settled them with another, and the two only have to agree because
@@ -3273,14 +3499,128 @@ export function meTick(s, rng, out) {
     && (q.x - PITCH_L / 2) * meDir(side) > 0        // only in the opponent's half
     && (q.x - p.x) * meDir(side) > 0;               // and ahead of the ball
   mp.passPending = { side, p: act.p, c: act.c, thru: !!act.thru, high: !!act.high, d: dist, forced,
-                     off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x, sy: p.y, byP: p, ax: lx, ay: ly, fj: act.j };
+                     off: wasOff, ox: q.x, oy: q.y, t: 0, sx: p.x, sy: p.y, byP: p, ax: lx, ay: ly, fj: act.j,
+                     k: act.pk || "feet", ft: !!act.ft };
   // Reception audit (harness-only): passPending is cleared before the ball is handed over, so the
   // strike-time geometry is stamped here where it still exists.
   if (globalThis.__recv) mp._rcvAt = { side, i: act.j, sx: p.x, sy: p.y, ox: q.x, oy: q.y,
-    thru: !!act.thru, aim: Math.hypot((act.ax ?? q.x) - p.x, (act.ay ?? q.y) - p.y) };
+    thru: !!act.thru, aim: dist };
   meKickBall(mp, rng, lx, ly, act.high ? "high" : "ground",
-             meTech(a.pass) * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100) / (mp.firstTouch ? Math.max(1, CFG.firstTouchNoise + (s.strategy?.[side]?.dribbling || 0) * CFG.dribTouch) : 1), press,
-             s.strategy?.[side]?.tempo || 0);
+             meTech(a.pass) * (CFG.fatExLo + (1 - CFG.fatExLo) * (p.stamina ?? 100) / 100), press,
+             s.strategy?.[side]?.tempo || 0, { va: act.va, kind: act.kind, zEnd: act.zEnd, execD: exD });
+  mePassMove(s, rng, side, i, act);
+}
+
+// PASS AND MOVE. A pass used to be the end of the passer's part in the move: he went back to his slot
+// and the man he found was on his own, which is half of why the football looked wooden -- nobody ever
+// gave it and went. Two runs start from the pass itself, and each is only a RUN; whether the ball
+// comes back is the receiver's decision, into a runner the pass menu already knows how to find.
+//   THE GIVE-AND-GO: the passer, off a short ball forward of his own third, goes past his man for
+//   the return -- the wall pass, the one-two.
+//   THE THIRD MAN: a ball into a team-mate's feet sends a third man in behind off the shoulder, for
+//   the lay-off first time.
+// Both count against the side's budget of men on runs, the same one meRuns spends.
+function mePassMove(s, rng, side, i, act) {
+  const us = s.players[side], p = us[i], q = us[act.j];
+  if (!p || !q || act.high) return;
+  const st = s.strategy?.[side] || {};
+  const dir = meDir(side), own = meGoalX(meOther(side));
+  let active = 0;
+  for (const z of us) if (z && !z.off && (z._runT ?? 0) > 0) active++;
+  const cap = Math.max(1, CFG.runMax + (st.creativity || 0) * CFG.creRuns);
+  const cre = st.creativity || 0;
+  // A centre-half does not play one-twos; a full-back going outside does.
+  const mover = (z) => z.pos === "MID" || z.pos === "FWD"
+    || (z.pos === "DEF" && Math.abs((z._bw ?? ME_HALF_W) - ME_HALF_W) / ME_HALF_W > 0.40);
+  const d = Math.hypot(q.x - p.x, q.y - p.y);
+  if (active < cap && mover(p) && (p._runT ?? 0) <= 0 && (p.x - own) * dir > CFG.wallFrom
+      && d < CFG.wallMaxD && (q.x - p.x) * dir > -8
+      && rng.u() < CFG.wallP + CFG.wallShort * Math.max(0, -(st.passingDir || 0)) + CFG.wallCre * cre) {
+    // Straight past the man in front of him, on the side away from the ball he has just played, so
+    // the return goes across behind that man. Clamped onto the pitch; meShape holds him onside.
+    const side0 = q.y > p.y ? -1 : 1;
+    const rx = Math.max(2, Math.min(PITCH_L - 2, p.x + dir * CFG.wallRunL));
+    const ry = Math.max(4, Math.min(PITCH_W - 4, p.y + side0 * 3));
+    if (meOppDist(s, side, rx, ry) > 3) {
+      p._run = "wall"; p._runT = CFG.wallRunT; p._rx = rx; p._ry = ry; p._cool = 0; active++;
+      if (globalThis.__pk) globalThis.__pk._wall = (globalThis.__pk._wall || 0) + 1;
+    }
+  }
+  if (active >= cap || act.thru || (q.x - own) * dir < CFG.tmFrom) return;
+  if (rng.u() >= CFG.tmP + CFG.tmCre * cre) return;
+  const off = meOffsideLine(s, side);
+  let bi = -1, bsc = -Infinity;
+  for (let k = 0; k < us.length; k++) {
+    const c = us[k];
+    if (k === i || k === act.j || !c || c.off || c.pos === "GK" || !mover(c)) continue;
+    if ((c._runT ?? 0) > 0 || (c._cool ?? 0) > 0) continue;
+    if (Math.hypot(c.x - q.x, c.y - q.y) > CFG.tmMaxD) continue;
+    if ((c.x - off) * dir > -0.5 || (c.x - q.x) * dir < -6) continue;      // onside, and not behind him
+    // ...and only with grass behind the line to run into, the same test meRuns asks of a runner.
+    if (meCtrl(s, side, off + dir * 12, c.y) <= -0.55) continue;
+    const sc = (c.x - q.x) * dir - Math.abs(c.y - q.y) * 0.3;
+    if (sc > bsc) { bsc = sc; bi = k; }
+  }
+  if (bi < 0) return;
+  const c = us[bi];
+  c._run = "behind"; c._runT = CFG.runTicks; c._cool = 0;
+  c._rx = Math.max(2, Math.min(PITCH_L - 2, off + dir * CFG.runBehindX));
+  c._ry = c.y + (ME_HALF_W - c.y) * 0.35;
+  if (globalThis.__pk) globalThis.__pk._third = (globalThis.__pk._third || 0) + 1;
+}
+
+// FIRST TIME. The ball has reached him and he has not stopped it yet: is the ball he would play now
+// better than whatever a touch buys him? He asks the ordinary decision with the ball as it is ARRIVING
+// (so every option is charged for being struck first time -- how hard it is coming, how far he has to
+// turn it), and plays it on only if the best of it is a pass, a shot or a clearance worth ftActNow.
+// That is the lay-off to a man facing play, the wall pass back into a runner, the ball round the
+// corner and the tap-in: none of them existed, because every reception was a touch first and a
+// decision a quarter of a second later. Anything else, and he takes it down.
+function meFirstTime(s, rng, side, i, z) {
+  const mp = s.mePos, p = s.players[side][i];
+  const act = meDecide(s, rng, side, i, 0, false, { bvx: mp.bvx, bvy: mp.bvy, bz: z });
+  if (!act || (act.k !== "pass" && act.k !== "shot" && act.k !== "clear")) return null;
+  const press = mePressure(s, side, p.x, p.y);
+  if ((act.sc ?? 0) <= CFG.ftActNow * Math.max(0, 1 - press * CFG.pressActNow)) return null;
+  act.ft = true;
+  return act;
+}
+
+// THE FLICK-ON. A header is a way of moving the ball rather than keeping it, and it went into an area
+// ahead of him at random -- so the knock-on of a long ball, the most ordinary header in the game, never
+// found anybody. It does now, and only that: a ball already travelling their way, played on in the same
+// direction to a team-mate beyond him who is onside, from outside flickGoalD of goal. (Heading AT a
+// team-mate from anywhere was tried and is not a flick-on: every won header near the box teed somebody
+// up and goals nearly doubled.) Returns true if he played one.
+function meFlick(s, rng, out, side, i, q, power) {
+  const mp = s.mePos, dir = meDir(side), gx = meGoalX(side);
+  if (Math.hypot(gx - q.x, ME_HALF_W - q.y) < CFG.flickGoalD) return false;
+  const bv = Math.hypot(mp.bvx, mp.bvy);
+  if (bv < 4 || mp.bvx / bv * dir < 0.2) return false;
+  const bux = mp.bvx / bv, buy = mp.bvy / bv;
+  const us = s.players[side], off = meOffsideLine(s, side);
+  const spd = Math.min(18, bv * CFG.flickKeep + CFG.headV * power * 0.25);
+  let bj = -1, bsc = -Infinity, bx = 0, by = 0;
+  for (let j = 0; j < us.length; j++) {
+    const t = us[j];
+    if (j === i || !t || t.off || t.pos === "GK") continue;
+    const dx = t.x - q.x, dy = t.y - q.y, d = Math.hypot(dx, dy);
+    if (d < CFG.flickMinD || d > CFG.flickMaxD || (dx * bux + dy * buy) / d < CFG.flickCos) continue;
+    if ((t.x - off) * dir > CFG.offTol && (t.x - PITCH_L / 2) * dir > 0 && (t.x - q.x) * dir > 0) continue;
+    const T = d / spd, ax = t.x + (t.vx || 0) / ME_DT * T, ay = t.y + (t.vy || 0) / ME_DT * T;
+    const sc = (t.x - q.x) * dir + Math.min(8, meOppDist(s, side, ax, ay)) * 1.5 + ((t._runT ?? 0) > 0 ? 4 : 0);
+    if (sc > bsc) { bsc = sc; bj = j; bx = ax; by = ay; }
+  }
+  if (bj < 0) return false;
+  const sk = Math.max(0, Math.min(1, (meAttrs(q).strength / 99 + meTech(meAttrs(q).pass)) / 2));
+  const ang = Math.atan2(by - mp.by, bx - mp.bx) + (rng.u() + rng.u() - 1) * CFG.flickNoise * (1 - 0.6 * sk) * Math.PI / 180;
+  mp.bvx = Math.cos(ang) * spd; mp.bvy = Math.sin(ang) * spd; mp.bvz = 2.5;
+  mp.fj = bj;
+  mp.passPending = { side, p: 0.5, thru: true, high: true, d: Math.hypot(bx - q.x, by - q.y), off: false,
+                     ox: us[bj].x, oy: us[bj].y, t: 0, sx: q.x, sy: q.y, byP: q, ax: bx, ay: by, fj: bj, k: "flick" };
+  meEvt(out, "head", side, q.x, q.y, bx, by, null);
+  meBallPredict(mp);
+  return true;
 }
 
 // Published for the viewer: the last thing that happened and where, plus a rolling commentary.

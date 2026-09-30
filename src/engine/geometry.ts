@@ -235,13 +235,14 @@ export function meShotGeom(side, x, y) {
   return { d, ang: ang < 0 ? ang + Math.PI : ang };
 }
 
-// The offside line: the second-deepest OUTFIELD opponent. The keeper has to be excluded explicitly
-// -- he is almost always the deepest, so counting him made "second deepest" mean "deepest defender",
-// which put the line ten metres too high.
+// The offside line: the SECOND-LAST OPPONENT, as Law 11 has it -- counting the keeper, who is one of
+// them. With him on his line that is the deepest outfielder. The keeper used to be left out, which made
+// the line the second-deepest OUTFIELDER: a defender who dropped off played nobody onside, and every
+// attacker had to stand level with the man in front of the last one. A man sent off is not on the pitch.
 export function meOffsideLine(s, side) {
   const opp = s.players[meOther(side)], dir = meDir(side), gx = meGoalX(side);
   let d1 = -Infinity, d2 = -Infinity;
-  for (const q of opp) { if (q.pos === "GK") continue;
+  for (const q of opp) { if (!q || q.off) continue;
     const v = q.x * dir; if (v > d1) { d2 = d1; d1 = v; } else if (v > d2) d2 = v; }
   const line = d2 === -Infinity ? gx : d2 * dir;
   return dir > 0 ? Math.max(PITCH_L / 2, Math.min(gx, line)) : Math.min(PITCH_L / 2, Math.max(gx, line));
@@ -331,20 +332,29 @@ export function meIntercept(p, mp, vmax, hurry, lagMul) {
 // ball is played with, the interception risk, and how late the receiver is judged to be. Measured,
 // through balls arrived at the aim point at 2.3 m/s at the tenth percentile against the 6 they were
 // solved for, and the man they were played to was already past the ball 21% of the time.
-export function meGroundT(L, s) {
+// `va` is the arrival pace the ball was struck for, when it is not the firm ball to feet.
+export function meGroundT(L, s, va) {
   const k2 = 2 * meRollK(), r = meRollR(), rr = Math.sqrt(r), sc = 2 / (k2 * rr);
-  const v0 = meGroundSpeed(L), C = v0 * v0 + r;
+  const v0 = meGroundSpeed(L, va), C = v0 * v0 + r;
   // No floor at passArrive here either: a clamped ball genuinely does die below it, and flooring
   // the far end at 6 m/s is what hid that.
   const vs = Math.sqrt(Math.max(0, C * Math.exp(-k2 * s) - r));
   return sc * (Math.atan(v0 / rr) - Math.atan(vs / rr));
 }
 
-export function mePassRisk(s, side, x0, y0, x1, y1, speed, high) {
+// `va` is a ground ball's arrival pace (see meGroundT). `loft`, for a ball in the air, is { T, z1 }:
+// its flight time and the height it arrives at -- a man it passes over is no threat to it, and one
+// under the far end of a cross is. It used to be the lane block's rule of thumb (only the first fifth
+// and the last third of any lofted ball could be cut out) with a flat discount on top, which scored a
+// driven switch at head height exactly like a punt at twelve metres.
+export function mePassRisk(s, side, x0, y0, x1, y1, speed, high, va, loft) {
   const opp = s.players[side === "home" ? "away" : "home"];
   const dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy || 1, L = Math.sqrt(L2);
+  // The arc, to the accuracy a decision needs: a parabola through the launch and the arrival height.
+  const vz0 = loft ? (loft.z1 - CFG.ballR) / loft.T + 4.905 * loft.T : 0;
   let risk = 0;
   for (const q of opp) {
+    if (q.off) continue;
     // The keeper counts. Skipping him meant a through ball slid in behind the last defender was
     // scored as completely safe when the man it was really being played to was the goalkeeper --
     // which is exactly what it looked like. No special case is needed: a keeper forty metres from
@@ -356,8 +366,13 @@ export function mePassRisk(s, side, x0, y0, x1, y1, speed, high) {
     if (t <= 0.04) continue;                                   // behind the passer; he cannot cut it
     t = Math.min(1.06, t);                                     // just past the target still counts
     const px = x0 + dx * t, py = y0 + dy * t;
+    if (loft) {
+      const tau = loft.T * Math.min(1, t);
+      const z = CFG.ballR + vz0 * tau - 4.905 * tau * tau;
+      if (z > (q.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(q), CFG))) continue;
+    }
     // A lofted ball holds its horizontal speed; a ground ball does not.
-    const tBall = high ? L * t / Math.max(1, speed) * 1000 : meGroundT(L, L * t) * 1000;
+    const tBall = high ? (loft ? loft.T * t : L * t / Math.max(1, speed)) * 1000 : meGroundT(L, L * t, va) * 1000;
     const tMan = meTimeToBallMs(q, px, py, vmaxQ);
     // How comfortably he beats the ball there, in milliseconds. Arriving 400 ms late is no threat;
     // arriving early is an interception.

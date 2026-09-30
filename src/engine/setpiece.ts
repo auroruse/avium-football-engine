@@ -14,6 +14,7 @@ import { CFG, ME_DT } from "./config";
 import { meAttrs, meGkSkill , meAttrs } from "./attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meKeeper, meKeeperIx, meOther, meShotGeom } from "./geometry";
 import { meFkArc, meKickBall, meShootBall } from "./ball";
+import { mePlanSave } from "./keeper";
 import { GOAL_HALF_W } from "./ball";
 
 // Which foot he kicks with, from where he plays. Left only if he is clearly a left-sided player.
@@ -80,7 +81,7 @@ export function meSPBegin(s, kind, side, out) {
   // fetched from there instead of blinking onto the spot.
   const fx = mp.bx, fy = mp.by;
   mp.bvx = 0; mp.bvy = 0; mp.bvz = 0;
-  mp.idx = -1; mp.flight = false; mp.passPending = null; mp.shot = null; mp.kickBy = null;
+  mp.idx = -1; mp.flight = false; mp.passPending = null; mp.shot = null; mp.kickBy = null; mp.gkPlan = null;
   mp.dead = 0;
   if (kind === "corner" && out) out.corners[side]++;
   const us = s.players[side];
@@ -138,7 +139,17 @@ export function meSPBegin(s, kind, side, out) {
   // and free kick did not. Measured before the fix: a throw still live after 2809 slices.
   else { let bd = Infinity; for (let i = 0; i < us.length; i++) { const p = us[i];
       if (p.pos === "GK" || p.off) continue; const d = Math.hypot(p.x - x, p.y - y);
-      if (d < bd) { bd = d; ti = i; } } }
+      if (d < bd) { bd = d; ti = i; } }
+    // THE LONG THROW. Near their line a side with a man who can hurl it sends him over to take it,
+    // the way a corner goes to the man who strikes them -- as long as he is not the far side of the
+    // pitch. Strength is the arm; nothing else in the ratings is.
+    if (kind === "throw" && Math.abs(meGoalX(side) - x) < CFG.longThrowX) {
+      let bs2 = CFG.longThrowStr - 1e-9, lt = -1;
+      for (let i = 0; i < us.length; i++) { const p = us[i];
+        if (p.pos === "GK" || p.off || Math.hypot(p.x - x, p.y - y) > CFG.longThrowWalk) continue;
+        const str = meAttrs(p).strength; if (str > bs2) { bs2 = str; lt = i; } }
+      if (lt >= 0) ti = lt;
+    } }
   // ...and the fallback cannot be slot 0 either: that is the keeper, and he may be the man off.
   if (ti < 0) ti = Math.max(0, us.findIndex(p => p && !p.off));
   // IS ANYTHING ON? A restart is either a set piece or a chance to get on with it, and this decides
@@ -726,6 +737,13 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // spot. strength is the aerial attribute; meAerial reads nothing else.
   const into = sp.kind === "corner" || sp.kind === "freekick";
   const themT = s.players[meOther(side)] || [];
+  // A LONG THROW IS A CORNER FROM THE TOUCHLINE: taken by a man who can reach the area, near enough
+  // their line to reach it, it goes in there -- to the men in the box, scored the way a corner is.
+  const inArea = (q) => Math.abs(gx - q.x) < 16.5 && Math.abs(q.y - ME_HALF_W) < 20.16;
+  const longThrow = sp.kind === "throw" && Math.abs(gx - sp.x) < CFG.longThrowX
+    && meAttrs(taker).strength >= CFG.longThrowStr
+    && us.some((q, i) => i !== sp.ti && q && !q.off && q.pos !== "GK" && inArea(q)
+                        && Math.hypot(q.x - sp.x, q.y - sp.y) <= CFG.longThrowMax);
   const cands = [];
   for (let i = 0; i < us.length; i++) {
     // A man parked off the pitch was the likeliest target for any throw-in taken near him.
@@ -737,6 +755,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     if (sp.kind === "goalkick" && (us[i].x - sp.x) * dir < 3) continue;
     const q = us[i], d = Math.hypot(q.x - sp.x, q.y - sp.y);
     if (d > CFG.spMaxBall) continue;
+    // A throw goes as far as an arm sends it, and a long one only into the area.
+    if (sp.kind === "throw" && (longThrow ? !inArea(q) || d > CFG.longThrowMax : d > CFG.throwMax)) continue;
     // A CORNER IS NOT AIMED AT THE GOALMOUTH. The old value maximised proximity to the goal line
     // and the centre, which selects the man standing on the keeper -- and with the run and the
     // cross-over both pushing goalward on top, deliveries funnelled into the six-yard box where
@@ -758,7 +778,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // corners and aimed at the goalmouth regardless of who stood there, so one taken inside a
     // side's own half was launched at a crowd. Only a kick within striking range of their goal
     // is a delivery; the rest are played to a free man like a goal kick.
-    const deliv = sp.kind === "corner"
+    const deliv = sp.kind === "corner" || longThrow
       || (sp.kind === "freekick" && Math.abs(gx - sp.x) < CFG.spShootRange + 12);
     let sepT = 0;
     if (!deliv) {
@@ -767,12 +787,16 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
         const so = Math.hypot(o.x - q.x, o.y - q.y); if (so < sepT) sepT = so; }
       sepT = Math.min(sepT, 12);
     }
-    const v = sp.kind === "corner"
+    // A GOAL KICK PLAYED SHORT GOES TO A FREE MAN. The draw favoured the nearest defender with a yard of
+    // room, so a striker on a centre-half's shoulder got the ball given to him from a goal kick. A short
+    // one needs gkFreeR of space; if nobody short has it, the kick goes long.
+    if (sp.kind === "goalkick" && d < CFG.gkThrowMax && sepT < CFG.gkFreeR) continue;
+    const v = sp.kind === "corner" || longThrow
       ? -Math.abs(Math.hypot(gx - q.x, ME_HALF_W - q.y) - CFG.spCornerRun - CFG.cnAimD)
         - Math.abs(q.y - ME_HALF_W) * 0.1
       : deliv ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d + sepT * CFG.spFreeW;
     let w = Math.exp(v * CFG.spAimSharp);
-    if (into) w *= 0.5 + meAttrs(q).strength / 99;
+    if (into || longThrow) w *= 0.5 + meAttrs(q).strength / 99;
     cands.push([i, w]);
   }
   let ti = -1;
@@ -802,6 +826,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   const shooting = sp.kind === "freekick" && Math.abs(gx - sp.x) < CFG.spShootRange;
   meKickedBy(mp, side, sp.ti);
   mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = ti; mp.lastSide = side; mp.passPending = null;
+  mp.bpass = side;                                   // a restart is a kick or a throw: the back-pass law holds
 
   // The penalty has to sit BELOW the line above. Returning before it left mp.idx pointing at the
   // taker, so for one slice the ball counted as still being at his feet -- and the keeper's read
@@ -860,25 +885,14 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spFkXg;
     mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick, xg: CFG.spFkXg };
     mp.fj = -1;
-    // ...and this was missing entirely: with no readY the keeper's dive branch never fires, so he
-    // stood and watched every free kick struck at his goal.
-    // HE HAS ALL DAY. Every shot in open play buys the keeper a better read the longer the flight
-    // is -- see the tAv bonus in meTick -- and a free kick from twenty-five metres is the longest
-    // flight he ever gets, a full second of a ball he watched being placed. This branch was the one
-    // strike in the game that did not pay him for it, so a dead ball struck from range was read no
-    // better than a shot from the six-yard box.
-    // It BUYS NOTHING, and the honest reason to keep it is consistency rather than effect: swept
-    // 0 against 0.18 over 150 matches, conversion came out 9.5% and 9.9% at a standard error of 1.2,
-    // and goals a match 2.81 and 2.79. A free kick is decided by the wall and by being off target
-    // -- 26% blocked and 24% wide -- long before the keeper's read is asked anything.
-    const fkT = Math.max(0, Math.min(1, (g.d / Math.max(8, CFG.shotV0 + a.shoot / 99 * CFG.shotVSkill)
-                                         - CFG.gkReadT0) / CFG.gkReadTSpan)) * CFG.spFkRead;
-    gkRead(away, CFG.gkReadMin + fkT, CFG.gkReadMax - CFG.gkReadMin);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} strikes the free kick`);
     // Over the wall and under the bar, which is the whole act. meFkArc solves the pair; the target
     // height used to be a coin toss between one metre and two with the wall nowhere in it.
     const [fkZ, fkV] = meFkArc(g.d, mp.bz, rng);
     meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99, 0, CFG.spFkElev, fkV);
+    // The keeper watches it, as he watches any shot (keeper.ts): the wall is in front of him, and it
+    // costs him the sight of it.
+    mePlanSave(s, mp.shot);
     return;
   }
   // THE BOX ATTACKS THE DELIVERY -- and the delivery leads the run. Runs are committed BEFORE the
@@ -886,7 +900,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // the strike is three metres past his mark when the ball lands on it: the first cut set the
   // runs after the aim and made every runner run AWAY from his own delivery. The ball is flighted
   // to where the target's run ends, which is what "attacking the near post" is.
-  if (sp.kind === "corner") {
+  if (sp.kind === "corner" || longThrow) {
     for (const q2 of us) {
       if (q2 === taker || q2.pos === "GK" || q2.off) continue;
       const dg = Math.hypot(gx - q2.x, ME_HALF_W - q2.y);
@@ -897,20 +911,18 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     }
   }
   const q = ti >= 0 ? us[ti] : null;
-  let tx = q ? (sp.kind === "corner" ? (q._rx ?? q.x) : q.x) : sp.x + dir * 20,
-      ty = q ? (sp.kind === "corner" ? (q._ry ?? q.y) : q.y) : ME_HALF_W;
-  // A CORNER IS FLIGHTED TO HIS HEAD, NOT HIS FEET. The loft lands where it is aimed, so aiming at
-  // the man meant the ball fell through head height metres SHORT of him -- at his marker -- and
-  // arrived at his boots at z = 0. Landing spCrossOver beyond him puts it at 1.8-2.0 m as it
-  // crosses his mark, which turns the reception into the aerial duel a corner actually is.
-  if (sp.kind === "corner" && q) {
-    const ux = tx - sp.x, uy = ty - sp.y, ul = Math.hypot(ux, uy) || 1;
-    tx += ux / ul * CFG.spCrossOver; ty += uy / ul * CFG.spCrossOver;
-    if ((gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted to land in the net
-  }
+  const aerial = sp.kind === "corner" || longThrow;
+  let tx = q ? (aerial ? (q._rx ?? q.x) : q.x) : sp.x + dir * 20,
+      ty = q ? (aerial ? (q._ry ?? q.y) : q.y) : ME_HALF_W;
+  // A CORNER IS FLIGHTED TO HIS HEAD, NOT HIS FEET: solved to arrive at crossZ where his run ends
+  // (meLoftFor), which turns the reception into the aerial duel a corner actually is. It used to be
+  // aimed spCrossOver metres beyond him, to make up for a loft that landed short of wherever it was
+  // pointed; the loft now lands where it is pointed.
+  if (aerial && q && (gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted into the net
   if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
-  const high = sp.kind === "corner"
-    || (sp.kind === "goalkick" && (s.strategy?.[side]?.gkDist || 0) > 0)
+  // ...and a throw-in is THROWN. It was struck along the ground like a pass.
+  const high = sp.kind === "corner" || sp.kind === "throw"
+    || (sp.kind === "goalkick" && ((s.strategy?.[side]?.gkDist || 0) > 0 || Math.hypot(tx - sp.x, ty - sp.y) > CFG.loftD))
     || (sp.kind === "freekick" && Math.hypot(tx - sp.x, ty - sp.y) > 24);
   // NO SET-PIECE DELIVERY IS COMMENTARY. A throw, a goal kick, a corner swung in and a free kick
   // played on came to nineteen lines a match between them -- restarts, not events. Whatever comes of
@@ -920,7 +932,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // The taker gets credited for it like any other pass. Left off, every corner, throw, goal kick
   // and free kick completed into the match total and onto nobody's name -- about twenty-five passes
   // a match, which is where the per-player column stopped reconciling with the team's.
-  mp.passPending = { side, byP: taker };
+  mp.passPending = { side, byP: taker, k: longThrow ? "longthrow" : sp.kind };
   meEvt(out, "pass", side, sp.x, sp.y, tx, ty, label);
   if (globalThis.__sp) {
     globalThis.__sp[sp.kind] = (globalThis.__sp[sp.kind] || 0) + 1;
@@ -955,5 +967,8 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
       }
     }
   }
-  meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0);
+  meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0, 0,
+             sp.kind === "corner" ? { kind: "corner", zEnd: CFG.crossZ }
+             : sp.kind === "throw" ? { kind: "throw", zEnd: longThrow ? CFG.crossZ : CFG.gkThrowZ }
+             : undefined);
 }

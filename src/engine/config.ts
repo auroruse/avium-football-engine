@@ -45,11 +45,10 @@ export const SP = {
   // distance only separates men of similar quality. spTakerRange is how near goal a free kick has
   // to be before it is a shooting chance rather than a ball to be played quickly.
   spTakerW: 70, spTakerRange: 30,
-  // Corners: how many aerial targets are sent up REGARDLESS of distance (the big centre-halves),
-  // and how far beyond the aimed man the delivery is flighted so it crosses him at head height
-  // rather than landing at his feet -- 3.5 m puts the ball at 1.8-2.0 m over the mark at any
-  // realistic corner distance (solved from the loft profile, see meLoftFor).
-  spCornerUp: 2, spCrossOver: 2.7,
+  // Corners: how many aerial targets are sent up REGARDLESS of distance (the big centre-halves).
+  // The delivery is flighted to arrive at crossZ -- a head -- where the aimed man's run ends; it used
+  // to be aimed spCrossOver metres beyond him to make up for a loft that landed short.
+  spCornerUp: 2,
   // The moment a corner is struck, every attacker in the box breaks goalward on a committed run:
   // metres of dart and slices it lasts. See meSPTake.
   spCornerRun: 4.5, spCornerRunT: 6,
@@ -180,12 +179,50 @@ export const CFG = {
   // match; it also recovers Control Possession, which 0.0040 left toothless at 1.03 goals and 7.3
   // shots a match. The two settings are indistinguishable on spread.
   passWant: 16, passWantStep: 4, passWantW: 0.0025,
-  passBand: 6, loftD: 26, loftDir: 3,
+  // loftD: past this a ball to feet goes in the air. It sat at 26 m when the grass could not carry a
+  // ground pass beyond 19; on real grass a firm ball along the floor reaches thirty-odd metres, and a
+  // side that lifted everything past 26 was playing a heading contest every time it went long.
+  passBand: 6, loftD: 32, loftDir: 3,
   // How much clearer the AIR has to be before a ball inside loftD goes over instead of along the
   // grass. At 0.45 the marginal chip flew constantly and died half the time: 10-18 m lofted balls
   // completed 51% against 83% for the same ball on the ground, 8% of all passes. The chip has to
   // be clearly the better ball, not slightly.
   loftBar: 0.75,
+  // THE KINDS OF BALL (decide.ts, pass.ts). Each is its own flight and its own reason to be played.
+  // A SWITCH is a ball across the field, more than switchLat metres of it and longer than switchD:
+  // driven flat rather than floated, so it gets there before the block can shift. switchW is what
+  // the room it lands in is worth to a side that has moved the ball away from a crowd.
+  switchLat: 22, switchD: 24, switchW: 0.02,
+  // A CROSS comes from out wide in the last crossFromX metres of the pitch, at least crossFromY off
+  // the centre, to a man in (or running into) the area -- within crossBoxX of the goal line and
+  // crossBoxY of the centre -- and is flighted to arrive at crossZ, a head. A header from a cross is
+  // worth crossHeadK of a shot from the same spot to the man deciding whether to cross it.
+  crossFromX: 32, crossFromY: 11, crossBoxX: 19, crossBoxY: 13, crossZ: 1.85, crossHeadK: 0.55,
+  // PASS AND MOVE: the give-and-go. A man who plays a short ball forward of his own third goes past
+  // his marker for the return: wallP of the time, more for a side that passes short (wallShort per
+  // step of passingDir) or plays with freedom (wallCre per step of creativity). The run is wallRunL
+  // metres goalward, wallRunT slices long, and only from a pass shorter than wallMaxD.
+  wallFrom: 36, wallMaxD: 22, wallRunL: 12, wallRunT: 10, wallP: 0.30, wallShort: 0.12, wallCre: 0.10,
+  // THE THIRD MAN: a ball played into a team-mate's feet sends somebody else in behind, off the
+  // shoulder, for the lay-off. tmP of the time, tmCre more per step of creativity, from a pass
+  // received beyond tmFrom metres of our own goal, by a man within tmMaxD of the receiver.
+  tmFrom: 40, tmMaxD: 26, tmP: 0.30, tmCre: 0.10,
+  // FIRST TIME. At the moment a ball reaches him he may play it on without stopping it -- the lay-off,
+  // the wall pass, the ball round the corner -- if what is on NOW beats what is on after a touch by
+  // ftActNow, and the ball is below ftMaxZ.
+  ftActNow: 0.08, ftMaxZ: 1.0,
+  // THE KEEPER'S HANDS. Out of his hands he rolls it inside gkRollMax metres, throws it inside
+  // gkThrowMax, and past that he kicks it; a throw is gkThrowOk more likely to arrive than a kick.
+  gkRollMax: 20, gkThrowMax: 32, gkThrowOk: 1.10, gkThrowZ: 0.35, gkThrowShort: 2.5,
+  // THROW-INS are thrown, inside throwMax metres. A man strong enough (longThrowStr) takes the ones
+  // within longThrowX of their goal line, from as far as longThrowWalk away, and hurls them into the
+  // area from up to longThrowMax -- a corner from the touchline.
+  throwMax: 24, longThrowX: 30, longThrowStr: 78, longThrowWalk: 22, longThrowMax: 34,
+  // A FLICK-ON is a header played on to a team-mate running beyond, in the direction the ball was
+  // already travelling (within flickCos of it), flickMinD-flickMaxD away, from further than
+  // flickGoalD from goal: the knock-on of a long ball, never a header teed up in the box. It keeps
+  // flickKeep of the ball's pace, and is flickNoise degrees wide at the worst.
+  flickCos: 0.70, flickMinD: 5, flickMaxD: 22, flickGoalD: 26, flickKeep: 0.55, flickNoise: 14,
   // The range he is looking to shoot from, and how far each step of chance creation moves it.
   // shotBand is the free zone beyond the preferred range before distance starts costing him, and it
   // is ZERO because the band was the wrong idea here. A threshold only works if it sits inside the
@@ -884,6 +921,23 @@ foulAggr: 0.25,
   // it makes every forward ball tiny. The answer is not a tighter shape and not the shot model.
   // It is whether a short-passing side has anybody standing in front of it.
   blkMin: 10, blkMax: 44, blkDrop: 14, blkDefLine: 6, blkLoe: 3,
+  // THE LINE'S HEIGHT BY THE MAN ON THE BALL, and the marking that hangs off it (meBlock). See the block
+  // there. lnFloor is how deep a line goes with the ball at its goal -- the edge of the six-yard box --
+  // whatever the instruction. The gap behind the ball: lnGapPress with him pressed (a defender inside
+  // lnPressNear; none outside lnPressFar) or turned away (lnBackV m/s from our goal), lnGapFree with him
+  // free and coming at us (lnFwdV m/s); a free man standing still is lnFacing of that threat. A ball
+  // nobody has is lnGapLoose behind where it will be lnLook slices on.
+  lnFloor: 5, lnGapPress: 6, lnGapFree: 16, lnGapLoose: 10, lnPressNear: 2, lnPressFar: 6,
+  lnFwdV: 3, lnBackV: 2, lnFacing: 0.55, lnLook: 3,
+  // Marking: a man coming at the line quicker than lnTrackV within lnTrackAhead of it, or on a run, is a
+  // runner; one lnBehindM deeper than it (and onside) is through. Either is followed while he is within
+  // lnTrackHold, until he is back lnTrackRelease in front of the line; a goal-side defender counts as
+  // lnWrongSide metres nearer. A strip keeps its man to lnHandM past its edge; a band marks to
+  // lnZoneFront in front of it. The tracker stands trkGoalSide goal-side of where his man will be in
+  // trkLead s; a marker comes lnMarkY of the way across to his man, and a midfielder steps up lnMidStep.
+  lnTrackV: 4, lnTrackAhead: 6, lnBehindM: 1, lnTrackHold: 22, lnTrackRelease: 2, lnWrongSide: 6,
+  lnHandM: 4, lnBandM: 5, lnZoneFront: 9, lnRunW: 0.8, lnBehindW: 1.5, trkLead: 0.4, trkGoalSide: 1.2,
+  lnMarkY: 0.8, lnMidStep: 4,
   // The window blkMin/blkMax describe moves WITH defLine, at the same step the value moves, so the
   // instruction survives the clamp instead of being eaten by it -- see meBlock. These two are the
   // absolute stops that remain: a back four never inside its own six-yard box, and never past the
@@ -1285,24 +1339,23 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   offBlind: 3.0,
   // How far beyond the line the linesman actually gives it. Not zero -- benefit of the doubt.
   offTol: 0.5,
-  // Playing a man INTO SPACE is a different ball from playing it to his feet, and both are now
-  // offered for every team-mate rather than the choice being made for the passer by whether the
-  // receiver happened to be on a committed run. thruMax is the furthest ahead of a man it is ever
-  // played; the actual lead is solved so the two ARRIVE TOGETHER, because a fixed lead overshoots
-  // whenever the ball gets there first -- which, at pass speed against a running man, it always did.
-  thruMax: 14, thruMin: 3.5,
-  // A LED BALL IS RUN ONTO, NOT MET AT THE LIMIT. The lead used to be solved so ball and man
-  // arrive together at the far end of his sprint: any hesitation and it ran through him -- which
-  // it did, constantly. Measured over 22,097 passes: 31% of everything attempted was an
-  // into-space ball completing 47%, and HALF of all interceptions were the ball running past its
-  // own receiver -- against 9% cut in the lane, the thing interceptions are supposed to be.
-  // thruReact is the seconds of flight the receiver does not get to use (he has to see it played
-  // before he runs), and thruLeadFrac aims the ball short of the solved limit so the last stride
-  // belongs to the man, not the flight. Both shorten every lead; neither touches a ball to feet.
-  thruReact: 0.35, thruLeadFrac: 0.85,
-  // The gate and the cap on jog-leads: a receiver moving slower than thruMoveV (m/s) has no
-  // into-space option at all, and one merely jogging is led at most thruJogMax metres.
-  thruMoveV: 1.6, thruJogMax: 10,
+  // THE BALL INTO HIS STRIDE (pass.ts). A ball into space is solved for the moment the man and the
+  // ball get to the same place: his run from where he is and how fast he is already going, at the
+  // rate his legs turn and build pace, against the ball's own roll on this grass. The lead used to be
+  // his top speed times the flight to a point fourteen metres up his run, struck firm -- a runner
+  // parked on the line was taken to be sprinting already, and the ball arrived at twelve metres a
+  // second and ran on past him.
+  // THE WEIGHT: the ball reaches him thruOver m/s quicker than he is going along its line, so it runs
+  // into his path and never behind him, clamped to [thruVaMin, thruVaMax]. A man invited onto a ball
+  // he is not already running for goes at spaceVd of his pace. Meetings sooner than meetTMin are a
+  // ball to feet, and later than meetTMax are not a pass.
+  thruOver: 3.5, thruVaMin: 6, thruVaMax: 11, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
+  // How far a ball along the ground is ever played into space, and how long before a runner gets
+  // there a ball over the top lands (so it is bouncing into his path, not dropping behind him).
+  groundMaxD: 40, overLand: 0.15, overMinD: 14,
+  // The gate on the into-space option: a receiver moving slower than thruMoveV (m/s) and on no run
+  // has no ball into space at all -- the ball to his feet is already on the menu.
+  thruMoveV: 1.6,
   // A pass to FEET still leads a moving man: above feetMoveV he is led by his own pace across the
   // flight, at feetLeadFrac of the solve and never more than feetLeadMax metres -- enough that he
   // runs onto it, short of the through ball that mode 1 exists to be.
@@ -1310,13 +1363,6 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ...and space is only space if there is pitch around it. Within edgeMin of a touchline the room
   // bonus is worth edgeLo of itself, whole again edgeFull metres infield.
   edgeMin: 3.5, edgeFull: 13, edgeLo: 0.25,
-  // How much of the real flight time a ball to a moving man is led by. Under one because he will not
-  // hold his current line and pace for the whole flight -- he is running to meet it, not past it.
-  // Swept 0.6 / 0.85 / 1.0: completion came out 79 / 78 / 76%, which is flat within noise at this
-  // sample. The point of the change is not the tuning, it is that this number now MEANS something --
-  // a fraction of the real flight -- instead of silently compensating for a flight model that was
-  // 27-54% short.
-  leadFrac: 0.7,
   // How much clear grass around the receiver counts as fully free, and what a metre of ground gained
   // INTO that grass is worth on top of the flat fwdPull.
   // Swept against ground gained per pass. With space unpriced the side gained HALF A METRE a pass --
@@ -1386,8 +1432,37 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // put +-20% swings on the ball and the overrun tail fed the ran-past-the-receiver class above.
   // The skill slope stays meaningful -- weight is still the half of passing that separates levels.
   powerNoise: 0.028, powerNoiseSkill: 0.11,
-  // Lofted balls: flight time T = highT0 + highTk * distance, launch solved from T.
-  highT0: 0.9, highTk: 0.035,
+  // LOFTED BALLS LAND WHERE THEY ARE AIMED. The launch used to be split from a flight time with no
+  // drag in it and then stretched by a flat 1.12, so a 30 m ball first bounced at 25.2 m and a 40 m
+  // one at 31.1 m -- every long pass and every cross fell short of its man. meLoftFor now solves the
+  // launch against the same air the ball flies through, so the ball reaches the aim point, at the
+  // height asked for, at the end of the flight time below. Each kind of ball is its own flight:
+  // [T0, Tk] gives a flight of T0 + Tk * d seconds for d metres, which sets how high it goes.
+  //   loft    an ordinary lofted pass or long ball, dropped onto the man (the old flight time)
+  //   over    the ball over the top: higher and softer, dropping into the space in front of a runner
+  //   driven  a switch of play: flatter and quicker than a long ball, and still a ball he can take --
+  //           [0.55, 0.030] reached him at 16-18 m/s, where a ball comes off a man; this is about 14
+  //   cross   whipped in from the flank to arrive at a head in the box
+  //   corner  the flight a corner has always had
+  //   throw   a throw-in or a keeper's overarm throw
+  //   punt    a keeper kicking out of his hands
+  // 30 Sep: driven [0.8, 0.032] struck switches at 25-35 m/s and cross [0.62, 0.030] crosses at up to 32;
+  // switches slowed to a real long pass's 20-25; crosses whipped (a floated one was headed away). Through balls firmed up (thruOver 1.5 -> 3.5, min 3.5 -> 6):
+  // they left the foot at a median 10 m/s and a tenth at 6, and were rolled into defenders.
+  loftK: { loft: [0.9, 0.035], over: [1.05, 0.042], driven: [1.0, 0.04], cross: [0.55, 0.027],
+           corner: [0.9, 0.035], throw: [0.6, 0.045], punt: [1.4, 0.036] },
+  // How wide each kind of ball is of the aim, against an ordinary pass along the ground: a throw
+  // leaves the hand where it is meant to, a cross is hit at pace across a body, a punt is a punt.
+  kindNoise: { ground: 1, loft: 1.15, over: 1.15, driven: 1.1, cross: 1.3, corner: 1, throw: 0.55, punt: 1.7 },
+  // STRIKING A MOVING BALL. A first-time ball, or one struck while it is still rolling off his last
+  // touch, is harder to place than one he has stopped, by how hard it is coming, how high, how much
+  // he has to turn it and whether somebody is on him (mePassExecD). That difficulty widens the aim by
+  // execNoiseDeg and the weight by execPow per unit, and the decision reads the same number off his
+  // skill (execSkillLoss) and off a first-time shot (execShotLoss) so it knows what it is choosing.
+  // It replaced a flat division of every quick pass's skill by 1.75, which charged a ball laid into
+  // his stride exactly what it charged one driven at his shins.
+  execNoiseDeg: 7, execPow: 0.10, execSkillLoss: 0.55, execShotLoss: 0.45,
+  exD0: 0.02, exDv: 0.30, exVEasy: 5, exVSpan: 14, exDz: 0.35, exDa: 0.25, exDp: 0.20, exPressR: 2.5,
   // Receiving. Reach is a radius around the receiver against the ball's path this tick; a ball
   // quicker than your touch can handle squirts off you instead of sticking.
   // Touching distance: how far a footballer gets a FOOT to the ball, measured from his centre. A man
@@ -1875,7 +1950,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // seconds. A pressed man plays the least-bad ball NOW; the inaccuracy of doing so is already
   // priced by the pass noise and risk terms, which is what makes this a release change and not a
   // buff. At press 1.8 the bar is gone entirely.
-  holdBase: 5, holdPress: 1.4, actNow: 0.10, pressActNow: 0.55, firstTouchNoise: 1.75,
+  holdBase: 5, holdPress: 1.4, actNow: 0.10, pressActNow: 0.55,
   // A keeper with the ball IN HIS HANDS surveys before he distributes -- nobody may take it off
   // him, so his budget gets gkHoldT extra slices and the press term is ignored while held. He was
   // on the outfielder's five-slice budget, which is the instant punt and the bad kick after it.
@@ -1910,13 +1985,6 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // re-solves the whole shape every tick, so no side is ever COMMITTED to anything long enough
   // to be exploited. That would be inertia, and it is a far deeper change than a weight.
   valCtrlW: 0,
-  // WHAT BEING DISCIPLINED BUYS. A man who is not looking to beat anyone is SET TO RELEASE, so
-  // his first touch is cleaner; one looking to run at people is not, so his is worse. Scales
-  // firstTouchNoise by the instruction, which makes the axis a trade in BOTH directions instead
-  // of a licence at one end and a fine at the other. Measured paired on xG at 60 fixtures a
-  // cell: -1 goes from -0.206 to -0.022, +1 stays a modest +0.026. 0.60 works too but widens
-  // the bars and pushes +1 back out to +0.079.
-  dribTouch: 0.35,
   // TEMPO, on two channels so neither end is a flat tax -- the mistake dribbling: -1 made, where a
   // shortened budget met a dwell charge measured from natBase and so bought nothing at all.
   // Quick: less time on the ball AND a firmer pass that arrives before the lane shuts.
@@ -2330,7 +2398,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   styleW: 0.020,
   // The carry choice gets its own weight rather than borrowing styleW, which also drives the
   // approachPlay clear term -- they need to move independently.
-  carryInstrW: 0.005,
+  carryInstrW: 0.005, carryThruW: 0.03,
   // Nudge for a good player, order for a poor one. meMind is the same read-the-situation term that
   // scales judgement error, so a man who cannot see the better option for himself leans harder on
   // what he was told, and an elite player's own read can overrule the touchline. obeyBase keeps even
@@ -2357,8 +2425,18 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Back to 0.42 -> 0.55 once the elevation error was restored: aiming nearer the post is where
   // wide misses come from, and with the height misses working again the two together land the
   // funnel. Swept in test/convsweep.mjs.
-  shotAimBase: 0.35, shotAimSkill: 0.55,
-  shotV0: 17, shotVSkill: 11, shotNoiseDeg: 3.2, shotNoiseSkill: 7, shotNoisePress: 3.2,
+  shotAimBase: 0.35, shotAimSkill: 0.6,
+  // shotNoisePress is now degrees per unit of meShotSit -- the whole of the circumstances of the shot,
+  // not a headcount inside six metres -- with shotSitElev more height error and shotSitPow less pace per
+  // unit, and shotSitLoss what the man deciding to shoot takes off the chance for it.
+  shotV0: 17, shotVSkill: 11, shotNoiseDeg: 3.2, shotNoiseSkill: 11, shotNoisePress: 6,
+  shotSitElev: 0.8, shotSitPow: 0.12, shotSitLoss: 0.35,
+  sitNear: 0.8, sitFar: 3.5, sitBehind: 0.5, sitPressCap: 1.5, sitPressW: 1.0,
+  sitRunV: 6, sitBodyW: 0.6, sitReach0: 0.45, sitReachSpan: 0.35, sitReachW: 0.4,
+  // A header at goal: headNoise degrees wide at the worst, headNoiseSkill of that off for the strongest,
+  // headNoiseDuel more with a man jumping with him, headNoisePace more on a ball coming at 20 m/s, and
+  // up to headNoiseZ m/s of error in how it comes off his head vertically.
+  headNoise: 11, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 3,
   // THE RUN-UP. shotRunV is the closing speed that buys all of it -- 5 m/s, which is a man properly
   // running onto it rather than a man shuffling forward. shotVRun is what it adds to the strike and
   // shotNoiseRun is what it costs in accuracy, because hitting one on the run is harder as well as
@@ -2398,7 +2476,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // puts open-play finishing back where the scorelines were: 2.73 goals a match against the 2.62
   // before the rebuild, draws 23% against 25%, 27% of shots off target against 25% -- still less
   // wayward than the real game, where about 40% miss.
-  shotNoiseOpen: 6.8, shotElevOpen: 2.0,
+  // ...and 30 Sep, with the keeper that watches the shot (keeper.ts): most of the open-play noise
+  // moved from this flat term onto the finisher's own skill (shotNoiseSkill 7 -> 11, shotAimSkill
+  // 0.55 -> 0.6), because a flat 6.8 degrees buried the difference between a good finish and a poor
+  // one -- measured in the shot lab, a top finisher beat a keeper four more times in a hundred than a
+  // weak one while a top keeper saved sixteen more than a weak one. Now both count about the same.
+  shotNoiseOpen: 3.5, shotElevOpen: 2.0,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -2425,14 +2508,22 @@ gkDiveV: 2.9,
   // dive near 8.3 m/s; the ends move. Conversion on target came back from 30.0% to 31.2% because
   // the worse keepers lose more than the better ones gain, and a 10-OVR step is now worth about
   // +0.13 goals a match on target with the gradient visible in his rating.
-  gkReactSlow: 0.30, gkReactFast: 0.11,      // seconds, worst keeper to best; cut with the reach
-  // How often he picks the right side as it is struck, worst keeper to best.
-  // Raised 29 Aug as the reach cut's compensation: he saves by being THERE, so committing to
-  // the right side is most of goalkeeping now.
-  gkReadMin: 0.34, gkReadMax: 0.92,
-  // How much extra a long flight buys his read: nothing under gkReadT0 seconds, full value by
-  // gkReadT0 + gkReadTSpan. A close-range shot stays a guess however good he is.
-  gkReadT0: 0.25, gkReadTSpan: 0.6, gkReadTime: 0.18,
+  gkReactSlow: 0.24, gkReactFast: 0.21,      // seconds, worst keeper to best, from the strike to going
+  // THE SAVE AS IT HAPPENS (keeper.ts). He no longer guesses a side as it is struck -- that guess,
+  // right 34% of the time for the worst keeper and 92-97% for the best, WAS the whole of goalkeeping,
+  // and a right guess put him on the shooter's aim. He sets, sees it after his reaction (gkScreen
+  // later through a crowd: each body within gkScreenR of his line of sight costs its share), and
+  // goes across to where it will cross his line at his dive pace, stretching to full length (gkSpan
+  // either side of his centre, arms one way and legs the other) over gkSpanT; beyond his body he
+  // grabs gkSaveReachLo-Hi. A ball crossing his line more than gkWideM outside the frame is left, and
+  // a ball within gkSetStep of him is taken standing, not dived at.
+  gkScreen: 0.12, gkScreenR: 0.9, gkSpanT: 0.2, gkWideM: 0.4, gkSetStep: 0.3,
+  // How high he gets a glove to a shot at all (a ball over that at his line has beaten him -- the lob,
+  // the dipping shot over a keeper caught off his line), and what the corners cost him at full stretch:
+  // every metre above gkZHi or below gkZLo takes gkZCost off his reach, standing nothing.
+  gkReachZ: 2.8, gkZHi: 1.7, gkZLo: 0.25, gkZCost: 1.0,
+  // A save against a ball nobody shot (a cross, a ricochet) is given up after gkPlanMax seconds.
+  gkPlanMax: 3,
   // The open goal, as meShotP prices it: a keeper gkOpenLat off the shot line (past a 0.7 m body
   // allowance) is fully beaten, and a fully beaten goal converts at xgOpenCap decayed with
   // distance. See the keeper block in meShotP for the measurement that forced this.
@@ -2466,7 +2557,7 @@ gkDiveV: 2.9,
   // Real dive launch speed is 4-6 m/s; 9.5 was superhuman late coverage papering over positioning.
   // The compensation is positional: gkOutSkill below, the angle already sharpens with skill
   // through gkPanic, and the cross claim plus the shot-patience term take chances away upstream.
-  gkDiveVmin: 4.2, gkDiveVmax: 7.0,
+  gkDiveVmin: 3.5, gkDiveVmax: 3.7,
   // How far past his own wingspan still counts as barely moving. Inside this he catches it; beyond
   // it he has had to dive, and a dive is a deflection. Pace does not come into that: a rocket
   // straight at his chest is a comfortable take and a gentle one into the corner is a fingertip.
@@ -2529,7 +2620,7 @@ gkDiveV: 2.9,
   // the angle. He used to track the ball only 22% laterally, which put him three metres the wrong
   // side of a shot from the left -- invisible while saves were dice, fatal once they were not.
   ...SP,
-  gkOutMin: 0.7, gkOutK: 0.26, gkOutMax: 6.5,
+  gkOutMin: 0.7, gkOutK: 0.08, gkOutShot: 2.5, gkShotZone: 30,
   // Depth is awareness too, and it was skill-flat while only the angle (gkPanic) scaled. A better
   // keeper takes a smarter starting depth -- narrowing the angle is the real-life compensation for
   // not being able to fly 9.5 m/s -- and a poor one hugs his line. Multiplies the resting out2.
@@ -2549,7 +2640,9 @@ gkDiveV: 2.9,
   // GF's `panic`: how much wider than the real frame a POOR keeper behaves as though his goal is,
   // as a fraction. It drags him toward the middle and concedes the near post, which is what bad
   // goalkeeping looks like from the stand. 0 makes every keeper position identically.
-  gkPanic: 0.55,
+  // ...cut 30 Sep: at 0.55 a poor keeper bisected a frame half as wide again as the real one, which put
+  // him well off his near post -- the post a keeper never gives away, and the one he kept giving away.
+  gkPanic: 0.25,
   // Coming for it. A keeper who never leaves his line is as wrong as one who always does: if the ball
   // is loose in or around his box and he gets there first by a clear margin, he goes.
   // He comes for a ball he can actually GET, at a point that is still near his goal. Judged against
@@ -2558,7 +2651,68 @@ gkDiveV: 2.9,
   // commits: once he has gone he keeps going, rather than flip-flopping every slice.
   // ...and OUTSIDE his box he sweeps only for a man who would actually be through -- the race
   // being winnable is not a reason to leave the goal when a defender has the runner covered.
-  gkRushR: 17, gkRushEdge: 280, gkRushV: 0.98, gkRushHold: 8, gkMaxOut: 21,
+  gkRushR: 17, gkRushEdge: 280, gkRushV: 0.98, gkRushHold: 8, gkMaxOut: 18,
+  // COMING FOR IT (the keeper in meShape). He goes only when he believes he beats their best man to the
+  // ball by gkClaimEdge ms (in his area, a ball he may handle), gkBoxEdge (in his area, feet only) or
+  // gkRushEdge (outside it); never when a defender of his gets there gkLeaveMs before anyone; and he gives
+  // it up when it has gone gkAbortMs against him with his line still within gkAbortOut behind him. How
+  // wrong he can be about a race is gkJudgeMs for the worst keeper, nothing for the best. gkAreaD is the
+  // depth of the penalty area.
+  gkClaimEdge: 60, gkBoxEdge: 150, gkLeaveMs: 250, gkAbortMs: 250, gkAbortOut: 6, gkJudgeMs: 300, gkAreaD: 16.5,
+  // THE CROSS: with the ball wide (gkWideY off the middle) inside gkCrossFrom of his goal he stands
+  // gkCrossOut off his line, on his angle but no nearer the post than gkCrossNear from the middle; with a
+  // high ball dropping into his area that is not his, gkCrossOut off it and gkCrossTrack of the way
+  // across toward where it will be met, at most gkCrossSpan.
+  gkCrossOut: 1.2, gkCrossNear: 3.1, gkCrossSpan: 2.2, gkCrossTrack: 0.35, gkCrossFrom: 32, gkWideY: 16,
+  // ONE ON ONE: a man through on goal inside gk1v1From is met gk1v1Keep in front of him, no further than
+  // gk1v1Max off the line. SWEEPING: with the ball far away he stands gkSweepFrac of his own back line's
+  // height off his line, up to gkSweepMax, reached over gkSweepBlend metres beyond the shooting zone.
+  gk1v1From: 28, gk1v1Keep: 7, gk1v1Max: 6, gkSweepFrac: 0.25, gkSweepMax: 11, gkSweepBlend: 15,
+  // HIS STYLE (meShape): how commanding a keeper is, from his rating (gkStyleSkill per unit of keeper
+  // skill off the middle) and his side's line and press (gkStyleTeam). It scales his edge for coming out,
+  // how far out he claims a ball in his hands (gkClaimD0 + gkClaimDA x style metres off his line), how
+  // high he sweeps and how far he comes in a one-on-one.
+  gkStyleSkill: 0.8, gkStyleTeam: 0.35, gkClaimD0: 6, gkClaimDA: 6,
+  // THE BALL IN HIS HANDS: a roll or throw only to a man gkFreeR clear of anybody; he holds it gkSettleT
+  // slices while his side spreads, unless a free man gkQuickFwd metres up the pitch is on with gkCounterN
+  // of theirs caught in our half, when he throws it at once. Opponents stand gkRespectR off him.
+  gkFreeR: 7, gkSettleT: 8, gkQuickFwd: 15, gkCounterN: 5, gkRespectR: 9,
+  // Holding it he stands and steps gkHoldStep up toward the edge of his area. A ball rolling at him
+  // slower than gkPlanV he goes and gets; only a quicker one is saved like a shot.
+  gkHoldStep: 2, gkPlanV: 10,
+  // The six-yard box, where anything he can handle is his (gkSixD deep, gkSixW either side of the middle),
+  // and how many slices a keeper with it at his feet takes before he has to play it.
+  gkSixD: 5.5, gkSixW: 9.16, gkFeetT: 2,
+  // A ball in the air (over gkAirZ now, or going over gkHigh) needs gkAirEdge ms of lead, scaled by his
+  // style like the other edges. He goes to meet a man who beats him to a loose ball only within gkMeetR,
+  // arriving no more than gkMeetMs behind him, with the ball below gkMeetZ. A ball plan is dropped once
+  // the ball is slower than gkPlanSlow of gkPlanV. A dive gkFlatL long lays him flat (see the probe).
+  // Closing a man in on goal, he stops no nearer him than gkCloseStand (brain.ts, one on one).
+  gkCloseStand: 1.5,
+  // His reaction to a ball loose in his own area, as a share of the ordinary one (ttbChangeMs).
+  gkLag: 0.3,
+  // A diving keeper who has got where he was going is set again gkResetT later. A ball at his feet is his
+  // out to gkKeepR, not the dribbler's touchKeep.
+  gkResetT: 0.25, gkKeepR: 2.0,
+  // A shot slower than shotOverV, or older than shotMaxT seconds, is a loose ball (match.ts).
+  shotOverV: 3, shotMaxT: 4,
+  // A keeper going for a loose ball throws himself at it inside gkBurstR (the dive's burst, match.ts).
+  gkBurstR: 3,
+  // Slices a keeper is kept off the ball he has just parried (everybody else: kickLock).
+  gkParryLock: 1,
+  // Set for where their man will take a pass: fully when it is gkRefMs0 away, not at all gkRefMs1 later.
+  // Near his line no further outside the post than gkPostOut, gkSideK a metre wider for each metre out past
+  // gkOutShot. Going back more than gkBackRun for a dropping ball he runs at gkBackV of his pace.
+  // How much of the change in his movement a keeper makes each slice (outfielders: accel, less turnPenalty).
+  gkAccel: 0.65,
+  gkRefMs0: 250, gkRefMs1: 750, gkPostOut: 0.3, gkSideK: 0.6, gkBackRun: 1.0, gkBackV: 0.85,
+  gkAirZ: 1.2, gkAirEdge: 200, gkMeetR: 4.5, gkMeetMs: 300, gkMeetZ: 1.0, gkPlanSlow: 0.75, gkFlatL: 2.5,
+  // CATCHING (respond, in match.ts): a ball struck at him more than gkCatchEasy off his middle, quicker
+  // than gkCatchV0 m/s, or with men within gkCatchCrowdR of him, is harder to hold -- per gkCatchSpan m,
+  // per gkCatchVSpan m/s, gkCatchCrowd a man -- and a keeper's hands take gkCatchLo less gkCatchSkill x
+  // skill of that difficulty. What he does not hold he parries.
+  gkCatchEasy: 0.35, gkCatchSpan: 0.9, gkCatchV0: 14, gkCatchVSpan: 25, gkCatchCrowdR: 1.5, gkCatchCrowd: 0.3,
+  gkCatchLo: 1.15, gkCatchSkill: 0.5,
   // Inside his own area he goes for balls he would reach LATER than an opponent: he has hands, he is
   // bigger than the man, and the alternative is watching it roll in.
   gkBoxR: 16.5,
@@ -2632,15 +2786,12 @@ gkDiveV: 2.9,
   // the two speed bounds are what a man can actually put through a dead ball.
   spFkWallJump: 0.35, spFkZ: 1.25, spFkZVar: 0.90, spFkNear: 4,
   spFkVMin: 13, spFkVMax: 30,
-  // What a long flight buys the keeper on a free kick, on gkReadT0/gkReadTSpan's ramp. Its own key
-  // rather than gkReadTime so a sweep can reach it without moving every shot in open play with it.
-  spFkRead: 0.18,
   // HANDBALL: how high the ball has to strike him to be arm rather than body, and how often the
   // referee gives it when it does.
   // Measured by forcing handP to 1: the geometry -- a ball striking an outfielder above waist
   // height, inside his own area, off an opponent's touch -- comes up about 1.1 times a match, so
   // 0.06 of them given is the real rate of roughly one handball penalty every fifteen matches.
-  handMinZ: 0.85, handP: 0.06, gkRushEdgeBox: -260,
+  handMinZ: 0.85, handP: 0.06,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
@@ -2653,7 +2804,6 @@ gkDiveV: 2.9,
   // up -- and once it is in his hands nobody can take it off him. That makes collecting it the
   // safest thing he can possibly do, so he goes for those balls even when he would arrive after an
   // opponent: the alternative is a contest, and this is not one.
-  gkRushEdgeHands: -260,
   // Outside his own area a keeper is not a footballer. He clears it, or plays it somewhere safe --
   // he has nothing behind him and no hands to use.
   gkSafeOut: 16.5,
@@ -2733,7 +2883,7 @@ gkDiveV: 2.9,
   // CUT 29 Aug: at 0.215/0.645 the arm ring covered so much of the frame that 18.7% of ALL
   // goals went in off the keeper (real: 2-5%) -- every goal-bound ball got a fingertip and every
   // goal read as a parry-in. The save load moves from blanket reach to the read and the
-  // reaction (gkReadMin/gkReactSlow below), which is what a keeper's rating is supposed to buy.
+  // reaction (gkReactSlow below), which is what a keeper's rating is supposed to buy.
   // Partially restored once the crossing steer landed: a reach contact now turns the ball
   // round the post instead of carrying it in, so reach reads as saves again, not own-nets.
   // RAISED 30 Sep with the timed contest. The ring used to be tested against the keeper's whole
@@ -2741,14 +2891,20 @@ gkDiveV: 2.9,
   // reach below the set keeper's (gkSetReach) never came into play. With open-play finishing
   // recalibrated (shotNoiseOpen) this lands 2.69 goals a match against 2.65 before the rebuild, draws
   // 27% against 25%; parry-ins stay at 3%.
-  gkSaveReach: 0.42, gkSaveReachLo: 0.65, gkSaveReachHi: 1.15,
+  // ...AND IT IS NOW ONLY THE GRAB. The ring was a radius added to a keeper's body along the whole of
+  // the planned dive (keeper.ts), on top of a body already stretched gkSpan either way -- fingertips
+  // two metres from his middle, the reach of a man who guesses right being able to save anything.
+  // Beyond his outstretched body it is a hand's grab, worst keeper to best.
+  gkSaveReach: 0.42, gkSaveReachLo: 0.18, gkSaveReachHi: 0.24,
   // How long after his reaction the arms take to reach full extension. With the ring now on a
   // clock (see reachOf), THIS is what makes a good keeper good: gkReact* sets when he starts and
   // this sets how fast he opens, so the save that separates levels is the one that was always
   // going to be close. A ball arriving inside his reaction beats him whoever he is.
   gkReachSpan: 0.17,
   // The set keeper's reach before he has reacted: gkSetReach, gkSetLo of it for the worst. See reachOf.
-  gkSetReach: 0.75, gkSetLo: 0.8,
+  // ...and in the planned save (keeper.ts) it is the whole of him standing: feet, legs and hands spread
+  // at a ball he has not yet seen the line of, which close in is the save he makes by being big.
+  gkSetReach: 1.6, gkSetLo: 0.92,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,

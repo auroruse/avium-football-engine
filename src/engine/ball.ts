@@ -75,7 +75,8 @@ function hitBodies(b, players, ctrl, skip, f) {
   // pace plus two and a half metres a second -- he was kicking it out of his own hands -- and it
   // then rolled back through his body, which is the ball drawn inside the man.
   if (ctrl && b.held) {
-    let hx = ctrl.vx || 0, hy = ctrl.vy || 0;
+    // Toward the pitch while he holds it (brain.ts sets his facing), as match.ts places it.
+    let hx = ctrl._drbA != null ? Math.cos(ctrl._drbA) : ctrl.vx || 0, hy = ctrl._drbA != null ? Math.sin(ctrl._drbA) : ctrl.vy || 0;
     let hl = Math.hypot(hx, hy);
     if (hl < 1e-3) { hx = b.bx - _px(ctrl, f); hy = b.by - _py(ctrl, f); hl = Math.hypot(hx, hy) || 1; }
     b.bx = _px(ctrl, f) + hx / hl * CFG.gkHoldOut; b.by = _py(ctrl, f) + hy / hl * CFG.gkHoldOut;
@@ -250,8 +251,10 @@ export const mePassArrive = (d) => Math.min(CFG.passArriveHi, CFG.passArriveLo +
 // which also says the honest thing about ground passes: past some distance the required speed
 // becomes absurd and the ball should be lofted instead. That emerges here rather than being a rule,
 // and it moves when the pitch moves, which is the point of deriving it.
-export function meGroundSpeed(d) {
-  const a = mePassArrive(d), a2 = a * a, k = meRollK(), r = meRollR();
+// `va` is the arrival asked for when it is not the firm ball to feet: a ball into a runner's stride
+// is weighted to reach him at about his own pace (see pass.ts).
+export function meGroundSpeed(d, va) {
+  const a = va ?? mePassArrive(d), a2 = a * a, k = meRollK(), r = meRollR();
   return Math.min(CFG.passMaxV, Math.sqrt(Math.max(a2, (a2 + r) * Math.exp(2 * k * d) - r)));
 }
 
@@ -276,28 +279,63 @@ export function meGroundMaxD() {
   return lo;
 }
 
-// A lofted ball: pick a flight time from distance, split it into a launch. GF's HighPass power is
-// NormalizedClamp(dist,0,60)^1.4 * 1.15 (AIfunctions.cpp:1063-1074); this parameterisation lands in
-// the same place while staying in metres and seconds.
-export function meLoftFor(d) {
-  const T = CFG.highT0 + CFG.highTk * d;
-  return { vxy: d / T * 1.12, vz: 4.905 * T, T };
+// A LOFTED BALL, SOLVED AGAINST THE AIR IT FLIES THROUGH. The launch used to be split from a flight
+// time with no drag in it and then stretched by a flat 1.12, which was right at no distance at all:
+// a 30 m ball first bounced at 25.2 m and a 40 m one at 31.1, so every long pass, switch and cross
+// fell short of its man and was headed by whoever stood in front of him. The flight time still comes
+// from the distance -- that is what makes a chip a chip and a driven ball a driven ball, see
+// CFG.loftK -- but the launch is now found by flying the ball: stepOnce above the grass, in the plane
+// of the kick, corrected until it is at the aim point at the height asked for when the time is up.
+// A handful of passes converge it to a centimetre, and it is only ever asked at the strike; anything
+// deciding WHETHER to play a ball uses meLoftT, which needs no launch at all.
+function airFlight(vx, vz, z, n) {
+  let x = 0;
+  for (let i = 0; i < n; i++) {
+    vz -= 9.81 * BALL_SUB;
+    const v3 = Math.hypot(vx, vz);
+    if (v3 > 0.01) { const k = Math.max(0, v3 - CFG.ballDrag * v3 * v3 * BALL_SUB) / v3; vx *= k; vz *= k; }
+    x += vx * BALL_SUB; z += vz * BALL_SUB;
+    if (z < CFG.ballR + CFG.grassH && vx > 0.01)
+      vx *= Math.max(0, vx - (CFG.ballFric * vx * vx + CFG.ballFricLin) * BALL_SUB) / vx;
+  }
+  return [x, z];
+}
+// Flight time of a lofted ball of kind `kind` over d metres. See CFG.loftK.
+export const meLoftT = (d, kind) => { const K = CFG.loftK[kind] || CFG.loftK.loft; return K[0] + K[1] * d; };
+/** The launch that puts a lofted ball of `kind` d metres away at height zEnd (default: on the grass)
+ *  after meLoftT(d, kind) seconds, struck from height z0. Returns { vxy, vz, T }. */
+export function meLoftFor(d, kind, zEnd, z0) {
+  const n = Math.max(1, Math.round(meLoftT(d, kind) / BALL_SUB)), T = n * BALL_SUB;
+  const zs = Math.max(CFG.ballR, z0 ?? CFG.ballR), z1 = Math.max(CFG.ballR, zEnd ?? CFG.ballR);
+  let vx = d / T, vz = (z1 - zs) / T + 4.905 * T;
+  for (let it = 0; it < 10; it++) {
+    const [x, z] = airFlight(vx, vz, zs, n);
+    if (Math.abs(d - x) < 0.01 && Math.abs(z1 - z) < 0.01) break;
+    vx *= d / Math.max(0.1, x);
+    vz += (z1 - z) / T;
+  }
+  return { vxy: vx, vz, T };
 }
 
 /** Kick the real ball at (tx, ty). `type`: "ground" | "high" | "clear". Skill and pressure turn
  *  into execution noise -- the roll of the dice moved from the OUTCOME to the KICK, which is the
- *  whole point: whether a pass arrives is now geometry's problem. */
-export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
+ *  whole point: whether a pass arrives is now geometry's problem.
+ *  `o` carries what the pass was solved for: `va` the arrival pace of a ground ball (default: the
+ *  firm ball to feet), `kind` and `zEnd` the flight and arrival height of a lofted one, and `execD`
+ *  how hard the ball was to strike -- first time, or still rolling (see mePassExecD). */
+export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.5, Math.hypot(dx, dy));
   const g2 = (r) => (r.u() + r.u() - 1);          // cheap gaussian-ish, [-1, 1], peaked at 0
+  const kind = type === "high" ? (o?.kind || "loft") : type;
+  const kn = CFG.kindNoise[kind] ?? 1, ex = o?.execD || 0;
   // HASTE COSTS ACCURACY, and this is where the engine already prices haste -- the aim cone widens
   // with pressure and with a worse passer, but not with how fast a side is trying to play. Without
   // it, quick tempo bought a firmer ball that arrived before the lane shut and cost nothing:
   // measured at +0.320 xG for Much Quicker, 3.3 standard errors, which is not an instruction but a
   // setting nobody would ever move off. Symmetric, so a patient side strikes it more precisely.
   const sigma = (CFG.passNoiseDeg + (1 - skill01) * CFG.passNoiseSkill + (press || 0) * CFG.passNoisePress
-                 + (tempo || 0) * CFG.tempoNoise)
-              * Math.PI / 180;
+                 + (tempo || 0) * CFG.tempoNoise + ex * CFG.execNoiseDeg)
+              * kn * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
   // WEIGHT is a skill. The aim cone always was, and the power wobble sat at a flat 0.08 for all
   // twenty-two -- but weight is the half of passing that actually separates levels: an under-hit
@@ -305,25 +343,37 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo) {
   // over-hit one runs through the receiver. Swept, the aim cone alone could not move completion at
   // the low bands at all (83% at slope 6 and 82% at slope 15) because a short recycling ball barely
   // misses at any angle. Anchored at 75 like every meTech site.
-  const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill);
+  const pow = 1 + g2(rng) * (CFG.powerNoise + (1 - skill01) * CFG.powerNoiseSkill + ex * CFG.execPow) * kn;
   let vxy, vz;
   // TEMPO IS WEIGHT ON THE BALL. Playing quickly is not merely deciding sooner -- it is striking
   // it harder, so it arrives before the lane closes. That is a genuine trade rather than a bonus:
   // a firmer ball spends less time interceptable but `pow` noise scales with it, so it runs
-  // through the receiver more often. A slow side plays it softer and safer into feet.
+  // through the receiver more often. A slow side plays it softer and safer into feet. Along the
+  // ground only: a lofted ball struck harder simply lands long.
   const tmp = 1 + (tempo || 0) * CFG.tempoPace;
-  if (type === "ground") { vxy = meGroundSpeed(d) * pow * tmp; vz = 0; }
+  if (type === "ground") { vxy = meGroundSpeed(d, o?.va) * pow * tmp; vz = 0; }
   else if (type === "clear") {
     // Harder and flatter than any pass: solved at no less than clearMinD of carry, the launch
     // sped up by clearPow and the arc cut by clearFlat, so it sails past the man it was pointed
-    // at and has to be chased. See the clearance block in config.ts.
-    const L = meLoftFor(d);                    // the aim already carries clearMinD; see decide.ts
-    vxy = L.vxy * CFG.clearPow * pow * tmp;
-    vz = L.vz * CFG.clearFlat * (1 + g2(rng) * CFG.powerNoise * 0.5);
+    // at and has to be chased. See the clearance block in config.ts. Still the old undragged
+    // split (it is not aimed at anybody, and clearClearD etc. were set against it).
+    const T = meLoftT(d, "loft");              // the aim already carries clearMinD; see decide.ts
+    vxy = d / T * 1.12 * CFG.clearPow * pow * tmp;
+    vz = 4.905 * T * CFG.clearFlat * (1 + g2(rng) * CFG.powerNoise * 0.5);
   }
-  else { const L = meLoftFor(d); vxy = L.vxy * pow * tmp; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5); }
+  else {
+    // WEIGHT IN THE AIR IS HOW FAR IT CARRIES. The wobble used to go on the launch speed, and a
+    // lofted ball's carry grows with nearly the square of it, so the same slip that leaves a ball
+    // along the floor a little firm sent a switch five or six metres over its man's head: switches
+    // found their man half the time, and when they did not a defender picked them up fifteen metres
+    // beyond the aim with the receiver still five metres away. It is now an error in the carry itself,
+    // the same share of the distance a ground ball's weight is out by, solved into a real flight.
+    const L = meLoftFor(d * pow, kind, o?.zEnd, mp.bz);
+    vxy = L.vxy; vz = L.vz * (1 + g2(rng) * CFG.powerNoise * 0.5 * kn);
+  }
   mp.bvx = Math.cos(ang) * vxy; mp.bvy = Math.sin(ang) * vxy; mp.bvz = vz;
   mp.bz = Math.max(mp.bz, CFG.ballR);
+  mp.gkPlan = null;                    // a new flight: the keeper reads it afresh
   meBallPredict(mp);
 }
 
@@ -356,7 +406,11 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // run-up becomes a cannonball at twenty-five metres and a placed finish at eight. Same gate the
   // decision uses, because the two have to agree about what the momentum is worth.
   const runD = (run || 0) * Math.max(0, Math.min(1, (d - CFG.shotRunD) / CFG.shotRunFade));
-  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill + runD * CFG.shotVRun);
+  // `press` is how hard the circumstances make it (meShotSit): a man hurried, off balance or stretching
+  // does not get all of his pace through the ball. Open play only; a dead ball is struck at leisure.
+  const open0 = elevMul === undefined;
+  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill + runD * CFG.shotVRun)
+                  * (open0 ? Math.max(0.5, 1 - (press || 0) * CFG.shotSitPow) : 1);
   // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
   // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
   // Traced: a 20 m shot was down to 7 m/s and still three metres outside the six-yard box when the
@@ -380,9 +434,11 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // same act -- one is a stationary, unpressured kick at a known spot -- and sharing one elevation
   // error meant that widening it to fix off-target in open play took penalty conversion from 74.7%
   // to 64.5% and put 5.5% of them off the frame.
-  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (open ? CFG.shotElevOpen : elevMul)
+  // ...and a hurried one goes up: the man with somebody on him leans back and it flies.
+  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (open ? CFG.shotElevOpen * (1 + (press || 0) * CFG.shotSitElev) : elevMul)
                         * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
   mp.bz = Math.max(mp.bz, CFG.ballR);
+  mp.gkPlan = null;
   meBallPredict(mp);
 }
 
@@ -424,5 +480,6 @@ export function meKnock(mp, rng, tx, ty, speed, vz) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(0.3, Math.hypot(dx, dy));
   mp.bvx = dx / d * speed; mp.bvy = dy / d * speed; mp.bvz = vz || 0;
   mp.bz = Math.max(mp.bz, CFG.ballR);
+  mp.gkPlan = null;                    // a new flight: the keeper reads it afresh
   meBallPredict(mp);
 }
