@@ -2606,7 +2606,10 @@ const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ASK: askTSV, ELV: elvTSV, KAR: ka
 // The 2. Alemannische Oberliga was here for the same reason and came back off it the way this
 // says to: all 288 of its player cells now carry a rating, so nothing in it divides by zero and
 // nobody inherits a team default.
-const LEAGUES_OFF = new Set(["Karjanian Kolmonen"]);
+// THE KOLMONEN CAME BACK LAST, on 1 October 2026 and on the same condition: all sixteen of its
+// clubs now carry a full sixteen rated players, so the list is empty. It stays for the next
+// division filed before its sheet is.
+const LEAGUES_OFF = new Set([]);
 function nationLeagues(raw) {
   const out = new Map();
   const _lines = raw.split("\n");
@@ -2660,7 +2663,8 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
-const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "2. Alemannische Oberliga": 2, "Liga-ye B\u0101lande": 2 };
+const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "2. Alemannische Oberliga": 2, "Liga-ye B\u0101lande": 2,
+                      "Karjanian Kolmonen": 3 };
 const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
 // it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
