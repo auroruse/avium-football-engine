@@ -33,8 +33,8 @@ its competition.
 
 A **domestic cup** is not a competition of its own: `LEAGUE_CUPS` names the cup each division's
 clubs enter, and the cup then shows as a tab inside every one of those leagues. Both Nichirian
-divisions enter the Sei'i Tai Shogun Cup (`stsc/`) and both Karjanian ones enter the Karjanian Cup
-(`kc/`), so one folder serves two leagues in each case.
+divisions enter the Sei'i Tai Shogun Cup (`stsc/`) and all three Karjanian ones enter the Karjanian
+Cup (`kc/`), so one folder serves every league that enters it.
 
 A **league** season needs no entry anywhere. The clubs in its own record vote for it -- see
 `detectLeague` -- and two agreeing clubs settle it, so a new division is a drop of files and

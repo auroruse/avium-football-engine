@@ -2686,12 +2686,13 @@ const LB_SLUG = { goals: "top-scorers", assists: "top-assists", rating: "ratings
                   defActs: "defensive-actions", saves: "saves" };
 const LB_OF_SLUG = Object.fromEntries(Object.entries(LB_SLUG).map(([k, v]) => [v, k]));
 // Which cup a division's clubs enter, so the cup shows as a tab inside every league that plays in
-// it rather than as a competition of its own. Both Karjanian divisions enter the Karjanian Cup,
-// exactly as both Nichirian ones enter the Shogun Cup.
+// it rather than as a competition of its own. All three Karjanian divisions enter the Karjanian Cup,
+// the way both Nichirian ones enter the Shogun Cup.
 const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
                       "Nichirin League Two": "Sei'i Tai Shogun Cup",
                       "Karjanian Premier League": "Karjanian Cup",
-                      "Karjanian Secondary League": "Karjanian Cup" };
+                      "Karjanian Secondary League": "Karjanian Cup",
+                      "Karjanian Kolmonen": "Karjanian Cup" };
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
