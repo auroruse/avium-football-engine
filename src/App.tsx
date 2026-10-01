@@ -2665,6 +2665,22 @@ const leagueTier = (l) => LEAGUE_TIER[l] || (l === "Custom" || /\b(Cup|Collegiat
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
 // it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
 const TAB_LABEL = { leagues: "Registry", live: "Live Match", tournament: "Tournament", utilities: "Utilities", docs: "Documentation" };
+// ── ADDRESSES. Every page the app shows has a URL: a reload lands where you were, Back and Forward
+// walk the pages you opened, and a link opens the page it names. They are hash routes because the
+// build is served from a relative base on GitHub Pages, where a path route would need a server
+// answering every path with index.html. A slug is the name folded the way pFold folds it, with the
+// letters NFD cannot take apart spelt out, so Ælfnoð Winifred is aelfnod-winifred and not lfno-winifred.
+const SLUG_LETTERS = { "æ": "ae", "ð": "d", "þ": "th", "ø": "o", "ß": "ss", "œ": "oe", "ł": "l", "đ": "d", "ı": "i" };
+const urlSlug = (s) => pFold(String(s ?? "")).replace(/[æðþøßœłđı]/g, c => SLUG_LETTERS[c])
+  .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const TAB_SLUG = { leagues: "registry", live: "live", tournament: "tournament", utilities: "utilities", docs: "docs" };
+const TAB_OF_SLUG = { ...Object.fromEntries(Object.entries(TAB_SLUG).map(([k, v]) => [v, k])), leagues: "leagues" };
+const FACE_SLUG = { teams: "teams", players: "players", seasons: "seasons", cup: "cup", winners: "winners",
+                    managers: "managers", changelog: "rating-changelog", hof: "hall-of-fame" };
+const FACE_OF_SLUG = Object.fromEntries(Object.entries(FACE_SLUG).map(([k, v]) => [v, k]));
+const LB_SLUG = { goals: "top-scorers", assists: "top-assists", rating: "ratings", cc: "chances-created",
+                  defActs: "defensive-actions", saves: "saves" };
+const LB_OF_SLUG = Object.fromEntries(Object.entries(LB_SLUG).map(([k, v]) => [v, k]));
 // Which cup a division's clubs enter, so the cup shows as a tab inside every league that plays in
 // it rather than as a competition of its own. Both Karjanian divisions enter the Karjanian Cup,
 // exactly as both Nichirian ones enter the Shogun Cup.
@@ -2920,6 +2936,20 @@ function parseTournTabs(text) {
     (tabs.length ? tabs[tabs.length - 1].body : pre).push(L);
   }
   return { pre: pre.join("\n").replace(/^---$/gm, "").trim(), tabs };
+}
+// What a season page shows, in order: a league's rounds, or a tournament's stages, or the report as
+// written, and then its player statistics. The page's tab strip and its address both read this, so
+// the two cannot disagree about which tab is which.
+function seasonFaces(s, report) {
+  if (!s) return { tabs: [], pre: null };
+  const R = typeof report === "string" ? parseSeasonReport(report) : null;
+  const T = R && !R.rounds.length ? parseTournTabs(report) : null;
+  const tabs = [];
+  if (R && R.rounds.length) tabs.push({ name: "Rounds", league: R });
+  else if (T && T.tabs.length) for (const tb of T.tabs) tabs.push({ name: tb.name, body: tb.body });
+  else if (R) tabs.push({ name: "Report", raw: report });
+  if (Object.keys(s.boards || {}).length) tabs.push({ name: "Player Statistics", stats: true });
+  return { tabs, pre: T?.pre || null };
 }
 // Who won a knockout tournament, read off its last Final. Three tells, in order of trust: the
 // bolded side of the match cell, a "(X win ... pens)" note in the score, the score itself (the
@@ -10332,6 +10362,187 @@ export default function App() {
   // those rows pointed at the wrong man. playerIndex is keyed by fullName throughout; this map was
   // the one place that disagreed.
   const playerByName = useMemo(() => new Map(playerIndex.map(p => [p.fullName || p.name, p])), [playerIndex]);
+  // ── THE ADDRESS BAR ─────────────────────────────────────────────────────────────────────────
+  // The URL is read off the state that draws the page, never kept beside it, so it cannot drift
+  // from what is on screen. Opening a page pushes an entry; stepping through a season's rounds
+  // replaces one, so Back leaves the season instead of rewinding it a round at a time. An address
+  // naming something still loading (a season, a changelog batch, a Hall of Fame player) holds its
+  // place in the bar until the archive arrives and the page can open.
+  const [docSec, setDocSec] = useState(null);            // the Documentation section last jumped to
+  const [routeKick, setRouteKick] = useState(0);         // bumped by every address applied
+  const routePend = useRef(null), routeReplace = useRef(true), routeBoot = useRef(false);
+  const routeLast = useRef(null), docScroll = useRef(null), applyRouteRef = useRef(null);
+  const DIR_SLUG = { [LG_ALL_NATS]: "all-national-teams", [LG_ALL_CLUBS]: "all-clubs", [LG_ALL_PLAYERS]: "all-players" };
+  const compSlug = (c) => DIR_SLUG[c] || urlSlug(c);
+  // Every competition a world's rail can carry, so an address can name one from the other world.
+  const compsOf = (w) => [LG_ALL_NATS, LG_ALL_CLUBS, LG_ALL_PLAYERS,
+    ...(w === "avium" ? [...INTL_COMPS.map(c => c.name), ...ARCHIVED_COMPS] : []),
+    ...new Set(teams.filter(t => inWorld(t, w) && t.league && !isIntlLeague(t.league)).map(t => t.league))];
+  // The faces a competition has: the same list its header draws chips for, default first.
+  const facesOf = (c) => c === LG_ALL_PLAYERS ? ["players", "managers", "changelog", "hof"]
+    : lgIsDir(c) ? ["teams"]
+    : COMP_SCOPE[c] ? ["seasons", "winners"]
+    : ["teams", "players", "seasons", ...(LEAGUE_CUPS[c] ? ["cup"] : []), "winners"];
+  const lgSeasonObj = useMemo(() => lgSeason ? (pstats?.seasons || []).find(x => x.id === lgSeason && x.comp === lgSeasonComp) || null : null,
+    [pstats, lgSeason, lgSeasonComp]);
+  // Until its report arrives a season's strip knows only the statistics tab, so the address waits.
+  const lgSeasonView = useMemo(() => {
+    if (!lgSeasonObj) return null;
+    const report = lgMd[lgSeasonObj.id.replace(/\.tsv$/i, ".md")];
+    return lgSeasonObj.md && report === undefined ? null : seasonFaces(lgSeasonObj, report);
+  }, [lgSeasonObj, lgMd]);
+  const routeHash = useMemo(() => {
+    const segs = [TAB_SLUG[tab] || "registry"];
+    if (tab === "leagues" && lgComp) {
+      const face = lgIsDir(lgComp) && lgComp !== LG_ALL_PLAYERS ? "teams" : lgSubEff;
+      segs.push(compSlug(lgComp), FACE_SLUG[face] || face);
+      if (face === "teams" && detailTeam) segs.push(detailTeam.code || urlSlug(detailTeam.name));
+      else if ((face === "players" || face === "hof") && playerOpen) segs.push(urlSlug(playerOpen));
+      else if ((face === "seasons" || face === "cup") && lgSeasonObj) {
+        segs.push(urlSlug(lgSeasonObj.season));
+        const tabs = lgSeasonView?.tabs || [];
+        if (tabs.length) {
+          const tt = Math.min(lgTTab, tabs.length - 1), cur = tabs[tt];
+          // The first tab and the last round are what a season opens on, so neither is spelt out.
+          if (cur.league) {
+            const rs = cur.league.rounds;
+            if (lgRound != null && rs.length) segs.push("round-" + rs[Math.min(Math.max(lgRound, 0), rs.length - 1)].n);
+          } else if (tt > 0) segs.push(urlSlug(cur.name));
+        }
+      }
+      else if (face === "changelog" && clOpen) segs.push(urlSlug(clOpen.replace("\u0000", " ")));
+    }
+    if (tab === "tournament" && tLeaderboard) segs.push(LB_SLUG[tLeaderboard] || tLeaderboard);
+    if (tab === "docs" && docSec) segs.push(docSec.replace(/^doc-/, ""));
+    return "#/" + segs.map(encodeURIComponent).join("/") + (world !== "avium" ? "?world=" + world : "");
+  }, [tab, lgComp, lgSubEff, detailTeam, playerOpen, lgSeasonObj, lgSeasonView, lgTTab, lgRound, clOpen, tLeaderboard, docSec, world]);
+  // An address, opened. Anything it names that the app cannot place now is parked in routePend
+  // for the resolver below. A name that matches nothing is dropped, and the bar is then rewritten
+  // to the page that did open.
+  applyRouteRef.current = (hash) => {
+    const raw = String(hash || "").replace(/^#\/?/, "");
+    const qi = raw.indexOf("?");
+    const segs = (qi < 0 ? raw : raw.slice(0, qi)).split("/").filter(Boolean)
+      .map(x => { try { return decodeURIComponent(x); } catch { return x; } });
+    let w = new URLSearchParams(qi < 0 ? "" : raw.slice(qi + 1)).get("world") === "arterra" ? "arterra" : "avium";
+    let t = TAB_OF_SLUG[(segs[0] || "registry").toLowerCase()] || "leagues";
+    if (t === "tournament" && !TOURNAMENTS_ENABLED) t = "leagues";
+    routePend.current = null; routeReplace.current = true;
+    setRouteKick(k => k + 1);
+    if (t !== "leagues") {
+      if (w !== world) setWorld(w);
+      setTab(t);
+      if (t === "tournament") setTLeaderboard(LB_OF_SLUG[(segs[1] || "").toLowerCase()] || null);
+      if (t === "docs") { const id = segs[1] ? "doc-" + segs[1].toLowerCase() : null; setDocSec(id); docScroll.current = id; }
+      return;
+    }
+    // The competition is looked for in the address's own world first, then in the other one.
+    const want = segs[1] ? urlSlug(segs[1]) : "";
+    let comp = want ? compsOf(w).find(c => compSlug(c) === want) || null : null;
+    if (want && !comp) {
+      const o = w === "avium" ? "arterra" : "avium";
+      comp = compsOf(o).find(c => compSlug(c) === want) || null;
+      if (comp) w = o;
+    }
+    if (w !== world) setWorld(w);
+    setPlayerOpen(null); setPlayerBack(null); setLgSeason(null); setClOpen(null); setLgRound(null); setLgTTab(0);
+    if (!comp) { setLgComp(null); setExpandedTeam(null); setTab("leagues"); return; }
+    const faces = facesOf(comp);
+    const asked = FACE_OF_SLUG[(segs[2] || "").toLowerCase()];
+    const face = faces.includes(asked) ? asked : faces[0];
+    if (comp !== lgComp) lgOpenComp(comp, face);
+    setLgSub(face); setTab("leagues");
+    const item = segs[3];
+    if (face !== "teams" || !item) setExpandedTeam(null);
+    if (!item) return;
+    if (face === "teams") {
+      const inComp = (tm) => comp === LG_ALL_NATS ? isIntlLeague(tm.league)
+        : comp === LG_ALL_CLUBS ? !isIntlLeague(tm.league) : tm.league === comp;
+      const pool = teams.filter(tm => inWorld(tm, w) && inComp(tm));
+      // A search inside one league can open a club from another, and a code names one team in the
+      // whole game, so the code is tried across the world before the name is.
+      const tm = pool.find(x => x.code && x.code.toLowerCase() === item.toLowerCase())
+        || teams.find(x => inWorld(x, w) && x.code && x.code.toLowerCase() === item.toLowerCase())
+        || pool.find(x => urlSlug(x.name) === urlSlug(item));
+      setExpandedTeam(tm ? tm.id : null);
+      return;
+    }
+    // A player waits for the roster of the world just switched to; a season, a batch and a Hall of
+    // Fame name wait for the archive, which loads on the Registry's first visit.
+    routePend.current = { comp, face, item: urlSlug(item), sub: segs[4] ? urlSlug(segs[4]) : null, kick: routeKick + 1 };
+  };
+  // Address to state: on boot, on Back and Forward, and on an address typed into the bar. It runs
+  // before the two effects below, which would otherwise rewrite a deep link before it was read.
+  useEffect(() => {
+    const h = window.location.hash;
+    if (h && h !== "#" && h !== "#/") { routeBoot.current = true; routeLast.current = h; applyRouteRef.current(h); }
+    const go = () => { const h2 = window.location.hash; if (h2 === routeLast.current) return; routeLast.current = h2; applyRouteRef.current(h2); };
+    window.addEventListener("popstate", go); window.addEventListener("hashchange", go);
+    return () => { window.removeEventListener("popstate", go); window.removeEventListener("hashchange", go); };
+  }, []);
+  useEffect(() => {
+    const p = routePend.current;
+    if (!p) return;
+    if (routeKick < p.kick) return;                        // the address has not rendered yet
+    const settle = () => { routePend.current = null; routeReplace.current = true; setRouteKick(k => k + 1); };
+    // Moved on before it could open: the new page is the user's, and gets its own entry.
+    if (tab !== "leagues" || lgComp !== p.comp || lgSubEff !== p.face) { routePend.current = null; routeReplace.current = false; return; }
+    if (p.face === "players" || p.face === "hof") {
+      const hit = playerIndex.find(x => urlSlug(x.fullName || x.name) === p.item);
+      if (hit) { setPlayerOpen(hit.fullName || hit.name); settle(); return; }
+      if (!pstats) return;
+      const h = (pstats.hof || []).find(x => urlSlug(x.player) === p.item);
+      if (h) setPlayerOpen(h.player);
+      settle(); return;
+    }
+    if (!pstats) return;
+    if (p.face === "changelog") {
+      const c = (pstats.changelog || []).find(x => urlSlug(x.season + " " + x.comp) === p.item);
+      if (c) setClOpen(c.season + "\u0000" + c.comp);
+      settle(); return;
+    }
+    if (p.face === "seasons" || p.face === "cup") {
+      const sc = p.face === "cup" ? (LEAGUE_CUPS[p.comp] || p.comp) : p.comp;
+      const s = pstats.seasons.find(x => x.comp === sc && !x.hist && urlSlug(x.season) === p.item);
+      if (!s) { settle(); return; }
+      if (lgSeason !== s.id) { setLgSeason(s.id); if (!p.sub) settle(); return; }
+      if (!p.sub) { settle(); return; }
+      const report = lgMd[s.id.replace(/\.tsv$/i, ".md")];
+      if (s.md && report === undefined) return;            // the report is still on its way
+      const { tabs } = seasonFaces(s, report);
+      const rm = p.sub.match(/^round-(\d+)$/);
+      if (rm) {
+        const li = tabs.findIndex(x => x.league);
+        if (li >= 0) { const ri = tabs[li].league.rounds.findIndex(r => r.n === +rm[1]); setLgTTab(li); if (ri >= 0) setLgRound(ri); }
+      } else {
+        const ti = tabs.findIndex(x => urlSlug(x.name) === p.sub);
+        if (ti >= 0) setLgTTab(ti);
+      }
+      settle(); return;
+    }
+    settle();
+  }, [routeKick, tab, lgComp, lgSubEff, playerIndex, pstats, lgMd, lgSeason]);
+  // State to address. Skipped once on boot, while the address the app was opened on renders.
+  useEffect(() => {
+    if (routeBoot.current) { routeBoot.current = false; return; }
+    if (routePend.current) return;
+    const cur = window.location.hash;
+    if (cur === routeHash) { routeReplace.current = false; routeLast.current = cur; return; }
+    const strip = (h) => h.replace(/\/round-\d+(?=$|\?)/, "");
+    const replace = routeReplace.current || strip(cur) === strip(routeHash);
+    routeReplace.current = false; routeLast.current = routeHash;
+    try { window.history[replace ? "replaceState" : "pushState"](null, "", routeHash); } catch {}
+  }, [routeHash, routeKick]);
+  // A Documentation section is part of the address, so jumping to one writes it and opening an
+  // address that names one scrolls there once the page has drawn.
+  const docGo = (id) => { setDocSec(id); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  useEffect(() => {
+    if (tab !== "docs") { if (docSec) setDocSec(null); return; }
+    const id = docScroll.current;
+    if (!id) return;
+    docScroll.current = null;
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
+  }, [tab, docSec, routeKick]);
   // THE POSITION HE PLAYS, not the band he was filed under. Every stats board and every changelog
   // row stores one of GK/DEF/MID/FWD, because that is all the engine needs to rate him -- but the
   // squad sheets know he is a right-back, and the roster shows it. Resolved off the index by name
@@ -10990,17 +11201,11 @@ export default function App() {
                   stages, and its player statistics, which are a face of the season rather than
                   a slab bolted under it. */}
               {(() => {
-                const R = typeof report === "string" ? parseSeasonReport(report) : null;
-                const T = R && !R.rounds.length ? parseTournTabs(report) : null;
-                const tabs = [];
-                if (R && R.rounds.length) tabs.push({ name: "Rounds", league: R });
-                else if (T && T.tabs.length) for (const tb of T.tabs) tabs.push({ name: tb.name, body: tb.body });
-                else if (R) tabs.push({ name: "Report", raw: report });
-                if (Object.keys(s.boards).length) tabs.push({ name: "Player Statistics", stats: true });
+                const { tabs, pre } = seasonFaces(s, report);
                 if (!tabs.length) return null;
                 const tt = Math.min(lgTTab, tabs.length - 1), cur = tabs[tt];
                 return (<>
-                  {T?.pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={T.pre} /></div>}
+                  {pre && <div style={{ padding: "10px 20px 0" }}><MdDoc text={pre} /></div>}
                   {tabs.length > 1 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderBottom: "1px solid var(--chrome-border)", flexWrap: "wrap" }}>
                     {tabs.map((tb, i2) => <button key={tb.name + i2} onClick={() => setLgTTab(i2)}
@@ -15034,7 +15239,7 @@ export default function App() {
             // STYLE_PRESET and names each value with the same label the Tactics panel uses, so it
             // cannot describe a style the engine is not actually playing.
             const Mod = ({name, desc}) => <div style={{ marginBottom: 8 }}><span style={{ fontWeight: 600, color: "var(--ui-text)" }}>{name}</span> <span style={{ color: "#888" }}>{desc}</span></div>;
-            const tocLink = (id, label) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
+            const tocLink = (id, label) => <span key={id} onClick={() => docGo(id)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 13, fontWeight: 500 }}>{label}</span>;
             return (<div style={{ height: ROSTER_PANEL_H, display: "grid", gridTemplateColumns: "minmax(0, 250px) minmax(0, 1fr)", gap: 16, minHeight: 0 }}>
             <div style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "12px 16px", minWidth: 0, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
               <div style={{ ...panelHead, marginBottom: 8 }}><PanelTitle>Contents</PanelTitle></div>
@@ -15044,7 +15249,7 @@ export default function App() {
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
                   {[["doc-tick","The Tick"],["doc-scale","Match Length & Stat Scale"],["doc-decide","How A Player Decides"],
                     ["doc-shots","Shots & Expected Goals"],["doc-setpieces","Set Pieces"],["doc-discipline","Fouls, Cards & Injuries"],
-                    ["doc-stoppage","Stoppage, Extra Time & Kicks"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                    ["doc-stoppage","Stoppage, Extra Time & Kicks"]].map(([id,l]) => <span key={id} onClick={() => docGo(id)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-skill", "Ratings & Team Strength")}
                 {tocLink("doc-playstyles", "Playstyles")}
@@ -15054,7 +15259,7 @@ export default function App() {
                 {tocLink("doc-matchrating", "Match Ratings")}
                 {tocLink("doc-tournaments", "Tournaments")}
                 <div style={{ display: "flex", gap: 0, flexDirection: "column", paddingLeft: 12 }}>
-                  {[["doc-tourney-modes","Modes"],["doc-tourney-draw","The Draw"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
+                  {[["doc-tourney-modes","Modes"],["doc-tourney-draw","The Draw"],["doc-tourney-zones","Qualification Zones"],["doc-tourney-tiebreakers","Tiebreakers"],["doc-tourney-presets","Presets"]].map(([id,l]) => <span key={id} onClick={() => docGo(id)} style={{ cursor: "pointer", color: "var(--chrome-muted)", fontSize: 12, lineHeight: 2.0 }}>{l}</span>)}
                 </div>
                 {tocLink("doc-bulkimport", "Bulk Import")}
               </div>
