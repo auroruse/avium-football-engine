@@ -31,12 +31,13 @@ const strategy = { ...STRAT_DEF, timeWasting: base.strategy.timeWasting, gkDist:
 for (const k of IDENTITY_KEYS) strategy[k] = STYLE_PRESET[style]?.[k] ?? 0;
 const T = { ...base, style, formation, strategy,
   squad: formation === base.formation ? base.squad : refitAs(base.squad, formation) };
-let pts = 0, w = 0, d = 0, gf = 0, ga = 0;
+let pts = 0, w = 0, d = 0, gf = 0, ga = 0, xf = 0, xa = 0;
 for (let k = K0; k < K0 + N; k++) {
   const opp = field[k % F], home = Math.floor(k / F) % 2 === 0;
   const r = runPositionalMatch(home ? T : opp, home ? opp : T, 90e5 + (k * 131 + 7) * 7919, null, false).out;
   const f = home ? r.goals.home : r.goals.away, a = home ? r.goals.away : r.goals.home;
   if (f > a) { pts += 3; w++; } else if (f === a) { pts += 1; d++; }
   gf += f; ga += a;
+  xf += (home ? r.xgS?.home : r.xgS?.away) ?? 0; xa += (home ? r.xgS?.away : r.xgS?.home) ?? 0;
 }
-console.log(JSON.stringify({ code: CODE, style, formation, k0: K0, n: N, F, pts, w, d, gf, ga }));
+console.log(JSON.stringify({ code: CODE, style, formation, k0: K0, n: N, F, pts, w, d, gf, ga, xf, xa }));
