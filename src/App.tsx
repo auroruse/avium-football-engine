@@ -2322,9 +2322,11 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       // detection altogether. A LEAGUE season still needs no entry -- ksl's ten
                       // clubs carry it 8-2 to the Secondary League on their own.
                       kc: "Karjanian Cup", kpl: "Karjanian Premier League",
+                      // Varahmehr: the second division by name, and the cup both divisions enter.
+                      lyb: "Liga-ye Bālande", jym: "Jām-e Mellī",
                       // Winners-only stubs and generated historical seasons carry no boards for
                       // detection to read, so the historical league folders are named outright.
-                      ao: "Alemannische Oberliga", ca: "Championnat Arvernois",
+                      ao: "Alemannische Oberliga", "2ao": "2. Alemannische Oberliga", ca: "Championnat Arvernois",
                       epl: "Elvesterian Premier League",
                       natl: "Nations League", eufa: "EUFA Championship", pfa: "PFA Championship",
                       vafc: "VAFC Championship", conseaf: "CONSEAF Championship",
@@ -2676,7 +2678,9 @@ const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
                       "Nichirin League Two": "Sei'i Tai Shogun Cup",
                       "Karjanian Premier League": "Karjanian Cup",
                       "Karjanian Secondary League": "Karjanian Cup",
-                      "Karjanian Kolmonen": "Karjanian Cup" };
+                      "Karjanian Kolmonen": "Karjanian Cup",
+                      "Liga-ye Mellī": "Jām-e Mellī",
+                      "Liga-ye Bālande": "Jām-e Mellī" };
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
