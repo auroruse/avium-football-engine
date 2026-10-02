@@ -1670,7 +1670,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // derive sample holds under ten shots there and the instruction above says not to trust one.
   // Re-derived 2 Oct 2026 (1,000 league matches, second brain) on the ordinary keeper's xg (xgN) and the
   // re-levelled recorder; [0.3, 0.4) is the open net, [0.4, 0.6) keeps its old figure on three shots.
-  gkExp: [[0.05, 0.11], [0.10, 0.19], [0.20, 0.21], [0.30, 0.10], [0.40, 0.92], [0.60, 0.57], [1.01, 0.89]],
+  // ...and again after the set keeper's reach came down the same day (800 matches).
+  gkExp: [[0.05, 0.10], [0.10, 0.18], [0.20, 0.33], [0.30, 0.36], [0.40, 0.91], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1782,7 +1783,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
   // Re-derived 2 Oct 2026 when the second brain became the only one, with the re-levelled xg recorder
   // and the keeper rated against an ordinary keeper (xgN).
-  ratePos: { GK: 0.243, DEF: -0.169, MID: -0.122, FWD: -0.205 },
+  ratePos: { GK: 0.303, DEF: -0.149, MID: -0.138, FWD: -0.289 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -2584,7 +2585,9 @@ gkDiveV: 2.9,
   // fixtures its open-play attempts booked 2.64 xG a match against 1.37 open-play goals, a ledger that
   // had drifted since the September behaviour rebuild and was hidden under a penalty count three times
   // too high. Slope untouched again; the bands land within about ten per cent either side.
-  xgCal0: -1.46, xgCalB: 0.468,
+  // ...and back up 0.34 the same day when the set keeper's reach came down (gkSetReach) and goals rose
+  // to 2.3 a match.
+  xgCal0: -1.12, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   // Real dive launch speed is 4-6 m/s; 9.5 was superhuman late coverage papering over positioning.
@@ -2941,7 +2944,10 @@ gkDiveV: 2.9,
   // The set keeper's reach before he has reacted: gkSetReach, gkSetLo of it for the worst. See reachOf.
   // ...and in the planned save (keeper.ts) it is the whole of him standing: feet, legs and hands spread
   // at a ball he has not yet seen the line of, which close in is the save he makes by being big.
-  gkSetReach: 1.6, gkSetLo: 0.92,
+  // 1.6 -> 1.0 (2 Oct 2026), the goals dial now: with the second brain keepers kept out 76% of shots on
+  // target against a real ~70% and matches averaged 1.8 goals. At 1.0 they keep out 66% and it is 2.3.
+  // Neither the grab (gkSaveReachLo/Hi) nor the dive moved goals; this and the reaction did.
+  gkSetReach: 1.0, gkSetLo: 0.92,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,
