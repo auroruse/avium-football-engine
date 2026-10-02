@@ -23,9 +23,9 @@ import { ROLES } from "./roles";
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // What each man brings to a duel, 0..1 over the band footballers occupy.
-export const dribSkill = (p) => { const a = meAttrs(p); return clamp(0.45 * meTech(a.touch) + 0.30 * meTech(a.pace) + 0.25 * meMind(p), 0, 1); };
-export const ctrlSkill = (p) => { const a = meAttrs(p); return clamp(0.6 * meTech(a.touch) + 0.4 * meTech(a.strength), 0, 1); };
-export const tackSkill = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position), 0, 1); };
+export const dribSkill = (p) => { const a = meAttrs(p); return clamp(0.45 * meTech(a.touch) + 0.30 * meTech(a.pace) + 0.25 * meMind(p), 0, CFG.techMax); };
+export const ctrlSkill = (p) => { const a = meAttrs(p); return clamp(0.6 * meTech(a.touch) + 0.4 * meTech(a.strength), 0, CFG.techMax); };
+export const tackSkill = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position), 0, CFG.techMax); };
 
 // ---- THE DRIBBLER -------------------------------------------------------------------------------
 export function mindCarrier(s, side, i) {
@@ -109,7 +109,7 @@ export function mindCarrier(s, side, i) {
     }
   } else if (mv) p._mv = null;
   // TURNING WITH IT is agility: an elite dribbler comes round twice as sharply as a centre-half does.
-  const agil = clamp(0.55 * meTech(meAttrs(p).touch) + 0.45 * meTech(meAttrs(p).pace), 0, 1);
+  const agil = clamp(0.55 * meTech(meAttrs(p).touch) + 0.45 * meTech(meAttrs(p).pace), 0, CFG.techMax);
   const mt = CFG.dribTurn * (0.65 + 0.8 * agil) * (p._mv?.k === "feint" || p._mv?.k === "cut" ? 1.6 : 1) / (1 + vNow * CFG.dribTurnV);
   p._drbA += clamp(angDiff(want, p._drbA), -mt, mt);
   // The line stays on the pitch (the first brain's rule, kept).

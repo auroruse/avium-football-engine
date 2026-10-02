@@ -1656,7 +1656,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.92, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.94, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1671,7 +1671,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 2 Oct 2026 (1,000 league matches, second brain) on the ordinary keeper's xg (xgN) and the
   // re-levelled recorder; [0.3, 0.4) is the open net, [0.4, 0.6) keeps its old figure on three shots.
   // ...and again after the set keeper's reach came down the same day (800 matches).
-  gkExp: [[0.05, 0.10], [0.10, 0.18], [0.20, 0.33], [0.30, 0.36], [0.40, 0.91], [0.60, 0.57], [1.01, 0.89]],
+  // ...and once more for the sharper open-play strike (800 matches).
+  gkExp: [[0.05, 0.08], [0.10, 0.16], [0.20, 0.33], [0.30, 0.47], [0.40, 0.70], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1783,7 +1784,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
   // Re-derived 2 Oct 2026 when the second brain became the only one, with the re-levelled xg recorder
   // and the keeper rated against an ordinary keeper (xgN).
-  ratePos: { GK: 0.303, DEF: -0.149, MID: -0.138, FWD: -0.289 },
+  ratePos: { GK: 0.318, DEF: -0.136, MID: -0.188, FWD: -0.347 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -2505,7 +2506,19 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // 0.55 -> 0.6), because a flat 6.8 degrees buried the difference between a good finish and a poor
   // one -- measured in the shot lab, a top finisher beat a keeper four more times in a hundred than a
   // weak one while a top keeper saved sixteen more than a weak one. Now both count about the same.
-  shotNoiseOpen: 3.5, shotElevOpen: 2.0,
+  // 2 Oct 2026, the goals dial for the second brain: its sides make about twenty shots a match however
+  // they are set up (31 settings of shot appetite, runs, shape, press, pass judgement and tempo all
+  // landed 19.5-21), because realistic possessions in eighteen minutes only reach the box twelve times
+  // a side. So the extra goals come from the strike: 3.5 / 2.0 -> 2.6 / 0.7 took a league match from
+  // 2.3 goals to about 3 with shots on target 9.1 -> ~11.
+  shotNoiseOpen: 2.6, shotElevOpen: 0.7,
+  // THE FINISH PAST THE BAND (meFinish): the best finisher reaches finMax, and the floors that keep his
+  // strike physical there -- shotNoiseMin degrees of aim error, shotElevMin of the height error's scale.
+  finMax: 1.13, finAbove: 0.009, shotNoiseMin: 1.5, shotElevMin: 0.02,
+  // Where meTech and meGkSkill stop: the values a 90-rated defender's tackling and a 90-rated keeper reach.
+  techMax: 1.25, gkSkillMax: 1.075,
+  // The highest he aims: under the bar, which a finisher past the band would otherwise aim over.
+  shotAimZMax: 2.25,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
   // standard deviation of 0.41, so this keeps the everyday spread comparable while the tail -- the
   // part that actually misses the target -- finally exists.
@@ -2586,8 +2599,9 @@ gkDiveV: 2.9,
   // had drifted since the September behaviour rebuild and was hidden under a penalty count three times
   // too high. Slope untouched again; the bands land within about ten per cent either side.
   // ...and back up 0.34 the same day when the set keeper's reach came down (gkSetReach) and goals rose
-  // to 2.3 a match.
-  xgCal0: -1.12, xgCalB: 0.468,
+  // to 2.3 a match, and up 0.25 more when the open-play strike was sharpened (shotNoiseOpen/shotElevOpen)
+  // and goals went to about 2.9.
+  xgCal0: -0.80, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   // Real dive launch speed is 4-6 m/s; 9.5 was superhuman late coverage papering over positioning.

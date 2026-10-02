@@ -424,7 +424,9 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // An OPEN-PLAY strike carries shotNoiseOpen more than a dead ball -- see the config. A set strike
   // passes elevMul, which is also how it keeps its own elevation calibration below.
   const open = elevMul === undefined;
-  const sigma = (CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress
+  // A finisher past the top of the band (meFinish) takes error off rather than adding none, never below
+  // shotNoiseMin degrees, and his height error bottoms out at shotElevMin of its scale.
+  const sigma = Math.max(CFG.shotNoiseMin, CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress
                  + runD * CFG.shotNoiseRun + (open ? CFG.shotNoiseOpen * (1 - (set01 || 0) * CFG.shotNoiseSet) : 0))
               * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
@@ -442,7 +444,7 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // multiplier blends toward spFkElev by shotElevSet of how set he is.
   const elevOpen = CFG.shotElevOpen + (CFG.spFkElev - CFG.shotElevOpen) * (set01 || 0) * CFG.shotElevSet;
   mp.bvz = vz + g2(rng) * CFG.shotElevErr * (open ? elevOpen * (1 + (press || 0) * CFG.shotSitElev) : elevMul)
-                        * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
+                        * Math.max(CFG.shotElevMin, 1 - skill01 * CFG.shotElevSkill) * v * 0.12;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   mp.gkPlan = null;
   meBallPredict(mp);

@@ -208,8 +208,8 @@ export function meFirstTouch(s, rng, side, p, px, py, pvx, pvy, z, reach, uAng) 
   const T = near < CFG.touchPressR ? CFG.dribTClose : CFG.ftT;
   const [vx, vy] = touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L);
   // ...and the execution. The weight error is the heavy touch: a ball struck harder than he meant.
-  const eA = gauss(rng) * D * (CFG.ftAng0 + CFG.ftAngTech * (1 - ts) ** 2);
-  const eW = gauss(rng) * D * (CFG.ftW0 + CFG.ftWTech * (1 - ts) ** 2);
+  const eA = gauss(rng) * D * (CFG.ftAng0 + CFG.ftAngTech * Math.max(0, 1 - ts) ** 2);
+  const eW = gauss(rng) * D * (CFG.ftW0 + CFG.ftWTech * Math.max(0, 1 - ts) ** 2);
   const sp = Math.hypot(vx, vy) * Math.max(0.2, 1 + eW);
   const a = (sp > 0.01 ? Math.atan2(vy, vx) : uAng) + eA;
   return { ok: true, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ang: a, D };
@@ -242,8 +242,8 @@ export function meDribbleTouch(s, rng, side, p, px, py, pvx, pvy) {
           : clamp(CFG.dribTK * roomAhead(s, side, px, py, ux, uy), CFG.dribTMin, CFG.dribTMax);
   const L = knock ? p._knockL : near < CFG.touchPressR ? CFG.touchCloseL : leadFor(s, side, mp.bx, mp.by, ux, uy, near);
   const [vx, vy] = touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L);
-  const eA = gauss(rng) * D * (CFG.drAng0 + CFG.drAngTech * (1 - ts) ** 2);
-  const eW = gauss(rng) * D * (CFG.drW0 + CFG.drWTech * (1 - ts) ** 2);
+  const eA = gauss(rng) * D * (CFG.drAng0 + CFG.drAngTech * Math.max(0, 1 - ts) ** 2);
+  const eW = gauss(rng) * D * (CFG.drW0 + CFG.drWTech * Math.max(0, 1 - ts) ** 2);
   const sp = Math.hypot(vx, vy) * Math.max(0.3, 1 + eW);
   const a = (sp > 0.01 ? Math.atan2(vy, vx) : uA) + eA;
   return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ang: a, D };

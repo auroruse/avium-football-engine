@@ -1,6 +1,6 @@
 // The tick loop, the ball, restarts, and match setup.
 import { CFG } from "./config";
-import { meAerial, meAttrs, meDuel, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, meSpeed, meTech } from "./attributes";
+import { meAerial, meAttrs, meDuel, meFinish, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, meSpeed, meTech } from "./attributes";
 import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
 import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
@@ -3506,13 +3506,13 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     // footballing reason at all. Better finishers pick the side he has left; poorer ones aim nearer
     // the middle, where he is.
     const gkp = meKeeper(s.players[meOther(side)]);
-    const sk = meTech(a.shoot);
+    const sk = meFinish(a);
     const away = gkp && gkp.y > ME_HALF_W ? -1 : 1;
     // A man with time to set himself picks his corner (meWindUp): he aims wider by shotAimSet of it.
     const wind = meWindUp(Math.hypot(gx - p.x, ME_HALF_W - p.y), meShotSit(s, side, p, gx, ME_HALF_W), exD, act.ft);
     const aimY = ME_HALF_W + away * GOAL_HALF_W * Math.min(CFG.shotAimMax, CFG.shotAimBase + sk * CFG.shotAimSkill + wind * CFG.shotAimSet);
     // ...and up into the top corner as well as along the ground, shotSetZ more of the frame's height.
-    const aimZ = 0.25 + rng.u() * (0.5 + sk * GOAL_H * 0.45 + wind * CFG.shotSetZ);
+    const aimZ = Math.min(CFG.shotAimZMax, 0.25 + rng.u() * (0.5 + sk * GOAL_H * 0.45 + wind * CFG.shotSetZ));
     // out.xg is both sides pooled, which is what the calibration harnesses want. Per side as well,
     // because a sweep that asks "did this instruction make the side BETTER" needs a difference, and
     // a goal is a Poisson count with a mean of 1.6 -- a whole match of it carries more noise than

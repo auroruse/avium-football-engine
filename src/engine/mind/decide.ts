@@ -210,7 +210,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
                                  + CFG.passCalL * Math.log(Math.max(0.01, okLate)))));
     if (c.k === "throw") ok *= CFG.gkThrowOk;
     else if (isGK && !c.high && d < CFG.gkRollD) ok *= CFG.gkRollOk;
-    ok *= 1 - blockRisk(s, side, p.x, p.y, aimX, aimY, c.high);
+    ok *= 1 - blockRisk(s, side, p.x, p.y, aimX, aimY, c.high) * MT.blockK;
     ok = clamp(ok, CFG.passFloor, 0.985);
     // A team-mate he last saw a while ago is a guess: the ball goes to where he thinks the man is.
     if ((q._age ?? 0) > 1.0) ok *= Math.max(0.55, 1 - ((q._age ?? 0) - 1.0) * 0.08);

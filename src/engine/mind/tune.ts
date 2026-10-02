@@ -94,6 +94,7 @@ export const MT = {
   carryDirs: 7,        // headings he considers carrying it on
   patW: 0.012,         // what a drilled move's ball is worth on top of its own price (first cut)
   switchW: 0.008,      // what the room a switch finds is worth (CFG.switchW 0.02 was the first brain's)
+  blockK: 1.0,         // how much of blockRisk (a man in the way of the ball's first metres) he believes
   // ---- duels -----------------------------------------------------------------------------------
   tkBar: 0.62,         // the chance of winning it a defender wants before he goes in, all else even
   cynBase: 0.035,      // a slice's chance of the foul on purpose to stop a break, before temperament

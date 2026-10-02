@@ -39,7 +39,7 @@ export function meAttrs(p) {
   if (p._att) return p._att;
   const t = ME_TILT[p.pos] || ME_TILT.MID, o = meOvr(p), aw = meAtkW(p) - 0.45;
   const c = (v) => Math.max(20, Math.min(99, v));
-  return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * 16),
+  return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * 16), shootRaw: o + t.shoot + aw * 16, reflexRaw: o + t.reflex,
     tackle: c(o + t.tackle - aw * 12), position: c(o + t.position), strength: c(o + t.strength),
     reflex: c(o + t.reflex), touch: c(o + t.touch) });
 }
@@ -61,7 +61,9 @@ export const meSpeed = (a, stam) => (SPEED_BASE + a.pace / 99 * SPEED_SPAN) * (0
 // the top. The 0..1 is taken over the reflex band a keeper can actually HAVE, not over 0..99 --
 // ME_COMPRESS deliberately squeezes ratings, so a 40-rated and a 90-rated keeper come out at 76 and
 // 96 reflex, and normalising over the full scale would have made them all but identical.
-export const meGkSkill = (a) => Math.max(0, Math.min(1, (a.reflex - 70) / 28));
+// ...carried past 1 off the unclamped reflex, so a keeper keeps improving to 90 (CFG.gkSkillMax) rather
+// than topping out at 87.
+export const meGkSkill = (a) => Math.max(0, Math.min(CFG.gkSkillMax, ((a.reflexRaw ?? a.reflex) - 70) / 28));
 // ...AND UNDER THE BAND, A PART-TIMER. The band above is sized for league keepers, and clamped at zero it
 // made every keeper under 40 the same man as a 40, and a 40 very nearly a 60: against the best attack in
 // the world an island side's 37 kept out 69% of what was put on target, an 85 79%. meGkLow is how far he
@@ -101,7 +103,20 @@ export const meAerial = (a, CFG) => CFG.headBase + a.strength / 99 * CFG.headSpa
 // an option is WORTH does not depend on who is weighing it, judgement already has its own term
 // (meMind), and set-piece strikes deliberately stay on attr/99 because a dead ball is the great
 // equaliser: penalty conversion barely varies by level in the real game, and ours is calibrated.
-export const meTech = (attr) => Math.max(0, Math.min(1, (attr - 48) / 40));
+// ...and NOT CAPPED AT 1. The band tops out at an attribute of 88, which a position's tilt reached long
+// before 90: a defender's tackling at 76, a midfielder's passing at 88, so every defender from 76 up
+// tackled alike. Below 88 nothing moves; above it the scale carries on to CFG.techMax, which is where a
+// 90 lands. Every site reading it either scales with it or takes max(0, 1 - tech).
+export const meTech = (attr) => Math.max(0, Math.min(CFG.techMax, (attr - 48) / 40));
+
+// THE FINISH, which does not stop at the top of meTech's band. A striker's tilt and attacking weight put
+// his shooting twenty points over his rating, so every forward from about 70 up sat at meTech's 1 and an
+// 88 finished exactly like a 75 (measured, shot for shot, in the shot lab). Same scale below the band,
+// carried on past it off the unclamped attribute, to CFG.finMax for the best finisher alive.
+// Past the band it climbs at finAbove a point, not the band's 1/40: the strike is steep in it (pace, aim,
+// both errors), and at the band's own slope a 90 scored 61% from twenty metres unpressured.
+export const meFinish = (a) => { const r = a.shootRaw ?? a.shoot;
+  return r <= 88 ? Math.max(0, (r - 48) / 40) : Math.min(CFG.finMax, 1 + (r - 88) * CFG.finAbove); };
 
 // A duel: skill difference in attribute points to a probability, bounded at both ends. The endpoints
 // are the whole design -- they say what the worst and best player in the world achieve at this, and
