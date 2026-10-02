@@ -14,7 +14,7 @@
 // from, against how quickly he reacts, how fast he gets across, how far he reaches and where he stood.
 // Penalties keep the guess, because a keeper really does go early at one.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meGkSkill, meSpeed } from "./attributes";
+import { meAttrs, meGkDiveV, meGkLow, meGkReact, meGkSkill, meSpeed } from "./attributes";
 import { ME_HALF_W, meGoalX, meKeeperIx, meOther } from "./geometry";
 import { GOAL_HALF_W } from "./ball";
 
@@ -66,7 +66,7 @@ function planFor(s, dsd, t0) {
   const mp = s.mePos, ps = s.players[dsd];
   const ki = meKeeperIx(ps);
   if (ki < 0) return null;
-  const k = ps[ki], gkk = meGkSkill(meAttrs(k)), gx = meGoalX(meOther(dsd));
+  const k = ps[ki], ka = meAttrs(k), gkk = meGkSkill(ka), low = meGkLow(ka), gx = meGoalX(meOther(dsd));
   const sg = Math.sign(gx - mp.bx) || 1;
   let tx = k.x, ty = k.y;
   // WHERE IT WILL CROSS THE LINE HE IS STANDING ON. A struck ball flies straight in plan -- drag slows
@@ -113,14 +113,14 @@ function planFor(s, dsd, t0) {
   k.vx = 0; k.vy = 0;                                     // he sets himself
   // Going BACK for a ball dropping over him he runs, then leaps: the dive's pace over six metres was a
   // man jogging back while a lob from twenty-five metres came down in his net.
-  const vDive = CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmin) * gkk;
+  const vDive = meGkDiveV(ka);
   const back = (tx - k.x) * sg > CFG.gkBackRun;
   return {
     side: dsd, i: ki, x0: k.x, y0: k.y, tx, ty, t0, L: Math.hypot(tx - k.x, ty - k.y),
-    react: CFG.gkReactSlow + (CFG.gkReactFast - CFG.gkReactSlow) * gkk + Math.min(1, scr) * CFG.gkScreen,
-    v: back ? Math.max(vDive, meSpeed(meAttrs(k), k.stamina) * CFG.gkBackV) : vDive,
-    set: CFG.gkSetReach * (CFG.gkSetLo + (1 - CFG.gkSetLo) * gkk),
-    grab: CFG.gkSaveReachLo + (CFG.gkSaveReachHi - CFG.gkSaveReachLo) * gkk,
+    react: meGkReact(ka) + Math.min(1, scr) * CFG.gkScreen,
+    v: back ? Math.max(vDive, meSpeed(ka, k.stamina) * CFG.gkBackV) : vDive,
+    set: CFG.gkSetReach * (CFG.gkSetLo + (1 - CFG.gkSetLo) * gkk) * (1 - low * CFG.gkSetLow),
+    grab: Math.max(0.04, CFG.gkSaveReachLo + (CFG.gkSaveReachHi - CFG.gkSaveReachLo) * gkk - low * CFG.gkGrabLow),
   };
 }
 

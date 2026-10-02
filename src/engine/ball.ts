@@ -380,7 +380,7 @@ export function meKickBall(mp, rng, tx, ty, type, skill01, press, tempo, o) {
 /** A shot: struck at a point IN the goal mouth, elevation solved for the flight, with a wider error
  *  cone than a pass. Nothing about the outcome is decided here -- the ball leaves his foot, and
  *  whether it is a goal, a save, the post or a corner is settled by where it actually goes. */
-export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run) {
+export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, run, set01) {
   const dx = tx - mp.bx, dy = ty - mp.by, d = Math.max(1, Math.hypot(dx, dy));
   // A SHOT MISSES BECAUSE OF THE OCCASIONAL BAD ONE. Two uniforms summed is a triangle on
   // [-sigma, +sigma]: the largest error physically possible is exactly sigma and the typical one is
@@ -406,10 +406,13 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // run-up becomes a cannonball at twenty-five metres and a placed finish at eight. Same gate the
   // decision uses, because the two have to agree about what the momentum is worth.
   const runD = (run || 0) * Math.max(0, Math.min(1, (d - CFG.shotRunD) / CFG.shotRunFade));
+  // THE WIND-UP (meWindUp, already gated to range): a man with time and room sets himself and strikes
+  // through it. Pace either way, from the run or from the set, never both.
+  const pace = Math.max(runD * CFG.shotVRun, (set01 || 0) * CFG.shotVSet);
   // `press` is how hard the circumstances make it (meShotSit): a man hurried, off balance or stretching
   // does not get all of his pace through the ball. Open play only; a dead ball is struck at leisure.
   const open0 = elevMul === undefined;
-  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill + runD * CFG.shotVRun)
+  const v = v0 || (CFG.shotV0 + skill01 * CFG.shotVSkill + pace)
                   * (open0 ? Math.max(0.5, 1 - (press || 0) * CFG.shotSitPow) : 1);
   // Drag is NOT a second-order dip on a struck ball: quadratic drag at 0.015 costs a twenty-metre
   // shot a third of its speed, so solving the flight as d/v launched it too flat and it fell short.
@@ -422,7 +425,7 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // passes elevMul, which is also how it keeps its own elevation calibration below.
   const open = elevMul === undefined;
   const sigma = (CFG.shotNoiseDeg + (1 - skill01) * CFG.shotNoiseSkill + (press || 0) * CFG.shotNoisePress
-                 + runD * CFG.shotNoiseRun + (open ? CFG.shotNoiseOpen : 0))
+                 + runD * CFG.shotNoiseRun + (open ? CFG.shotNoiseOpen * (1 - (set01 || 0) * CFG.shotNoiseSet) : 0))
               * Math.PI / 180;
   const ang = Math.atan2(dy, dx) + g2(rng) * sigma;
   mp.bvx = Math.cos(ang) * v; mp.bvy = Math.sin(ang) * v;
@@ -435,7 +438,10 @@ export function meShootBall(mp, rng, tx, ty, tz, skill01, press, elevMul, v0, ru
   // error meant that widening it to fix off-target in open play took penalty conversion from 74.7%
   // to 64.5% and put 5.5% of them off the frame.
   // ...and a hurried one goes up: the man with somebody on him leans back and it flies.
-  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (open ? CFG.shotElevOpen * (1 + (press || 0) * CFG.shotSitElev) : elevMul)
+  // ...and a man with time and room (meWindUp) gets under it the way he would a free kick: the open-play
+  // multiplier blends toward spFkElev by shotElevSet of how set he is.
+  const elevOpen = CFG.shotElevOpen + (CFG.spFkElev - CFG.shotElevOpen) * (set01 || 0) * CFG.shotElevSet;
+  mp.bvz = vz + g2(rng) * CFG.shotElevErr * (open ? elevOpen * (1 + (press || 0) * CFG.shotSitElev) : elevMul)
                         * (1 - skill01 * CFG.shotElevSkill) * v * 0.12;
   mp.bz = Math.max(mp.bz, CFG.ballR);
   mp.gkPlan = null;

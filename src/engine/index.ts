@@ -10,4 +10,5 @@ export * from "./decide";
 export * from "./brain";
 export * from "./setpiece";
 export * from "./match";
+export * from "./mind";
 export type * from "./types";

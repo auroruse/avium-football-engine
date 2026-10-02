@@ -1,6 +1,6 @@
 // On-the-ball decisions: shoot, pass, carry or clear, scored as expected goals.
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
-import { meAtkW, meAttrs, meGkSkill } from "./attributes";
+import { meAtkW, meAttrs, meGkLow, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
 import { meGroundMaxD, meLoftT } from "./ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
@@ -32,7 +32,9 @@ export const meXgCal = (q) => {
   const c = Math.max(0.005, Math.min(0.97, q));
   return 1 / (1 + Math.exp(-(CFG.xgCal0 + CFG.xgCalB * Math.log(c / (1 - c)))));
 };
-export function meShotP(s, side, p, x, y, rec) {
+// `gkRef`, recorder only: price the shot against an ORDINARY keeper of that skill (CFG.gkRefSkill)
+// standing where this one stands, rather than against this one. The keeper's own rating is judged on that.
+export function meShotP(s, side, p, x, y, rec, gkRef) {
   const g = meShotGeom(side, x, y);
   if (g.d > 40) return 0;
   const a = meAttrs(p);
@@ -94,12 +96,13 @@ export function meShotP(s, side, p, x, y, rec) {
       const behind = Math.max(0, (x - gk.x) * dr);        // shooter nearer the goal than the keeper
       const lat = Math.abs(gk.y - y);
       const beat = Math.max(0, Math.min(1, (behind / CFG.gkBeatX + lat / CFG.gkBeatY) / 2));
-      const D = Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW);
+      const D = Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW) + meGkLow(meAttrs(gk)) * CFG.gkBeatLow;
       q *= (D + (1 - D) * beat) * (gk.emergencyGK ? 1.35 : 1);
     }
   } else {
     const gxg = meGoalX(side), dr = meDir(side);
-    const D = gk ? Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW) : 1;
+    const D = !gk ? 1 : gkRef !== undefined ? Math.max(0.22, CFG.gkBeatLo - gkRef * CFG.gkBeatW)
+      : Math.max(0.22, CFG.gkBeatLo - meGkSkill(meAttrs(gk)) * CFG.gkBeatW) + meGkLow(meAttrs(gk)) * CFG.gkBeatLow;
     let open01 = 1;
     if (gk) {
       const behind = Math.max(0, (x - gk.x) * dr);
@@ -117,6 +120,18 @@ export function meShotP(s, side, p, x, y, rec) {
     q += Math.max(0, cap - q) * open01;
   }
   return Math.max(0, Math.min(0.95, q));
+}
+
+// THE WIND-UP. Nobody near him, the ball sitting right and not coming at him first time, and enough
+// distance for pace to matter: a man with time and space at range sets himself and hits through it,
+// and a long shot from him is a different thing from one snatched under a challenge. 0..1, the product
+// of the room he has (meShotSit under shotSetSit), how cleanly the ball sits (execution difficulty under
+// shotSetExD) and a range gate of its own, from shotSetD out to shotSetD + shotSetFade: inside the box a
+// man with time places it anyway, and it is from range that a clean strike is what beats a keeper.
+export function meWindUp(d, sit, exD, ft) {
+  if (ft) return 0;
+  const room = Math.max(0, 1 - sit / CFG.shotSetSit), clean = Math.max(0, 1 - (exD || 0) / CFG.shotSetExD);
+  return room * clean * Math.max(0, Math.min(1, (d - CFG.shotSetD) / CFG.shotSetFade));
 }
 
 // HOW CLEANLY HE CAN STRIKE IT, from everything around the shot but the ball itself (the ball's own

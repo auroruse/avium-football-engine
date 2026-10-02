@@ -99,7 +99,8 @@ function touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L) {
 }
 
 // How fast he means to go with it: his carrying pace in the open, dribCloseV of it with a man on him.
-const dribPace = (p, near) => meSpeed(meAttrs(p), p.stamina) * CFG.carrySpeed * (near < CFG.touchPressR ? CFG.dribCloseV : 1);
+// (_dribV is the second brain slowing him down to shield it; the first brain never sets it.)
+const dribPace = (p, near) => meSpeed(meAttrs(p), p.stamina) * CFG.carrySpeed * (near < CFG.touchPressR ? CFG.dribCloseV : 1) * (p._dribV || 1);
 const gauss = (rng) => {
   const u = Math.max(1e-9, rng.u());
   return Math.max(-3, Math.min(3, Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng.u())));
@@ -234,9 +235,12 @@ export function meDribbleTouch(s, rng, side, p, px, py, pvx, pvy) {
   const turn = bv > 0.5 ? (1 - (mp.bvx * ux + mp.bvy * uy) / bv) / 2 : 0;
   const press = clamp(1 - (near - 1) / CFG.drPressR, 0, 1);
   const D = CFG.drD0 + CFG.drDv * Math.min(1, v / CFG.drVSpan) + CFG.drDp * press + CFG.drDt * turn;
-  const T = near < CFG.touchPressR ? CFG.dribTClose
+  // A KNOCK PAST A MAN (the second brain's dribbler, _knockL): the ball goes into the space beyond him,
+  // further than any touch kept under control would, and he runs onto it. The first brain never sets it.
+  const knock = p._knockL > 0;
+  const T = knock ? CFG.dribTMax : near < CFG.touchPressR ? CFG.dribTClose
           : clamp(CFG.dribTK * roomAhead(s, side, px, py, ux, uy), CFG.dribTMin, CFG.dribTMax);
-  const L = near < CFG.touchPressR ? CFG.touchCloseL : leadFor(s, side, mp.bx, mp.by, ux, uy, near);
+  const L = knock ? p._knockL : near < CFG.touchPressR ? CFG.touchCloseL : leadFor(s, side, mp.bx, mp.by, ux, uy, near);
   const [vx, vy] = touchVel(s, p, px, py, pvx, pvy, ux, uy, near, T, L);
   const eA = gauss(rng) * D * (CFG.drAng0 + CFG.drAngTech * (1 - ts) ** 2);
   const eW = gauss(rng) * D * (CFG.drW0 + CFG.drWTech * (1 - ts) ** 2);

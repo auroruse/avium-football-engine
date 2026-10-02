@@ -2,7 +2,7 @@
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "./config";
 import { meHungarian } from "./assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meAttrs, meGkSkill, meMind, meSpeed } from "./attributes";
+import { meAttrs, meGkLow, meGkSkill, meMind, meSpeed } from "./attributes";
 import { GOAL_HALF_W } from "./ball";
 
 // The team defensive line, one depth per side per tick: the mentality default, dragged back by the
@@ -339,7 +339,7 @@ export function meSlots(s, side) {
 // near post. It is the only place in the engine where goalkeeping is worth anything beyond reaction
 // time and diving speed.
 export function meGkAngle(p, own, bx, by) {
-  const h = GOAL_HALF_W * (1 + (1 - meGkSkill(meAttrs(p))) * CFG.gkPanic);
+  const h = GOAL_HALF_W * (1 + (1 - meGkSkill(meAttrs(p))) * CFG.gkPanic + meGkLow(meAttrs(p)) * CFG.gkPanicLow);
   const ax = own - bx, ay = (ME_HALF_W - h) - by, al = Math.hypot(ax, ay) || 1;
   const cx = own - bx, cy = (ME_HALF_W + h) - by, cl = Math.hypot(cx, cy) || 1;
   let mx = ax / al + cx / cl, my = ay / al + cy / cl;
@@ -1577,6 +1577,401 @@ export function meCarryPick(s, side, p, prevA, turnW) {
   return bAng;
 }
 
+// THE KEEPER OFF THE BALL, lifted out of meShape unchanged so the second brain (mind/) plays the
+// same goalkeeper. Called for a keeper who is not the man on the ball.
+export function meKeeperPos(s, side, i) {
+  const st = s.strategy?.[side] || NO_INSTRUCTIONS, ps = s.players[side], mp = s.mePos;
+  const dir = meDir(side), own = meGoalX(meOther(side)), them = s.players[meOther(side)];
+  const p = ps[i];
+  // Making a save: it owns him until it is over (keeper.ts, meMove).
+  const gp2 = mp.shot?.gk ?? mp.gkPlan;
+  if (gp2 && gp2.side === side && gp2.i === i) { p._closing = true; p._gkWhy = gp2 === mp.gkPlan ? "save(ball)" : "save(shot)"; return; }
+  // ---- THE KEEPER WHEN HE IS NOT MAKING A SAVE ------------------------------------------------
+  // Penalties keep the read (keeper.ts): he goes where he guessed, holding his depth.
+  if (mp.idx < 0 && !mp.sp && mp.shot && mp.shot.side !== side && mp.shot.readY !== undefined) {
+    const sx4 = mp.bx, sy4 = mp.by;
+    const f4 = Math.max(0, Math.min(1, (p.x - sx4) / ((own - sx4) || 1e-6)));
+    const cy4 = sy4 + (mp.shot.readY - sy4) * f4;
+    p._tx = p.x;
+    p._ty = Math.max(1.5, Math.min(PITCH_W - 1.5, cy4));
+    p._closing = true;
+    return;
+  }
+  const gkk = meGkSkill(meAttrs(p));
+  const ballD = Math.hypot(mp.bx - own, mp.by - ME_HALF_W);
+  // HIS STYLE: how commanding he is -- how readily he comes for a cross, how high he sweeps, how far
+  // he comes in a one-on-one. It comes from how good he is and how his side plays: a high line and a
+  // high press want a keeper behind them, a side that sits deep wants him at home. 0 is a keeper who
+  // lives on his line, 1 one who owns his area and the ground behind his defence.
+  const stT = Math.max(-1, Math.min(1, ((st.defLine || 0) + 0.5 * (st.pressingLOE || 0)) / 2.5));
+  const cmd = Math.max(0, Math.min(1, 0.5 + (gkk - 0.5) * CFG.gkStyleSkill + stT * CFG.gkStyleTeam));
+  const inArea = (x, y) => (x - own) * dir < CFG.gkAreaD && Math.abs(y - ME_HALF_W) < CFG.boxHalfW;
+  // HIS READ OF A RACE. A keeper does not have the forecast; he judges who will get there first, and
+  // how well is his rating. The error is fixed for the life of a ball (keyed on its last touch), so
+  // he does not change his mind four times a second, and it is up to gkJudgeMs for the worst keeper.
+  const judge = (salt) => {
+    let h = (Math.imul(salt | 0, 2654435761) ^ Math.imul(i + 7, 40503)) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+    return ((h >>> 8) / 16777216 * 2 - 1) * (1 - gkk) * CFG.gkJudgeMs;
+  };
+  // 0. A BALL OF OURS RUNNING INTO OUR NET, beyond the man it belongs to (match.ts, _ownIn), is his.
+  if (mp._ownIn === side) {
+    const ic0 = meIntercept(p, mp, meSpeed(meAttrs(p), p.stamina) * CFG.gkRushV, undefined, CFG.gkLag);
+    p._tx = ic0.x; p._ty = ic0.y; p._closing = true; p._gkGo = true; p._gkWhy = "own ball in";
+    return;
+  }
+  if (mp.idx < 0 && !mp.sp) {
+    // 1. COMING FOR IT, and only when it is his. The old rule let him lose the race and go anyway --
+    // a flat 260 ms of licence inside his area, "because he can pick it up" -- and once gone he went
+    // on to 21 m, which is the keeper running out for a cross the striker heads over him and the
+    // through ball he meets a stride after the man who rounds him. He now goes when he believes he
+    // gets there FIRST by gkClaimEdge (a ball he may handle, in his area), gkBoxEdge (in his area
+    // with only his feet) or gkRushEdge (outside it, and then only if the man who would win it is
+    // through); never when one of his own defenders has it comfortably covered (gkLeaveMs); and he
+    // gives it up if it has plainly gone against him while his line is still close behind him.
+    //
+    // ...AND THE RACE IS FOR THE BALL, not for his spot. Everybody else was timed to where HE would
+    // meet it, as if the striker had to wait for it there, so a striker running a stride from a
+    // through ball -- certain to take it long before the keeper's spot -- lost the race on paper,
+    // and the keeper set off from twenty metres for a ball that was then shot past him. Traced, that
+    // and the cross he ran nine metres out for (a volley met at the penalty spot first) were half the
+    // goals he gave away. Each man's time is now his own first touch: the number the chaser is
+    // picked by (the possession currency in match.ts), computed this tick, receiver's lag and all.
+    const vmaxG = meSpeed(meAttrs(p), p.stamina) * CFG.gkRushV;
+    // A BALL LOOSE IN HIS AREA HE HAS BEEN WATCHING ALL ALONG, the way a man a pass is played to has
+    // (rcvLag): charged the full reaction a defender reading somebody else's pass is given, a parry
+    // he had just made, rolling 1.8 m from him, came out at 1.75 s to reach -- slower than a striker
+    // five metres away -- and he walked back to his angle while it was put in.
+    const lagG = inArea(mp.bx, mp.by) ? CFG.gkLag : 1;
+    const ic = meIntercept(p, mp, vmaxG, undefined, lagG);
+    const icIn = inArea(ic.x, ic.y);
+    const outAt = Math.hypot(ic.x - own, ic.y - ME_HALF_W);
+    // ...and he credits every one of them with watching it, as the man it was played to does. A
+    // striker running under a floated ball, half a metre from it, was charged a defender's reading
+    // time and came out a second and a quarter from a ball he headed down a slice later, so the
+    // keeper left his line for it.
+    let theirs = Infinity, qNear = null, ours = Infinity;
+    for (const q of them) if (q.pos !== "GK" && !q.off) {
+      const tq = Math.min(q._ttbMs ?? Infinity, meIntercept(q, mp, meSpeed(meAttrs(q), q.stamina), undefined, CFG.rcvLag).ms);
+      if (tq < theirs) { theirs = tq; qNear = q; }
+    }
+    for (const q of ps) if (q !== p && q.pos !== "GK" && !q.off) ours = Math.min(ours, q._ttbMs ?? Infinity);
+    const hands = icIn && mp.bpass !== side;
+    // The commanding keeper needs less of an edge, and comes further for a ball he can take in his
+    // hands; the one who lives on his line only comes for what drops near his goal.
+    let edge = (hands ? CFG.gkClaimEdge : icIn ? CFG.gkBoxEdge : CFG.gkRushEdge) * (1.6 - 1.2 * cmd);
+    // A BALL IN THE AIR HE WINS CLEARLY OR NOT AT ALL. The forecast steps a quarter of a second, and a
+    // high ball drops through a whole step at a time, so a race "won" by 30 ms was a tie decided by
+    // rounding -- the keeper leaving his line for a ball the striker waiting under it headed first.
+    if (mp.bz > CFG.gkAirZ || (mp.pred && mp.pred.some(k => k[2] > CFG.gkHigh)))
+      edge = Math.max(edge, CFG.gkAirEdge * (1.6 - 1.2 * cmd));
+    const claimOK = !hands || (ic.x - own) * dir < CFG.gkClaimD0 + cmd * CFG.gkClaimDA;
+    const lg = mp.tlog && mp.tlog.length ? mp.tlog[mp.tlog.length - 1].t : 0;
+    const lead = theirs - ic.ms + judge(lg * 31);
+    // A ball he can take in his hands in his six-yard box is his whoever else is near: a parry rolling
+    // across the face of goal was left to a centre-half chasing it from behind, and the keeper walked
+    // back to his angle while the striker coming the other way scored.
+    const six = (ic.x - own) * dir < CFG.gkSixD && Math.abs(ic.y - ME_HALF_W) < CFG.gkSixW;
+    const covered = !(hands && six) && ours + CFG.gkLeaveMs < Math.min(ic.ms, theirs);
+    const sweepOK = icIn || (qNear && !meThruCover(s, meOther(side), qNear));
+    const go = lead > edge && !covered && sweepOK && claimOK && outAt < CFG.gkRushR;
+    // HE GOES TO MEET THE MAN when the man will get there first but only just, close to him and on the
+    // floor: a ball loose in front of goal with a striker arriving. Walking back to his angle from two
+    // metres away, traced, gave the striker the whole goal to aim at; arriving as he shoots, the keeper
+    // is the thing the shot has to go through.
+    const mzI = qNear && qNear._icx !== undefined && mp.pred
+      ? mp.pred[Math.min(mp.pred.length - 1, Math.round((qNear._icMs ?? 0) / (ME_DT * 1000)))] : null;
+    const meetOK = !!mzI && theirs < ic.ms && inArea(qNear._icx, qNear._icy)
+      && Math.hypot(qNear._icx - p.x, qNear._icy - p.y) < CFG.gkMeetR
+      && meTimeToBallMs(p, qNear._icx, qNear._icy, vmaxG, lagG) < theirs + CFG.gkMeetMs;
+    const lost = !meetOK && lead < -CFG.gkAbortMs && Math.hypot(p.x - own, p.y - ME_HALF_W) < CFG.gkAbortOut;
+    if (globalThis.__gkd && go && !(p._gkOut > 0)) globalThis.__gkd.push({ in: icIn ? 1 : 0, hands: hands ? 1 : 0, lead: Math.round(lead), out: +outAt.toFixed(1), t: mp.tick, i, side });
+    // Harness-only: the whole race as the keeper saw it, every slice (gkwhy.mjs).
+    if (globalThis.__gkr) globalThis.__gkr[side] = { t: mp.tick, ic: [+ic.x.toFixed(1), +ic.y.toFixed(1)], me: Math.round(ic.ms),
+      th: Math.round(theirs), us: Math.round(ours), lead: Math.round(lead), edge: Math.round(edge), go, lost, meet: meetOK,
+      cov: covered, hands, icIn };
+    if (go || (p._gkOut > 0 && outAt < CFG.gkMaxOut && !lost)) {
+      p._gkOut = go ? CFG.gkRushHold : p._gkOut - 1;
+      // Committed and beaten to it, he goes at the man where he takes it, to spread himself there --
+      // not on to the spot the ball would have reached if nobody had touched it.
+      const meet = !go && qNear && theirs < ic.ms && qNear._icx !== undefined
+        && Math.hypot(qNear._icx - own, qNear._icy - ME_HALF_W) < CFG.gkMaxOut;
+      p._tx = meet ? qNear._icx : ic.x; p._ty = meet ? qNear._icy : ic.y;
+      p._closing = true; p._gkGo = true; p._gkWhy = go ? "rush" : "rush(committed)";
+      return;
+    }
+    p._gkOut = 0;
+    if (meetOK && mzI[2] < CFG.gkMeetZ) {
+      p._tx = qNear._icx; p._ty = qNear._icy; p._closing = true; p._gkGo = true; p._gkWhy = "block";
+      return;
+    }
+    const pr = mp.pred;
+    if (mp.flight && pr) {
+      // 2. A HIGH BALL INTO HIS AREA THAT IS NOT HIS: he stays on his line and sets for the header, a
+      // step across toward where it will be met -- not stranded at whatever depth the ball's old
+      // position gave him, which is where he was when the cross came over.
+      let my = null;
+      for (let k = 1; k < pr.length; k++) {
+        const pk = pr[k];
+        if (pk[2] > 0.8 && pk[2] < CFG.gkHigh + 0.5 && inArea(pk[0], pk[1])) { my = pk[1]; break; }
+      }
+      if (my !== null) {
+        p._tx = own + dir * CFG.gkCrossOut;
+        p._ty = ME_HALF_W + Math.max(-CFG.gkCrossSpan, Math.min(CFG.gkCrossSpan, (my - ME_HALF_W) * CFG.gkCrossTrack));
+        p._closing = true; p._gkWhy = "cross stance";
+        return;
+      }
+      // ...and one that will cross his line out of his reach: get across to where it crosses.
+      let cy = null, tIn = 0;
+      for (let k = 1; k < pr.length; k++) {
+        if ((pr[k][0] - own) * dir <= 0 && (pr[k - 1][0] - own) * dir > 0) {
+          const f = (pr[k - 1][0] - own) / (pr[k - 1][0] - pr[k][0] || 1);
+          cy = pr[k - 1][1] + (pr[k][1] - pr[k - 1][1]) * f;
+          tIn = (k - 1 + f) * ME_DT * 1000;
+          break;
+        }
+      }
+      // ...and only one nobody else will touch first. A pass rolling toward the goal from fifteen
+      // metres, to a man who was going to take it long before it got there, sent him across his
+      // line to where it would have gone in, and the man it was meant for shot into the side he left.
+      let firstOut = Infinity;
+      for (const sd2 of ME_SIDES) for (const q of s.players[sd2]) if (!q.off && q.pos !== "GK") firstOut = Math.min(firstOut, q._ttbMs ?? Infinity);
+      if (tIn >= firstOut) cy = null;
+      // Only one crossing INSIDE the frame. A pass running out past the post sent him to stand on the
+      // post -- two metres outside it, traced -- while the man it was played to shot across him.
+      if (cy !== null && Math.abs(cy - ME_HALF_W) < GOAL_HALF_W + CFG.gkWideM) {
+        p._tx = own + dir * CFG.gkLineOut;
+        p._ty = ME_HALF_W + Math.max(-GOAL_HALF_W - 0.8, Math.min(GOAL_HALF_W + 0.8, cy - ME_HALF_W));
+        p._closing = true; p._gkWhy = "back to line";   // committed: no lazy gate, no target smoothing
+        return;
+      }
+    }
+  } else p._gkOut = 0;
+  const carrier2 = mp.idx >= 0 && mp.side === meOther(side) ? s.players[mp.side][mp.idx] : null;
+  // 3. A MAN WITH THE BALL IN HIS AREA. He pounces on a heavy touch -- the moment the ball is beyond
+  // the carrier's reach his hands beat anybody's feet to it, and whether he sees that is judgement.
+  if (carrier2 && ballD < CFG.gkBoxR) {
+    const bg = Math.hypot(carrier2.x - mp.bx, carrier2.y - mp.by);
+    const gb = Math.hypot(p.x - mp.bx, p.y - mp.by);
+    if (bg > CFG.reach * CFG.playReach * CFG.gkPounceGap
+        && gb < bg * (CFG.gkPounceLo + CFG.gkPounceMind * meMind(p)) * (0.8 + 0.4 * cmd)) {
+      p._tx = mp.bx; p._ty = mp.by; p._closing = true; p._gkGo = true; p._gkWhy = "pounce";
+      return;
+    }
+  }
+  // 4. ONE ON ONE. A man through on goal with it -- nobody of ours can get across -- is met: the keeper
+  // comes out along his angle to make the goal small and sets himself gk1v1Keep in front of him, no
+  // further than gk1v1Max off his line, and he does not back off again while it lasts. Anybody else
+  // carrying it at him, with defenders round him, gets the keeper standing gkStand in front of him
+  // on his angle, no further out than gkOutShot: coming out to a man who can still pass is how a
+  // keeper is left in no man's land.
+  if (carrier2 && ballD < CFG.gk1v1From) {
+    const thru = !meThruCover(s, meOther(side), carrier2);
+    if (thru || ballD < CFG.gkBoxR) {
+      const cap = thru ? CFG.gk1v1Max * (0.5 + cmd) : CFG.gkOutShot;
+      const [mx3, my3] = meGkAngle(p, own, mp.bx, mp.by);
+      // CLOSE IN, HE CLOSES. His spot was a fixed gk1v1Keep (gkStand) in front of the man, so with the
+      // man inside that distance of goal the spot was BEHIND the goal line: the keeper sat on his line
+      // while a striker dribbled in from six metres and picked his corner from three. He comes at most
+      // half the way from the man to the line along his angle -- no nearer the man than gkCloseStand,
+      // no nearer the line than gkOutMin -- which is the smother at close range and unchanged far out.
+      const toLine = Math.abs(mx3) > 1e-3 ? Math.abs((own - mp.bx) / mx3) : ballD;
+      const stand = Math.max(Math.min(CFG.gkCloseStand, toLine - CFG.gkOutMin),
+                             Math.min(thru ? CFG.gk1v1Keep : CFG.gkStand, toLine * 0.5));
+      let tx3 = mp.bx + mx3 * stand, ty3 = mp.by + my3 * stand;
+      let out3 = Math.hypot(tx3 - own, ty3 - ME_HALF_W);
+      if (thru) out3 = Math.max(out3, Math.min(cap, p._gk1 ?? 0));        // no backing off mid-duel
+      const f3 = Math.min(cap, Math.max(CFG.gkOutMin, out3)) / Math.max(0.01, Math.hypot(tx3 - own, ty3 - ME_HALF_W));
+      tx3 = own + (tx3 - own) * f3; ty3 = ME_HALF_W + (ty3 - ME_HALF_W) * f3;
+      p._gk1 = thru ? Math.hypot(tx3 - own, ty3 - ME_HALF_W) : 0;
+      p._tx = tx3; p._ty = ty3;
+      p._closing = true; p._gkWhy = thru ? "1v1" : "carrier in box";
+      return;
+    }
+  }
+  p._gk1 = 0;
+  // WHERE THE NEXT SHOT COMES FROM. With the ball on its way to one of theirs he sets himself for
+  // where that man will take it, not for where the ball happens to be: a keeper moves while the
+  // pass travels. Placed off the ball, he was a pass behind all the way across the box.
+  let bx2 = mp.bx, by2 = mp.by;
+  if (mp.idx < 0 && !mp.sp) {
+    let tq = null, tt = Infinity, to = Infinity;
+    for (const q of them) if (!q.off && q.pos !== "GK" && (q._ttbMs ?? Infinity) < tt) { tt = q._ttbMs; tq = q; }
+    for (const q of ps) if (!q.off) to = Math.min(to, q._ttbMs ?? Infinity);
+    // ...as much as it is about to happen: a pass a second from its man still has him set for the
+    // ball, and he comes round onto the receiver as it arrives. Set for a touch predicted a second
+    // ahead, he stood outside his post for a man who took it early and shot across him.
+    if (tq && tt < to && tq._icx !== undefined) {
+      const w = Math.max(0, Math.min(1, 1 - (tt - CFG.gkRefMs0) / CFG.gkRefMs1));
+      bx2 += (tq._icx - bx2) * w; by2 += (tq._icy - by2) * w;
+    }
+  }
+  const vx2 = bx2 - own, vy2 = by2 - ME_HALF_W, vd = Math.hypot(vx2, vy2) || 1;
+  // 5. THE BALL OUT WIDE IN THE LAST THIRD: the crossing stance. He used to be placed as if it were
+  // about to be SHOT from out there -- a depth that grew with the ball's distance -- so a winger
+  // thirty metres out on the touchline had him three or four metres off his line when the cross came
+  // over. A keeper facing a cross stands gkCrossOut off his line, on his angle for the near post but
+  // no nearer it than gkCrossNear from the middle, where he can still come for the ball.
+  if (vd < CFG.gkCrossFrom && Math.abs(by2 - ME_HALF_W) > CFG.gkWideY) {
+    const [mx5, my5] = meGkAngle(p, own, bx2, by2);
+    const sg5 = vx2 >= 0 ? 1 : -1;
+    const st5 = Math.abs(mx5) > 1e-3 ? (own + sg5 * CFG.gkCrossOut - bx2) / mx5 : -1;
+    const ry5 = st5 > 0 ? by2 + st5 * my5 : ME_HALF_W;
+    p._tx = own + dir * CFG.gkCrossOut;
+    p._ty = ME_HALF_W + Math.max(-CFG.gkCrossNear, Math.min(CFG.gkCrossNear, ry5 - ME_HALF_W));
+    p._gkWhy = "wide stance";
+    return;
+  }
+  // 6. EVERYWHERE ELSE: on his angle, at a depth for where the ball is. In shooting range he stays
+  // near his line -- inside gkShotZone gkOutMin + gkOutK a metre, never past gkOutShot, because a
+  // keeper who has to WATCH a shot is beaten over his head if he is far out. Further away he sweeps
+  // behind his own back line: gkSweepFrac of its height, up to gkSweepMax, reached over gkSweepBlend
+  // metres beyond the shooting zone. A high line gets a keeper behind it; a deep block keeps him home.
+  const lineH = mp.blk?.[side]?.line ?? 20;
+  const sweepMax = CFG.gkSweepMax * (0.6 + 0.6 * cmd);
+  const sweep = Math.max(CFG.gkOutShot, Math.min(sweepMax, lineH * CFG.gkSweepFrac * (0.6 + 0.8 * cmd)));
+  const near2 = vd < CFG.gkShotZone;
+  const base2 = near2 ? CFG.gkOutMin + vd * CFG.gkOutK
+              : CFG.gkOutShot + (sweep - CFG.gkOutShot) * Math.min(1, (vd - CFG.gkShotZone) / CFG.gkSweepBlend);
+  const out2 = Math.max(CFG.gkOutMin,
+               Math.min(near2 ? CFG.gkOutShot : sweepMax, (base2 + st.dlBehavior * 1.2)
+                 * (1 + (gkk - 0.5) * CFG.gkOutSkill)));
+  // HIS ANGLE IS THE BISECTOR OF THE TWO POSTS, not the line to the middle of his goal
+  // (goalie_default.cpp:41-269). For a ball in front of the goal the two are the same line; for
+  // a ball out wide they are not, and the whole of the difference is the near post. ...and against
+  // a goal that is wider the worse he is (gkPanic): a keeper with poor positioning behaves as though
+  // he has more frame to cover, which drags him toward the middle and concedes the near post.
+  const [mx2, my2] = meGkAngle(p, own, bx2, by2);
+  const sgn2 = vx2 >= 0 ? 1 : -1;
+  // Walk down the bisector from the ball until he is out2 metres off his line. If the ball is
+  // level with the goal the bisector runs parallel to it and there is no such point, so the old
+  // radial rule stands in -- which is also the case where the two rules agree anyway.
+  const step2 = Math.abs(mx2) > 1e-3 ? (own + sgn2 * out2 - bx2) / mx2 : -1;
+  p._tx = own + vx2 / vd * out2;
+  const rawY = step2 > 0 ? by2 + step2 * my2 : ME_HALF_W + vy2 / vd * out2;
+  // Near his line he is never outside his post by more than gkPostOut; further out the angle may
+  // take him wider, up to gkSide, as the cone from the ball widens with his depth.
+  const sideLim = Math.min(CFG.gkSide, GOAL_HALF_W + CFG.gkPostOut + Math.max(0, out2 - CFG.gkOutShot) * CFG.gkSideK);
+  p._ty = ME_HALF_W + Math.max(-sideLim, Math.min(sideLim, rawY - ME_HALF_W));
+  p._gkWhy = "angle";
+  return;
+}
+
+// THE MAN ON THE BALL, where he is running with it. Lifted out of meShape unchanged for the same
+// reason as meKeeperPos.
+export function meCarrierPos(s, side, i) {
+  const mp = s.mePos, p = s.players[side][i];
+  const dir = meDir(side), own = meGoalX(meOther(side));
+  // A KEEPER WITH IT IN HIS HANDS STANDS, facing the pitch, and takes a step or two up to throw. He was
+  // steered like a dribbler, along the way he happened to be moving when he took it -- usually back
+  // toward his own goal after a save -- and with two seconds to hold it he walked it over his own line.
+  if (mp.side === side && mp.idx === i && mp.held && p.pos === "GK") {
+    p._holdX ??= (p.x - own) * dir;                      // from where he took it, not from each step
+    p._tx = own + dir * Math.max(CFG.gkHoldStep, Math.min(CFG.gkAreaD - 1.5, p._holdX + CFG.gkHoldStep));
+    p._ty = p.y; p._drbA = dir > 0 ? 0 : Math.PI; p._drbWant = p._drbA;
+    return;
+  }
+  if (mp.side === side && mp.idx === i) {
+    // A dribble is a committed movement, not an argmax re-solved four times a second.
+    if ((p._drbT ?? 0) > 0) p._drbT--;
+    else {
+      const bAng = meCarryPick(s, side, p, p._drbA);
+      if (bAng !== null) { p._drbWant = bAng; p._drbT = CFG.carryCommit; }
+    }
+    // Turn INTO it rather than snapping. His feet, and the line the ball is running on, come round
+    // together at a rate his own pace allows.
+    // On taking the ball his line starts where he is ALREADY FACING, not at whatever the search has
+    // just picked. Snapping it meant the very first touch went up to 135 degrees across his own
+    // body while his momentum carried him straight on -- the ball behind him from the first
+    // contact, before the turn limit had any chance to apply.
+    if (p._drbA == null) {
+      const vN0 = Math.hypot(p.vx || 0, p.vy || 0);
+      p._drbA = vN0 > 0.02 ? Math.atan2(p.vy, p.vx)
+              : Math.hypot(mp.bx - p.x, mp.by - p.y) > 0.05 ? Math.atan2(mp.by - p.y, mp.bx - p.x)
+              : (dir > 0 ? 0 : Math.PI);
+    }
+    if (p._drbWant != null) {
+      const dth = Math.atan2(Math.sin(p._drbWant - p._drbA), Math.cos(p._drbWant - p._drbA));
+      const vNow = Math.hypot(p.vx || 0, p.vy || 0) / ME_DT;
+      const mt = CFG.dribTurn / (1 + vNow * CFG.dribTurnV);
+      p._drbA += Math.max(-mt, Math.min(mt, dth));
+    }
+    // THE LINE IS ALWAYS THERE. Pricing the out-of-play terms in the search above is the wrong
+    // instrument for this and measured like it: twelve cells over outLook 6-18 m and 1-20x the
+    // price all landed between 3.8 and 6.0 carried-out balls a match with no trend at all. The
+    // search only runs every carryCommit slices, and at carry pace that is five metres of travel
+    // -- traced, the median man who ran it out was 0.5 m from the line with the ball already
+    // 1.4 m in front of him and rolling at 5.2 m/s. Nothing he DECIDED could still reach that.
+    // A footballer does not re-notice the touchline once a second; he can see it the whole time.
+    // So the line he is taking the ball on is clamped against the pitch every slice, from where
+    // the BALL is rather than where he is. Running the touchline is untouched -- a heading that
+    // stays inside is never bent -- and only one that genuinely exits gets turned back.
+    {
+      const ex = mp.bx + Math.cos(p._drbA) * CFG.dribEdge, ey = mp.by + Math.sin(p._drbA) * CFG.dribEdge;
+      const cxE = Math.max(CFG.dribEdgeM, Math.min(PITCH_L - CFG.dribEdgeM, ex));
+      const cyE = Math.max(CFG.dribEdgeM, Math.min(PITCH_W - CFG.dribEdgeM, ey));
+      if (cxE !== ex || cyE !== ey) p._drbA = Math.atan2(cyE - mp.by, cxE - mp.bx);
+    }
+    // And if it HAS got behind him, getting it back in front is the only thing he is doing: he
+    // checks, turns onto it, and takes it on again from there.
+    {
+      const bx2 = mp.bx - p.x, by2 = mp.by - p.y, bd2 = Math.hypot(bx2, by2);
+      const vN = Math.hypot(p.vx || 0, p.vy || 0);
+      if (bd2 > 0.05 && vN > 0.02) {
+        const dotf = (bx2 / bd2) * ((p.vx || 0) / vN) + (by2 / bd2) * ((p.vy || 0) / vN);
+        if (dotf < CFG.dribBehind) p._drbA = Math.atan2(by2, bx2);   // face the ball, take it on
+      }
+    }
+    // He runs AT THE BALL, not at a point six metres away. He has to reach it to touch it, and the
+    // direction he has picked is where he pushes it once he gets there -- that is what dribbling
+    // is. Aiming him at a distant spot instead left him running away from a ball he then never
+    // made contact with: measured, the man "in possession" stood 1.6 m off it all match and the
+    // whole game ran at two passes a side.
+    // Aimed THROUGH the ball, not just past it. At a metre and a half his arrival gate stopped him
+    // a stride short of it -- man and ball both standing still, a metre apart, for the rest of the
+    // possession. He has to be running somewhere beyond it to keep making contact.
+    // He chases a point just BEYOND the ball, along the line he means to take it. Aimed at the ball
+    // itself he ran straight through it -- a 1.8 m stride at a ball 1.15 m away -- then turned a
+    // full 180 to come back, and the turn penalty took his legs every time. That oscillation on top
+    // of the ball is the dithering: he never built any speed and never got anywhere.
+    // While the ball is running he follows HIS OWN TOUCH -- onto the line it is already travelling,
+    // not to a point behind it that his intended angle happens to name. Fighting the ball's own
+    // momentum is what turned him round every second slice.
+    // He chases THE BALL, and nothing else. A target held a fixed distance behind it looks right
+    // and is fatal: standing at that target means matching the ball's velocity exactly, so the gap
+    // never closes, the two decelerate together and both come to rest a stride apart. That is the
+    // stall. What keeps the ball in front of him is not where he aims -- it is the TOUCH.
+    //
+    // ...but a target ON the ball is not a bearing, it is a point under his own feet, and that is
+    // the whole of "he drags it by his side". Traced: his target was the ball on 99.6% of carried
+    // slices, the ball sat 0.62 m away, and his velocity was 65 degrees off both. The direction to
+    // a target that close swings through a right angle in the time it takes him to move past it,
+    // so his steering can never settle and he circles the ball instead of running with it -- which
+    // is also the slow gravitating around the ball, the same mechanism seen from further away.
+    // Tightening the touch-offset limit was the obvious answer and is not the mechanism: swept
+    // from 180 degrees down to 30 it moved the angle the wrong way, 78 to 87, because the limit is
+    // measured against a velocity that is itself pointing at the off-line ball.
+    //
+    // So he is aimed BEYOND the ball, along the line he has picked. That is a bearing that holds
+    // for several slices, and it does not stall the way a point behind the ball does: the target
+    // is on the far side of it, so he runs THROUGH the ball, and the touch is what puts it back in
+    // front. He cannot outrun it either -- the touch leaves his foot touchMin quicker than he is
+    // going, every time.
+    // ...WHICH WAS TRUE WHILE THE BALL WAS STEERED BY A FORCE. It is now TOUCHED (touch.ts): he plays
+    // it on when it comes back to his feet, and what he needs from his running is to arrive there,
+    // a boot's length behind it on the line he is taking it -- so that is where he is aimed. A
+    // target beyond the ball made him run through it every slice and lean on the body shove to put
+    // it back in front of him.
+    // Behind it along the way it is ROLLING, not along the line he wants: a ball going off his line
+    // is chased from behind, not run alongside.
+    let ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
+    if (Math.hypot(mp.bvx, mp.bvy) > 0.5) ca = Math.atan2(mp.bvy, mp.bvx);
+    p._tx = mp.bx - Math.cos(ca) * CFG.dribBehindD;
+    p._ty = mp.by - Math.sin(ca) * CFG.dribBehindD;
+    return;                                                    // no leash, no trap, no offside clamp
+  }
+}
+
 // ---- shape ------------------------------------------------------------------------------
 // The zonal skeleton, then the job on top of it. Nobody's position is implicit any more: every
 // outfielder is doing exactly one thing the coordinator told him to do.
@@ -1669,280 +2064,7 @@ export function meShape(s, side) {
     // ...unless he has the ball, in which case he is a footballer like everybody else. The keeper
     // branch used to return before the carrier logic was ever reached, so a keeper in possession ran
     // back to his line and left the ball where it was: traced, four metres away and still climbing.
-    if (p.pos === "GK" && !(mp.side === side && mp.idx === i)) {
-      // Making a save: it owns him until it is over (keeper.ts, meMove).
-      const gp2 = mp.shot?.gk ?? mp.gkPlan;
-      if (gp2 && gp2.side === side && gp2.i === i) { p._closing = true; p._gkWhy = gp2 === mp.gkPlan ? "save(ball)" : "save(shot)"; continue; }
-      // ---- THE KEEPER WHEN HE IS NOT MAKING A SAVE ------------------------------------------------
-      // Penalties keep the read (keeper.ts): he goes where he guessed, holding his depth.
-      if (mp.idx < 0 && !mp.sp && mp.shot && mp.shot.side !== side && mp.shot.readY !== undefined) {
-        const sx4 = mp.bx, sy4 = mp.by;
-        const f4 = Math.max(0, Math.min(1, (p.x - sx4) / ((own - sx4) || 1e-6)));
-        const cy4 = sy4 + (mp.shot.readY - sy4) * f4;
-        p._tx = p.x;
-        p._ty = Math.max(1.5, Math.min(PITCH_W - 1.5, cy4));
-        p._closing = true;
-        continue;
-      }
-      const gkk = meGkSkill(meAttrs(p));
-      const ballD = Math.hypot(mp.bx - own, mp.by - ME_HALF_W);
-      // HIS STYLE: how commanding he is -- how readily he comes for a cross, how high he sweeps, how far
-      // he comes in a one-on-one. It comes from how good he is and how his side plays: a high line and a
-      // high press want a keeper behind them, a side that sits deep wants him at home. 0 is a keeper who
-      // lives on his line, 1 one who owns his area and the ground behind his defence.
-      const stT = Math.max(-1, Math.min(1, ((st.defLine || 0) + 0.5 * (st.pressingLOE || 0)) / 2.5));
-      const cmd = Math.max(0, Math.min(1, 0.5 + (gkk - 0.5) * CFG.gkStyleSkill + stT * CFG.gkStyleTeam));
-      const inArea = (x, y) => (x - own) * dir < CFG.gkAreaD && Math.abs(y - ME_HALF_W) < CFG.boxHalfW;
-      // HIS READ OF A RACE. A keeper does not have the forecast; he judges who will get there first, and
-      // how well is his rating. The error is fixed for the life of a ball (keyed on its last touch), so
-      // he does not change his mind four times a second, and it is up to gkJudgeMs for the worst keeper.
-      const judge = (salt) => {
-        let h = (Math.imul(salt | 0, 2654435761) ^ Math.imul(i + 7, 40503)) >>> 0;
-        h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
-        return ((h >>> 8) / 16777216 * 2 - 1) * (1 - gkk) * CFG.gkJudgeMs;
-      };
-      // 0. A BALL OF OURS RUNNING INTO OUR NET, beyond the man it belongs to (match.ts, _ownIn), is his.
-      if (mp._ownIn === side) {
-        const ic0 = meIntercept(p, mp, meSpeed(meAttrs(p), p.stamina) * CFG.gkRushV, undefined, CFG.gkLag);
-        p._tx = ic0.x; p._ty = ic0.y; p._closing = true; p._gkGo = true; p._gkWhy = "own ball in";
-        continue;
-      }
-      if (mp.idx < 0 && !mp.sp) {
-        // 1. COMING FOR IT, and only when it is his. The old rule let him lose the race and go anyway --
-        // a flat 260 ms of licence inside his area, "because he can pick it up" -- and once gone he went
-        // on to 21 m, which is the keeper running out for a cross the striker heads over him and the
-        // through ball he meets a stride after the man who rounds him. He now goes when he believes he
-        // gets there FIRST by gkClaimEdge (a ball he may handle, in his area), gkBoxEdge (in his area
-        // with only his feet) or gkRushEdge (outside it, and then only if the man who would win it is
-        // through); never when one of his own defenders has it comfortably covered (gkLeaveMs); and he
-        // gives it up if it has plainly gone against him while his line is still close behind him.
-        //
-        // ...AND THE RACE IS FOR THE BALL, not for his spot. Everybody else was timed to where HE would
-        // meet it, as if the striker had to wait for it there, so a striker running a stride from a
-        // through ball -- certain to take it long before the keeper's spot -- lost the race on paper,
-        // and the keeper set off from twenty metres for a ball that was then shot past him. Traced, that
-        // and the cross he ran nine metres out for (a volley met at the penalty spot first) were half the
-        // goals he gave away. Each man's time is now his own first touch: the number the chaser is
-        // picked by (the possession currency in match.ts), computed this tick, receiver's lag and all.
-        const vmaxG = meSpeed(meAttrs(p), p.stamina) * CFG.gkRushV;
-        // A BALL LOOSE IN HIS AREA HE HAS BEEN WATCHING ALL ALONG, the way a man a pass is played to has
-        // (rcvLag): charged the full reaction a defender reading somebody else's pass is given, a parry
-        // he had just made, rolling 1.8 m from him, came out at 1.75 s to reach -- slower than a striker
-        // five metres away -- and he walked back to his angle while it was put in.
-        const lagG = inArea(mp.bx, mp.by) ? CFG.gkLag : 1;
-        const ic = meIntercept(p, mp, vmaxG, undefined, lagG);
-        const icIn = inArea(ic.x, ic.y);
-        const outAt = Math.hypot(ic.x - own, ic.y - ME_HALF_W);
-        // ...and he credits every one of them with watching it, as the man it was played to does. A
-        // striker running under a floated ball, half a metre from it, was charged a defender's reading
-        // time and came out a second and a quarter from a ball he headed down a slice later, so the
-        // keeper left his line for it.
-        let theirs = Infinity, qNear = null, ours = Infinity;
-        for (const q of them) if (q.pos !== "GK" && !q.off) {
-          const tq = Math.min(q._ttbMs ?? Infinity, meIntercept(q, mp, meSpeed(meAttrs(q), q.stamina), undefined, CFG.rcvLag).ms);
-          if (tq < theirs) { theirs = tq; qNear = q; }
-        }
-        for (const q of ps) if (q !== p && q.pos !== "GK" && !q.off) ours = Math.min(ours, q._ttbMs ?? Infinity);
-        const hands = icIn && mp.bpass !== side;
-        // The commanding keeper needs less of an edge, and comes further for a ball he can take in his
-        // hands; the one who lives on his line only comes for what drops near his goal.
-        let edge = (hands ? CFG.gkClaimEdge : icIn ? CFG.gkBoxEdge : CFG.gkRushEdge) * (1.6 - 1.2 * cmd);
-        // A BALL IN THE AIR HE WINS CLEARLY OR NOT AT ALL. The forecast steps a quarter of a second, and a
-        // high ball drops through a whole step at a time, so a race "won" by 30 ms was a tie decided by
-        // rounding -- the keeper leaving his line for a ball the striker waiting under it headed first.
-        if (mp.bz > CFG.gkAirZ || (mp.pred && mp.pred.some(k => k[2] > CFG.gkHigh)))
-          edge = Math.max(edge, CFG.gkAirEdge * (1.6 - 1.2 * cmd));
-        const claimOK = !hands || (ic.x - own) * dir < CFG.gkClaimD0 + cmd * CFG.gkClaimDA;
-        const lg = mp.tlog && mp.tlog.length ? mp.tlog[mp.tlog.length - 1].t : 0;
-        const lead = theirs - ic.ms + judge(lg * 31);
-        // A ball he can take in his hands in his six-yard box is his whoever else is near: a parry rolling
-        // across the face of goal was left to a centre-half chasing it from behind, and the keeper walked
-        // back to his angle while the striker coming the other way scored.
-        const six = (ic.x - own) * dir < CFG.gkSixD && Math.abs(ic.y - ME_HALF_W) < CFG.gkSixW;
-        const covered = !(hands && six) && ours + CFG.gkLeaveMs < Math.min(ic.ms, theirs);
-        const sweepOK = icIn || (qNear && !meThruCover(s, meOther(side), qNear));
-        const go = lead > edge && !covered && sweepOK && claimOK && outAt < CFG.gkRushR;
-        // HE GOES TO MEET THE MAN when the man will get there first but only just, close to him and on the
-        // floor: a ball loose in front of goal with a striker arriving. Walking back to his angle from two
-        // metres away, traced, gave the striker the whole goal to aim at; arriving as he shoots, the keeper
-        // is the thing the shot has to go through.
-        const mzI = qNear && qNear._icx !== undefined && mp.pred
-          ? mp.pred[Math.min(mp.pred.length - 1, Math.round((qNear._icMs ?? 0) / (ME_DT * 1000)))] : null;
-        const meetOK = !!mzI && theirs < ic.ms && inArea(qNear._icx, qNear._icy)
-          && Math.hypot(qNear._icx - p.x, qNear._icy - p.y) < CFG.gkMeetR
-          && meTimeToBallMs(p, qNear._icx, qNear._icy, vmaxG, lagG) < theirs + CFG.gkMeetMs;
-        const lost = !meetOK && lead < -CFG.gkAbortMs && Math.hypot(p.x - own, p.y - ME_HALF_W) < CFG.gkAbortOut;
-        if (globalThis.__gkd && go && !(p._gkOut > 0)) globalThis.__gkd.push({ in: icIn ? 1 : 0, hands: hands ? 1 : 0, lead: Math.round(lead), out: +outAt.toFixed(1), t: mp.tick, i, side });
-        // Harness-only: the whole race as the keeper saw it, every slice (gkwhy.mjs).
-        if (globalThis.__gkr) globalThis.__gkr[side] = { t: mp.tick, ic: [+ic.x.toFixed(1), +ic.y.toFixed(1)], me: Math.round(ic.ms),
-          th: Math.round(theirs), us: Math.round(ours), lead: Math.round(lead), edge: Math.round(edge), go, lost, meet: meetOK,
-          cov: covered, hands, icIn };
-        if (go || (p._gkOut > 0 && outAt < CFG.gkMaxOut && !lost)) {
-          p._gkOut = go ? CFG.gkRushHold : p._gkOut - 1;
-          // Committed and beaten to it, he goes at the man where he takes it, to spread himself there --
-          // not on to the spot the ball would have reached if nobody had touched it.
-          const meet = !go && qNear && theirs < ic.ms && qNear._icx !== undefined
-            && Math.hypot(qNear._icx - own, qNear._icy - ME_HALF_W) < CFG.gkMaxOut;
-          p._tx = meet ? qNear._icx : ic.x; p._ty = meet ? qNear._icy : ic.y;
-          p._closing = true; p._gkGo = true; p._gkWhy = go ? "rush" : "rush(committed)";
-          continue;
-        }
-        p._gkOut = 0;
-        if (meetOK && mzI[2] < CFG.gkMeetZ) {
-          p._tx = qNear._icx; p._ty = qNear._icy; p._closing = true; p._gkGo = true; p._gkWhy = "block";
-          continue;
-        }
-        const pr = mp.pred;
-        if (mp.flight && pr) {
-          // 2. A HIGH BALL INTO HIS AREA THAT IS NOT HIS: he stays on his line and sets for the header, a
-          // step across toward where it will be met -- not stranded at whatever depth the ball's old
-          // position gave him, which is where he was when the cross came over.
-          let my = null;
-          for (let k = 1; k < pr.length; k++) {
-            const pk = pr[k];
-            if (pk[2] > 0.8 && pk[2] < CFG.gkHigh + 0.5 && inArea(pk[0], pk[1])) { my = pk[1]; break; }
-          }
-          if (my !== null) {
-            p._tx = own + dir * CFG.gkCrossOut;
-            p._ty = ME_HALF_W + Math.max(-CFG.gkCrossSpan, Math.min(CFG.gkCrossSpan, (my - ME_HALF_W) * CFG.gkCrossTrack));
-            p._closing = true; p._gkWhy = "cross stance";
-            continue;
-          }
-          // ...and one that will cross his line out of his reach: get across to where it crosses.
-          let cy = null, tIn = 0;
-          for (let k = 1; k < pr.length; k++) {
-            if ((pr[k][0] - own) * dir <= 0 && (pr[k - 1][0] - own) * dir > 0) {
-              const f = (pr[k - 1][0] - own) / (pr[k - 1][0] - pr[k][0] || 1);
-              cy = pr[k - 1][1] + (pr[k][1] - pr[k - 1][1]) * f;
-              tIn = (k - 1 + f) * ME_DT * 1000;
-              break;
-            }
-          }
-          // ...and only one nobody else will touch first. A pass rolling toward the goal from fifteen
-          // metres, to a man who was going to take it long before it got there, sent him across his
-          // line to where it would have gone in, and the man it was meant for shot into the side he left.
-          let firstOut = Infinity;
-          for (const sd2 of ME_SIDES) for (const q of s.players[sd2]) if (!q.off && q.pos !== "GK") firstOut = Math.min(firstOut, q._ttbMs ?? Infinity);
-          if (tIn >= firstOut) cy = null;
-          // Only one crossing INSIDE the frame. A pass running out past the post sent him to stand on the
-          // post -- two metres outside it, traced -- while the man it was played to shot across him.
-          if (cy !== null && Math.abs(cy - ME_HALF_W) < GOAL_HALF_W + CFG.gkWideM) {
-            p._tx = own + dir * CFG.gkLineOut;
-            p._ty = ME_HALF_W + Math.max(-GOAL_HALF_W - 0.8, Math.min(GOAL_HALF_W + 0.8, cy - ME_HALF_W));
-            p._closing = true; p._gkWhy = "back to line";   // committed: no lazy gate, no target smoothing
-            continue;
-          }
-        }
-      } else p._gkOut = 0;
-      const carrier2 = mp.idx >= 0 && mp.side === meOther(side) ? s.players[mp.side][mp.idx] : null;
-      // 3. A MAN WITH THE BALL IN HIS AREA. He pounces on a heavy touch -- the moment the ball is beyond
-      // the carrier's reach his hands beat anybody's feet to it, and whether he sees that is judgement.
-      if (carrier2 && ballD < CFG.gkBoxR) {
-        const bg = Math.hypot(carrier2.x - mp.bx, carrier2.y - mp.by);
-        const gb = Math.hypot(p.x - mp.bx, p.y - mp.by);
-        if (bg > CFG.reach * CFG.playReach * CFG.gkPounceGap
-            && gb < bg * (CFG.gkPounceLo + CFG.gkPounceMind * meMind(p)) * (0.8 + 0.4 * cmd)) {
-          p._tx = mp.bx; p._ty = mp.by; p._closing = true; p._gkGo = true; p._gkWhy = "pounce";
-          continue;
-        }
-      }
-      // 4. ONE ON ONE. A man through on goal with it -- nobody of ours can get across -- is met: the keeper
-      // comes out along his angle to make the goal small and sets himself gk1v1Keep in front of him, no
-      // further than gk1v1Max off his line, and he does not back off again while it lasts. Anybody else
-      // carrying it at him, with defenders round him, gets the keeper standing gkStand in front of him
-      // on his angle, no further out than gkOutShot: coming out to a man who can still pass is how a
-      // keeper is left in no man's land.
-      if (carrier2 && ballD < CFG.gk1v1From) {
-        const thru = !meThruCover(s, meOther(side), carrier2);
-        if (thru || ballD < CFG.gkBoxR) {
-          const cap = thru ? CFG.gk1v1Max * (0.5 + cmd) : CFG.gkOutShot;
-          const [mx3, my3] = meGkAngle(p, own, mp.bx, mp.by);
-          // CLOSE IN, HE CLOSES. His spot was a fixed gk1v1Keep (gkStand) in front of the man, so with the
-          // man inside that distance of goal the spot was BEHIND the goal line: the keeper sat on his line
-          // while a striker dribbled in from six metres and picked his corner from three. He comes at most
-          // half the way from the man to the line along his angle -- no nearer the man than gkCloseStand,
-          // no nearer the line than gkOutMin -- which is the smother at close range and unchanged far out.
-          const toLine = Math.abs(mx3) > 1e-3 ? Math.abs((own - mp.bx) / mx3) : ballD;
-          const stand = Math.max(Math.min(CFG.gkCloseStand, toLine - CFG.gkOutMin),
-                                 Math.min(thru ? CFG.gk1v1Keep : CFG.gkStand, toLine * 0.5));
-          let tx3 = mp.bx + mx3 * stand, ty3 = mp.by + my3 * stand;
-          let out3 = Math.hypot(tx3 - own, ty3 - ME_HALF_W);
-          if (thru) out3 = Math.max(out3, Math.min(cap, p._gk1 ?? 0));        // no backing off mid-duel
-          const f3 = Math.min(cap, Math.max(CFG.gkOutMin, out3)) / Math.max(0.01, Math.hypot(tx3 - own, ty3 - ME_HALF_W));
-          tx3 = own + (tx3 - own) * f3; ty3 = ME_HALF_W + (ty3 - ME_HALF_W) * f3;
-          p._gk1 = thru ? Math.hypot(tx3 - own, ty3 - ME_HALF_W) : 0;
-          p._tx = tx3; p._ty = ty3;
-          p._closing = true; p._gkWhy = thru ? "1v1" : "carrier in box";
-          continue;
-        }
-      }
-      p._gk1 = 0;
-      // WHERE THE NEXT SHOT COMES FROM. With the ball on its way to one of theirs he sets himself for
-      // where that man will take it, not for where the ball happens to be: a keeper moves while the
-      // pass travels. Placed off the ball, he was a pass behind all the way across the box.
-      let bx2 = mp.bx, by2 = mp.by;
-      if (mp.idx < 0 && !mp.sp) {
-        let tq = null, tt = Infinity, to = Infinity;
-        for (const q of them) if (!q.off && q.pos !== "GK" && (q._ttbMs ?? Infinity) < tt) { tt = q._ttbMs; tq = q; }
-        for (const q of ps) if (!q.off) to = Math.min(to, q._ttbMs ?? Infinity);
-        // ...as much as it is about to happen: a pass a second from its man still has him set for the
-        // ball, and he comes round onto the receiver as it arrives. Set for a touch predicted a second
-        // ahead, he stood outside his post for a man who took it early and shot across him.
-        if (tq && tt < to && tq._icx !== undefined) {
-          const w = Math.max(0, Math.min(1, 1 - (tt - CFG.gkRefMs0) / CFG.gkRefMs1));
-          bx2 += (tq._icx - bx2) * w; by2 += (tq._icy - by2) * w;
-        }
-      }
-      const vx2 = bx2 - own, vy2 = by2 - ME_HALF_W, vd = Math.hypot(vx2, vy2) || 1;
-      // 5. THE BALL OUT WIDE IN THE LAST THIRD: the crossing stance. He used to be placed as if it were
-      // about to be SHOT from out there -- a depth that grew with the ball's distance -- so a winger
-      // thirty metres out on the touchline had him three or four metres off his line when the cross came
-      // over. A keeper facing a cross stands gkCrossOut off his line, on his angle for the near post but
-      // no nearer it than gkCrossNear from the middle, where he can still come for the ball.
-      if (vd < CFG.gkCrossFrom && Math.abs(by2 - ME_HALF_W) > CFG.gkWideY) {
-        const [mx5, my5] = meGkAngle(p, own, bx2, by2);
-        const sg5 = vx2 >= 0 ? 1 : -1;
-        const st5 = Math.abs(mx5) > 1e-3 ? (own + sg5 * CFG.gkCrossOut - bx2) / mx5 : -1;
-        const ry5 = st5 > 0 ? by2 + st5 * my5 : ME_HALF_W;
-        p._tx = own + dir * CFG.gkCrossOut;
-        p._ty = ME_HALF_W + Math.max(-CFG.gkCrossNear, Math.min(CFG.gkCrossNear, ry5 - ME_HALF_W));
-        p._gkWhy = "wide stance";
-        continue;
-      }
-      // 6. EVERYWHERE ELSE: on his angle, at a depth for where the ball is. In shooting range he stays
-      // near his line -- inside gkShotZone gkOutMin + gkOutK a metre, never past gkOutShot, because a
-      // keeper who has to WATCH a shot is beaten over his head if he is far out. Further away he sweeps
-      // behind his own back line: gkSweepFrac of its height, up to gkSweepMax, reached over gkSweepBlend
-      // metres beyond the shooting zone. A high line gets a keeper behind it; a deep block keeps him home.
-      const lineH = mp.blk?.[side]?.line ?? 20;
-      const sweepMax = CFG.gkSweepMax * (0.6 + 0.6 * cmd);
-      const sweep = Math.max(CFG.gkOutShot, Math.min(sweepMax, lineH * CFG.gkSweepFrac * (0.6 + 0.8 * cmd)));
-      const near2 = vd < CFG.gkShotZone;
-      const base2 = near2 ? CFG.gkOutMin + vd * CFG.gkOutK
-                  : CFG.gkOutShot + (sweep - CFG.gkOutShot) * Math.min(1, (vd - CFG.gkShotZone) / CFG.gkSweepBlend);
-      const out2 = Math.max(CFG.gkOutMin,
-                   Math.min(near2 ? CFG.gkOutShot : sweepMax, (base2 + st.dlBehavior * 1.2)
-                     * (1 + (gkk - 0.5) * CFG.gkOutSkill)));
-      // HIS ANGLE IS THE BISECTOR OF THE TWO POSTS, not the line to the middle of his goal
-      // (goalie_default.cpp:41-269). For a ball in front of the goal the two are the same line; for
-      // a ball out wide they are not, and the whole of the difference is the near post. ...and against
-      // a goal that is wider the worse he is (gkPanic): a keeper with poor positioning behaves as though
-      // he has more frame to cover, which drags him toward the middle and concedes the near post.
-      const [mx2, my2] = meGkAngle(p, own, bx2, by2);
-      const sgn2 = vx2 >= 0 ? 1 : -1;
-      // Walk down the bisector from the ball until he is out2 metres off his line. If the ball is
-      // level with the goal the bisector runs parallel to it and there is no such point, so the old
-      // radial rule stands in -- which is also the case where the two rules agree anyway.
-      const step2 = Math.abs(mx2) > 1e-3 ? (own + sgn2 * out2 - bx2) / mx2 : -1;
-      p._tx = own + vx2 / vd * out2;
-      const rawY = step2 > 0 ? by2 + step2 * my2 : ME_HALF_W + vy2 / vd * out2;
-      // Near his line he is never outside his post by more than gkPostOut; further out the angle may
-      // take him wider, up to gkSide, as the cone from the ball widens with his depth.
-      const sideLim = Math.min(CFG.gkSide, GOAL_HALF_W + CFG.gkPostOut + Math.max(0, out2 - CFG.gkOutShot) * CFG.gkSideK);
-      p._ty = ME_HALF_W + Math.max(-sideLim, Math.min(sideLim, rawY - ME_HALF_W));
-      p._gkWhy = "angle";
-      continue;
-    }
+    if (p.pos === "GK" && !(mp.side === side && mp.idx === i)) { meKeeperPos(s, side, i); continue; }
     // READING THE PASS. A ball played into the man I am marking is a decision, not something I
     // watch go past. The block puts me GOAL-SIDE of him, which is behind the point the ball arrives
     // at, so left alone I let it run to his feet and then mark him -- and that is what it looked
@@ -2287,114 +2409,7 @@ export function meShape(s, side) {
     // The man on the ball has his own target: where he wants to TAKE it. Forward when the space is
     // there, away from the press when it is not. He is then steered by the ordinary movement code,
     // which is what makes carrying continuous instead of a fixed five-slice lunge.
-    // A KEEPER WITH IT IN HIS HANDS STANDS, facing the pitch, and takes a step or two up to throw. He was
-    // steered like a dribbler, along the way he happened to be moving when he took it -- usually back
-    // toward his own goal after a save -- and with two seconds to hold it he walked it over his own line.
-    if (mp.side === side && mp.idx === i && mp.held && p.pos === "GK") {
-      p._holdX ??= (p.x - own) * dir;                      // from where he took it, not from each step
-      p._tx = own + dir * Math.max(CFG.gkHoldStep, Math.min(CFG.gkAreaD - 1.5, p._holdX + CFG.gkHoldStep));
-      p._ty = p.y; p._drbA = dir > 0 ? 0 : Math.PI; p._drbWant = p._drbA;
-      continue;
-    }
-    if (mp.side === side && mp.idx === i) {
-      // A dribble is a committed movement, not an argmax re-solved four times a second.
-      if ((p._drbT ?? 0) > 0) p._drbT--;
-      else {
-        const bAng = meCarryPick(s, side, p, p._drbA);
-        if (bAng !== null) { p._drbWant = bAng; p._drbT = CFG.carryCommit; }
-      }
-      // Turn INTO it rather than snapping. His feet, and the line the ball is running on, come round
-      // together at a rate his own pace allows.
-      // On taking the ball his line starts where he is ALREADY FACING, not at whatever the search has
-      // just picked. Snapping it meant the very first touch went up to 135 degrees across his own
-      // body while his momentum carried him straight on -- the ball behind him from the first
-      // contact, before the turn limit had any chance to apply.
-      if (p._drbA == null) {
-        const vN0 = Math.hypot(p.vx || 0, p.vy || 0);
-        p._drbA = vN0 > 0.02 ? Math.atan2(p.vy, p.vx)
-                : Math.hypot(mp.bx - p.x, mp.by - p.y) > 0.05 ? Math.atan2(mp.by - p.y, mp.bx - p.x)
-                : (dir > 0 ? 0 : Math.PI);
-      }
-      if (p._drbWant != null) {
-        const dth = Math.atan2(Math.sin(p._drbWant - p._drbA), Math.cos(p._drbWant - p._drbA));
-        const vNow = Math.hypot(p.vx || 0, p.vy || 0) / ME_DT;
-        const mt = CFG.dribTurn / (1 + vNow * CFG.dribTurnV);
-        p._drbA += Math.max(-mt, Math.min(mt, dth));
-      }
-      // THE LINE IS ALWAYS THERE. Pricing the out-of-play terms in the search above is the wrong
-      // instrument for this and measured like it: twelve cells over outLook 6-18 m and 1-20x the
-      // price all landed between 3.8 and 6.0 carried-out balls a match with no trend at all. The
-      // search only runs every carryCommit slices, and at carry pace that is five metres of travel
-      // -- traced, the median man who ran it out was 0.5 m from the line with the ball already
-      // 1.4 m in front of him and rolling at 5.2 m/s. Nothing he DECIDED could still reach that.
-      // A footballer does not re-notice the touchline once a second; he can see it the whole time.
-      // So the line he is taking the ball on is clamped against the pitch every slice, from where
-      // the BALL is rather than where he is. Running the touchline is untouched -- a heading that
-      // stays inside is never bent -- and only one that genuinely exits gets turned back.
-      {
-        const ex = mp.bx + Math.cos(p._drbA) * CFG.dribEdge, ey = mp.by + Math.sin(p._drbA) * CFG.dribEdge;
-        const cxE = Math.max(CFG.dribEdgeM, Math.min(PITCH_L - CFG.dribEdgeM, ex));
-        const cyE = Math.max(CFG.dribEdgeM, Math.min(PITCH_W - CFG.dribEdgeM, ey));
-        if (cxE !== ex || cyE !== ey) p._drbA = Math.atan2(cyE - mp.by, cxE - mp.bx);
-      }
-      // And if it HAS got behind him, getting it back in front is the only thing he is doing: he
-      // checks, turns onto it, and takes it on again from there.
-      {
-        const bx2 = mp.bx - p.x, by2 = mp.by - p.y, bd2 = Math.hypot(bx2, by2);
-        const vN = Math.hypot(p.vx || 0, p.vy || 0);
-        if (bd2 > 0.05 && vN > 0.02) {
-          const dotf = (bx2 / bd2) * ((p.vx || 0) / vN) + (by2 / bd2) * ((p.vy || 0) / vN);
-          if (dotf < CFG.dribBehind) p._drbA = Math.atan2(by2, bx2);   // face the ball, take it on
-        }
-      }
-      // He runs AT THE BALL, not at a point six metres away. He has to reach it to touch it, and the
-      // direction he has picked is where he pushes it once he gets there -- that is what dribbling
-      // is. Aiming him at a distant spot instead left him running away from a ball he then never
-      // made contact with: measured, the man "in possession" stood 1.6 m off it all match and the
-      // whole game ran at two passes a side.
-      // Aimed THROUGH the ball, not just past it. At a metre and a half his arrival gate stopped him
-      // a stride short of it -- man and ball both standing still, a metre apart, for the rest of the
-      // possession. He has to be running somewhere beyond it to keep making contact.
-      // He chases a point just BEYOND the ball, along the line he means to take it. Aimed at the ball
-      // itself he ran straight through it -- a 1.8 m stride at a ball 1.15 m away -- then turned a
-      // full 180 to come back, and the turn penalty took his legs every time. That oscillation on top
-      // of the ball is the dithering: he never built any speed and never got anywhere.
-      // While the ball is running he follows HIS OWN TOUCH -- onto the line it is already travelling,
-      // not to a point behind it that his intended angle happens to name. Fighting the ball's own
-      // momentum is what turned him round every second slice.
-      // He chases THE BALL, and nothing else. A target held a fixed distance behind it looks right
-      // and is fatal: standing at that target means matching the ball's velocity exactly, so the gap
-      // never closes, the two decelerate together and both come to rest a stride apart. That is the
-      // stall. What keeps the ball in front of him is not where he aims -- it is the TOUCH.
-      //
-      // ...but a target ON the ball is not a bearing, it is a point under his own feet, and that is
-      // the whole of "he drags it by his side". Traced: his target was the ball on 99.6% of carried
-      // slices, the ball sat 0.62 m away, and his velocity was 65 degrees off both. The direction to
-      // a target that close swings through a right angle in the time it takes him to move past it,
-      // so his steering can never settle and he circles the ball instead of running with it -- which
-      // is also the slow gravitating around the ball, the same mechanism seen from further away.
-      // Tightening the touch-offset limit was the obvious answer and is not the mechanism: swept
-      // from 180 degrees down to 30 it moved the angle the wrong way, 78 to 87, because the limit is
-      // measured against a velocity that is itself pointing at the off-line ball.
-      //
-      // So he is aimed BEYOND the ball, along the line he has picked. That is a bearing that holds
-      // for several slices, and it does not stall the way a point behind the ball does: the target
-      // is on the far side of it, so he runs THROUGH the ball, and the touch is what puts it back in
-      // front. He cannot outrun it either -- the touch leaves his foot touchMin quicker than he is
-      // going, every time.
-      // ...WHICH WAS TRUE WHILE THE BALL WAS STEERED BY A FORCE. It is now TOUCHED (touch.ts): he plays
-      // it on when it comes back to his feet, and what he needs from his running is to arrive there,
-      // a boot's length behind it on the line he is taking it -- so that is where he is aimed. A
-      // target beyond the ball made him run through it every slice and lean on the body shove to put
-      // it back in front of him.
-      // Behind it along the way it is ROLLING, not along the line he wants: a ball going off his line
-      // is chased from behind, not run alongside.
-      let ca = p._drbA ?? (dir > 0 ? 0 : Math.PI);
-      if (Math.hypot(mp.bvx, mp.bvy) > 0.5) ca = Math.atan2(mp.bvy, mp.bvx);
-      p._tx = mp.bx - Math.cos(ca) * CFG.dribBehindD;
-      p._ty = mp.by - Math.sin(ca) * CFG.dribBehindD;
-      continue;                                                    // no leash, no trap, no offside clamp
-    }
+    if (mp.side === side && mp.idx === i) { meCarrierPos(s, side, i); continue; }
     // A committed run overrides the job for as long as it lasts -- but a man going in behind holds
     // the last shoulder until the ball is actually played into the space, and only then breaks.
     if (p._runT > 0) {

@@ -215,7 +215,9 @@ export function meSPShape(s) {
   // keeper, the wall, and the exclusion laws. Rows of men on pregenerated coordinates -- the
   // corner tableau, the goal-kick line-up along the byline -- were exactly what made restarts
   // read as staged, and the duties layer does the position-wrestling better than any script.
-  const duked = sp.kind === "goalkick" || sp.kind === "freekick" || sp.kind === "corner";
+  const duked = sp.kind === "goalkick" || sp.kind === "freekick" || sp.kind === "corner"
+              // ...and a throw, for the second brain, which positions both sides at it (mind/team.ts).
+              || (s.brain === 2 && sp.kind === "throw");
   for (const sd of ME_SIDES) for (const p of s.players[sd]) { p._closing = p._closing && duked; p._spSet = false; p._celeb = false; }
 
   // IT HAS JUST GONE IN. A goal restarts with a kickoff, and the kickoff shape used to begin the

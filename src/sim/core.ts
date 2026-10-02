@@ -335,7 +335,7 @@ export const meStrategyFor = (t) => ({ ...STRAT_DEF, ...(t?.strategy || {}) });
 export const meFitFor = (t) => computeStyleFit(t?.style || "balanced", t?.squad || []);
 
 export function createMatchState() {
-  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},fit:{home:1,away:1},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, teamForm:{home:0,away:0}, injuriesEnabled:true };
+  return { phase:"pre_match",minute:0,stoppageElapsed:0,stoppageTotal:0,stoppageBank:0,score:[0,0],events:[],stats:{home:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0},away:{shots:0,onTarget:0,fouls:0,yellows:0,reds:0,corners:0,penalties:0,woodwork:0,injuries:0,injuriesNoSub:0}},players:{home:[],away:[]},bench:{home:[],away:[]},booked:{home:[],away:[]},goalscorers:{home:[],away:[]},subbedOff:{home:[],away:[]},forceResult:false,penalties:null,ball:2,pressure:0,tactics:{home:"bal",away:"bal"},possession:"home",possCount:{home:0,away:0},styles:{home:"balanced",away:"balanced"},fit:{home:1,away:1},allowTacChange:{home:true,away:true},autoSubs:{home:true,away:true},momentum:{home:0,away:0},formations:{home:"4-3-3",away:"4-3-3"},homeAdv:null,venue:null,subs:{home:0,away:0},subCap:{home:3,away:3}, startScore:[0,0], isSecondLeg:false, pendingPenalty:null, activeChance:null, xG:{home:0,away:0},momHist:[],strategy:{home:{...STRAT_DEF},away:{...STRAT_DEF}},matchUrg:{home:0,away:0}, teamForm:{home:0,away:0}, injuriesEnabled:true, brain:2 };
 }
 
 // The second leg is played with the sides swapped into the home and away slots, so what a tie is
@@ -349,10 +349,10 @@ export function quickPenShootout(rng) {
   return { home: h, away: a };
 }
 
-export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn) {
-  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn);
+export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn, mgmt) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn, mgmt);
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null });
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway;
   const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, scorers:{leg1:l1.scorers,leg2:l2.scorers}, ogs:{leg1:l1.ogs,leg2:l2.ogs}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
@@ -365,14 +365,14 @@ export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, 
   return result;
 }
 
-export function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, injuriesOn) {
-  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn);
+export function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, injuriesOn, mgmt) {
+  const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn, mgmt);
   return { twoLeg:true, partial:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:null, agg:null, awayGoals:null, awayGoalsRule:false, et:null, pen:null, cards:{leg1:l1.cards}, scorers:{leg1:l1.scorers}, ogs:{leg1:l1.ogs}, playerData:{leg1:l1.playerData} };
 }
 
-export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn) {
+export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn, mgmt) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn);
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null });
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
   const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, scorers:{leg1:partial.scorers?.leg1,leg2:l2.scorers}, ogs:{leg1:partial.ogs?.leg1,leg2:l2.ogs}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
@@ -526,17 +526,21 @@ export const meFreshOut = () => ({ poss:{home:0,away:0}, shots:{home:0,away:0}, 
 export const meSide = (t) => {
   const xi = (t?.squad || []).filter(p => !p.bench).slice(0, 11);
   const base = xi.length === 11 ? xi : buildSquad(t?.formation || "4-3-3", null).filter(p => !p.bench);
+  // THE LEGS HE ARRIVES WITH. A tournament's team sheet carries each man's stamina from his last
+  // match (managerSelect), and this pinned it to 100: the carry chose who started, then everyone
+  // kicked off fresh. A squad carrying no stamina -- a preset, a harness -- still starts on 100.
   return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
-    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, passOk: 0, defActs: 0, _att: null,
+    stamina: p.stamina ?? 100, rating: 6.5, goals: 0, assists: 0, saves: 0, passOk: 0, defActs: 0, _att: null,
     // What the deepened rating is built out of. Zeroed here so a man who did none of it reads 0
     // rather than undefined, and so the app can show any of them without a guard.
     passFail: 0, duelWon: 0, duelLost: 0, dribbles: 0, beaten: 0, aerials: 0 }));
 };
 
-// Everyone who is not in the XI, in the same shape meSide gives the starters.
+// Everyone who is not in the XI, in the same shape meSide gives the starters. A substitute comes on
+// with the stamina he carried in, like the men he replaces.
 export const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
   .map((p, i) => ({ ...p, name: p.name || (p.pos + "B" + i), ovr: p.ovr ?? t?.skill ?? 70,
-                    stamina: 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
+                    stamina: p.stamina ?? 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
                     defActs: 0, _att: null, passOk: 0, passFail: 0, duelWon: 0, duelLost: 0,
                     dribbles: 0, beaten: 0, aerials: 0 }));
 
@@ -544,8 +548,10 @@ export const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
 // tournament will eventually call instead of simInstantMatch.
 // homeAdv is optional and names the side playing at its own ground, or null for a neutral venue,
 // which is what the balance harnesses want and therefore what they get by leaving it off.
-export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
+export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn, brain) {
   const st = createMatchState();
+  // Which brain plays it: 2 (src/engine/mind, what the app plays) unless a harness asks for the first.
+  st.brain = brain === 1 ? 1 : 2;
   st.homeAdv = homeAdv || null;
   // Default on, like every other caller: the harnesses that leave it off want a normal match.
   st.injuriesOn = injuriesOn !== false;
@@ -594,7 +600,7 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn) {
 //     applied to the instructions and the whistle, never to anybody's numbers.
 export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm,
                             awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad,
-                            matchUrg, teamForm, injuriesOn) {
+                            matchUrg, teamForm, injuriesOn, mgmt) {
   const hT = { skill: homeSkill, style: homeStyle || "balanced", formation: homeForm || "4-3-3",
                strategy: homeStrat, squad: homeSquad };
   const aT = { skill: awaySkill, style: awayStyle || "balanced", formation: awayForm || "4-3-3",
@@ -606,7 +612,8 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   st.formations = { home: hT.formation, away: aT.formation };
   st.strategy = { home: meStrategyFor(hT), away: meStrategyFor(aT) };
   st.fit = { home: meFitFor(hT), away: meFitFor(aT) };
-  st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
+  // The managers' ratings, which the second brain drills and manages the match by.
+  st.mgmt = { home: mgmt?.home ?? null, away: mgmt?.away ?? null };
   st.styles = { home: hT.style, away: aT.style };
   st.teamSkill = { home: homeSkill, away: awaySkill };
   st.homeAdv = homeAdv || null;

@@ -1,5 +1,5 @@
 // Player attributes, derived from one absolute OVR.
-import { DEFAULT_OVR } from "./config";
+import { CFG, DEFAULT_OVR } from "./config";
 
 // One OVR is all the data there is, and it stays the absolute currency -- these are tilts around it,
 // never a rescale. A 70 is a 70 wherever he stands; his position decides what he is a 70 AT. atkW is
@@ -62,6 +62,15 @@ export const meSpeed = (a, stam) => (SPEED_BASE + a.pace / 99 * SPEED_SPAN) * (0
 // ME_COMPRESS deliberately squeezes ratings, so a 40-rated and a 90-rated keeper come out at 76 and
 // 96 reflex, and normalising over the full scale would have made them all but identical.
 export const meGkSkill = (a) => Math.max(0, Math.min(1, (a.reflex - 70) / 28));
+// ...AND UNDER THE BAND, A PART-TIMER. The band above is sized for league keepers, and clamped at zero it
+// made every keeper under 40 the same man as a 40, and a 40 very nearly a 60: against the best attack in
+// the world an island side's 37 kept out 69% of what was put on target, an 85 79%. meGkLow is how far he
+// sits under gkLowAt reflex, over gkLowSpan -- nothing for a keeper of 60 or better, all of it for a 35 --
+// and it is charged on top of the band: later off the mark, slower across, less reach, softer hands, and
+// a worse idea of where to stand.
+export const meGkLow = (a) => Math.max(0, Math.min(1, (CFG.gkLowAt - a.reflex) / CFG.gkLowSpan));
+export const meGkReact = (a) => CFG.gkReactSlow + (CFG.gkReactFast - CFG.gkReactSlow) * meGkSkill(a) + meGkLow(a) * CFG.gkReactLow;
+export const meGkDiveV = (a) => CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmin) * meGkSkill(a) - meGkLow(a) * CFG.gkDiveLow;
 
 // HOW WELL HE READS HIS OWN OPTIONS. Rating drove execution -- how accurately he struck the pass he
 // chose -- and never the choosing. Every one of the twenty-two scored the same menu with the same

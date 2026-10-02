@@ -512,33 +512,17 @@ function groupByLeague(list) {
   if (result.length > 0 && result[result.length - 1] === null) result.pop();
   return result;
 }
+// THE QUICK SIM'S TEAM SHEET IS THE LIVE MATCH'S. splitAvailSquad replaces each unavailable starter
+// IN PLACE with a bench man of his own position, and the engine hands formation slot i to the i-th
+// starter. This used to append the replacements instead: everyone listed after the missing man moved
+// one slot back, and since a bench opens with its keeper, any outfield absence sent the backup keeper
+// on in the last slot, where he stood in goal beside the first-choice keeper and left nine outfielders.
 function filterSquad(squad, teamName, unavailSet, staminaData, rotationCtx) {
   if (!squad) return null;
-  const kf = n => playerKey(teamName, n);
-  const st = squad.filter(p => !p.bench), bn = squad.filter(p => p.bench);
-  const av = unavailSet ? st.filter(p => !unavailSet.has(kf(p.name))) : st;
-  const bav = unavailSet ? bn.filter(p => !unavailSet.has(kf(p.name))) : bn;
-  const need = st.length - av.length;
-  const missingGK = !av.some(p => p.pos === "GK");
-  const bavOrdered = missingGK ? [...bav].sort((a, b) => (b.pos === "GK") - (a.pos === "GK")) : bav;
-  const promoted = bavOrdered.slice(0, need).map(p => { const q = {...p}; delete q.bench; return q; });
-  let starters = [...av, ...promoted];
-  let restBench = bavOrdered.slice(need);
-  // Minimum seven on the pitch — draw on otherwise-unavailable players only as a last resort.
-  if (starters.length < 7) {
-    const already = new Set(starters.map(p => p.name));
-    const reserve = [...squad].filter(p => !already.has(p.name)).sort((a, b) => (b.pos === "GK") - (a.pos === "GK"));
-    for (const p of reserve) {
-      if (starters.length >= 7) break;
-      const q = { ...p }; delete q.bench; starters.push(q); already.add(p.name);
-    }
-    restBench = restBench.filter(p => !already.has(p.name));
-  }
-  let matchIntensity = 0;
-  if (staminaData) { const sel = managerSelect(starters, restBench, kf, staminaData, rotationCtx); starters = sel.starters; restBench = sel.bench; matchIntensity = sel.matchIntensity; }
-  const capped = capAtEleven(starters, restBench);
-  const sq = [...capped.starters, ...capped.bench];
-  sq._matchIntensity = matchIntensity;
+  const sel = splitAvailSquad(squad, teamName, unavailSet || new Set(), staminaData, rotationCtx);
+  // A replacement arrives still flagged bench, and meSide leaves out anyone flagged.
+  const sq = [...sel.starters.map(asStarter), ...sel.bench.map(asBench)];
+  sq._matchIntensity = sel.matchIntensity;
   return sq;
 }
 const POS_PROTECTION = { GK: 0, ST: 1, CF: 1, CB: 2, CDM: 3, CM: 3, LB: 4, RB: 4, LW: 4, RW: 4, LM: 4, RM: 4, CAM: 4, LWB: 4, RWB: 4 };
@@ -5188,6 +5172,8 @@ export default function App() {
   // ---- positional match engine lab -------------------------------------------------------
   const ME_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 20];
   const [meSpeedIx, setMeSpeedIx] = useState(2);   // index into ME_SPEEDS; 1x real time
+  // The second brain's thinking drawn on the pitch: runs, who presses, who marks whom. Off by default.
+  const [meOverlay, setMeOverlay] = useState(false);
   const meAcc = useRef(0);
   const [meFrame, setMeFrame] = useState(0);
   const [meRunning, setMeRunning] = useState(false);
@@ -5948,6 +5934,8 @@ export default function App() {
     // between the same two teams opened identically -- same shape to the millimetre, same taker,
     // same first pass -- for a full second before anything differed.
     const rng = new RNG((Date.now() & 0x7ffffff) || 7);
+    // The managers' ratings, which the second brain drills and manages the match by.
+    st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
     meInit(st, pitchSlots, rng);
     // TWO ENGINES, ONE SETUP. "Force Result" on the setup screen sets lmForce, which drives extra
     // time and penalties in the classic simulation (createMatchState's forceResult, read at the
@@ -9121,7 +9109,7 @@ export default function App() {
     const mUnavail = new Set(); for (const [k,v] of Object.entries(tPlayerStats)) { if ((v.suspended||0)>0||(v.injOut||0)>0) mUnavail.add(k); }
     const _stamD = tConfig.staminaCarry ? tPlayerStats : null;
     const _hSq = filterSquad(gm.home.squad, gm.home.name, mUnavail, _stamD), _aSq = filterSquad(gm.away.squad, gm.away.name, mUnavail, _stamD);
-    const _sr = simPositionalMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm, tConfig.injuries !== false);
+    const _sr = simPositionalMatch(new RNG(Date.now()), gm.home.skill, gm.away.skill, false, gm.home.style, gm.away.style, gm.home.formation, gm.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(gm.home.name, gm.away.name, tConfig, true, gm.home.skill, gm.away.skill)), gm.home.strategy, gm.away.strategy, _hSq, _aSq, null, _mForm, tConfig.injuries !== false, { home: gm.home.mgmt ?? null, away: gm.away.mgmt ?? null });
     const rH = accumulateMatchStats(gm.home, hg, ag, hg>ag, hg===ag, _sr.cards?.home, mUnavail, _sr.playerData?.home);
     const rA = accumulateMatchStats(gm.away, ag, hg, ag>hg, hg===ag, _sr.cards?.away, mUnavail, _sr.playerData?.away);
     gm.result.statDiffs = { home: rH?.diffs, away: rA?.diffs };
@@ -9179,7 +9167,7 @@ export default function App() {
         const _hSq2 = km?.home ? filterSquad(km.home.squad, km.home.name, koUnavail, _stamD2) : null;
         const _aSq2 = km?.away ? filterSquad(km.away.squad, km.away.name, koUnavail, _stamD2) : null;
         const _haKey = bracket === "lb" ? `lb_${ri}_${mi}` : bracket === "gf" ? "gf" : bracket === "reset" ? "reset" : bracket === "tp" ? "tp" : `ko_${ri}_${mi}`;
-        const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2, null, null, tConfig.injuries !== false) : null;
+        const _sr2 = (km?.home && km?.away) ? simPositionalMatch(new RNG(Date.now()), km.home.skill, km.away.skill, true, km.home.style, km.away.style, km.home.formation, km.away.formation, tGetHA(_haKey, resolveKOHomeAdv(km, tConfig)), km.home.strategy, km.away.strategy, _hSq2, _aSq2, null, null, tConfig.injuries !== false, { home: km.home.mgmt ?? null, away: km.away.mgmt ?? null }) : null;
         const rHm = km?.home ? accumulateMatchStats(km.home,hGoals,aGoals,hGoals>aGoals||(result.pen&&result.pen.home>result.pen.away),hGoals===aGoals&&!result.pen,_sr2?.cards?.home,koUnavail,_sr2?.playerData?.home) : null; const rAm = km?.away ? accumulateMatchStats(km.away,aGoals,hGoals,aGoals>hGoals||(result.pen&&result.pen.away>result.pen.home),hGoals===aGoals&&!result.pen,_sr2?.cards?.away,koUnavail,_sr2?.playerData?.away) : null; result.statDiffs = { home: rHm?.diffs, away: rAm?.diffs };
         if (_sr2) { result.scorers = _sr2.scorers; result.ogs = _sr2.ogs; } }
       if (isKOComplete(ko)) setTPhase("complete"); else setTPhase("knockout");
@@ -9273,7 +9261,7 @@ export default function App() {
         const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
         slot.push(m);
         jobs.push({ seed: jobSeed(baseSeed, `g_${gi}_${ri}_${mi}`), a: [m.home.skill, m.away.skill, false, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(`g_${gi}_${ri}_${mi}`, resolveHomeAdv(m.home.name, m.away.name, tConfig, true, m.home.skill, m.away.skill)), m.home.strategy, m.away.strategy, hSq, aSq, { home: hSq?._matchIntensity ?? _ug?.home?.urgency ?? 0, away: aSq?._matchIntensity ?? _ug?.away?.urgency ?? 0 },
-          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false] });
+          { home: formScore(_gForms[m.home.name]), away: formScore(_gForms[m.away.name]) }, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] });
       }); });
 
       // THE BARRIER. The cores play the matchday; nothing below moves until every one of it is in.
@@ -9543,14 +9531,14 @@ export default function App() {
     const aCtx = { stakes: aStakes, ourSkill: m.away.skill, oppSkill: m.home.skill, nextOppSkill: null, isKnockout: true, isFinal, isThirdPlace, isLastGroupGame: false, remainingGames: 0 };
     const hSq = filterSquad(m.home.squad, m.home.name, unavailSet, stamData, hCtx), aSq = filterSquad(m.away.squad, m.away.name, unavailSet, stamData, aCtx);
     const _koUrg = { home: hSq?._matchIntensity ?? 0, away: aSq?._matchIntensity ?? 0 };
-    if (tConfig.koLegs === 1) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false] };
+    if (tConfig.koLegs === 1) return { kind: "single", seed, a: [m.home.skill, m.away.skill, true, m.home.style, m.away.style, m.home.formation, m.away.formation, tGetHA(haKey, haDefault), m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, null, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
     let leg1HA, leg2HA;
     if (ov === "off") { leg1HA = null; leg2HA = null; }
     else { leg1HA = "home"; leg2HA = "away"; }
     const ag = tConfig.koAwayGoals && ov !== "off";
-    if (legTarget === 1 || (!m.result && legTarget !== 0)) return { kind: "leg1", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, tConfig.injuries !== false] };
-    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return { kind: "leg2", seed, a: [m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false] };
-    if (legTarget === 0) return { kind: "twoLeg", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false] };
+    if (legTarget === 1 || (!m.result && legTarget !== 0)) return { kind: "leg1", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, m.home.strategy, m.away.strategy, hSq, aSq, _koUrg, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
+    if ((legTarget === 2 || legTarget === undefined) && m.result?.partial) return { kind: "leg2", seed, a: [m.result, m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
+    if (legTarget === 0) return { kind: "twoLeg", seed, a: [m.home.skill, m.away.skill, m.home.style, m.away.style, m.home.formation, m.away.formation, leg1HA, leg2HA, m.home.strategy, m.away.strategy, ag, hSq, aSq, _koUrg, tConfig.injuries !== false, { home: m.home.mgmt ?? null, away: m.away.mgmt ?? null }] };
     return null;                                   // nothing to play: the tie already stands
   };
   const tScorinateKO = (targetRi, targetMi, legTarget, bracket) => {
@@ -13635,8 +13623,16 @@ export default function App() {
             // The keeper is the one man a viewer has to pick out instantly, and the one man whose
             // colour genuinely is different in real football.
             const face = gk(p) ? "#f5e663" : fill;
+            // WHICH WAY HE IS FACING, for the second brain, where it decides what he can see: a nose on
+            // the dot, in his own colour. Mirrored with the ends at half time.
+            const fa = st?.brain === 2 && p._face !== undefined ? (m?.h2 ? Math.PI - p._face : p._face) : null;
+            const nose = fa === null ? null : (() => {
+              const c = Math.cos(fa), sn = Math.sin(fa), tip = R_MAN + 0.5, bk = R_MAN * 0.55, w = R_MAN * 0.62;
+              return `${x + c * tip},${y + sn * tip} ${x + c * bk - sn * w},${y + sn * bk + c * w} ${x + c * bk + sn * w},${y + sn * bk - c * w}`;
+            })();
             return (
               <g key={key}>
+                {nose && <polygon points={nose} fill={face} stroke="rgba(0,0,0,.6)" strokeWidth={0.09} strokeLinejoin="round" />}
                 {/* HIS TOUCH REACH, and only his. Drawn round all twenty-two it was twenty-two fuzzy
                     haloes and pure noise; drawn round the man on the ball it is the one thing on the
                     pitch it was ever telling you -- how far he can actually get a foot to it, which
@@ -13735,6 +13731,26 @@ export default function App() {
     )}
     {ev && ev.k !== "pass" && <circle cx={fx(ev.x0)} cy={ev.y0} r={1.1 + ev.age * 0.45} fill="none"
                    stroke={EVC[ev.k] || "#fff"} strokeOpacity={evFade * 0.7} strokeWidth={0.18} />}
+    {/* WHAT THE SECOND BRAIN IS DOING: a run as a dashed line to where it is going, the first presser
+        as a line to the man on the ball, a marker as a faint line to his man, a screening man as a
+        dotted one to the lane he is standing in. Under the dots, so the players stay readable. */}
+    {meOverlay && st?.brain === 2 && ["home", "away"].map(sd => st.players[sd].map((p, i) => {
+      if (!p || p.off || p.pos === "GK") return null;
+      const clr = sd === "home" ? hPitchClr : aPitchClr, x = ix(p), y = iy(p);
+      const them = st.players[sd === "home" ? "away" : "home"];
+      const key = "ov" + sd + i;
+      if ((p._runT ?? 0) > 0 && p._rx !== undefined)
+        return <line key={key} x1={x} y1={y} x2={fx(p._rx)} y2={p._ry} stroke={clr} strokeWidth={0.22} strokeDasharray="1 0.6" strokeOpacity={0.9} />;
+      const car = st.mePos?.idx >= 0 && st.mePos.side !== sd ? them[st.mePos.idx] : null;
+      if (p._duty === "press" && car)
+        return <line key={key} x1={x} y1={y} x2={ix(car)} y2={iy(car)} stroke="#ff9f43" strokeWidth={0.24} strokeOpacity={0.9} />;
+      const mk = (p._duty === "mark" || p._duty === "cover") && p._mk2 >= 0 ? them[p._mk2] : null;
+      if (mk && !mk.off)
+        return <line key={key} x1={x} y1={y} x2={ix(mk)} y2={iy(mk)} stroke={clr} strokeWidth={p._duty === "cover" ? 0.2 : 0.12} strokeOpacity={p._duty === "cover" ? 0.85 : 0.45} />;
+      if (p._duty === "screen" && p._tx !== undefined)
+        return <line key={key} x1={x} y1={y} x2={fx(p._tx)} y2={p._ty} stroke={clr} strokeWidth={0.14} strokeDasharray="0.3 0.5" strokeOpacity={0.7} />;
+      return null;
+    }))}
     {/* THE ACTUAL KITS. These were hardcoded to a generic blue and a generic red while the app was
         already resolving both sides' real strips a few hundred lines up -- home or away by fixture,
         with a clash detector that switches one side, and readableClr/ensureMaxLum keeping whatever
@@ -15097,6 +15113,13 @@ export default function App() {
                       <input type="range" min={0} max={ME_SPEEDS.length - 1} step={1} value={meSpeedIx}
                              onChange={e => setMeSpeedIx(+e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                       <span style={{ width: 30, fontWeight: 700, textAlign: "right", ...mono }}>{ME_SPEEDS[meSpeedIx]}x</span>
+                      {m.s?.brain === 2 && (
+                        <button onClick={() => setMeOverlay(v => !v)}
+                          style={{ ...smBtn, fontSize: 10, padding: "4px 8px", cursor: "pointer",
+                                   background: meOverlay ? "var(--chrome-brand)" : "transparent",
+                                   color: meOverlay ? "var(--ui-on-accent)" : "var(--chrome-muted)",
+                                   border: `1px solid ${meOverlay ? "var(--chrome-brand)" : "var(--chrome-border)"}` }}>
+                          Overlay</button>)}
                     </label>
                     {/* Three panels and nothing else. New and Close used to sit on the end of this
                         row, which put "what happens to this result" in among "what am I looking at". */}

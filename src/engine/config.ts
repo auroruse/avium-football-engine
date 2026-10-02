@@ -1656,12 +1656,21 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.77, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.92, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
+  // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
+  // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
+  // he had kept out a sure thing, and finished on 9 or better three times in ten while conceding six. His
+  // ledger reads xgN instead (meShotP with gkRef), a keeper of gkRefSkill -- the league's 77 -- standing
+  // where he stood.
+  gkRefSkill: 0.80,
   // Re-derived 28 Aug 2026 after the fluidity rework's keeper-reach offset: with more reach the
   // keeper concedes less per shot, so the whole expectation table shifts down a few points.
   // Re-derived 29 Aug 2026 (goalkeeping rework). The [0.6,1) band keeps its prior figure: the
   // derive sample holds under ten shots there and the instruction above says not to trust one.
-  gkExp: [[0.05, 0.10], [0.10, 0.08], [0.20, 0.12], [0.30, 0.31], [0.40, 0.71], [0.60, 0.57], [1.01, 0.89]],
+  // Re-derived 2 Oct 2026 (1,000 league matches, second brain) on the ordinary keeper's xg (xgN) and the
+  // re-levelled recorder; [0.3, 0.4) is the open net, [0.4, 0.6) keeps its old figure on three shots.
+  gkExp: [[0.05, 0.11], [0.10, 0.19], [0.20, 0.21], [0.30, 0.10], [0.40, 0.92], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1771,7 +1780,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
   // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
   // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  ratePos: { GK: 0.262, DEF: -0.316, MID: -0.213, FWD: -0.318 },
+  // Re-derived 2 Oct 2026 when the second brain became the only one, with the re-levelled xg recorder
+  // and the keeper rated against an ordinary keeper (xgN).
+  ratePos: { GK: 0.243, DEF: -0.169, MID: -0.122, FWD: -0.205 },
   // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
   // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
   // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
@@ -2448,6 +2459,18 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // believe about that much. 0.45 was a guess and it cost goals -- an over-valued shot is a
   // misjudged one, and the shot model is roughly right, so misjudging it can only lose.
   shotRunV: 5, shotVRun: 5, shotNoiseRun: 0.6, shotRunK: 0.2, shotRunD: 11, shotRunFade: 8,
+  // THE WIND-UP (meWindUp): set fully with meShotSit at 0 and gone at shotSetSit, the ball clean under
+  // shotSetExD, from shotSetD out to shotSetD + shotSetFade. A man with time and room at range strikes it
+  // the way he would a free kick with no wall: shotVSet more pace, shotAimSet nearer the post (a share of
+  // the half-width, never past shotAimMax), shotSetZ further up the frame into the top corner, shotNoiseSet
+  // of the open-play aim error gone, and shotElevSet of the way to a free kick's height error (spFkElev).
+  // shotSetK is what the man deciding is allowed to believe it adds to the chance. Measured in a shot lab
+  // (one shooter, the keeper at the 2.6 m a match puts him, nobody screening): an 80-rated midfielder set
+  // at 20-25 m scored 0.5% and sent 45% of them over the bar, a striker 3%. A long-range goal only came
+  // from a ball that happened to fly high, so a cleaner strike on its own scored LESS -- he has to pick
+  // the corner too.
+  shotSetSit: 0.6, shotSetExD: 0.5, shotSetD: 14, shotSetFade: 8,
+  shotVSet: 4, shotSetK: 1.2, shotAimSet: 0.15, shotAimMax: 0.95, shotNoiseSet: 0.5, shotElevSet: 1.0, shotSetZ: 0.6,
   // HOW BADLY HE CAN GET UNDER IT. At 0.30 the elevation error was worth about +/-0.94 m/s of launch
   // vz, half a metre of height over a normal flight, so with aimZ topping out at 1.68 m the very
   // highest a shot could arrive was 2.67 m and 0.3% of them cleared a 2.44 m bar. Measured by
@@ -2509,6 +2532,12 @@ gkDiveV: 2.9,
   // the worse keepers lose more than the better ones gain, and a 10-OVR step is now worth about
   // +0.13 goals a match on target with the gradient visible in his rating.
   gkReactSlow: 0.24, gkReactFast: 0.21,      // seconds, worst keeper to best, from the strike to going
+  // THE PART-TIMER (meGkLow): under gkLowAt reflex (a 60-rated keeper) and fully at gkLowAt - gkLowSpan (a
+  // 35), on top of the band: gkReactLow seconds later off the mark, gkDiveLow m/s slower across, gkGrabLow
+  // and gkSetLow (a share) off his reach, gkCatchLow more to spill, gkPanicLow more goal he thinks he has
+  // to cover, and gkBeatLow on how beatable the shooter and the recorder take him to be.
+  gkLowAt: 82, gkLowSpan: 15, gkReactLow: 0.08, gkDiveLow: 0.6, gkGrabLow: 0.06, gkSetLow: 0.15,
+  gkCatchLow: 0.4, gkPanicLow: 0.25, gkBeatLow: 0.25,
   // THE SAVE AS IT HAPPENS (keeper.ts). He no longer guesses a side as it is struck -- that guess,
   // right 34% of the time for the worst keeper and 92-97% for the best, WAS the whole of goalkeeping,
   // and a right guess put him on the shooter's aim. He sets, sees it after his reaction (gkScreen
@@ -2551,7 +2580,11 @@ gkDiveV: 2.9,
   // Intercept dropped 0.24 in logit space (ln 2.64/3.34) when the keeper's save reach and the
   // loose-ball claim took goals a match from 3.7 to ~2.6 and the recorder kept booking the old
   // conversion. Slope untouched; gkExp re-derived against the new physics the same day.
-  xgCal0: -0.69, xgCalB: 0.468,
+  // Intercept dropped 0.77 more (2 Oct 2026) when the second brain became the only one: over 200 league
+  // fixtures its open-play attempts booked 2.64 xG a match against 1.37 open-play goals, a ledger that
+  // had drifted since the September behaviour rebuild and was hidden under a penalty count three times
+  // too high. Slope untouched again; the bands land within about ten per cent either side.
+  xgCal0: -1.46, xgCalB: 0.468,
   // How fast he throws himself once he has read it, in m/s, worst keeper to best. This is the dive
   // as a MOVEMENT -- it replaced the old dive-as-reach entirely.
   // Real dive launch speed is 4-6 m/s; 9.5 was superhuman late coverage papering over positioning.
@@ -2791,7 +2824,11 @@ gkDiveV: 2.9,
   // Measured by forcing handP to 1: the geometry -- a ball striking an outfielder above waist
   // height, inside his own area, off an opponent's touch -- comes up about 1.1 times a match, so
   // 0.06 of them given is the real rate of roughly one handball penalty every fifteen matches.
-  handMinZ: 0.85, handP: 0.06,
+  // ...and by 2 Oct 2026 the same geometry came up 6.4 times a match on either brain (crosses, blocks and
+  // the substep contest all put more balls into bodies at height), so 0.06 gave 0.42 handball penalties a
+  // match, a third of them with a red for a blocked shot, and a third of all goals were penalties.
+  // 0.0105 is the same one in fifteen matches on today's geometry.
+  handMinZ: 0.85, handP: 0.0105,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.

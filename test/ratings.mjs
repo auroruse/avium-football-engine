@@ -216,13 +216,17 @@ const N = +(argN || 200), W = Math.max(1, Math.min(+(argW || 8), os.cpus().lengt
 const SEED = 100000;
 const src = path.join(HERE, "engine.mjs");
 if (!fs.existsSync(src)) { console.log("no test/engine.mjs -- run: zsh test/rebuild.sh"); process.exit(1); }
-// A hooked copy of the bundle: every keeper save / concede / revoked parry reports its xg. Each
+// A hooked copy of the bundle: every keeper save / concede / revoked parry reports the xg his credit
+// was priced on (the ordinary keeper's, xgN). Each
 // anchor must be found exactly once, so a renamed variable fails loudly instead of recording nothing.
 let code = fs.readFileSync(src, "utf8");
 const sub = (from, to) => { const c = code.split(from).length - 1; if (c !== 1) throw new Error(`anchor x${c}, want x1: ${from}`); code = code.split(from).join(to); };
-sub("meRate(q2, meSaveBonus(shp.xg, shp.pen) + (shp.pen ? CFG.ratePenSave : 0));", "meRate(q2, (globalThis.__sv.push([shp.xg, q2, !!shp.pen]), meSaveBonus(shp.xg, shp.pen)) + (shp.pen ? CFG.ratePenSave : 0));");
-sub("meRate(q2, meSaveBonus(mp.shot.xg, mp.shot.pen) + (mp.shot.pen ? CFG.ratePenSave : 0));", "meRate(q2, (globalThis.__sv.push([mp.shot.xg, q2, !!mp.shot.pen]), meSaveBonus(mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
-sub("if (q2.pos === \"GK\") meRate(q2, -meConcedePen(xg, !!(sh && sh.pen)));", "if (q2.pos === \"GK\") meRate(q2, (globalThis.__gc.push([xg, q2, !!(sh && sh.pen)]), -meConcedePen(xg, !!(sh && sh.pen))));");
+// The bundler renames the keeper's variable between builds (q, q2, ...), so these four anchors match
+// it by pattern and write it back as found. Still exactly one match each, or it fails loudly.
+const subRe = (re, to) => { const m = code.match(new RegExp(re.source, "g")) || []; if (m.length !== 1) throw new Error(`anchor x${m.length}, want x1: ${re}`); code = code.replace(re, to); };
+subRe(/meRate\((q\d*), meSaveBonus\(shp\.xgN \?\? shp\.xg, shp\.pen\) \+ \(shp\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([shp.xgN ?? shp.xg, $1, !!shp.pen]), meSaveBonus(shp.xgN ?? shp.xg, shp.pen)) + (shp.pen ? CFG.ratePenSave : 0));");
+subRe(/meRate\((q\d*), meSaveBonus\(mp\.shot\.xgN \?\? mp\.shot\.xg, mp\.shot\.pen\) \+ \(mp\.shot\.pen \? CFG\.ratePenSave : 0\)\);/, "meRate($1, (globalThis.__sv.push([mp.shot.xgN ?? mp.shot.xg, $1, !!mp.shot.pen]), meSaveBonus(mp.shot.xgN ?? mp.shot.xg, mp.shot.pen)) + (mp.shot.pen ? CFG.ratePenSave : 0));");
+subRe(/if \((q\d*)\.pos === "GK"\) meRate\(\1, -meConcedePen\(sh \? sh\.xgN \?\? sh\.xg : xg, !!\(sh && sh\.pen\)\)\);/, "if ($1.pos === \"GK\") meRate($1, (globalThis.__gc.push([sh ? sh.xgN ?? sh.xg : xg, $1, !!(sh && sh.pen)]), -meConcedePen(sh ? sh.xgN ?? sh.xg : xg, !!(sh && sh.pen))));");
 sub("meRate(pv.q, -pv.credit);", "meRate(pv.q, (globalThis.__rv.push([pv.credit, pv.q]), -pv.credit));");
 sub("    out.passes++;\n", "    if (globalThis.__pp) globalThis.__pp.push([pp.byP, pp.p, okSide === pp.side ? 1 : 0, pp.d, pp.high ? 1 : 0, pp.thru ? 1 : 0, okSide === pp.side && mp._pickI === mp.fj ? 1 : 0, pp.c || null]);\n    out.passes++;\n");
 // Indentation-free: the contest moved into its own function and the bundle re-indents it.
