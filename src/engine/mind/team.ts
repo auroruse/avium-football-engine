@@ -104,9 +104,12 @@ function mindDefSlots(s, side) {
 }
 
 // A substitution or a red card changes who is out there: roles and the defensive shape are re-dealt.
+// A man nobody has set up yet forces it even when the roster reads the same: a squad that lists a
+// player twice, once in the XI and once on the bench, can bring him on for himself, and the name and
+// position the roster is keyed on never change.
 function mindRoster(s, side) {
   const M = s.mePos.mind, k = rosterKey(s, side);
-  if (M.roster[side] === k) return;
+  if (M.roster[side] === k && !s.players[side].some(p => p && p._dn === undefined)) return;
   M.roster[side] = k;
   mindRoles(s, side);
   mindDefSlots(s, side);
