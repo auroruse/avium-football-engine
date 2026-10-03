@@ -109,6 +109,19 @@ export const meAerial = (a, CFG) => CFG.headBase + a.strength / 99 * CFG.headSpa
 // 90 lands. Every site reading it either scales with it or takes max(0, 1 - tech).
 export const meTech = (attr) => Math.max(0, Math.min(CFG.techMax, (attr - 48) / 40));
 
+// ...AND UNDER LEAGUE ONE'S AVERAGE MAN, DEFENDING COSTS MORE. Every defensive act ran on the same band
+// as the attacking ones, and the attack chains several of them (the pass, the touch, the take-on, the
+// finish) where the defence gets one, so quality told far more going forward: seven points on every
+// attacker added 14% to the chances a side made and 0.75 goals a match, seven on every defender took 4%
+// off the chances conceded and no goals. A league weaker all round therefore scored less -- League Two
+// 2.42 a match to League One's 2.92 -- where real second tiers sit only a little under their top
+// flights. Each point a man is rated under defLowAt comes off the skill he DEFENDS with: the tackle,
+// reading a pass to cut it out, the reach for a carried ball, not biting on the dummy. At or above it,
+// nothing changes. It stops counting defLowCap points down, because the leagues and nations far under
+// League One would otherwise lose the tackle altogether: a 58 pays what a 68 does, and his band already
+// makes him the worse defender of the two.
+export const meDefLow = (p) => Math.min(CFG.defLowCap, Math.max(0, CFG.defLowAt - (p?.ovr ?? DEFAULT_OVR))) * CFG.defLowK;
+
 // THE FINISH, which does not stop at the top of meTech's band. A striker's tilt and attacking weight put
 // his shooting twenty points over his rating, so every forward from about 70 up sat at meTech's 1 and an
 // 88 finished exactly like a 75 (measured, shot for shot, in the shot lab). Same scale below the band,

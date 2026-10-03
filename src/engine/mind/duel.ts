@@ -13,7 +13,7 @@
 // where he came from and how hard. A beaten man is beaten: he has to turn and chase. And a side that
 // fouls on purpose to stop a break, does so.
 import { CFG, ME_DT, ME_HOME_ADV } from "../config";
-import { meAttrs, meMind, meSpeed, meTech } from "../attributes";
+import { meAttrs, meDefLow, meMind, meSpeed, meTech } from "../attributes";
 import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meOther, meThruCover } from "../geometry";
 import { meCarrierPos } from "../brain";
 import { MT } from "./tune";
@@ -25,7 +25,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // What each man brings to a duel, 0..1 over the band footballers occupy.
 export const dribSkill = (p) => { const a = meAttrs(p); return clamp(0.45 * meTech(a.touch) + 0.30 * meTech(a.pace) + 0.25 * meMind(p), 0, CFG.techMax); };
 export const ctrlSkill = (p) => { const a = meAttrs(p); return clamp(0.6 * meTech(a.touch) + 0.4 * meTech(a.strength), 0, CFG.techMax); };
-export const tackSkill = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position), 0, CFG.techMax); };
+export const tackSkill = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position) - meDefLow(p), 0, CFG.techMax); };
 
 // ---- THE DRIBBLER -------------------------------------------------------------------------------
 export function mindCarrier(s, side, i) {
@@ -144,7 +144,7 @@ export function mindJockey(p, c, gux, guy, nx, ny, delay) {
   let lead = 1.5;
   if (c._fk) {
     // Bitten or not.
-    const bite = clamp(0.95 - mindAware(p) * 0.8 + c._fk * 0.35, 0.05, 1);
+    const bite = clamp(0.95 - mindAware(p) * 0.8 + meDefLow(p) * 0.8 + c._fk * 0.35, 0.05, 1);
     lead = 1.5 + bite * 2.2;
   }
   return [c.x + gux * stand + nx * MT.pressShade + (c.vx || 0) * lead,

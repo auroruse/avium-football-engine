@@ -1,6 +1,6 @@
 // The tick loop, the ball, restarts, and match setup.
 import { CFG } from "./config";
-import { meAerial, meAttrs, meDuel, meFinish, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, meSpeed, meTech } from "./attributes";
+import { meAerial, meAttrs, meDefLow, meDuel, meFinish, meGkDiveV, meGkLow, meGkReact, meGkSkill, meMind, meOvr, meSpeed, meTech } from "./attributes";
 import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
 import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./keeper";
@@ -2335,7 +2335,7 @@ export function meTick(s, rng, out) {
         // well as a 90-rated one. That constant was most of why the bands would not separate:
         // completion sat at 76-81% everywhere and a 26-point mismatch held 57% of the ball.
         let r = (isRcv ? CFG.reach
-                       : CFG.cutReach * (CFG.cutAntLo + meTech(meAttrs(q).position) * CFG.cutAntW))
+                       : CFG.cutReach * (CFG.cutAntLo + Math.max(0, meTech(meAttrs(q).position) - (sd !== mp.side ? meDefLow(q) : 0)) * CFG.cutAntW))
               * (1 - fast * CFG.fastDodge);
         // Blocking a shot is the same reach as everything else. A separate, larger blocking radius
         // had a defender sweeping a 3.1 m corridor -- five times his own body -- so a crowded box
@@ -2358,7 +2358,7 @@ export function meTick(s, rng, out) {
         // anticipation, which is `position`, and stretching for one is reach, which everybody has.
         // Strength already sat on the other side of this duel as the carrier's head start; it simply
         // had nothing to be a duel against.
-        else if (mp.idx >= 0 && mp.side !== sd) r += meTech(meAttrs(q).tackle) * CFG.tackleReach;
+        else if (mp.idx >= 0 && mp.side !== sd) r += Math.max(0, meTech(meAttrs(q).tackle) - meDefLow(q)) * CFG.tackleReach;
         // IN THE AIR he is not stretching a boot out, he is getting up. Reach stops being what a
         // foot can span and becomes how well he attacks the ball, which is the aerial duel: put two
         // men under the same cross and the bigger one wins it, with no separate roll to decide it.

@@ -1665,8 +1665,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ...and again after the set keeper's reach came down the same day (800 matches).
   // ...and once more for the sharper open-play strike (800 matches).
   // Re-derived 3 Oct 2026 (1,200 matches): the keepers had drifted 0.09 a match into credit, so a busy
-  // afternoon paid for being busy again -- and once more on the widened keeper spans the same day.
-  gkExp: [[0.05, 0.06], [0.10, 0.13], [0.20, 0.29], [0.30, 0.45], [0.40, 0.69], [0.60, 0.57], [1.01, 0.89]],
+  // afternoon paid for being busy again -- and once more on the widened keeper spans the same day, and
+  // on the costlier defending below League One (defLowK).
+  gkExp: [[0.05, 0.05], [0.10, 0.14], [0.20, 0.29], [0.30, 0.46], [0.40, 0.65], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1768,10 +1769,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
   ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
   rateFin: {
-    GK:  { mid: 0.338, up: 1.381, dn: 0.729, tail: 0.946 },
-    DEF: { mid: 0.607, up: 1.109, dn: 1.150, tail: 1.056 },
-    MID: { mid: 0.618, up: 0.770, dn: 1.439, tail: 1.099 },
-    FWD: { mid: 0.493, up: 0.733, dn: 1.641, tail: 1.419 },
+    GK:  { mid: 0.349, up: 1.277, dn: 0.710, tail: 0.905 },
+    DEF: { mid: 0.562, up: 1.080, dn: 1.185, tail: 1.066 },
+    MID: { mid: 0.605, up: 0.737, dn: 1.397, tail: 1.150 },
+    FWD: { mid: 0.492, up: 0.774, dn: 1.591, tail: 1.236 },
   },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
@@ -2447,6 +2448,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   finMax: 1.13, finAbove: 0.009, shotNoiseMin: 1.5, shotElevMin: 0.02,
   // Where meTech and meGkSkill stop: the values a 90-rated defender's tackling and a 90-rated keeper reach.
   techMax: 1.25, gkSkillMax: 1.075,
+  // See meDefLow: League One's average rating, the band skill a point under it costs a defender, and how
+  // many points down it keeps counting. Measured with home advantage, 1,000 matches a league: League Two
+  // 2.50 -> 2.96 goals a match, League One 2.94 -> 3.01, Liga-ye Balande (a 58 league) 1.82 -> 2.66.
+  defLowAt: 78, defLowK: 0.05, defLowCap: 10,
   // How much an attacking role adds to a man's shooting on top of his position's tilt (ME_TILT.shoot).
   // 3 Oct 2026: the shooting tilts were cut (FWD +11 -> +4, MID -3 -> -1, DEF -16 -> -10) and this 16 -> 8.
   // At the old gap a striker shot twenty points above his rating and a midfielder just under his, and
