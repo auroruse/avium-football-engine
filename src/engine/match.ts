@@ -443,6 +443,9 @@ export function meMove(s, rng) {
         ? Math.min(1, CFG.trackBase + Math.max(0, d - CFG.recoverNear) / CFG.recoverSpan * (1 - CFG.trackBase))
         : CFG.effortHard;
       let vCap = chase ? sp : must ? sp * hard : sp * (d > 9 ? 1 : d > 4 ? 0.55 : 0.30);
+      // THE CORNER TAKER HURRIES to the flag, flat out until he is nearly there: with more corners a
+      // match the walk was dead time.
+      if (mp.sp && mp.sp.kind === "corner" && side === mp.sp.side && i === mp.sp.ti) vCap = sp * (d > 2 ? 1 : 0.5);
       if (i === scramble && !gkShot && budget > 0) {
         // Pace against the CONTEST, not the ball's clock: having 200 ms in hand on the ball means
         // nothing if the striker you are racing arrives first. This is why every through ball was
@@ -2250,7 +2253,7 @@ export function meTick(s, rng, out) {
                 mePenRes(out, sh);
                 meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
                       sh.pen ? `${sh.full || sh.name} misses the penalty` : `${sh.full || sh.name} drags it wide`); }
-      if (cross.conceding === mp.touchSide) meDead(s, "corner", meOther(cross.conceding), 236, out);
+      if (cross.conceding === mp.touchSide) meDead(s, "corner", meOther(cross.conceding), CFG.cornerTicks, out);
       else meDead(s, "goalkick", cross.conceding, 200, out);
       return;
   };

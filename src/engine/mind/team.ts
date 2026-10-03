@@ -1169,7 +1169,13 @@ function spCorner(s, sp, atk, def) {
   const pool = us.filter(p => p && p !== taker && !p.off && p.pos !== "GK");
   // Who stays back: the most defensive men, as many as the side's rest defence asks, never fewer than two.
   const stayN = Math.max(2, plan.restN - 1);
-  const stay = [...pool].sort((a, b) => ((b._role2?.rest ?? 0) - aerialOf(b) / 400) - ((a._role2?.rest ?? 0) - aerialOf(a) / 400)).slice(0, stayN);
+  // CENTRE-BACKS GO UP. They are a side's best headers and corners are where their goals come from; the
+  // rest defence is the full-backs and a holding man. Ranked on their roles' rest duty alone it was the
+  // centre-backs who stayed, every corner, and defenders took 2% of the goals against a real ~11%. The
+  // cover centre-back and the libero still stay, and heading now counts for something in who does.
+  const upCB = (p) => /^cb(?!_cover|_lib)/.test(p._mr || "") ? 1.2 : 0;
+  const stayScore = (p) => (p._role2?.rest ?? 0) - upCB(p) - aerialOf(p) / 100;
+  const stay = [...pool].sort((a, b) => stayScore(b) - stayScore(a)).slice(0, stayN);
   const go = pool.filter(p => !stay.includes(p)).sort((a, b) => aerialOf(b) - aerialOf(a));
   const rt = CORNER_RT[(sp.v ?? 0) % 3];
   let k = 0;

@@ -11,9 +11,9 @@ import { CFG, DEFAULT_OVR } from "./config";
 // feet are a keeper's feet.
 export const ME_TILT = {
   GK:  { pace:-16, pass:-8, shoot:-34, tackle:-22, position:  6, strength: 2, reflex: 18, touch:-10 },
-  DEF: { pace: -2, pass:-5, shoot:-16, tackle: 11, position:  6, strength: 7, reflex:-34, touch:  2 },
-  MID: { pace:  0, pass: 7, shoot: -3, tackle:  1, position:  2, strength: 0, reflex:-34, touch:  7 },
-  FWD: { pace:  5, pass:-3, shoot: 11, tackle:-11, position: -2, strength: 3, reflex:-34, touch:  4 },
+  DEF: { pace: -2, pass:-5, shoot:-10, tackle: 11, position:  6, strength: 7, reflex:-34, touch:  2 },
+  MID: { pace:  0, pass: 7, shoot: -1, tackle:  1, position:  2, strength: 0, reflex:-34, touch:  7 },
+  FWD: { pace:  5, pass:-3, shoot:  4, tackle:-11, position: -2, strength: 3, reflex:-34, touch:  4 },
 };
 
 // atkW is NOT a 0..1 weight -- it runs 0 for a keeper to about 42 for a striker. Treating it as a
@@ -39,7 +39,7 @@ export function meAttrs(p) {
   if (p._att) return p._att;
   const t = ME_TILT[p.pos] || ME_TILT.MID, o = meOvr(p), aw = meAtkW(p) - 0.45;
   const c = (v) => Math.max(20, Math.min(99, v));
-  return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * 16), shootRaw: o + t.shoot + aw * 16, reflexRaw: o + t.reflex,
+  return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * CFG.shootAtkW), shootRaw: o + t.shoot + aw * CFG.shootAtkW, reflexRaw: o + t.reflex,
     tackle: c(o + t.tackle - aw * 12), position: c(o + t.position), strength: c(o + t.strength),
     reflex: c(o + t.reflex), touch: c(o + t.touch) });
 }

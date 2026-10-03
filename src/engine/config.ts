@@ -30,7 +30,10 @@ export const SP = {
   // How long the referee will wait, per restart. A penalty needs the box genuinely cleared and a
   // throw-in needs nobody; one number for both meant half of all penalties were taken on the
   // referee's patience running out rather than on anyone being ready.
-  spMaxTBy: { penalty: 140, corner: 86, goalkick: 74, freekick: 68, throw: 52 },
+  spMaxTBy: { penalty: 140, corner: 62, goalkick: 74, freekick: 68, throw: 52 },
+  // A corner's nominal stoppage (meDead ticks), which sets its minimum before it can be taken: 236 put a
+  // floor of about nine seconds on every one, cut with spMaxTBy.corner when corners became more common.
+  cornerTicks: 140,
   // A free kick is played quickly when a team-mate is already this far beyond the ball with this
   // much daylight around him. Both in metres, and both deliberately generous: if it is on, take it.
   spQuickAhead: 12, spQuickRoom: 9,
@@ -2517,6 +2520,12 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   finMax: 1.13, finAbove: 0.009, shotNoiseMin: 1.5, shotElevMin: 0.02,
   // Where meTech and meGkSkill stop: the values a 90-rated defender's tackling and a 90-rated keeper reach.
   techMax: 1.25, gkSkillMax: 1.075,
+  // How much an attacking role adds to a man's shooting on top of his position's tilt (ME_TILT.shoot).
+  // 3 Oct 2026: the shooting tilts were cut (FWD +11 -> +4, MID -3 -> -1, DEF -16 -> -10) and this 16 -> 8.
+  // At the old gap a striker shot twenty points above his rating and a midfielder just under his, and
+  // over 200 league matches forwards scored 1.36 times what their chances were worth and midfielders
+  // 0.85 (real football: about 1.05-1.1 and 1.0), so forwards took 68% of the goals against a real ~55%.
+  shootAtkW: 8,
   // The highest he aims: under the bar, which a finisher past the band would otherwise aim over.
   shotAimZMax: 2.25,
   // Scales the gaussian shot error against the old triangular one. A triangle on [-1,1] has a
