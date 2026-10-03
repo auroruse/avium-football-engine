@@ -6706,8 +6706,9 @@ export default function App() {
       }
     }
     // Full time. meFinalise is what turns raw event deltas into a rating: it shrinks a substitute's
-    // toward par by the minutes he actually played and applies the positional par itself. Without
-    // this call the numbers are the un-normalised running total and forwards sit half a point clear.
+    // toward par by the minutes he actually played and puts every position on the one scale.
+    // Without this call the numbers are the un-normalised running total and midfielders sit half a
+    // point clear of keepers.
     // Same at the end of a period as at the interval: the clock reaching zero is permission to blow,
     // not an instruction to blow now. blowNow() is the referee looking up and deciding.
     if (blowNow() && !m.ftDone) {

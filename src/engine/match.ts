@@ -846,8 +846,13 @@ export const meGkExp = (xg, pen) => {
 };
 export const meSaveBonus = (xg, pen) => CFG.rateSave * meGkExp(xg, pen);
 export const meConcedePen = (xg, pen) => CFG.rateSave * (1 - meGkExp(xg, pen));
+// The running total is kept unclamped in _rr and only the shown rating is held to [3, 10]: clamped
+// on the way, a brace with three assists and a goal on a tidy afternoon both arrived at full time as
+// the same 10, and the finish could no longer tell them apart.
 export const meRate = (p, d) => {
-  if (p && d) p.rating = Math.max(3, Math.min(10, +(((p.rating ?? 6.5) + d).toFixed(2))));
+  if (!p || !d) return;
+  p._rr = (p._rr ?? p.rating ?? 6.5) + d;
+  p.rating = Math.max(3, Math.min(10, +p._rr.toFixed(2)));
 };
 
 // FULL TIME, for the ratings only -- nothing else in the engine needs a whistle, which is why there
@@ -858,16 +863,12 @@ export const meRate = (p, d) => {
 // proportion to how much of the match he was actually on for, so a cameo has to be emphatic to
 // register at all -- which is exactly how a cameo works.
 //
-// POSITION. A goal is worth 0.9 and the most a defender can do for one is 0.12, so forwards
-// finished 0.52 clear of keepers on identical squads -- and the substitution logic hooks whoever
-// sits furthest below his team's average, which means defenders were being taken off all season for
-// playing their position. The shift is deliberately NOT a scale: the gap is in the mean, and scaling
-// a deviation can only reach a mean of zero by erasing the signal with it. It is a positional par,
-// and it says the true thing -- a forward who did nothing all afternoon has failed at his job,
-// while a defender who did nothing has done his.
-//
-// The offsets are calibrated against test/ratings.mjs and have to be re-derived if the phase A or B
-// deltas move. That is a real maintenance edge and it is why the harness exists.
+// POSITION. A goal is worth 0.9 and the most a defender can do for one is 0.12, so the raw totals
+// sit in different places by position: an ordinary afternoon is +0.2 for a keeper and +0.6 for a
+// midfielder, and they swing by different amounts. The finish reads each man against his own
+// position's ordinary afternoon and puts every position on the same scale (CFG.rateFin), so the
+// rating says how well he played and nothing about where. Fitted by test/ratings.mjs derive, and
+// re-derived whenever a rating delta or the football moves.
 export function meFinalise(s) {
   const total = s.mePos.tick || 1;
   for (const sd of ME_SIDES) {
@@ -900,40 +901,21 @@ export function meFinalise(s) {
       // top man was a substitute with nine appearances. The cap restores the confidence weighting:
       // a sixty-minute shift still projects to its per-ninety rate, and below that the shrink wins.
       const proj = p.rc ? 1 : Math.min(1 / Math.max(frac, 0.05), CFG.rateProjMax);
-      // BODY COMPRESSION, separate from the tail. Measured against the shipped curve, 6.3% of
-      // full-match performances came in at 8.5 or better where a real ratings distribution puts
-      // about 1.2%, and the 8.5-9.0 bin held as much mass as 8.0-8.5 -- a pile-up at the knee
-      // rather than a tail. Squashing the tail alone cannot fix it, because most of the mass above
-      // 8.0 arrives from BELOW the knee: it is the shoulder that is too fat, not the extreme. So
-      // the deviation is scaled first and shaped second. ratePos is added AFTER the scale, because
-      // it is the calibration offset rather than part of the performance.
-      // ASYMMETRIC. A symmetric squash cannot produce this curve: pull the body in hard enough to
-      // thin the 7.5-8.5 shoulder and the middle balloons past 80% while everything below 6.0
-      // disappears; leave it wide and the shoulder stays. A real ratings distribution is not
-      // symmetric either -- drifting DOWN for a poor afternoon is easy and drifting UP for a merely
-      // tidy one is not, so the two directions are scaled separately. Positive deviation is damped,
-      // negative deviation is amplified, and the two together thin the shoulder AND restore the
-      // left tail at once. ratePos is added after, because it is the calibration offset.
-      const dRaw = (p.rating - 6.5) * proj * (CFG.rateSpread?.[p.pos] ?? 1) * shrink;
-      const dev = dRaw * (dRaw >= 0 ? CFG.rateBodyUp : CFG.rateBodyDn)
-                + (CFG.ratePos[p.pos] ?? 0) * shrink;
-      // THE TOP END COMPRESSES INSTEAD OF CLIPPING. The positional spread (rateSpread.FWD 1.55)
-      // put an ordinary goal-plus-assist afternoon at 9.99, and the hard clamp then flattened every
-      // performance above it onto the same 10.0 -- measured, a ten every four matched-league matches
-      // and 2.6 a match in mismatch fixtures, with a hat-trick and a tidy brace printing identically.
-      // Linear to 8.4, then exponential approach to 10: ordering is preserved, the calibrated pars
-      // are untouched (the knee sits ~2 sd above every positional par), and a 10.0 needs the raw
-      // deviation of roughly three goals AND two assists rather than one of each.
-      // Logarithmic above the knee, not exponential-to-10: the exponential emptied the 10.0 bin but
-      // left a brace printing 9.7, because it spent its whole range on the first stretch past the
-      // knee. The log keeps compressing forever: a goal-and-assist lands ~8.9, a brace low 9s, a
-      // hat-trick ~9.4, a four-goal afternoon ~9.7, and a 10.0 needs roughly five goals and two
-      // assists in one match. The knee sits ~2 sd above every positional par, so the calibrated
-      // body is linear. TAIL 0.55 was measured first and squeezed everything above a brace into
-      // 9.2-9.37 -- a four-goal game printed what a good brace did; 0.7 is where the monsters
-      // separate again without reopening the flood.
-      const rTop = 6.5 + dev, KNEE = CFG.rateKnee, TAIL = CFG.rateTail;
-      const rSoft = rTop > KNEE ? KNEE + TAIL * Math.log(1 + (rTop - KNEE)) : rTop;
+      // AGAINST HIS OWN POSITION'S ORDINARY AFTERNOON, then one scale for everybody. `mid` is that
+      // afternoon per ninety, and it lands on ratePar; the swing above it is scaled by `up` and the
+      // swing below by `dn`, because drifting down for a poor afternoon is easy and drifting up for
+      // a merely tidy one is not, and each position's afternoons are lopsided by a different amount.
+      // The par and `mid` shrink with the minutes like the swing does, so a cameo starts where
+      // everybody starts: 6.5.
+      // THE TOP END BENDS INSTEAD OF CLIPPING: linear to rateKnee, then logarithmic, so the order is
+      // kept all the way up. `tail` is the slope at the knee, per position -- a keeper's twelve-save
+      // afternoons and a striker's hat-tricks are rare by different amounts, so each position gets
+      // the same share at 9.0 or better -- and rateBend is how late it bends, which is what makes a
+      // 10.0 possible but historic.
+      const f = CFG.rateFin[p.pos] ?? CFG.rateFin.MID;
+      const z = ((p._rr ?? p.rating) - 6.5) * proj * shrink - f.mid * shrink;
+      const rTop = 6.5 + z * (z >= 0 ? f.up : f.dn) + (CFG.ratePar - 6.5) * shrink, KNEE = CFG.rateKnee;
+      const S = CFG.rateBend, rSoft = rTop > KNEE ? KNEE + f.tail * S * Math.log(1 + (rTop - KNEE) / S) : rTop;
       p.rating = Math.max(3, Math.min(10, +(rSoft.toFixed(2))));
     }
   }
@@ -1542,7 +1524,7 @@ export function mePkSetup(s, out, pk, side) {
   // kicks. And inplay, or the shootout counts as playing time.
   pk.p0 = [];
   for (const sd of ME_SIDES) for (const q of s.players[sd])
-    pk.p0.push({ q, goals: q.goals || 0, saves: q.saves || 0, rating: q.rating ?? 6.5 });
+    pk.p0.push({ q, goals: q.goals || 0, saves: q.saves || 0, rating: q.rating ?? 6.5, rr: q._rr });
   pk.struck = -1; pk.t = 0; pk.how = "wide";
   mePkLineUp(s, pk, side);
   mp.bx = meGoalX(side) - meDir(side) * 11; mp.by = ME_HALF_W;
@@ -1604,7 +1586,7 @@ export function mePkTally(s, out, pk, side) {
     if (pk.r0.sdv && out.shotDist) for (let i = 0; i < out.shotDist.length; i++) out.shotDist[i] = pk.r0.sdv[i] ?? 0;
     out.inplay = pk.r0.i0;
   }
-  for (const s0 of pk.p0 || []) { s0.q.goals = s0.goals; s0.q.saves = s0.saves; s0.q.rating = s0.rating; }
+  for (const s0 of pk.p0 || []) { s0.q.goals = s0.goals; s0.q.saves = s0.saves; s0.q.rating = s0.rating; s0.q._rr = s0.rr; }
   // ...and because both lists are truncated, the kicks had no record anywhere except the aggregate
   // score. Kept here instead, so the shootout can be reported as a shootout.
   (out.pens = out.pens || []).push({ side, n: pk.taken[side], scored, how: pk.how,

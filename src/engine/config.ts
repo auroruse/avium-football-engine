@@ -1624,19 +1624,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // are the one currency concentrated in the players a season board is FOR -- the top scorers.
   // Uniform cuts to hub pay could never reorder the board (the positional par re-centers the
   // mean and hands most of it back); paying the striker's currency properly is the symmetric fix.
-  // THE SHAPE OF THE RATINGS CURVE. rateBody scales the performance deviation before the knee,
-  // rateKnee/rateTail shape what is left above it. Set together against a real distribution: peak
-  // near 6.6, roughly three quarters of performances between 6.0 and 7.5, about 1% at 8.5 or
-  // better, and a thin tail that still reaches 9 for a genuine monster.
-  // Measured, not guessed. The no-event body was never the problem: a full-match player with no
-  // goal and no assist sits at p50 6.72 and p90 7.47, which is right. Two things were wrong.
-  // A LONE GOAL WAS WORTH +1.15, putting 1G0A at a mean of 7.89 where a real curve puts it near
-  // 7.5 -- that single band is most of the excess above 8.0. And the knee at 7.1 CRUSHED exactly
-  // the performances that should reach nine: a brace topped out at 8.57 and a hat-trick at 8.89,
-  // so the ladder above one goal had almost no rungs left. Cheaper goals and a much later knee fix
-  // both at once -- one goal lands below the knee, a brace reaches the knee, and the third and
-  // fourth still climb. rateBody returns to 1.0 because the body needed no compression.
-  rateBodyUp: 0.76, rateBodyDn: 1.27, rateKnee: 8.0, rateTail: 1.10,
+  // ...then cut to 0.80 when the curve was set against a real distribution: at 1.15 a lone goal put
+  // 1G0A at a mean of 7.89 where a real curve puts it near 7.5.
   rateGoal: 0.80, rateGoalXgW: 0.4, rateGoalXgDef: 0.3, rateAssist: 0.46,
   // THE KEEPER IS RATED ON GOALS PREVENTED. A save paid rateSave x xg and a goal cost rateConcede x
   // (1 - xg), at 1.3 and 0.18, so every shot on target was worth about +0.2 to him on average --
@@ -1659,7 +1648,7 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // at 5.4 and had one keeper in nine finishing below 5.5.
   // Re-derived 23 Aug 2026 (600 matches) after the keeper's sweep fix and the wider spans, and
   // again after the pass-belief recalibration changed what he faces.
-  rateSave: 0.65, gkExpPen: 0.94, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
+  rateSave: 0.65, gkExpPen: 0.92, rateConcedeDef: 0.06, rateOwnGoal: 1.25,
   // ...AND THE SHOT IS PRICED AGAINST AN ORDINARY KEEPER, not against him. The recorder's xg carries the
   // keeper's own skill, so the worse he was the likelier every shot he faced looked: an island side's 37,
   // facing shots the recorder rated as going in because he was in goal, was paid for each save as though
@@ -1675,7 +1664,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // re-levelled recorder; [0.3, 0.4) is the open net, [0.4, 0.6) keeps its old figure on three shots.
   // ...and again after the set keeper's reach came down the same day (800 matches).
   // ...and once more for the sharper open-play strike (800 matches).
-  gkExp: [[0.05, 0.08], [0.10, 0.16], [0.20, 0.33], [0.30, 0.47], [0.40, 0.70], [0.60, 0.57], [1.01, 0.89]],
+  // Re-derived 3 Oct 2026 (1,200 matches): the keepers had drifted 0.09 a match into credit, so a busy
+  // afternoon paid for being busy again -- and once more on the widened keeper spans the same day.
+  gkExp: [[0.05, 0.06], [0.10, 0.13], [0.20, 0.29], [0.30, 0.45], [0.40, 0.69], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1754,98 +1745,34 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // of the biggest single things a keeper or a defender can do in a match, and neither existed.
   ratePenSave: 0.85, ratePenMiss: 1.00, rateLastMan: 0.28, tkLastManR: 34,
   // PHASE C. rateFullFrac is the share of a match a man has to play before his rating is taken at
-  // face value; below it he is pulled back toward par. ratePos is the positional par itself,
-  // calibrated off test/ratings.mjs -- re-derive it if any delta above changes.
+  // face value; below it he is pulled back toward par (see rateFin).
   rateFullFrac: 0.667,
   // The ceiling on the per-ninety projection above. 1/rateFullFrac, so a man who plays the
   // qualifying share reaches his full rate and anything shorter is damped by the shrink.
   rateProjMax: 1.5,
-  // RE-DERIVED 23 Aug 2026 with `node test/ratings.mjs derive`: 400 league matches with this set
-  // to zero, full-match players only, and each position's par set so its mean lands on 6.85 --
-  // about where the systems this is modelled on put a man who played the ninety. The raw means
-  // were GK 6.65, DEF 7.28, MID 7.41, FWD 7.39: the outfield ones climbed when interceptions,
-  // build-up and recoveries started paying and rateSpread scaled the deviation, and the keeper's
-  // fell when his save volume stopped paying. The par absorbs all of that, which is its job.
-  // Re-derive it the same way if any delta above, or rateSpread, moves.
-  // ...and again the same day, 600 matches, after the keeper's sweep fix and spans, and once more
-  // after the pass-belief recalibration (GK raw 6.63, DEF 7.32, MID 7.36, FWD 7.34).
-  // Re-derived 28 Aug 2026 after the loose-ball rework (loosePressWin, carryGoalW, the goal-kick
-  // shape floor): the trickle-in and own-goal classes it removed were mostly forward goals, so the
-  // FWD par climbed a third of a point and the others moved a few hundredths.
-  // The derive-to-zero figures overshoot because the projection shrink interacts with the par;
-  // interpolate from measured (par, mean) points at slope ~0.88 rating per unit of par instead.
-  // Re-set 28 Aug 2026 after the fluidity rework and its keeper-reach offset: FWD from
-  // (-1.243, 6.999) at slope 0.88; GK's own slope is steeper, ~1.72 -- interpolated from
-  // (0.086, 7.087) and (-0.183, 6.625). DEF and MID held (both passed).
-  // DEF nudged 28 Aug (set-piece/header rework): real clearances pay defenders more, par ran
-  // 6.975 -- interpolated at the outfield slope 0.88.
-  // Re-derived 29 Aug 2026 with the goalkeeping rework (dive speed, depth skill, cross claims,
-  // shot patience): keepers concede differently and forwards' shot diet moved.
-  // FWD interpolated from its own two measured points ((-1.412, 6.963), (-1.225, 7.132),
-  // slope 0.90) -- the derive-to-zero figure overshoots, as it always does.
-  // FWD moved again by the pass-belief refit; at the established slope 0.90 from (−1.538, 6.641).
-  // GK interpolated at its own slope 1.72 from (0.054, 6.971) after the through-ball revival.
-  // Re-derived 2 Oct 2026 when the second brain became the only one, with the re-levelled xg recorder
-  // and the keeper rated against an ordinary keeper (xgN).
-  ratePos: { GK: 0.318, DEF: -0.136, MID: -0.188, FWD: -0.347 },
-  // HOW FAR A POSITION'S AFTERNOON IS ALLOWED TO SWING. ratePos puts the four means in the same
-  // place; this puts the spreads nearer each other. Measured over a full-match sample, a forward's
-  // rating had a standard deviation of 0.87 and a midfielder's 0.59 -- a goal is 0.9 and nothing a
-  // midfielder does is, so the top of every table was a forward by construction and a fifth of
-  // all midfield and defensive afternoons finished within 0.15 of par. A factor on the deviation,
-  // applied before the positional par: 1.0 is the forward, and the others are lifted part of the
-  // way toward him, not all of it -- forwards genuinely swing more. Re-derive ratePos after
-  // touching this, since scaling the deviation moves the mean.
-  // RE-DERIVED 26 Aug 2026, then CORRECTED the same day. Lifting the other three toward the
-  // forward is what the ghost problem asked for and it is also how a season board fills up with
-  // centre-halves: at DEF 1.15 against FWD 1.0 a defender's afternoon swung as wide as a striker's
-  // (sd 0.746 against 0.839), and since a league fields four defenders a side and two forwards,
-  // the tail of the season table was defenders by sheer weight of bodies -- twelve of the top
-  // twenty-five finished within 0.1 of each other, so ties decided the order. The forward is now
-  // the widest swing in the game and the defender the narrowest, which is what the real boards
-  // look like. Ghosts come back a little at DEF 1.0; that is the price and it is the right one.
-  // ...and the MIDFIELDER is the other half of the same mistake. Squeezing the defender without
-  // lifting him left the middle of the pitch as the worst-represented position on the board --
-  // two of the top ten and four of the top twenty-five, behind a back four who had scored nothing
-  // between them. A season table should read forwards, then midfielders, then defenders, and the
-  // three multipliers are what say so: applied to neutral swings of DEF 0.649 / MID 0.655 /
-  // FWD 0.839, these give 0.584 / 0.753 / 1.049.
-  // ...and the KEEPER was left at 1.0 while the other three moved, which quietly made him the
-  // narrowest swing on the pitch: nought of the top twenty-five in a full season, so a keeper
-  // could not have a great year at all. A screamer of a season should reach the board and an
-  // ordinary one should not, which is a WIDE keeper, not a high one -- the par is unchanged and
-  // both tails open together.
-  // TRIED AND REVERTED: DEF 0.80 with FWD 1.15, to move the defenders who fill the eleven-to-
-  // twenty-five band. It cost the thing that matters -- the top ten went to two forwards and
-  // three defenders, with the league's leading scorer down at twelfth -- because compressing the
-  // forward compresses the men whose seasons the board is supposed to be about. The middle of a
-  // season table carries defenders and that is what a defender's season looks like; the top of it
-  // is forwards and midfielders, and that is what these hold.
-  // Re-tuned after the pass-completion rework (27 Aug 2026): the safer league pays midfielders
-  // far more routine volume -- completions, progressions, key passes, assists all rose -- so at
-  // MID 1.15 the season board went nine midfielders in the top ten. The middle band comes down
-  // and the forward opens up; the raw swing the multipliers act on is not what it was in August's
-  // first derivation, so these are set by the board they produce, not by the old sd ratios.
-  // Re-set with the accumulation trims (rateChanceCap, rateKeyPass): once the hub's rating
-  // volume is capped at source, the multipliers stop fighting the economy and come back to sane
-  // values -- MID 0.90 was compressing every ordinary midfielder's afternoon to protect the board
-  // from three playmakers. The board should read: forwards and midfielders who carried their
-  // team, the standout defender, the standout keeper.
-  // Composition-tuned (27 Aug 2026, third pass): a 19-goal striker already rates 7.8 -- the
-  // problem was tier width, not the top. Every club fields a playmaker at 7.3+, only a few
-  // forwards a season post carry-the-team numbers, so the forward tier is wide open and the hub
-  // tier comes in. GK 1.30 put two keepers in one top ten; one standout is the brief.
-  // Fourth and final composition pass: the multipliers stopped moving the board (8 MID at FWD
-  // 1.55 vs MID 0.94), because the towering seasons are the CREATION ECONOMY, not the spread --
-  // so the key-pass and chain-credit rates above took the cut instead, and the multipliers hold
-  // here. Note for the next person: half the board's "midfielders" are creative winger/AM
-  // profiles that real-world taxonomies list as forwards; the preset position labels understate
-  // the board's true attacker share.
-  // FWD 1.55 -> 1.30. With the curve reshaped, forwards held 8.6% of performances at 8.5 or
-  // better against 0.0% of defenders -- the whole of the remaining top-end excess was one position.
-  // 1.55 dates from when a striker needed the extra spread to reach the top of a season board at
-  // all; the projection to a full match now does that job, so this is double-counting it.
-  rateSpread: { GK: 1.28, DEF: 1.15, MID: 0.94, FWD: 1.30 },
+  // THE FINISH: one scale for every position. A rating is how far a man's afternoon sat from an
+  // ordinary afternoon IN HIS OWN POSITION, read on one SofaScore-shaped curve, so a keeper, a
+  // centre-half and a striker who each had the best game of their week land on the same number.
+  // It replaced a par and a swing set per position to shape the season board (forwards widest,
+  // keepers wide, midfielders narrow), which was a positional bias by design: keepers held 13% of
+  // the full matches but 20% of the top 1% and 31% of the bottom 5%, at a mean 0.13 above the rest.
+  // Every man starts on 6.5, as SofaScore's do. `mid` is his position's ordinary afternoon (raw, per
+  // ninety) and maps to ratePar; the swing above it is scaled by `up`, below it by `dn`, and past
+  // rateKnee it bends with slope `tail`, later or sooner by rateBend. Each is set so that every
+  // position puts the same share of its full matches at 8.0 or better, at 9.0 or better and at 6.0
+  // or worse, on SofaScore's shape: a full-match mean of 6.85, 6% at 8.0+, 0.7% at 9.0+, 6% at 6.0
+  // or below -- and rateBend so that a 10.0 comes about once in three thousand performances, as
+  // SofaScore's does.
+  // Measured, not chosen: `node test/ratings.mjs derive` fits the sixteen in rateFin from the raw
+  // ratings and prints them. Re-derive whenever a rating delta, or the football, moves. rateBend is
+  // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
+  ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
+  rateFin: {
+    GK:  { mid: 0.338, up: 1.381, dn: 0.729, tail: 0.946 },
+    DEF: { mid: 0.607, up: 1.109, dn: 1.150, tail: 1.056 },
+    MID: { mid: 0.618, up: 0.770, dn: 1.439, tail: 1.099 },
+    FWD: { mid: 0.493, up: 0.733, dn: 1.641, tail: 1.419 },
+  },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
   // length -- at a flat 1.7 m a twenty-metre shot swept a 68 square-metre corridor and somebody in
@@ -2554,12 +2481,21 @@ gkDiveV: 2.9,
   // dive near 8.3 m/s; the ends move. Conversion on target came back from 30.0% to 31.2% because
   // the worse keepers lose more than the better ones gain, and a 10-OVR step is now worth about
   // +0.13 goals a match on target with the gradient visible in his rating.
-  gkReactSlow: 0.24, gkReactFast: 0.21,      // seconds, worst keeper to best, from the strike to going
+  // WIDENED 3 Oct 2026, the mean keeper held where he was. With every keeper's rating the only thing
+  // changed between matches, ten OVR in goal was worth 0.10 goals a match -- two saves in a hundred on
+  // target, against the three or four that separate a top keeper from a poor one -- and spread over a
+  // season it disappeared under the noise, so an 85 and a 65 rated alike. Reading the shot is what
+  // separates them: 0.28 s to 0.20 s across the band, with the dive (gkDiveVmin/max) opening the same
+  // way, both anchored on League One's average keeper (an 80) so that League One scores what it did.
+  // Measured on the same test: 0.19 goals a match and +0.13 of rating per ten OVR.
+  gkReactSlow: 0.282, gkReactFast: 0.202,   // seconds, worst keeper to best, from the strike to going
   // THE PART-TIMER (meGkLow): under gkLowAt reflex (a 60-rated keeper) and fully at gkLowAt - gkLowSpan (a
   // 35), on top of the band: gkReactLow seconds later off the mark, gkDiveLow m/s slower across, gkGrabLow
   // and gkSetLow (a share) off his reach, gkCatchLow more to spill, gkPanicLow more goal he thinks he has
   // to cover, and gkBeatLow on how beatable the shooter and the recorder take him to be.
-  gkLowAt: 82, gkLowSpan: 15, gkReactLow: 0.08, gkDiveLow: 0.6, gkGrabLow: 0.06, gkSetLow: 0.15,
+  // gkReactLow 0.08 -> 0.045 and gkDiveLow 0.6 -> 0.1 when the band itself widened (3 Oct 2026): a keeper
+  // at the bottom of the band now starts slower, so a 37 keeps the reaction he had rather than paying twice.
+  gkLowAt: 82, gkLowSpan: 15, gkReactLow: 0.045, gkDiveLow: 0.1, gkGrabLow: 0.06, gkSetLow: 0.15,
   gkCatchLow: 0.4, gkPanicLow: 0.25, gkBeatLow: 0.25,
   // THE SAVE AS IT HAPPENS (keeper.ts). He no longer guesses a side as it is struck -- that guess,
   // right 34% of the time for the worst keeper and 92-97% for the best, WAS the whole of goalkeeping,
@@ -2585,7 +2521,9 @@ gkDiveV: 2.9,
   // as 11% different from its worst while the save itself separated them by 55%. Nobody shot
   // differently against a great goalkeeper. On the band the resolution uses, anchored so the mean
   // league keeper (77.4 OVR) keeps the 0.586 everything was calibrated against.
-  gkBeatLo: 0.907, gkBeatW: 0.40,
+  // Widened 3 Oct 2026 with the reaction and dive spans, by the same 1.64 the save gradient grew, and
+  // still anchored on that keeper (gkRefSkill 0.80), so the ordinary keeper's ledger price does not move.
+  gkBeatLo: 1.107, gkBeatW: 0.65,
   // The recorder's calibration: P = sigma(xgCal0 + xgCalB * logit(q)), fitted on 7,193 attempts
   // joined to their outcomes by shot id (test/ratings.mjs collects the data). After the open-goal
   // term the raw recorder ran monotonically hot close in and cold from range; through this map
@@ -2616,7 +2554,9 @@ gkDiveV: 2.9,
   // Real dive launch speed is 4-6 m/s; 9.5 was superhuman late coverage papering over positioning.
   // The compensation is positional: gkOutSkill below, the angle already sharpens with skill
   // through gkPanic, and the cross claim plus the shot-patience term take chances away upstream.
-  gkDiveVmin: 3.5, gkDiveVmax: 3.7,
+  // ...spread 3 Oct 2026 from 3.5-3.7, about the same mean keeper: a better keeper gets across faster,
+  // not just sooner. See gkReactSlow.
+  gkDiveVmin: 2.83, gkDiveVmax: 3.83,
   // How far past his own wingspan still counts as barely moving. Inside this he catches it; beyond
   // it he has had to dive, and a dive is a deflection. Pace does not come into that: a rocket
   // straight at his chest is a comfortable take and a gentle one into the corner is a fingertip.

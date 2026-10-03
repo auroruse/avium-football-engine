@@ -57,9 +57,9 @@ export const SPEED_BASE = 4.77, SPEED_SPAN = 3.6;   // pace 20 -> 5.5 m/s, pace 
 export const meSpeed = (a, stam) => (SPEED_BASE + a.pace / 99 * SPEED_SPAN) * (0.80 + 0.20 * Math.max(0, Math.min(100, stam ?? 100)) / 100);
 
 // THE KEEPER, as two physical numbers. One OVR, tilted into reflex, mapped onto the range real
-// goalkeeping spans: about 260 ms of reaction and a 1.8 m dive at the bottom, 180 ms and 3.0 m at
-// the top. The 0..1 is taken over the reflex band a keeper can actually HAVE, not over 0..99 --
-// ME_COMPRESS deliberately squeezes ratings, so a 40-rated and a 90-rated keeper come out at 76 and
+// goalkeeping spans: about 280 ms of reaction and a 2.8 m/s dive at the bottom of the band, 200 ms
+// and 3.8 m/s at the top (CFG.gkReactSlow/Fast, gkDiveVmin/max). The 0..1 is taken over the reflex
+// band a keeper can actually HAVE, not over 0..99 -- ME_COMPRESS deliberately squeezes ratings, so a 40-rated and a 90-rated keeper come out at 76 and
 // 96 reflex, and normalising over the full scale would have made them all but identical.
 // ...carried past 1 off the unclamped reflex, so a keeper keeps improving to 90 (CFG.gkSkillMax) rather
 // than topping out at 87.

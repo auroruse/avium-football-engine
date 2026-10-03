@@ -530,7 +530,7 @@ export const meSide = (t) => {
   // match (managerSelect), and this pinned it to 100: the carry chose who started, then everyone
   // kicked off fresh. A squad carrying no stamina -- a preset, a harness -- still starts on 100.
   return base.map((p, i) => ({ ...p, name: p.name || (p.pos + i), ovr: p.ovr ?? t?.skill ?? 70,
-    stamina: p.stamina ?? 100, rating: 6.5, goals: 0, assists: 0, saves: 0, passOk: 0, defActs: 0, _att: null,
+    stamina: p.stamina ?? 100, rating: 6.5, _rr: 6.5, goals: 0, assists: 0, saves: 0, passOk: 0, defActs: 0, _att: null,
     // What the deepened rating is built out of. Zeroed here so a man who did none of it reads 0
     // rather than undefined, and so the app can show any of them without a guard.
     passFail: 0, duelWon: 0, duelLost: 0, dribbles: 0, beaten: 0, aerials: 0 }));
@@ -540,7 +540,7 @@ export const meSide = (t) => {
 // with the stamina he carried in, like the men he replaces.
 export const meBench = (t) => (t?.squad || []).filter(p => p.bench).slice(0, 12)
   .map((p, i) => ({ ...p, name: p.name || (p.pos + "B" + i), ovr: p.ovr ?? t?.skill ?? 70,
-                    stamina: p.stamina ?? 100, rating: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
+                    stamina: p.stamina ?? 100, rating: 6.5, _rr: 6.5, goals: 0, assists: 0, saves: 0, chances: 0,
                     defActs: 0, _att: null, passOk: 0, passFail: 0, duelWon: 0, duelLost: 0,
                     dribbles: 0, beaten: 0, aerials: 0 }));
 
