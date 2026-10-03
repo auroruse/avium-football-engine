@@ -12,7 +12,7 @@
 // how exposed the ball was and his tackling against the dribbler's control; whether a miss is a foul is
 // where he came from and how hard. A beaten man is beaten: he has to turn and chase. And a side that
 // fouls on purpose to stop a break, does so.
-import { CFG, ME_DT } from "../config";
+import { CFG, ME_DT, ME_HOME_ADV } from "../config";
 import { meAttrs, meMind, meSpeed, meTech } from "../attributes";
 import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meOther, meThruCover } from "../geometry";
 import { meCarrierPos } from "../brain";
@@ -161,6 +161,11 @@ export function mindDuel(s, rng, out, foul) {
   if (!c || c.off) return;
   if (mp.held && c.pos === "GK") return;
   const us = s.players[def], st = s.strategy?.[def] || {};
+  // HOME. The crowd is behind the host in every 50-50 (`duel`, on his chance of winning it) and the
+  // referee calls the visitor's challenges a little more readily and the host's a little less (`ref`).
+  const hostSd = s.homeAdv === "home" || s.homeAdv === "away" ? s.homeAdv : null;
+  const hSign = hostSd ? (def === hostSd ? 1 : -1) : 0;
+  const hDuel = hSign * (ME_HOME_ADV.duel || 0) * ME_HOME_ADV.k, hFoul = 1 - hSign * (ME_HOME_ADV.refRoll || 0) * ME_HOME_ADV.k;
   const gx = meGoalX(atk);                                     // the goal we defend
   const inBoxC = (q) => Math.abs(q.x - gx) < CFG.gkBoxR && Math.abs(q.y - ME_HALF_W) < CFG.boxHalfW;
   const dBC = Math.hypot(mp.bx - c.x, mp.by - c.y);
@@ -187,7 +192,7 @@ export function mindDuel(s, rng, out, foul) {
     const slide = dPB > CFG.reach + 0.55;
     if (dPB > CFG.reach + (slide ? 1.35 : 0.55)) continue;
     const tk = tackSkill(p);
-    const pWin = clamp(0.12 + 0.52 * exposed + 0.34 * (tk - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0), 0.03, 0.9);
+    const pWin = clamp(0.12 + 0.52 * exposed + 0.34 * (tk - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel, 0.03, 0.9);
     // HIS BAR. He goes when he likes his chances well enough; how well is temperament and the moment.
     // A side told to get stuck in goes sooner, a booked man later, a man delaying a break later still,
     // and a last man with the ball about to be past him has no bar at all.
@@ -209,7 +214,7 @@ export function mindDuel(s, rng, out, foul) {
     const closeV = Math.max(0, ((p.vx || 0) * (c.x - p.x) + (p.vy || 0) * (c.y - p.y)) / Math.max(0.3, pick.dP) / ME_DT);
     const pFoul = clamp(0.13 + 0.40 * behind + (slide ? 0.20 : 0) + 0.04 * closeV - 0.22 * tackSkill(p)
                         + (st.tackling || 0) * 0.05, 0.03, 0.85);
-    if (rng.u() < pFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]); foul.commit(p, c, closeV); return; }
+    if (rng.u() < pFoul * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]); foul.commit(p, c, closeV); return; }
     // Beaten: committed and gone past, he has to turn and run.
     p._beat = slide ? CFG.tkBeatT + 6 : CFG.tkBeatT;
     foul.beaten(p, c);
@@ -230,7 +235,7 @@ export function mindDuel(s, rng, out, foul) {
       const front = ((p.x - c.x) * ux + (p.y - c.y) * uy) / (ul * Math.max(0.1, dP));
       const pC = MT.contactFoul * (1 + (st.tackling || 0) * 0.6) * (1.3 - tackSkill(p)) * (0.6 + cs)
                * (front < -0.2 ? 1.6 : 1) * ((p.yc || 0) ? 0.5 : 1) * (inBox ? 0.22 : 1);
-      if (rng.u() < pC) { if (globalThis.__fouls) globalThis.__fouls.push(["contact", inBox]); foul.commit(p, c, 0.6); return; }
+      if (rng.u() < pC * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["contact", inBox]); foul.commit(p, c, 0.6); return; }
     }
   }
   // THE FOUL ON PURPOSE. A man who has just been beaten, or is chasing from behind, with the dribbler
@@ -247,6 +252,6 @@ export function mindDuel(s, rng, out, foul) {
     for (const q of us) if (q && !q.off && q.pos !== "GK" && ((q.x - c.x) * (gx - c.x) > 0)) back++;
     if (back > 3 || danger < 0.04) continue;
     const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2);
-    if (rng.u() < pCyn) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]); foul.commit(p, c, 1.5); return; }
+    if (rng.u() < pCyn * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]); foul.commit(p, c, 1.5); return; }
   }
 }

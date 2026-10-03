@@ -3297,6 +3297,13 @@ export const ME_HOME_ADV = {
   ref: 0.15,
   host:  { chanceCreation: 0.50, tempo: 0.50, passingDir: 0.40 },
   guest: {},
+  // 2 Oct 2026, the second brain. The tilt above only opened the host up: on 380 NL1 matches an arm it
+  // came to +0.01 host goal difference with the visitor scoring more, and the `ref` lean never reached
+  // the second brain's foul roll, so hosts committed MORE fouls (9.3 / 8.4). tiltK 0 retires the tilt;
+  // refRoll is the referee at the foul roll (mind/duel.ts) and `duel` the crowd behind the host in a
+  // 50-50, on his chance of winning it: 0.04 measured +0.09, 0.08 +0.49 (47/24/28), 0.06 is aimed at a
+  // real +0.3. `nerves` (the visitor misjudging more) measured nothing and stays at 0.
+  tiltK: 0, nerves: 0, duel: 0.06, refRoll: 0.15,
 };
 
 // SQUAD FIT, SPENT AS RATING. computeStyleFit says how well the squad can carry out the system it

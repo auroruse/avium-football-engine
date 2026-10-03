@@ -16,7 +16,7 @@
 //      and then ran wherever an eight-way search pointed. The carry is now priced on several headings
 //      and the one chosen is the one he takes. And the point a carry or a better shot is priced at no
 //      longer runs past the goal line, which handed a free chance to any man inside eight metres.
-import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "../config";
+import { meCoachSt, CFG, ME_DT, ME_HOME_ADV, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "../config";
 import { meAtkW, meAttrs, meGkSkill, meMind, meTech, meSpeed } from "../attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine,
          meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "../geometry";
@@ -97,7 +97,9 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   // His role's own appetite for risk sits on top of the side's.
   const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey + held - (role.risk || 0) * 0.18);
   const lose = CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y));
-  const miss = CFG.judgeErr * (1 - mind);
+  // AWAY FROM HOME he misjudges a little more: the crowd, the strange ground (ME_HOME_ADV.nerves).
+  const guest = (s.homeAdv === "home" || s.homeAdv === "away") && side !== s.homeAdv;
+  const miss = CFG.judgeErr * (1 - mind) * (guest ? 1 + (ME_HOME_ADV.nerves || 0) * ME_HOME_ADV.k : 1);
   const clsW = Math.sqrt(CFG.judgeShare), ownW = Math.sqrt(1 - CFG.judgeShare);
   const cls = { shot: tri(me, epi, 11, slow), pass: tri(me, epi, 12, slow), carry: tri(me, epi, 13, slow), clear: tri(me, epi, 14, slow) };
   const jit = (c, key) => (clsW * cls[c] + ownW * tri(me, epi, 1000 + key, slow)) * miss;

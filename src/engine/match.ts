@@ -80,7 +80,7 @@ export function meInit(s, slotsFor, rng) {
   // the baseline stamped into mp.stratBase below. s.homeAdv names the side WITH the advantage rather
   // than the fixture's home slot: a tie played at the away team's ground sets it to "away".
   if (s.homeAdv === "home" || s.homeAdv === "away") {
-    const host = s.homeAdv, k = ME_HOME_ADV.k;
+    const host = s.homeAdv, k = ME_HOME_ADV.k * (ME_HOME_ADV.tiltK ?? 1);
     const tilt = (side, shape) => {
       const st = s.strategy?.[side]; if (!st) return;
       for (const key in shape) {
