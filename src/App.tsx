@@ -7381,6 +7381,10 @@ export default function App() {
   // awaits a pool for minutes at a time, and two of them would each clone the tournament from the
   // same state and the slower one would win -- silently throwing away a whole round of results.
   const simBusy = useRef(false);
+  // A line for the tournament screen that is not tied to an open score editor: why a change was
+  // refused, or what a rebuild did.
+  const [tNotice, setTNotice] = useState("");
+  const [tRebuildArm, setTRebuildArm] = useState(false);       // the rebuild's confirm click
   const [tUnavailOpen, setTUnavailOpen] = useState(false);
   const [tChampOpen, setTChampOpen] = useState(false);
   const [tKoGroupsOpen, setTKoGroupsOpen] = useState(false);
@@ -9097,7 +9101,54 @@ export default function App() {
       return next;
     });
   };
+  // A SIM IS PLAYING. It plays on a copy of the tournament taken when it started and writes that copy
+  // back when it finishes, so a result changed underneath it was written over: a result deleted
+  // mid-sim came back with its points, while the player stats it had already handed back stayed
+  // handed back. Every change to a result waits for the sim instead.
+  const simGuard = () => {
+    if (!simBusy.current) return false;
+    setTNotice("A sim is running. Wait for it to finish, then try again.");
+    return true;
+  };
+  // REBUILD FROM RESULTS. The table and every player's season are what the results that stand add up
+  // to, and each result carries exactly what it gave each player (statDiffs). A save knocked out of
+  // step is put right by adding them up again. Suspensions, injuries and fitness count down with the
+  // rounds rather than add up, so they are left as they are. A result with no record of what it gave
+  // (one from an old save) would have its stats wiped by this, so then it refuses.
+  const tRebuildFromResults = () => {
+    if (simGuard()) return;
+    const ng = structuredClone(tGroups), sets = [];
+    let missing = 0;
+    const take = (m) => {
+      if (!m || !m.result || m.bye) return;
+      const sd = m.result.statDiffs;
+      if (!sd) { missing++; return; }
+      if (sd.leg1) sets.push(sd.leg1.home, sd.leg1.away, sd.leg2?.home, sd.leg2?.away); else sets.push(sd.home, sd.away);
+    };
+    ng.forEach(g => g.schedule.forEach(rd => rd.forEach(take)));
+    if (tKO) {
+      (tKO.rounds || []).forEach(r => (r.matches || []).forEach(take));
+      (tKO.losers || []).forEach(r => (r.matches || []).forEach(take));
+      [tKO.thirdPlace, tKO.grandFinal, tKO.reset].forEach(take);
+    }
+    if (missing) { setTNotice(`Can't rebuild: ${missing} result${missing === 1 ? "" : "s"} from an older version carry no player record.`); return; }
+    const F = ["matches", "subApp", "mins", "goals", "assists", "totalRating", "yellows", "reds", "passOk", "prog", "cc", "defActs", "saves"];
+    const sum = {};
+    for (const diffs of sets) if (diffs) for (const [k, d] of Object.entries(diffs)) {
+      const e = sum[k] || (sum[k] = {});
+      for (const fld of F) e[fld] = (e[fld] || 0) + (d[fld] || 0);
+    }
+    setTPlayerStats(prev => {
+      const next = {};
+      for (const pk of Object.keys(prev)) { next[pk] = { ...prev[pk] }; for (const fld of F) next[pk][fld] = sum[pk]?.[fld] || 0; }
+      return next;
+    });
+    ng.forEach(g => { g.standings = recalcStandings(g, tConfig.tiebreakers); });
+    setTGroups(ng);
+    setTNotice("Rebuilt the table and the player stats from the results.");
+  };
   const tSetManualScore = () => {
+    if (simGuard()) return;
     if (!tEdit) return;
     const { gi, ri, mi, h, a } = tEdit;
     const hg = parseInt(h, 10), ag = parseInt(a, 10);
@@ -9125,6 +9176,7 @@ export default function App() {
     setTGroups(ng); setTEdit(null); setTScoreError("");
   };
   const tDeleteGroupResult = (gi, ri, mi) => {
+    if (simGuard()) return;
     const ng = structuredClone(tGroups);
     const gm = ng[gi]?.schedule[ri]?.[mi];
     if (!gm) return;
@@ -9138,6 +9190,7 @@ export default function App() {
   };
   const tSetKoManualScore = () => {
     if (!tKoEdit) return;
+    if (simGuard()) return;
     const { ri, mi, h, a, step, ftH, ftA, etH, etA, twoLeg: isTL, l1h, l1a } = tKoEdit;
     const bracket = tKoEdit.bracket || (tKoEdit.tp ? "tp" : "wb");
     const hg = parseInt(h, 10), ag = parseInt(a, 10);
@@ -9287,7 +9340,7 @@ export default function App() {
     };
     if (simBusy.current) return;                   // one at a time; see simBusy
     const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
-      try { await run(); } finally { simBusy.current = false; setSimProg(null); if (bulk) setLoading(false); }
+      try { await run(); } finally { simBusy.current = false; setTNotice(n => n.startsWith("A sim is running") ? "" : n); setSimProg(null); if (bulk) setLoading(false); }
       console.log(`[perf] tScorinate: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
@@ -9619,11 +9672,12 @@ export default function App() {
     };
     if (simBusy.current) return;                   // one at a time; see simBusy
     const _timed = async () => { const _t0=performance.now(); simBusy.current = true;
-      try { await run(); } finally { simBusy.current = false; setSimProg(null); if (bulk) setLoading(false); }
+      try { await run(); } finally { simBusy.current = false; setTNotice(n => n.startsWith("A sim is running") ? "" : n); setSimProg(null); if (bulk) setLoading(false); }
       console.log(`[perf] tScorinateKO: ${(performance.now()-_t0).toFixed(1)}ms  (${simPool.size() || "inline"} threads)`); };
     if (bulk) { setLoading(true); setTimeout(_timed, 40); } else _timed();
   };
   const tDeleteKoResult = (ri, mi, bracket) => {
+    if (simGuard()) return;
     if (bracket === true) bracket = "tp";
     if (bracket === false) bracket = "wb";
     const ko = structuredClone(tKO);
@@ -12137,6 +12191,7 @@ export default function App() {
         {tab === "tournament" && TOURNAMENTS_ENABLED && (<div>
           {tKoDrawFail && <div onClick={() => setTKoDrawFail("")} style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 11, color: "var(--ui-danger)", cursor: "pointer" }}>{tKoDrawFail}</div>}
           {tScoreError && (tEdit || tKoEdit) && <div style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center" }}>⚠ {tScoreError}</div>}
+          {tNotice && <div onClick={() => setTNotice("")} style={{ background: "var(--ui-danger-22)", border: "1px solid var(--ui-danger-44)", borderRadius: 6, padding: "6px 12px", marginBottom: 12, fontSize: 11, color: "var(--ui-danger)", textAlign: "center", cursor: "pointer" }}>⚠ {tNotice}</div>}
           {/* Save slots — several tournaments in flight, one open at a time. Only the setup phase
               shows the panel outright; a running tournament reaches it from the header button. */}
             {tRebalOpen && (() => { const txt = tRebalProposal(); return (
@@ -12175,6 +12230,16 @@ export default function App() {
                         <button key={l} onClick={() => setCompactGroupsOn(v)} className={compactGroupsOn === v ? "gbtn" : ""}
                           style={{ ...chip, background: compactGroupsOn === v ? "var(--chrome-brand)" : "var(--chrome-panel)",
                                    color: compactGroupsOn === v ? "var(--ui-on-accent)" : "var(--chrome-muted)" }}>{l}</button>))}
+                    </div>
+                  </div>)}
+                  {(tPlayedMatches > 0 || !!tKO) && (
+                  <div style={{ paddingTop: 16, marginBottom: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ui-text)", marginBottom: 10, paddingLeft: 10, borderLeft: "2px solid var(--chrome-brand-66)" }}>Stats</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      {tRebuildArm
+                        ? <><button onClick={() => { setTRebuildArm(false); setTSettingsOpen(false); tRebuildFromResults(); }} style={{ ...addBtn, color: "var(--ui-danger)", borderColor: "var(--ui-danger-edge)" }}>Confirm rebuild</button>
+                            <button onClick={() => setTRebuildArm(false)} style={{ ...addBtn, color: "var(--chrome-muted)" }}>Cancel</button></>
+                        : <button onClick={() => setTRebuildArm(true)} title="Recompute the table and every player's stats from the results" style={{ ...addBtn, color: "var(--chrome-muted)" }}>Rebuild stats</button>}
                     </div>
                   </div>)}
                   {renderTuneables()}
