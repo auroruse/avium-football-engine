@@ -26,7 +26,8 @@ const CODES = (codesS || "NCH").split(","), W = +(wS || 10), LEAGUE = leagueS ||
 // nothing but the name at the top and saves a third of the run.
 const ROUNDS = (process.env.NT_ROUNDS || "30:48,50:16,120:8,400:0").split(",").map(s => s.split(":").map(Number));
 // NT_CHUNK sets the matches a job (smaller keeps all the workers busy on a short round); NT_RANK=xgd ranks
-// cells by xG difference a match, which settles faster than points, instead of by points.
+// cells by xG difference a match, which settles faster than points, instead of by points; NT_RANK=xgd-pts
+// does that in every round but the last, which is decided on points.
 const CHUNK = +(process.env.NT_CHUNK || 30);
 const xgd = (c) => c.n ? (c.xf - c.xa) / c.n : 0;
 const rankOf = process.env.NT_RANK === "xgd" ? xgd : (c) => c.n ? c.pts / c.n : 0;
@@ -84,7 +85,8 @@ for (const code of CODES) {
     const t1 = Date.now();
     const rs = await runQueue(jobs);
     rs.forEach((r, i) => { const c = owner[i]; c.n += r.n; c.pts += r.pts; c.w += r.w; c.d += r.d; c.gf += r.gf; c.ga += r.ga; c.xf += r.xf ?? 0; c.xa += r.xa ?? 0; c.F = r.F; });
-    cells.sort((a, b) => rankOf(b) - rankOf(a));
+    const rk = process.env.NT_RANK === "xgd-pts" ? (keep ? xgd : (c) => c.n ? c.pts / c.n : 0) : rankOf;
+    cells.sort((a, b) => rk(b) - rk(a));
     const rank = cells.indexOf(cur) + 1;
     log(`${code}: round to n=${target} done in ${((Date.now() - t1) / 60000).toFixed(1)} min (${jobs.length} jobs, field ${cur.F}) -- ${cells.slice(0, 3).map(cellStr).join(", ")}; current ${cellStr(cur)} rank ${rank}/${cells.length}`);
     if (keep) { cells = cells.slice(0, keep); if (!cells.includes(cur)) cells.push(cur); }
