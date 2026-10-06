@@ -112,6 +112,9 @@ function hitBodies(b, players, ctrl, skip, f) {
     if (q.off) continue;
     const qx = _px(q, f), qy = _py(q, f);
     const dx = b.bx - qx, dy = b.by - qy;
+    // Nowhere near him: the squared distance rules him out a hundred times a second without the exact
+    // root, and the margin keeps it strictly inside what the exact test below would also rule out.
+    if (dx * dx + dy * dy > R * R * (1 + 1e-9)) continue;
     let d = Math.hypot(dx, dy);
     if (d >= R) continue;
     // Dead centre on a man is a real state -- every restart puts the ball on the taker's toes -- and
@@ -178,7 +181,11 @@ export function meBallStep(mp, seconds, players, ctrl, skip) {
  *    { kind: "touchline" }                                        wholly over a touchline (`lines` only)
  *    whatever `probe(i, f)` returns                               a man reaching it; see meTick
  *  with `at` = the substep it happened on, or null if the ball simply travelled. */
+// The two goal planes, built on first use: at module load PITCH_L is not yet assigned in the bundle,
+// and a list built then held [0, undefined].
+let _planes = null;
 export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
+  const planes = _planes || (_planes = [0, PITCH_L]);
   for (let i = from; i < to; i++) {
     const f = (i + 1) / n;
     const px = mp.bx, py = mp.by, pz = mp.bz;
@@ -192,7 +199,7 @@ export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
     // the slice, before anybody's claim, so a ball a man had already stopped on the line was given
     // as a throw against him.
     if (lines && (mp.by < -CFG.ballR || mp.by > PITCH_W + CFG.ballR)) return { kind: "touchline", at: i };
-    for (const plane of [0, PITCH_L]) {
+    for (const plane of planes) {
       if ((px - plane) * (mp.bx - plane) >= 0) continue;        // did not cross this plane
       const t = (plane - px) / (mp.bx - px);
       const y = py + (mp.by - py) * t, z = pz + (mp.bz - pz) * t;
@@ -213,16 +220,46 @@ export function meBallRun(mp, players, from, to, n, ctrl, skip, probe, lines) {
 // One scratch ball and thirteen scratch triples, written over in place. This ran several times a
 // tick and allocated fourteen objects each time -- and every reader of mp.pred consumes it inside
 // the same tick it was built, so there is nothing alive to invalidate by writing over it.
+//
+// THE FORECAST, CARRIED. It integrated 300 substeps every call, several calls a tick, and was a tenth
+// of all the engine's time. But a free ball follows its forecast exactly -- the real ball and the
+// forecast are stepped by the same stepOnce, substep for substep -- so when the ball is bit for bit
+// where an earlier forecast had it, everything after that is already known: the slots shift down and
+// only the new last slot is integrated, and an unchanged ball costs nothing. Exact, not approximate:
+// the full state (position and velocity) is kept per slot in mp._pS, and anything that differs in a
+// single bit -- a touch, a ricochet, a restart, a changed ball constant -- integrates afresh.
 const _pg = { bx: 0, by: 0, bz: 0, bvx: 0, bvy: 0, bvz: 0 };
+const _PK = ["ballDrag", "ballR", "bounceMin", "bounceGrip", "ballBounce", "ballBounceLin", "grassH", "ballFric", "ballFricLin"];
+const _pAt = (t, b) => Object.is(t[0], b.bx) && Object.is(t[1], b.by) && Object.is(t[2], b.bz)
+                    && Object.is(t[3], b.bvx) && Object.is(t[4], b.bvy) && Object.is(t[5], b.bvz);
+const _pPut = (t, b) => { t[0] = b.bx; t[1] = b.by; t[2] = b.bz; t[3] = b.bvx; t[4] = b.bvy; t[5] = b.bvz; };
+const _pGet = (b, t) => { b.bx = t[0]; b.by = t[1]; b.bz = t[2]; b.bvx = t[3]; b.bvy = t[4]; b.bvz = t[5]; };
 export function meBallPredict(mp) {
   const g = _pg;
-  g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz;
   const pred = mp.pred && mp.pred.length === PRED_SLOTS ? mp.pred : (mp.pred = []);
   const per = Math.round(ME_DT / BALL_SUB);
+  let S = mp._pS, k = -1;
+  if (S && _PK.every((c, j) => Object.is(mp._pC[j], CFG[c])))
+    for (let s = 0; s < PRED_SLOTS; s++) if (_pAt(S[s], mp)) { k = s; break; }
+  if (k < 0) {
+    if (!S) S = mp._pS = Array.from({ length: PRED_SLOTS }, () => [0, 0, 0, 0, 0, 0]);
+    mp._pC = _PK.map(c => CFG[c]);
+    g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz;
+    for (let s = 0; s < PRED_SLOTS; s++) {
+      if (s) for (let i = 0; i < per; i++) stepOnce(g);
+      _pPut(S[s], g);
+    }
+  } else if (k > 0) {
+    S.push(...S.splice(0, k));
+    for (let s = PRED_SLOTS - k; s < PRED_SLOTS; s++) {
+      _pGet(g, S[s - 1]);
+      for (let i = 0; i < per; i++) stepOnce(g);
+      _pPut(S[s], g);
+    }
+  }
   for (let s = 0; s < PRED_SLOTS; s++) {
-    if (s) for (let i = 0; i < per; i++) stepOnce(g);
-    const a = pred[s] || (pred[s] = [0, 0, 0]);
-    a[0] = g.bx; a[1] = g.by; a[2] = g.bz;
+    const a = pred[s] || (pred[s] = [0, 0, 0]), t = S[s];
+    a[0] = t[0]; a[1] = t[1]; a[2] = t[2];
   }
 }
 

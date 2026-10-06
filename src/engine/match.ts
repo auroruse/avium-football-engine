@@ -788,8 +788,13 @@ export const meKickedBy = (mp, side, i, deflect) => {
                  : { s: side, i, t: mp.tick, x: mp.bx, y: mp.by });
   if (g.length > CFG.tlogMax) g.shift();
 };
-export const meLockedOut = (mp, sd, i) =>
-  !!mp.kickBy && mp.kickBy.some(k => k.s === sd && k.i === i && mp.tick - k.t < CFG.kickLock);
+// A plain loop: asked for every man at every substep, the .some() built a closure each time.
+export const meLockedOut = (mp, sd, i) => {
+  const kb = mp.kickBy;
+  if (!kb) return false;
+  for (let j = 0; j < kb.length; j++) { const k = kb[j]; if (k && k.s === sd && k.i === i && mp.tick - k.t < CFG.kickLock) return true; }
+  return false;
+};
 
 
 // Whoever is nearest a loose ball takes it, better positional players slightly favoured.
@@ -2420,6 +2425,9 @@ export function meTick(s, rng, out) {
             continue;
           }
           const qx = q.x + (q._pvx ?? 0) * f, qy = q.y + (q._pvy ?? 0) * f;
+          // Well beyond the 3.2 m below on the squared distance -- strictly beyond, so the exact test
+          // would rule him out too -- costs no root. A diving keeper is a body, not a point: he is not.
+          if (!(q.pos === "GK" && q._pext > 0)) { const ex0 = mp.bx - qx, ey0 = mp.by - qy; if (ex0 * ex0 + ey0 * ey0 > 10.2401) continue; }
           let d = Math.hypot(mp.bx - qx, mp.by - qy);
           if (q.pos === "GK" && q._pext > 0) {
             // A DIVING KEEPER IS NOT A SPHERE: fully stretched he is about two metres fingertip to
