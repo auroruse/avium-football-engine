@@ -2412,9 +2412,13 @@ function parseStatBoards(text) {
 // was going to whoever had one good afternoon -- 1934's international season handed it to a 8.6
 // across four games and 239 minutes, over a keeper who played all nine and every minute of them.
 // Award it the way a real one is awarded: clear a minutes bar first, then be the best of who did.
+// A WORLD CUP'S comes from the champions (`only`, the winner's code): read off the whole field, 1934's
+// went to a Varahmehri injured in the round of 16 and 1935's to the third-placed side's playmaker.
+// The bar is still set by the whole tournament. Leagues and every other cup keep the open field.
 const MVP_MIN_SHARE = 0.5;
-function seasonMVP(boards) {
-  const list = boards?.RTG || [];
+function seasonMVP(boards, only) {
+  const rtg = boards?.RTG || [];
+  const list = only && rtg.some(e => e.team === only) ? rtg.filter(e => e.team === only) : rtg;
   if (!list.length) return null;
   // The bar is half of however much football the competition actually had, read off whoever played
   // the most of it. Archives written before the MIN column exists read 0 there, so games stand in.
@@ -11231,7 +11235,7 @@ export default function App() {
                             </span>) : <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}</td>
                           <td style={tdCell}>{playerCell(x, top("G"))}</td>
                           <td style={tdCell}>{playerCell(x, top("A"))}</td>
-                          <td style={tdCell}>{playerCell(x, seasonMVP(b2))}</td>
+                          <td style={tdCell}>{playerCell(x, seasonMVP(b2, x.comp === "World Cup" ? wt?.code : null))}</td>
                           <td style={tdCell}>{playerCell(x, top("SV"))}</td>
                         </tr>
                       </tbody>
