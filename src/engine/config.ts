@@ -3320,28 +3320,33 @@ export const ME_FIT = { ovr: 40, lo: 0.75, hi: 1.20 };
 // the keeper's command of his area, foul multiplies the chance a challenge is a foul, range is metres of shooting range,
 // farShot the finish beyond 18 m, and dead the set-piece strike (attr/99 scale).
 export const ME_BADGES = {
-  rapid:       { pace: 8 },            // top speed: the race for the ball, getting back, the run in behind
-  quickstep:   { acc: 1.25 },          // acceleration: the first yards, getting goal-side, going past a man
-  relentless:  { drain: 0.75 },        // endurance: runs and presses for the whole match
-  aerial:      { air: 10 },            // gets up higher, wins more headers and heads it harder
-  strong:      { strength: 8 },        // holds the ball under a challenge, shields it, holds off a marker
-  firsttouch:  { touch: 8 },           // kills it and keeps it under pressure: close control, the first touch
-  trickster:   { drib: 0.15 },         // takes men on: feints, cuts, the knock past a man
-  tikitaka:    { pShort: 0.2 },        // the short ball to feet, crisp and exact
-  incisive:    { pThru: 0.2 },         // the ball into a runner's path and over the top
-  longball:    { pLong: 0.2 },         // the long lofted ball and the switch
-  crosser:     { pCross: 0.25 },        // the cross
-  finisher:    { shoot: 8 },           // the finish
-  longshot:    { range: 5, farShot: 0.15 }, // shoots from distance, and hits them
-  deadball:    { dead: 0.08 },         // free kicks, corners and penalties
-  vision:      { aware: 0.25 },        // sees it early: scans more, sees the runner, two moves ahead
-  composed:    { mind: 0.25 },         // reads his options right under pressure
-  tackler:     { tackle: 8 },          // wins the ball in the challenge
-  interceptor: { position: 8 },        // reads the pass: stepping in front of it, the right place to be
-  blocker:     { block: 0.2 },         // throws himself in front of shots
-  disciplined: { foul: 0.6 },          // challenges cleanly
-  shotstopper: { reflex: 8 },          // reactions and the dive
-  commanding:  { claim: 0.25, cmd: 0.3 }, // claims crosses, sweeps behind his line, comes for the one-on-one
+  // Sized 7 Oct 2026 to about three rating points for each player who carries it (one rating point on one player is
+  // about 0.012 xG a match), from a factorial run of 10,080 matches with every badge on its natural positions. Where
+  // the skill barely moves a match in this engine, the badge is capped at about two and a half times its first size and
+  // falls short: Short Passing, Crosser, Trickster, Long Shot, Vision, Composed, Blocker, Disciplined and Strong. Those
+  // wait on the engine rewarding the skill, not on a bigger number.
+  rapid:       { pace: 20 },           // top speed, about 0.7 m/s: the race for the ball, getting back, the run in behind
+  quickstep:   { acc: 1.05 },          // acceleration: the first yards, getting goal-side, going past a man
+  relentless:  { drain: 0.5 },         // endurance: tires half as fast
+  aerial:      { air: 22 },            // gets up higher, wins more headers and heads it harder
+  strong:      { strength: 20 },       // holds the ball under a challenge, shields it, holds off a marker
+  firsttouch:  { touch: 20 },          // kills it and keeps it under pressure: close control, the first touch
+  trickster:   { drib: 0.35 },         // takes men on: feints, cuts, the knock past a man
+  tikitaka:    { pShort: 0.5 },        // the short ball to feet, crisp and exact
+  incisive:    { pThru: 0.33 },        // the ball into a runner's path and over the top
+  longball:    { pLong: 0.43 },        // the long lofted ball and the switch
+  crosser:     { pCross: 0.6 },        // the cross
+  finisher:    { shoot: 14 },          // the finish
+  longshot:    { range: 10, farShot: 0.35 }, // shoots from distance, and hits them
+  deadball:    { dead: 0.2 },          // free kicks, corners and penalties
+  vision:      { aware: 0.5 },         // sees it early: scans more, sees the runner, two moves ahead
+  composed:    { mind: 0.5 },          // reads his options right under pressure
+  tackler:     { tackle: 6 },          // wins the ball in the challenge
+  interceptor: { position: 7 },        // reads the pass: stepping in front of it, the right place to be
+  blocker:     { block: 0.5 },         // throws himself in front of shots
+  disciplined: { foul: 0.3 },          // challenges cleanly
+  shotstopper: { reflex: 2.5 },        // reactions and the dive
+  commanding:  { claim: 0.2, cmd: 0.25 }, // claims crosses, sweeps behind his line, comes for the one-on-one
 };
 
 // WHAT EACH SYSTEM COSTS AT THE DOOR, in rating points. The engine's physics under-charges
