@@ -767,10 +767,15 @@ foulAggr: 0.25,
   // sweep of that same floor recorded above this line found the same nothing for the same reason.
   // Kept as a named constant rather than reverted to a literal 7, because the next person to look
   // at "defLine also moves the attacking shape" should find this note instead of running it again.
-  // What a header at goal is worth against a strike from the same spot. 1 is parity, which is
-  // where it ships: both are resolved by the ball physics rather than by a roll, so there is no
-  // reason to assume the estimate should differ until it is measured.
-  headXg: 1,
+  // What a header at goal is worth against a strike from the same spot. It shipped at parity, 1, on
+  // the grounds that both are resolved by the ball physics and nothing said the estimate should
+  // differ until it was measured. Measured (6 Oct 2026, 747 headed shots in 600 matches): headers
+  // went in 9.0% of the time against a recorded 18.9%, while every kind of strike scored at or a
+  // little above its own xG. A header is neither as hard nor as placed as a shot from the same spot,
+  // so it is the same chance taken a worse way. The factor now applies after the calibration, as
+  // a straight share of what the strike would have been worth. It feeds the recorder only -- xG,
+  // the keeper's save credit, the ratings' big-miss and goal terms -- and never a decision.
+  headXg: 0.47,
   // How much of a system a side has drilled, and what it costs not to have drilled one. commit is
   // scored in units of instruction set, capped, less what its contradictions take back; the result
   // is then read as a SHORTFALL against a full plan and charged in rating points.
@@ -1183,7 +1188,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // pressThruT ticks); and a man's press REACH decays with his legs -- at zero stamina he
   // arrives on loeStamLo of the distance a fresh man covers, so the 90th-minute gegenpress is
   // a jog, which is the cost every real press pays.
-  pressThruR: 6, pressThruT: 14, loeStamLo: 0.55,
+  // The second brain names the committed men at the strike (match.ts, passPending.eng) and beats those the ball went
+  // past within pressThruR of its line; until 7 Oct 2026 the rule only knew the first brain's men and never fired.
+  // ...and only men caught further than pressThruFrom from their own goal: the press, not the box.
+  pressThruR: 6, pressThruT: 14, pressThruFrom: 35, loeStamLo: 0.55,
   // The free carry's room-times-forward mirror (see decide.ts): 1.0 is parity with the pass
   // term's pricing of the same metres.
   carryRoomW: 1.0,
@@ -1667,7 +1675,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // Re-derived 3 Oct 2026 (1,200 matches): the keepers had drifted 0.09 a match into credit, so a busy
   // afternoon paid for being busy again -- and once more on the widened keeper spans the same day, and
   // on the costlier defending below League One (defLowK).
-  gkExp: [[0.05, 0.05], [0.10, 0.14], [0.20, 0.29], [0.30, 0.46], [0.40, 0.65], [0.60, 0.57], [1.01, 0.89]],
+  // Re-derived 7 Oct 2026 (test/ratings.mjs derive) after the keepers' set reach went to 1.5 and headers were priced
+  // at what they score: keepers had been averaging 7.15 with their save/concede share at +0.23.
+  gkExp: [[0.05, 0.10], [0.10, 0.12], [0.20, 0.24], [0.30, 0.42], [0.40, 0.62], [0.60, 0.57], [1.01, 0.89]],
   rateYellow: 0.3, rateRed: 1.5, ratePenWon: 0.4, ratePenGave: 0.72,
   // PHASE B: what only a positional engine can see. rateError is the giveaway that led to the goal
   // and rateErrWin is how long, in slices, it stays his fault. The rest are the ways a defender is
@@ -1769,10 +1779,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // set by hand -- the tens are too rare to fit it on -- and the harness reports how many there are.
   ratePar: 6.85, rateKnee: 8.0, rateBend: 4.0,
   rateFin: {
-    GK:  { mid: 0.349, up: 1.277, dn: 0.710, tail: 0.905 },
-    DEF: { mid: 0.562, up: 1.080, dn: 1.185, tail: 1.066 },
-    MID: { mid: 0.605, up: 0.737, dn: 1.397, tail: 1.150 },
-    FWD: { mid: 0.492, up: 0.774, dn: 1.591, tail: 1.236 },
+    GK:  { mid: 0.457, up: 1.194, dn: 0.678, tail: 1.041 },
+    DEF: { mid: 0.782, up: 1.179, dn: 0.811, tail: 1.088 },
+    MID: { mid: 0.678, up: 0.813, dn: 1.142, tail: 1.003 },
+    FWD: { mid: 0.685, up: 0.648, dn: 1.116, tail: 1.301 },
   },
   kickLock: 3,
   // How much a fast ball shrinks an outfielder's reach. A struck shot is not controllable at arm's
@@ -1798,6 +1808,11 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // and its loft. The old knock (headV * power * 0.75, vz 0.9) left the head at 5-9 m/s and
   // carried six to ten metres against an 18 m aim -- a fifty-fifty on the edge of his own box.
   headClearV: 13, headClearVz: 3.5,
+  // THE AERIAL DUEL (match.ts, THE DUEL): an opponent inside airR of a man about to head a ball delivered to him
+  // wins it with airDef, plus airStr of their strength gap over 99, plus or minus airGoalSide for being goal-side
+  // of him or not, less airDist for every metre past 0.8 m he is from him. At 2.0 / 0.45 crosses into a deep block
+  // still found their man 31% of the time; at 2.6 / 0.55, 26% (80 matches, 6 Oct 2026; real football ~20-25%).
+  airR: 2.6, airDef: 0.55, airStr: 1.0, airGoalSide: 0.10, airDist: 0.15,
   // What a header DOES. Inside headShotR of the goal he is attacking he heads it at goal; anywhere
   // else he heads it away from his own. headV is how hard, before strength scales it -- a header
   // travels a fraction of what a struck ball does.
@@ -1835,6 +1850,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ...0.72 SINCE THE TOUCH WORKS. At 0.86 the old dribble's trips over its own ball kept the real pace
   // down around 5.2 m/s; once the ball stayed with him he ran at the whole 0.86 -- 6.5 m/s at the
   // median, outrunning the man pressing him, and tackles halved while shots came under less pressure.
+  // TRIED AND DROPPED (7 Oct 2026, 240 matches a style each): carrying at 0.88 with nobody inside 12 m. For every
+  // carrier, Gegenpressing fell from +0.34 to +0.09 xG a match against the field, but every side running at the space
+  // in front of a deep block got faster too (Park the Bus -0.21 -> -0.33, La Nuestra -0.03 -> +0.24). On breaks only,
+  // it did nothing for the deep blocks and Gegenpressing went back to +0.33.
   carrySpeed: 0.72, carryLook: 6,
   // Running onto one. strideT is how many touches the momentum survives, strideVTol how far the
   // ball's pace may miss his before he has to check, strideMinV the speed below which he is not
@@ -1950,7 +1969,19 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // the drain line. 0.30 against the old always-on 0.18: a side that defends half the match pays
   // about what it always did, and one made to defend sixty per cent pays more precisely because
   // the opponent is making it. The counterweight a possession game never had.
-  pressDrain: 0.30,
+  // 0.30 -> 0.80 (7 Oct 2026) with the rebuilt styles: at 0.30 a side pressing from the front finished only ten
+  // stamina points down on a Balanced one and Gegenpressing beat every other style. At 0.80 it ends about 26 down,
+  // fades in the last half hour, and its edge over Balanced falls from +0.42 to +0.26 xG a match (1.5 took it to
+  // +0.07, but with men finishing 45 points down, spent rather than tired).
+  // 0.80 -> 1.20 (7 Oct 2026, against an even mix of all fourteen styles, 240 fixtures an arm): Gegenpressing -0.20
+  // xG a match, Juego de Posicion -0.10, Kick and Rush level; a side pressing from the front ends about 37 stamina
+  // points below a Balanced one.
+  pressDrain: 1.20,
+  // TRIED AND DROPPED (7 Oct 2026): the same surcharge for the counter-press (possLost +1) at 0.8. The counter-press
+  // adds xG to every style it is tried on, Park the Bus included (+0.24, and it CONCEDES less), so it looked like the
+  // free lunch to price -- but priced in legs the fourteen styles came out exactly as spread as before (0.62 xG a
+  // match from top to bottom, against 0.63). What it lacks is a cost in the match: a press that is played through
+  // leaves nobody exposed.
   // What every extra slice on the ball past that budget costs his chance of keeping it. Geometric,
   // so a man with genuinely nothing on can drive on for another second or two and a man dwelling in
   // his own box runs out of reasons to.
@@ -2915,7 +2946,15 @@ gkDiveV: 2.9,
   // 1.6 -> 1.0 (2 Oct 2026), the goals dial now: with the second brain keepers kept out 76% of shots on
   // target against a real ~70% and matches averaged 1.8 goals. At 1.0 they keep out 66% and it is 2.3.
   // Neither the grab (gkSaveReachLo/Hi) nor the dive moved goals; this and the reaction did.
-  gkSetReach: 1.0, gkSetLo: 0.92,
+  // 1.0 -> 1.5 (7 Oct 2026) with the rebuilt styles and their managers: the styles make more chances than the
+  // old ones did, and matches ran 3.37 goals in both leagues; at 1.25 3.25, at 1.5 2.98 / 3.02 (200 fixtures each).
+  // 1.5 -> 1.3 (7 Oct 2026, later) once the styles were balanced and pressing cost more legs: League One fell to
+  // 2.60 and League Two to 2.90; at 1.3 they run 2.82 / 3.12 (400 fixtures each, managers on).
+  // ...and NOT 1.6 (tried 7 Oct 2026): past 1.5 the dial is a cliff. On the same 180 fixtures a league, managers on,
+  // League One / League Two: 1.3 3.19 / 3.08, 1.5 3.24 / 3.18, 1.7 2.57 / 2.79 (1.6: 2.70 / 3.11 on 300 others).
+  // League One's better keepers go over the edge between 1.5 and 1.6, League Two's between 1.6 and 1.7, so up there
+  // a few points of keeper rating swing a whole league's goals. Why it is a cliff is not traced yet. Keep it on the flat.
+  gkSetReach: 1.3, gkSetLo: 0.92,
   // ...and a ball squirting off anybody UNCONTROLLED is loose for this many ticks: a ricochet is
   // not a backpass, and mp.flight staying up through a deflection is bookkeeping, not football.
   // 108 of 121 no-live-shot goals crossed the line under 10 m/s with the keeper a step away,
@@ -3271,6 +3310,45 @@ export const ME_HOME_ADV = {
 // built precisely for its system plays up to eight points above itself.
 export const ME_FIT = { ovr: 40, lo: 0.75, hi: 1.20 };
 
+// PLAYER BADGES. A rating is all a player is made of (attributes.ts, meAttrs): two 75-rated centre-backs are the same
+// man. A badge is what he is known for, one notch past what his rating gives him in one thing, so a squad can suit a
+// style without anybody authoring a number for every player every year. Each is a fixed effect, the same for everyone
+// who has it, and a player without badges plays exactly as before. Attribute badges add to the attribute (8 points is
+// what about thirteen points of rating buys in that one skill); the rest act on the mechanic they name: acceleration
+// (acc) and stamina drain (drain) multiply, passing badges add to the strike's technique for their kind of ball
+// (meTech's scale, 0.2 = 8 points), mind and aware to meMind and mindAware, block and claim are metres of reach, cmd is
+// the keeper's command of his area, foul multiplies the chance a challenge is a foul, range is metres of shooting range,
+// farShot the finish beyond 18 m, and dead the set-piece strike (attr/99 scale).
+export const ME_BADGES = {
+  // Sized 7 Oct 2026 to about three rating points for each player who carries it (one rating point on one player is
+  // about 0.012 xG a match), from a factorial run of 10,080 matches with every badge on its natural positions. Where
+  // the skill barely moves a match in this engine, the badge is capped at about two and a half times its first size and
+  // falls short: Short Passing, Crosser, Trickster, Long Shot, Vision, Composed, Blocker, Disciplined and Strong. Those
+  // wait on the engine rewarding the skill, not on a bigger number.
+  rapid:       { pace: 20 },           // top speed, about 0.7 m/s: the race for the ball, getting back, the run in behind
+  quickstep:   { acc: 1.05 },          // acceleration: the first yards, getting goal-side, going past a man
+  relentless:  { drain: 0.5 },         // endurance: tires half as fast
+  aerial:      { air: 22 },            // gets up higher, wins more headers and heads it harder
+  strong:      { strength: 20 },       // holds the ball under a challenge, shields it, holds off a marker
+  firsttouch:  { touch: 20 },          // kills it and keeps it under pressure: close control, the first touch
+  trickster:   { drib: 0.35 },         // takes men on: feints, cuts, the knock past a man
+  tikitaka:    { pShort: 0.5 },        // the short ball to feet, crisp and exact
+  incisive:    { pThru: 0.33 },        // the ball into a runner's path and over the top
+  longball:    { pLong: 0.43 },        // the long lofted ball and the switch
+  crosser:     { pCross: 0.6 },        // the cross
+  finisher:    { shoot: 14 },          // the finish
+  longshot:    { range: 10, farShot: 0.35 }, // shoots from distance, and hits them
+  deadball:    { dead: 0.2 },          // free kicks, corners and penalties
+  vision:      { aware: 0.5 },         // sees it early: scans more, sees the runner, two moves ahead
+  composed:    { mind: 0.5 },          // reads his options right under pressure
+  tackler:     { tackle: 6 },          // wins the ball in the challenge
+  interceptor: { position: 7 },        // reads the pass: stepping in front of it, the right place to be
+  blocker:     { block: 0.5 },         // throws himself in front of shots
+  disciplined: { foul: 0.3 },          // challenges cleanly
+  shotstopper: { reflex: 2.5 },        // reactions and the dive
+  commanding:  { claim: 0.2, cmd: 0.25 }, // claims crosses, sweeps behind his line, comes for the one-on-one
+};
+
 // WHAT EACH SYSTEM COSTS AT THE DOOR, in rating points. The engine's physics under-charges
 // aggression: pressing from a low line, winning it and breaking, clearing into space and shooting
 // early are all net gains in play, while patience and depth are net costs, and on a neutral squad
@@ -3295,6 +3373,19 @@ export const ME_STYLE_PRICE = {
   gegenpress: 5.2, verticaltiki: 5.8, secondball: 5.5, lanuestra: 5.2, routeone: 2.9, wingplay: 1.7,
   cholismo: 1.4, parkthebus: -1.0, catenaccio: -1.9, tikitaka: -3.8, counterattack: -3.9,
   possession: -8.6, zonamista: -8.6,
+};
+
+// THE SECOND BRAIN'S PRICE AT THE DOOR (user, 7 Oct 2026), keyed by the style each sheet name plays (ME_STYLE_DEF).
+// The second brain plays its style rather than having it stood in for, and still the styles came out 0.40 xG a match
+// apart end to end against an even mix of all fourteen (cover rule, 240 matches a style): about 3 rating points on
+// every player between the best and the worst. Until the engine pays possession and depth what they are worth, each
+// style pays its measured edge here, the way ME_STYLE_PRICE did for the first brain: edge / 0.135, the net xG a match
+// one rating point on every player is worth (0.0123 a player, the badges' +5 control). Only this: no drill floor and
+// no fit, which stay the first brain's. Zero-mean. MEASURED, never authored -- re-measure after any engine change
+// that moves the style table, and shrink it as the engine closes the gap.
+export const ME_MIND_PRICE = {
+  flair: 1.4, gegenpress: 1.3, secondball: 1.0, counter: 0.7, vertical: 0.7, routeone: 0.5, balanced: 0.4,
+  zonamista: -0.1, wing: -0.3, catenaccio: -0.7, cholismo: -0.8, control: -1.1, bus: -1.3, positional: -1.6,
 };
 
 // What the UI could legally set. A chase must not push an instruction somewhere a manager could not.

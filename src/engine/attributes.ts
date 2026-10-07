@@ -1,5 +1,34 @@
 // Player attributes, derived from one absolute OVR.
-import { CFG, DEFAULT_OVR } from "./config";
+import { CFG, DEFAULT_OVR, ME_BADGES } from "./config";
+
+// A player's badges (config.ts ME_BADGES) merged into one set of effects, kept on him. A man with none gets the same
+// empty set, so every read of it adds nothing and multiplies by one.
+const NO_FX = Object.freeze({});
+const FX_MUL = { acc: 1, drain: 1, foul: 1 };
+export function meBadgeFx(p) {
+  const b = p?.badges;
+  if (!b || !b.length) return NO_FX;
+  if (p._bfxB === b) return p._bfx;
+  const fx = {};
+  for (const name of b) {
+    const e = ME_BADGES[name];
+    if (!e) continue;
+    for (const [k, v] of Object.entries(e)) fx[k] = k in FX_MUL ? (fx[k] ?? 1) * v : (fx[k] ?? 0) + v;
+  }
+  p._bfxB = b; p._bfx = fx;
+  return fx;
+}
+// ...and what his passing badges add to his technique on this ball: kind as decide.ts names it, its length, lofted or not.
+export function mePassBadge(p, k, d, high) {
+  const fx = meBadgeFx(p);
+  if (fx === NO_FX) return 0;
+  let t = 0;
+  if (fx.pShort && !high && (k === "feet" || k === "space") && d <= 25) t += fx.pShort;
+  if (fx.pThru && (k === "through" || k === "space" || k === "over")) t += fx.pThru;
+  if (fx.pLong && high && (k === "long" || k === "switch")) t += fx.pLong;
+  if (fx.pCross && k === "cross") t += fx.pCross;
+  return t;
+}
 
 // One OVR is all the data there is, and it stays the absolute currency -- these are tilts around it,
 // never a rescale. A 70 is a 70 wherever he stands; his position decides what he is a 70 AT. atkW is
@@ -37,11 +66,15 @@ export const meOvr = (p) => ME_OVR_MID + ((p.ovr ?? DEFAULT_OVR) - ME_OVR_MID) *
 
 export function meAttrs(p) {
   if (p._att) return p._att;
-  const t = ME_TILT[p.pos] || ME_TILT.MID, o = meOvr(p), aw = meAtkW(p) - 0.45;
+  const t = ME_TILT[p.pos] || ME_TILT.MID, o = meOvr(p), aw = meAtkW(p) - 0.45, fx = meBadgeFx(p);
   const c = (v) => Math.max(20, Math.min(99, v));
-  return (p._att = { pace: c(o + t.pace), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * CFG.shootAtkW), shootRaw: o + t.shoot + aw * CFG.shootAtkW, reflexRaw: o + t.reflex,
-    tackle: c(o + t.tackle - aw * 12), position: c(o + t.position), strength: c(o + t.strength),
-    reflex: c(o + t.reflex), touch: c(o + t.touch) });
+  // `air` is how high he gets and how well he heads it: his strength, unless a badge says he is better in the air
+  // than his build (Aerial) -- or stronger on the ground than in the air (Strong adds to strength only).
+  return (p._att = { pace: c(o + t.pace + (fx.pace ?? 0)), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0)),
+    shootRaw: o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0), reflexRaw: o + t.reflex + (fx.reflex ?? 0),
+    tackle: c(o + t.tackle - aw * 12 + (fx.tackle ?? 0)), position: c(o + t.position + (fx.position ?? 0)), strength: c(o + t.strength + (fx.strength ?? 0)),
+    air: c(o + t.strength + (fx.air ?? 0)),
+    reflex: c(o + t.reflex + (fx.reflex ?? 0)), touch: c(o + t.touch + (fx.touch ?? 0)) });
 }
 
 // Top speed in m/s. Stamina is applied here rather than baked into the attribute so that a tiring
@@ -82,7 +115,7 @@ export const meGkDiveV = (a) => CFG.gkDiveVmin + (CFG.gkDiveVmax - CFG.gkDiveVmi
 // the shot was going in because it was a good chance, not because it was well struck.
 // Taken over the rating band a footballer occupies, like meGkSkill, because ME_COMPRESS deliberately
 // squeezes the scale and normalising over 0..99 would make everyone identical.
-export const meMind = (p) => Math.max(0, Math.min(1, (meOvr(p) - 58) / 26));
+export const meMind = (p) => Math.max(0, Math.min(1, (meOvr(p) - 58) / 26 + (meBadgeFx(p).mind ?? 0)));
 
 // HOW HIGH HE CAN GET TO IT. There is no height attribute and no jump attribute, and adding an
 // eighth would mean authoring it for every player in the league -- strength is already "how big and
@@ -91,7 +124,7 @@ export const meMind = (p) => Math.max(0, Math.min(1, (meOvr(p) - 58) / 26));
 // player at a flat 1.6 m: the ball simply passed through all twenty-two. That one line is why
 // crossing produced half a chance a side, why a corner was a loose ball rather than a threat, and
 // why the whole aerial half of football did not exist.
-export const meAerial = (a, CFG) => CFG.headBase + a.strength / 99 * CFG.headSpan;
+export const meAerial = (a, CFG) => CFG.headBase + (a.air ?? a.strength) / 99 * CFG.headSpan;
 
 // TECHNIQUE, over the band a footballer can actually occupy. Every execution term used to read
 // attr/99 -- but ME_COMPRESS squeezes forty OVR points into thirty attribute points, so across the
