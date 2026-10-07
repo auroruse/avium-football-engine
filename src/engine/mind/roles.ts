@@ -56,6 +56,24 @@ export const ROLES = {
   st_press:    R(["center", "center", "center"], ["attack", "attack", "attack"], { run: { behind: 0.6, drop: 0.25, box: 0.85 }, press: 1.0 }),
 };
 
+// WHAT THE TEAM SHEET CALLS EACH ROLE, and the letters it shows beside the man.
+export const ROLE_NAME = {
+  gk: ["Goalkeeper", "GK"],
+  cb: ["Centre-Back", "CB"], cb_ball: ["Ball-Playing Defender", "BPD"], cb_stop: ["Stopper", "STP"],
+  cb_cover: ["Cover Defender", "COV"], cb_lib: ["Libero", "LIB"], cbw: ["Wide Centre-Back", "WCB"],
+  fb: ["Full-Back", "FB"], fb_over: ["Overlapping Full-Back", "OFB"], fb_inv: ["Inverted Full-Back", "IFB"],
+  fb_hold: ["Holding Full-Back", "HFB"], wb: ["Wing-Back", "WB"], wb_def: ["Defensive Wing-Back", "DWB"],
+  dm_anchor: ["Anchor", "ANC"], dm_dlp: ["Deep-Lying Playmaker", "DLP"], dm_win: ["Ball-Winning Midfielder", "BWM"],
+  dm_box: ["Segundo Volante", "SV"],
+  cm: ["Central Midfielder", "CM"], cm_mez: ["Mezzala", "MEZ"], cm_play: ["Playmaker", "PM"],
+  cm_b2b: ["Box-to-Box Midfielder", "B2B"], cm_hold: ["Holding Midfielder", "HM"],
+  am: ["Attacking Midfielder", "AM"], am_play: ["Advanced Playmaker", "AP"], am_shadow: ["Shadow Striker", "SS"],
+  w: ["Winger", "W"], w_wide: ["Touchline Winger", "TW"], w_inside: ["Inside Forward", "IF"],
+  wm: ["Wide Midfielder", "WM"], w_def: ["Defensive Winger", "DW"],
+  st: ["Striker", "ST"], st_false9: ["False Nine", "F9"], st_complete: ["Complete Forward", "CF"],
+  st_target: ["Target Man", "TM"], st_poach: ["Poacher", "P"], st_press: ["Pressing Forward", "PF"],
+};
+
 // THE STYLE FAMILY. Fourteen styles, but roles divide them into fewer ways of playing.
 export const FAM = {
   tikitaka: "pos", possession: "pos", verticaltiki: "vert", lanuestra: "flair", zonamista: "zona",
@@ -86,7 +104,7 @@ const sposOf = (p) => (p.spos || "").split("/")[0] || ({ GK: "GK", DEF: "CB", MI
 
 // THE ROLE FOR EVERY MAN ON THE PITCH. Run at kickoff and whenever who is out there changes.
 export function mindRoles(s, side) {
-  const ps = s.players[side], fam = FAM[s.styles?.[side]] || "bal";
+  const ps = s.players[side], pl = s.plan?.[side], fam = pl ? pl.fam : FAM[s.styles?.[side]] || "bal";
   const live = ps.filter(p => p && !p.off);
   const by = (k) => live.filter(p => sposOf(p) === k);
   const cbs = by("CB"), dms = by("DM"), sts = by("ST");
@@ -103,7 +121,7 @@ export function mindRoles(s, side) {
     else if (sp === "CB") {
       if (backThree) {
         const mid = L === "C" || (cbs.length >= 3 && Math.abs((p._bw0 ?? ME_HALF_W) - ME_HALF_W) < 6);
-        r = mid ? (FAMPLAN[fam].libero ? "cb_lib" : "cb_cover") : (fam === "bus" || fam === "catenaccio" ? "cb_stop" : "cbw");
+        r = mid ? ((pl ? pl.libero : FAMPLAN[fam].libero) ? "cb_lib" : "cb_cover") : (fam === "bus" || fam === "catenaccio" ? "cb_stop" : "cbw");
       } else {
         const first = cbs[0] === p;
         r = fam === "pos" || fam === "vert" || fam === "flair" ? "cb_ball"
@@ -156,9 +174,12 @@ export function mindRoles(s, side) {
     }
     pick[ps.indexOf(p)] = r;
   }
+  // A ROLE THE MANAGER CHOSE (plan.roles, by slot) stands; the substitute who takes the slot plays it too.
+  const chosen = pl?.roles;
   for (let i = 0; i < ps.length; i++) {
     const p = ps[i]; if (!p) continue;
-    const r = pick[i] || (p.pos === "GK" ? "gk" : "cm");
+    const c = chosen?.[i];
+    const r = c && ROLES[c] && (c === "gk") === (p.pos === "GK") ? c : pick[i] || (p.pos === "GK" ? "gk" : "cm");
     p._mr = r; p._role2 = ROLES[r];
   }
 }

@@ -8,7 +8,7 @@
 // was, how he was moving, and when that was. Decisions are taken against the memory (mindLens), so a
 // man last seen two seconds ago is wherever he was heading two seconds ago.
 import { ME_DT } from "../config";
-import { meMind } from "../attributes";
+import { meBadgeFx, meMind } from "../attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meOther } from "../geometry";
 import { MT } from "./tune";
 
@@ -25,7 +25,7 @@ const AWARE_TILT = { GK: 0.0, DEF: 0.02, MID: 0.08, FWD: -0.04 };
 export const mindAware = (p) => {
   if (p._aw !== undefined && p._awO === p.ovr) return p._aw;
   p._awO = p.ovr;
-  return (p._aw = Math.max(0, Math.min(1, meMind(p) + (AWARE_TILT[p.pos] ?? 0))));
+  return (p._aw = Math.max(0, Math.min(1, meMind(p) + (AWARE_TILT[p.pos] ?? 0) + (meBadgeFx(p).aware ?? 0))));
 };
 
 // A small fast generator of its own, so perception never draws from the match's stream: the noise in

@@ -21,9 +21,9 @@ import varTSV from "./presets/VAR.tsv?raw";
 import miscTSV from "./presets/MISC.tsv?raw";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
-import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor } from "./sim/core";
+import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
-import { CFG as ME_CFG, ME_DT, STYLE_PRESET, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick } from "./engine";
+import { CFG as ME_CFG, ME_DT, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
@@ -259,11 +259,22 @@ const rcSuspGames = (variant, r) => variant === "violent" ? 3 + Math.floor(r * 3
 const ycSuspGames = (prevYellows, newYellows) => Math.floor(newYellows / 5) - Math.floor(prevYellows / 5);
 
 const STYLES = ["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone","balanced","tikitaka","possession","cholismo","counterattack","zonamista","catenaccio","parkthebus"];
-const STYLE_GRP = [["Offensive",["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone"]],["Neutral",["balanced","tikitaka","possession"]],["Defensive",["cholismo","counterattack","zonamista","catenaccio","parkthebus"]]];
+const STYLE_GRP = [["Offensive",["gegenpress","tikitaka","verticaltiki","lanuestra","wingplay","secondball","routeone"]],["Neutral",["balanced","possession"]],["Defensive",["cholismo","counterattack","zonamista","catenaccio","parkthebus"]]];
 // These labels ARE the registry file format: parseBulk builds its lookup straight off this table,
 // so renaming one silently demotes every club that spells it the old way to Balanced. "Park Bus"
 // became "Park The Bus" here and keeps a legacy alias below for exactly that reason.
-const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpress",tikitaka:"Tiki-Taka",verticaltiki:"Vertical Tiki-Taka",possession:"Control Possession",cholismo:"Cholismo",counterattack:"Counter",zonamista:"Zona Mista",wingplay:"Wing Play",secondball:"Second Ball",routeone:"Route One",lanuestra:"La Nuestra",catenaccio:"Catenaccio",parkthebus:"Park The Bus"};
+// RENAMED 6 Oct 2026 to the correct football terms, with the styles rebuilt (src/engine/tactics.ts): the ids
+// stay, the names move. "tikitaka" is Juego de Posición and "possession" is Tiki-Taka, so the name Tiki-Taka now
+// means the patient style; parseBulk keeps the other old names as aliases.
+const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpressing",tikitaka:"Juego de Posición",verticaltiki:"Vertical Tiki-Taka",possession:"Tiki-Taka",cholismo:"Cholismo",counterattack:"Counter-Attack",zonamista:"Zona Mista",wingplay:"Wing Play",secondball:"Kick and Rush",routeone:"Route One",lanuestra:"La Nuestra",catenaccio:"Catenaccio",parkthebus:"Park the Bus"};
+// THE ROLE EACH STARTER WILL PLAY, dealt the way his manager deals them in a match (sim/core rolesFor), once per
+// team object: an edit replaces the object, so the cache cannot go stale.
+const _rolesCache = new WeakMap();
+const rolesOf = (t) => {
+  if (!t || typeof t !== "object") return {};
+  if (!_rolesCache.has(t)) { let r = {}; try { r = rolesFor(t); } catch (e) { r = {}; } _rolesCache.set(t, r); }
+  return _rolesCache.get(t);
+};
 const STYLE_CLR = {balanced:"var(--chrome-muted)",gegenpress:"var(--ui-warn)",tikitaka:"var(--ui-style-tikitaka)",verticaltiki:"var(--ui-style-vertical)",possession:"var(--ui-style-possession)",counterattack:"var(--ui-style-counter)",wingplay:"var(--ui-ok)",routeone:"var(--ui-style-routeone)",catenaccio:"var(--ui-style-catenaccio)",parkthebus:"var(--ui-style-parkbus)",cholismo:"var(--ui-style-cholismo)",zonamista:"var(--ui-style-zonamista)",secondball:"var(--ui-style-secondball)",lanuestra:"var(--ui-style-lanuestra)"};
 // ponytail: replay counter store — closure keeps counts out of React DevTools; localStorage is hash-signed
 const _rc = (() => {
@@ -348,8 +359,8 @@ function testOvrShift(players, teamSkill) {
 // not the rule.
 const STAMINA_RECOVER_PCT = 0.75;
 const staminaRecoverFrom = (stamina) => Math.min(100, stamina + (100 - stamina) * STAMINA_RECOVER_PCT);
-const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2"]]];
-const FORM_CLR={"4-2-4":"var(--ui-attack)","3-4-3":"var(--ui-attack)","4-1-2-1-2":"var(--ui-attack)","4-3-3":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"var(--ui-form-defensive)","4-3-2-1":"var(--ui-form-defensive)","5-3-2":"var(--ui-form-defensive)"};
+const FORM_GRP=[["Offensive",["4-2-4","3-4-3","4-1-2-1-2","4-2-2-2"]],["Neutral",["4-3-3","4-4-2","4-2-3-1","4-4-1-1","4-3-1-2","3-5-2","3-4-1-2","3-4-2-1"]],["Defensive",["4-1-4-1","4-3-2-1","5-3-2","5-4-1"]]];
+const FORM_CLR={"4-2-4":"var(--ui-attack)","3-4-3":"var(--ui-attack)","4-1-2-1-2":"var(--ui-attack)","4-2-2-2":"var(--ui-attack)","4-3-3":"var(--chrome-muted)","4-4-1-1":"var(--chrome-muted)","4-3-1-2":"var(--chrome-muted)","3-4-2-1":"var(--chrome-muted)","4-4-2":"var(--chrome-muted)","4-2-3-1":"var(--chrome-muted)","3-5-2":"var(--chrome-muted)","3-4-1-2":"var(--chrome-muted)","4-1-4-1":"var(--ui-form-defensive)","4-3-2-1":"var(--ui-form-defensive)","5-3-2":"var(--ui-form-defensive)","5-4-1":"var(--ui-form-defensive)"};
 
 // TOURNAMENTS RUN THE POSITIONAL ENGINE. Every fixture goes through simPositionalMatch -- the four
 // scoring call sites in tScorinate/tScorinateKO and the two-leg helpers, and Play Live, which builds
@@ -384,6 +395,29 @@ const STRAT_LABELS = {
 // mid-match from the Tactics panel, which reads STRAT_EDITABLE directly. Second leg, protecting a
 // lead, chasing a goal: all reasons to change how fast you play that have nothing to do with the
 // system you picked.
+// THE MANAGER'S PLAN in words, for the tactics panel: each phase choice and lever a style makes (src/engine/tactics.ts).
+const PHASE_LBL = {
+  build: { short: "Short", mixed: "Mixed", long: "Long" },
+  progress: { patient: "Patient", central: "Through the middle", flanks: "Down the flanks", direct: "Forward only" },
+  final: { cross: "Crosses", cutback: "Cutbacks", through: "Through balls", workin: "Work it in", dribble: "Take men on", shoot: "Shoot on sight" },
+  block: { high: "High", mid: "Mid", low: "Low, compact", deep: "Deep, compact" },
+  marking: { zonal: "Zonal", mixed: "Mixed", man: "Man, with a libero", zona: "Zona mista, with a libero" },
+  onWin: { counter: "Counter", keep: "Keep it" },
+  onLoss: { cpress: "Counter-press", regroup: "Regroup" },
+};
+const LEVER_LBL = {
+  tempo: (v) => v < 0 ? "Slower tempo" : null,
+  width: (v) => v > 0 ? "Wider" : v < 0 ? "Narrower" : null,
+  length: (v) => v > 0 ? "Longer passing" : v < 0 ? "Shorter passing" : null,
+  line: (v) => v > 0 ? "Line a notch higher" : v < 0 ? "Line a notch deeper" : null,
+  press: (v) => v > 0 ? "Presses harder" : v < 0 ? "Presses less" : null,
+  tackle: (v) => v > 0 ? "Tackles hard" : v < 0 ? "Stays on its feet" : null,
+  dribble: (v) => v > 0 ? "Dribbles more" : null,
+  risk: (v) => v > 0 ? "More risk" : v < 0 ? "Less risk" : null,
+  waste: (v) => v > 0 ? "Wastes time when ahead" : null,
+  back: (v) => v > 0 ? "Extra man back" : v < 0 ? "One fewer back" : null,
+  outlets: (v) => v > 1 ? `${v} forwards left up` : v > 0 ? "A forward left up" : null,
+};
 const STRAT_EDITABLE = ["tempo","timeWasting","gkDist","dlBehavior"];
 
 function lmResolveCorner(s, rng, dm, atk, def, atkE, defE, nm) {
@@ -1692,6 +1726,9 @@ function parseBulk(text) {
   STYLES.forEach(s => { styleLookup[s] = s; });
   Object.entries(STYLE_LBL).forEach(([key, label]) => { styleLookup[label.toLowerCase()] = key; });
   styleLookup["park bus"] = "parkthebus"; // pre-expansion label, still spelled that way in older registries
+  // The names before the 6 Oct 2026 rebuild. Not "Tiki-Taka": that is a current name, for what was Control
+  // Possession, so a registry still using the old spelling loads it as the patient style.
+  Object.assign(styleLookup, { "control possession": "possession", "second ball": "secondball", "counter": "counterattack" });
   const resolveStyle = (str) => str ? (styleLookup[str.trim().toLowerCase()] ?? null) : null;
   const formSet = new Set(FORMATIONS);
   // A Sheets-bound registry writes "'4-4-2", because a bare 4-4-2 gets eaten as a date. The
@@ -1789,8 +1826,10 @@ function parseBulk(text) {
     // aligned, so they cannot simply be dropped from the format -- and then discarded in favour of
     // the style's own vector. A registry that still carries hand-tuned instructions therefore loads
     // as whatever style it names, which is the point: identity comes from the style now.
-    const _sp = STYLE_PRESET[style] || {};
-    for (const k of IDENTITY_KEYS) strategy[k] = _sp[k] ?? 0;
+    // ...and the three columns that survived are overruled as well (6 Oct 2026): the style is the manager's whole
+    // sheet, the line, the keeper's distribution and the time-wasting included (src/engine/tactics.ts). They are
+    // still read above, because their width is what keeps the player block aligned.
+    Object.assign(strategy, meStrategyOf(style));
     // Player names occupy a fixed 16-slot block right after the tactic columns. This was hardcoded
     // as 18 -- name, skill, style, formation, then fourteen tactics -- and nothing in it named
     // either setPieces or stratKeys, so removing an instruction moved every preset's players one
@@ -3220,20 +3259,20 @@ const mono = { fontFamily: "'JetBrains Mono','Fira Code',monospace", fontVariant
 // stamp changes, the panel underneath the prose changes with it and the two will visibly
 // disagree -- which is the point, and is how this document is meant to be kept honest.
 const STYLE_DOC = {
-  gegenpress: "Win it back high and go again. The only style in the game that maxes both the press and the defensive line at once, and it counter-presses the instant the ball is lost. Everything is pointed at making the turnover happen in a dangerous area, which is why it also gets stuck in. The cost is the space behind a line that high, and the legs it takes to press like that for a whole match.",
-  verticaltiki: "Tiki-Taka pointed at the goal. The same short, narrow passing, but the opposite intent once the ball moves: it runs at defences, plays into space rather than around it, counters when it wins the ball and counter-presses when it loses it. The highest line outside Gegenpress.",
-  lanuestra: "Short passing and a high press, with the handbrake off. Players are told to carry the ball and to express themselves, and the side both counters and counter-presses. Less structured than Tiki-Taka and less frantic than Gegenpress: a possession side that wants its individuals to decide games.",
-  wingplay: "Width, overlaps and licence to take a man on. The widest side in the game by some distance, playing more directly into the channels and giving its wide players freedom to dribble. Nothing is sacrificed defensively on paper; what it gives up is central control.",
-  secondball: "Direct, narrow, and built to live off the knock-down. It goes long and quick into the front men, squeezes narrow to win what drops, presses, counters, counter-presses and gets stuck in. Dribbling and freedom are actively suppressed: this is not a side that wants anyone holding the ball, it wants the next contest.",
-  routeone: "Skip the middle third entirely. The most direct passing in the game, shooting on sight, with dribbling and creative freedom both switched off and the tackling turned up. Distinct from Counter by not sitting deep to earn the ball first: it simply does not use midfield.",
-  balanced: "No instructions in any direction, and genuinely the engine’s unconstrained baseline rather than a compromise between others. Everything is decided by the players and the formation. Every other style is a departure from this one, and a departure always costs something somewhere.",
-  tikitaka: "Keep it, move it, never hurry. The shortest passing in the game, narrow, working the ball into the box rather than shooting, holding shape instead of countering, and pressing to restart possession rather than to score off the turnover. A high line to squeeze the pitch, and expression on the ball.",
-  possession: "Patient without the press. Plays out from the back, passes shorter than standard, holds its shape when it wins the ball and stays on its feet rather than diving in. It presses at nobody. Control through the ball rather than through territory.",
-  cholismo: "A narrow, compact block that funnels everything inside and hits you on the break. Sits off, plays more directly when it does go, and regroups rather than counter-pressing when the ball is lost. Freedom is switched off: this is a side that does its job rather than its own thing.",
-  counterattack: "Sit off, then hurt them the moment it breaks. The lowest press in the game paired with a deep line, the most direct passing, and instructions to counter the instant the ball is won and to shoot on sight when the chance arrives. It regroups rather than counter-pressing, because getting the shape back is the point.",
-  zonamista: "A deep, quiet side that defends space rather than men and breaks when it can. Lower press and a lower line, short and patient on the ball, regrouping when it loses it but countering when it wins it. The most restrained set of instructions of any non-Balanced style.",
-  catenaccio: "The deep block that still intends to score. It absorbs like Park The Bus and breaks like Counter, but narrower, more disciplined and more willing to shoot when the moment comes. Stays on its feet rather than diving in, because a block that fouls is a block with ten men.",
-  parkthebus: "Everyone behind the ball. Deep, narrow, direct when it clears its lines, with dribbling and freedom both switched off and instructions to stay on their feet. It will counter if the chance falls, but the shape is the plan and the shape does not move.",
+  gegenpress: "Hunt the ball high and go forward the moment it is won. The hardest press in the game from a high line, tight marking and hard tackling. Through midfield the ball only goes forward, looking for runners in behind, and when it is lost the side presses straight back.",
+  verticaltiki: "Quick passing through the middle, and the ball in behind the moment a runner goes. A mid block; it breaks the moment it wins the ball and presses the moment it loses it.",
+  lanuestra: "Short passing through the middle, with dribblers who take their man on in the last forty metres instead of passing back. More risk and shorter passing from a mid block; it breaks when it wins the ball and regroups when it loses it.",
+  wingplay: "Down the flanks with overlaps and switches, from a wider shape. In the crossing area, with a man in the box, the ball goes in: a cross or a ball along the ground into the area, never back inside. A mid block that presses the moment it loses the ball.",
+  secondball: "Long from the back and everybody after the knock-down. No short passing in its own third, only forward through midfield, shots on sight, and a high press that tackles hard to win what drops; it drops back into shape when it loses the ball.",
+  routeone: "Long from the back to the front men, and crosses into the box. No short passing in its own third and only forward through midfield. A mid block with tighter marking.",
+  balanced: "No choices made: every instruction at its standard setting. The reference the other styles are measured against.",
+  tikitaka: "Positional play. Short from the back, only safe passes through midfield, cutbacks from the byline. It presses high and wins the ball straight back when it loses it, keeps it when it wins it, and leaves an extra man back.",
+  possession: "Patient passing at a slower tempo. Short from the back, only safe passes through midfield, worked into the box. A mid block that does not chase, but presses straight back when it loses the ball.",
+  cholismo: "A compact, narrow low block that tackles hard. Direct and crossing when it has the ball, breaking forward when it wins it.",
+  counterattack: "A low, compact block with two forwards left up. Long from the back and the ball in behind; on a break nothing goes backwards or square.",
+  zonamista: "A low, compact block with a sweeper behind it and stoppers on their forwards. Short build-up through the middle and the ball in behind on the break.",
+  catenaccio: "A low, compact block man-marking with a libero behind it and a forward left up. Long from the back, and the ball in behind the moment it is won.",
+  parkthebus: "Everyone behind the ball: the deepest, most compact block with an extra man back. Long from the back, quick on the break, worked into the box rather than shot from range, and time-wasting when ahead.",
 };
 // FIVE STEPS, NOT TWO. An axis runs -2 to +2, and the difference between More Direct and
 // Much More Direct is the difference between a style and a caricature of it, so the two
@@ -3292,7 +3331,7 @@ const PlaystyleTable = () => {
           </thead>
           <tbody>
             {STYLES.map(sk => {
-              const sp = STYLE_PRESET[sk] || {}, on = shown === sk;
+              const sp = meStrategyOf(sk), on = shown === sk;
               return (
                 <tr key={sk} onMouseEnter={() => setHov(sk)}
                     style={{ background: on ? "var(--chrome-bg-08)" : "transparent", cursor: "default" }}>
@@ -4355,6 +4394,8 @@ const MGR_LOG_KIND = {
             icon: <path d="M2.4 6.4l2.6 2.6 4.6-5.4" /> },
   talk:   { lbl: "Half-time talk", clr: "var(--ui-info)",
             icon: <path d="M2 2.6h8v5H6.4L4 9.8V7.6H2z" /> },
+  shape:  { lbl: "Formation change", clr: "var(--ui-warn)",
+            icon: <><rect x="2" y="2" width="8" height="8" rx="1.2" /><path d="M4.2 4.6h3.6M4.2 7.4h3.6" /></> },
   reorg:  { lbl: "Reorganisation", clr: "var(--ui-info)",
             icon: <path d="M6 1.8l3.8 1.5v2.6c0 2.3-1.7 3.7-3.8 4.3-2.1-.6-3.8-2-3.8-4.3V3.3z" /> },
 };
@@ -5239,6 +5280,7 @@ export default function App() {
   const FLAT_H = 78;
   const xiPitch = (t, starters, sideOf, isIntlTeam, linkPlayer, showMgr, flat) => {
     const slots = pitchSlots(t?.formation || "4-3-3");
+    const roleOf = rolesOf(t);
     // The flat sheet is read at page distance, not broadcast distance, and its taller box makes
     // the same token a smaller share of the view -- so everything hanging off the token scales.
     const FS = flat ? 1.6 : 1;
@@ -5371,7 +5413,8 @@ export default function App() {
                               came through the position chip while the OVR chip beside it -- which
                               takes an opaque metal fill -- did not. Two chips on the same token reading
                               differently is the whole of it. */}
-                          <span style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{p.spos || p.pos}</span>
+                          <span title={ROLE_NAME[roleOf[p.name]] ? `${ROLE_NAME[roleOf[p.name]][0]} (${p.spos || p.pos})` : undefined}
+                                style={{ ...chip, right: cq(-TOKEN.chipOut), background: "var(--chrome-bg)", border: `${cq(TOKEN.ring * 0.7)} solid ${clr}`, color: clr }}>{ROLE_NAME[roleOf[p.name]]?.[1] || p.spos || p.pos}</span>
                         </div>); })}
                     </div>
                   </div>
@@ -5944,14 +5987,22 @@ export default function App() {
     const rng = new RNG((Date.now() & 0x7ffffff) || 7);
     // The managers' ratings, which the second brain drills and manages the match by.
     st.mgmt = { home: hT.mgmt ?? null, away: aT.mgmt ?? null };
+    // THE MANAGERS (src/engine/manager.ts), exactly as in a simulated fixture: each reads this opponent before
+    // kick-off and may start in the style beside his own. A second leg carries the aggregate in with it.
+    if (tn?.agg) st.aggLead = { home: tn.agg[0] - tn.agg[1], away: tn.agg[1] - tn.agg[0] };
+    st.managers = true;
+    meManagersPreMatch(st, (Date.now() & 0x7ffffff) || 7);
     meInit(st, pitchSlots, rng);
+    // The dugout log opens with whatever the managers changed before kick-off.
+    const out0 = meFreshOut();
+    if (st.preLog) out0.mgrLog = { home: [...(st.preLog.home || [])], away: [...(st.preLog.away || [])] };
     // TWO ENGINES, ONE SETUP. "Force Result" on the setup screen sets lmForce, which drives extra
     // time and penalties in the classic simulation (createMatchState's forceResult, read at the
     // second-half stoppage). The positional engine has its own flag, needWin, read only by the
     // in-match "Must Have A Winner" button -- so the checkbox you ticked before kick-off governed
     // one engine and silently did nothing to the other. It governs both now; the button stays as an
     // in-match override for a tie you decide to settle after the fact.
-    return { s: st, out: meFreshOut(), rng, t: 0, hT, aT, needWin: tn ? tn.needWin : lmForce,
+    return { s: st, out: out0, rng, t: 0, hT, aT, needWin: tn ? tn.needWin : lmForce,
              tourn: tn,
              // the replay tape, the goals cut from it, and the one playing right now
              tape: [], clips: [], cel: null, gH: 0, gA: 0 };
@@ -7568,7 +7619,7 @@ export default function App() {
       // truth from that moment, so a style you have since tweaked stays tweaked and nothing about the
       // team is hidden behind a label. Import does not come through here: a preset file's own tactic
       // columns are already the resolved values and must not be overwritten by its style name.
-      if (f === "style") nt.strategy = { ...STRAT_DEF, ...(STYLE_PRESET[v] || {}) };
+      if (f === "style") nt.strategy = { ...STRAT_DEF, ...meStrategyOf(v) };
       if (f === "formation") nt.squad = refitAs(tm.squad, v); return nt; })); };
   const teamErrors = teams.some(t => t.skill === "" || t.skill < 25 || t.skill > 100);
   const importBulk = () => { const p = parseBulk(bulkText); if (p.length > 0) { setTeams(prev => { const existing = new Set(prev.map(t => t.code || t.name)); const fresh = p.filter(t => !existing.has(t.code || t.name)).map(t => ({...t, league: "Custom", id: "Custom::" + (t.code || t.name), strategy: {...(t.strategy||{})}, squad: t.squad ? t.squad.map(p2 => ({...p2})) : null})); return [...prev, ...fresh]; }); setShowBulk(false); setBulkText(""); } };
@@ -10984,30 +11035,31 @@ export default function App() {
                   </div>
                 </div>
                 {(() => {
-                  const GRPS = [["possession", "In Possession"], ["transition", "In Transition"], ["defense", "Out of Possession"]];
-                  return (
+                  // THE MANAGER'S PLAN, phase by phase: what his style does with the ball, in the moments it changes
+                  // hands, and without it. Read-only: the style sets every instruction now (src/engine/tactics.ts),
+                  // and the manager is the one who changes it, before a match and during one.
+                  const def = meStyleDef(t.style || "balanced") || { phases: {}, levers: {} };
+                  const ph = def.phases || {}, lv = def.levers || {};
+                  const GRPS = [
+                    ["In Possession", [["Build-up", PHASE_LBL.build[ph.build || "mixed"]], ["Midfield", PHASE_LBL.progress[ph.progress] || "Mixed"],
+                                       ["Final third", PHASE_LBL.final[ph.final] || "Mixed"]]],
+                    ["In Transition", [["Won", PHASE_LBL.onWin[ph.onWin] || "Standard"], ["Lost", PHASE_LBL.onLoss[ph.onLoss] || "Standard"]]],
+                    ["Out of Possession", [["Block", PHASE_LBL.block[ph.block || "mid"]], ["Marking", PHASE_LBL.marking[ph.marking] || "Standard"]]]];
+                  const extras = Object.entries(lv).map(([k, v]) => LEVER_LBL[k]?.(v)).filter(Boolean);
+                  return (<>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 20, alignItems: "start" }}>
-                  {GRPS.map(([g, label], gi) => (
-                  <div key={g} style={{ borderLeft: gi ? "1px solid var(--chrome-border-33)" : "none", paddingLeft: gi ? 20 : 0 }}>
+                  {GRPS.map(([label, rows], gi) => (
+                  <div key={label} style={{ borderLeft: gi ? "1px solid var(--chrome-border-33)" : "none", paddingLeft: gi ? 20 : 0 }}>
                     <div style={{ fontSize: 8, color: "var(--chrome-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-                    {Object.entries(STRAT_LABELS).filter(([k, v]) => v.grp === g && STRAT_EDITABLE.includes(k)).map(([key, {name, vals}]) => (
-                      <div key={key}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
-                    {(() => {
-                      const v = strat[key] ?? 0;
-                      // Same three-way colouring in both modes: neutral muted, aggressive warm, cautious cool.
-                      const clr = v === 0 ? "var(--chrome-muted)" : v > 0 ? "var(--ui-attack)" : "var(--ui-info)";
-                      return ed
-                        ? <select value={v} onChange={e => { const ns = {...(t.strategy || STRAT_DEF), [key]: +e.target.value}; updateTeam(t.id, "strategy", ns); }} style={{ ...inp, fontSize: 11, padding: "3px 6px", flex: 1, minWidth: 0, color: clr }}>
-                            {vals.map(([vv, l]) => <option key={vv} value={vv}>{l}</option>)}
-                          </select>
-                        : <RO style={{ flex: 1, minWidth: 0, fontSize: 11, padding: "3px 0", color: clr }}>{vals.find(([vv]) => vv === v)?.[1] || "No Instruction"}</RO>;
-                    })()}
-                      </div></div>
-                    ))}
+                    {rows.map(([name, val]) => (
+                      <div key={name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontSize: 10, color: "var(--chrome-muted)", width: 60, flexShrink: 0 }}>{name}</span>
+                        <RO style={{ flex: 1, minWidth: 0, fontSize: 11, padding: "3px 0", color: "var(--ui-text)" }}>{val}</RO>
+                      </div>))}
                   </div>))}
-                  </div>); })()}
+                  </div>
+                  {extras.length > 0 && <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 8 }}>{extras.join(" \u00b7 ")}</div>}
+                  </>); })()}
                   </>}
                   </div>
   </>); };
