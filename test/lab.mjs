@@ -321,6 +321,8 @@ if (process.argv[2] === "--worker" && process.send) {
   console.error(`${spec.arms.length} arms x ${clubs.length} clubs x ${spec.n} fixtures = ${spec.arms.length * clubs.length * spec.n} matches on ${W} workers -> ${OUT}`);
   await Promise.all(jobs.map(j => p.run(j)));
   p.close();
+  // A shard holds only some arms -- the base arm may not be among them -- so the paired table waits for the merge.
+  if (SH) process.exit(0);
   const lines = summarise(rows, spec.base, spec.arms.map(a => a.name));
   writeFileSync(OUT.replace(/\.jsonl$/, "") + ".summary.json", JSON.stringify(lines, null, 1));
   printTable(lines, spec.base);
