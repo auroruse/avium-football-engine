@@ -13,7 +13,7 @@
 // where he came from and how hard. A beaten man is beaten: he has to turn and chase. And a side that
 // fouls on purpose to stop a break, does so.
 import { CFG, ME_DT, ME_HOME_ADV } from "../config";
-import { meAttrs, meDefLow, meMind, meSpeed, meTech } from "../attributes";
+import { meAttrs, meBadgeFx, meDefLow, meMind, meSpeed, meTech } from "../attributes";
 import { ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meOther, meThruCover } from "../geometry";
 import { meCarrierPos } from "../brain";
 import { MT } from "./tune";
@@ -23,9 +23,14 @@ import { ROLES } from "./roles";
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // What each man brings to a duel, 0..1 over the band footballers occupy.
-export const dribSkill = (p) => { const a = meAttrs(p); return clamp(0.45 * meTech(a.touch) + 0.30 * meTech(a.pace) + 0.25 * meMind(p), 0, CFG.techMax); };
+export const dribSkill = (p) => { const a = meAttrs(p); return clamp(0.45 * meTech(a.touch) + 0.30 * meTech(a.pace) + 0.25 * meMind(p) + (meBadgeFx(p).drib ?? 0), 0, CFG.techMax); };
 export const ctrlSkill = (p) => { const a = meAttrs(p); return clamp(0.6 * meTech(a.touch) + 0.4 * meTech(a.strength), 0, CFG.techMax); };
 export const tackSkill = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position) - meDefLow(p), 0, CFG.techMax); };
+// ...AND AS HE RATES HIMSELF. A defender under League One's average pays meDefLow in the tackle, but he
+// does not know it: he goes in on the odds a sound defender would have and gets beaten. Deciding on the
+// true odds made him hang back instead -- tackle attempts in the League One and Two pool fell from 12.4
+// to 6.8 a side when the penalty arrived, the opposite of what a poor defender does.
+const tackSelf = (p) => { const a = meAttrs(p); return clamp(0.75 * meTech(a.tackle) + 0.25 * meTech(a.position), 0, CFG.techMax); };
 
 // ---- THE DRIBBLER -------------------------------------------------------------------------------
 export function mindCarrier(s, side, i) {
@@ -60,7 +65,9 @@ export function mindCarrier(s, side, i) {
     if (!mv) {
       // HOW OFTEN HE TAKES HIM ON: his role, the side's dribbling instruction, and above all whether he
       // is good enough to. A man with no business dribbling mostly keeps it simple and looks for a pass.
-      const go = clamp(0.10 + (role.carry || 0) * 0.35 + (st.dribbling || 0) * 0.12 + (dsk - 0.45) * 0.7, 0.03, 0.75);
+      // ...and a side built to take men on (plan.takeOn) goes at him more readily in the last forty metres.
+      const tko = s.plan?.[side]?.takeOn && Math.abs(meGoalX(side) - p.x) < MT.takeOnD ? MT.takeOnGo : 0;
+      const go = clamp(0.10 + (role.carry || 0) * 0.35 + (st.dribbling || 0) * 0.12 + (dsk - 0.45) * 0.7 + tko, 0.03, 0.75);
       const backToGoal = Math.abs(angDiff(p._face ?? ha, atk)) > 2.0;
       if (backToGoal && dd < 2.6) mv = { k: "shield", t: 6, sgn: 0 };
       else if (mindRand(M) < go) {
@@ -83,6 +90,7 @@ export function mindCarrier(s, side, i) {
         if (room > 8 && paceAdv > -0.3 && dd > 1.6) mv = { k: "knock", t: 3, sgn };
         else if (dsk > 0.55 && mindRand(M) < 0.6) mv = { k: "feint", t: 3, sgn, sell: dsk };
         else mv = { k: "cut", t: 3, sgn };
+        p.takeOns = (p.takeOns || 0) + 1;        // a take-on tried, whether or not anybody tackles
       }
       if (mv) mv.at = mp.tick;
       p._mv = mv;
@@ -135,13 +143,15 @@ export function mindCarrier(s, side, i) {
 // he is never skinned standing still, and stands tight on a man with his back to goal. Against a feint
 // he leans the way the dribbler shaped to go -- unless he reads it, which is his awareness against how
 // well it was sold.
-export function mindJockey(p, c, gux, guy, nx, ny, delay) {
+export function mindJockey(p, c, gux, guy, nx, ny, delay, tight = 0) {
   const cvx = (c.vx || 0) / ME_DT, cvy = (c.vy || 0) / ME_DT;
   const toward = cvx * gux + cvy * guy;                         // the dribbler's pace at our goal
   const backTo = c._shield ? 1 : 0;
-  let stand = (delay ? 3.2 : MT.pressStand) + Math.max(0, toward) * 0.30 - backTo * 0.6;
+  // `tight` (0..1): how near his own goal this is. Near it he gives no ground -- a shorter stand and no
+  // backing off with the dribbler's pace (see pressTarget).
+  let stand = ((delay ? 3.2 : MT.pressStand) + Math.max(0, toward) * 0.30 * (1 - tight)) * (1 - 0.45 * tight) - backTo * 0.6;
   stand = clamp(stand, 1.0, 4.5);
-  let lead = 1.5;
+  let lead = 1.5 * (1 - 0.8 * tight);
   if (c._fk) {
     // Bitten or not.
     const bite = clamp(0.95 - mindAware(p) * 0.8 + meDefLow(p) * 0.8 + c._fk * 0.35, 0.05, 1);
@@ -191,17 +201,36 @@ export function mindDuel(s, rng, out, foul) {
     const behind = clamp((-front - 0.1) / 0.6, 0, 1);
     const slide = dPB > CFG.reach + 0.55;
     if (dPB > CFG.reach + (slide ? 1.35 : 0.55)) continue;
-    const tk = tackSkill(p);
+    const tk = tackSkill(p), tkS = tackSelf(p);
+    // COVER. A man told to delay holds off because nobody is behind him if he dives in and misses -- not because of
+    // where the ball is. With a team-mate within coverR of the carrier, level with him or goal-side, he has that
+    // somebody, and he plays the duel on its merits. Delay was set by phase alone, so near its own goal a deep block
+    // delayed with a second man beside the carrier: four in five of its defenders with the ball in reach were held
+    // off, a carrier closed down by two men lost it one time in eleven, and the block won nothing it did not
+    // intercept.
+    const covered = us.some((q, j) => j !== i && q && !q.off && q.pos !== "GK" && !((q._beat ?? 0) > 0)
+      && Math.hypot(q.x - c.x, q.y - c.y) < MT.coverR
+      && ((q.x - c.x) * ux + (q.y - c.y) * uy) / (ul * Math.max(0.1, Math.hypot(q.x - c.x, q.y - c.y))) > -0.2);
     const pWin = clamp(0.12 + 0.52 * exposed + 0.34 * (tk - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel, 0.03, 0.9);
+    const pSeen = tkS === tk ? pWin
+      : clamp(0.12 + 0.52 * exposed + 0.34 * (tkS - ct) + 0.10 * clamp(front, 0, 1) - 0.14 * behind - (slide ? 0.05 : 0) + hDuel, 0.03, 0.9);
     // HIS BAR. He goes when he likes his chances well enough; how well is temperament and the moment.
     // A side told to get stuck in goes sooner, a booked man later, a man delaying a break later still,
     // and a last man with the ball about to be past him has no bar at all.
     const role = p._role2 || ROLES.cm;
     let bar = MT.tkBar - (st.tackling || 0) * 0.07 - (role.press - 0.4) * 0.08 + ((p.yc || 0) ? 0.1 : 0)
-            + (p._delay ? 0.14 : 0) + (exposed < 0.2 ? 0.08 : 0)
-            + 0.15 * clamp(1 - (p._jkT || 0) / 8, 0, 1);
+            + (p._delay && !covered ? 0.14 : 0) + (exposed < 0.2 ? 0.08 : 0)
+            + 0.15 * clamp(1 - (p._jkT || 0) / 8, 0, 1) + (meBadgeFx(p).tkBar ?? 0);
     if (through && danger > 0.25) bar -= 0.22;
-    if (pWin - bar > pickP) { pickP = pWin - bar; pick = { p, i, pWin, behind, slide, dP }; }
+    // ...and in shooting range a covered man goes in as readily as the last man has to: waiting there is how the shot
+    // comes, and a miss leaves the cover on him. Shooting range is where he stops giving ground (pressTarget, tightD to
+    // tightFull). Covered or not, a carrier closed down at the edge of the box was shooting three times in ten.
+    else if (covered) {
+      const cDg = Math.hypot(c.x - gx, c.y - ME_HALF_W);
+      const tight = Math.abs(c.y - ME_HALF_W) < MT.boxWideY + 6 ? clamp((MT.tightD - cDg) / (MT.tightD - MT.tightFull), 0, 1) : 0;
+      bar -= 0.22 * tight;
+    }
+    if (pSeen - bar > pickP) { pickP = pSeen - bar; pick = { p, i, pWin, behind, slide, dP }; }
   }
   if (pick) {
     const { p, i, pWin, behind, slide } = pick;
@@ -213,7 +242,7 @@ export function mindDuel(s, rng, out, foul) {
     // at pace, and not good enough to be sure of it.
     const closeV = Math.max(0, ((p.vx || 0) * (c.x - p.x) + (p.vy || 0) * (c.y - p.y)) / Math.max(0.3, pick.dP) / ME_DT);
     const pFoul = clamp(0.13 + 0.40 * behind + (slide ? 0.20 : 0) + 0.04 * closeV - 0.22 * tackSkill(p)
-                        + (st.tackling || 0) * 0.05, 0.03, 0.85);
+                        + (st.tackling || 0) * 0.05, 0.03, 0.85) * (meBadgeFx(p).foul ?? 1);
     if (rng.u() < pFoul * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]); foul.commit(p, c, closeV); return; }
     // Beaten: committed and gone past, he has to turn and run.
     p._beat = slide ? CFG.tkBeatT + 6 : CFG.tkBeatT;
@@ -234,7 +263,7 @@ export function mindDuel(s, rng, out, foul) {
       const ux = gx - c.x, uy = ME_HALF_W - c.y, ul = Math.hypot(ux, uy) || 1;
       const front = ((p.x - c.x) * ux + (p.y - c.y) * uy) / (ul * Math.max(0.1, dP));
       const pC = MT.contactFoul * (1 + (st.tackling || 0) * 0.6) * (1.3 - tackSkill(p)) * (0.6 + cs)
-               * (front < -0.2 ? 1.6 : 1) * ((p.yc || 0) ? 0.5 : 1) * (inBox ? 0.22 : 1);
+               * (front < -0.2 ? 1.6 : 1) * ((p.yc || 0) ? 0.5 : 1) * (inBox ? 0.22 : 1) * (meBadgeFx(p).foul ?? 1);
       if (rng.u() < pC * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["contact", inBox]); foul.commit(p, c, 0.6); return; }
     }
   }
@@ -251,7 +280,7 @@ export function mindDuel(s, rng, out, foul) {
     let back = 0;
     for (const q of us) if (q && !q.off && q.pos !== "GK" && ((q.x - c.x) * (gx - c.x) > 0)) back++;
     if (back > 3 || danger < 0.04) continue;
-    const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2);
+    const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2) * (meBadgeFx(p).foul ?? 1);
     if (rng.u() < pCyn * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]); foul.commit(p, c, 1.5); return; }
   }
 }

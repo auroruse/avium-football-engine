@@ -11,7 +11,7 @@
 // ball moved, so the ball rolled free most of the time on whatever line it last had. On the old heavy
 // pitch it died before it got far; on real grass it ran over the touchline with nobody near him.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meSpeed, meTech } from "./attributes";
+import { meAttrs, meBadgeFx, mePassBadge, meSpeed, meTech } from "./attributes";
 import { PITCH_L, PITCH_W, meOther } from "./geometry";
 
 // First touch and close control. See ME_TILT.touch.
@@ -193,8 +193,15 @@ export function meFirstTouch(s, rng, side, p, px, py, pvx, pvy, z, reach, uAng) 
   const press = clamp(1 - (near - 1) / CFG.ftPressR, 0, 1);
   // Turning is only hard with somebody there to turn into: ftTurnLo of it with nobody near.
   const turnD = turn * (CFG.ftTurnLo + (1 - CFG.ftTurnLo) * press);
-  const D = CFG.ftD0 + CFG.ftDv * clamp((vrel - CFG.ftVEasy) / CFG.ftVSpan, 0, 1.5) + CFG.ftDz * air
+  let D = CFG.ftD0 + CFG.ftDv * clamp((vrel - CFG.ftVEasy) / CFG.ftVSpan, 0, 1.5) + CFG.ftDz * air
           + CFG.ftDs * stretch * stretch + CFG.ftDt * turnD + CFG.ftDp * press;
+  // INTO THE RIGHT FOOT (badges: crisp). A ball of his kind from a passer known for it arrives the way the receiver
+  // wants it, and is that much easier to take.
+  const kb = mp.kickBy?.[0], pk = mp._passK;
+  if (kb && kb.s === side && pk) {
+    const by = s.players[side]?.[kb.i];
+    if (by && by !== p) { const cr = meBadgeFx(by).crisp; if (cr && mePassBadge(by, pk.k, pk.d, pk.high) > 0) D *= 1 - cr; }
+  }
   const pf = Math.min(CFG.ftFailMax, CFG.ftFailK * D * D * Math.pow(Math.max(0, 1 - CFG.ftFailTech * ts), 1.5));
   if (rng.u() < pf) {
     const a = Math.atan2(bdy, bdx) + (rng.u() - 0.5) * 2 * CFG.ftMissArc;

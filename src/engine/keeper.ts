@@ -14,7 +14,7 @@
 // from, against how quickly he reacts, how fast he gets across, how far he reaches and where he stood.
 // Penalties keep the guess, because a keeper really does go early at one.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meGkDiveV, meGkLow, meGkReact, meGkSkill, meSpeed } from "./attributes";
+import { meAttrs, meBadgeFx, meGkDiveV, meGkLow, meGkReact, meGkSkill, meSpeed } from "./attributes";
 import { ME_HALF_W, meGoalX, meKeeperIx, meOther } from "./geometry";
 import { GOAL_HALF_W } from "./ball";
 
@@ -66,7 +66,15 @@ function planFor(s, dsd, t0) {
   const mp = s.mePos, ps = s.players[dsd];
   const ki = meKeeperIx(ps);
   if (ki < 0) return null;
-  const k = ps[ki], ka = meAttrs(k), gkk = meGkSkill(ka), low = meGkLow(ka), gx = meGoalX(meOther(dsd));
+  const k = ps[ki], gx = meGoalX(meOther(dsd));
+  // SHOT STOPPER (badge): on his line his reflexes are sharper still, fading as he comes off it.
+  let ka = meAttrs(k);
+  const lr = meBadgeFx(k).lineReflex;
+  if (lr) {
+    const b = lr * Math.max(0, Math.min(1, 1 - (Math.abs(k.x - gx) - 1.5) / 6));
+    if (b > 0) ka = { ...ka, reflex: Math.min(99, ka.reflex + b), reflexRaw: ka.reflexRaw + b };
+  }
+  const gkk = meGkSkill(ka), low = meGkLow(ka);
   const sg = Math.sign(gx - mp.bx) || 1;
   let tx = k.x, ty = k.y;
   // WHERE IT WILL CROSS THE LINE HE IS STANDING ON. A struck ball flies straight in plan -- drag slows

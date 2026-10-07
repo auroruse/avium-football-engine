@@ -17,7 +17,7 @@
 //      and the one chosen is the one he takes. And the point a carry or a better shot is priced at no
 //      longer runs past the goal line, which handed a free chance to any man inside eight metres.
 import { meCoachSt, CFG, ME_DT, ME_HOME_ADV, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "../config";
-import { meAtkW, meAttrs, meGkSkill, meMind, meTech, meSpeed } from "../attributes";
+import { meAtkW, meAttrs, meBadgeFx, meGkSkill, meMind, mePassBadge, meTech, meSpeed } from "../attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine,
          meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "../geometry";
 import { meGroundMaxD, meLoftT } from "../ball";
@@ -95,7 +95,8 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   const styleW = CFG.styleW * obey;
   const held = (st.possWon || 0) < 0 && mp.side === side && mp.possT < CFG.transT ? CFG.holdSafe : 0;
   // His role's own appetite for risk sits on top of the side's.
-  const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey + held - (role.risk || 0) * 0.18);
+  const fxP = meBadgeFx(p);
+  const riskM = Math.max(0.3, 1 - (st.creativity || 0) * CFG.styleRiskW * obey + held - (role.risk || 0) * 0.18) * (fxP.safe ? 1 + fxP.safe : 1);
   const lose = CFG.loss * riskM * (0.35 + meDanger(meOther(side), p.x, p.y));
   // AWAY FROM HOME he misjudges a little more: the crowd, the strange ground (ME_HOME_ADV.nerves).
   const guest = (s.homeAdv === "home" || s.homeAdv === "away") && side !== s.homeAdv;
@@ -104,7 +105,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   const cls = { shot: tri(me, epi, 11, slow), pass: tri(me, epi, 12, slow), carry: tri(me, epi, 13, slow), clear: tri(me, epi, 14, slow) };
   const jit = (c, key) => (clsW * cls[c] + ownW * tri(me, epi, 1000 + key, slow)) * miss;
   const opts = [];
-  const push = (o, sc, key, c) => { o.sc0 = sc; o.sc = sc + jit(c, key); o.key = key; opts.push(o); };
+  const push = (o, sc, key, c) => { o.sc0 = sc; o.jit = jit(c, key); o.sc = sc + o.jit; o.key = key; opts.push(o); };
   const sbx = ft ? ft.bvx : mp.bvx, sby = ft ? ft.bvy : mp.bvy, sbz = ft ? ft.bz : mp.bz;
   const spvx = (p.vx || 0) / ME_DT, spvy = (p.vy || 0) / ME_DT, snear = meTouchNear(s, side, p.x, p.y);
   const exD = (ox, oy) => mePassExecD(sbx, sby, sbz, spvx, spvy, ox, oy, snear);
@@ -126,7 +127,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const gsh = meShotGeom(side, p.x, p.y);
     const lane = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W);
     const clear = Math.max(0, 1 - lane / CFG.shotLaneClear);
-    const range = CFG.shotRange + a.shoot / 99 * CFG.shotRangeSkill + clear * CFG.shotClearRange;
+    const range = CFG.shotRange + a.shoot / 99 * CFG.shotRangeSkill + clear * CFG.shotClearRange + (meBadgeFx(p).range ?? 0);
     const sight = clear * clamp(1 - (gsh.d - range) / CFG.shotRangeFade, 0, 1);
     const nowBetter = sp > spAhead ? (sp - spAhead) / Math.max(sp, 1e-4) : 0;
     const sightHold = gsh.d < CFG.sightHoldD ? 1 : Math.pow(Math.min(1, sp / Math.max(sp, spAhead, 1e-4)), 2);
@@ -134,13 +135,15 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const wantD = CFG.shotWant + st.chanceCreation * CFG.shotWantStep;
     const offWant = Math.max(0, gsh.d - wantD - CFG.shotBand) - Math.max(0, gsh.d - CFG.shotWant - CFG.shotBand);
     const waitCost = Math.max(0, spAhead - sp) * CFG.shotWaitW / (1 + press * CFG.shotWaitPress);
-    const sc = sp * (CFG.shotWorth ?? 1) * appetite - (1 - sp) * lose * CFG.shotMissW - offWant * CFG.shotWantW - waitCost;
+    let sc = sp * (CFG.shotWorth ?? 1) * appetite - (1 - sp) * lose * CFG.shotMissW - offWant * CFG.shotWantW - waitCost;
+    // LONG SHOT (badge): with room, from outside the box he has a go.
+    if (fxP.farW && gsh.d > 16) sc += fxP.farW * clamp((gsh.d - 16) / 6, 0, 1) * Math.max(0, 1 - shotSit);
     push({ k: "shot", p: sp, execD: shotD }, sc, 1, "shot");
   }
   // ---- PASS --------------------------------------------------------------------------------------
   const toLine = Math.abs(meGoalX(side) - p.x);
   // A WIDE SIDE CROSSES EARLY: from further out, the moment there is a man to find.
-  const crossZone = toLine < CFG.crossFromX + Math.max(0, st.width || 0) * 3 && Math.abs(p.y - ME_HALF_W) > CFG.crossFromY;
+  const crossZone = toLine < CFG.crossFromX + Math.max(0, st.width || 0) * 3 + (fxP.crossDeep ?? 0) && Math.abs(p.y - ME_HALF_W) > CFG.crossFromY;
   const inHands = isGK && mp.held && mp.side === side && mp.idx === i;
   const passTech = meTech(a.pass);
   const kindTech = (t, kn) => kn === 1 ? t
@@ -153,10 +156,29 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     for (const q of ps) if (q && q !== p && !q.off && q.pos !== "GK"
         && Math.abs(meGoalX(side) - q.x) < CFG.crossBoxX + 9 && Math.abs(q.y - ME_HALF_W) < CFG.crossBoxY + 4) { crossOn = true; break; }
   const recycOut = ownHalf && !isGK && (M?.recyc?.[side] ?? 0) >= 1 + Math.round(mindPatience(st) * 6);
+  // How deep he is in his own half, for the build-up and progression limits below.
+  const myDepth = (p.x - meGoalX(meOther(side))) * dir;
+  const longBuild = !!s.plan?.[side]?.longBuild && !isGK && myDepth < MT.longBuildTo && press < MT.longBuildPress;
+  const fwdOnly = !!s.plan?.[side]?.fwdOnly && !isGK && myDepth >= MT.longBuildTo && myDepth < MT.fwdOnlyTo && press < MT.fwdOnlyPress;
+  const minOk = s.plan?.[side]?.minOk || 0; const minCarry = s.plan?.[side]?.minCarry || 0;
+  const breakNow = (st.possWon || 0) > 0 && mp.side === side && (mp.possT ?? 99) < MT.cntT && !isGK
+    && (p.x - meGoalX(meOther(side))) * dir < PITCH_L / 2;
+  const clearNow = !!s.plan?.[side]?.clearLines && !isGK && press > MT.clrPress
+    && (p.x - meGoalX(meOther(side))) * dir < MT.clrDepth;
   const consider = (q, j, c) => {
-    const aimX = c.ax, aimY = c.ay;
+    let aimX = c.ax, aimY = c.ay;
+    // PLACEMENT (badges): his kind of ball lands on the side away from the receiver's marker.
+    if (fxP.place && mePassBadge(p, c.k, Math.hypot(aimX - p.x, aimY - p.y), !!c.high) > 0) {
+      let md = 4, mx = 0, my = 0;
+      for (const o of s.players[meOther(side)]) {
+        if (!o || o.off || o.pos === "GK") continue;
+        const dd = Math.hypot(aimX - o.x, aimY - o.y);
+        if (dd < md) { md = dd; mx = o.x; my = o.y; }
+      }
+      if (md < 4 && md > 0.05) { const k2 = fxP.place * (1 - md / 4) / md; aimX += (aimX - mx) * k2; aimY += (aimY - my) * k2; }
+    }
     const dx = aimX - p.x, dy = aimY - p.y, d = Math.hypot(dx, dy) || 0.1;
-    if (d > (c.kind === "punt" ? 65 : 55)) return;
+    if (d > (c.kind === "punt" ? 65 : c.rel ? MT.relMaxD : 55)) return;
     // Nobody passes to a man standing next to him. Under three metres he keeps it, or the man moves.
     if (d < 3) return;
     const slack = c.thru ? CFG.offsideGrace : 0.4;
@@ -167,6 +189,13 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     // back or across again in its own half -- unless he is being closed down, when anybody plays the
     // safe one. A limit on what he considers, not a price on what it is worth.
     if (fwd < 2 && recycOut && press < 1.2) return;
+    // LONG FROM THE BACK (plan.longBuild). A side that builds long does not pass it about in its own third: the
+    // ball goes forward and far, to the front men or the channel, or it is carried out. Left to the arithmetic, a
+    // Route One side played 152 passes a match at 83%, exactly what Balanced did. Pressed, he plays what he can.
+    if (longBuild && (fwd < MT.longBuildFwd || d < MT.longBuildD)) return;
+    // FORWARD (plan.fwdOnly). Through the middle a direct side plays it forward, never square or back to start
+    // again: it takes the risk the ball goes, and pays in how often it keeps it.
+    if (fwdOnly && fwd < MT.fwdOnlyMin) return;
     // ...and a wide side's crosser with somebody to find does not turn it back inside.
     if (fwd < -2 && crossOn && press < 1.2) return;
     // NEVER ACROSS YOUR OWN AREA IN THE AIR. A lofted ball played square across the face of your own box
@@ -191,14 +220,15 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
       if (!betterSight && !freer) return;
     }
     const blk = c.blk;
+    const fxQ = meBadgeFx(q);
     const rPress = mePressure(s, side, aimX, aimY);
     let val0 = 0;
     const rp = c.high && c.k !== "over" ? CFG.recvPressHigh : CFG.recvPress;
     const distK = CFG.passDistK * (1 - (c.thru && q._run === "behind" ? Math.min(1, meOppDist(s, side, aimX, aimY) / CFG.roomFull) * CFG.escDistRelief : 0));
     const xD = exD(dx, dy);
-    const tech = kindTech(passTech, c.high ? (CFG.kindNoise[c.kind] ?? 1) : 1) * Math.max(0, 1 - xD * CFG.execSkillLoss);
+    const tech = kindTech(passTech + mePassBadge(p, c.k, d, !!c.high), c.high ? (CFG.kindNoise[c.kind] ?? 1) : 1) * Math.max(0, 1 - xD * CFG.execSkillLoss);
     const okBase = (CFG.passBase - d * distK) * Math.exp(-blk * CFG.laneK) * (CFG.passSkillLo + tech * CFG.passSkillW)
-           * (1 / (1 + press * 0.20)) * (1 / (1 + rPress * rp))
+           * (1 / (1 + press * 0.20 * (1 - (fxP.calm ?? 0)))) * (1 / (1 + rPress * rp * (1 - (fxQ.recvPress ?? 0))))
            * (CFG.rcvPosLo + meTech(meAttrs(q).position) * CFG.rcvPosW);
     const loft = c.high ? { T: c.tb, z1: c.zEnd ?? CFG.ballR } : null;
     const risk = mePassRisk(s, side, p.x, p.y, aimX, aimY, c.high ? d / c.tb : 0, c.high, c.va, loft) * (c.high ? CFG.riskHigh : 1);
@@ -216,9 +246,22 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     ok = clamp(ok, CFG.passFloor, 0.985);
     // A team-mate he last saw a while ago is a guess: the ball goes to where he thinks the man is.
     if ((q._age ?? 0) > 1.0) ok *= Math.max(0.55, 1 - ((q._age ?? 0) - 1.0) * 0.08);
+    // CLEAR YOUR LINES (plan.clearLines). A side that builds long does not play short or across in its own
+    // third with a man on it: it gets the ball forward, to somebody or into the channel, or out. Traced, a deep
+    // side lost a fifth of the balls it won in its own third again within seconds, before anybody could run.
+    if (clearNow && fwd < MT.clrFwd) return;
+    // THE FIRST BALL GOES FORWARD. A side set up to break (possWon > 0) that has just won it does not play
+    // back or across to the man beside him: from its own half the first ball goes forward, to the man left up
+    // or into the space behind them. Traced against a pressing side, its breaks from its own third went
+    // short to feet half the time and a quarter of them were lost where they were won.
+    if (breakNow && fwd < MT.cntFwdMin && press < MT.cntPress) return;
+    // KEEP IT (plan.minOk). A side that plays for control does not play a forward ball it is not sure of
+    // short of the last third: it goes back or across and asks again. A limit on what he considers, not a
+    // price on what it is worth -- it buys the ball and pays in ground. Being closed down, anybody plays it.
+    if (minOk && fwd > 2 && ok < minOk && press < 1.0 && (aimX - meGoalX(meOther(side))) * dir < MT.keepUpTo) return;
     let val = meVal(side, aimX, aimY) + CFG.keep + (fwd <= 0 ? CFG.keepBuild * shut : 0) + val0;
     val += fwd * CFG.fwdPull;
-    const want = CFG.passWant + st.passingDir * CFG.passWantStep;
+    const want = CFG.passWant + st.passingDir * CFG.passWantStep + (fxP.passLen ?? 0);
     const breaking = mp.side === side && (mp.possT ?? 99) < CFG.transT && (st.possWon || 0) > 0;
     if (!breaking && meCoverGoalSide(s, side, aimX) > 0)
       val -= Math.max(0, Math.abs(d - want) - CFG.passBand) * CFG.passWantW;
@@ -228,7 +271,14 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     val += room * Math.max(0, fwd) * CFG.roomFwd;
     // The second brain's sides hold their width, so the far side is usually there to be found; the room a
     // switch finds is worth less to it than the first brain paid (MT.switchW, not CFG.switchW).
-    if (c.k === "switch") val += roomRaw * MT.switchW;
+    if (c.k === "switch") val += roomRaw * MT.switchW + (fxP.switchW ?? 0);
+    // His habits, and the ones his team-mates play to (badges): the cross, the man on a run, the target in the air.
+    if (fxP.crossW && c.k === "cross") val += fxP.crossW;
+    if (fxP.shortW && c.k === "feet" && d <= 18) val += fxP.shortW;
+    if (fxQ.wantIt && rPress > 0.6) val += fxQ.wantIt;
+    if (fxP.runnerW && (q._runT ?? 0) > 0) val += fxP.runnerW;
+    if (fxQ.aimAir && c.k === "cross") val += fxQ.aimAir;
+    if (fxQ.aimLong && c.high && c.k !== "cross") val += fxQ.aimLong;
     val += Math.max(0, spq - sp) * CFG.passShotW;
     if (c.thru && q._run === "behind") {
       const _gs = meCoverGoalSide(s, side, aimX);
@@ -239,7 +289,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     if (q._role && q !== p) val += q._role * CFG.roleRecvW;
     const seeHard = Math.min(1, (c.thru ? CFG.visThru : 0) + blk * CFG.visLane + Math.max(0, d - CFG.visD0) / CFG.visDSpan);
     val -= CFG.visMiss * seeHard * (1 - mind);
-    const _pat = ME_PAT_MAP[s.styles?.[side]];
+    const _pat = s.plan?.[side] ? s.plan[side].zones : ME_PAT_MAP[s.styles?.[side]];
     if (_pat) {
       const _gx = meGoalX(side);
       const _w = _pat.get(meZone(Math.abs(_gx - p.x), p.y) * 9 + meZone(Math.abs(_gx - aimX), aimY));
@@ -254,7 +304,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const sc = ok * (val - giveUp) - (1 - ok) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), aimX, aimY))
              + (q.pos === "GK" ? -0.020 : 0);
     push({ k: "pass", j, p: ok, ax: aimX, ay: aimY, high: c.high, thru: !!c.thru, pk: c.k, kind: c.kind, zEnd: c.zEnd,
-           va: c.va, execD: xD, c: [okBase, okRisk, okLate, d, blk, press, rPress], _q: q },
+           va: c.va, execD: xD, rel: !!c.rel, c: [okBase, okRisk, okLate, d, blk, press, rPress], _q: q },
          sc, 100 + j * 16 + (KIND_K[c.k] || 0), "pass");
   };
   for (let j = 0; j < ps.length; j++) {
@@ -326,6 +376,22 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
         }
       }
     }
+    // THE BALL IN BEHIND, for a man standing on the shoulder of their last defender with grass behind it. He
+    // is a target before he has moved, and goes the moment it is struck (mindOnPass). Only a man already
+    // running was ever offered the ball over the top, and nobody runs while the man on the ball is being
+    // pressed -- so a pressed side never went over a high line and pressing high cost nothing: against a
+    // last line 31 m off its own goal, 11% of long balls went in behind it, 4% to a man running.
+    if (!((q._runT ?? 0) > 0) && (q._role2?.run?.behind ?? 0) >= MT.relRun && q.pos !== "GK") {
+      const onLine = (q.x - off) * dir, room = (meGoalX(side) - off) * dir;
+      if (onLine > -MT.relShoulder && onLine < 0.5 && room > MT.relRoom) {
+        const tx = meGoalX(side) - dir * 6, ty = ME_HALF_W + (q.y - ME_HALF_W) * 0.6;
+        const tl = Math.hypot(tx - q.x, ty - q.y) || 1;
+        const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, (tx - q.x) / tl, (ty - q.y) / tl, qTop, "over", CFG.overLand);
+        if (o && o.d >= CFG.overMinD && (o.ax - off) * dir > 1)
+          consider(q, j, { ax: o.ax, ay: o.ay, k: "over", high: true, kind: "over", tb: meLoftT(o.d, "over"), thru: true, rel: true,
+                           blk: meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true) });
+      }
+    }
     // A CROSS IS FOR A MAN WHO WILL BE IN THE BOX, not one who already is: with their line on the edge of
     // the area, the men attacking it are standing on that line until the ball comes, and they meet it inside
     // (the meeting point below has to be in the box).
@@ -343,11 +409,19 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
                          tb: meLoftT(o.d, "cross"), blk: meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true) });
     }
   }
+  // VISION (badge): with time, space and several good balls on, he reads it far better -- his misjudgement shrinks
+  // and he sees further ahead.
+  let vis = 0;
+  if (fxP.read) {
+    let good = 0;
+    for (const o of opts) if (o.k === "pass" && o.p > 0.7) good++;
+    vis = fxP.read * clamp(1 - press, 0, 1) * Math.min(1, good / 4);
+  }
   // ---- TWO MOVES AHEAD ----------------------------------------------------------------------------
   // For his best few passes, what the receiver can do next from where he takes it: shoot, or play the
   // man beyond. Paid only in proportion to how much this man sees, and only for the gain over the
   // receiver's own spot, so it re-ranks passes and never invents one.
-  const lk = MT.lookK * aw * aw;
+  const lk = MT.lookK * aw * aw * (1 + vis);
   if (lk > 0.01) {
     const passes = opts.filter(o => o.k === "pass").sort((x, y) => y.sc - x.sc).slice(0, MT.lookTop);
     for (const o of passes) {
@@ -402,8 +476,18 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const dsc = drb * (meValHere(s, side, cdx, cdy) + CFG.keep * 0.72 + spGain * CFG.carryShotW
                        + roomC * Math.max(0, fwdC) * CFG.roomFwd * CFG.carryRoomW)
               - (1 - drb) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cdx, cdy));
-    const jd = dsc + (thruMe ? CFG.carryThruW * drb * Math.max(0, fwdC / CFG.carryAdv)
+    let jd = dsc + (thruMe ? CFG.carryThruW * drb * Math.max(0, fwdC / CFG.carryAdv)
                              : CFG.carryInstrW * obey * (st.dribbling || 0) + (role.carry || 0) * 0.004);
+    // QUICK STEP (badge): any grass in front of him, he is away into it.
+    if (fxP.dash) jd += fxP.dash * drb * Math.max(0, fwdC / CFG.carryAdv) * roomC;
+    // ...and a side playing for control does not run it into a man it is not sure of beating (plan.minCarry),
+    // short of the last third: it gives it to somebody instead. The same limit as minOk, for the carry.
+    if (minCarry && drb < minCarry && carryPress > 0.4 && (cdx - meGoalX(meOther(side))) * dir < MT.keepUpTo) continue;
+    // KEEP IT SIMPLE (dribbling < 0): he does not run it into a man unless that is his job. Into open grass he
+    // still goes -- the old rule took the carry off him altogether after three slices, and at -0.57 xG a match it
+    // was the most expensive thing on the sheet: half of all box entries are carries.
+    if ((st.dribbling || 0) < 0 && carryPress > MT.simplePress && (role.carry || 0) < 0.3) continue;
+    if (clearNow) continue;
     if (!noCarry) push({ k: "carry", p: drb, ang }, jd, 50 + h, "carry");
   }
   // ---- CLEAR -------------------------------------------------------------------------------------
@@ -441,14 +525,81 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
     const urgency = Math.min(1, press / CFG.clearPress);
     const sc = ok2 * (meVal(side, cx, cy) + CFG.keep * 0.40) + relief * (0.2 + 0.8 * urgency)
              - (1 - ok2) * CFG.loss * riskM * (0.35 + meDanger(meOther(side), cx, cy));
-    push({ k: "clear", p: ok2, cx, cy }, sc + (thruMe ? 0 : styleW * (st.approachPlay || 0) * CFG.apClearW), 2, "clear");
+    push({ k: "clear", p: ok2, cx, cy }, sc + (thruMe ? 0 : styleW * (st.approachPlay || 0) * CFG.apClearW) - (fxP.noPanic ?? 0), 2, "clear");
   }
   if (ownDepth < CFG.touchDepth && press > CFG.touchPress) {
     const sc = meDanger(meOther(side), p.x, p.y) * CFG.clearRelief * (0.2 + 0.8 * Math.min(1, press / CFG.touchPress))
              - CFG.loss * riskM * CFG.touchDiscount;
-    push({ k: "touch", p: 1 }, sc, 3, "clear");
+    push({ k: "touch", p: 1 }, sc - (fxP.noPanic ?? 0), 3, "clear");
   }
+  // ---- WHAT THE PLAN RULES OUT (after every option is on the table, carries and clearances included) ----
+  // GET IT IN (plan.crossFirst). A side that attacks down the wings puts the ball into the box from the crossing
+  // area whenever there is a cross on: not back inside, not across, not a lay-off -- a cross, or a ball along
+  // the ground into the area. Measured without it, a wing side reached the crossing area two-fifths more often
+  // than a Balanced one and then crossed from it LESS, a fifth of its passes from there against two-fifths.
+  // Being closed down, he plays whatever gets him out. A limit on what he considers, not a price on any of it.
+  if (s.plan?.[side]?.crossFirst && crossZone && press < MT.crossPress && opts.some(o => o.k === "pass" && o.pk === "cross"))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if (o.k === "pass" && o.pk !== "cross" && !inBox(o.ax, o.ay)) opts.splice(n, 1);
+    }
+  // TAKE HIM ON (plan.takeOn). A side built on its dribblers does not have them give it back or play it square
+  // in the last forty metres when there is a man to go at: he goes at him, plays it forward, or shoots. Only a
+  // man who can dribble is held to it, and being closed down, he plays whatever gets him out.
+  if (s.plan?.[side]?.takeOn && toLine < MT.takeOnD && press < MT.crossPress && dribSkill(p) >= MT.takeOnSkill
+      && opts.some(o => o.k === "carry" && o.ang != null && Math.cos(o.ang - (dir > 0 ? 0 : Math.PI)) > 0.3))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if (o.k === "pass" && (o.ax - p.x) * dir < 2 && !inBox(o.ax, o.ay)) opts.splice(n, 1);
+    }
+  // THE BALL GOES FORWARD (plan.earlyBall). On a break nobody plays it back or square to start again: with a man
+  // going beyond him and a ball to him on, he plays that, or he runs with it. Traced, a counter side's ball-winner
+  // ran on for four and six seconds while its striker stood on their last line and the cover got back. Ruling the
+  // carry out as well helped against a Balanced side and cost two-thirds of the breaks' shots against a pressing one,
+  // where running past the first man IS the break -- so the carry stays. Closed down, as above.
+  if (s.plan?.[side]?.earlyBall && mp.side === side && (mp.possT ?? 99) < MT.earlyT && toLine > MT.earlyLast && press < MT.crossPress
+      && opts.some(o => o.k === "pass" && o.thru && (o.ax - p.x) * dir > MT.earlyFwd && o.p > MT.earlyOk))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if (o.k === "pass" && (o.ax - p.x) * dir < 2) opts.splice(n, 1);
+    }
+  // IN BEHIND (plan.thruFirst). A side whose last third is the ball in behind plays it the moment it is on: from
+  // their half to the edge of the area, with a man running beyond their last line and a ball into his path that
+  // arrives often enough, the passes to feet go -- back, square and forward alike, unless into the box. He plays
+  // the ball in behind, runs with it or shoots. Ruling out only the backward and square ones moved Vertical Tiki-Taka's
+  // through balls 7%, because a ball to feet further up outbid the one in behind; this way it plays 7-10% more of them
+  // than Balanced where it played 5% fewer (7 Oct 2026). The limit is how rarely a run in behind is on at all. Closed
+  // down, he plays whatever gets him out.
+  if (s.plan?.[side]?.thruFirst && toLine < MT.thruTo && toLine > MT.thruLast && !crossZone && press < MT.crossPress
+      && opts.some(o => o.k === "pass" && o.thru && (o.ax - p.x) * dir > MT.thruFwd && o.p > MT.thruOk))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if (o.k === "pass" && !o.thru && !inBox(o.ax, o.ay)) opts.splice(n, 1);
+    }
+  // THE COUNTER IS ON. Breaking with them short at the back (team.ts mindPhase), the ball goes forward into the
+  // space they left, now: with a ball on that gains cntGo metres and arrives often enough, the shorter passes go
+  // (a run with it stays). Traced before this, a side that won it in its own box with their attackers still round
+  // it kept it, played an 18-metre ball after three seconds, and had the ball 30 m from its goal ten seconds on --
+  // positional value is flat that far out, so the safe ball always won and the space was gone before it moved.
+  // Closed down, he plays whatever gets him out.
+  const breaking = M?.ph?.[side]?.ph === "counter" && M.ph[side].short && mp.side === side && press < MT.crossPress;
+  if (breaking && opts.some(o => o.k === "pass" && (o.ax - p.x) * dir >= MT.cntGo && o.p >= MT.cntGoOk))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if (o.k === "pass" && (o.ax - p.x) * dir < MT.cntGo) opts.splice(n, 1);
+    }
+  // ...AND THE MAN WITH IT RUNS AT THEM. Watched, a midfielder found on a break with nobody within eight metres and two
+  // of theirs back carried it sideways for four seconds: thirty-odd metres from our goal the value of the ground is
+  // flat, so going forward bought him nothing his sums could see. With room to run forward he runs: the carries that
+  // do not go forward and the passes that do not go forward go. Closed down, as above.
+  if (breaking && !isGK && opts.some(o => o.k === "carry" && o.ang != null && Math.cos(o.ang - atk) > MT.cntRunCos && o.p >= MT.cntRunOk))
+    for (let n = opts.length - 1; n >= 0; n--) {
+      const o = opts[n];
+      if ((o.k === "carry" && o.ang != null && Math.cos(o.ang - atk) <= MT.cntRunCos)
+          || (o.k === "pass" && (o.ax - p.x) * dir < MT.cntRunFwd)) opts.splice(n, 1);
+    }
   if (!opts.length) return { k: "carry", p: 0.5, sc: 0, key: 0, ang: p._drbA ?? atk, alts: [] };
+  if (vis > 0) for (const o of opts) o.sc = o.sc0 + o.jit * (1 - vis);
   opts.sort((x, y) => y.sc - x.sc);
   const best = opts[0];
   best.alts = opts.slice(0, 10);
@@ -460,19 +611,8 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
 // hystAbs or hystRel of it. The plan lasts the possession (mp.mind.epi) and goes when its option does.
 export function mindChoose(s, side, i, dwell, noCarry, ft) {
   const mp = s.mePos, M = mp.mind, p = s.players[side][i];
-  // KEEP IT SIMPLE. A side told not to dribble does not carry it past a couple of touches -- unless it is
-  // his job to (a winger, a dribbling playmaker) -- and plays the ball instead. A limit on the menu, not a
-  // price on the carry.
-  const stD = s.strategy?.[side]?.dribbling || 0;
-  if (stD < 0 && !ft && mp.idx === i && mp.side === side && (mp.hold ?? 0) >= 3 + Math.round(Math.max(0, p._role2?.carry ?? 0) * 6))
-    noCarry = true;
-  // GET IT IN. A side built to play down the wings beats his man with a touch or two out wide in the last
-  // third and then puts the ball in the box; it does not dribble the byline all afternoon.
-  const stW = s.strategy?.[side]?.width || 0;
-  if (stW > 0 && !ft && mp.idx === i && mp.side === side && (mp.hold ?? 0) >= 2) {
-    const dirW = side === "home" ? 1 : -1, gxW = side === "home" ? 105 : 0;
-    if (Math.abs(gxW - p.x) < CFG.crossFromX + stW * 3 && Math.abs(p.y - 34) > CFG.crossFromY && (gxW - p.x) * dirW > 0) noCarry = true;
-  }
+  // (KEEP IT SIMPLE and GET IT IN used to take the carry away here after a few touches: the first is now a
+  // limit on carrying into a man, in mindDecide's carry loop, and the second is the crossFirst plan.)
   const view = mindLens(s, side, i);
   const res = mindDecide(view, side, i, dwell, noCarry, ft);
   let pick = res;
@@ -493,7 +633,9 @@ export function mindFirstTime(s, side, i, z) {
   const act = mindChoose(s, side, i, 0, false, { bvx: mp.bvx, bvy: mp.bvy, bz: z });
   if (!act || (act.k !== "pass" && act.k !== "shot" && act.k !== "clear")) return null;
   const press = mePressure(s, side, p.x, p.y);
-  if ((act.sc ?? 0) <= CFG.ftActNow * Math.max(0, 1 - press * CFG.pressActNow)) return null;
+  // FINISHER hits it first time, VISION plays it first time (badges): the bar is lower for them.
+  const fxF = meBadgeFx(p), ftK = act.k === "shot" ? 1 - (fxF.ftShot ?? 0) : act.k === "pass" && (act._q?._runT ?? 0) > 0 ? 1 - (fxF.early ?? 0) : 1;
+  if ((act.sc ?? 0) <= CFG.ftActNow * Math.max(0, 1 - press * CFG.pressActNow) * ftK) return null;
   act.ft = true;
   return act;
 }
