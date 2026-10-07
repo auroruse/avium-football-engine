@@ -3379,13 +3379,15 @@ export const ME_STYLE_PRICE = {
 // The second brain plays its style rather than having it stood in for, and still the styles came out 0.40 xG a match
 // apart end to end against an even mix of all fourteen (cover rule, 240 matches a style): about 3 rating points on
 // every player between the best and the worst. Until the engine pays possession and depth what they are worth, each
-// style pays its measured edge here, the way ME_STYLE_PRICE did for the first brain: edge / 0.135, the net xG a match
-// one rating point on every player is worth (0.0123 a player, the badges' +5 control). Only this: no drill floor and
-// no fit, which stay the first brain's. Zero-mean. MEASURED, never authored -- re-measure after any engine change
-// that moves the style table, and shrink it as the engine closes the gap.
+// style pays its measured edge here, the way ME_STYLE_PRICE did for the first brain: edge / 0.20, the net xG a match
+// one rating point on every player is worth. That rate is the WHOLE side's, measured by pricing it: the first row,
+// converted at 0.135 (eleven times one player's 0.0123, the badges' +5 control), moved the table 0.20 a point and
+// overshot, Juego -0.21 to +0.17 (cloud run 37678935755). This row is each style's edge from both runs, 480 matches
+// a style. Only this: no drill floor and no fit, which stay the first brain's. Zero-mean. MEASURED, never authored --
+// re-measure after any engine change that moves the style table, and shrink it as the engine closes the gap.
 export const ME_MIND_PRICE = {
-  flair: 1.4, gegenpress: 1.3, secondball: 1.0, counter: 0.7, vertical: 0.7, routeone: 0.5, balanced: 0.4,
-  zonamista: -0.1, wing: -0.3, catenaccio: -0.7, cholismo: -0.8, control: -1.1, bus: -1.3, positional: -1.6,
+  gegenpress: 1.1, flair: 0.9, vertical: 0.8, balanced: 0.5, secondball: 0.4, routeone: 0.4, counter: 0.1,
+  zonamista: -0.2, wing: -0.3, catenaccio: -0.3, cholismo: -0.6, control: -0.6, positional: -0.9, bus: -1.3,
 };
 
 // What the UI could legally set. A chase must not push an instruction somewhere a manager could not.
