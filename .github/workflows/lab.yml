@@ -1,0 +1,39 @@
+name: Lab
+
+# THE TACTICS LAB ON GITHUB'S MACHINES. Push a branch named lab/<anything> and the experiment named in
+# test/specs/run.env runs split across twenty runners (test/lab.mjs SHARD); each shard uploads its records, and
+# `gh run download <run id>` brings them back to concatenate into the same file one machine would have written.
+# Only lab/ branches: a push to main deploys the app (deploy.yml) and runs nothing here.
+on:
+  push:
+    branches: ['lab/**']
+
+jobs:
+  shard:
+    # ARM and this exact Node: the same arithmetic as the Mac the lab was built on, so a cloud run replays a local one
+    # match for match (on x64 under Node 24.21 the same code drifted apart, equal only on average).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - run: npm ci
+      - run: bash test/rebuild.sh
+      - name: Run shard ${{ matrix.shard }} of 20
+        run: |
+          set -a; . test/specs/run.env; set +a
+          mkdir -p out
+          SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-${{ matrix.shard }}
+          path: out/lab-${{ matrix.shard }}.jsonl
+          retention-days: 7

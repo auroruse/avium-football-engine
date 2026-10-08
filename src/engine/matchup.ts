@@ -1,0 +1,21 @@
+// WHAT EACH STYLE IS WORTH AGAINST EACH OTHER: xG difference a match for the row style against the column style,
+// level squads, each paying its style's price (config ME_MIND_PRICE), the twenty League One clubs. Measured by
+// test/specs/matchup.mjs (cloud run 37756297520, 8 Oct 2026), written by test/mkmatchup.mjs, read by the managers (manager.ts).
+// One direction per pairing, the other being the same matches seen from the other side, so each row is the negative
+// of its column. About 240 matches a cell, so a cell is good to about 0.08 either way.
+export const ME_MATCHUP = {
+  tikitaka: { tikitaka: 0.00, possession: 0.11, verticaltiki: -0.21, gegenpress: -0.21, lanuestra: -0.20, wingplay: -0.31, routeone: -0.06, secondball: -0.28, counterattack: 0.10, cholismo: -0.03, zonamista: 0.13, catenaccio: 0.15, parkthebus: 0.34, balanced: -0.15 },
+  possession: { tikitaka: -0.11, possession: 0.00, verticaltiki: -0.19, gegenpress: -0.03, lanuestra: 0.10, wingplay: -0.19, routeone: -0.04, secondball: -0.09, counterattack: 0.01, cholismo: 0.19, zonamista: 0.28, catenaccio: 0.13, parkthebus: 0.32, balanced: 0.02 },
+  verticaltiki: { tikitaka: 0.21, possession: 0.19, verticaltiki: 0.00, gegenpress: 0.24, lanuestra: 0.01, wingplay: -0.06, routeone: 0.12, secondball: 0.18, counterattack: -0.09, cholismo: -0.02, zonamista: -0.02, catenaccio: -0.06, parkthebus: -0.04, balanced: 0.08 },
+  gegenpress: { tikitaka: 0.21, possession: 0.03, verticaltiki: -0.24, gegenpress: 0.00, lanuestra: -0.11, wingplay: 0.05, routeone: 0.01, secondball: -0.05, counterattack: -0.05, cholismo: 0.01, zonamista: -0.05, catenaccio: 0.07, parkthebus: 0.03, balanced: -0.06 },
+  lanuestra: { tikitaka: 0.20, possession: -0.10, verticaltiki: -0.01, gegenpress: 0.11, lanuestra: 0.00, wingplay: 0.12, routeone: -0.06, secondball: 0.17, counterattack: -0.16, cholismo: -0.07, zonamista: -0.11, catenaccio: -0.21, parkthebus: -0.20, balanced: 0.15 },
+  wingplay: { tikitaka: 0.31, possession: 0.19, verticaltiki: 0.06, gegenpress: -0.05, lanuestra: -0.12, wingplay: 0.00, routeone: 0.01, secondball: 0.10, counterattack: -0.07, cholismo: -0.02, zonamista: 0.06, catenaccio: -0.04, parkthebus: 0.12, balanced: 0.16 },
+  routeone: { tikitaka: 0.06, possession: 0.04, verticaltiki: -0.12, gegenpress: -0.01, lanuestra: 0.06, wingplay: -0.01, routeone: 0.00, secondball: 0.01, counterattack: 0.06, cholismo: 0.05, zonamista: 0.09, catenaccio: 0.01, parkthebus: 0.11, balanced: 0.29 },
+  secondball: { tikitaka: 0.28, possession: 0.09, verticaltiki: -0.18, gegenpress: 0.05, lanuestra: -0.17, wingplay: -0.10, routeone: -0.01, secondball: 0.00, counterattack: 0.05, cholismo: 0.01, zonamista: 0.22, catenaccio: 0.12, parkthebus: 0.16, balanced: 0.12 },
+  counterattack: { tikitaka: -0.10, possession: -0.01, verticaltiki: 0.09, gegenpress: 0.05, lanuestra: 0.16, wingplay: 0.07, routeone: -0.06, secondball: -0.05, counterattack: 0.00, cholismo: -0.04, zonamista: 0.39, catenaccio: -0.05, parkthebus: -0.17, balanced: 0.24 },
+  cholismo: { tikitaka: 0.03, possession: -0.19, verticaltiki: 0.02, gegenpress: -0.01, lanuestra: 0.07, wingplay: 0.02, routeone: -0.05, secondball: -0.01, counterattack: 0.04, cholismo: 0.00, zonamista: 0.28, catenaccio: -0.06, parkthebus: -0.06, balanced: 0.10 },
+  zonamista: { tikitaka: -0.13, possession: -0.28, verticaltiki: 0.02, gegenpress: 0.05, lanuestra: 0.11, wingplay: -0.06, routeone: -0.09, secondball: -0.22, counterattack: -0.39, cholismo: -0.28, zonamista: 0.00, catenaccio: -0.23, parkthebus: -0.23, balanced: 0.06 },
+  catenaccio: { tikitaka: -0.15, possession: -0.13, verticaltiki: 0.06, gegenpress: -0.07, lanuestra: 0.21, wingplay: 0.04, routeone: -0.01, secondball: -0.12, counterattack: 0.05, cholismo: 0.06, zonamista: 0.23, catenaccio: 0.00, parkthebus: 0.01, balanced: 0.15 },
+  parkthebus: { tikitaka: -0.34, possession: -0.32, verticaltiki: 0.04, gegenpress: -0.03, lanuestra: 0.20, wingplay: -0.12, routeone: -0.11, secondball: -0.16, counterattack: 0.17, cholismo: 0.06, zonamista: 0.23, catenaccio: -0.01, parkthebus: 0.00, balanced: 0.10 },
+  balanced: { tikitaka: 0.15, possession: -0.02, verticaltiki: -0.08, gegenpress: 0.06, lanuestra: -0.15, wingplay: -0.16, routeone: -0.29, secondball: -0.12, counterattack: -0.24, cholismo: -0.10, zonamista: -0.06, catenaccio: -0.15, parkthebus: -0.10, balanced: 0.00 },
+};

@@ -2,7 +2,7 @@
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "./config";
 import { meHungarian } from "./assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meCtrl, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine, meOther, mePressure, meSpaceGain, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meAttrs, meGkLow, meGkSkill, meMind, meSpeed } from "./attributes";
+import { meAttrs, meBadgeFx, meGkLow, meGkSkill, meMind, meSpeed } from "./attributes";
 import { GOAL_HALF_W } from "./ball";
 
 // The team defensive line, one depth per side per tick: the mentality default, dragged back by the
@@ -1604,7 +1604,7 @@ export function meKeeperPos(s, side, i) {
   // high press want a keeper behind them, a side that sits deep wants him at home. 0 is a keeper who
   // lives on his line, 1 one who owns his area and the ground behind his defence.
   const stT = Math.max(-1, Math.min(1, ((st.defLine || 0) + 0.5 * (st.pressingLOE || 0)) / 2.5));
-  const cmd = Math.max(0, Math.min(1, 0.5 + (gkk - 0.5) * CFG.gkStyleSkill + stT * CFG.gkStyleTeam));
+  const cmd = Math.max(0, Math.min(1, 0.5 + (gkk - 0.5) * CFG.gkStyleSkill + stT * CFG.gkStyleTeam + (meBadgeFx(p).cmd ?? 0)));
   const inArea = (x, y) => (x - own) * dir < CFG.gkAreaD && Math.abs(y - ME_HALF_W) < CFG.boxHalfW;
   // HIS READ OF A RACE. A keeper does not have the forecast; he judges who will get there first, and
   // how well is his rating. The error is fixed for the life of a ball (keyed on its last touch), so
@@ -1828,8 +1828,10 @@ export function meKeeperPos(s, side, i) {
   // behind his own back line: gkSweepFrac of its height, up to gkSweepMax, reached over gkSweepBlend
   // metres beyond the shooting zone. A high line gets a keeper behind it; a deep block keeps him home.
   const lineH = mp.blk?.[side]?.line ?? 20;
-  const sweepMax = CFG.gkSweepMax * (0.6 + 0.6 * cmd);
-  const sweep = Math.max(CFG.gkOutShot, Math.min(sweepMax, lineH * CFG.gkSweepFrac * (0.6 + 0.8 * cmd)));
+  // ...and his own habit (badges): the sweeper-keeper lives further off his line, the shot-stopper nearer it.
+  const gkSw = meBadgeFx(p).gkSweep ?? 1;
+  const sweepMax = CFG.gkSweepMax * (0.6 + 0.6 * cmd) * gkSw;
+  const sweep = Math.max(CFG.gkOutShot, Math.min(sweepMax, lineH * CFG.gkSweepFrac * (0.6 + 0.8 * cmd) * gkSw));
   const near2 = vd < CFG.gkShotZone;
   const base2 = near2 ? CFG.gkOutMin + vd * CFG.gkOutK
               : CFG.gkOutShot + (sweep - CFG.gkOutShot) * Math.min(1, (vd - CFG.gkShotZone) / CFG.gkSweepBlend);
