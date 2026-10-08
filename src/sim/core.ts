@@ -7,7 +7,9 @@
 //
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
-import { ME_MATCH_TICKS, meAdded, meAddedMin, meFinalise, meInit, meMinute, meShootout, meTick } from "../engine";
+import { FORMATIONS, FORM_SPOS, FPOS2, ME_MATCH_TICKS, formAtkW, meAdded, meAddedMin, meFinalise, meInit, meManagersPreMatch, meMinute, meShootout, meTick, pitchSlots, sposFor } from "../engine";
+// The formation tables live in the engine now (src/engine/formations.ts); the app still reads them here.
+export { FORMATIONS, FORM_SPOS, FPOS2, pitchSlots, sposFor };
 
 export class RNG {
   constructor(seed) { this.s = seed || Date.now(); }
@@ -98,7 +100,6 @@ export const CM = {
   drink_break:["Quick drinks break.","Water break. Managers have a word.","A pause for fluids.","Drinks on the touchline. Brief huddle from both benches.","Cooling break. The tempo can wait.","Bottles out. A minute to reset.","The referee signals a drinks break.","Hydration stop. Coaches make the most of it.","Time for water. Tactical whiteboards appear.","Play pauses. Everyone takes on water.","Brief stop for drinks. Some walk, some listen, some just breathe.","Out come the bottles and the clipboards."],
 };
 
-export const FORMATIONS=["4-2-4","3-4-3","4-1-2-1-2","4-3-3","4-4-2","4-2-3-1","3-5-2","3-4-1-2","4-1-4-1","4-3-2-1","5-3-2"];
 
 // WHICH PLAYERS A STYLE LEANS ON, and how hard. Weights sum to 1.0 in every entry so fits are
 // comparable between styles; span is the rating gap (times FIT_SPAN) that moves fit by one.
@@ -352,7 +353,10 @@ export function quickPenShootout(rng) {
 export function simTwoLegMatch(rng, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg1HA, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn, mgmt) {
   const l1 = simPositionalMatch(rng, homeSkill, awaySkill, false, homeStyle, awayStyle, homeForm, awayForm, leg1HA, homeStrat, awayStrat, homeSquad, awaySquad, urg, null, injuriesOn, mgmt);
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null });
+  // THE AGGREGATE comes into the second leg with them: whoever is behind on it has a comeback to make (manager.ts,
+  // match.ts meChase). The second leg's home side is the first leg's away side.
+  const lead1 = l1.ftHome - l1.ftAway;
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null }, { home: -lead1, away: lead1 });
   const aggH = l1.ftHome + l2.ftAway, aggA = l1.ftAway + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.ftAway;
   const result = { twoLeg:true, leg1:{home:l1.ftHome,away:l1.ftAway}, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:l1.cards,leg2:l2.cards}, scorers:{leg1:l1.scorers,leg2:l2.scorers}, ogs:{leg1:l1.ogs,leg2:l2.ogs}, playerData:{leg1:l1.playerData,leg2:l2.playerData} };
@@ -372,7 +376,10 @@ export function simFirstLeg(rng, homeSkill, awaySkill, homeStyle, awayStyle, hom
 
 export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, awayStyle, homeForm, awayForm, leg2HA, homeStrat, awayStrat, awayGoals, homeSquad, awaySquad, urg, injuriesOn, mgmt) {
   const l2f = leg2HA === "home" ? "away" : leg2HA === "away" ? "home" : null;
-  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null });
+  // THE AGGREGATE comes into the second leg with them: whoever is behind on it has a comeback to make (manager.ts,
+  // match.ts meChase). The second leg's home side is the first leg's away side.
+  const lead1 = partial.leg1.home - partial.leg1.away;
+  const l2 = simPositionalMatch(rng, awaySkill, homeSkill, false, awayStyle, homeStyle, awayForm, homeForm, l2f, awayStrat, homeStrat, awaySquad, homeSquad, flipUrg(urg), null, injuriesOn, { home: mgmt?.away ?? null, away: mgmt?.home ?? null }, { home: -lead1, away: lead1 });
   const l1 = partial.leg1, aggH = l1.home + l2.ftAway, aggA = l1.away + l2.ftHome;
   const awayH = l2.ftAway, awayA = l1.away;
   const result = { twoLeg:true, partial:false, leg1:l1, leg2:{home:l2.ftHome,away:l2.ftAway}, agg:{home:aggH,away:aggA}, awayGoals:{home:awayH,away:awayA}, awayGoalsRule:!!awayGoals, et:null, pen:null, cards:{leg1:partial.cards?.leg1,leg2:l2.cards}, scorers:{leg1:partial.scorers?.leg1,leg2:l2.scorers}, ogs:{leg1:partial.ogs?.leg1,leg2:l2.ogs}, playerData:{leg1:partial.playerData?.leg1,leg2:l2.playerData} };
@@ -386,24 +393,7 @@ export function simSecondLeg(rng, partial, homeSkill, awaySkill, homeStyle, away
 
 export function parseOvr(raw) { if (!raw) return {name:raw,ovr:null,nat:null}; let s=raw.trimEnd().replace(/\s*\[[*+]\]$/, ""); let nat=null; const nm=s.match(/\s*\[([A-Za-z]{2,4})\]$/); if(nm){nat=nm[1].toUpperCase();s=s.slice(0,nm.index).trim();} const pre=s.match(/^\((\d{1,2})\)\s*/); if(pre) return {name:s.slice(pre[0].length).trim(),ovr:Math.max(1,Math.min(99,+pre[1])),nat}; const suf=s.match(/\((\d{1,2})\)$/); if(suf) return {name:s.slice(0,suf.index).trim(),ovr:Math.max(1,Math.min(99,+suf[1])),nat}; return {name:s,ovr:null,nat}; }
 
-export const FORM_SPOS = {
-  "4-2-4":     ["GK","LB","CB","CB","RB","CM","CM","LW","ST","ST","RW"],
-  "4-4-2":     ["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"],
-  "4-3-3":     ["GK","LB","CB","CB","RB","CM","CM","CM","LW","ST","RW"],
-  "4-2-3-1":   ["GK","LB","CB","CB","RB","DM","DM","AM","AM","AM","ST"],
-  "4-1-4-1":   ["GK","LB","CB","CB","RB","DM","LW","CM","CM","RW","ST"],
-  "4-1-2-1-2": ["GK","LB","CB","CB","RB","DM","CM","CM","AM","ST","ST"],
-  "4-3-2-1":   ["GK","LB","CB","CB","RB","CM","CM","CM","AM","AM","ST"],
-  "3-4-3":     ["GK","CB","CB","CB","LM","CM","CM","RM","LW","ST","RW"],
-  "3-5-2":     ["GK","CB","CB","CB","LWB","CM","CM","CM","RWB","ST","ST"],
-  "3-4-1-2":   ["GK","CB","CB","CB","LWB","CM","CM","RWB","AM","ST","ST"],
-  "5-3-2":     ["GK","LWB","CB","CB","CB","RWB","CM","CM","CM","ST","ST"],
-};
 
-export function sposFor(fm) {
-  if (FORM_SPOS[fm]) return FORM_SPOS[fm];
-  const d2=fm.split("-").map(Number); const s=["GK"]; const nd=d2[0]; if(nd<=3)for(let i=0;i<nd;i++)s.push("CB"); else{for(let i=0;i<nd;i++)s.push(i===0?"LB":i===nd-1?"RB":"CB");} for(let d=1;d<d2.length-1;d++){const isDeep=d===1&&d2.length>3;for(let i=0;i<d2[d];i++)s.push(isDeep?"DM":"CM");} const nf=d2[d2.length-1];if(nf===1)s.push("ST");else if(nf===2){s.push("ST","ST");}else{for(let i=0;i<nf;i++)s.push(i===0?"LW":i===nf-1?"RW":"ST");} return s;
-}
 
 export function buildSquad(formation, names, benchSize) {
   const n = names || [];
@@ -412,24 +402,9 @@ export function buildSquad(formation, names, benchSize) {
   // existing squad keeps whatever bench that squad already had.
   const dg = (formation || "4-3-3").split("-").map(Number);
   const sq = [];
-  // Per-formation attacking weight gradients (contextual to role)
-  // Per-formation attacking weight gradients: L-to-R within each layer
-  const FG = {
-    "4-2-4":     [0, 4,3,3,4, 16,16, 34,40,42,34],          // LB CB CB RB | CM CM | LW ST ST RW
-    "4-4-2":     [0, 4,3,3,4, 20,16,16,20, 40,42],           // LB CB CB RB | LM CM CM RM | ST ST
-    "4-3-3":     [0, 5,3,3,5, 14,18,14, 34,42,34],           // LB CB CB RB | CM CM(b2b) CM | LW ST RW
-    "4-2-3-1":   [0, 4,3,3,4, 10,10, 24,30,24, 42],          // LB CB CB RB | DM DM | LAM CAM RAM | ST
-    "4-1-4-1":   [0, 4,3,3,4, 8, 26,16,16,26, 38],           // LB CB CB RB | DM | LW CM CM RW | ST
-    "4-1-2-1-2": [0, 4,3,3,4, 8, 16,16, 30, 40,42],          // LB CB CB RB | DM | CM CM | AM | ST ST
-    "4-3-2-1":   [0, 4,3,3,4, 12,18,12, 28,28, 42],          // LB CB CB RB | CM CM(b2b) CM | AM AM | ST
-    "3-4-3":     [0, 3,4,3, 14,12,12,14, 34,40,34],          // CB CB CB | LM CM CM RM | LW ST RW
-    "3-5-2":     [0, 3,4,3, 16,14,18,14,16, 38,40],          // CB CB CB | LWB CM CM(b2b) CM RWB | ST ST
-    "3-4-1-2":   [0, 3,4,3, 16,12,12,16, 28, 38,40],         // CB CB CB | LWB CM CM RWB | AM | ST ST
-    "5-3-2":     [0, 10,3,4,3,10, 18,16,18, 38,40],          // LWB CB CB CB RWB | CM CM(b2b) CM | ST ST
-  };
   const fm = formation || "4-3-3";
   const sposArr = sposFor(fm);
-  const atkGrad = FG[fm] || (()=>{ const d2=fm.split("-").map(Number); const g=[0]; let ii=1; for(let i=0;i<d2[0];i++){g.push(4);ii++;} for(let di=1;di<d2.length-1;di++){const isDeep=di===1&&d2.length>3;for(let i=0;i<d2[di];i++){g.push(isDeep?10:Math.round(12+26*((ii-d2[0]-1)/Math.max(1,10-d2[0]-d2[d2.length-1]-1))));ii++;}} for(let i=0;i<d2[d2.length-1];i++){const nf=d2[d2.length-1];g.push(nf===1?36:nf===2?(i===0?40:42):(i===nf-1?38:36));ii++;} return g; })();
+  const atkGrad = formAtkW(fm);
   sq.push({ name: n[0] || "#1", pos: "GK", spos: "GK", atkW: 0 });
   let idx = 1;
   for (let i = 0; i < dg[0]; i++) { sq.push({ name: n[idx] || "#"+(idx+1), pos: "DEF", spos: sposArr[idx] || "CB", atkW: atkGrad[idx] || 4 }); idx++; }
@@ -460,44 +435,6 @@ export function buildSquad(formation, names, benchSize) {
   return sq;
 }
 
-// ── Formation pitch geometry ───────────────────────────────────────────
-// Slot positions as x/y percentages across the pitch, y=100 at your own goal line, attacking
-// upward. Hand-placed per formation so the shape reads as that formation rather than as evenly
-// spaced rows; anything not in the table falls back to the generated layout below.
-export const FPOS2 = {
-  "4-4-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[38,28],[62,28]],
-  "4-3-3":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,52],[50,50],[72,52],[15,24],[50,20],[85,24]],
-  "4-2-3-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,56],[61,56],[18,36],[50,32],[82,36],[50,14]],
-  "4-1-4-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,56],[14,38],[38,40],[62,40],[86,38],[50,18]],
-  "4-1-2-1-2":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[50,58],[39,44],[61,44],[50,30],[39,16],[61,16]],
-  "4-3-2-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[28,54],[50,52],[72,54],[38,32],[62,32],[50,14]],
-  "4-2-4":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[39,54],[61,54],[14,26],[38,22],[62,22],[86,26]],
-  "3-4-3":[[50,93],[28,76],[50,78],[72,76],[12,52],[37.3,54],[62.7,54],[88,52],[18,24],[50,20],[82,24]],
-  "3-5-2":[[50,93],[28,76],[50,78],[72,76],[9,50],[29.5,52],[50,48],[70.5,52],[91,50],[39,22],[61,22]],
-  "3-4-1-2":[[50,93],[28,76],[50,78],[72,76],[12,54],[37.3,56],[62.7,56],[88,54],[50,34],[39,16],[61,16]],
-  "5-3-2":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[28,48],[50,46],[72,48],[39,22],[61,22]],
-  // DEFENSIVE COUNTERPARTS. Not selectable and deliberately absent from FORMATIONS -- a side is
-  // never set up in these, it DROPS into one when it loses the ball. A 3-4-3 defends as a 5-4-1 and
-  // a 4-2-3-1 as a 4-4-1-1, so the shape the engine holds out of possession is the shape the
-  // formation actually becomes rather than the one it attacks in.
-  //
-  // Authored rather than generated. pitchSlots' fallback lays out flat, evenly spaced rows: it puts
-  // a back FIVE in one line 88 units wide at y=65, nine units higher up the pitch than an authored
-  // back four sits, which is the opposite of what a back five is for. The stagger here is the one
-  // every other entry above uses -- centre-backs narrow and deep, the men outside them wider and a
-  // touch higher.
-  "5-4-1":[[50,93],[9,68],[28,76],[50,78],[72,76],[91,68],[14,50],[37.3,48],[62.7,48],[86,50],[50,20]],
-  "4-4-1-1":[[50,93],[15,74],[38.3,76],[61.7,76],[85,74],[12,52],[37.3,54],[62.7,54],[88,52],[50,32],[50,14]],
-};
-
-export const pitchSlots = (formation) => FPOS2[formation] || (() => {
-  const layers = (formation || "4-3-3").split("-").map(Number);
-  const nR = layers.length + 1, yT = 12, yB = 92, rG = (yB - yT) / (nR - 1);
-  const pts = [[50, yB]];
-  // Keep adjacent dots at least 22 units apart so player-name labels never overlap.
-  layers.forEach((c, li) => { const y = yB - (li + 1) * rG; const hs = c <= 1 ? 0 : Math.max(38, 11 * (c - 1)); const lo = 50 - hs; const gap = c <= 1 ? 0 : (2 * hs) / (c - 1); for (let j = 0; j < c; j++) pts.push([c === 1 ? 50 : lo + j * gap, y]); });
-  return pts;
-})();
 
 // ─── DESIGN SCALE ────────────────────────────────────────────────────────────
 // Before this the file carried 13 corner radii and 17 letter-spacings, so the same kind of
@@ -598,9 +535,26 @@ export function runPositionalMatch(hT, aT, seed, homeAdv, injuriesOn, brain) {
 //     calls lean its way. The abstract sim's `hE *= 1.03` and the rating bump that followed it both
 //     said a crowd makes the players better, which it does not. Passed through as st.homeAdv and
 //     applied to the instructions and the whistle, never to anybody's numbers.
+// THE ROLES ON THE TEAM SHEET: what each starter will play, dealt exactly as a match deals them (meInit), so the
+// sheet and the pitch cannot disagree. Keyed by name; a bench player has no role until he comes on.
+export function rolesFor(t) {
+  const st = createMatchState();
+  const T = { skill: t.skill, style: t.style || "balanced", formation: t.formation || "4-3-3", strategy: t.strategy, squad: t.squad };
+  st.players.home = meSide(T); st.players.away = meSide(T);
+  st.bench = { home: [], away: [] };
+  st.formations = { home: T.formation, away: T.formation };
+  st.strategy = { home: meStrategyFor(T), away: meStrategyFor(T) };
+  st.styles = { home: T.style, away: T.style };
+  st.injuriesOn = false;
+  meInit(st, pitchSlots, new RNG(7));
+  const out = {};
+  for (const p of st.players.home) if (p && p._mr) out[p.name] = p._mr;
+  return out;
+}
+
 export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeStyle, awayStyle, homeForm,
                             awayForm, homeAdv, homeStrat, awayStrat, homeSquad, awaySquad,
-                            matchUrg, teamForm, injuriesOn, mgmt) {
+                            matchUrg, teamForm, injuriesOn, mgmt, aggLead) {
   const hT = { skill: homeSkill, style: homeStyle || "balanced", formation: homeForm || "4-3-3",
                strategy: homeStrat, squad: homeSquad };
   const aT = { skill: awaySkill, style: awayStyle || "balanced", formation: awayForm || "4-3-3",
@@ -620,13 +574,20 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   st.injuriesOn = injuriesOn !== false;
   if (matchUrg) st.matchUrg = matchUrg;
   if (teamForm) st.teamForm = teamForm;
+  if (aggLead) st.aggLead = aggLead;
   st.possession = "home";
   // RNG.next() returns a FLOAT in [0,1). `float >>> 0` is always 0, and `0 || 7` is 7 -- so every
   // jobbed sim played from seed 7 and a knockout tie produced the same score on every re-run.
   // Scale the float to a 31-bit int instead: the job's seed stream reaches the match again.
-  const r = new RNG((Math.floor((rng?.next?.() ?? Math.random()) * 2 ** 31) >>> 0) || 7);
+  const seedInt = (Math.floor((rng?.next?.() ?? Math.random()) * 2 ** 31) >>> 0) || 7;
+  const r = new RNG(seedInt);
+  // THE MANAGERS (src/engine/manager.ts): each reads this opponent before kick-off and may start in the style
+  // beside his own. A real fixture only; the lab and the tests build their matches without them.
+  st.managers = !globalThis.__noManagers;                // a harness can measure the styles without them
+  meManagersPreMatch(st, seedInt);
   meInit(st, pitchSlots, r);
   const out = meFreshOut();
+  if (st.preLog) out.mgrLog = { home: [...(st.preLog.home || [])], away: [...(st.preLog.away || [])] };
   // out.min is what a goal stamps its minute from; without it every scorer reads 0'.
   for (let t = 0; t < ME_MATCH_TICKS + meAdded(st); t++) {
     out.min = meMinute(t); out.add = meAddedMin(t); meTick(st, r, out); }
@@ -649,6 +610,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
     }
   }
   meFinalise(st);
+  globalThis.__mgrLog?.(out.mgrLog || null);            // a harness reading the dugout log (the result does not carry it)
   const allP = (sd) => [...st.players[sd], ...((st.subbedOff && st.subbedOff[sd]) || [])];
   // A second yellow shows up in the engine as a red on a man already booked, so it is counted rather
   // than reported -- accumulateMatchStats needs it separately for the suspension rules.
