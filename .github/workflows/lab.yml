@@ -30,7 +30,13 @@ jobs:
         run: |
           set -a; . test/specs/run.env; set +a
           mkdir -p out
-          SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
+          # LAB_TEST names a test file that splits itself the same way (SHARD=i/n) and prints its tallies, to be merged
+          # after (test/cards.mjs merge). A match that never finishes is cut off at fifteen minutes; the log names it.
+          if [ -n "$LAB_TEST" ]; then
+            SHARD=${{ matrix.shard }}/20 timeout 900 node "test/$LAB_TEST" > "out/lab-${{ matrix.shard }}.jsonl"
+          else
+            SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
