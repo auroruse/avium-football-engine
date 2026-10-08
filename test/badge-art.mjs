@@ -12,17 +12,8 @@ const METAL = {
   bronze: { hi: "#e0a071", mid: "#a05f2c", lo: "#4f2a12", pips: 1 },
 };
 // The tiers as measured (8 Oct 2026, five cloud runs pooled): worth to the man who carries the badge.
-export const TIER = {
-  finisher: "gold", interceptor: "gold", rapid: "gold", aerial: "gold", quickstep: "gold", blocker: "gold", strong: "gold",
-  relentless: "silver", trickster: "silver", vision: "silver", incisive: "silver", disciplined: "silver", longshot: "silver", firsttouch: "silver",
-  crosser: "bronze", tikitaka: "bronze", deadball: "bronze", composed: "bronze", commanding: "bronze", tackler: "bronze", longball: "bronze", shotstopper: "bronze",
-};
-export const NAME = {
-  rapid: "Rapid", quickstep: "Quick Step", relentless: "Relentless", aerial: "Aerial", strong: "Strong", firsttouch: "First Touch",
-  trickster: "Trickster", tikitaka: "Short Passing", incisive: "Incisive", longball: "Long Ball", crosser: "Crosser", finisher: "Finisher",
-  longshot: "Long Shot", deadball: "Dead Ball", vision: "Vision", composed: "Composed", tackler: "Tackler", interceptor: "Interceptor",
-  blocker: "Blocker", disciplined: "Disciplined", shotstopper: "Shot Stopper", commanding: "Commanding",
-};
+import { TIER, NAME } from "../src/data/badges.js";   // the one table: the app reads it too
+export { TIER, NAME };
 
 const W = 5.2, INK = "#ffffff", DARK = "#1d2026";
 const f = (n) => +n.toFixed(2);

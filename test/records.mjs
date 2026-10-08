@@ -12,13 +12,13 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIELD, isSlot, sheetsFromRecords } from "../src/data/sheets.js";
+import { dumpRecords, playerRecord } from "../src/data/draft.js";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PRE = join(ROOT, "src/presets"), DATA = join(ROOT, "src/data");
 const SKIP = new Set(["ANCC.tsv", "Slots.tsv"]);
 const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const CELL = /^\((\d+(?:\.\d+)?)\)\s*(.+?)(?:\s*\[([A-Z]{2,4})\])?$/;
-const dump = (rows) => "[\n" + rows.map(r => JSON.stringify(r)).join(",\n") + "\n]\n";
 const load = (f) => JSON.parse(readFileSync(join(DATA, f), "utf8"));
 const records = () => ({ players: load("players.json"), managers: load("managers.json"), teams: load("teams.json"), sheets: load("sheets.json") });
 
@@ -105,17 +105,19 @@ function importSheets() {
   }
   if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own text):\n  ${split.join("\n  ")}`);
   const byId = (a, b) => +a.id.slice(1) - +b.id.slice(1);
-  const order = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr });
+  // The sheets carry no badges: a man's come from his record, by ID.
+  const badges = new Map((had?.players || []).filter(r => r.badges?.length).map(r => [r.id, r.badges]));
+  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id) });
   if (had) {
     const gone = (o, B) => o.filter(r => ![...B.values()].some(x => x.id === r.id)).length;
     const fresh = (o, B) => [...B.values()].filter(r => !o.some(x => x.id === r.id)).length;
     console.log(`players: ${fresh(had.players, players)} new, ${gone(had.players, players)} no longer on any sheet; managers: ${fresh(had.managers, managers)} new, ${gone(had.managers, managers)} gone`);
   }
   mkdirSync(DATA, { recursive: true });
-  writeFileSync(join(DATA, "players.json"), dump([...players.values()].sort(byId).map(order)));
-  writeFileSync(join(DATA, "managers.json"), dump([...managers.values()].sort(byId).map(order)));
-  writeFileSync(join(DATA, "teams.json"), dump(teams));
-  writeFileSync(join(DATA, "sheets.json"), dump(sheets));
+  writeFileSync(join(DATA, "players.json"), dumpRecords([...players.values()].sort(byId).map(order)));
+  writeFileSync(join(DATA, "managers.json"), dumpRecords([...managers.values()].sort(byId).map(order)));
+  writeFileSync(join(DATA, "teams.json"), dumpRecords(teams));
+  writeFileSync(join(DATA, "sheets.json"), dumpRecords(sheets));
   console.log(`${teams.length} teams, ${players.size} players, ${managers.size} managers -> src/data`);
 }
 

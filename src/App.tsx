@@ -11,6 +11,9 @@ import managersRec from "./data/managers.json";
 import teamsRec from "./data/teams.json";
 import sheetsRec from "./data/sheets.json";
 import { sheetsFromRecords } from "./data/sheets.js";
+import { applyDraft, draftChanges, draftWith } from "./data/draft.js";
+import { BADGES, BADGE_BY_ID, badgeOrder } from "./data/badges.js";
+import { publishDraft } from "./data/publish.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -22,7 +25,23 @@ export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
 // THE SHEETS, FROM THE RECORDS. Each preset sheet is written from src/data -- byte for byte the file in src/presets,
 // which `node test/records.mjs check` keeps true -- so every team builds exactly as it did when the app read the
 // files. The app no longer reads src/presets; those are copies for the tools that still read sheets.
-const SHEETS = sheetsFromRecords({ players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec });
+// THE OVERSEER'S DRAFT AND WHAT HE HAS PUBLISHED (src/data/draft.js). His unpublished changes are kept in this
+// browser and laid over the records before anything is built from them, so every screen and every match plays them.
+// What he has published that this build does not carry yet (the site takes a minute to redeploy) is laid under the
+// draft the same way, and dropped field by field once a build carries it. Nobody else has either.
+const DRAFT_KEY = "avium-records-draft", PENDING_KEY = "avium-records-published", GH_KEY = "avium-gh-key";
+const readPatch = (k) => { try { const d = JSON.parse(localStorage.getItem(k)); return d && d.v === 1 && d.players ? d : null; } catch { return null; } };
+const RECORDS_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec };
+const RECORDS_BASE = (() => {
+  const pend = readPatch(PENDING_KEY);
+  if (!pend) return RECORDS_BUILT;
+  let left = null;
+  for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to });
+  try { if (left) localStorage.setItem(PENDING_KEY, JSON.stringify(left)); else localStorage.removeItem(PENDING_KEY); } catch {}
+  return left ? applyDraft(RECORDS_BUILT, left) : RECORDS_BUILT;
+})();
+const RECORDS = applyDraft(RECORDS_BASE, readPatch(DRAFT_KEY));
+const SHEETS = sheetsFromRecords(RECORDS);
 const aviumTSV = SHEETS.AVIUM, arterraTSV = SHEETS.ARTERRA, aleTSV = SHEETS.ALE, arvTSV = SHEETS.ARV, askTSV = SHEETS.ASK,
       elvTSV = SHEETS.ELV, karTSV = SHEETS.KAR, kfkTSV = SHEETS.KFK, kkmTSV = SHEETS.KKM, nchTSV = SHEETS.NCH,
       shiTSV = SHEETS.SHI, skjTSV = SHEETS.SKJ, turTSV = SHEETS.TUR, varTSV = SHEETS.VAR, miscTSV = SHEETS.MISC;
@@ -2909,6 +2928,25 @@ const PRESET_CATALOG = [
   ...(t.league === AVIUM_LEAGUE && conference ? { conference } : null),
   id: t.league + "::" + (t.code || t.name),
 }));
+// EACH MAN'S RECORD, ON HIS SQUAD ENTRY. The sheets carry no IDs and no badges, so they are put on here, slot by slot
+// (the parsed squad is laid out exactly as the record's): `rid` is what the editor edits him by, and `badges` is what
+// the engine reads (meSide copies the entry into the match).
+{
+  const P = new Map(RECORDS.players.map(r => [r.id, r]));
+  const key = (file, code, name) => file === "AVIUM" || file === "ARTERRA" ? file + "|" + code : "club|" + code + "|" + name;
+  const rec = new Map(RECORDS.teams.map(t => [key(t.file, t.code, t.name.trim()), t]));
+  for (const c of PRESET_CATALOG) {
+    const r = rec.get(key(c.league === AVIUM_LEAGUE ? "AVIUM" : c.league === ARTERRA_LEAGUE ? "ARTERRA" : "", c.code, c.name));
+    if (!r) continue;
+    (c.squad || []).forEach((e, i) => {
+      const s = r.squad[i], id = typeof s === "string" ? s : s?.id;
+      if (!e || !id) return;
+      e.rid = id;
+      const b = P.get(id)?.badges;
+      if (b?.length) e.badges = b;
+    });
+  }
+}
 
 function MdTable({ head, body, keyBase }) {
   const inline = (s, ki) => String(s).split(/\*\*([^*]+)\*\*/g)
@@ -4328,6 +4366,14 @@ const shotChain = (name) => {
     .map((n) => `${import.meta.env.BASE_URL}avium/players/${encodeURIComponent(n)}.png`)
     .concat(`${import.meta.env.BASE_URL}avium/players/placeholder.jpg`);
 };
+// A player badge as drawn in public/player-badges: the art carries its own tier (metal and pips), and the name rides
+// along as the image's text for anyone who cannot see it.
+const BadgeIcon = ({ id, size = 22 }) => {
+  const b = BADGE_BY_ID[id];
+  if (!b) return null;
+  return <img src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={b.name} title={b.name}
+              width={size} height={size} draggable={false} style={{ display: "block", flexShrink: 0 }} />;
+};
 const PlayerShot = ({ name, size, style }) => {
   const chain = shotChain(name);
   // The step is STATE, not a scribble on the DOM node. React owns src, so reassigning
@@ -4756,6 +4802,17 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
 .slot-card{transition:border-color 0.18s,box-shadow 0.18s,transform 0.18s;}
 .slot-card:not(.on):hover{transform:translateY(-1px);border-color:var(--chrome-muted-66) !important;}
 .slot-card:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
+/* The record editor's controls: a hover on everything that does something, the brand ring on keyboard focus, and a
+   disabled look that means it. */
+.ed-btn{transition:border-color 0.12s,background 0.12s,color 0.12s;}
+.ed-btn:hover:not(:disabled):not(.armed){border-color:var(--chrome-muted-66) !important;color:var(--ui-text) !important;}
+.ed-btn-primary{transition:filter 0.12s;}
+.ed-btn-primary:hover:not(:disabled){filter:brightness(1.12);}
+.ed-btn:focus-visible,.ed-btn-primary:focus-visible,.ed-badge:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:2px;}
+.ed-btn:disabled,.ed-btn-primary:disabled{opacity:0.45;cursor:default !important;}
+.ed-badge{transition:border-color 0.12s,background 0.12s;}
+.ed-badge:hover{border-color:var(--chrome-muted-66) !important;}
+.ed-badge[aria-pressed=true]:hover{border-color:var(--chrome-brand) !important;}
 .vs-swap{transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),border-color 0.15s,box-shadow 0.15s;}
 .vs-swap:hover:not(:disabled){transform:rotate(180deg);border-color:var(--chrome-brand) !important;box-shadow:0 0 0 4px var(--chrome-brand-22),0 2px 10px var(--ui-shadow-3) !important;}
 .vs-swap:active:not(:disabled){transform:rotate(180deg) scale(0.92);}
@@ -8151,6 +8208,67 @@ export default function App() {
   } catch { return false; } });
   const [tRebalOpen, setTRebalOpen] = useState(false);
   const [tToolsOpen, setTToolsOpen] = useState(false);
+  // ── The record editor (overseer only) ──
+  // His draft, the man in the edit dialog, and publishing. The draft is laid over everything at load; an edit made now
+  // is also put straight onto the teams on screen, so nothing waits for a reload.
+  const [recBase, setRecBase] = useState(RECORDS_BASE);       // the records as main has them, as far as this page knows
+  const [draft, setDraft] = useState(() => readPatch(DRAFT_KEY) || { v: 1, players: {} });
+  const [edPlayer, setEdPlayer] = useState(null);             // { id, name } of the man in the edit dialog
+  const [edForm, setEdForm] = useState(null);                 // { ovr, nat, badges } as edited
+  const [draftOpen, setDraftOpen] = useState(false);          // the review-and-publish dialog
+  const [ghKey, setGhKey] = useState(() => { try { return localStorage.getItem(GH_KEY) || ""; } catch { return ""; } });
+  const [ghKeyIn, setGhKeyIn] = useState("");
+  const [pubState, setPubState] = useState(null);             // { busy, step } | { ok, sha } | { err }
+  const [discardArm, setDiscardArm] = useState(false);        // the discard's second step
+  const saveDraft = (d) => { setDraft(d);
+    try { if (Object.keys(d.players).length) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch {} };
+  const draftList = useMemo(() => draftChanges(recBase, draft), [recBase, draft]);
+  const draftCount = useMemo(() => new Set(draftList.map(c => c.id)).size, [draftList]);
+  const recById = useMemo(() => new Map(recBase.players.map(r => [r.id, r])), [recBase]);
+  const recNow = (id) => { const r = recById.get(id); return r ? { ...r, ...(draft.players[id] || {}) } : null; };
+  const natOptions = useMemo(() => {
+    const nts = PRESET_CATALOG.filter(t => isIntlLeague(t.league)), named = new Set(nts.map(t => t.code));
+    const byName = (a, b) => a[1].localeCompare(b[1]);
+    return { avium: nts.filter(t => t.league === AVIUM_LEAGUE).map(t => [t.code, t.name]).sort(byName),
+             arterra: nts.filter(t => t.league === ARTERRA_LEAGUE).map(t => [t.code, t.name]).sort(byName),
+             other: [...new Set(RECORDS_BUILT.players.map(r => r.nat).filter(c => c && !named.has(c)))].sort().map(c => [c, c]),
+             name: new Map(nts.map(t => [t.code, t.name])) };
+  }, []);
+  // A man's values onto every squad he is on; his nation is written as a tag only where it is not the team's own.
+  const livePatch = (id, v) => setTeams(ts => ts.map(t => !t.squad?.some(e => e?.rid === id) ? t : ({ ...t,
+    squad: t.squad.map(e => {
+      if (e?.rid !== id) return e;
+      const n = { ...e, ovr: v.ovr }, own = isIntlLeague(t.league) ? t.code : (t.nat || LEAGUE_NAT[t.league]);
+      if (v.nat && v.nat !== own) n.nat = v.nat; else delete n.nat;
+      if (v.badges?.length) n.badges = badgeOrder(v.badges); else delete n.badges;
+      return n;
+    }) })));
+  const openEditor = (id, name) => { const r = recNow(id); if (!r) return;
+    setEdForm({ ovr: String(r.ovr), nat: r.nat || "", badges: badgeOrder(r.badges) }); setEdPlayer({ id, name }); };
+  const saveEditor = () => {
+    const v = { ovr: Math.round(+edForm.ovr), nat: edForm.nat, badges: badgeOrder(edForm.badges) };
+    saveDraft(draftWith(draft, recBase, edPlayer.id, v));
+    livePatch(edPlayer.id, v);
+    setEdPlayer(null);
+  };
+  const discardDraft = () => {
+    for (const id of Object.keys(draft.players)) { const r = recById.get(id); if (r) livePatch(id, r); }
+    saveDraft({ v: 1, players: {} }); setDiscardArm(false); setDraftOpen(false);
+  };
+  const publish = async () => {
+    if (pubState?.busy || !ghKey || !draftList.length) return;
+    setPubState({ busy: true, step: "Reading main" });
+    try {
+      const res = await publishDraft(draft, ghKey, (step) => setPubState({ busy: true, step }));
+      // It is main's now: the base moves, and it stays pending in this browser until a build carries it.
+      let pend = readPatch(PENDING_KEY);
+      for (const c of draftList) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to });
+      try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify(pend)); } catch {}
+      setRecBase(b => applyDraft(b, draft));
+      saveDraft({ v: 1, players: {} });
+      setPubState({ ok: true, sha: res.sha });
+    } catch (e) { setPubState({ err: String(e?.message || e) }); }
+  };
   // The per-season stats table: the six boards merged to a row per player, every recorded stat a
   // sortable column, filters riding the tourn* states their old drill left behind.
   const renderLgSeasonStats = (s) => {
@@ -11897,6 +12015,9 @@ export default function App() {
                                   clubs: hofRow.club ? [{ name: teams.find(tm => tm.code === hofRow.club && !isIntlLeague(tm.league))?.name || formerName(hofRow.club) }] : [] })
                   || null;
                 const natT = p?.natCode ? natTeamByCode.get(p.natCode) : null;
+                // His squad entry, when the records carry him: what the editor edits him by and the badges he plays with.
+                const pEntry = (() => { for (const tm of teams) for (const e of tm.squad || []) if (e?.rid && (e.fullName || e.name) === playerOpen) return e; return null; })();
+                const pBadges = pEntry?.badges || [];
                 const clubT = p ? teamByName.get(p.clubs[0]?.name) : null;
                 // A changelog row can name a national side as easily as a club -- a World Cup adjusts
                 // ratings too -- so the code falls through to the international list rather than
@@ -11941,6 +12062,9 @@ export default function App() {
                         the OVR he happens to carry today. The bar only names the kind of page. */}
                     <PanelTitle>Player</PanelTitle>
                   </div>
+                  {overseer && pEntry && (
+                    <button type="button" className="ed-btn" onClick={() => openEditor(pEntry.rid, disp)}
+                      style={{ ...smBtn, color: "var(--ui-text)", flexShrink: 0 }}>Edit</button>)}
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable" }}>
                   {/* Identity strip: face, name, positions, nation and club, all as elsewhere. */}
@@ -11957,6 +12081,9 @@ export default function App() {
                         {clubT && <span className="cell-link" onClick={() => openTeam(clubT)}
                           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--chrome-muted)", cursor: "pointer" }}>
                           <TeamCrest team={clubT} size={16} />{clubT.name}</span>}
+                        {pBadges.length > 0 && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {pBadges.map(id => <BadgeIcon key={id} id={id} size={22} />)}</span>)}
                       </div>
                       {career.length > 0 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
@@ -15635,6 +15762,179 @@ export default function App() {
 
       </div>
       </div>
+      {/* ── The record editor (overseer only): the draft bar, the edit dialog, review and publish ── */}
+      {overseer && draftCount > 0 && !draftOpen && !edPlayer && (
+        <div role="status" style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 9990,
+                                    display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 14px", ...ui,
+                                    background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8,
+                                    boxShadow: "0 8px 24px var(--ui-shadow-4)" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-warn)" }}>Draft</span>
+          <span style={{ fontSize: 11, color: "var(--ui-text)" }}><b style={{ ...mono }}>{draftCount}</b> {draftCount === 1 ? "player" : "players"}</span>
+          <button type="button" className="ed-btn" onClick={() => { setPubState(null); setDiscardArm(false); setDraftOpen(true); }}
+            style={{ ...smBtn, color: "var(--ui-text)" }}>Review</button>
+        </div>)}
+      {edPlayer && edForm && (() => {
+        const r = recNow(edPlayer.id);
+        const ovrN = Number(edForm.ovr);
+        const valid = !!r && edForm.ovr !== "" && Number.isInteger(ovrN) && ovrN >= 25 && ovrN <= 99 && !!edForm.nat;
+        const changed = !!r && (ovrN !== r.ovr || edForm.nat !== r.nat || badgeOrder(edForm.badges).join() !== badgeOrder(r.badges).join());
+        const close = () => setEdPlayer(null);
+        const toggle = (id) => setEdForm(f => ({ ...f, badges: f.badges.includes(id) ? f.badges.filter(x => x !== id) : [...f.badges, id] }));
+        return (
+        <div onClick={close} onKeyDown={e => { if (e.key === "Escape") close(); }}
+          style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start",
+                   justifyContent: "center", padding: "56px 16px", overflowY: "auto" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="ed-title" onClick={e => e.stopPropagation()} className="modal-shell"
+            style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px",
+                     width: 600, maxWidth: "100%", ...ui }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+              <div style={{ minWidth: 0 }}>
+                <div id="ed-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Edit Player</div>
+                <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ui-text)", marginTop: 4 }}>{edPlayer.name}</div>
+              </div>
+              <button type="button" className="ed-btn" aria-label="Close" onClick={close}
+                style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
+                         fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", gap: 16, marginBottom: 18 }}>
+              <div>
+                <label htmlFor="ed-ovr" style={lbl}>Rating</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input id="ed-ovr" type="number" min={25} max={99} step={1} autoFocus value={edForm.ovr}
+                    onChange={e => setEdForm(f => ({ ...f, ovr: e.target.value }))}
+                    style={{ ...inp, width: 72, ...mono }} />
+                  <span style={{ ...ovrBlock(valid ? ovrN : null), ...mono }}>{showOvr(valid ? ovrN : null)}</span>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="ed-nat" style={lbl}>Nationality</label>
+                <select id="ed-nat" value={edForm.nat} onChange={e => setEdForm(f => ({ ...f, nat: e.target.value }))}
+                  style={{ ...inp, width: "100%", cursor: "pointer" }}>
+                  <optgroup label="Avium">{natOptions.avium.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</optgroup>
+                  <optgroup label="Arterra">{natOptions.arterra.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</optgroup>
+                  {natOptions.other.length > 0 && (
+                    <optgroup label="No national side">{natOptions.other.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</optgroup>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+              <span style={{ ...lbl, marginBottom: 0 }}>Badges</span>
+              <b style={{ fontSize: 11, color: "var(--ui-text)", ...mono }}>{edForm.badges.length}</b>
+            </div>
+            {["gold", "silver", "bronze"].map(tier => (
+              <div key={tier} role="group" aria-label={tier + " badges"} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>{tier}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 6 }}>
+                  {BADGES.filter(b => b.tier === tier).map(b => { const on = edForm.badges.includes(b.id);
+                    return (
+                    <button key={b.id} type="button" className="ed-badge" aria-pressed={on} onClick={() => toggle(b.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px 4px 5px", borderRadius: 6, cursor: "pointer",
+                               fontFamily: "inherit", fontSize: 11, textAlign: "left",
+                               border: `1px solid ${on ? "var(--chrome-brand)" : "var(--chrome-border)"}`,
+                               background: on ? "var(--chrome-brand-20)" : "transparent", color: on ? "var(--ui-text)" : "var(--chrome-muted)" }}>
+                      <BadgeIcon id={b.id} size={26} />
+                      <span style={{ flex: 1, minWidth: 0 }}>{b.name}</span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ flexShrink: 0, visibility: on ? "visible" : "hidden" }}>
+                        <path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="var(--chrome-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>); })}
+                </div>
+              </div>))}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+              <button type="button" className="ed-btn" onClick={close} style={{ ...addBtn }}>Cancel</button>
+              <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveEditor}
+                style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Save to draft</button>
+            </div>
+          </div>
+        </div>); })()}
+      {draftOpen && (() => {
+        const busy = !!pubState?.busy;
+        const close = () => { if (!busy) { setDraftOpen(false); setDiscardArm(false); } };
+        const groups = [];
+        for (const c of draftList) { let g = groups.find(x => x.id === c.id); if (!g) groups.push(g = { id: c.id, name: c.name, rows: [] }); g.rows.push(c); }
+        const natLabel = (code) => code ? (natOptions.name.get(code) || code) : "–";
+        const FIELD_LBL = { ovr: "Rating", nat: "Nationality", badges: "Badges" };
+        const arrow = <span style={{ color: "var(--chrome-muted-66)", padding: "0 6px" }}>&#8594;</span>;
+        const change = (c) => {
+          if (c.field === "ovr") { const d = c.to - c.from;
+            return (<span style={{ ...mono, whiteSpace: "nowrap" }}><span style={{ color: "var(--chrome-muted)" }}>{showOvr(c.from)}</span>{arrow}
+              <span style={ovrBlock(c.to)}>{showOvr(c.to)}</span>
+              <span style={{ marginLeft: 8, fontWeight: 700, color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>{d > 0 ? "+" + d : d}</span></span>); }
+          if (c.field === "nat")
+            return (<span><span style={{ color: "var(--chrome-muted)" }}>{natLabel(c.from)}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{natLabel(c.to)}</span></span>);
+          const add = c.to.filter(x => !c.from.includes(x)), rem = c.from.filter(x => !c.to.includes(x));
+          return (<span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
+            {add.map(id => <span key={"+" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ui-text)" }}>
+              <b style={{ color: "var(--ui-ok)", ...mono }}>+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
+            {rem.map(id => <span key={"-" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--chrome-muted)" }}>
+              <b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
+          </span>);
+        };
+        return (
+        <div onClick={close} onKeyDown={e => { if (e.key === "Escape") close(); }}
+          style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start",
+                   justifyContent: "center", padding: "56px 16px", overflowY: "auto" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="draft-title" onClick={e => e.stopPropagation()} className="modal-shell"
+            style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px",
+                     width: 720, maxWidth: "100%", ...ui }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                <span id="draft-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)" }}>Draft</span>
+                <b style={{ fontSize: 11, color: "var(--chrome-muted)", ...mono }}>{draftCount}</b>
+              </span>
+              <button type="button" className="ed-btn" aria-label="Close" onClick={close} disabled={busy} autoFocus
+                style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
+                         fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
+            </div>
+            {groups.length > 0 && (
+            <div style={{ maxHeight: "50vh", overflowY: "auto", border: "1px solid var(--chrome-border)", borderRadius: 8 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                <colgroup><col style={{ width: 210 }} /><col style={{ width: 104 }} /><col /></colgroup>
+                <thead><tr><th style={thCellSticky}>Player</th><th style={thCellSticky}>Field</th><th style={thCellSticky}>Change</th></tr></thead>
+                <tbody>
+                  {groups.flatMap((g, gi) => g.rows.map((c, i) => (
+                    <tr key={g.id + c.field} style={{ background: gi % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                      <td style={{ ...tdCell, color: "var(--ui-text)", verticalAlign: "top" }}>{i === 0 ? fullDisplayName(g.name) : ""}</td>
+                      <td style={{ ...tdCell, color: "var(--chrome-muted)", whiteSpace: "nowrap", verticalAlign: "top" }}>{FIELD_LBL[c.field]}</td>
+                      <td style={tdCell}>{change(c)}</td>
+                    </tr>)))}
+                </tbody>
+              </table>
+            </div>)}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, minHeight: 32 }}>
+              {ghKey ? (<>
+                <span style={{ ...lbl, marginBottom: 0 }}>GitHub key</span>
+                <span style={{ fontSize: 11, color: "var(--ui-ok)" }}>saved</span>
+                <button type="button" className="ed-btn" disabled={busy} onClick={() => { try { localStorage.removeItem(GH_KEY); } catch {} setGhKey(""); }}
+                  style={{ ...smBtn }}>Forget</button>
+              </>) : (<>
+                <label htmlFor="gh-key" style={{ ...lbl, marginBottom: 0, whiteSpace: "nowrap" }}>GitHub key</label>
+                <input id="gh-key" type="password" autoComplete="off" spellCheck={false} value={ghKeyIn} onChange={e => setGhKeyIn(e.target.value)}
+                  style={{ ...inp, flex: 1, minWidth: 0, padding: "6px 10px", fontSize: 12, ...mono }} />
+                <button type="button" className="ed-btn" disabled={!ghKeyIn.trim()}
+                  onClick={() => { const k = ghKeyIn.trim(); try { localStorage.setItem(GH_KEY, k); } catch {} setGhKey(k); setGhKeyIn(""); }}
+                  style={{ ...smBtn, color: "var(--ui-text)" }}>Save key</button>
+              </>)}
+            </div>
+            {pubState && (
+              <div role="status" style={{ marginTop: 10, fontSize: 11, color: pubState.err ? "var(--ui-danger)" : pubState.ok ? "var(--ui-ok)" : "var(--chrome-muted)" }}>
+                {pubState.busy && <>{pubState.step}&hellip;</>}
+                {pubState.ok && (pubState.sha
+                  ? <>Published <a href={`https://github.com/auroruse/avium-football-engine/commit/${pubState.sha}`} target="_blank" rel="noreferrer"
+                                   style={{ color: "var(--ui-ok)", ...mono }}>{pubState.sha.slice(0, 7)}</a></>
+                  : <>Main already has it.</>)}
+                {pubState.err && <>Not published: {pubState.err}</>}
+              </div>)}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16 }}>
+              <button type="button" className={"ed-btn" + (discardArm ? " armed" : "")} disabled={busy || !draftCount}
+                onClick={() => discardArm ? discardDraft() : setDiscardArm(true)} onBlur={() => setDiscardArm(false)}
+                style={{ ...addBtn, minWidth: 140, color: discardArm ? "var(--ui-danger)" : "var(--chrome-muted)",
+                         borderColor: discardArm ? "var(--ui-danger)" : "var(--chrome-border)" }}>{discardArm ? "Confirm discard" : "Discard draft"}</button>
+              <button type="button" className="ed-btn-primary" disabled={busy || !ghKey || !draftCount} onClick={publish}
+                style={{ ...addBtn, minWidth: 120, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
+                {busy ? "Publishing" : "Publish"}</button>
+            </div>
+          </div>
+        </div>); })()}
     </div>
   );
 }
