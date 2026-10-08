@@ -22,13 +22,13 @@
 // What a man does with the ball is the player brain (mind/decide.ts). The keeper and the man running with
 // the ball keep the first brain's positioning (meKeeperPos, meCarrierPos) for now.
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "../config";
-import { meAttrs, meSpeed } from "../attributes";
+import { meAttrs, meBadgeFx, meSpeed } from "../attributes";
 import { meHungarian } from "../assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine,
          meOther, mePressure, meTimeToBallMs } from "../geometry";
 import { meCarrierPos, meKeeperPos } from "../brain";
 import { MT } from "./tune";
-import { FAM, FAMPLAN, ROLES, mindRoles } from "./roles";
+import { ROLES, mindRoles } from "./roles";
 import { angDiff, mindAware, mindRand, mindSenseInit } from "./perceive";
 import { mindCarrier, mindJockey } from "./duel";
 
@@ -66,7 +66,7 @@ function initMan(s, p) {
   p._refT = 0; p._rdx = 0; p._rdy = 0;
 }
 
-const rosterKey = (s, side) => (s.styles?.[side] || "") + "/" + s.players[side].map(p => (p ? (p.off ? "x" : p.name + ":" + p.pos) : "-")).join("|");
+const rosterKey = (s, side) => (s.plan?.[side]?.style ?? s.styles?.[side] ?? "") + "/" + s.players[side].map(p => (p ? (p.off ? "x" : p.name + ":" + p.pos) : "-")).join("|");
 
 // THE DEFENSIVE SHAPE THE FORMATION BECOMES. Each outfielder is given a spot in the out-of-possession
 // shape (ME_DEF_FORM, built in meInit as mp.dslots) by optimal assignment from his natural spot, and the
@@ -156,9 +156,23 @@ function mindPhase(s, side) {
   const ours = mp.side === side, bD = depthOf(side, mp.bx);
   let ph;
   if (ours) {
-    let ahead = 0;     // their outfielders between the ball and their goal
-    for (const q of s.players[meOther(side)]) if (q && !q.off && q.pos !== "GK" && depthOf(side, q.x) > bD) ahead++;
-    if (mp.tick - P.won < counterWin(st) && ahead <= 6 && bD < 88) ph = "counter";
+    // A COUNTER IS ON when they are short at the back. Counting every man of theirs between the ball and their goal
+    // missed the commonest chance of all: the ball won in our own box with their attackers standing round it, upfield
+    // of the ball but sixty metres from their own goal. Traced, a third of all regains came there, with 0.6 of their
+    // outfielders in their own half -- and none of them was ever a counter, because those attackers counted as
+    // defenders. So it is also on when few of theirs are back where they can defend their goal: goal-side of the
+    // ball and within cntBackD of it.
+    let ahead = 0, back = 0;
+    for (const q of s.players[meOther(side)]) if (q && !q.off && q.pos !== "GK" && depthOf(side, q.x) > bD) {
+      ahead++;
+      if (depthOf(side, q.x) > PITCH_L - MT.cntBackD) back++;
+    }
+    // ...and it lasts while they are still short: a break from our own box is seventy metres, and the window a break
+    // from midfield needs ran out with the ball at our own thirty-metre line. A side that does not break (possWon
+    // -1) has no window to stretch.
+    P.short = back <= MT.cntBack;
+    const win = counterWin(st) * (P.short ? MT.cntShortX : 1);
+    if (mp.tick - P.won < win && (ahead <= 6 || P.short) && bD < 88) ph = "counter";
     else ph = bD < MT.buildTo ? "build" : bD < MT.finalFrom ? "progress" : "final";
   } else {
     let behind = 0, near = 0;
@@ -253,7 +267,7 @@ function lineD(code, g) {
 function mindAttack(s, side) {
   const mp = s.mePos, M = mp.mind, ps = s.players[side], st = stratOf(s, side), dir = meDir(side);
   const P = M.ph[side], ph = P.ph === "counter" ? "counter" : P.ph;
-  const fam = FAM[s.styles?.[side]] || "bal", plan = FAMPLAN[fam];
+  const plan = s.plan[side];
   const drill = M.drill[side];
   const bD = depthOf(side, mp.bx);
   const ol = oppLines(s, side);
@@ -276,8 +290,15 @@ function mindAttack(s, side) {
     const r = p._role2 || ROLES.cm;
     let y = laneY(s, side, p, r.lane[phi], st);
     let d = lineD(r.ln[phi], g) + (r.lnOff[phi] || 0);
-    // A counter is the forwards on the last line and everybody else a step higher than usual.
-    if (ph === "counter" && r.ln[1] !== "base" && r.ln[1] !== "deep" && r.rest < 0.7) d = Math.max(d, Math.min(g.off - 1, d + 8));
+    // A COUNTER IS A SPRINT. Everybody whose job is going forward goes, now: the forwards and the men who run in
+    // behind to their last line, each in his own lane so the break is spread across the pitch, and the rest of
+    // the attacking men to just in front of their back line. It used to be "a step higher than usual" -- eight
+    // metres -- which for a side that won it on its own eighteen-yard line was nobody anywhere near the ball:
+    // breaks from a deep block reached the final third one time in seven and ended in a shot one in thirty.
+    if (ph === "counter" && r.ln[1] !== "base" && r.ln[1] !== "deep" && r.rest < 0.7) {
+      const runner = r.ln[2] === "attack" || (r.run.behind || 0) >= 0.4;
+      d = Math.max(d, runner ? g.off - 1 : Math.min(g.off - MT.cntSupport, d + 8 + MT.cntSurge * (1 - r.rest)));
+    }
     // The whole shape leans toward the ball, except the far wide man, who keeps the switch on.
     const wideLane = r.lane[phi] === "wide";
     const farWide = wideLane && Math.sign(y - ME_HALF_W) !== Math.sign(mp.by - ME_HALF_W);
@@ -311,8 +332,16 @@ function mindAttack(s, side) {
   // In the last two phases the side keeps restN outfielders behind the ball; if the roles leave too
   // few, the most defensive of the rest are held back, at a width that covers the middle.
   if (ph === "progress" || ph === "final" || ph === "counter") {
-    const need = Math.max(2, plan.restN - ((st.possLost || 0) > 0 ? 1 : 0) + ((st.possLost || 0) < 0 ? 1 : 0)
-                             + (shortOf(s, side) ? 1 : 0));
+    // ...and one more than they have left up to break: a man loitering between the ball and our goal is a
+    // counter waiting to happen, and he is watched (their plan.outlet).
+    // ...but a man running back to his own goal is not loitering. On a break from our box every attacker of theirs is
+    // between the ball and our goal, chasing it, and counting them kept six of ours at home to watch men who were
+    // leaving: the break went with three.
+    let loiter = 0;
+    for (const q of s.players[meOther(side)])
+      if (q && !q.off && q.pos !== "GK" && depthOf(side, q.x) < bD - 12 && ((q.vx || 0) / ME_DT) * dir < MT.loiterBack) loiter++;
+    const need = Math.min(6, Math.max(2, loiter + 1, plan.restN - ((st.possLost || 0) > 0 ? 1 : 0) + ((st.possLost || 0) < 0 ? 1 : 0)
+                             + (shortOf(s, side) ? 1 : 0)));
     let have = 0;
     for (const c of cells) if (!c.run && c.d < bD - 4) have++;
     if (have < need) {
@@ -434,22 +463,11 @@ function mindAttack(s, side) {
 // Each style has a few moves it drills, and reaches for when the moment appears. A move is a cue (who has
 // it, where, and who is placed where), the runs it sends, and the pass the man on the ball has been drilled
 // to look for -- a bonus in his pricing of exactly that ball, sized by how drilled the side is and how much
-// he sees. The other ten do not wait to be told: the runs start on the cue.
-//   third man (possession styles): a ball into a man between the lines with his back to goal, a third man
-//     going in behind for the lay-off and the ball through.
-//   overlap and cross (wide styles): the full-back round the winger on the ball, the box filled for the cross.
-//   switch (wide and possession): one flank crowded, the far side free: the ball goes across.
-//   over the top (counter and block styles, and any side breaking): the forward goes the moment it is won.
-//   second ball (direct): see mindOnPass -- the long ball's landing zone is swarmed.
-const PAT_FAMS = {
-  thirdman: { pos: 1, vert: 1, flair: 1, zona: 0.6, bal: 0.4, press: 0.5 },
-  overlap:  { wide: 1, press: 0.6, bal: 0.5, direct: 0.4, counter: 0.3, flair: 0.4 },
-  switch:   { wide: 1, pos: 0.8, bal: 0.5, vert: 0.5, zona: 0.4 },
-  overtop:  { counter: 1, block: 0.9, catenaccio: 0.9, bus: 0.8, direct: 0.7, press: 0.6, vert: 0.5, bal: 0.4 },
-};
+// he sees. The other ten do not wait to be told: the runs start on the cue. Which moves, and how readily,
+// is the plan's (plan.pats); the second ball is in mindOnPass -- the long ball's landing zone is swarmed.
 function mindPatterns(s, side, ph, g, carrier) {
   const mp = s.mePos, M = mp.mind, ps = s.players[side], dir = meDir(side), drill = M.drill[side];
-  const fam = FAM[s.styles?.[side]] || "bal";
+  const pw = s.plan[side].pats;
   M.pat = M.pat || { home: null, away: null };
   const cur = M.pat[side];
   if (cur && (mp.tick > cur.until || mp.side !== side)) M.pat[side] = null;
@@ -459,7 +477,7 @@ function mindPatterns(s, side, ph, g, carrier) {
   const opp = s.players[meOther(side)];
   const free = (q) => roomAt(s, side, q.x, q.y);
   const tryStart = (k, w, pat) => {
-    const want = (PAT_FAMS[k]?.[fam] ?? 0) * w * (0.35 + 0.65 * drill) * (0.6 + 0.4 * mindAware(carrier));
+    const want = (pw[k] ?? 0) * w * (0.35 + 0.65 * drill) * (0.6 + 0.4 * mindAware(carrier));
     if (want <= 0 || mindRand(M) >= want * 0.35) return false;
     pat.k = k; pat.until = mp.tick + (pat.dur || 14); pat.from = ci;
     M.pat[side] = pat;
@@ -468,7 +486,7 @@ function mindPatterns(s, side, ph, g, carrier) {
     return true;
   };
   // THIRD MAN.
-  if (PAT_FAMS.thirdman[fam] && cD > 25 && cD < 75 && (ph === "build" || ph === "progress")) {
+  if (pw.thirdman && cD > 25 && cD < 75 && (ph === "build" || ph === "progress")) {
     let wall = -1, wd = Infinity;
     for (let j = 0; j < ps.length; j++) {
       const q = ps[j];
@@ -491,7 +509,7 @@ function mindPatterns(s, side, ph, g, carrier) {
     }
   }
   // OVERLAP AND CROSS.
-  if (PAT_FAMS.overlap[fam] && (ph === "progress" || ph === "final") && Math.abs(carrier.y - ME_HALF_W) > 14) {
+  if (pw.overlap && (ph === "progress" || ph === "final") && Math.abs(carrier.y - ME_HALF_W) > 14) {
     let fb = -1, fd = Infinity;
     for (let j = 0; j < ps.length; j++) {
       const q = ps[j];
@@ -511,7 +529,7 @@ function mindPatterns(s, side, ph, g, carrier) {
     }
   }
   // SWITCH.
-  if (PAT_FAMS.switch[fam] && ph === "progress" && Math.abs(carrier.y - ME_HALF_W) > 8) {
+  if (pw.switch && ph === "progress" && Math.abs(carrier.y - ME_HALF_W) > 8) {
     let crowd = 0;
     for (const q of opp) if (q && !q.off && Math.hypot(q.x - carrier.x, q.y - carrier.y) < 13) crowd++;
     if (crowd >= 4) {
@@ -528,7 +546,7 @@ function mindPatterns(s, side, ph, g, carrier) {
   }
   // OVER THE TOP.
   const cUp = Math.abs(angDiff(carrier._face ?? 0, dir > 0 ? 0 : Math.PI)) < 1.2 && mePressure(s, side, carrier.x, carrier.y) < 1.2;
-  if (PAT_FAMS.overtop[fam] && cUp && (ph === "counter" || (cD < 60 && (cr.rest >= 0.5 || cr.risk > 0.2)))) {
+  if (pw.overtop && cUp && (ph === "counter" || (cD < 60 && (cr.rest >= 0.5 || cr.risk > 0.2)))) {
     let fw = -1, fs = 0;
     for (let j = 0; j < ps.length; j++) {
       const q = ps[j];
@@ -765,6 +783,8 @@ export function mindOnPass(s, side, i, act) {
     if (fwd > 8) R[side] = 0;
     else if (fwd < 2 && depthOf(side, p.x) < PITCH_L / 2) R[side]++;
   }
+  // THE BALL IN BEHIND (mind/decide.ts): the man it is for was standing on their line, and goes now.
+  if (act.rel && q.pos !== "GK") { startRun(s, side, q, "behind", depthOf(side, act.ax), act.ay); q._rHold = 0; }
   // THE DRILLED MOVE GOES ON. The ball into the wall sends the third man and asks the wall for the lay-off
   // or the ball through; the ball into the overlap fills the box.
   const pat = M.pat?.[side];
@@ -776,15 +796,18 @@ export function mindOnPass(s, side, i, act) {
       M.pat[side] = { k: "thirdman2", j: pat.runner, kinds: ["through", "space", "over"], back: i, until: mp.tick + 10 };
     } else M.pat[side] = null;
   }
-  // THE SECOND BALL. A long ball at a big man: the midfield gets to where it will drop, and somebody goes
-  // beyond him for the flick.
-  const fam = FAM[s.styles?.[side]] || "bal";
-  if (fam === "direct" && act.high && (q._role2 === ROLES.st_target || (q._role2?.hold ?? 0) > 0)) {
-    const lx = act.ax ?? q.x, ly = act.ay ?? q.y;
-    const mids = us.filter(z => z && z !== p && z !== q && !z.off && z.pos === "MID" && !((z._runT ?? 0) > 0))
-                   .sort((a, b) => Math.hypot(a.x - lx, a.y - ly) - Math.hypot(b.x - lx, b.y - ly)).slice(0, 2);
-    mids.forEach((z, k) => startRun(s, side, z, "box", depthOf(side, lx) - 7, ly + (k ? 7 : -7)));
-    const pc = us.find(z => z && z !== q && !z.off && z._role2 === ROLES.st_poach && !((z._runT ?? 0) > 0));
+  // THE SECOND BALL. A side that lives on it (plan.secondBall) plays every long ball forward with men already
+  // going to where it will drop: one behind the man it is for, one either side of him, and somebody beyond for
+  // the flick. Only a ball at a target man used to send anybody, and only the two nearest midfielders, so six
+  // seconds after a long ball a direct side still had it one time in sixteen.
+  const lx = act.ax ?? q.x, ly = act.ay ?? q.y, longFwd = act.high && (lx - p.x) * dir > 22;
+  if (s.plan[side].secondBall && longFwd) {
+    const spots = [[-6, 0], [-2.5, -8], [-2.5, 8]];
+    const men = us.filter(z => z && z !== p && z !== q && !z.off && z.pos !== "GK" && (z._role2?.rest ?? 0) < 0.7 && !((z._runT ?? 0) > 0)
+                               && Math.hypot(z.x - lx, z.y - ly) < 38)
+                  .sort((a, b) => Math.hypot(a.x - lx, a.y - ly) - Math.hypot(b.x - lx, b.y - ly)).slice(0, spots.length);
+    men.forEach((z, k) => startRun(s, side, z, "box", depthOf(side, lx) + spots[k][0], clamp(ly + spots[k][1], 3, PITCH_W - 3)));
+    const pc = us.find(z => z && z !== q && !z.off && !men.includes(z) && (z._role2?.run?.behind ?? 0) >= 0.5 && !((z._runT ?? 0) > 0));
     if (pc) { startRun(s, side, pc, "behind", depthOf(side, lx) + 9, ly); pc._rHold = 0; }
   }
   let active = 0;
@@ -836,7 +859,7 @@ function mindDefend(s, side) {
   const mp = s.mePos, M = mp.mind, us = s.players[side], them = s.players[meOther(side)];
   const st = stratOf(s, side), dir = meDir(side), own = ownX(side);
   const P = M.ph[side], ph = P.ph;
-  const fam = FAM[s.styles?.[side]] || "bal", plan = FAMPLAN[fam];
+  const plan = s.plan[side], cpt = plan.compact || 0;
   const drill = M.drill[side];
   const bD = depthOf(side, mp.bx);
   const carrier = mp.idx >= 0 && mp.side !== side ? them[mp.idx] : null;
@@ -864,12 +887,34 @@ function mindDefend(s, side) {
   if (ph === "press" || ph === "cpress") cap += 8;
   let want = clamp(bDeff - gap + dlA, CFG.lnFloor, cap);
   if (ph === "recover") want = Math.min(want, bD - 18);
+  // THE EDGE OF THE BOX. The line kept its gap behind the ball all the way down to the six-yard box, so a
+  // man running at a back four was backed off until he was shooting from eleven metres: with the last
+  // defender a median 6.8 m from goal when every shot was struck, a third of all shots came from inside the
+  // penalty spot, the box's edge was empty, and a deep block conceded more than a high one because it
+  // simply arrived on its own goal line sooner. A line holds at the edge of its box while the ball is
+  // central in front of it -- there is nothing behind it left to protect that the keeper cannot -- and
+  // only drops to defend the six-yard box when the ball goes wide for a cross.
+  // ...AND IT DOES DROP. That rule only stopped the line going deeper than the six-yard box; it never brought a
+  // high one down. Pressed, a crosser had the line six metres behind him -- a rule for balls through the middle --
+  // so with him closed down at 22 m the back four stood at 22-24 m and the cross went over them into an empty box.
+  // With the ball out wide in our last thirty metres the line drops toward the area as he comes on, to about
+  // halfway between him and the goal, and a side sitting deep (plan.compact) further than that.
+  const bNow = Math.min(bD, bDeff), crossSit = Math.abs(mp.by - ME_HALF_W) > MT.boxWideY && bNow < MT.crossD;
+  {
+    const hold = crossSit ? MT.crossLine : MT.boxLine;
+    if (crossSit) want = Math.min(want, Math.max(MT.crossLine, bNow * MT.crossFrac * (1 - MT.crossCompact * cpt)));
+    want = Math.max(want, Math.min(hold, bNow - MT.boxHoldGap));
+  }
   want = clamp(want, CFG.lnFloor, CFG.blkCeil);
   const mv = MT.lineSlew * ME_DT * (want < M.L[side] ? 1.25 : 1);
   M.L[side] += clamp(want - M.L[side], -mv, mv);
   const L = M.L[side];
   (mp.blk[side] = mp.blk[side] || { line: L, cy: ME_HALF_W, depth: 20 }).line = L;
-  const len = ph === "press" || ph === "cpress" ? MT.blockLenPress : L < 22 ? MT.blockLenLow : MT.blockLen0;
+  // A LOW BLOCK IS A COMPACT ONE (plan.compact: 0 a normal block, 1 the deepest). Sitting deep used to buy nothing
+  // but depth: blockLenLow applies to any side whose line falls under 22 m, so a deep block was exactly as long and
+  // as wide as a Balanced side pushed back to its own box, and had 4.8 men in its area when a cross came in against
+  // 4.9. Chosen, it is shorter between the lines and narrower: no room between them, more bodies around the box.
+  const len = (ph === "press" || ph === "cpress" ? MT.blockLenPress : L < 22 ? MT.blockLenLow : MT.blockLen0) * (1 - MT.compactLen * cpt);
   // The far full-back stays near the far post: the block slides, it does not abandon the far side.
   const cy = clamp(ME_HALF_W + (mp.by - ME_HALF_W) * MT.blockSlide, 24, PITCH_W - 24);
   mp.blk[side].cy = cy; mp.blk[side].depth = len;
@@ -883,7 +928,7 @@ function mindDefend(s, side) {
     const p = us[i];
     if (!p || p.off || p.pos === "GK") continue;
     const r = p._dr ?? 0.5;
-    let zd = L + r * len, zy = cy + ((p._dw ?? p._bw0 ?? ME_HALF_W) - ME_HALF_W) * MT.blockWide;
+    let zd = L + r * (crossSit ? len * (1 - MT.crowdLen * cpt) : len), zy = cy + ((p._dw ?? p._bw0 ?? ME_HALF_W) - ME_HALF_W) * MT.blockWide * (1 - MT.compactWide * cpt);
     if (p._mr === "cb_lib") { zd = Math.max(CFG.lnFloor, L - 5); zy = cy; }
     zy = clamp(zy + p._dn[0] * MT.drillNoise * 0.6 * (1 - drill), 2, PITCH_W - 2);
     zd = clamp(zd + p._dn[1] * MT.drillNoise * 0.4 * (1 - drill), 3, 100);
@@ -892,6 +937,18 @@ function mindDefend(s, side) {
     if (p._zy !== undefined) zy = p._zy + clamp(zy - p._zy, -MT.slotSlew * ME_DT, MT.slotSlew * ME_DT);
     p._zy = zy; p._zx = zx;
     zone.push(i);
+  }
+  // ---- THE OUTLET (plan.outlet) ----
+  // A side built to break leaves its most advanced men up when it does not have the ball, on the shoulder of
+  // their last defender, so there is somebody to find the moment it is won -- and the other side has to keep
+  // men back to watch them (mindAttack). They do not press, mark or come back for the block: it defends with
+  // the rest.
+  const outs = [];
+  if ((plan.outlet || 0) > 0 && !mp.sp) {
+    const cand = zone.filter(i => us[i].pos === "FWD" || (us[i]._role2?.run?.behind ?? 0) >= 0.45)
+                     .sort((a, b) => (us[b]._dr ?? 0) - (us[a]._dr ?? 0));
+    for (const i of cand.slice(0, plan.outlet)) outs.push(i);
+    for (const i of outs) zone.splice(zone.indexOf(i), 1);
   }
   // ---- THE PRESS ----
   let p1 = -1, p2 = -1;
@@ -910,7 +967,7 @@ function mindDefend(s, side) {
       const zoneD = Math.hypot((p._zx ?? p.x) - cxp, (p._zy ?? p.y) - cyp);
       const isBack = (p._dr ?? 0.5) < 0.15;
       const backPen = isBack && depthOf(side, cxp) > L + 9 ? 2500 : 0;
-      const c = t * (1.15 - 0.35 * ((p._role2 || ROLES.cm).press)) + Math.max(0, zoneD - 12) * 55 + backPen;
+      const c = t * (1.15 - 0.35 * ((p._role2 || ROLES.cm).press)) + Math.max(0, zoneD - 12 - (meBadgeFx(p).chase ?? 0)) * 55 + backPen;
       if (i === cur) curC = c;
       if (c < bestC) { bestC = c; p1 = i; }
     }
@@ -936,8 +993,14 @@ function mindDefend(s, side) {
     const q = them[j];
     if (!q || q.off || q.pos === "GK" || (carrier && q === carrier)) continue;
     const qd = depthOf(side, q.x), vq = -((q.vx || 0) / ME_DT) * dir;
+    // A man merely STANDING behind our line is offside while the ball is out in the field, and following
+    // him is what made him onside: his marker dropped with him, the line he was beyond was now behind him,
+    // and the next forward could stand there too. Measured against a deep block, a striker parked six
+    // metres from goal with the ball fifty out had a defender beside him and the rest of the line fourteen
+    // metres upfield, and the long ball found him for a header. He is followed once the ball is near
+    // enough for the box to be defended man for man; until then the line holds and leaves him.
     const run = ((q._runT ?? 0) > 0 && (q._run === "behind" || q._run === "third" || q._run === "wall"))
-             || (vq > 4.2 && qd < L + 6) || qd < L - 1.5;
+             || (vq > 4.2 && qd < L + 6) || (qd < L - 1.5 && bD < MT.boxDefD);
     if (run && qd < L + 14) behindRunners.push(j);
   }
   for (const i of zone) us[i]._trk2 = false;
@@ -952,10 +1015,66 @@ function mindDefend(s, side) {
     }
     if (bi >= 0 && bd < 20) { us[bi]._trk2 = true; us[bi]._mk2 = j; marked.add(j); }
   }
+  // ---- THE BOX ----
+  // With the ball in our last thirty metres the men in and around our box are MARKED, not zoned. The block's
+  // spots only leaned onto whoever wandered into them, so with five defenders and three attackers in the
+  // box as a cross was struck, seven in ten of those attackers had nobody within two metres and the man it
+  // was aimed at was five and a half metres from the nearest defender. Every free defender is matched to
+  // one of them by the cheapest pairing (a man already behind his attacker is further from marking him),
+  // and whoever is left over holds his spot in front of goal.
+  // The pairing is kept for a second unless one of its men leaves the danger: markers do not swap men every
+  // quarter second, and solving it every slice was a third of the engine's time with the ball near goal.
+  // ...but not past a man ARRIVING: anybody in the danger who was not there when the pairs were made -- a
+  // runner just in, or one a tracker has just let go -- is picked up now by a defender with nobody, not up
+  // to a second later, and the pairs already made stand.
+  let boxMk = M.boxMk?.[side];
+  const nearBox = bD < MT.boxDefD && !mp.sp, danger = [];
+  if (nearBox) for (let j = 0; j < them.length; j++) {
+    const q = them[j];
+    if (!q || q.off || q.pos === "GK" || q === carrier || marked.has(j)) continue;
+    if (depthOf(side, q.x) < MT.boxDangerD && Math.abs(q.y - ME_HALF_W) < MT.boxDangerY) danger.push(j);
+  }
+  const dg0 = M.boxDg?.[side], fresh = danger.filter(j => !dg0?.has(j));
+  const stale = !boxMk || mp.tick - (M.boxMkT?.[side] ?? -99) >= MT.boxMarkHold
+    || [...boxMk].some(([i, j]) => !zone.includes(i) || i === p1 || us[i]._trk2 || marked.has(j) || !them[j] || them[j].off
+                                   || depthOf(side, them[j].x) >= MT.boxDangerD + 4);
+  if (!nearBox) boxMk = new Map();
+  else if (!stale) for (const [, j] of boxMk) marked.add(j);
+  const free = nearBox ? zone.filter(i => i !== p1 && !us[i]._trk2 && !((us[i]._cut ?? 0) > 0)) : [];
+  const pairUp = (rows, cols) => {
+    if (!rows.length || !cols.length) return;
+    const n = Math.max(cols.length, rows.length), cost = [];
+    for (let r = 0; r < n; r++) {
+      const row = [];
+      for (let c = 0; c < n; c++) {
+        if (r >= rows.length || c >= cols.length) { row.push(0); continue; }
+        const p = us[rows[r]], q = them[cols[c]];
+        row.push(Math.hypot(p.x - q.x, p.y - q.y) + ((p.x - q.x) * dir > 0 ? 4 : 0));
+      }
+      cost.push(row);
+    }
+    const res = meHungarian(cost, n);
+    for (let r = 0; r < rows.length; r++) {
+      const c = res[r];
+      if (c >= 0 && c < cols.length && cost[r][c] < MT.boxMarkMax) { boxMk.set(rows[r], cols[c]); marked.add(cols[c]); }
+    }
+  };
+  if (nearBox && stale) {
+    boxMk = new Map();
+    pairUp(free, danger);
+    (M.boxMkT = M.boxMkT || {})[side] = mp.tick;
+    (M.boxDg = M.boxDg || {})[side] = new Set(danger);
+  } else if (nearBox && fresh.length) {
+    pairUp(free.filter(i => !boxMk.has(i)), fresh);
+    for (const j of fresh) dg0.add(j);
+  }
+  (M.boxMk = M.boxMk || {})[side] = boxMk;
   for (const i of zone) {
     const p = us[i];
     if (p._cut > 0) p._cut--;
-    p._closing = false; p._duty = "hold";
+    // Only the first presser delays (pressTarget sets it): a flag left on a man from his last spell as the presser
+    // held the second man off the carrier too.
+    p._closing = false; p._duty = "hold"; p._delay = false;
     // Reading the pass.
     if (p._cut > 0) {
       if (mp.flight && mp.idx < 0) { const ic2 = meIntercept(p, mp, meSpeed(meAttrs(p), p.stamina)); p._cutx = ic2.x; p._cuty = ic2.y; }
@@ -965,10 +1084,17 @@ function mindDefend(s, side) {
       const ic = meIntercept(p, mp, meSpeed(meAttrs(p), p.stamina));
       const mine = meTimeToBallMs(p, ic.x, ic.y, meSpeed(meAttrs(p), p.stamina));
       const his = meTimeToBallMs(rcv, ic.x, ic.y, meSpeed(meAttrs(rcv), rcv.stamina));
-      const edgeC = (p._mk2 === mp.fj ? 0 : CFG.cutEdgeOther) + CFG.cutEdge;
+      const edgeC = (p._mk2 === mp.fj ? 0 : CFG.cutEdgeOther) + CFG.cutEdge - (meBadgeFx(p).jump ?? 0);   // INTERCEPTOR gambles
       if (mine + edgeC < his) {
         p._cut = CFG.cutHold; p._cutx = ic.x; p._cuty = ic.y; cutN++;
         setTarget(p, ic.x, ic.y, 1); p._closing = true; p._eff = 1; continue;
+      }
+      // A BALL IN THE AIR AT HIS MAN IS CONTESTED. Waiting for a clear head start, the man marking a target
+      // in our box held his spot while the cross came down and the target met it: a deep block faced half
+      // as many again headed shots as a mid one, at 0.18 xG each from nine metres. He goes for where it
+      // comes down, and the header is fought for.
+      if (p._mk2 === mp.fj && mp.passPending?.high && depthOf(side, ic.x) < MT.contestD) {
+        setTarget(p, ic.x, ic.y, 1); p._closing = true; p._eff = 1; p._duty = "mark"; continue;
       }
     }
     if (i === p1) { pressTarget(s, side, p, carrier, ph, trig, drill); continue; }
@@ -981,6 +1107,18 @@ function mindDefend(s, side) {
         setTarget(p, q.x + ux / ul * 1.6 + (q.vx || 0) * 2, q.y + uy / ul * 1.6 + (q.vy || 0) * 2, 1);
         p._closing = true; p._eff = 1; p._duty = "mark"; continue;
       }
+    }
+    if (boxMk.has(i)) {
+      // Goal-side of his man, a stride off him, leaning toward the ball, and going with him.
+      const q = them[boxMk.get(i)];
+      const ux = own - q.x, uy = ME_HALF_W - q.y, ul = Math.hypot(ux, uy) || 1;
+      const bx2 = mp.bx - q.x, by2 = mp.by - q.y, bl = Math.hypot(bx2, by2) || 1;
+      setTarget(p, q.x + ux / ul * MT.boxMarkGS + bx2 / bl * MT.boxMarkBall + (q.vx || 0) * 1.5,
+                   q.y + uy / ul * MT.boxMarkGS + by2 / bl * MT.boxMarkBall + (q.vy || 0) * 1.5, 1);
+      const dm = Math.hypot(p.x - p._tx, p.y - p._ty);
+      p._closing = true; p._duty = "mark"; p._mk2 = boxMk.get(i);
+      p._eff = (dm > 4 ? MT.effSprint : dm > 1.5 ? MT.effRun : MT.effJog) * (0.86 + 0.14 * mindAware(p));
+      continue;
     }
     // THE SPOT, leaned onto whoever is in it.
     let tx = p._zx, ty = p._zy;
@@ -1001,7 +1139,8 @@ function mindDefend(s, side) {
       const pull = clamp(MT.markPull + plan.manMark * 0.35 + dang * 0.5, 0, 0.95);
       const ux = own - q.x, uy = ME_HALF_W - q.y, ul = Math.hypot(ux, uy) || 1;
       const bx2 = mp.bx - q.x, by2 = mp.by - q.y, bl = Math.hypot(bx2, by2) || 1;
-      const lean = Math.min(3, bl * MT.markBallSide * 0.1);
+      const ln = meBadgeFx(p).lane ?? 0;                           // INTERCEPTOR (badge): off his man, into the lane
+      const lean = Math.min(3 + ln, bl * MT.markBallSide * 0.1 * (1 + ln));
       const mx = q.x + ux / ul * MT.markGoalSide + bx2 / bl * lean, my = q.y + uy / ul * MT.markGoalSide + by2 / bl * lean;
       tx += (mx - tx) * pull; ty += (my - ty) * pull;
       p._duty = "mark"; p._mk2 = mk;
@@ -1026,6 +1165,14 @@ function mindDefend(s, side) {
         p._duty = "screen";
       }
     }
+    // BLOCKER (badge): with the ball in shooting range he leaves his spot for the line of the shot, a few metres off it.
+    if (carrier && meBadgeFx(p).blockLane) {
+      const gd = Math.hypot(own - carrier.x, ME_HALF_W - carrier.y);
+      if (gd < MT.tightD && gd > 4) {
+        const lx = carrier.x + (own - carrier.x) / gd * 3.5, ly = carrier.y + (ME_HALF_W - carrier.y) / gd * 3.5;
+        if (Math.hypot(lx - tx, ly - ty) < 10) { tx = lx; ty = ly; p._duty = "screen"; }
+      }
+    }
     setTarget(p, tx, ty, 0.5);
     const dist = Math.hypot(p.x - p._tx, p.y - p._ty);
     const behindIt = (p._tx - p.x) * dir < -2;                       // his spot is back toward our goal
@@ -1033,6 +1180,19 @@ function mindDefend(s, side) {
     if ((ph === "recover" || ph === "cpress" || ph === "press") && behindIt) eff = dist > 6 ? MT.effSprint : MT.effRun;
     if (p._duty === "mark") eff = Math.max(eff, dist > 3 ? MT.effRun : MT.effJog);
     p._eff = eff * (0.86 + 0.14 * mindAware(p));
+  }
+  if (outs.length) {
+    let last = 0;
+    for (const q of them) if (q && !q.off && q.pos !== "GK") last = Math.max(last, depthOf(side, q.x));
+    const od = clamp(last - 1.0, PITCH_L / 2 - 6, 88);
+    outs.forEach((i, k) => {
+      const p = us[i];
+      const oy = clamp(ME_HALF_W + (mp.by - ME_HALF_W) * 0.3 + (outs.length > 1 ? (k ? 9 : -9) : 0), 8, PITCH_W - 8);
+      setTarget(p, xAt(side, od), oy, 0.5);
+      p._duty = "outlet"; p._closing = false; p._mk2 = -1; p._trk2 = false;
+      const dd = Math.hypot(p.x - p._tx, p.y - p._ty);
+      p._eff = (dd > 8 ? MT.effRun : MT.effJog) * (0.86 + 0.14 * mindAware(p));
+    });
   }
   // ---- THE SECOND MAN, AND THE COUNTER-PRESS ----
   if (p1 >= 0 && carrier) {
@@ -1082,6 +1242,26 @@ function mindDefend(s, side) {
         us[bi]._duty = "cover"; us[bi]._eff = Math.max(us[bi]._eff, MT.effRun); p2 = bi;
       }
     }
+    // THE SQUEEZE. In front of our box a dribbler is not left to one man: the second closes him from the other
+    // side, so the cut inside is gone as well as the way past. Half of everything that got into a box got there
+    // at the feet of a man running with it, and a deep block let as much of it in as a mid one did.
+    const cD = depthOf(side, carrier.x), c0 = us[p1];
+    if (c0 && cD < MT.sqzD && Math.abs(carrier.y - ME_HALF_W) < MT.sqzY) {
+      const ux = own - carrier.x, uy = ME_HALF_W - carrier.y, ul = Math.hypot(ux, uy) || 1;
+      const nx = -uy / ul, ny = ux / ul;
+      const s1 = Math.sign((c0.x - carrier.x) * nx + (c0.y - carrier.y) * ny) || 1;
+      const tx = carrier.x + ux / ul * MT.sqzStand - nx * s1 * MT.sqzSide, ty = carrier.y + uy / ul * MT.sqzStand - ny * s1 * MT.sqzSide;
+      let bi = p2, bd = p2 >= 0 ? Math.hypot(us[p2].x - tx, us[p2].y - ty) : Infinity;
+      if (bi < 0) for (const i of zone) {
+        if (i === p1 || us[i]._trk2 || (us[i]._cut ?? 0) > 0 || boxMk.has(i)) continue;
+        const d = Math.hypot(us[i].x - tx, us[i].y - ty);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      if (bi >= 0 && bd < MT.sqzReach) {
+        setTarget(us[bi], tx, ty, 1);
+        us[bi]._duty = "press"; us[bi]._closing = true; us[bi]._eff = MT.effSprint; p2 = bi;
+      }
+    }
   }
   M.p2[side] = p2;
 }
@@ -1095,8 +1275,12 @@ function pressTarget(s, side, p, c, ph, trig, drill) {
   const gux = ux / ul, guy = uy / ul;
   // Which side to come from.
   let shade = 0;
-  const wide = Math.min(c.y, PITCH_W - c.y) < 16;
-  if (wide) shade = c.y < ME_HALF_W ? 1 : -1;      // from inside: show him the line
+  // A man out wide is shown the line: the presser comes from the inside. That side was signed on his y alone, and the
+  // offset turns with the way a side defends, so for the side defending the goal at x = 0 "inside" was the outside:
+  // half of all wide presses showed him into the middle. And a side sitting deep (plan.compact) shows a man in front
+  // of its box the same way, out toward the touchline, instead of leaving him the middle to run at.
+  const wide = Math.min(c.y, PITCH_W - c.y) < 16 || ((s.plan?.[side]?.compact || 0) > 0 && depthOf(side, c.x) < MT.showOutD);
+  if (wide) shade = Math.sign(gux * (ME_HALF_W - c.y)) || 1;
   else {
     let bv = -Infinity;
     for (const q of them) {
@@ -1109,7 +1293,12 @@ function pressTarget(s, side, p, c, ph, trig, drill) {
   }
   const nx = -guy * shade, ny = gux * shade;
   const delay = ph === "recover" || ph === "block" && trig < 0.4;
-  const [tx, ty] = mindJockey(p, c, gux, guy, nx, ny, delay);
+  // IN SHOOTING RANGE HE STANDS HIS GROUND. Backing off is how a defender buys time in midfield; at the
+  // edge of his own box it buys the shooter a clear sight of goal. From tightD in he stops giving ground
+  // and stands in the way, so the man on the ball has to beat him, play round him or shoot through him.
+  const cD = depthOf(side, c.x);
+  const tight = Math.abs(c.y - ME_HALF_W) < MT.boxWideY + 6 ? clamp((MT.tightD - cD) / (MT.tightD - MT.tightFull), 0, 1) : 0;
+  const [tx, ty] = mindJockey(p, c, gux, guy, nx, ny, delay && tight < 0.5, tight);
   setTarget(p, tx, ty, 1);
   const d = Math.hypot(p.x - c.x, p.y - c.y);
   p._closing = true; p._duty = "press"; p._delay = delay;
@@ -1164,7 +1353,7 @@ const aerialOf = (p) => meAttrs(p).strength + ((p._role2?.hold ?? 0) > 0 ? 6 : 0
 function spCorner(s, sp, atk, def) {
   const us = s.players[atk], them = s.players[def], gx = meGoalX(atk), dir = meDir(atk);
   const near = sp.y < ME_HALF_W ? -1 : 1;
-  const fam = FAM[s.styles?.[atk]] || "bal", plan = FAMPLAN[fam];
+  const plan = s.plan[atk];
   const taker = us[sp.ti];
   const pool = us.filter(p => p && p !== taker && !p.off && p.pos !== "GK");
   // Who stays back: the most defensive men, as many as the side's rest defence asks, never fewer than two.
@@ -1201,9 +1390,9 @@ function spCorner(s, sp, atk, def) {
     if (gki >= 0) { const gk = us[gki]; setTarget(gk, gx - dir * 8.5, ME_HALF_W - near * 1.5, 1); gk._duty = "box"; gk._closing = true; gk._up = mp.tick; }
   }
   // ---- defending it ----
-  const dfam = FAM[s.styles?.[def]] || "bal", dplan = FAMPLAN[dfam];
+  const dplan = s.plan[def];
   const dpool = them.filter(p => p && !p.off && p.pos !== "GK");
-  const upN = dfam === "counter" || dfam === "catenaccio" || dfam === "block" ? 2 : 1;
+  const upN = dplan.cornerUp;
   const ups = [...dpool].sort((a, b) => (b._role2?.press ?? 0) + (b._mr?.startsWith("st") ? 1 : 0) - (a._role2?.press ?? 0) - (a._mr?.startsWith("st") ? 1 : 0)).slice(0, upN);
   ups.forEach((p, n) => { setTarget(p, gx - dir * (40 + n * 6), ME_HALF_W + (n ? 9 : -6), 1); p._duty = "hold"; p._closing = true; });
   const zoneN = Math.max(1, Math.round(5 * (1 - dplan.manMark)));

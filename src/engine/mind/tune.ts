@@ -61,6 +61,8 @@ export const MT = {
   blockLen0: 24,       // m from the back line to the front line, a settled mid block
   blockLenPress: 30,   // m in a high press, which has to stretch
   blockLenLow: 18,     // m in a low block
+  compactLen: 0.35,    // share of that a side set to sit deepest (plan.compact 1) takes off the distance between its lines...
+  compactWide: 0.15,   // ...and off its width
   blockWide: 0.74,     // share of the formation's own width a defending line keeps
   blockSlide: 0.45,    // share of the ball's distance from the middle the block slides toward it
   lineSlew: 5.2,       // m/s the back line moves at
@@ -68,11 +70,49 @@ export const MT = {
   markPull: 0.55,      // how far a zonal defender leaves his spot for the man in it (0 spot, 1 man)
   markGoalSide: 1.4,   // m goal-side of his man a marker stands
   markBallSide: 0.35,  // share of a metre per metre of separation he leans toward the ball
+  // ---- the box -------------------------------------------------------------------------------------
+  boxLine: 12.5,       // m from goal a back line holds with the ball central outside the box (first cut)
+  // TRIED AND DROPPED (7 Oct 2026, 140 fixtures an arm against an even mix of all fourteen styles): a deep block
+  // (plan.compact) holding its line 3.5 m higher, at the edge of its box, and squeezing a dribbler from 30 m out
+  // instead of 24. Every deep style got worse: Park the Bus -0.26 xG a match, Catenaccio and Cholismo -0.16, Zona
+  // Mista -0.07. The chances a deep block gives up are shots from twelve metres by a man who carried it there,
+  // and neither rule stopped the carry. Nor did a third: its presser standing his ground from 30 m out instead of
+  // 25 (tightD / tightFull, 5 and 10 m further out) -- shots against rose, their distance did not move.
+  crossLine: 9,        // ...and drops to with the ball wide in the last thirty metres: the penalty spot, not the six-yard box
+  boxWideY: 20.2,      // m off the middle the ball is wide (the box's own half-width)
+  crossD: 30,          // m from goal inside which a wide ball is a cross coming
+  crossFrac: 0.5,      // ...where, with the ball out there, the line drops to at most this share of the ball's distance from goal...
+  crossCompact: 0.25,  // ...less this share again for the deepest block (plan.compact 1)...
+  crowdLen: 0.4,       // ...whose midfield also closes this share of the gap to its line, into the box
+  boxHoldGap: 1.5,     // m the line always stays goal-side of the ball
+  tightD: 25,          // m from goal at which the man on the ball's marker starts to stand his ground...
+  tightFull: 15,       // ...and by which he no longer backs off at all
+  showOutD: 30,        // m from our goal inside which a deep block (plan.compact) shows a man on the ball out wide
+  boxDefD: 32,         // m from our goal: with the ball inside this, the men in and around our box are marked
+  boxDangerD: 26,      // m from our goal an attacker has to be inside to be one of them...
+  boxDangerY: 24,      // ...and this close to the middle
+  boxMarkMax: 16,      // m a defender will come across to pick one up
+  boxMarkGS: 0.9,      // m goal-side of his man a box marker stands...
+  boxMarkBall: 1.0,    // ...and this far toward the ball, between the man and the passer
+  boxMarkHold: 4,      // slices a box pairing holds before it is solved again
+  sqzD: 24,            // m from our goal inside which a dribbler is closed by two...
+  sqzY: 22,            // ...while he is this central
+  sqzStand: 1.4,       // m goal-side of him the second man closes...
+  sqzSide: 1.8,        // ...and this far across, on the side the first is not
+  sqzReach: 16,        // m the second man will come to do it
+  contestD: 26,        // m from our goal inside which a marker goes for a high ball at his man
   // ---- the press -------------------------------------------------------------------------------
   pressStand: 1.8,     // m off the man the first presser settles at, goal-side
   pressShade: 1.4,     // m he leans across to sit in the lane he is shutting
   pressKeep: 1.30,     // a new first presser has to be this much quicker to take the job over
   coverBack: 7.5,      // m behind the presser the cover man sits, on the line to goal
+  coverR: 5,           // m from the carrier a team-mate, level or goal-side, covers the man on the ball: he stops delaying
+  // TRIED AND DROPPED together (7 Oct 2026, 240 fixtures a style against the even mix, paired with the run before):
+  // a man the carrier has run past giving up the first-presser job to the next man in front; the first brain's press
+  // fatigue (CFG.loeStamLo) on the counter-press, the presser's leash and the jumpers; possWon -1 keeping only what it
+  // won in its own half; a deep block's spare men standing on the shot line; and each extra defender within airR adding
+  // 0.10 to an aerial duel. Every one fired in traces; none moved the result. Gegenpressing's high regains 13.1 -> 13.4,
+  // Park the Bus's xG conceded 1.64 -> 1.65, the field's xG, regains and tackles unchanged; every style moved within noise.
   cpRange: 14,         // m; a counter-presser is one this close to the ball when it goes
   cpMax: 3,            // most men who counter-press
   shadowFrac: 0.40,    // where along a passing lane a screening man stands, from the passer
@@ -93,6 +133,48 @@ export const MT = {
   lookTop: 4,          // passes he looks two moves ahead from
   carryDirs: 7,        // headings he considers carrying it on
   patW: 0.012,         // what a drilled move's ball is worth on top of its own price (first cut)
+  relRun: 0.3,         // a man whose role runs in behind at least this readily is a target over the top...
+  relShoulder: 3.5,    // ...standing no more than this far goal-side of their last line...
+  relRoom: 16,         // ...with at least this much grass between that line and their goal (m)
+  relMaxD: 65,         // m: the longest ball in behind a man will strike
+  crossPress: 1.2,     // pressure on a crosser above which a crossing side plays whatever gets him out (plan.crossFirst)
+  takeOnD: 40,         // m from goal inside which a side built on its dribblers takes men on (plan.takeOn)...
+  takeOnSkill: 0.55,   // ...the dribbling (mind/duel.ts dribSkill) a man needs before he is held to it...
+  takeOnGo: 0.2,       // ...and how much more readily he goes at a man
+  thruTo: 60,          // m from goal inside which a side playing in behind (plan.thruFirst) keeps it going forward...
+  thruLast: 18,        // ...short of this (in the area it is a different game)...
+  thruFwd: 8,          // ...when a ball at least this far forward into a runner's path...
+  thruOk: 0.4,         // ...is on at least this often
+  longBuildTo: 35,     // m from our goal a side that builds long hits it long from (plan.longBuild)...
+  longBuildD: 28,      // ...no pass shorter than this...
+  longBuildFwd: 12,    // ...or less than this far forward...
+  longBuildPress: 1.2, // ...unless he is closed down this hard
+  fwdOnlyTo: 75,       // m from our goal a direct side plays only forward to (plan.fwdOnly)...
+  fwdOnlyMin: 4,       // ...at least this far forward...
+  fwdOnlyPress: 1.0,   // ...unless closed down this hard
+  earlyT: 32,          // slices after winning it that a breaking side plays the early ball (plan.earlyBall)...
+  earlyLast: 25,       // ...until the ball is this close to their goal line...
+  earlyFwd: 10,        // ...to a man at least this far ahead...
+  earlyOk: 0.45,       // ...when it is at least this likely to reach him
+  simplePress: 0.6,    // pressure on the spot he would carry it to above which a side told to keep it simple does not
+  keepUpTo: 70,        // m from his own goal: past this the plan's minOk no longer holds a forward ball back
+  loiterBack: 2,       // m/s toward their own goal faster than which a man of theirs behind the ball is going home, not loitering
+  cntBack: 4,          // a counter is on when this few of theirs are back: goal-side of the ball...
+  cntBackD: 45,        // ...and within this many metres of their own goal
+  cntShortX: 2.5,      // ...and the break's window (counterWin) is this many times as long while they are
+  cntGo: 15,           // m forward the ball has to go, breaking with them short at the back...
+  cntGoOk: 0.5,        // ...when one that far is on at least this often
+  cntRunCos: 0.7,      // ...and a man with it runs at them: a carry within ~45 degrees of straight at their goal...
+  cntRunOk: 0.6,       // ...that he keeps the ball on this often rules out the carries that go anywhere else...
+  cntRunFwd: 5,        // ...and the passes that do not go this far forward
+  cntT: 14,            // slices after winning it that a breaking side's first ball must go forward...
+  cntFwdMin: 6,        // ...at least this far (m)...
+  cntPress: 1.4,       // ...unless he is being closed down harder than this
+  cntSupport: 9,       // m short of their last line the men who break in support of the runners get to
+  cntSurge: 18,        // m further than usual they go to get there (less for the more defensive roles)
+  clrDepth: 32,        // m from his own goal inside which a side that clears its lines does...
+  clrPress: 0.9,       // ...once he is being closed down this hard...
+  clrFwd: 12,          // ...and a pass has to go this far forward to count as getting it out
   switchW: 0.008,      // what the room a switch finds is worth (CFG.switchW 0.02 was the first brain's)
   blockK: 1.0,         // how much of blockRisk (a man in the way of the ball's first metres) he believes
   // ---- duels -----------------------------------------------------------------------------------

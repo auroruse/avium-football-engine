@@ -4,8 +4,11 @@ const headerImg="",wc1933HeaderImg="",wc1934HeaderImg="";
 // Anything that only needs the module to evaluate is unaffected; anything that reads a league
 // now sees its actual teams instead of an empty string.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { fileURLToPath as __f2p } from "node:url";
+// The repository, wherever it is checked out: every bundle built with this prelude sits in test/.
+const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };
-const __tsv = (f) => readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets/" + f, "utf8");
+const __tsv = (f) => readFileSync(__root + "src/presets/" + f, "utf8");
 const aviumTSV=__tsv("AVIUM.tsv"),
       arterraTSV=__tsv("ARTERRA.tsv"),
       aleTSV=__tsv("ALE.tsv"),
@@ -28,20 +31,20 @@ const aviumTSV=__tsv("AVIUM.tsv"),
   // ANCC.tsv is a cup field and Slots.tsv is a formation-to-slot lookup: they arrive with the
   // registry export but are not squad data, and nothing in the app reads them.
   const NOT_A_PRESET = ["ANCC.tsv", "Slots.tsv"];
-  const onDisk = readdirSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/presets").filter(f => f.endsWith(".tsv") && !NOT_A_PRESET.includes(f)).sort();
+  const onDisk = readdirSync(__root + "src/presets").filter(f => f.endsWith(".tsv") && !NOT_A_PRESET.includes(f)).sort();
   const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","ASK.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
   const missing = onDisk.filter(f => !stubbed.includes(f));
   if (missing.length) throw new Error(`test/prelude.js does not stub ${missing.join(", ")} -- add it beside the others, and to NATION_TSV in App.tsx`);
 }
-const stadiumsTSV = readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/stadiums.tsv", "utf8");
-const participantsTSV = readFileSync("/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/src/participants.tsv", "utf8");
+const stadiumsTSV = readFileSync(__root + "src/stadiums.tsv", "utf8");
+const participantsTSV = readFileSync(__root + "src/participants.tsv", "utf8");
 
 // The stadium manifest is a Vite virtual module (see vite.config.js), and rebuild.sh strips every
 // import -- so without this it is a free variable and a ReferenceError waiting for the first harness
 // that touches the stadium browser. Read off the same directory the plugin reads.
 const STADIUM_IMAGES = (() => {
   const { readdirSync, existsSync } = require_fs_shim;
-  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/avium/stadiums";
+  const d = __root + "public/avium/stadiums";
   return existsSync(d) ? readdirSync(d).filter(f => /\.(jpe?g)$/i.test(f))
     .map(f => f.replace(/\.(jpe?g)$/i, "").normalize("NFC")).sort() : [];
 })();
@@ -50,7 +53,7 @@ const STADIUM_IMAGES = (() => {
 // reads the directory itself.
 const PSTATS_FILES = (() => {
   const { readdirSync, existsSync } = require_fs_shim;
-  const d = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine/public/avium/pstats";
+  const d = __root + "public/avium/pstats";
   return existsSync(d) ? readdirSync(d, { recursive: true })
     .map(f => String(f).replace(/\\/g, "/")).filter(f => /\.(tsv|md)$/i.test(f) && !/README\.md$/i.test(f))
     .map(f => f.normalize("NFC")).sort() : [];

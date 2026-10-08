@@ -11,7 +11,7 @@
 // cross, a goal kick is a punt or a pass out, a free kick near goal can be struck at goal. None of
 // that is the ordinary decision code, because none of it is ordinary play.
 import { CFG, ME_DT } from "./config";
-import { meAttrs, meGkSkill , meAttrs } from "./attributes";
+import { meAttrs, meBadgeFx, meGkSkill } from "./attributes";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDir, meGoalX, meKeeper, meKeeperIx, meOther, meShotGeom } from "./geometry";
 import { meFkArc, meKickBall, meShootBall } from "./ball";
 import { mePlanSave } from "./keeper";
@@ -99,7 +99,7 @@ export function meSPBegin(s, kind, side, out) {
   }
   else if (kind === "penalty") { let best = -1; for (let i = 0; i < us.length; i++) {
       const p = us[i]; if (p.pos === "GK" || p.off) continue;
-      if (best < 0 || meAttrs(p).shoot > meAttrs(us[best]).shoot) best = i; } ti = best; }
+      if (best < 0 || meAttrs(p).shoot + (meBadgeFx(p).setTaker ?? 0) * 100 > meAttrs(us[best]).shoot + (meBadgeFx(us[best]).setTaker ?? 0) * 100) best = i; } ti = best; }
   else if (kind === "goalkick") ti = meKeeperIx(us);
   // A CORNER HAS A TAKER. Every dead ball except the penalty went to whoever happened to be
   // standing nearest, so the man who swung a corner in was an accident of position and no side
@@ -123,7 +123,7 @@ export function meSPBegin(s, kind, side, out) {
     let best = -1, bsc = Infinity;
     for (let i = 0; i < us.length; i++) { const p = us[i];
       if (p.pos === "GK" || p.off) continue;
-      const fit = Math.max(0, Math.min(1, (meAttrs(p)[want] - 60) / 39));
+      const fit = Math.max(0, Math.min(1, (meAttrs(p)[want] - 60) / 39)) + (meBadgeFx(p).setTaker ?? 0);
       const sc = Math.hypot(p.x - x, p.y - y) - fit * CFG.spTakerW;
       if (sc < bsc) { bsc = sc; best = i; } }
     if (best >= 0) ti = best;
@@ -798,7 +798,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
         - Math.abs(q.y - ME_HALF_W) * 0.1
       : deliv ? -Math.abs(gx - q.x) - Math.abs(q.y - ME_HALF_W) * 0.35 : -d + sepT * CFG.spFreeW;
     let w = Math.exp(v * CFG.spAimSharp);
-    if (into || longThrow) w *= 0.5 + meAttrs(q).strength / 99;
+    if (into || longThrow) w *= (0.5 + meAttrs(q).strength / 99) * (1 + (meBadgeFx(q).spAir ?? 0));
     cands.push([i, w]);
   }
   let ti = -1;
@@ -871,14 +871,14 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     gkRead(away, mp._pk ? CFG.spPenReadPk : CFG.spPenRead,
                  mp._pk ? CFG.spPenReadSkillPk : CFG.spPenReadSkill);
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} steps up`);
-    meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99, 0, CFG.spPenElev);
+    meShootBall(mp, rng, gx, away, 0.35 + rng.u() * 0.95, a.shoot / 99 + (meBadgeFx(taker).dead ?? 0), 0, CFG.spPenElev);
     return;
   }
 
   if (shooting) {
     // Struck at goal. A free kick from twenty metres IS a shot, and it was never one before.
     const g = meShotGeom(side, sp.x, sp.y);
-    const away = ME_HALF_W + (sp.y <= ME_HALF_W ? 1 : -1) * GOAL_HALF_W * (0.35 + a.shoot / 99 * 0.5);
+    const away = ME_HALF_W + (sp.y <= ME_HALF_W ? 1 : -1) * GOAL_HALF_W * (0.35 + (a.shoot / 99 + (meBadgeFx(taker).dead ?? 0)) * 0.5);
     out.shots[side]++;
     // Same for the free kick, at the conversion measured in the sweep noted below. The shotDist
     // histogram is deliberately NOT fed from here -- it exists to describe open-play shot SELECTION,
@@ -891,7 +891,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // Over the wall and under the bar, which is the whole act. meFkArc solves the pair; the target
     // height used to be a coin toss between one metre and two with the wall nowhere in it.
     const [fkZ, fkV] = meFkArc(g.d, mp.bz, rng);
-    meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99, 0, CFG.spFkElev, fkV);
+    meShootBall(mp, rng, gx, away, fkZ, a.shoot / 99 + (meBadgeFx(taker).dead ?? 0), 0, CFG.spFkElev, fkV);
     // The keeper watches it, as he watches any shot (keeper.ts): the wall is in front of him, and it
     // costs him the sight of it.
     mePlanSave(s, mp.shot);
@@ -969,7 +969,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
       }
     }
   }
-  meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99, 0, 0,
+  meKickBall(mp, rng, tx, ty, high ? "high" : "ground", a.pass / 99 + (meBadgeFx(taker).dead ?? 0), 0, 0,
              sp.kind === "corner" ? { kind: "corner", zEnd: CFG.crossZ }
              : sp.kind === "throw" ? { kind: "throw", zEnd: longThrow ? CFG.crossZ : CFG.gkThrowZ }
              : undefined);
