@@ -108,15 +108,31 @@ function importSheets() {
   // The sheets carry no badges: a man's come from his record, by ID.
   const badges = new Map((had?.players || []).filter(r => r.badges?.length).map(r => [r.id, r.badges]));
   const order = (r) => playerRecord({ ...r, badges: badges.get(r.id) });
+  // A man the records hold and no sheet lists is a free agent (or retired), not a deletion: he stays, as he was.
+  for (const r of had?.players || []) if (![...players.values()].some(x => x.id === r.id)) players.set(r.name, { ...r });
   if (had) {
     const gone = (o, B) => o.filter(r => ![...B.values()].some(x => x.id === r.id)).length;
     const fresh = (o, B) => [...B.values()].filter(r => !o.some(x => x.id === r.id)).length;
-    console.log(`players: ${fresh(had.players, players)} new, ${gone(had.players, players)} no longer on any sheet; managers: ${fresh(had.managers, managers)} new, ${gone(had.managers, managers)} gone`);
+    const free = had.players.filter(r => !cellsOf.some(([, k, , m]) => k === "p" && m[2] === r.name)).length;
+    console.log(`players: ${fresh(had.players, players)} new, ${free} on no sheet (kept: free agents or retired); managers: ${fresh(had.managers, managers)} new, ${gone(had.managers, managers)} gone`);
   }
   mkdirSync(DATA, { recursive: true });
   writeFileSync(join(DATA, "players.json"), dumpRecords([...players.values()].sort(byId).map(order)));
   writeFileSync(join(DATA, "managers.json"), dumpRecords([...managers.values()].sort(byId).map(order)));
-  writeFileSync(join(DATA, "teams.json"), dumpRecords(teams));
+  // A team keeps its ID for good, found again by its sheet and code, else its sheet and name (a club renamed on the
+  // sheet); a new team takes the next free number. The editor keys teams by this, so a renamed club stays itself.
+  const oldTeams = had?.teams || [];
+  let nextT = Math.max(0, ...oldTeams.filter(t => t.id).map(t => +t.id.slice(1)));
+  const byCode = new Map(oldTeams.filter(t => t.id).map(t => [t.file + "|" + t.code, t.id]));
+  const byName = new Map(oldTeams.filter(t => t.id).map(t => [t.file + "|" + t.name.trim(), t.id]));
+  const takenT = new Set();
+  const withIds = teams.map(t => {
+    let id = byCode.get(t.file + "|" + t.code) ?? byName.get(t.file + "|" + t.name.trim());
+    if (!id || takenT.has(id)) id = "t" + String(++nextT).padStart(4, "0");
+    takenT.add(id);
+    return { id, ...t };
+  });
+  writeFileSync(join(DATA, "teams.json"), dumpRecords(withIds));
   writeFileSync(join(DATA, "sheets.json"), dumpRecords(sheets));
   console.log(`${teams.length} teams, ${players.size} players, ${managers.size} managers -> src/data`);
 }

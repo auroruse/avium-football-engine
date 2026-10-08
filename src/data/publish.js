@@ -1,6 +1,6 @@
 // PUBLISHING THE DRAFT: one commit to main on GitHub, made from the browser with the overseer's own key (a
 // fine-grained token for this repository with Contents read and write, kept only in his browser). It reads the records
-// as main has them NOW, lays the draft over them and writes the players file plus every sheet that changed, so a
+// as main has them NOW, lays the draft over them and writes each records file and each sheet that changed, so a
 // change pushed since the page was built is kept, never overwritten. If main moves while it writes, it starts again.
 import { applyDraft, draftChanges, dumpRecords } from "./draft.js";
 import { sheetsFromRecords } from "./sheets.js";
@@ -29,7 +29,11 @@ export async function publishDraft(draft, token, onStep = () => {}) {
     const changes = draftChanges(rec, draft);
     if (!changes.length) return { sha: null, changes };
     const next = applyDraft(rec, draft);
-    const files = { "src/data/players.json": dumpRecords(next.players) };
+    const files = {};
+    for (const k of ["players", "managers", "teams"]) {
+      const was = dumpRecords(rec[k]), now = dumpRecords(next[k]);
+      if (now !== was) files[`src/data/${k}.json`] = now;
+    }
     const before = sheetsFromRecords(rec), after = sheetsFromRecords(next);
     for (const f of Object.keys(after)) if (after[f] !== before[f]) files[`src/presets/${f}.tsv`] = after[f];
     onStep("Writing");

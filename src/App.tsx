@@ -11,9 +11,12 @@ import managersRec from "./data/managers.json";
 import teamsRec from "./data/teams.json";
 import sheetsRec from "./data/sheets.json";
 import { sheetsFromRecords } from "./data/sheets.js";
-import { applyDraft, draftChanges, draftWith } from "./data/draft.js";
+import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "./data/badges.js";
 import { publishDraft } from "./data/publish.js";
+import { placeFor, vacate, without } from "./data/squads.js";
+// The position grid and the fit cost (src/data/positions.js), shared with the registry server.
+import { POS_ROLE, posFitCost } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -36,7 +39,7 @@ const RECORDS_BASE = (() => {
   const pend = readPatch(PENDING_KEY);
   if (!pend) return RECORDS_BUILT;
   let left = null;
-  for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to });
+  for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
   try { if (left) localStorage.setItem(PENDING_KEY, JSON.stringify(left)); else localStorage.removeItem(PENDING_KEY); } catch {}
   return left ? applyDraft(RECORDS_BUILT, left) : RECORDS_BUILT;
 })();
@@ -2507,20 +2510,11 @@ function parseHof(text) {
     .map(r => ({ player: r[0], pos: r[1] || "", nat: r[2] || "", club: r[3] || "", ovr: +r[4] || null, inducted: r[5] || "" }))
     .filter(h => h.player);
 }
-// Natural-position model: [line, side] — line GK→DEF→WB→DM→MID→AM→FWD, side left/centre/right.
-// Side mismatches cost slightly more than line ones: a left back at right back is a worse ask
-// than a left back pushed to left midfield.
 // A minute, written the way football writes it: 45+2 and 90+4 rather than 45 and 90. `add` is the
 // board, stamped beside the minute by the engine, so a stoppage-time goal can be told apart from
 // one on the whistle -- three in a row all reading 90' was the bug this fixes.
 const fmtMin = (min, add) => `${min ?? 0}${add ? "+" + add : ""}'`;
 const POS_SPECIFIC = ["GK","LB","CB","RB","LWB","RWB","DM","CM","AM","LM","RM","LW","RW","ST"];
-const POS_ROLE = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
-function posFitCost(a, b) {
-  if ((a === "GK") !== (b === "GK")) return 1000;
-  const A = POS_ROLE[a] || POS_ROLE.CM, B = POS_ROLE[b] || POS_ROLE.CM;
-  return Math.abs(A[0] - B[0]) + 1.2 * Math.abs(A[1] - B[1]);
-}
 // A squad's positions come from slot index + formation, so changing formation without reordering
 // silently reassigns roles (a RB becomes a third CB, a winger becomes a CM). Reorder the XI so each
 // player lands in the slot closest to their natural position. Greedy seed + 2-opt; optimal at n=11.
@@ -2689,13 +2683,18 @@ const MISC_LEAGUE = "Miscellaneous Aviumite";
 // for NON-LEAGUE, and the two competitions that are named after neither their nation nor its
 // adjective have to be spelled out.
 const MISC_NAT = { "Divisione Prima Viciliana": "VIC", "Rudanian First League": "RUD" };
-const miscNat = (lg) => MISC_NAT[lg] || PRESET_AVIUM.find(t => t.name === lg)?.code || null;
-const miscComp = (lg) => (MISC_NAT[lg] || !PRESET_AVIUM.some(t => t.name === lg)) ? lg : null;
-const PRESET_CLUBS = Object.entries(NATION_TSV).flatMap(([nat, raw]) =>
+// `avium` is the national list a MISC club reads its nation off: the load passes PRESET_AVIUM, the record editor the
+// national list it has just rebuilt.
+const miscNatOf = (lg, avium) => MISC_NAT[lg] || avium.find(t => t.name === lg)?.code || null;
+const miscCompOf = (lg, avium) => (MISC_NAT[lg] || !avium.some(t => t.name === lg)) ? lg : null;
+// The clubs out of the nation sheets, sheet code -> text. A function so the record editor builds an edited club exactly
+// as the load does.
+const clubsFromSheets = (byNat, avium) => Object.entries(byNat).flatMap(([nat, raw]) =>
   [...nationLeagues(raw)].flatMap(([league, rows]) =>
     parseBulk(rows.join("\n")).map(t => nat === "MISC"
-      ? ({ ...t, league: MISC_LEAGUE, comp: miscComp(league), nat: miscNat(league) })
+      ? ({ ...t, league: MISC_LEAGUE, comp: miscCompOf(league, avium), nat: miscNatOf(league, avium) })
       : ({ ...t, league, nat }))));
+const PRESET_CLUBS = clubsFromSheets(NATION_TSV, PRESET_AVIUM);
 
 // The order the rail lists the conferences in: strongest first. Averaged off the catalog rather
 // than the live roster, so the rail does not reshuffle under you while you edit a team's skill.
@@ -2912,11 +2911,11 @@ const REAL_LEAGUES = CLUB_LEAGUES.filter(l => !isMiscLeague(l));
 const MISC_LEAGUES = CLUB_LEAGUES.filter(isMiscLeague);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
 const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES, null, "Custom"];
-const PRESET_CATALOG = [
-  ...PRESET_AVIUM.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
-  ...PRESET_ARTERRA.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
+const catalogOf = (avium, arterra, clubs) => [
+  ...avium.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
+  ...arterra.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
                                                      ...(conference ? { continent: conference } : null) })),
-  ...PRESET_CLUBS.map(t => ({ ...t, world: "avium" })),
+  ...clubs.map(t => ({ ...t, world: "avium" })),
 ].map(({ conference, nat, ...t }) => ({
   ...t,
   // A club's nation, kept for the roster's nationality fallback. Only the merged pool needs it --
@@ -2928,16 +2927,18 @@ const PRESET_CATALOG = [
   ...(t.league === AVIUM_LEAGUE && conference ? { conference } : null),
   id: t.league + "::" + (t.code || t.name),
 }));
+const PRESET_CATALOG = catalogOf(PRESET_AVIUM, PRESET_ARTERRA, PRESET_CLUBS);
 // EACH MAN'S RECORD, ON HIS SQUAD ENTRY. The sheets carry no IDs and no badges, so they are put on here, slot by slot
-// (the parsed squad is laid out exactly as the record's): `rid` is what the editor edits him by, and `badges` is what
-// the engine reads (meSide copies the entry into the match).
-{
-  const P = new Map(RECORDS.players.map(r => [r.id, r]));
+// (the parsed squad is laid out exactly as the record's): `rid` is what the player editor edits him by, and `badges`
+// what the engine reads (meSide copies the entry into the match). `rkey` on the team is the record the team editor edits.
+function attachRecords(catalog, records) {
+  const P = new Map(records.players.map(r => [r.id, r]));
   const key = (file, code, name) => file === "AVIUM" || file === "ARTERRA" ? file + "|" + code : "club|" + code + "|" + name;
-  const rec = new Map(RECORDS.teams.map(t => [key(t.file, t.code, t.name.trim()), t]));
-  for (const c of PRESET_CATALOG) {
+  const rec = new Map(records.teams.map(t => [key(t.file, t.code, t.name.trim()), t]));
+  for (const c of catalog) {
     const r = rec.get(key(c.league === AVIUM_LEAGUE ? "AVIUM" : c.league === ARTERRA_LEAGUE ? "ARTERRA" : "", c.code, c.name));
     if (!r) continue;
+    c.rkey = teamKey(r);
     (c.squad || []).forEach((e, i) => {
       const s = r.squad[i], id = typeof s === "string" ? s : s?.id;
       if (!e || !id) return;
@@ -2946,7 +2947,16 @@ const PRESET_CATALOG = [
       if (b?.length) e.badges = b;
     });
   }
+  return catalog;
 }
+attachRecords(PRESET_CATALOG, RECORDS);
+// EVERY PRESET TEAM FROM A SET OF RECORDS, built exactly as the load builds them: what the record editor rebuilds from.
+const presetsFromRecords = (records) => {
+  const S = sheetsFromRecords(records);
+  const avium = parsePresetTSV(S.AVIUM, null, 1, false, true), arterra = parsePresetTSV(S.ARTERRA, null, 1, false, true);
+  const clubs = clubsFromSheets(Object.fromEntries(Object.keys(NATION_TSV).map(k => [k, S[k]])), avium);
+  return attachRecords(catalogOf(avium, arterra, clubs), records);
+};
 
 function MdTable({ head, body, keyBase }) {
   const inline = (s, ki) => String(s).split(/\*\*([^*]+)\*\*/g)
@@ -4813,6 +4823,11 @@ input,select,textarea{font-family:inherit;transition:border-color 0.2s,box-shado
 .ed-badge{transition:border-color 0.12s,background 0.12s;}
 .ed-badge:hover{border-color:var(--chrome-muted-66) !important;}
 .ed-badge[aria-pressed=true]:hover{border-color:var(--chrome-brand) !important;}
+.ed-row{transition:border-color 0.12s,background 0.12s;}
+.ed-row:hover:not(:disabled){border-color:var(--chrome-muted-66) !important;}
+.ed-row[aria-pressed=true]:hover{border-color:var(--chrome-brand) !important;}
+.ed-row:focus-visible{outline:2px solid var(--chrome-brand);outline-offset:1px;}
+.ed-row:disabled{opacity:0.4;cursor:default !important;}
 .vs-swap{transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),border-color 0.15s,box-shadow 0.15s;}
 .vs-swap:hover:not(:disabled){transform:rotate(180deg);border-color:var(--chrome-brand) !important;box-shadow:0 0 0 4px var(--chrome-brand-22),0 2px 10px var(--ui-shadow-3) !important;}
 .vs-swap:active:not(:disabled){transform:rotate(180deg) scale(0.92);}
@@ -5086,7 +5101,6 @@ export default function App() {
   const [teamSearch, setTeamSearch] = useState("");
   // Session-only: which presets are unlocked for editing, and which have actually been changed.
   // Unlocking on its own is not an edit, so the two are tracked separately.
-  const [unlockedTeams, setUnlockedTeams] = useState(() => new Set());
   const [editedTeams, setEditedTeams] = useState(() => new Set());
   // Marks a scoreboard name as no longer matching the TSV it came from. `.sb-name` is hidden on
   // mobile, so the abbreviation carries it there — both get the same style or the signal disappears.
@@ -8209,23 +8223,34 @@ export default function App() {
   const [tRebalOpen, setTRebalOpen] = useState(false);
   const [tToolsOpen, setTToolsOpen] = useState(false);
   // ── The record editor (overseer only) ──
-  // His draft, the man in the edit dialog, and publishing. The draft is laid over everything at load; an edit made now
-  // is also put straight onto the teams on screen, so nothing waits for a reload.
+  // His draft, the player or team in an edit dialog, and publishing. The draft is laid over everything at load; a change
+  // made now rebuilds the teams it touches exactly as the load builds them, so nothing waits for a reload.
   const [recBase, setRecBase] = useState(RECORDS_BASE);       // the records as main has them, as far as this page knows
   const [draft, setDraft] = useState(() => readPatch(DRAFT_KEY) || { v: 1, players: {} });
-  const [edPlayer, setEdPlayer] = useState(null);             // { id, name } of the man in the edit dialog
+  const [edPlayer, setEdPlayer] = useState(null);             // { id, name } of the man in the player dialog
   const [edForm, setEdForm] = useState(null);                 // { ovr, nat, badges } as edited
+  const [edTeam, setEdTeam] = useState(null);                 // { key, team } of the side in the team dialog
+  const [teForm, setTeForm] = useState(null);                 // { formation, style, manager, mgrOvr, squad, sel } as edited
   const [draftOpen, setDraftOpen] = useState(false);          // the review-and-publish dialog
   const [ghKey, setGhKey] = useState(() => { try { return localStorage.getItem(GH_KEY) || ""; } catch { return ""; } });
   const [ghKeyIn, setGhKeyIn] = useState("");
   const [pubState, setPubState] = useState(null);             // { busy, step } | { ok, sha } | { err }
   const [discardArm, setDiscardArm] = useState(false);        // the discard's second step
+  const [retireArm, setRetireArm] = useState(false);          // retiring a man: the second step
   const saveDraft = (d) => { setDraft(d);
-    try { if (Object.keys(d.players).length) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch {} };
+    try { if (draftSize(d)) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch {} };
   const draftList = useMemo(() => draftChanges(recBase, draft), [recBase, draft]);
-  const draftCount = useMemo(() => new Set(draftList.map(c => c.id)).size, [draftList]);
+  // What the review shows: a free agent's last position is bookkeeping, not a change anyone made.
+  const shownList = useMemo(() => draftList.filter(c => c.field !== "pos"), [draftList]);
+  const draftCount = useMemo(() => new Set(shownList.map(c => c.kind + c.id)).size, [shownList]);
+  // Every side the draft touches must still put out eleven: a starting place left empty holds Publish.
+  const draftHoles = useMemo(() => applyDraft(recBase, draft).teams
+    .filter(t => draft.teams?.[teamKey(t)] && t.squad.slice(0, 11).some(v => !idOf(v))).map(t => t.name.trim()), [recBase, draft]);
   const recById = useMemo(() => new Map(recBase.players.map(r => [r.id, r])), [recBase]);
-  const recNow = (id) => { const r = recById.get(id); return r ? { ...r, ...(draft.players[id] || {}) } : null; };
+  const recMgr = useMemo(() => new Map(recBase.managers.map(r => [r.id, r])), [recBase]);
+  const recTeam = useMemo(() => new Map(recBase.teams.map(t => [teamKey(t), t])), [recBase]);
+  const recNow = (id) => { const r = recById.get(id); return r ? { ...r, ...(draft.players?.[id] || {}) } : null; };
+  const mgrNow = (id) => { const r = recMgr.get(id); return r ? { ...r, ...(draft.managers?.[id] || {}) } : null; };
   const natOptions = useMemo(() => {
     const nts = PRESET_CATALOG.filter(t => isIntlLeague(t.league)), named = new Set(nts.map(t => t.code));
     const byName = (a, b) => a[1].localeCompare(b[1]);
@@ -8234,35 +8259,117 @@ export default function App() {
              other: [...new Set(RECORDS_BUILT.players.map(r => r.nat).filter(c => c && !named.has(c)))].sort().map(c => [c, c]),
              name: new Map(nts.map(t => [t.code, t.name])) };
   }, []);
-  // A man's values onto every squad he is on; his nation is written as a tag only where it is not the team's own.
-  const livePatch = (id, v) => setTeams(ts => ts.map(t => !t.squad?.some(e => e?.rid === id) ? t : ({ ...t,
-    squad: t.squad.map(e => {
-      if (e?.rid !== id) return e;
-      const n = { ...e, ovr: v.ovr }, own = isIntlLeague(t.league) ? t.code : (t.nat || LEAGUE_NAT[t.league]);
-      if (v.nat && v.nat !== own) n.nat = v.nat; else delete n.nat;
-      if (v.badges?.length) n.badges = badgeOrder(v.badges); else delete n.badges;
-      return n;
-    }) })));
+  // Every preset team rebuilt from these records exactly as the load builds them; the ones that changed go onto the
+  // screen, and into PRESET_CATALOG, which a session load reads.
+  const showRecords = (records) => {
+    const fresh = new Map(presetsFromRecords(records).map(t => [t.id, t])), changed = new Set();
+    PRESET_CATALOG.forEach((t, i) => { const n = fresh.get(t.id);
+      if (n && JSON.stringify(n) !== JSON.stringify(t)) { PRESET_CATALOG[i] = n; changed.add(t.id); } });
+    if (changed.size) setTeams(ts => ts.map(t => { if (!changed.has(t.id)) return t; const n = fresh.get(t.id);
+      return { ...n, strategy: { ...(n.strategy || {}) }, squad: n.squad ? n.squad.map(p => ({ ...p })) : null }; }));
+  };
+  const commitDraft = (d) => { saveDraft(d); showRecords(applyDraft(recBase, d)); };
   const openEditor = (id, name) => { const r = recNow(id); if (!r) return;
-    setEdForm({ ovr: String(r.ovr), nat: r.nat || "", badges: badgeOrder(r.badges) }); setEdPlayer({ id, name }); };
+    setEdForm({ ovr: String(r.ovr), nat: r.nat || "", badges: badgeOrder(r.badges) }); setRetireArm(false); setEdPlayer({ id, name }); };
   const saveEditor = () => {
     const v = { ovr: Math.round(+edForm.ovr), nat: edForm.nat, badges: badgeOrder(edForm.badges) };
-    saveDraft(draftWith(draft, recBase, edPlayer.id, v));
-    livePatch(edPlayer.id, v);
+    commitDraft(draftWith(draft, recBase, edPlayer.id, v));
     setEdPlayer(null);
   };
-  const discardDraft = () => {
-    for (const id of Object.keys(draft.players)) { const r = recById.get(id); if (r) livePatch(id, r); }
-    saveDraft({ v: 1, players: {} }); setDiscardArm(false); setDraftOpen(false);
+  // The team dialog edits a squad as its slots: who stands in each, by ID. A formation change re-slots the men the way
+  // the app does (refitLineup), each read at the position of the slot he holds now.
+  const styleKeyOf = (label) => Object.keys(STYLE_LBL).find(k => STYLE_LBL[k].toLowerCase() === String(label || "").trim().toLowerCase()) || null;
+  const slotLabels = (formation, n) => { const xi = sposFor(formation); return [...xi, ...(n > 16 ? xi : ["GK", "CB", "CM", "CM", "ST"])].slice(0, n); };
+  const openTeamEditor = (t) => {
+    const r = recTeam.get(t.rkey); if (!r) return;
+    const cur = { ...r, ...(draft.teams?.[t.rkey] || {}) }, mid = idOf(cur.manager) || "", m = mid ? mgrNow(mid) : null;
+    setTeForm({ formation: String(cur.formation).trim(), style: styleKeyOf(cur.style) || "balanced", manager: mid,
+                mgrOvr: m ? String(m.ovr) : "", squad: cur.squad.map(v => idOf(v) ?? null), sel: null,
+                moves: {}, added: [], gone: [], gonePos: {}, q: "", qPos: "" });
+    setEdTeam({ key: t.rkey, team: t });
   };
+  const teSetFormation = (nf) => setTeForm(f => {
+    const n = f.squad.length, lab = slotLabels(f.formation, n);
+    const sq = f.squad.map((rid, i) => ({ rid, natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
+    return { ...f, formation: nf, squad: refitLineup(sq, nf).map(e => e.rid ?? null), sel: null };
+  });
+  const teTap = (i) => setTeForm(f => {
+    if (f.sel == null) return { ...f, sel: i };
+    if (f.sel === i) return { ...f, sel: null };
+    const sq = [...f.squad]; [sq[f.sel], sq[i]] = [sq[i], sq[f.sel]];
+    return { ...f, squad: sq, sel: null };
+  });
+  // TRANSFERS. Where each man is now (the records with the draft over them), the position he plays (for placing a
+  // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
+  const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
+  const whereIs = useMemo(() => {
+    const m = new Map();
+    for (const t of curRecs.teams) {
+      const nat = t.file === "AVIUM" || t.file === "ARTERRA", lab = slotLabels(String(t.formation).trim(), t.squad.length);
+      t.squad.forEach((v, i) => { const id = idOf(v); if (!id) return; const e = m.get(id) || {};
+        if (nat) { if (!e.nt) e.nt = { key: teamKey(t), pos: lab[i] }; } else if (!e.club) e.club = { key: teamKey(t), pos: lab[i] };
+        m.set(id, e); });
+    }
+    return m;
+  }, [curRecs]);
+  const posOfId = (id) => whereIs.get(id)?.club?.pos || whereIs.get(id)?.nt?.pos || recNow(id)?.pos || "CM";
+  const ovrOfId = (id) => recNow(id)?.ovr ?? 0;
+  const isNatKey = (key) => ["AVIUM", "ARTERRA"].includes(recTeam.get(key)?.file);
+  const teRelease = (i) => setTeForm(f => {
+    const id = f.squad[i]; if (!id) return f;
+    const lab = slotLabels(f.formation, f.squad.length), sq = vacate(f.squad, i, lab, posFitCost, ovrOfId);
+    const moves = { ...f.moves }, added = f.added.filter(x => x !== id);
+    if (moves[id]) { delete moves[id]; return { ...f, squad: sq, moves, added, sel: null }; }     // a signing undone
+    return { ...f, squad: sq, moves, added, sel: null, gone: [...f.gone, id], gonePos: { ...f.gonePos, [id]: lab[i] } };
+  });
+  const teSign = (id) => setTeForm(f => {
+    const lab = slotLabels(f.formation, f.squad.length), i = placeFor(f.squad, lab, posFitCost, posOfId(id));
+    if (i < 0 || f.squad.includes(id)) return f;
+    const sq = [...f.squad]; sq[i] = id;
+    const from = isNatKey(edTeam?.key) ? null : whereIs.get(id)?.club?.key, moves = { ...f.moves };
+    if (from && from !== edTeam?.key) moves[id] = from;
+    return { ...f, squad: sq, moves, added: [...f.added, id], gone: f.gone.filter(x => x !== id), q: "", sel: null };
+  });
+  const saveTeamEditor = () => {
+    const f = teForm;
+    let d = draftWith(draft, recBase, edTeam.key, { formation: f.formation, style: STYLE_LBL[f.style], manager: f.manager || null, squad: f.squad }, "teams");
+    if (f.manager) d = draftWith(d, recBase, f.manager, { ovr: Math.round(+f.mgrOvr) }, "managers");
+    // Each man signed from another club leaves it, and their bench fills in behind him.
+    for (const [id, from] of Object.entries(f.moves)) {
+      const t0 = applyDraft(recBase, d).teams.find(t => teamKey(t) === from);
+      if (!t0) continue;
+      const sq0 = t0.squad.map(v => idOf(v) ?? null);
+      d = draftWith(d, recBase, from, { squad: without(sq0, id, slotLabels(String(t0.formation).trim(), sq0.length), posFitCost, ovrOfId) }, "teams");
+    }
+    // A man on no team now keeps the position he last played, for whoever signs him; a man signed drops it.
+    const on = new Set(applyDraft(recBase, d).teams.flatMap(t => t.squad.map(v => idOf(v)).filter(Boolean)));
+    for (const id of f.gone) if (!on.has(id)) d = draftWith(d, recBase, id, { pos: f.gonePos[id] || posOfId(id) }, "players");
+    for (const id of f.added) if (on.has(id)) d = draftWith(d, recBase, id, { pos: null }, "players");
+    commitDraft(d);
+    setEdTeam(null);
+  };
+  // RETIRING a man: out of every squad he is on (each side's bench filling in), his record kept and marked.
+  const retirePlayer = () => {
+    const id = edPlayer.id;
+    let d = draftWith(draft, recBase, id, { retired: true, pos: posOfId(id) }, "players");
+    for (const t of applyDraft(recBase, d).teams) {
+      const sq = t.squad.map(v => idOf(v) ?? null);
+      if (!sq.includes(id)) continue;
+      d = draftWith(d, recBase, teamKey(t), { squad: without(sq, id, slotLabels(String(t.formation).trim(), sq.length), posFitCost, ovrOfId) }, "teams");
+    }
+    commitDraft(d);
+    setRetireArm(false);
+    setEdPlayer(null);
+  };
+  const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDiscardArm(false); setDraftOpen(false); };
   const publish = async () => {
-    if (pubState?.busy || !ghKey || !draftList.length) return;
+    if (pubState?.busy || !ghKey || !draftList.length || draftHoles.length) return;
     setPubState({ busy: true, step: "Reading main" });
     try {
       const res = await publishDraft(draft, ghKey, (step) => setPubState({ busy: true, step }));
       // It is main's now: the base moves, and it stays pending in this browser until a build carries it.
       let pend = readPatch(PENDING_KEY);
-      for (const c of draftList) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to });
+      for (const c of draftList) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
       try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify(pend)); } catch {}
       setRecBase(b => applyDraft(b, draft));
       saveDraft({ v: 1, players: {} });
@@ -10407,12 +10514,10 @@ export default function App() {
 
   // Single source of truth for team-list column widths — header spacers and row cells
   // both read from this, so they can't drift out of alignment with each other.
-  // Preset teams are owned by the TSV files — the app renders them, the spreadsheet edits them.
-  // A preset can be unlocked for the session from its own panel, but the roster autosave only ever
-  // writes Custom teams and the loader always rebuilds presets from PRESET_CATALOG, so a tweak here
-  // dies with the tab. Both sets are plain state for that reason: never persist them.
-  const isEditableTeam = (t) => t.league === "Custom" || unlockedTeams.has(t.id);
-  const toggleUnlocked = (id) => setUnlockedTeams(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // Preset teams are the records (src/data): they change only through the overseer's record editor, never in place,
+  // so nobody can rename a real player or rewrite a real squad from the panel. The session-only unlock that allowed
+  // it is gone (8 Oct 2026). Custom teams are the user's own and stay editable.
+  const isEditableTeam = (t) => t.league === "Custom";
   // Plain text, not a disabled input: no border or fill, and no horizontal padding, so every value
   // sits flush under its own label instead of being inset by an input's inner padding.
   const RO = ({ children, style, mono: m }) => (
@@ -10421,7 +10526,18 @@ export default function App() {
     </div>
   );
 
-  const playerIndex = useMemo(() => buildPlayerIndex(worldTeams), [worldTeams]);
+  // ...and the men on no team at all: released players the records keep as free agents (a retired man is out). Each
+  // carries his record ID, so his page offers the editor like anyone else's.
+  const freeAgents = useMemo(() => {
+    const recs = applyDraft(recBase, draft), on = new Set(recs.teams.flatMap(t => t.squad.map(v => idOf(v)).filter(Boolean)));
+    const art = new Set(natOptions.arterra.map(([c]) => c));
+    return recs.players.filter(r => !r.retired && !on.has(r.id) && (world === "arterra") === art.has(r.nat)).map(r => {
+      const nm = fullDisplayName(r.name);
+      return { name: nm, fullName: nm, ovr: r.ovr, pos: r.pos || "?", nationality: natOptions.name.get(r.nat) || r.nat, natCode: r.nat,
+               capped: false, clubs: [], clubSkill: 0, natSkill: 0, rid: r.id };
+    });
+  }, [recBase, draft, world, natOptions]);
+  const playerIndex = useMemo(() => [...buildPlayerIndex(worldTeams), ...freeAgents], [worldTeams, freeAgents]);
   // ── Players tab ──────────────────────────────────────────────────────────
   // Nations rail, built the same shape as the league rail: an entry per nation with its player
   // count and average OVR. Sorted by squad size rather than alphabetically — the search box covers
@@ -10915,10 +11031,10 @@ export default function App() {
                         &#8592; {isIntlTeam ? "Nations" : "Teams"}</button>
                       <PanelTitle>Team</PanelTitle>
                     </div>
-                    {/* Custom teams are always editable, so the unlock only makes sense on presets.
-                        The warning is the whole point of the button: these edits are not saved. */}
-                    {t.league !== "Custom" && <button onClick={() => toggleUnlocked(t.id)} style={{ ...smBtn, flexShrink: 0, background: "transparent", cursor: "pointer", color: unlockedTeams.has(t.id) ? "var(--ui-warn)" : "var(--chrome-muted)" }}
-                      >{unlockedTeams.has(t.id) ? "🔓 Editing" : "✎ Edit"}</button>}
+                    {/* A real team changes only through the overseer's record editor; a custom team is edited in place. */}
+                    {t.league !== "Custom" && overseer && t.rkey && (
+                      <button type="button" className="ed-btn" onClick={() => openTeamEditor(t)}
+                        style={{ ...smBtn, flexShrink: 0, color: "var(--ui-text)" }}>Edit</button>)}
                   </div>
                   <div className="fit-scroll" style={{ overflowY: "auto", flex: 1, padding: 20 }}>
                     {/* Header band: crest and name on the left, the four ratings on the right, the
@@ -12016,7 +12132,8 @@ export default function App() {
                   || null;
                 const natT = p?.natCode ? natTeamByCode.get(p.natCode) : null;
                 // His squad entry, when the records carry him: what the editor edits him by and the badges he plays with.
-                const pEntry = (() => { for (const tm of teams) for (const e of tm.squad || []) if (e?.rid && (e.fullName || e.name) === playerOpen) return e; return null; })();
+                const pEntry = (() => { for (const tm of teams) for (const e of tm.squad || []) if (e?.rid && (e.fullName || e.name) === playerOpen) return e;
+                  return p?.rid ? { rid: p.rid, badges: recNow(p.rid)?.badges } : null; })();
                 const pBadges = pEntry?.badges || [];
                 const clubT = p ? teamByName.get(p.clubs[0]?.name) : null;
                 // A changelog row can name a national side as easily as a club -- a World Cup adjusts
@@ -15769,7 +15886,7 @@ export default function App() {
                                     background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8,
                                     boxShadow: "0 8px 24px var(--ui-shadow-4)" }}>
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-warn)" }}>Draft</span>
-          <span style={{ fontSize: 11, color: "var(--ui-text)" }}><b style={{ ...mono }}>{draftCount}</b> {draftCount === 1 ? "player" : "players"}</span>
+          <span style={{ fontSize: 11, color: "var(--ui-text)" }}><b style={{ ...mono }}>{draftCount}</b> {draftCount === 1 ? "change" : "changes"}</span>
           <button type="button" className="ed-btn" onClick={() => { setPubState(null); setDiscardArm(false); setDraftOpen(true); }}
             style={{ ...smBtn, color: "var(--ui-text)" }}>Review</button>
         </div>)}
@@ -15839,9 +15956,165 @@ export default function App() {
                     </button>); })}
                 </div>
               </div>))}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16 }}>
+              <button type="button" className={"ed-btn" + (retireArm ? " armed" : "")} onClick={() => retireArm ? retirePlayer() : setRetireArm(true)}
+                onBlur={() => setRetireArm(false)}
+                style={{ ...addBtn, minWidth: 128, color: retireArm ? "var(--ui-danger)" : "var(--chrome-muted)",
+                         borderColor: retireArm ? "var(--ui-danger)" : "var(--chrome-border)" }}>{retireArm ? "Confirm retire" : "Retire"}</button>
+              <span style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="ed-btn" onClick={close} style={{ ...addBtn }}>Cancel</button>
+                <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveEditor}
+                  style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Save to draft</button>
+              </span>
+            </div>
+          </div>
+        </div>); })()}
+      {edTeam && teForm && (() => {
+        const t = edTeam.team, r = recTeam.get(edTeam.key);
+        const n = teForm.squad.length, lab = slotLabels(teForm.formation, n), sel = teForm.sel;
+        const cur = { ...r, ...(draft.teams?.[edTeam.key] || {}) };
+        const mOvrN = Number(teForm.mgrOvr), curMgr = teForm.manager ? mgrNow(teForm.manager) : null;
+        const mgrValid = !teForm.manager || (teForm.mgrOvr !== "" && Number.isInteger(mOvrN) && mOvrN >= 25 && mOvrN <= 99);
+        const valid = teForm.squad.slice(0, 11).every(Boolean) && mgrValid && FORMATIONS.includes(teForm.formation) && !!STYLE_LBL[teForm.style];
+        const changed = teForm.formation !== String(cur.formation).trim() || STYLE_LBL[teForm.style] !== String(cur.style).trim()
+          || (teForm.manager || null) !== (idOf(cur.manager) ?? null)
+          || JSON.stringify(teForm.squad) !== JSON.stringify(cur.squad.map(v => idOf(v) ?? null))
+          || (!!curMgr && mOvrN !== curMgr.ovr);
+        const others = teForm.manager ? applyDraft(recBase, draft).teams
+          .filter(x => idOf(x.manager) === teForm.manager && teamKey(x) !== edTeam.key).map(x => x.name.trim()) : [];
+        // A swap that would leave a starting slot empty is not offered.
+        const blocked = (i) => sel != null && sel !== i && ((sel < 11 && !teForm.squad[i]) || (i < 11 && !teForm.squad[sel]));
+        const close = () => setEdTeam(null);
+        const isNat = isNatKey(edTeam.key);
+        const row = (i) => { const id = teForm.squad[i], p = id ? recNow(id) : null, on = sel === i, isNew = !!id && teForm.added.includes(id);
+          const nm = p ? fullDisplayName(p.name) : "";
+          return (
+          <div key={i} style={{ display: "flex", gap: 4, marginBottom: 3 }}>
+            <button type="button" className="ed-row" aria-pressed={on} disabled={blocked(i)} onClick={() => teTap(i)}
+              aria-label={`${lab[i]}: ${p ? nm : "empty"}`}
+              style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "12px 40px minmax(0, 1fr) 34px", alignItems: "center", gap: 7,
+                       padding: "4px 8px 4px 6px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 11,
+                       textAlign: "left", border: `1px solid ${on ? "var(--chrome-brand)" : "var(--chrome-border)"}`,
+                       background: on ? "var(--chrome-brand-20)" : "transparent" }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ visibility: on ? "visible" : "hidden" }}>
+                <path d="M1.5 4h8M7 1.5L9.5 4 7 6.5M10.5 8h-8M5 5.5L2.5 8 5 10.5" fill="none" stroke="var(--chrome-brand)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span style={{ fontSize: 9, fontWeight: 700, color: POS_CLR[lab[i]] || "var(--chrome-muted)", ...mono }}>{lab[i]}</span>
+              <span style={{ color: p ? "var(--ui-text)" : "var(--chrome-muted-66)", minWidth: 0 }}>{p ? nm : "Empty"}
+                {isNew && <b style={{ marginLeft: 6, fontSize: 8, letterSpacing: "0.14em", color: "var(--ui-ok)" }}>IN</b>}</span>
+              {p ? <span style={{ ...ovrBlock(p.ovr), ...mono, textAlign: "center" }}>{showOvr(p.ovr)}</span> : <span />}
+            </button>
+            <button type="button" className="ed-btn" disabled={!id} onClick={() => teRelease(i)}
+              aria-label={`${isNat ? "Drop" : "Release"} ${nm}`} title={isNat ? "Drop" : "Release"}
+              style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, background: "transparent",
+                       border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)" }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            </button>
+          </div>); };
+        // Who could come in: anyone not retired and not here already; for a national side, its own nationals only.
+        const full = !teForm.squad.some(v => !v);
+        const art = new Set(natOptions.arterra.map(([c]) => c)), teamNat = isNat ? recTeam.get(edTeam.key)?.code : null;
+        const qq = pFold((teForm.q || "").trim());
+        const teamByRkey = new Map(teams.filter(x => x.rkey).map(x => [x.rkey, x]));
+        const cands = qq.length < 2 ? [] : curRecs.players
+          .filter(r => !r.retired && !teForm.squad.includes(r.id) && (isNat ? r.nat === teamNat : !art.has(r.nat)) && pFold(fullDisplayName(r.name)).includes(qq))
+          .map(r => ({ r, pos: posOfId(r.id), club: whereIs.get(r.id)?.club?.key || null }))
+          .filter(c => !teForm.qPos || (c.pos === "GK" ? "GK" : POS_GROUP[c.pos]) === teForm.qPos)
+          .sort((a, b) => b.r.ovr - a.r.ovr).slice(0, 8);
+        const col = (title, from, to) => (
+          <div role="group" aria-label={title}>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)", marginBottom: 6 }}>{title}</div>
+            {Array.from({ length: to - from }, (_, k) => row(from + k))}
+          </div>);
+        return (
+        <div onClick={close} onKeyDown={e => { if (e.key === "Escape") close(); }}
+          style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start",
+                   justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="te-title" onClick={e => e.stopPropagation()} className="modal-shell"
+            style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px",
+                     width: 820, maxWidth: "100%", ...ui }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                <TeamCrest team={t} size={34} />
+                <div style={{ minWidth: 0 }}>
+                  <div id="te-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>Edit Team</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ui-text)", marginTop: 4 }}>{t.name}</div>
+                </div>
+              </div>
+              <button type="button" className="ed-btn" aria-label="Close" onClick={close}
+                style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
+                         fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "112px minmax(0, 1fr) minmax(0, 1.3fr) 128px", gap: 14, marginBottom: 6 }}>
+              <div>
+                <label htmlFor="te-form" style={lbl}>Formation</label>
+                <select id="te-form" autoFocus value={teForm.formation} onChange={e => teSetFormation(e.target.value)} style={{ ...inp, width: "100%", cursor: "pointer", ...mono }}>
+                  {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="te-style" style={lbl}>Style</label>
+                <select id="te-style" value={teForm.style} onChange={e => setTeForm(f => ({ ...f, style: e.target.value }))} style={{ ...inp, width: "100%", cursor: "pointer" }}>
+                  {Object.entries(STYLE_LBL).sort((a, b) => a[1].localeCompare(b[1])).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="te-mgr" style={lbl}>Manager</label>
+                <select id="te-mgr" value={teForm.manager} style={{ ...inp, width: "100%", cursor: "pointer" }}
+                  onChange={e => { const id = e.target.value, m = id ? mgrNow(id) : null; setTeForm(f => ({ ...f, manager: id, mgrOvr: m ? String(m.ovr) : "" })); }}>
+                  <option value="">No manager</option>
+                  {[...recBase.managers].map(m => [m.id, fullDisplayName(m.name)]).sort((a, b) => a[1].localeCompare(b[1]))
+                    .map(([id, nm]) => <option key={id} value={id}>{nm}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="te-mgr-ovr" style={lbl}>Manager rating</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input id="te-mgr-ovr" type="number" min={25} max={99} step={1} disabled={!teForm.manager} value={teForm.mgrOvr}
+                    onChange={e => setTeForm(f => ({ ...f, mgrOvr: e.target.value }))} style={{ ...inp, width: 64, ...mono, opacity: teForm.manager ? 1 : 0.45 }} />
+                  {teForm.manager && mgrValid && <span style={{ ...ovrBlock(mOvrN), ...mono }}>{showOvr(mOvrN)}</span>}
+                </div>
+              </div>
+            </div>
+            <div style={{ minHeight: 16, marginBottom: 12, fontSize: 10, color: "var(--chrome-muted)" }}>
+              {others.length > 0 && <>Also manages {others.join(", ")}</>}
+            </div>
+            <div style={{ ...lbl, marginBottom: 10 }}>Lineup</div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
+              {col("Starting XI", 0, Math.min(11, n))}
+              {col("Bench", 11, n)}
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 16, marginBottom: 8 }}>
+              <span style={{ ...lbl, marginBottom: 0 }}>{isNat ? "Call up" : "Sign"}</span>
+              {full && <span style={{ fontSize: 10, color: "var(--ui-warn)" }}>Squad full</span>}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+              <input type="search" aria-label="Find a player" placeholder="Name" value={teForm.q} autoComplete="off" spellCheck={false}
+                onChange={e => setTeForm(f => ({ ...f, q: e.target.value }))} style={{ ...inp, flex: 1, minWidth: 0, padding: "6px 10px", fontSize: 12 }} />
+              <select aria-label="Position" value={teForm.qPos} onChange={e => setTeForm(f => ({ ...f, qPos: e.target.value }))}
+                style={{ ...inp, width: 130, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+                <option value="">Any position</option>
+                {["GK", "DEF", "MID", "FWD"].map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            {cands.length > 0 && (
+            <div role="list" aria-label="Players found" style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, maxHeight: 248, overflowY: "auto" }}>
+              {cands.map(({ r, pos, club }, k) => { const ct = club ? teamByRkey.get(club) : null;
+                return (
+                <div key={r.id} role="listitem" style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 34px minmax(0, 190px) 86px",
+                  alignItems: "center", gap: 8, padding: "5px 8px", borderTop: k ? "1px solid var(--chrome-border)" : "none", fontSize: 11 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: POS_CLR[pos] || "var(--chrome-muted)", ...mono }}>{pos}</span>
+                  <span style={{ color: "var(--ui-text)", minWidth: 0 }}>{fullDisplayName(r.name)}</span>
+                  <span style={{ ...ovrBlock(r.ovr), ...mono, textAlign: "center" }}>{showOvr(r.ovr)}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--chrome-muted)" }}>
+                    {ct ? <><TeamCrest team={ct} size={15} /><span style={{ minWidth: 0 }}>{ct.name}</span></> : "Free agent"}</span>
+                  <button type="button" className="ed-btn" disabled={full} onClick={() => teSign(r.id)}
+                    style={{ ...smBtn, color: "var(--ui-text)" }}>{isNat ? "Call up" : "Sign"}</button>
+                </div>); })}
+            </div>)}
+            {qq.length >= 2 && !cands.length && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "2px 2px 0" }}>No one found.</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
               <button type="button" className="ed-btn" onClick={close} style={{ ...addBtn }}>Cancel</button>
-              <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveEditor}
+              <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveTeamEditor}
                 style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Save to draft</button>
             </div>
           </div>
@@ -15850,9 +16123,12 @@ export default function App() {
         const busy = !!pubState?.busy;
         const close = () => { if (!busy) { setDraftOpen(false); setDiscardArm(false); } };
         const groups = [];
-        for (const c of draftList) { let g = groups.find(x => x.id === c.id); if (!g) groups.push(g = { id: c.id, name: c.name, rows: [] }); g.rows.push(c); }
+        for (const c of shownList) { let g = groups.find(x => x.kind === c.kind && x.id === c.id);
+          if (!g) groups.push(g = { kind: c.kind, id: c.id, name: c.name, rows: [] }); g.rows.push(c); }
         const natLabel = (code) => code ? (natOptions.name.get(code) || code) : "–";
-        const FIELD_LBL = { ovr: "Rating", nat: "Nationality", badges: "Badges" };
+        const FIELD_LBL = { ovr: "Rating", nat: "Nationality", badges: "Badges", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad", retired: "Status" };
+        const pName = (id) => recById.get(id) ? fullDisplayName(recById.get(id).name) : "?";
+        const mName = (id) => id ? (recMgr.get(id) ? fullDisplayName(recMgr.get(id).name) : "?") : "None";
         const arrow = <span style={{ color: "var(--chrome-muted-66)", padding: "0 6px" }}>&#8594;</span>;
         const change = (c) => {
           if (c.field === "ovr") { const d = c.to - c.from;
@@ -15861,6 +16137,27 @@ export default function App() {
               <span style={{ marginLeft: 8, fontWeight: 700, color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>{d > 0 ? "+" + d : d}</span></span>); }
           if (c.field === "nat")
             return (<span><span style={{ color: "var(--chrome-muted)" }}>{natLabel(c.from)}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{natLabel(c.to)}</span></span>);
+          const pair = (a, b, m) => (<span style={m ? mono : null}><span style={{ color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{b}</span></span>);
+          if (c.field === "formation") return pair(c.from, c.to, true);
+          if (c.field === "style") return pair(STYLE_LBL[styleKeyOf(c.from)] || c.from, STYLE_LBL[styleKeyOf(c.to)] || c.to);
+          if (c.field === "manager") return pair(mName(c.from), mName(c.to));
+          if (c.field === "squad") {
+            // Who came in, who left, and each man whose slot changed: from the position he held to the one he holds now.
+            const base = recTeam.get(c.id), fa = String(base?.formation || "").trim(), fb = String(draft.teams?.[c.id]?.formation || fa).trim();
+            const la = slotLabels(fa, c.from.length), lb = slotLabels(fb, c.to.length), at = (lab, i) => lab[i] + (i >= 11 ? " (bench)" : "");
+            const joined = c.to.map((id, i) => [id, i]).filter(([id]) => id && !c.from.includes(id));
+            const left = c.from.filter(id => id && !c.to.includes(id));
+            const moved = c.to.map((id, i) => [id, i]).filter(([id]) => id && c.from.includes(id))
+              .map(([id, i]) => [id, at(la, c.from.indexOf(id)), at(lb, i)]).filter(([, a, b]) => a !== b);
+            const item = (k, kids) => <span key={k} style={{ whiteSpace: "nowrap" }}>{kids}</span>;
+            return (<span style={{ display: "inline-flex", flexWrap: "wrap", gap: "3px 14px" }}>
+              {joined.map(([id, i]) => item("+" + id, <><b style={{ color: "var(--ui-ok)", ...mono }}>+</b> <span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{at(lb, i)}</span></>))}
+              {left.map(id => item("-" + id, <><b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b> <span style={{ color: "var(--chrome-muted)" }}>{pName(id)}</span></>))}
+              {moved.map(([id, a, b]) => item(id, <><span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ ...mono, color: "var(--ui-text)" }}>{b}</span></>))}
+              {!joined.length && !left.length && !moved.length && <span style={{ color: "var(--chrome-muted)" }}>Re-slotted, same positions</span>}
+            </span>);
+          }
+          if (c.field === "retired") return <span style={{ color: c.to ? "var(--ui-danger)" : "var(--ui-text)" }}>{c.to ? "Retired" : "Active"}</span>;
           const add = c.to.filter(x => !c.from.includes(x)), rem = c.from.filter(x => !c.to.includes(x));
           return (<span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
             {add.map(id => <span key={"+" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ui-text)" }}>
@@ -15892,8 +16189,11 @@ export default function App() {
                 <thead><tr><th style={thCellSticky}>Player</th><th style={thCellSticky}>Field</th><th style={thCellSticky}>Change</th></tr></thead>
                 <tbody>
                   {groups.flatMap((g, gi) => g.rows.map((c, i) => (
-                    <tr key={g.id + c.field} style={{ background: gi % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                      <td style={{ ...tdCell, color: "var(--ui-text)", verticalAlign: "top" }}>{i === 0 ? fullDisplayName(g.name) : ""}</td>
+                    <tr key={g.kind + g.id + c.field} style={{ background: gi % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
+                      <td style={{ ...tdCell, color: "var(--ui-text)", verticalAlign: "top" }}>{i === 0 && (<>
+                        {g.kind === "teams" ? g.name : fullDisplayName(g.name)}
+                        {g.kind !== "players" && <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>
+                          {g.kind === "teams" ? "Team" : "Manager"}</span>}</>)}</td>
                       <td style={{ ...tdCell, color: "var(--chrome-muted)", whiteSpace: "nowrap", verticalAlign: "top" }}>{FIELD_LBL[c.field]}</td>
                       <td style={tdCell}>{change(c)}</td>
                     </tr>)))}
@@ -15915,6 +16215,8 @@ export default function App() {
                   style={{ ...smBtn, color: "var(--ui-text)" }}>Save key</button>
               </>)}
             </div>
+            {draftHoles.length > 0 && (
+              <div role="alert" style={{ marginTop: 10, fontSize: 11, color: "var(--ui-danger)" }}>Starting XI incomplete: {draftHoles.join(", ")}</div>)}
             {pubState && (
               <div role="status" style={{ marginTop: 10, fontSize: 11, color: pubState.err ? "var(--ui-danger)" : pubState.ok ? "var(--ui-ok)" : "var(--chrome-muted)" }}>
                 {pubState.busy && <>{pubState.step}&hellip;</>}
@@ -15929,7 +16231,7 @@ export default function App() {
                 onClick={() => discardArm ? discardDraft() : setDiscardArm(true)} onBlur={() => setDiscardArm(false)}
                 style={{ ...addBtn, minWidth: 140, color: discardArm ? "var(--ui-danger)" : "var(--chrome-muted)",
                          borderColor: discardArm ? "var(--ui-danger)" : "var(--chrome-border)" }}>{discardArm ? "Confirm discard" : "Discard draft"}</button>
-              <button type="button" className="ed-btn-primary" disabled={busy || !ghKey || !draftCount} onClick={publish}
+              <button type="button" className="ed-btn-primary" disabled={busy || !ghKey || !draftCount || draftHoles.length > 0} onClick={publish}
                 style={{ ...addBtn, minWidth: 120, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
                 {busy ? "Publishing" : "Publish"}</button>
             </div>

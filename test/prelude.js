@@ -5,9 +5,11 @@ const headerImg="",wc1933HeaderImg="",wc1934HeaderImg="";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath as __f2p } from "node:url";
 import { sheetsFromRecords } from "../src/data/sheets.js";
-import { applyDraft, draftChanges, draftWith } from "../src/data/draft.js";
+import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "../src/data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "../src/data/badges.js";
 import { publishDraft } from "../src/data/publish.js";
+import { placeFor, vacate, without } from "../src/data/squads.js";
+import { POS_ROLE, posFitCost } from "../src/data/positions.js";
 // The repository, wherever it is checked out: every bundle built with this prelude sits in test/.
 const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };

@@ -1,0 +1,12 @@
+# The registry server (worker.js): https://avium-registry.avium.workers.dev
+# Secrets, set once with `npx wrangler secret put <NAME>`: CLIENT_SECRET, PRIVATE_KEY, SESSION_SECRET.
+name = "avium-registry"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+REPO = "auroruse/avium-football-engine"
+APP_ID = "5241706"
+CLIENT_ID = "Iv23li9roldrMcNlHXvc"
+APP_ORIGINS = "https://auroruse.github.io,http://localhost:5173"
