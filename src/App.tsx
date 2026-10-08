@@ -13,7 +13,12 @@ import sheetsRec from "./data/sheets.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "./data/badges.js";
-import { publishDraft } from "./data/publish.js";
+// The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
+import { STYLE_LBL } from "./data/styles.js";
+// Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
+import editorsRec from "./data/editors.json";
+import { isNational, owns, planSave } from "./data/rules.js";
+import { cartItems, withoutItem } from "./data/cart.js";
 import { placeFor, vacate, without } from "./data/squads.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
 import { POS_ROLE, posFitCost } from "./data/positions.js";
@@ -28,23 +33,52 @@ export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
 // THE SHEETS, FROM THE RECORDS. Each preset sheet is written from src/data -- byte for byte the file in src/presets,
 // which `node test/records.mjs check` keeps true -- so every team builds exactly as it did when the app read the
 // files. The app no longer reads src/presets; those are copies for the tools that still read sheets.
-// THE OVERSEER'S DRAFT AND WHAT HE HAS PUBLISHED (src/data/draft.js). His unpublished changes are kept in this
-// browser and laid over the records before anything is built from them, so every screen and every match plays them.
-// What he has published that this build does not carry yet (the site takes a minute to redeploy) is laid under the
-// draft the same way, and dropped field by field once a build carries it. Nobody else has either.
-const DRAFT_KEY = "avium-records-draft", PENDING_KEY = "avium-records-published", GH_KEY = "avium-gh-key";
+// AN EDITOR'S CART AND WHAT HAS GONE LIVE (src/data/draft.js). Changes not yet saved are kept in this browser and laid
+// over the records before anything is built from them, so every screen and every match plays them. What was saved but
+// is not in this build yet (the site takes a minute or two to redeploy) is laid under the cart the same way, and
+// dropped field by field once a build carries it, or after twenty minutes, so a later change by someone else shows.
+const DRAFT_KEY = "avium-records-draft", PENDING_KEY = "avium-records-published", PENDING_FOR = 20 * 60e3;
 const readPatch = (k) => { try { const d = JSON.parse(localStorage.getItem(k)); return d && d.v === 1 && d.players ? d : null; } catch { return null; } };
 const RECORDS_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec };
 const RECORDS_BASE = (() => {
   const pend = readPatch(PENDING_KEY);
   if (!pend) return RECORDS_BUILT;
   let left = null;
-  for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
-  try { if (left) localStorage.setItem(PENDING_KEY, JSON.stringify(left)); else localStorage.removeItem(PENDING_KEY); } catch {}
+  if (Date.now() - (pend.at || 0) < PENDING_FOR)
+    for (const c of draftChanges(RECORDS_BUILT, pend)) left = draftWith(left, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
+  try { if (left) localStorage.setItem(PENDING_KEY, JSON.stringify({ ...left, at: pend.at })); else localStorage.removeItem(PENDING_KEY); } catch {}
   return left ? applyDraft(RECORDS_BUILT, left) : RECORDS_BUILT;
 })();
 const RECORDS = applyDraft(RECORDS_BASE, readPatch(DRAFT_KEY));
 const SHEETS = sheetsFromRecords(RECORDS);
+// THE REGISTRY SERVER (server/worker.js) signs editors in with GitHub, checks each save against the rules and commits it.
+// Coming back from GitHub, the address carries the session (#avium_session=...): it is taken out here, before the app's
+// own address handling reads the hash, and the page the person left is put back. The session says who they are and
+// when it runs out; what they may change comes from the server (/me) and is kept beside it.
+const REGISTRY = "https://avium-registry.avium.workers.dev", SESSION_KEY = "avium-session", SCOPE_KEY = "avium-scope";
+const VIEWER = { login: "", role: "viewer", nations: [] };
+try {
+  const h = window.location.hash, i = h.indexOf("avium_session=");
+  if (i >= 0) {
+    localStorage.setItem(SESSION_KEY, decodeURIComponent(h.slice(i + "avium_session=".length).split(/[&#]/)[0]));
+    window.history.replaceState(null, "", window.location.pathname + window.location.search + h.slice(0, i).replace(/[#&?]+$/, ""));
+  }
+  // Retired: the pasted GitHub key that Publish used, and the ?overseer=1 flag. Signing in replaces both.
+  localStorage.removeItem("avium-gh-key"); localStorage.removeItem("avium-overseer");
+} catch {}
+const readSession = () => { try {
+  const token = localStorage.getItem(SESSION_KEY), b = (token || "").split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+  if (!b) return null;
+  const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b + "===".slice((b.length + 3) % 4)), c => c.charCodeAt(0))));
+  if (!o.login || !(o.exp > Date.now() / 1000)) { localStorage.removeItem(SESSION_KEY); return null; }
+  return { token, login: String(o.login) };
+} catch { return null; } };
+// The record fields as the cart and the requests name them.
+const FIELD_LBL = { ovr: "Rating", nat: "Nationality", badges: "Badges", retired: "Status", name: "Name", code: "Code", home: "Home kit",
+                    away: "Away kit", stadium: "Stadium", location: "City", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad" };
+// How long ago an ISO time was, the way a list of requests says it.
+const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000;
+  return !(s >= 0) ? "" : s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
 const aviumTSV = SHEETS.AVIUM, arterraTSV = SHEETS.ARTERRA, aleTSV = SHEETS.ALE, arvTSV = SHEETS.ARV, askTSV = SHEETS.ASK,
       elvTSV = SHEETS.ELV, karTSV = SHEETS.KAR, kfkTSV = SHEETS.KFK, kkmTSV = SHEETS.KKM, nchTSV = SHEETS.NCH,
       shiTSV = SHEETS.SHI, skjTSV = SHEETS.SKJ, turTSV = SHEETS.TUR, varTSV = SHEETS.VAR, miscTSV = SHEETS.MISC;
@@ -281,13 +315,6 @@ const ycSuspGames = (prevYellows, newYellows) => Math.floor(newYellows / 5) - Ma
 
 const STYLES = ["gegenpress","verticaltiki","lanuestra","wingplay","secondball","routeone","balanced","tikitaka","possession","cholismo","counterattack","zonamista","catenaccio","parkthebus"];
 const STYLE_GRP = [["Offensive",["gegenpress","tikitaka","verticaltiki","lanuestra","wingplay","secondball","routeone"]],["Neutral",["balanced","possession"]],["Defensive",["cholismo","counterattack","zonamista","catenaccio","parkthebus"]]];
-// These labels ARE the registry file format: parseBulk builds its lookup straight off this table,
-// so renaming one silently demotes every club that spells it the old way to Balanced. "Park Bus"
-// became "Park The Bus" here and keeps a legacy alias below for exactly that reason.
-// RENAMED 6 Oct 2026 to the correct football terms, with the styles rebuilt (src/engine/tactics.ts): the ids
-// stay, the names move. "tikitaka" is Juego de Posición and "possession" is Tiki-Taka, so the name Tiki-Taka now
-// means the patient style; parseBulk keeps the other old names as aliases.
-const STYLE_LBL = {balanced:"Balanced",gegenpress:"Gegenpressing",tikitaka:"Juego de Posición",verticaltiki:"Vertical Tiki-Taka",possession:"Tiki-Taka",cholismo:"Cholismo",counterattack:"Counter-Attack",zonamista:"Zona Mista",wingplay:"Wing Play",secondball:"Kick and Rush",routeone:"Route One",lanuestra:"La Nuestra",catenaccio:"Catenaccio",parkthebus:"Park the Bus"};
 // THE ROLE EACH STARTER WILL PLAY, dealt the way his manager deals them in a match (sim/core rolesFor), once per
 // team object: an edit replaces the object, so the cache cannot go stale.
 const _rolesCache = new WeakMap();
@@ -8214,43 +8241,86 @@ export default function App() {
     }
   };
   // ── Season export + the Overseer's rebalance ──
-  // The rebalance panel is the High Overseer's alone: ?overseer=1 unlocks it once and the flag
-  // persists. Everything else here is for anyone running a season.
-  const [overseer] = useState(() => { try {
-    if (new URLSearchParams(window.location.search).get("overseer") === "1") localStorage.setItem("avium-overseer", "1");
-    return localStorage.getItem("avium-overseer") === "1";
-  } catch { return false; } });
+  // The rebalance panel is the High Overseer's alone (signed in as the overseer). Everything else here is for anyone
+  // running a season.
   const [tRebalOpen, setTRebalOpen] = useState(false);
   const [tToolsOpen, setTToolsOpen] = useState(false);
-  // ── The record editor (overseer only) ──
-  // His draft, the player or team in an edit dialog, and publishing. The draft is laid over everything at load; a change
-  // made now rebuilds the teams it touches exactly as the load builds them, so nothing waits for a reload.
+  // ── Who is signed in ──
+  // Approved editors sign in with GitHub through the registry server, which says what each may change: the overseer
+  // everything, an editor the teams of their nations, anyone else nothing. Its last answer is kept beside the session,
+  // so the page knows at once, and it is asked again on every load.
+  const [session, setSession] = useState(readSession);          // { token, login }, or null when signed out
+  const [scope, setScope] = useState(() => { const s = readSession(); if (!s) return VIEWER;
+    try { const c = JSON.parse(localStorage.getItem(SCOPE_KEY)); if (c && c.login === s.login && c.role) return c; } catch {}
+    return { ...VIEWER, login: s.login }; });
+  const [acctOpen, setAcctOpen] = useState(false);              // the account menu in the header
+  const overseer = scope.role === "overseer", isEditor = scope.role !== "viewer";
+  const signIn = () => { window.location.href = `${REGISTRY}/login?return=${encodeURIComponent(window.location.href)}`; };
+  const signOut = () => { try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SCOPE_KEY); } catch {}
+    setSession(null); setScope(VIEWER); setAcctOpen(false); };
+  useEffect(() => {
+    if (!session) return;
+    let live = true;
+    fetch(`${REGISTRY}/me`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then(r => { if (r.status === 401 && live) signOut(); return r.ok ? r.json() : null; })
+      .then(s => { if (!live || !s?.role) return; setScope(s); try { localStorage.setItem(SCOPE_KEY, JSON.stringify(s)); } catch {} })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [session]);
+  // ── Requests: changes waiting on another team's owner ──
+  // Everyone's, as the server keeps them (src/data/requests.json): read on sign-in, when the page comes back into view
+  // (at most once a minute) and after every answer. Every team in one is locked until it is settled.
+  const [requests, setRequests] = useState([]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [reqBusy, setReqBusy] = useState(null);                 // the request whose answer is on its way
+  const [reqArm, setReqArm] = useState(null);                   // "<id>:decline" or "<id>:withdraw", the second step
+  const [reqMsg, setReqMsg] = useState({});                     // what the server said, by request
+  const loadRequests = useCallback(() => fetch(`${REGISTRY}/requests`).then(r => (r.ok ? r.json() : null))
+    .then(rs => { if (Array.isArray(rs)) setRequests(rs); }).catch(() => {}), []);
+  useEffect(() => {
+    if (!isEditor) return;
+    loadRequests();
+    let last = Date.now();
+    const back = () => { if (document.visibilityState === "visible" && Date.now() - last > 60e3) { last = Date.now(); loadRequests(); } };
+    document.addEventListener("visibilitychange", back);
+    return () => document.removeEventListener("visibilitychange", back);
+  }, [isEditor, loadRequests]);
+  const locks = useMemo(() => new Set(requests.flatMap(r => r.locks || [])), [requests]);
+  // ── The record editor ──
+  // The cart, the player or team in an edit dialog, and saving. The cart is laid over everything at load; a change made
+  // now rebuilds the teams it touches exactly as the load builds them, so nothing waits for a reload.
   const [recBase, setRecBase] = useState(RECORDS_BASE);       // the records as main has them, as far as this page knows
   const [draft, setDraft] = useState(() => readPatch(DRAFT_KEY) || { v: 1, players: {} });
   const [edPlayer, setEdPlayer] = useState(null);             // { id, name } of the man in the player dialog
   const [edForm, setEdForm] = useState(null);                 // { ovr, nat, badges } as edited
   const [edTeam, setEdTeam] = useState(null);                 // { key, team } of the side in the team dialog
-  const [teForm, setTeForm] = useState(null);                 // { formation, style, manager, mgrOvr, squad, sel } as edited
-  const [draftOpen, setDraftOpen] = useState(false);          // the review-and-publish dialog
-  const [ghKey, setGhKey] = useState(() => { try { return localStorage.getItem(GH_KEY) || ""; } catch { return ""; } });
-  const [ghKeyIn, setGhKeyIn] = useState("");
-  const [pubState, setPubState] = useState(null);             // { busy, step } | { ok, sha } | { err }
-  const [discardArm, setDiscardArm] = useState(false);        // the discard's second step
+  const [teForm, setTeForm] = useState(null);                 // the team as edited: details, tactics, squad and the search
+  const [draftOpen, setDraftOpen] = useState(false);          // the cart: review and save
+  const [saveState, setSaveState] = useState(null);           // { busy } | { ok, sha, applied, asked } | { err } | { errors }
+  const [discardArm, setDiscardArm] = useState(false);        // emptying the cart: the second step
+  const [undoCart, setUndoCart] = useState(null);             // { draft, what }: the cart before an item was removed
   const [retireArm, setRetireArm] = useState(false);          // retiring a man: the second step
   const saveDraft = (d) => { setDraft(d);
     try { if (draftSize(d)) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch {} };
   const draftList = useMemo(() => draftChanges(recBase, draft), [recBase, draft]);
-  // What the review shows: a free agent's last position is bookkeeping, not a change anyone made.
-  const shownList = useMemo(() => draftList.filter(c => c.field !== "pos"), [draftList]);
-  const draftCount = useMemo(() => new Set(shownList.map(c => c.kind + c.id)).size, [shownList]);
-  // Every side the draft touches must still put out eleven: a starting place left empty holds Publish.
-  const draftHoles = useMemo(() => applyDraft(recBase, draft).teams
-    .filter(t => draft.teams?.[teamKey(t)] && t.squad.slice(0, 11).some(v => !idOf(v))).map(t => t.name.trim()), [recBase, draft]);
+  // What the cart lists: one item a change, a transfer's two clubs together (src/data/cart.js).
+  const cartList = useMemo(() => cartItems(recBase, draft), [recBase, draft]);
+  const draftCount = cartList.length;
   const recById = useMemo(() => new Map(recBase.players.map(r => [r.id, r])), [recBase]);
   const recMgr = useMemo(() => new Map(recBase.managers.map(r => [r.id, r])), [recBase]);
   const recTeam = useMemo(() => new Map(recBase.teams.map(t => [teamKey(t), t])), [recBase]);
   const recNow = (id) => { const r = recById.get(id); return r ? { ...r, ...(draft.players?.[id] || {}) } : null; };
   const mgrNow = (id) => { const r = recMgr.get(id); return r ? { ...r, ...(draft.managers?.[id] || {}) } : null; };
+  // What this person may open: a real team of their own nations (any, for the overseer), never one waiting on a request.
+  const canEditTeam = (t) => t.league !== "Custom" && !!t.rkey && recTeam.has(t.rkey) && owns(scope, recTeam.get(t.rkey));
+  const ownsKey = (k) => recTeam.has(k) && owns(scope, recTeam.get(k));
+  // The requests this person can answer (the overseer any of them), and the ones they asked.
+  const reqFor = useMemo(() => requests.filter(r => overseer
+    || Object.keys(r.needs || {}).some(k => !(r.approved || []).includes(k) && ownsKey(k))), [requests, overseer, scope, recTeam]);
+  const reqMine = useMemo(() => requests.filter(r => !!scope.login && String(r.by).toLowerCase() === scope.login.toLowerCase()), [requests, scope]);
+  // Who answers for a team: its nation's editors, as this build lists them.
+  const ownersOfKey = (k) => { const t = recTeam.get(k); if (!t) return [];
+    const n = isNational(t) ? t.code : t.nation; return Object.entries(editorsRec.editors || {}).filter(([, ns]) => ns.includes(n)).map(([u]) => u); };
   const natOptions = useMemo(() => {
     const nts = PRESET_CATALOG.filter(t => isIntlLeague(t.league)), named = new Set(nts.map(t => t.code));
     const byName = (a, b) => a[1].localeCompare(b[1]);
@@ -8260,13 +8330,15 @@ export default function App() {
              name: new Map(nts.map(t => [t.code, t.name])) };
   }, []);
   // Every preset team rebuilt from these records exactly as the load builds them; the ones that changed go onto the
-  // screen, and into PRESET_CATALOG, which a session load reads.
+  // screen, and into PRESET_CATALOG, which a session load reads. Matched by record, since a team's id is its league and
+  // code and a new code makes a new id; the open team panel follows it.
   const showRecords = (records) => {
-    const fresh = new Map(presetsFromRecords(records).map(t => [t.id, t])), changed = new Set();
-    PRESET_CATALOG.forEach((t, i) => { const n = fresh.get(t.id);
-      if (n && JSON.stringify(n) !== JSON.stringify(t)) { PRESET_CATALOG[i] = n; changed.add(t.id); } });
-    if (changed.size) setTeams(ts => ts.map(t => { if (!changed.has(t.id)) return t; const n = fresh.get(t.id);
+    const fresh = new Map(presetsFromRecords(records).filter(t => t.rkey).map(t => [t.rkey, t])), moved = new Map();
+    PRESET_CATALOG.forEach((t, i) => { const n = t.rkey && fresh.get(t.rkey);
+      if (n && JSON.stringify(n) !== JSON.stringify(t)) { PRESET_CATALOG[i] = n; moved.set(t.id, n); } });
+    if (moved.size) setTeams(ts => ts.map(t => { const n = moved.get(t.id); if (!n) return t;
       return { ...n, strategy: { ...(n.strategy || {}) }, squad: n.squad ? n.squad.map(p => ({ ...p })) : null }; }));
+    for (const [was, n] of moved) if (n.id !== was) setExpandedTeam(e => (e === was ? n.id : e));
   };
   const commitDraft = (d) => { saveDraft(d); showRecords(applyDraft(recBase, d)); };
   const openEditor = (id, name) => { const r = recNow(id); if (!r) return;
@@ -8283,7 +8355,8 @@ export default function App() {
   const openTeamEditor = (t) => {
     const r = recTeam.get(t.rkey); if (!r) return;
     const cur = { ...r, ...(draft.teams?.[t.rkey] || {}) }, mid = idOf(cur.manager) || "", m = mid ? mgrNow(mid) : null;
-    setTeForm({ formation: String(cur.formation).trim(), style: styleKeyOf(cur.style) || "balanced", manager: mid,
+    setTeForm({ name: cur.name, code: cur.code, home: cur.home, away: cur.away, stadium: cur.stadium || "", location: cur.location || "",
+                formation: String(cur.formation).trim(), style: styleKeyOf(cur.style) || "balanced", manager: mid,
                 mgrOvr: m ? String(m.ovr) : "", squad: cur.squad.map(v => idOf(v) ?? null), sel: null,
                 moves: {}, added: [], gone: [], gonePos: {}, q: "", qPos: "" });
     setEdTeam({ key: t.rkey, team: t });
@@ -8299,7 +8372,7 @@ export default function App() {
     const sq = [...f.squad]; [sq[f.sel], sq[i]] = [sq[i], sq[f.sel]];
     return { ...f, squad: sq, sel: null };
   });
-  // TRANSFERS. Where each man is now (the records with the draft over them), the position he plays (for placing a
+  // TRANSFERS. Where each man is now (the records with the cart over them), the position he plays (for placing a
   // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
   const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
   const whereIs = useMemo(() => {
@@ -8315,6 +8388,8 @@ export default function App() {
   const posOfId = (id) => whereIs.get(id)?.club?.pos || whereIs.get(id)?.nt?.pos || recNow(id)?.pos || "CM";
   const ovrOfId = (id) => recNow(id)?.ovr ?? 0;
   const isNatKey = (key) => ["AVIUM", "ARTERRA"].includes(recTeam.get(key)?.file);
+  // The club a manager runs now, other than this one (a national side is a second job, never a move).
+  const mgrClubOf = (id, except) => id ? curRecs.teams.find(t => !isNational(t) && idOf(t.manager) === id && teamKey(t) !== except) || null : null;
   const teRelease = (i) => setTeForm(f => {
     const id = f.squad[i]; if (!id) return f;
     const lab = slotLabels(f.formation, f.squad.length), sq = vacate(f.squad, i, lab, posFitCost, ovrOfId);
@@ -8331,9 +8406,18 @@ export default function App() {
     return { ...f, squad: sq, moves, added: [...f.added, id], gone: f.gone.filter(x => x !== id), q: "", sel: null };
   });
   const saveTeamEditor = () => {
-    const f = teForm;
-    let d = draftWith(draft, recBase, edTeam.key, { formation: f.formation, style: STYLE_LBL[f.style], manager: f.manager || null, squad: f.squad }, "teams");
-    if (f.manager) d = draftWith(d, recBase, f.manager, { ovr: Math.round(+f.mgrOvr) }, "managers");
+    const f = teForm, r = recTeam.get(edTeam.key);
+    // A value the same in substance as the record's keeps the record's own text (a trailing space, a capital in a colour).
+    const keep = (v, was, norm) => (norm(v) === norm(was) ? was : v);
+    const trim = (x) => String(x || "").trim(), lower = (x) => String(x || "").toLowerCase();
+    const details = { name: keep(trim(f.name), r.name, trim), home: keep(f.home, r.home, lower), away: keep(f.away, r.away, lower),
+                      stadium: keep(trim(f.stadium), r.stadium || "", trim), location: keep(trim(f.location), r.location || "", trim),
+                      ...(isNatKey(edTeam.key) ? null : { code: trim(f.code).toUpperCase() }) };
+    let d = draftWith(draft, recBase, edTeam.key, { ...details, formation: f.formation, style: STYLE_LBL[f.style], manager: f.manager || null, squad: f.squad }, "teams");
+    if (f.manager && overseer) d = draftWith(d, recBase, f.manager, { ovr: Math.round(+f.mgrOvr) }, "managers");
+    // A manager taken from another club leaves it without one (from another owner's club, once they agree).
+    const mFrom = isNatKey(edTeam.key) ? null : mgrClubOf(f.manager, edTeam.key);
+    if (mFrom) d = draftWith(d, recBase, teamKey(mFrom), { manager: null }, "teams");
     // Each man signed from another club leaves it, and their bench fills in behind him.
     for (const [id, from] of Object.entries(f.moves)) {
       const t0 = applyDraft(recBase, d).teams.find(t => teamKey(t) === from);
@@ -8362,19 +8446,119 @@ export default function App() {
     setEdPlayer(null);
   };
   const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDiscardArm(false); setDraftOpen(false); };
-  const publish = async () => {
-    if (pubState?.busy || !ghKey || !draftList.length || draftHoles.length) return;
-    setPubState({ busy: true, step: "Reading main" });
+  const removeItem = (item) => {
+    setUndoCart({ draft, what: item.groups.map(g => g.kind === "teams" ? g.name : fullDisplayName(g.name)).join(" and ") });
+    commitDraft(withoutItem(recBase, draft, item)); setSaveState(null);
+  };
+  // WHAT SAVING WOULD DO, by the server's own rules (src/data/rules.js) against the records as this page has them: what
+  // it would refuse, and, for each item, the owners it would wait on (none: it goes live).
+  const judge = useMemo(() => ({ labels: (t) => slotLabels(String(t.formation).trim(), t.squad.length), fit: posFitCost,
+                                 ovr: (id) => recById.get(id)?.ovr ?? 0 }), [recById]);
+  const preview = useMemo(() => {
+    if (!draftList.length) return null;
+    const editors = { overseers: overseer ? [scope.login] : [],
+                      editors: { ...(editorsRec.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) } };
+    return planSave(recBase, editors, requests, scope.login, draft, judge, "", () => "");
+  }, [draftList, recBase, draft, requests, scope, overseer, judge]);
+  const clubOfBase = useMemo(() => { const m = new Map();
+    for (const t of recBase.teams) if (!isNational(t)) { for (const v of t.squad) if (idOf(v)) m.set(idOf(v), teamKey(t)); if (idOf(t.manager)) m.set("m:" + idOf(t.manager), teamKey(t)); }
+    return m; }, [recBase]);
+  const itemAsks = (item) => {
+    if (overseer) return [];
+    const from = new Set();
+    for (const g of item.groups) if (g.kind === "teams" && !isNatKey(g.id)) for (const c of g.rows) {
+      const came = c.field === "squad" ? c.to.filter(id => id && !c.from.includes(id)) : c.field === "manager" && c.to ? ["m:" + c.to] : [];
+      for (const who of came) { const k = clubOfBase.get(who); if (k && k !== g.id && !ownsKey(k)) from.add(k); }
+    }
+    return [...from];
+  };
+  // What went live is main's now: the base moves, and it stays laid under the cart in this browser until a build carries
+  // it (see RECORDS_BASE). Returns the new base.
+  const landed = (apply) => {
+    if (!apply) return recBase;
+    let pend = readPatch(PENDING_KEY);
+    for (const c of draftChanges(recBase, apply)) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
+    try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify({ ...pend, at: Date.now() })); } catch {}
+    const next = applyDraft(recBase, apply);
+    setRecBase(next);
+    return next;
+  };
+  const authed = (path, body) => fetch(`${REGISTRY}${path}`, { method: "POST", body: JSON.stringify(body),
+    headers: { Authorization: `Bearer ${session?.token}`, "Content-Type": "application/json" } });
+  // SAVE: the whole cart to the server, which puts live what this person may change and turns the rest into requests.
+  // It refuses the lot on any problem, so a save that comes back is the whole cart, and the cart empties.
+  const saveCart = async () => {
+    if (saveState?.busy || !session || !draftList.length || preview?.errors.length) return;
+    setSaveState({ busy: true });
     try {
-      const res = await publishDraft(draft, ghKey, (step) => setPubState({ busy: true, step }));
-      // It is main's now: the base moves, and it stays pending in this browser until a build carries it.
-      let pend = readPatch(PENDING_KEY);
-      for (const c of draftList) pend = draftWith(pend, RECORDS_BUILT, c.id, { [c.field]: c.to }, c.kind);
-      try { if (pend) localStorage.setItem(PENDING_KEY, JSON.stringify(pend)); } catch {}
-      setRecBase(b => applyDraft(b, draft));
+      const res = await authed("/save", { cart: draft }), data = await res.json().catch(() => ({}));
+      if (res.status === 401) { signOut(); setSaveState({ err: "Your sign-in ran out. Sign in again: the cart is kept." }); return; }
+      if (res.status === 422) { setSaveState({ errors: data.errors || [] }); loadRequests(); return; }
+      if (!res.ok) throw new Error(data.error || `The registry answered ${res.status}`);
+      const next = landed(data.apply);
+      if (Array.isArray(data.waiting)) setRequests(data.waiting); else loadRequests();
       saveDraft({ v: 1, players: {} });
-      setPubState({ ok: true, sha: res.sha });
-    } catch (e) { setPubState({ err: String(e?.message || e) }); }
+      showRecords(next);
+      setSaveState({ ok: true, sha: data.sha, applied: data.applied || 0, asked: (data.requests || []).length });
+    } catch (e) { setSaveState({ err: String(e?.message || e) }); }
+  };
+  // ANSWERING A REQUEST: accept, decline, or withdraw one's own. The last owner's accept puts it live.
+  const settle = async (r, action) => {
+    if (reqBusy || !session) return;
+    setReqBusy(r.id); setReqArm(null); setReqMsg(m => ({ ...m, [r.id]: null }));
+    try {
+      const res = await authed(`/requests/${r.id}`, { action }), data = await res.json().catch(() => ({}));
+      if (res.status === 401) { signOut(); return; }
+      if (!res.ok) { setReqMsg(m => ({ ...m, [r.id]: (data.errors || [data.error || `The registry answered ${res.status}`]).join(" ") })); loadRequests(); return; }
+      if (data.apply) showRecords(applyDraft(landed(data.apply), draft));
+      if (Array.isArray(data.waiting)) setRequests(data.waiting); else loadRequests();
+    } catch (e) { setReqMsg(m => ({ ...m, [r.id]: String(e?.message || e) })); }
+    finally { setReqBusy(null); }
+  };
+  // ONE CHANGE as the cart and the requests show it, before and after. A squad shows who came in, who left, and each man
+  // whose slot changed, read against the formation the team ends up in.
+  const renderChange = (c, formationAfter) => {
+    const natLabel = (code) => code ? (natOptions.name.get(code) || code) : "–";
+    const pName = (id) => recById.get(id) ? fullDisplayName(recById.get(id).name) : "?";
+    const mName = (id) => id ? (recMgr.get(id) ? fullDisplayName(recMgr.get(id).name) : "?") : "None";
+    const arrow = <span style={{ color: "var(--chrome-muted-66)", padding: "0 6px" }}>&#8594;</span>;
+    const pair = (a, b, m) => (<span style={m ? mono : null}><span style={{ color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{b}</span></span>);
+    if (c.field === "ovr") { const d = c.to - c.from;
+      return (<span style={{ ...mono, whiteSpace: "nowrap" }}><span style={{ color: "var(--chrome-muted)" }}>{showOvr(c.from)}</span>{arrow}
+        <span style={ovrBlock(c.to)}>{showOvr(c.to)}</span>
+        <span style={{ marginLeft: 8, fontWeight: 700, color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>{d > 0 ? "+" + d : d}</span></span>); }
+    if (c.field === "nat") return pair(natLabel(c.from), natLabel(c.to));
+    if (c.field === "formation" || c.field === "code") return pair(c.from, c.to, true);
+    if (c.field === "name" || c.field === "stadium" || c.field === "location") return pair(String(c.from || "").trim() || "–", c.to || "–");
+    if (c.field === "home" || c.field === "away") {
+      const sw = (v) => (<span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <span style={{ width: 11, height: 11, borderRadius: 3, background: v, border: "1px solid var(--chrome-border)" }} /><span style={mono}>{v}</span></span>);
+      return pair(sw(c.from), sw(c.to)); }
+    if (c.field === "style") return pair(STYLE_LBL[styleKeyOf(c.from)] || c.from, STYLE_LBL[styleKeyOf(c.to)] || c.to);
+    if (c.field === "manager") return pair(mName(c.from), mName(c.to));
+    if (c.field === "squad") {
+      const base = recTeam.get(c.id), fa = String(base?.formation || "").trim(), fb = String(formationAfter || fa).trim();
+      const la = slotLabels(fa, c.from.length), lb = slotLabels(fb, c.to.length), at = (lab, i) => lab[i] + (i >= 11 ? " (bench)" : "");
+      const joined = c.to.map((id, i) => [id, i]).filter(([id]) => id && !c.from.includes(id));
+      const left = c.from.filter(id => id && !c.to.includes(id));
+      const moved = c.to.map((id, i) => [id, i]).filter(([id]) => id && c.from.includes(id))
+        .map(([id, i]) => [id, at(la, c.from.indexOf(id)), at(lb, i)]).filter(([, a, b]) => a !== b);
+      const item = (k, kids) => <span key={k} style={{ whiteSpace: "nowrap" }}>{kids}</span>;
+      return (<span style={{ display: "inline-flex", flexWrap: "wrap", gap: "3px 14px" }}>
+        {joined.map(([id, i]) => item("+" + id, <><b style={{ color: "var(--ui-ok)", ...mono }}>+</b> <span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{at(lb, i)}</span></>))}
+        {left.map(id => item("-" + id, <><b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b> <span style={{ color: "var(--chrome-muted)" }}>{pName(id)}</span></>))}
+        {moved.map(([id, a, b]) => item(id, <><span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ ...mono, color: "var(--ui-text)" }}>{b}</span></>))}
+        {!joined.length && !left.length && !moved.length && <span style={{ color: "var(--chrome-muted)" }}>Re-slotted, same positions</span>}
+      </span>);
+    }
+    if (c.field === "retired") return <span style={{ color: c.to ? "var(--ui-danger)" : "var(--ui-text)" }}>{c.to ? "Retired" : "Active"}</span>;
+    const add = c.to.filter(x => !c.from.includes(x)), rem = c.from.filter(x => !c.to.includes(x));
+    return (<span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
+      {add.map(id => <span key={"+" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ui-text)" }}>
+        <b style={{ color: "var(--ui-ok)", ...mono }}>+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
+      {rem.map(id => <span key={"-" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--chrome-muted)" }}>
+        <b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
+    </span>);
   };
   // The per-season stats table: the six boards merged to a row per player, every recorded stat a
   // sortable column, filters riding the tourn* states their old drill left behind.
@@ -11031,10 +11215,17 @@ export default function App() {
                         &#8592; {isIntlTeam ? "Nations" : "Teams"}</button>
                       <PanelTitle>Team</PanelTitle>
                     </div>
-                    {/* A real team changes only through the overseer's record editor; a custom team is edited in place. */}
-                    {t.league !== "Custom" && overseer && t.rkey && (
-                      <button type="button" className="ed-btn" onClick={() => openTeamEditor(t)}
-                        style={{ ...smBtn, flexShrink: 0, color: "var(--ui-text)" }}>Edit</button>)}
+                    {/* A real team changes only through the record editor, for whoever answers for it; a custom team is edited
+                        in place. One waiting on a request opens only for the overseer. */}
+                    {canEditTeam(t) && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        {locks.has(t.rkey) && (
+                          <button type="button" className="ed-btn" onClick={() => { loadRequests(); setInboxOpen(true); }}
+                            style={{ ...smBtn, color: "var(--ui-warn)" }}>Waiting on a request</button>)}
+                        {(overseer || !locks.has(t.rkey)) && (
+                          <button type="button" className="ed-btn" onClick={() => openTeamEditor(t)}
+                            style={{ ...smBtn, color: "var(--ui-text)" }}>Edit</button>)}
+                      </span>)}
                   </div>
                   <div className="fit-scroll" style={{ overflowY: "auto", flex: 1, padding: 20 }}>
                     {/* Header band: crest and name on the left, the four ratings on the right, the
@@ -11349,6 +11540,50 @@ export default function App() {
               ["utilities", "Utilities"], ["docs", "Documentation"]].map(([id, l]) => (
               <button key={id} onClick={() => setTab(id)} style={{ ...chip, flex: "1 1 0", minWidth: 0, padding: "7px 8px", whiteSpace: "nowrap", background: tab === id ? "var(--chrome-brand)" : "transparent", color: tab === id ? "var(--ui-on-accent)" : "var(--chrome-muted)", border: tab === id ? "1px solid var(--chrome-brand)" : "1px solid var(--chrome-panel)", boxShadow: tab === id ? "0 0 12px var(--chrome-brand-44)" : "none" }}>{l}</button>
             ))}
+          </div>
+          {/* Signing in, for the registry's editors: their requests, and who they are signed in as. */}
+          <div style={{ display: "flex", alignItems: "stretch", gap: 6, flexShrink: 0, position: "relative" }}>
+            {session && isEditor && (
+              <button type="button" className="ed-btn" onClick={() => { loadRequests(); setInboxOpen(true); }} title="Requests"
+                aria-label={reqFor.length ? `Requests, ${reqFor.length} for you` : "Requests"}
+                style={{ position: "relative", width: 44, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, borderRadius: 6,
+                         cursor: "pointer", background: "transparent", border: "1px solid var(--chrome-panel)", color: "var(--chrome-muted)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+                {reqFor.length > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: 3, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, display: "inline-flex",
+                                 alignItems: "center", justifyContent: "center", background: "var(--chrome-brand)", color: "var(--ui-on-accent)",
+                                 fontSize: 9, fontWeight: 700, ...mono }}>{reqFor.length}</span>)}
+              </button>)}
+            {session ? (<>
+              <button type="button" className="ed-btn" aria-haspopup="menu" aria-expanded={acctOpen} onClick={() => setAcctOpen(o => !o)}
+                aria-label={`Signed in as ${session.login}`} title={session.login}
+                style={{ width: 48, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, borderRadius: 6, cursor: "pointer",
+                         background: "transparent", border: "1px solid var(--chrome-panel)" }}>
+                <img src={`https://github.com/${encodeURIComponent(session.login)}.png?size=56`} alt="" width={28} height={28}
+                  style={{ borderRadius: "50%", background: "var(--chrome-border)" }} />
+              </button>
+              {acctOpen && (<>
+                <div onClick={() => setAcctOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 9997 }} />
+                <div role="menu" aria-label="Account" onKeyDown={e => { if (e.key === "Escape") setAcctOpen(false); }}
+                  style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 9998, minWidth: 230, maxWidth: 320, padding: 6, ...ui,
+                           background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8, boxShadow: "0 8px 24px var(--ui-shadow-4)" }}>
+                  <div style={{ padding: "6px 8px 10px", fontSize: 11, color: "var(--chrome-muted)", overflowWrap: "anywhere" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)", marginBottom: 3 }}>{session.login}</div>
+                    {overseer ? "Overseer" : scope.role === "editor"
+                      ? <>Editor &middot; {scope.nations.map(c => natOptions.name.get(c) || c).join(", ")}</> : "Not a registry editor"}
+                  </div>
+                  <button type="button" role="menuitem" className="ed-btn" autoFocus onClick={signOut}
+                    style={{ ...addBtn, width: "100%", textAlign: "left", color: "var(--ui-text)" }}>Sign out</button>
+                </div></>)}
+            </>) : (
+              <button type="button" className="ed-btn" onClick={signIn}
+                style={{ ...chip, display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", whiteSpace: "nowrap", background: "transparent",
+                         color: "var(--chrome-muted)", border: "1px solid var(--chrome-panel)" }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
+                Sign in
+              </button>)}
           </div>
         </div>
 
@@ -15879,15 +16114,15 @@ export default function App() {
 
       </div>
       </div>
-      {/* ── The record editor (overseer only): the draft bar, the edit dialog, review and publish ── */}
-      {overseer && draftCount > 0 && !draftOpen && !edPlayer && (
+      {/* ── The record editor: the cart bar, the edit dialogs, the cart itself and the requests ── */}
+      {draftCount > 0 && !draftOpen && !edPlayer && !edTeam && !inboxOpen && (
         <div role="status" style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 9990,
                                     display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 14px", ...ui,
                                     background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 8,
                                     boxShadow: "0 8px 24px var(--ui-shadow-4)" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-warn)" }}>Draft</span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-warn)" }}>Cart</span>
           <span style={{ fontSize: 11, color: "var(--ui-text)" }}><b style={{ ...mono }}>{draftCount}</b> {draftCount === 1 ? "change" : "changes"}</span>
-          <button type="button" className="ed-btn" onClick={() => { setPubState(null); setDiscardArm(false); setDraftOpen(true); }}
+          <button type="button" className="ed-btn" onClick={() => { setSaveState(null); setDiscardArm(false); setUndoCart(null); setDraftOpen(true); }}
             style={{ ...smBtn, color: "var(--ui-text)" }}>Review</button>
         </div>)}
       {edPlayer && edForm && (() => {
@@ -15964,7 +16199,7 @@ export default function App() {
               <span style={{ display: "flex", gap: 8 }}>
                 <button type="button" className="ed-btn" onClick={close} style={{ ...addBtn }}>Cancel</button>
                 <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveEditor}
-                  style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Save to draft</button>
+                  style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Add to cart</button>
               </span>
             </div>
           </div>
@@ -15973,21 +16208,58 @@ export default function App() {
         const t = edTeam.team, r = recTeam.get(edTeam.key);
         const n = teForm.squad.length, lab = slotLabels(teForm.formation, n), sel = teForm.sel;
         const cur = { ...r, ...(draft.teams?.[edTeam.key] || {}) };
+        const isNat = isNatKey(edTeam.key);
         const mOvrN = Number(teForm.mgrOvr), curMgr = teForm.manager ? mgrNow(teForm.manager) : null;
-        const mgrValid = !teForm.manager || (teForm.mgrOvr !== "" && Number.isInteger(mOvrN) && mOvrN >= 25 && mOvrN <= 99);
-        const valid = teForm.squad.slice(0, 11).every(Boolean) && mgrValid && FORMATIONS.includes(teForm.formation) && !!STYLE_LBL[teForm.style];
-        const changed = teForm.formation !== String(cur.formation).trim() || STYLE_LBL[teForm.style] !== String(cur.style).trim()
+        const mgrValid = !overseer || !teForm.manager || (teForm.mgrOvr !== "" && Number.isInteger(mOvrN) && mOvrN >= 25 && mOvrN <= 99);
+        // The details, checked as the server checks them (src/data/rules.js): no tabs or line breaks, a code its world's own.
+        const trim = (x) => String(x || "").trim(), lower = (x) => String(x || "").toLowerCase();
+        const textOk = (v, max, empty) => { const x = trim(v); return x.length <= max && !/[\u0000-\u001f\u007f]/.test(x) && (empty || x.length > 0); };
+        const hexOk = (v) => /^#[0-9A-Fa-f]{6}$/.test(v || "");
+        const codeIn = trim(teForm.code).toUpperCase();
+        const codeClash = isNat || !/^[A-Z0-9]{2,3}$/.test(codeIn) ? null
+          : curRecs.teams.find(x => teamKey(x) !== edTeam.key && x.code === codeIn && (x.file === "ARTERRA") === (r.file === "ARTERRA")) || null;
+        const bad = { name: !textOk(teForm.name, 40), code: !isNat && (!/^[A-Z0-9]{2,3}$/.test(codeIn) || !!codeClash),
+                      home: !hexOk(teForm.home), away: !hexOk(teForm.away), stadium: !textOk(teForm.stadium, 60, true), location: !textOk(teForm.location, 60, true) };
+        // A manager who runs another club leaves it: straight away from the editor's own club, from anyone else's once
+        // its owner agrees, and not at all while that club is waiting on a request.
+        const mgrClub = new Map();
+        for (const x of curRecs.teams) if (!isNational(x) && idOf(x.manager)) mgrClub.set(idOf(x.manager), x);
+        const mClub = isNat ? null : mgrClubOf(teForm.manager, edTeam.key), mKey = mClub ? teamKey(mClub) : null;
+        const mAsk = !!mKey && !overseer && !ownsKey(mKey), mLocked = !!mKey && !overseer && locks.has(mKey);
+        const asksFrom = [...new Set([...Object.values(teForm.moves).filter(k => !overseer && !ownsKey(k)), ...(mAsk ? [mKey] : [])])];
+        const waitsFor = [...new Set(asksFrom.flatMap(ownersOfKey))];
+        const detailMsgs = [bad.name && (trim(teForm.name) ? "Name: at most 40 characters, no tabs or line breaks" : "The team needs a name"),
+          codeClash ? `${codeClash.name.trim()} already has the code ${codeIn}` : bad.code && "Code: two or three capital letters or digits",
+          (bad.home || bad.away) && "Kit colours are written #RRGGBB",
+          (bad.stadium || bad.location) && "Stadium and city: at most 60 characters, no tabs or line breaks"].filter(Boolean);
+        const valid = teForm.squad.slice(0, 11).every(Boolean) && mgrValid && !mLocked && FORMATIONS.includes(teForm.formation)
+          && !!STYLE_LBL[teForm.style] && !Object.values(bad).some(Boolean);
+        const changed = trim(teForm.name) !== trim(cur.name) || (!isNat && codeIn !== cur.code)
+          || lower(teForm.home) !== lower(cur.home) || lower(teForm.away) !== lower(cur.away)
+          || trim(teForm.stadium) !== trim(cur.stadium) || trim(teForm.location) !== trim(cur.location)
+          || teForm.formation !== String(cur.formation).trim() || STYLE_LBL[teForm.style] !== String(cur.style).trim()
           || (teForm.manager || null) !== (idOf(cur.manager) ?? null)
           || JSON.stringify(teForm.squad) !== JSON.stringify(cur.squad.map(v => idOf(v) ?? null))
-          || (!!curMgr && mOvrN !== curMgr.ovr);
-        const others = teForm.manager ? applyDraft(recBase, draft).teams
-          .filter(x => idOf(x.manager) === teForm.manager && teamKey(x) !== edTeam.key).map(x => x.name.trim()) : [];
+          || (overseer && !!curMgr && mOvrN !== curMgr.ovr);
+        const others = teForm.manager ? curRecs.teams
+          .filter(x => idOf(x.manager) === teForm.manager && teamKey(x) !== edTeam.key && teamKey(x) !== mKey).map(x => x.name.trim()) : [];
         // A swap that would leave a starting slot empty is not offered.
         const blocked = (i) => sel != null && sel !== i && ((sel < 11 && !teForm.squad[i]) || (i < 11 && !teForm.squad[sel]));
         const close = () => setEdTeam(null);
-        const isNat = isNatKey(edTeam.key);
+        const set = (k) => (e) => { const v = e.target.value; setTeForm(f => ({ ...f, [k]: v })); };
+        const invalid = (k) => (bad[k] ? { borderColor: "var(--ui-danger)" } : null);
+        const colour = (k, label) => (
+          <div>
+            <label htmlFor={"te-" + k} style={lbl}>{label}</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input type="color" aria-label={label + " swatch"} value={hexOk(teForm[k]) ? teForm[k].toLowerCase() : "#000000"} onChange={set(k)}
+                style={{ width: 34, height: 34, flexShrink: 0, padding: 2, border: "1px solid var(--chrome-border)", borderRadius: 6, background: "transparent", cursor: "pointer" }} />
+              <input id={"te-" + k} value={teForm[k]} maxLength={7} autoComplete="off" spellCheck={false} aria-invalid={bad[k]} onChange={set(k)}
+                style={{ ...inp, width: "100%", minWidth: 0, padding: "8px 8px", ...mono, ...invalid(k) }} />
+            </div>
+          </div>);
         const row = (i) => { const id = teForm.squad[i], p = id ? recNow(id) : null, on = sel === i, isNew = !!id && teForm.added.includes(id);
-          const nm = p ? fullDisplayName(p.name) : "";
+          const nm = p ? fullDisplayName(p.name) : "", asked = isNew && !!teForm.moves[id] && !overseer && !ownsKey(teForm.moves[id]);
           return (
           <div key={i} style={{ display: "flex", gap: 4, marginBottom: 3 }}>
             <button type="button" className="ed-row" aria-pressed={on} disabled={blocked(i)} onClick={() => teTap(i)}
@@ -16000,7 +16272,7 @@ export default function App() {
                 <path d="M1.5 4h8M7 1.5L9.5 4 7 6.5M10.5 8h-8M5 5.5L2.5 8 5 10.5" fill="none" stroke="var(--chrome-brand)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               <span style={{ fontSize: 9, fontWeight: 700, color: POS_CLR[lab[i]] || "var(--chrome-muted)", ...mono }}>{lab[i]}</span>
               <span style={{ color: p ? "var(--ui-text)" : "var(--chrome-muted-66)", minWidth: 0 }}>{p ? nm : "Empty"}
-                {isNew && <b style={{ marginLeft: 6, fontSize: 8, letterSpacing: "0.14em", color: "var(--ui-ok)" }}>IN</b>}</span>
+                {isNew && <b style={{ marginLeft: 6, fontSize: 8, letterSpacing: "0.14em", color: asked ? "var(--ui-warn)" : "var(--ui-ok)" }}>{asked ? "REQUEST" : "IN"}</b>}</span>
               {p ? <span style={{ ...ovrBlock(p.ovr), ...mono, textAlign: "center" }}>{showOvr(p.ovr)}</span> : <span />}
             </button>
             <button type="button" className="ed-btn" disabled={!id} onClick={() => teRelease(i)}
@@ -16010,14 +16282,15 @@ export default function App() {
               <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
             </button>
           </div>); };
-        // Who could come in: anyone not retired and not here already; for a national side, its own nationals only.
+        // Who could come in: anyone not retired and not here already; for a national side, its own nationals only. A man
+        // at another owner's club is asked for, and one at a club waiting on a request cannot be.
         const full = !teForm.squad.some(v => !v);
-        const art = new Set(natOptions.arterra.map(([c]) => c)), teamNat = isNat ? recTeam.get(edTeam.key)?.code : null;
+        const art = new Set(natOptions.arterra.map(([c]) => c)), teamNat = isNat ? r?.code : null;
         const qq = pFold((teForm.q || "").trim());
         const teamByRkey = new Map(teams.filter(x => x.rkey).map(x => [x.rkey, x]));
         const cands = qq.length < 2 ? [] : curRecs.players
-          .filter(r => !r.retired && !teForm.squad.includes(r.id) && (isNat ? r.nat === teamNat : !art.has(r.nat)) && pFold(fullDisplayName(r.name)).includes(qq))
-          .map(r => ({ r, pos: posOfId(r.id), club: whereIs.get(r.id)?.club?.key || null }))
+          .filter(p => !p.retired && !teForm.squad.includes(p.id) && (isNat ? p.nat === teamNat : !art.has(p.nat)) && pFold(fullDisplayName(p.name)).includes(qq))
+          .map(p => ({ r: p, pos: posOfId(p.id), club: whereIs.get(p.id)?.club?.key || null }))
           .filter(c => !teForm.qPos || (c.pos === "GK" ? "GK" : POS_GROUP[c.pos]) === teForm.qPos)
           .sort((a, b) => b.r.ovr - a.r.ovr).slice(0, 8);
         const col = (title, from, to) => (
@@ -16044,10 +16317,40 @@ export default function App() {
                 style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
                          fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 76px 150px 150px", gap: 14, marginBottom: 12 }}>
+              <div>
+                <label htmlFor="te-name" style={lbl}>Name</label>
+                <input id="te-name" autoFocus value={teForm.name} maxLength={40} autoComplete="off" spellCheck={false} aria-invalid={bad.name}
+                  onChange={set("name")} style={{ ...inp, width: "100%", ...invalid("name") }} />
+              </div>
+              <div>
+                {isNat
+                  ? <><span style={lbl}>Code</span><div style={{ padding: "9px 0", fontSize: 13, color: "var(--ui-text)", ...mono }}>{r?.code}</div></>
+                  : <><label htmlFor="te-code" style={lbl}>Code</label>
+                      <input id="te-code" value={teForm.code} maxLength={3} autoComplete="off" spellCheck={false} aria-invalid={bad.code}
+                        onChange={e => { const v = e.target.value.toUpperCase(); setTeForm(f => ({ ...f, code: v })); }}
+                        style={{ ...inp, width: "100%", ...mono, ...invalid("code") }} /></>}
+              </div>
+              {colour("home", "Home kit")}
+              {colour("away", "Away kit")}
+            </div>
+            {detailMsgs.length > 0 && <div role="alert" style={{ fontSize: 10, color: "var(--ui-danger)", marginTop: -4, marginBottom: 10 }}>{detailMsgs.join(" · ")}</div>}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 14, marginBottom: 20 }}>
+              <div>
+                <label htmlFor="te-stadium" style={lbl}>Stadium</label>
+                <input id="te-stadium" value={teForm.stadium} maxLength={60} autoComplete="off" aria-invalid={bad.stadium}
+                  onChange={set("stadium")} style={{ ...inp, width: "100%", ...invalid("stadium") }} />
+              </div>
+              <div>
+                <label htmlFor="te-city" style={lbl}>City</label>
+                <input id="te-city" value={teForm.location} maxLength={60} autoComplete="off" aria-invalid={bad.location}
+                  onChange={set("location")} style={{ ...inp, width: "100%", ...invalid("location") }} />
+              </div>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "112px minmax(0, 1fr) minmax(0, 1.3fr) 128px", gap: 14, marginBottom: 6 }}>
               <div>
                 <label htmlFor="te-form" style={lbl}>Formation</label>
-                <select id="te-form" autoFocus value={teForm.formation} onChange={e => teSetFormation(e.target.value)} style={{ ...inp, width: "100%", cursor: "pointer", ...mono }}>
+                <select id="te-form" value={teForm.formation} onChange={e => teSetFormation(e.target.value)} style={{ ...inp, width: "100%", cursor: "pointer", ...mono }}>
                   {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
@@ -16062,20 +16365,28 @@ export default function App() {
                 <select id="te-mgr" value={teForm.manager} style={{ ...inp, width: "100%", cursor: "pointer" }}
                   onChange={e => { const id = e.target.value, m = id ? mgrNow(id) : null; setTeForm(f => ({ ...f, manager: id, mgrOvr: m ? String(m.ovr) : "" })); }}>
                   <option value="">No manager</option>
-                  {[...recBase.managers].map(m => [m.id, fullDisplayName(m.name)]).sort((a, b) => a[1].localeCompare(b[1]))
-                    .map(([id, nm]) => <option key={id} value={id}>{nm}</option>)}
+                  {recBase.managers.map(m => { const c = mgrClub.get(m.id); return [m.id, fullDisplayName(m.name) + (c && teamKey(c) !== edTeam.key ? ` (${c.name.trim()})` : "")]; })
+                    .sort((a, b) => a[1].localeCompare(b[1])).map(([id, nm]) => <option key={id} value={id}>{nm}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="te-mgr-ovr" style={lbl}>Manager rating</label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input id="te-mgr-ovr" type="number" min={25} max={99} step={1} disabled={!teForm.manager} value={teForm.mgrOvr}
-                    onChange={e => setTeForm(f => ({ ...f, mgrOvr: e.target.value }))} style={{ ...inp, width: 64, ...mono, opacity: teForm.manager ? 1 : 0.45 }} />
-                  {teForm.manager && mgrValid && <span style={{ ...ovrBlock(mOvrN), ...mono }}>{showOvr(mOvrN)}</span>}
-                </div>
+                {overseer
+                  ? <><label htmlFor="te-mgr-ovr" style={lbl}>Manager rating</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input id="te-mgr-ovr" type="number" min={25} max={99} step={1} disabled={!teForm.manager} value={teForm.mgrOvr}
+                          onChange={e => setTeForm(f => ({ ...f, mgrOvr: e.target.value }))} style={{ ...inp, width: 64, ...mono, opacity: teForm.manager ? 1 : 0.45 }} />
+                        {teForm.manager && mgrValid && <span style={{ ...ovrBlock(mOvrN), ...mono }}>{showOvr(mOvrN)}</span>}
+                      </div></>
+                  : <><span style={lbl}>Manager rating</span>
+                      <div style={{ padding: "8px 0" }}>{curMgr ? <span style={{ ...ovrBlock(curMgr.ovr), ...mono }}>{showOvr(curMgr.ovr)}</span>
+                                                                : <span style={{ color: "var(--chrome-muted-66)" }}>&#8211;</span>}</div></>}
               </div>
             </div>
             <div style={{ minHeight: 16, marginBottom: 12, fontSize: 10, color: "var(--chrome-muted)" }}>
+              {mClub && <span style={{ color: mLocked ? "var(--ui-danger)" : mAsk ? "var(--ui-warn)" : "var(--chrome-muted)" }}>
+                {mLocked ? `${mClub.name.trim()} is waiting on a request` : mAsk ? `Request: leaves ${mClub.name.trim()} once ${ownersOfKey(mKey).join(", ") || "the overseer"} agrees`
+                  : `Leaves ${mClub.name.trim()}`}</span>}
+              {mClub && others.length > 0 && <> &middot; </>}
               {others.length > 0 && <>Also manages {others.join(", ")}</>}
             </div>
             <div style={{ ...lbl, marginBottom: 10 }}>Lineup</div>
@@ -16089,8 +16400,8 @@ export default function App() {
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
               <input type="search" aria-label="Find a player" placeholder="Name" value={teForm.q} autoComplete="off" spellCheck={false}
-                onChange={e => setTeForm(f => ({ ...f, q: e.target.value }))} style={{ ...inp, flex: 1, minWidth: 0, padding: "6px 10px", fontSize: 12 }} />
-              <select aria-label="Position" value={teForm.qPos} onChange={e => setTeForm(f => ({ ...f, qPos: e.target.value }))}
+                onChange={set("q")} style={{ ...inp, flex: 1, minWidth: 0, padding: "6px 10px", fontSize: 12 }} />
+              <select aria-label="Position" value={teForm.qPos} onChange={set("qPos")}
                 style={{ ...inp, width: 130, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
                 <option value="">Any position</option>
                 {["GK", "DEF", "MID", "FWD"].map(g => <option key={g} value={g}>{g}</option>)}
@@ -16098,143 +16409,200 @@ export default function App() {
             </div>
             {cands.length > 0 && (
             <div role="list" aria-label="Players found" style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, maxHeight: 248, overflowY: "auto" }}>
-              {cands.map(({ r, pos, club }, k) => { const ct = club ? teamByRkey.get(club) : null;
+              {cands.map(({ r: p, pos, club }, k) => { const ct = club ? teamByRkey.get(club) : null;
+                const ask = !isNat && !!club && club !== edTeam.key && !overseer && !ownsKey(club);
+                const held = !isNat && !!club && club !== edTeam.key && !overseer && locks.has(club);
                 return (
-                <div key={r.id} role="listitem" style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 34px minmax(0, 190px) 86px",
+                <div key={p.id} role="listitem" style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 34px minmax(0, 190px) 86px",
                   alignItems: "center", gap: 8, padding: "5px 8px", borderTop: k ? "1px solid var(--chrome-border)" : "none", fontSize: 11 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: POS_CLR[pos] || "var(--chrome-muted)", ...mono }}>{pos}</span>
-                  <span style={{ color: "var(--ui-text)", minWidth: 0 }}>{fullDisplayName(r.name)}</span>
-                  <span style={{ ...ovrBlock(r.ovr), ...mono, textAlign: "center" }}>{showOvr(r.ovr)}</span>
+                  <span style={{ color: "var(--ui-text)", minWidth: 0 }}>{fullDisplayName(p.name)}</span>
+                  <span style={{ ...ovrBlock(p.ovr), ...mono, textAlign: "center" }}>{showOvr(p.ovr)}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--chrome-muted)" }}>
                     {ct ? <><TeamCrest team={ct} size={15} /><span style={{ minWidth: 0 }}>{ct.name}</span></> : "Free agent"}</span>
-                  <button type="button" className="ed-btn" disabled={full} onClick={() => teSign(r.id)}
-                    style={{ ...smBtn, color: "var(--ui-text)" }}>{isNat ? "Call up" : "Sign"}</button>
+                  <button type="button" className="ed-btn" disabled={full || held} onClick={() => teSign(p.id)} title={held ? "Waiting on a request" : undefined}
+                    style={{ ...smBtn, color: ask && !held ? "var(--ui-warn)" : "var(--ui-text)" }}>{held ? "Waiting" : isNat ? "Call up" : ask ? "Request" : "Sign"}</button>
                 </div>); })}
             </div>)}
             {qq.length >= 2 && !cands.length && <div style={{ fontSize: 10, color: "var(--chrome-muted-66)", padding: "2px 2px 0" }}>No one found.</div>}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+              {waitsFor.length > 0 || asksFrom.length > 0
+                ? <span style={{ flex: 1, fontSize: 10, color: "var(--ui-warn)" }}>Request: waits for {waitsFor.join(", ") || "the overseer"}</span> : null}
               <button type="button" className="ed-btn" onClick={close} style={{ ...addBtn }}>Cancel</button>
               <button type="button" className="ed-btn-primary" disabled={!valid || !changed} onClick={saveTeamEditor}
-                style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Save to draft</button>
+                style={{ ...addBtn, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>Add to cart</button>
             </div>
           </div>
         </div>); })()}
       {draftOpen && (() => {
-        const busy = !!pubState?.busy;
+        const busy = !!saveState?.busy;
         const close = () => { if (!busy) { setDraftOpen(false); setDiscardArm(false); } };
-        const groups = [];
-        for (const c of shownList) { let g = groups.find(x => x.kind === c.kind && x.id === c.id);
-          if (!g) groups.push(g = { kind: c.kind, id: c.id, name: c.name, rows: [] }); g.rows.push(c); }
-        const natLabel = (code) => code ? (natOptions.name.get(code) || code) : "–";
-        const FIELD_LBL = { ovr: "Rating", nat: "Nationality", badges: "Badges", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad", retired: "Status" };
-        const pName = (id) => recById.get(id) ? fullDisplayName(recById.get(id).name) : "?";
-        const mName = (id) => id ? (recMgr.get(id) ? fullDisplayName(recMgr.get(id).name) : "?") : "None";
-        const arrow = <span style={{ color: "var(--chrome-muted-66)", padding: "0 6px" }}>&#8594;</span>;
-        const change = (c) => {
-          if (c.field === "ovr") { const d = c.to - c.from;
-            return (<span style={{ ...mono, whiteSpace: "nowrap" }}><span style={{ color: "var(--chrome-muted)" }}>{showOvr(c.from)}</span>{arrow}
-              <span style={ovrBlock(c.to)}>{showOvr(c.to)}</span>
-              <span style={{ marginLeft: 8, fontWeight: 700, color: d > 0 ? "var(--ui-ok)" : "var(--ui-danger)" }}>{d > 0 ? "+" + d : d}</span></span>); }
-          if (c.field === "nat")
-            return (<span><span style={{ color: "var(--chrome-muted)" }}>{natLabel(c.from)}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{natLabel(c.to)}</span></span>);
-          const pair = (a, b, m) => (<span style={m ? mono : null}><span style={{ color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ color: "var(--ui-text)" }}>{b}</span></span>);
-          if (c.field === "formation") return pair(c.from, c.to, true);
-          if (c.field === "style") return pair(STYLE_LBL[styleKeyOf(c.from)] || c.from, STYLE_LBL[styleKeyOf(c.to)] || c.to);
-          if (c.field === "manager") return pair(mName(c.from), mName(c.to));
-          if (c.field === "squad") {
-            // Who came in, who left, and each man whose slot changed: from the position he held to the one he holds now.
-            const base = recTeam.get(c.id), fa = String(base?.formation || "").trim(), fb = String(draft.teams?.[c.id]?.formation || fa).trim();
-            const la = slotLabels(fa, c.from.length), lb = slotLabels(fb, c.to.length), at = (lab, i) => lab[i] + (i >= 11 ? " (bench)" : "");
-            const joined = c.to.map((id, i) => [id, i]).filter(([id]) => id && !c.from.includes(id));
-            const left = c.from.filter(id => id && !c.to.includes(id));
-            const moved = c.to.map((id, i) => [id, i]).filter(([id]) => id && c.from.includes(id))
-              .map(([id, i]) => [id, at(la, c.from.indexOf(id)), at(lb, i)]).filter(([, a, b]) => a !== b);
-            const item = (k, kids) => <span key={k} style={{ whiteSpace: "nowrap" }}>{kids}</span>;
-            return (<span style={{ display: "inline-flex", flexWrap: "wrap", gap: "3px 14px" }}>
-              {joined.map(([id, i]) => item("+" + id, <><b style={{ color: "var(--ui-ok)", ...mono }}>+</b> <span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{at(lb, i)}</span></>))}
-              {left.map(id => item("-" + id, <><b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b> <span style={{ color: "var(--chrome-muted)" }}>{pName(id)}</span></>))}
-              {moved.map(([id, a, b]) => item(id, <><span style={{ color: "var(--ui-text)" }}>{pName(id)}</span> <span style={{ ...mono, color: "var(--chrome-muted)" }}>{a}</span>{arrow}<span style={{ ...mono, color: "var(--ui-text)" }}>{b}</span></>))}
-              {!joined.length && !left.length && !moved.length && <span style={{ color: "var(--chrome-muted)" }}>Re-slotted, same positions</span>}
-            </span>);
-          }
-          if (c.field === "retired") return <span style={{ color: c.to ? "var(--ui-danger)" : "var(--ui-text)" }}>{c.to ? "Retired" : "Active"}</span>;
-          const add = c.to.filter(x => !c.from.includes(x)), rem = c.from.filter(x => !c.to.includes(x));
-          return (<span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
-            {add.map(id => <span key={"+" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ui-text)" }}>
-              <b style={{ color: "var(--ui-ok)", ...mono }}>+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
-            {rem.map(id => <span key={"-" + id} style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--chrome-muted)" }}>
-              <b style={{ color: "var(--ui-danger)", ...mono }}>&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
-          </span>);
-        };
+        const problems = saveState?.errors?.length ? saveState.errors : session && cartList.length ? preview?.errors || [] : [];
+        const kindTag = (g) => g.kind === "players" ? null : (
+          <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>{g.kind === "teams" ? "Team" : "Manager"}</span>);
         return (
         <div onClick={close} onKeyDown={e => { if (e.key === "Escape") close(); }}
           style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start",
                    justifyContent: "center", padding: "56px 16px", overflowY: "auto" }}>
           <div role="dialog" aria-modal="true" aria-labelledby="draft-title" onClick={e => e.stopPropagation()} className="modal-shell"
             style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px",
-                     width: 720, maxWidth: "100%", ...ui }}>
+                     width: 860, maxWidth: "100%", ...ui }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span id="draft-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)" }}>Draft</span>
+                <span id="draft-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)" }}>Cart</span>
                 <b style={{ fontSize: 11, color: "var(--chrome-muted)", ...mono }}>{draftCount}</b>
               </span>
               <button type="button" className="ed-btn" aria-label="Close" onClick={close} disabled={busy} autoFocus
                 style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
                          fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
             </div>
-            {groups.length > 0 && (
+            {cartList.length > 0 ? (
             <div style={{ maxHeight: "50vh", overflowY: "auto", border: "1px solid var(--chrome-border)", borderRadius: 8 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
-                <colgroup><col style={{ width: 210 }} /><col style={{ width: 104 }} /><col /></colgroup>
-                <thead><tr><th style={thCellSticky}>Player</th><th style={thCellSticky}>Field</th><th style={thCellSticky}>Change</th></tr></thead>
-                <tbody>
-                  {groups.flatMap((g, gi) => g.rows.map((c, i) => (
-                    <tr key={g.kind + g.id + c.field} style={{ background: gi % 2 ? "transparent" : "var(--chrome-bg-08)" }}>
-                      <td style={{ ...tdCell, color: "var(--ui-text)", verticalAlign: "top" }}>{i === 0 && (<>
-                        {g.kind === "teams" ? g.name : fullDisplayName(g.name)}
-                        {g.kind !== "players" && <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>
-                          {g.kind === "teams" ? "Team" : "Manager"}</span>}</>)}</td>
-                      <td style={{ ...tdCell, color: "var(--chrome-muted)", whiteSpace: "nowrap", verticalAlign: "top" }}>{FIELD_LBL[c.field]}</td>
-                      <td style={tdCell}>{change(c)}</td>
-                    </tr>)))}
-                </tbody>
+                <colgroup><col style={{ width: 200 }} /><col style={{ width: 96 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 40 }} /></colgroup>
+                <thead><tr><th style={thCellSticky}>Item</th><th style={thCellSticky}>Field</th><th style={thCellSticky}>Change</th>
+                  <th style={thCellSticky}>{isEditor ? "When saved" : ""}</th><th style={thCellSticky} aria-label="Remove" /></tr></thead>
+                {cartList.map((it, ii) => {
+                  const rows = it.groups.flatMap(g => g.rows.map((c, i) => ({ g, c, first: i === 0 })));
+                  const asks = itemAsks(it), who = [...new Set(asks.flatMap(ownersOfKey))];
+                  return (
+                  <tbody key={it.key} style={{ background: ii % 2 ? "transparent" : "var(--chrome-bg-08)", borderTop: ii ? "1px solid var(--chrome-border)" : "none" }}>
+                    {rows.map(({ g, c, first }, ri) => (
+                      <tr key={g.key + c.field}>
+                        <td style={{ ...tdCell, color: "var(--ui-text)", verticalAlign: "top" }}>{first && (<>
+                          {g.kind === "teams" ? g.name : fullDisplayName(g.name)}{kindTag(g)}</>)}</td>
+                        <td style={{ ...tdCell, color: "var(--chrome-muted)", whiteSpace: "nowrap", verticalAlign: "top" }}>{FIELD_LBL[c.field]}</td>
+                        <td style={tdCell}>{renderChange(c, draft.teams?.[c.id]?.formation)}</td>
+                        {ri === 0 && (<>
+                          <td rowSpan={rows.length} style={{ ...tdCell, verticalAlign: "top" }}>{isEditor && !problems.length && (asks.length
+                            ? <><span style={{ color: "var(--ui-warn)", fontWeight: 600 }}>Request</span>
+                                <div style={{ fontSize: 10, color: "var(--chrome-muted)", marginTop: 2 }}>waits for {who.join(", ") || "the overseer"}</div></>
+                            : <span style={{ color: "var(--ui-ok)", fontWeight: 600 }}>Live</span>)}</td>
+                          <td rowSpan={rows.length} style={{ ...tdCell, padding: "3px 6px", verticalAlign: "top" }}>
+                            <button type="button" className="ed-btn" disabled={busy} onClick={() => removeItem(it)}
+                              aria-label={`Remove ${it.groups.map(x => x.kind === "teams" ? x.name : fullDisplayName(x.name)).join(" and ")}`} title="Remove"
+                              style={{ width: 26, height: 24, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, background: "transparent",
+                                       border: "1px solid var(--chrome-border)", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)" }}>
+                              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                            </button>
+                          </td></>)}
+                      </tr>))}
+                  </tbody>); })}
               </table>
-            </div>)}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, minHeight: 32 }}>
-              {ghKey ? (<>
-                <span style={{ ...lbl, marginBottom: 0 }}>GitHub key</span>
-                <span style={{ fontSize: 11, color: "var(--ui-ok)" }}>saved</span>
-                <button type="button" className="ed-btn" disabled={busy} onClick={() => { try { localStorage.removeItem(GH_KEY); } catch {} setGhKey(""); }}
-                  style={{ ...smBtn }}>Forget</button>
-              </>) : (<>
-                <label htmlFor="gh-key" style={{ ...lbl, marginBottom: 0, whiteSpace: "nowrap" }}>GitHub key</label>
-                <input id="gh-key" type="password" autoComplete="off" spellCheck={false} value={ghKeyIn} onChange={e => setGhKeyIn(e.target.value)}
-                  style={{ ...inp, flex: 1, minWidth: 0, padding: "6px 10px", fontSize: 12, ...mono }} />
-                <button type="button" className="ed-btn" disabled={!ghKeyIn.trim()}
-                  onClick={() => { const k = ghKeyIn.trim(); try { localStorage.setItem(GH_KEY, k); } catch {} setGhKey(k); setGhKeyIn(""); }}
-                  style={{ ...smBtn, color: "var(--ui-text)" }}>Save key</button>
-              </>)}
-            </div>
-            {draftHoles.length > 0 && (
-              <div role="alert" style={{ marginTop: 10, fontSize: 11, color: "var(--ui-danger)" }}>Starting XI incomplete: {draftHoles.join(", ")}</div>)}
-            {pubState && (
-              <div role="status" style={{ marginTop: 10, fontSize: 11, color: pubState.err ? "var(--ui-danger)" : pubState.ok ? "var(--ui-ok)" : "var(--chrome-muted)" }}>
-                {pubState.busy && <>{pubState.step}&hellip;</>}
-                {pubState.ok && (pubState.sha
-                  ? <>Published <a href={`https://github.com/auroruse/avium-football-engine/commit/${pubState.sha}`} target="_blank" rel="noreferrer"
-                                   style={{ color: "var(--ui-ok)", ...mono }}>{pubState.sha.slice(0, 7)}</a></>
-                  : <>Main already has it.</>)}
-                {pubState.err && <>Not published: {pubState.err}</>}
+            </div>) : !saveState?.ok && <div style={{ fontSize: 11, color: "var(--chrome-muted)", padding: "6px 0" }}>The cart is empty.</div>}
+            {problems.length > 0 && (
+              <div role="alert" style={{ marginTop: 10, fontSize: 11, color: "var(--ui-danger)" }}>
+                {problems.map((p, i) => <div key={i} style={{ padding: "2px 0" }}>{p}</div>)}</div>)}
+            {undoCart && !saveState && (
+              <div role="status" style={{ marginTop: 10, fontSize: 11, color: "var(--chrome-muted)", display: "flex", alignItems: "center", gap: 10 }}>
+                <span>Removed {undoCart.what}</span>
+                <button type="button" className="ed-btn" onClick={() => { commitDraft(undoCart.draft); setUndoCart(null); }}
+                  style={{ ...smBtn, color: "var(--ui-text)" }}>Undo</button>
+              </div>)}
+            {saveState && !saveState.errors && (
+              <div role="status" style={{ marginTop: 10, fontSize: 11, color: saveState.err ? "var(--ui-danger)" : saveState.ok ? "var(--ui-ok)" : "var(--chrome-muted)" }}>
+                {saveState.busy && <>Saving&hellip;</>}
+                {saveState.ok && (saveState.sha
+                  ? <>Saved <a href={`https://github.com/auroruse/avium-football-engine/commit/${saveState.sha}`} target="_blank" rel="noreferrer"
+                               style={{ color: "var(--ui-ok)", ...mono }}>{saveState.sha.slice(0, 7)}</a>
+                      {saveState.applied > 0 && <>. Live on the site in a minute or two</>}
+                      {saveState.asked > 0 && <>. {saveState.asked} {saveState.asked === 1 ? "request" : "requests"} sent</>}.</>
+                  : <>Nothing to save: the registry already has it.</>)}
+                {saveState.err && <>Not saved: {saveState.err}</>}
               </div>)}
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16 }}>
               <button type="button" className={"ed-btn" + (discardArm ? " armed" : "")} disabled={busy || !draftCount}
                 onClick={() => discardArm ? discardDraft() : setDiscardArm(true)} onBlur={() => setDiscardArm(false)}
                 style={{ ...addBtn, minWidth: 140, color: discardArm ? "var(--ui-danger)" : "var(--chrome-muted)",
-                         borderColor: discardArm ? "var(--ui-danger)" : "var(--chrome-border)" }}>{discardArm ? "Confirm discard" : "Discard draft"}</button>
-              <button type="button" className="ed-btn-primary" disabled={busy || !ghKey || !draftCount || draftHoles.length > 0} onClick={publish}
-                style={{ ...addBtn, minWidth: 120, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
-                {busy ? "Publishing" : "Publish"}</button>
+                         borderColor: discardArm ? "var(--ui-danger)" : "var(--chrome-border)" }}>{discardArm ? "Confirm empty" : "Empty cart"}</button>
+              {session
+                ? <button type="button" className="ed-btn-primary" disabled={busy || !draftCount || problems.length > 0} onClick={saveCart}
+                    style={{ ...addBtn, minWidth: 120, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
+                    {busy ? "Saving" : "Save"}</button>
+                : <button type="button" className="ed-btn-primary" disabled={!draftCount} onClick={signIn}
+                    style={{ ...addBtn, minWidth: 120, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
+                    Sign in to save</button>}
             </div>
+          </div>
+        </div>); })()}
+      {inboxOpen && (() => {
+        const close = () => { if (!reqBusy) { setInboxOpen(false); setReqArm(null); } };
+        const teamOfKey = (k) => teams.find(x => x.rkey === k) || null;
+        const forMe = reqFor.filter(r => !reqMine.includes(r));
+        const card = (r, mine) => {
+          const tm = teamOfKey(r.team), needs = Object.keys(r.needs || {}), approved = r.approved || [];
+          const rows = draftChanges(recBase, { v: 1, players: {}, teams: { [r.team]: r.patch || {} } }).filter(c => c.field !== "pos");
+          const waiting = needs.filter(k => !approved.includes(k)), who = [...new Set(waiting.flatMap(k => r.needs[k] || []))];
+          const arm = (action, label, confirmLabel) => { const key = r.id + ":" + action, on = reqArm === key;
+            return (
+            <button type="button" className={"ed-btn" + (on ? " armed" : "")} disabled={!!reqBusy}
+              onClick={() => on ? settle(r, action) : setReqArm(key)} onBlur={() => setReqArm(a => (a === key ? null : a))}
+              style={{ ...addBtn, minWidth: 146, color: on ? "var(--ui-danger)" : "var(--chrome-muted)", borderColor: on ? "var(--ui-danger)" : "var(--chrome-border)" }}>
+              {on ? confirmLabel : label}</button>); };
+          return (
+          <div key={r.id} style={{ border: "1px solid var(--chrome-border)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                {tm && <TeamCrest team={tm} size={20} />}
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ui-text)" }}>{r.teamName}</span>
+              </span>
+              <span style={{ fontSize: 10, color: "var(--chrome-muted)", whiteSpace: "nowrap" }}>{r.by} &middot; {ago(r.at)}</span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {(r.moves || []).map(m => { const p = m.kind === "player" ? recById.get(m.id) : recMgr.get(m.id), ft = teamOfKey(m.from), pos = m.kind === "player" ? posOfId(m.id) : "MGR";
+                return (
+                <div key={m.kind + m.id} style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 34px minmax(0, 240px)", alignItems: "center", gap: 8, padding: "3px 0", fontSize: 11 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: POS_CLR[pos] || "var(--chrome-muted)", ...mono }}>{pos}</span>
+                  <span style={{ color: "var(--ui-text)", minWidth: 0 }}>{p ? fullDisplayName(p.name) : m.id}</span>
+                  {p ? <span style={{ ...ovrBlock(p.ovr), ...mono, textAlign: "center" }}>{showOvr(p.ovr)}</span> : <span />}
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--chrome-muted)" }}>
+                    from {ft && <TeamCrest team={ft} size={15} />}<span style={{ minWidth: 0 }}>{m.fromName}</span>
+                    {needs.length > 1 && approved.includes(m.from) && (
+                      <svg width="12" height="12" viewBox="0 0 12 12" role="img" aria-label="agreed" style={{ flexShrink: 0 }}>
+                        <path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="var(--ui-ok)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>)}</span>
+                </div>); })}
+            </div>
+            {rows.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10, tableLayout: "fixed", marginTop: 6 }}>
+                <colgroup><col style={{ width: 96 }} /><col /></colgroup>
+                <tbody>{rows.map(c => (
+                  <tr key={c.field}><td style={{ padding: "3px 0", color: "var(--chrome-muted)", verticalAlign: "top" }}>{FIELD_LBL[c.field]}</td>
+                    <td style={{ padding: "3px 0" }}>{renderChange(c, r.patch?.formation)}</td></tr>))}</tbody>
+              </table>)}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+              <span role={reqMsg[r.id] ? "alert" : undefined} style={{ flex: 1, minWidth: 0, fontSize: 10, color: reqMsg[r.id] ? "var(--ui-danger)" : "var(--chrome-muted)" }}>
+                {reqMsg[r.id] || (mine || needs.length > 1 ? <>Waits for {who.join(", ") || "the overseer"}</> : null)}</span>
+              {mine ? arm("withdraw", "Withdraw", "Confirm withdraw") : (<>
+                {arm("decline", "Decline", "Confirm decline")}
+                <button type="button" className="ed-btn-primary" disabled={!!reqBusy} onClick={() => settle(r, "accept")}
+                  style={{ ...addBtn, minWidth: 96, background: "var(--chrome-brand)", borderColor: "var(--chrome-brand)", color: "var(--ui-on-accent)" }}>
+                  {reqBusy === r.id ? "Saving" : "Accept"}</button></>)}
+            </div>
+          </div>); };
+        const section = (title, list, mine) => list.length > 0 && (
+          <div role="group" aria-label={title} style={{ marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0 8px" }}>
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--chrome-muted)" }}>{title}</span>
+              <b style={{ fontSize: 10, color: "var(--chrome-muted)", ...mono }}>{list.length}</b>
+            </div>
+            {list.map(r => card(r, mine))}
+          </div>);
+        return (
+        <div onClick={close} onKeyDown={e => { if (e.key === "Escape") close(); }}
+          style={{ position: "fixed", inset: 0, background: "var(--ui-scrim)", zIndex: 9999, display: "flex", alignItems: "flex-start",
+                   justifyContent: "center", padding: "56px 16px", overflowY: "auto" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="inbox-title" onClick={e => e.stopPropagation()} className="modal-shell"
+            style={{ background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)", borderRadius: 10, padding: "16px 18px",
+                     width: 680, maxWidth: "100%", ...ui }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <span id="inbox-title" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ui-text)" }}>Requests</span>
+              <button type="button" className="ed-btn" aria-label="Close" onClick={close} disabled={!!reqBusy} autoFocus
+                style={{ background: "transparent", border: "1px solid transparent", borderRadius: 6, cursor: "pointer", color: "var(--chrome-muted)",
+                         fontSize: 15, fontWeight: 700, lineHeight: 1, padding: "4px 7px", fontFamily: "inherit" }}>&#10005;</button>
+            </div>
+            {section("For you", forMe, false)}
+            {section("Yours", reqMine, true)}
+            {!forMe.length && !reqMine.length && <div style={{ fontSize: 11, color: "var(--chrome-muted)", padding: "6px 0" }}>Nothing waiting.</div>}
           </div>
         </div>); })()}
     </div>

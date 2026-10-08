@@ -119,6 +119,7 @@ let rec = now();
 const skjClub = rec.teams.find(t => t.file === "SKJ"), aleClub = rec.teams.find(t => t.file === "ALE" && t.code === "LEI");
 let r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: {}, teams: { [teamKey(skjClub)]: { formation: "4-4-2", style: "Gegenpressing" } } } } });
 ok("an editor's own club: live, one commit", r.status === 200 && !!r.data.sha && gh.head === r.data.sha, r.data);
+ok("the answer says what went live and what waits", r.data.apply?.teams?.[teamKey(skjClub)]?.formation === "4-4-2" && Array.isArray(r.data.waiting) && !r.data.waiting.length);
 ok("the commit touches the teams file and that nation's sheet only", JSON.stringify(gh.log.at(-1).paths.sort()) === JSON.stringify(["src/data/teams.json", "src/presets/SKJ.tsv"]), gh.log.at(-1).paths);
 ok("and names who made it", gh.log.at(-1).message.startsWith("Registry: SwiftorArrow"), gh.log.at(-1).message);
 r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: { [rec.players[0].id]: { ovr: 99 } } } } });
@@ -127,6 +128,24 @@ r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, pl
 ok("someone else's club: refused", r.status === 422 && /not one of your teams/.test(r.data.errors[0]), r.data);
 r = await call("/save", { method: "POST", session: nobody, body: { cart: { v: 1, players: {}, teams: { [teamKey(skjClub)]: { style: "Balanced" } } } } });
 ok("not on the list: refused", r.status === 422 && /approved/.test(r.data.errors[0]), r.data);
+
+console.log("a club's details");
+rec = now();
+const mine0 = rec.teams.find(t => teamKey(t) === teamKey(skjClub)), save1 = (patch, session = skj) =>
+  call("/save", { method: "POST", session, body: { cart: { v: 1, players: {}, teams: { [teamKey(mine0)]: patch } } } });
+r = await save1({ name: "IF\tHävnia" });
+ok("a tab in a name: refused (it would break the sheet)", r.status === 422 && /not a usable name/.test(r.data.errors.join()), r.data);
+r = await save1({ code: aleClub.code });
+ok("another team's code: refused", r.status === 422 && /already has the code/.test(r.data.errors.join()), r.data);
+r = await save1({ formation: "4-4-4", home: "red" });
+ok("a formation the engine lacks and a colour that is not #RRGGBB: refused", r.status === 422 && /formation/.test(r.data.errors.join()) && /home colour/.test(r.data.errors.join()), r.data);
+r = await save1({ squad: [...ids(mine0).slice(0, 15), "p9999"] });
+ok("a squad naming nobody: refused", r.status === 422 && /no such player/.test(r.data.errors.join()), r.data);
+const freeCode = ["HVN", "HAV", "IFH", "Q7Z"].find(c => !rec.teams.some(t => t.code === c));
+r = await save1({ name: "IF Hävnia 1904", code: freeCode, home: "#112233", stadium: "Hävnia Park" });
+const ren = now().teams.find(t => teamKey(t) === teamKey(mine0));
+ok("name, code, kit and ground: live", r.status === 200 && r.data.applied === 4 && ren.name === "IF Hävnia 1904" && ren.code === freeCode && ren.stadium === "Hävnia Park", r.data);
+ok("...and the sheet carries them", gh.commits.get(gh.head)["src/presets/SKJ.tsv"].includes("IF Hävnia 1904"));
 
 console.log("a transfer");
 rec = now();
@@ -154,6 +173,19 @@ ok("the old club's bench fills the place he left", ids(s2).slice(0, 11).every(Bo
 ok("the released man is kept, with his last position", JSON.stringify(fin.players.find(p => p.id === gone)?.pos) === JSON.stringify(lab(club)[15]));
 ok("the request is cleared, both sheets written", JSON.parse(gh.commits.get(gh.head)["src/data/requests.json"]).length === 0 &&
    ["src/presets/SKJ.tsv", "src/presets/ALE.tsv"].every(f => gh.log.at(-1).paths.includes(f)), gh.log.at(-1).paths);
+
+console.log("a manager");
+rec = now();
+const hires = rec.teams.find(t => teamKey(t) === teamKey(skjClub)), loses = rec.teams.find(t => teamKey(t) === teamKey(aleClub)), coach = idOf(loses.manager);
+r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: {}, teams: { [teamKey(loses)]: { manager: null } } } } });
+ok("another owner's club left without its manager, and nothing asked: refused", r.status === 422 && /not one of your teams/.test(r.data.errors.join()), r.data);
+r = await call("/save", { method: "POST", session: skj, body: { cart: { v: 1, players: {}, teams: { [teamKey(hires)]: { manager: coach }, [teamKey(loses)]: { manager: null } } } } });
+const mreq = r.data?.requests?.[0];
+ok("hiring another owner's manager becomes a request", r.status === 200 && r.data.applied === 0 && mreq?.moves?.[0]?.kind === "manager" && mreq.moves[0].id === coach, r.data);
+r = await call(`/requests/${mreq?.id}`, { method: "POST", session: ale, body: { action: "accept" } });
+const after = now(), h2 = after.teams.find(t => teamKey(t) === teamKey(hires)), l2 = after.teams.find(t => teamKey(t) === teamKey(loses));
+ok("accepted: he manages the new club, and the old one has none", r.status === 200 && idOf(h2.manager) === coach && l2.manager == null, { to: h2.manager, from: l2.manager });
+ok("the answer says what went live and what still waits", !!r.data.apply?.teams?.[teamKey(hires)] && Array.isArray(r.data.waiting) && !r.data.waiting.length, r.data);
 
 console.log("the overseer, and a race");
 gh.refuse = 1;                                                  // main moves under the first attempt

@@ -4,6 +4,8 @@
 // man's rating.
 import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { without } from "./squads.js";
+import { STYLE_LBL } from "./styles.js";
+import { FORMATIONS } from "../engine/formations.ts";
 
 export const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const lc = (s) => String(s || "").toLowerCase();
@@ -27,6 +29,42 @@ export const ownersOf = (editors, t) => Object.entries(editors?.editors || {}).f
 const EDITOR_TEAM_FIELDS = new Set(["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad"]);
 const PLAYER_FIELD = { ovr: "rating", nat: "nationality", badges: "badges", retired: "retirement" };
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
+const world = (t) => (t.file === "ARTERRA" ? "arterra" : "avium");
+
+// Whether each changed value can go into the records and the sheets written from them. A sheet is tab-separated, so a
+// tab or a line break in a name would break every tool that reads it. A code names one team in its world. (Badges and
+// retirement need no check: the records keep only the badges the table knows, and retired is yes or no.)
+const TEXT = /^[^\u0000-\u001f\u007f]*$/;
+const text = (v, max, empty) => typeof v === "string" && v === v.trim() && v.length <= max && TEXT.test(v) && (empty || v.length > 0);
+const rating = (v) => Number.isInteger(v) && v >= 25 && v <= 99;
+const STYLE_NAMES = new Set(Object.values(STYLE_LBL));
+const TEAM_VALUE = {
+  name: (v) => text(v, 40), code: (v) => typeof v === "string" && /^[A-Z0-9]{2,3}$/.test(v),
+  home: (v) => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v), away: (v) => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v),
+  stadium: (v) => text(v, 60, true), location: (v) => text(v, 60, true),
+  formation: (v) => FORMATIONS.includes(v), style: (v) => STYLE_NAMES.has(v),
+};
+const TEAM_FIELD = { name: "name", code: "code", home: "home colour", away: "away colour", stadium: "stadium", location: "city",
+                     formation: "formation", style: "style", manager: "manager", squad: "squad" };
+function valueProblems(rec, next, changes) {
+  const out = [], mgrs = new Set(rec.managers.map(m => m.id)), nextBy = new Map(next.teams.map(t => [teamKey(t), t]));
+  for (const c of changes) {
+    const bad = (what) => out.push(`${c.name}: ${what}`);
+    if (c.kind === "players") {
+      if (c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
+      if (c.field === "nat" && !(typeof c.to === "string" && /^[A-Z]{2,4}$/.test(c.to))) bad("not a nationality");
+    }
+    if (c.kind === "managers" && c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
+    if (c.kind !== "teams") continue;
+    if (TEAM_VALUE[c.field] && !TEAM_VALUE[c.field](c.to)) bad(`not a usable ${TEAM_FIELD[c.field]}`);
+    if (c.field === "manager" && c.to != null && !mgrs.has(c.to)) bad("no such manager");
+    if (c.field === "code" && TEAM_VALUE.code(c.to)) {
+      const t = nextBy.get(c.id), clash = next.teams.find(x => x !== t && x.code === c.to && world(x) === world(t));
+      if (clash) bad(`${clash.name.trim()} already has the code ${c.to}`);
+    }
+  }
+  return out;
+}
 
 // A man who ends up on no team keeps the position he last played, for whoever signs him; a man back on a team drops it.
 function withPositions(rec, d, h) {
@@ -45,6 +83,7 @@ function withPositions(rec, d, h) {
 // starters each, nobody retired.
 function squadProblems(rec, next, keys) {
   const out = [], base = new Map(rec.teams.map(t => [teamKey(t), t])), retired = new Set(next.players.filter(r => r.retired).map(r => r.id));
+  const known = new Set(next.players.map(r => r.id));
   const clubs = new Map();
   for (const t of next.teams) if (!isNational(t)) for (const id of squadIds(t)) if (id) clubs.set(id, [...(clubs.get(id) || []), t.name.trim()]);
   for (const t of next.teams.filter(t => keys.has(teamKey(t)))) {
@@ -53,6 +92,7 @@ function squadProblems(rec, next, keys) {
     if (sq.slice(0, 11).some(v => !v)) out.push(`${name}: the starting XI has an empty place`);
     const seen = new Set();
     for (const id of sq.filter(Boolean)) {
+      if (!known.has(id)) { out.push(`${name}: no such player`); continue; }
       if (seen.has(id)) out.push(`${name}: a player is listed twice`);
       seen.add(id);
       if (retired.has(id)) out.push(`${name}: a retired player is in the squad`);
@@ -70,6 +110,9 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   const scope = scopeOf(editors, login), over = scope.role === "overseer";
   const none = { scope, errors: [], apply: null, requests: [] };
   if (scope.role === "viewer") return { ...none, errors: ["Not an approved editor"] };
+  const group = (g) => g == null || (typeof g === "object" && !Array.isArray(g) && Object.values(g).every(p => p && typeof p === "object" && !Array.isArray(p)));
+  if (!cart || typeof cart !== "object" || !["players", "managers", "teams"].every(k => group(cart[k]))
+      || Object.values(cart.teams || {}).some(p => "squad" in p && !Array.isArray(p.squad))) return { ...none, errors: ["Not a cart"] };
   // Positions are bookkeeping the server keeps, whatever the cart says.
   const draft = { ...cart, players: Object.fromEntries(Object.entries(cart?.players || {})
     .map(([id, p]) => [id, Object.fromEntries(Object.entries(p).filter(([f]) => f !== "pos"))]).filter(([, p]) => Object.keys(p).length)) };
@@ -103,6 +146,8 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
     if (!isNational(t) && from && from !== c.id) moves.push({ kind: "manager", id: c.to, from, to: c.id });
   }
 
+  errors.push(...valueProblems(rec, nextAll, changes));
+
   // What may be touched at all.
   const sellingOnly = new Set();
   for (const c of changes) {
@@ -116,7 +161,10 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
       const leaving = c.field === "squad" ? c.from.filter(x => x && !c.to.includes(x)) : null;
       const isSale = leaving && c.to.filter(x => x && !c.from.includes(x)).length === 0
         && leaving.every(id => moves.some(m => m.kind === "player" && m.id === id && m.from === c.id && owns(scope, teamBy.get(m.to))));
-      if (isSale) sellingOnly.add(c.id); else errors.push(`${c.name}: not one of your teams`);
+      // ...or left without the manager this editor's club is asking for.
+      const losesManager = c.field === "manager" && c.to == null && c.from != null
+        && moves.some(m => m.kind === "manager" && m.id === c.from && m.from === c.id && owns(scope, teamBy.get(m.to)));
+      if (isSale || losesManager) sellingOnly.add(c.id); else errors.push(`${c.name}: not one of your teams`);
       continue;
     }
     if (locked.has(c.id)) errors.push(`${c.name}: waiting on a request`);

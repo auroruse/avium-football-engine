@@ -6,8 +6,11 @@
 //   GET  /callback                 where GitHub sends the person back
 //   GET  /me                       { login, role, nations }
 //   GET  /requests                 the requests waiting
-//   POST /save                     { cart }  -> { sha, applied, requests } or 422 { errors }
-//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" }
+//   POST /save                     { cart }  -> { sha, applied, apply, requests, waiting } or 422 { errors }
+//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" }  -> { sha, done, apply, request, waiting }
+//
+// `apply` is what went live (a draft over the records, null if nothing did), so the app can show it before the site
+// redeploys; `waiting` is every request still open afterwards.
 //
 // Secrets (wrangler secret put): CLIENT_SECRET, PRIVATE_KEY (the App's key, as GitHub gave it), SESSION_SECRET.
 import { applyDraft, draftChanges, dumpRecords } from "../src/data/draft.js";
@@ -74,15 +77,18 @@ async function appToken(env) {
 }
 const gh = async (env, path, opts) => ghRaw(API + path, await appToken(env), opts);
 
-// Main as it stands: its head, its tree, the records, the editors and the requests.
+// Main as it stands: its head, its tree, the records, the editors and the requests. One file is a lighter read.
+const mainHead = async (env) => (await gh(env, `/repos/${env.REPO}/git/ref/heads/main`)).object.sha;
+async function readJson(env, head, p, dflt) {
+  try { return JSON.parse(await gh(env, `/repos/${env.REPO}/contents/${p}?ref=${head}`, { raw: true, headers: { Accept: "application/vnd.github.raw+json" } })); }
+  catch (e) { if (e.status === 404 && dflt !== undefined) return dflt; throw e; }
+}
+const readOne = async (env, p, dflt) => readJson(env, await mainHead(env), p, dflt);
 async function readMain(env) {
-  const head = (await gh(env, `/repos/${env.REPO}/git/ref/heads/main`)).object.sha;
+  const head = await mainHead(env);
   const tree = (await gh(env, `/repos/${env.REPO}/git/commits/${head}`)).tree.sha;
-  const read = (p) => gh(env, `/repos/${env.REPO}/contents/${p}?ref=${head}`, { raw: true, headers: { Accept: "application/vnd.github.raw+json" } });
-  const readJson = async (p, dflt) => { try { return JSON.parse(await read(p)); } catch (e) { if (e.status === 404 && dflt !== undefined) return dflt; throw e; } };
-  const [players, managers, teams, sheets, editors, requests] = await Promise.all([
-    readJson("src/data/players.json"), readJson("src/data/managers.json"), readJson("src/data/teams.json"), readJson("src/data/sheets.json"),
-    readJson("src/data/editors.json"), readJson("src/data/requests.json", [])]);
+  const [players, managers, teams, sheets, editors, requests] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
+    .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", [])));
   return { head, tree, rec: { players, managers, teams, sheets }, editors, requests };
 }
 // One commit to main with these files, or a 422 if main moved meanwhile (the caller reads again and redoes).
@@ -169,11 +175,11 @@ async function handle(req, env) {
     const session = await sign(env.SESSION_SECRET, { login: user.login, exp: Math.floor(Date.now() / 1000) + 30 * 86400 });
     return redirect(`${st.r}#avium_session=${session}`);
   }
-  if (path === "/requests" && req.method === "GET") return json((await readMain(env)).requests);
+  if (path === "/requests" && req.method === "GET") return json(await readOne(env, "src/data/requests.json", []));
 
   const login = await who(req, env);
   if (!login) return json({ error: "Sign in first" }, 401);
-  if (path === "/me") { const { editors } = await readMain(env); return json(scopeOf(editors, login)); }
+  if (path === "/me") return json(scopeOf(await readOne(env, "src/data/editors.json"), login));
 
   if (path === "/save" && req.method === "POST") {
     const { cart } = await body(req);
@@ -181,13 +187,15 @@ async function handle(req, env) {
     const result = await withMain(env, async ({ rec, editors, requests }) => {
       const plan = planSave(rec, editors, requests, login, cart, judge(rec));
       if (plan.errors.length) { errors = plan.errors; return { result: null }; }
-      if (!plan.apply && !plan.requests.length) return { result: { sha: null, applied: 0, requests: [] } };
-      const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next);
-      if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify([...requests, ...plan.requests], null, 1) + "\n";
+      const nothing = { result: { sha: null, applied: 0, apply: null, requests: [], waiting: requests } };
+      if (!plan.apply && !plan.requests.length) return nothing;
+      const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next), waiting = [...requests, ...plan.requests];
+      if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify(waiting, null, 1) + "\n";
       const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length : 0;
-      if (!Object.keys(files).length) return { result: { sha: null, applied: 0, requests: [] } };
+      if (!Object.keys(files).length) return nothing;
       const parts = [applied && `${applied} change${applied > 1 ? "s" : ""}`, plan.requests.length && `${plan.requests.length} request${plan.requests.length > 1 ? "s" : ""}`].filter(Boolean);
-      return { files, message: `Registry: ${login}, ${parts.join(" and ")}`, result: { applied, requests: plan.requests } };
+      return { files, message: `Registry: ${login}, ${parts.join(" and ")}`,
+               result: { applied, apply: applied ? plan.apply : null, requests: plan.requests, waiting } };
     });
     return errors ? json({ errors }, 422) : json(result);
   }
@@ -203,7 +211,8 @@ async function handle(req, env) {
       if (s.errors?.length) { errors = s.errors; return { result: null }; }
       const left = s.request ? requests.map(x => (x.id === r.id ? s.request : x)) : requests.filter(x => x.id !== r.id);
       const files = { ...(s.apply ? filesFor(rec, applyDraft(rec, s.apply)) : null), "src/data/requests.json": JSON.stringify(left, null, 1) + "\n" };
-      return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s request`, result: { done: !!s.done, request: s.request } };
+      return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s request`,
+               result: { done: !!s.done, apply: s.apply || null, request: s.request, waiting: left } };
     });
     return errors ? json({ errors }, 422) : json(result);
   }
