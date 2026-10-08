@@ -6,6 +6,9 @@
 //   whether injuries happen at all -- the competition's switch gated the abstract sim only
 //
 // Run: node test/cards.mjs [matches]   (default 120; each match is about 1.5 s)
+//      SHARD=i/n node test/cards.mjs [matches]    plays every nth match from the i-th, prints its tallies as JSON
+//      node test/cards.mjs merge <folder|files>   judges every shard's tallies together
+// The cloud lab splits it over its twenty runners that way (lab.yml, LAB_TEST in test/specs/run.env).
 import path from "path";
 const eng = await import("./engine.mjs");
 // The retired skill's load() throws on any preset row that yields no club, and NCH.tsv now
@@ -18,7 +21,14 @@ const load = async (f) => ({ clubs: /AVIUM/.test(f)
 const PROJECT = "/Users/zli/Documents/NICHIRIN/Programs/Avium Football Engine";
 const { clubs } = await load(path.join(PROJECT, "src/presets/NCH.tsv"));
 
-const N = +(process.argv[2] || 120);
+const MERGE = process.argv[2] === "merge";
+const N = MERGE ? 0 : +(process.argv[2] || 120);
+const SH = (process.env.SHARD || "").match(/^(\d+)\/(\d+)$/);
+const mine = (k) => !SH || k % +SH[2] === +SH[1];
+// A shard names each match on stderr as it starts and ends, so a match that never finishes is named in the log.
+const secs = [], offSecs = [];       // [fixture, seconds]: the matches as played, and the toggle's with injuries off
+const timed = (k, H, A, run, into) => { const t0 = Date.now(); if (SH) process.stderr.write(`k=${k} ${H.code} v ${A.code} ... `);
+  const r = run(), t = (Date.now() - t0) / 1000; into.push([k, t]); if (SH) process.stderr.write(`${t.toFixed(1)} s\n`); return r; };
 const pair = (k) => [clubs[k % clubs.length], clubs[(k + 7) % clubs.length]];
 
 let fails = 0;
@@ -32,9 +42,12 @@ let reds = 0, hurt = 0, noDiag = 0, noVariant = 0, noOffAt = 0, badSaid = 0, bad
 const weeks = [];
 const SAID = eng.ME_RED_SAID;
 
+let played = 0;
 for (let k = 0; k < N; k++) {
+  if (!mine(k)) continue;
   const [H, A] = pair(k);
-  const { s, out } = eng.runPositionalMatch(H, A, 900 + k * 7919);
+  const { s, out } = timed(k, H, A, () => eng.runPositionalMatch(H, A, 900 + k * 7919), secs);
+  played++;
   const byName = new Map();
   for (const sd of ["home", "away"])
     for (const q of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) byName.set(q.name, q);
@@ -66,10 +79,46 @@ for (let k = 0; k < N; k++) {
   }
 }
 
-console.log("\n" + N + " matches");
-console.log("  reds/match      ", (reds / N).toFixed(3));
+// The toggle's matches: a competition that turns injuries off should not produce one. Cards are untouched by it.
+let offInj = 0, offReds = 0;
+for (let k = 0; k < Math.min(N, 40); k++) {
+  if (!mine(k)) continue;
+  const [H, A] = pair(k);
+  const { s, out } = timed(k, H, A, () => eng.runPositionalMatch(H, A, 900 + k * 7919, null, false), offSecs);
+  for (const sd of ["home", "away"]) {
+    offInj += out.injuries?.[sd] || 0;
+    offReds += out.reds?.[sd] || 0;
+    for (const q of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) if (q.inj) offInj++;
+  }
+}
+
+// A shard stops here and hands its tallies on; the merge adds every shard's up and judges them as one run.
+if (SH) {
+  console.log(JSON.stringify({ n: played, reds, why, hurt, sev, part, weeks, noDiag, noVariant, noOffAt, badSaid, badExclude, offInj, offReds, secs, offSecs }));
+  process.exit(0);
+}
+if (MERGE) {
+  const fs = await import("node:fs");
+  const files = [];
+  const walk = (p) => fs.statSync(p).isDirectory() ? fs.readdirSync(p).forEach(f => walk(path.join(p, f))) : /\.jsonl?$/.test(p) && files.push(p);
+  process.argv.slice(3).forEach(walk);
+  for (const f of files) for (const line of fs.readFileSync(f, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    const t = JSON.parse(line);
+    played += t.n; reds += t.reds; hurt += t.hurt; noDiag += t.noDiag; noVariant += t.noVariant; noOffAt += t.noOffAt;
+    badSaid += t.badSaid; badExclude += t.badExclude; offInj += t.offInj; offReds += t.offReds;
+    for (const [o, x] of [[why, t.why], [sev, t.sev], [part, t.part]]) for (const k in x) o[k] = (o[k] || 0) + x[k];
+    weeks.push(...t.weeks); secs.push(...t.secs); offSecs.push(...t.offSecs);
+  }
+  const time = (v) => { const w = v.reduce((a, b) => b[1] > a[1] ? b : a, [0, 0]);
+    return `${v.length} matches, mean ${(v.reduce((a, b) => a + b[1], 0) / v.length).toFixed(1)} s, slowest ${w[1].toFixed(1)} s (fixture ${w[0]})`; };
+  console.log(`${files.length} shards\n  as played:    ${time(secs)}\n  injuries off: ${time(offSecs)}`);
+}
+
+console.log("\n" + played + " matches");
+console.log("  reds/match      ", (reds / played).toFixed(3));
 console.log("  by reason       ", JSON.stringify(why));
-console.log("  injured off/match", (hurt / N).toFixed(3));
+console.log("  injured off/match", (hurt / played).toFixed(3));
 console.log("  injury           ", JSON.stringify(sev));
 console.log("  body part        ", JSON.stringify(part));
 // Every combination carries its own lay-off, which is the whole point of the joint table: a torn
@@ -107,17 +156,7 @@ ok("the same part varies by injury",
    T.filter(v => v.part === "knee").map(v => v.label + " " + v.dur.join("-")));
 
 // ── the toggle ───────────────────────────────────────────────────────────────
-// A competition that turns injuries off should not produce one. Cards are untouched by it.
-let offInj = 0, offReds = 0;
-for (let k = 0; k < Math.min(N, 40); k++) {
-  const [H, A] = pair(k);
-  const { s, out } = eng.runPositionalMatch(H, A, 900 + k * 7919, null, false);
-  for (const sd of ["home", "away"]) {
-    offInj += out.injuries?.[sd] || 0;
-    offReds += out.reds?.[sd] || 0;
-    for (const q of [...s.players[sd], ...(s.subbedOff?.[sd] || [])]) if (q.inj) offInj++;
-  }
-}
+// (played above, with the rest of the matches)
 console.log("\ninjuries off");
 ok("not one injury",  offInj === 0, offInj);
 ok("cards unaffected", offReds > 0, offReds);
