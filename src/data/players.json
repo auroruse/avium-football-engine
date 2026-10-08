@@ -1047,7 +1047,7 @@
 {"id":"p1046","name":"Makoto KISHIMA","nat":"NCH","ovr":85},
 {"id":"p1047","name":"Rui ŌE","nat":"NCH","ovr":89},
 {"id":"p1048","name":"Kiyoshi TORIGOE","nat":"NCH","ovr":86},
-{"id":"p1049","name":"Luca HIGASHIYAMA","nat":"NCH","ovr":91},
+{"id":"p1049","name":"Luca HIGASHIYAMA","nat":"NCH","ovr":91,"badges":["rapid"]},
 {"id":"p1050","name":"Ganzorig ERDENE","nat":"NCH","ovr":90},
 {"id":"p1051","name":"Akihisa KUBO","nat":"NCH","ovr":83},
 {"id":"p1052","name":"Genma NISHIGAWA","nat":"NCH","ovr":83},
