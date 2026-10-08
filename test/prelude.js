@@ -1,40 +1,25 @@
 const useState=()=>[],useCallback=f=>f,useRef=()=>({}),useEffect=()=>{},useMemo=f=>f(),Fragment="F";
 const headerImg="",wc1933HeaderImg="",wc1934HeaderImg="";
-// The preset TSVs are read for real, so PRESET_CATALOG is the same catalog the app builds.
-// Anything that only needs the module to evaluate is unaffected; anything that reads a league
-// now sees its actual teams instead of an empty string.
+// THE RECORDS (src/data) are read for real, so PRESET_CATALOG is the same catalog the app builds from them.
+// Anything that only needs the module to evaluate is unaffected; anything that reads a league sees its actual teams.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath as __f2p } from "node:url";
+import { sheetsFromRecords } from "../src/data/sheets.js";
 // The repository, wherever it is checked out: every bundle built with this prelude sits in test/.
 const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };
-const __tsv = (f) => readFileSync(__root + "src/presets/" + f, "utf8");
-const aviumTSV=__tsv("AVIUM.tsv"),
-      arterraTSV=__tsv("ARTERRA.tsv"),
-      aleTSV=__tsv("ALE.tsv"),
-      arvTSV=__tsv("ARV.tsv"),
-      askTSV=__tsv("ASK.tsv"),
-      elvTSV=__tsv("ELV.tsv"),
-      karTSV=__tsv("KAR.tsv"),
-      kfkTSV=__tsv("KFK.tsv"),
-      kkmTSV=__tsv("KKM.tsv"),
-      miscTSV=__tsv("MISC.tsv"),
-      nchTSV=__tsv("NCH.tsv"),
-      shiTSV=__tsv("SHI.tsv"),
-      skjTSV=__tsv("SKJ.tsv"),
-      turTSV=__tsv("TUR.tsv"),
-      varTSV=__tsv("VAR.tsv");
-// This list is hand-kept and App.tsx's is not, so the two drift apart the day a preset is added,
-// renamed or merged away -- and the failure lands as an ENOENT from deep inside the bundle with
-// nothing naming the cause. Say it here instead.
+const __rec = (f) => JSON.parse(readFileSync(__root + "src/data/" + f, "utf8"));
+const playersRec = __rec("players.json"), managersRec = __rec("managers.json"),
+      teamsRec = __rec("teams.json"), sheetsRec = __rec("sheets.json");
+// The sheets in src/presets are written FROM the records, for the tools that still read sheets. One edited by hand
+// never reaches the app, and every tool reading it would quietly disagree with the app -- so no harness loads then.
 {
-  // ANCC.tsv is a cup field and Slots.tsv is a formation-to-slot lookup: they arrive with the
-  // registry export but are not squad data, and nothing in the app reads them.
+  // ANCC.tsv is a cup field and Slots.tsv a formation-to-slot lookup: not squads, and not in the records.
   const NOT_A_PRESET = ["ANCC.tsv", "Slots.tsv"];
-  const onDisk = readdirSync(__root + "src/presets").filter(f => f.endsWith(".tsv") && !NOT_A_PRESET.includes(f)).sort();
-  const stubbed = ["ALE.tsv","ARTERRA.tsv","ARV.tsv","ASK.tsv","AVIUM.tsv","ELV.tsv","KAR.tsv","KFK.tsv","KKM.tsv","MISC.tsv","NCH.tsv","SHI.tsv","SKJ.tsv","TUR.tsv","VAR.tsv"].sort();
-  const missing = onDisk.filter(f => !stubbed.includes(f));
-  if (missing.length) throw new Error(`test/prelude.js does not stub ${missing.join(", ")} -- add it beside the others, and to NATION_TSV in App.tsx`);
+  const S = sheetsFromRecords({ players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec });
+  const stale = readdirSync(__root + "src/presets").filter(f => f.endsWith(".tsv") && !NOT_A_PRESET.includes(f))
+    .filter(f => S[f.replace(/\.tsv$/, "")] !== readFileSync(__root + "src/presets/" + f, "utf8"));
+  if (stale.length) throw new Error(`src/presets/${stale.join(", ")} no longer match the records in src/data. A sheet edited by hand: "node test/records.mjs import" brings it in; if the records were edited, "node test/records.mjs export" rewrites the sheets.`);
 }
 const stadiumsTSV = readFileSync(__root + "src/stadiums.tsv", "utf8");
 const participantsTSV = readFileSync(__root + "src/participants.tsv", "utf8");

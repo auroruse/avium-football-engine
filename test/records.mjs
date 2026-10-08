@@ -1,32 +1,31 @@
 // THE RECORDS (src/data): every player, manager and team once, squads as links to players, so a man called up is the
-// same record for club and country. The sheets in src/presets are written FROM these; import builds them from the
-// sheets once, and check proves the round trip by writing every sheet back and comparing it byte for byte.
+// same record for club and country. The app reads these (App.tsx, through src/data/sheets.js); the sheets in
+// src/presets are written FROM them for the tools that still read sheets, and must never be edited by hand.
 //
-//   node test/records.mjs import          src/presets/*.tsv -> src/data/*.json (ANCC and Slots are not squads)
-//   node test/records.mjs export [dir]    src/data -> sheets (default src/presets)
-//   node test/records.mjs check [dir]     export into dir (default a temp folder) and compare with src/presets
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+//   node test/records.mjs import          src/presets/*.tsv -> src/data/*.json, keeping every existing ID
+//   node test/records.mjs export [dir]    src/data -> the sheets (default src/presets)
+//   node test/records.mjs check           do the sheets in src/presets match the records, byte for byte?
+//
+// import is how a sheet-sized change still gets in (a pasted squad): edit the sheet, import, and the same people keep
+// their IDs; a new name is a new record. ANCC and Slots are not squads.
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { FIELD, isSlot, sheetsFromRecords } from "../src/data/sheets.js";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PRE = join(ROOT, "src/presets"), DATA = join(ROOT, "src/data");
 const SKIP = new Set(["ANCC.tsv", "Slots.tsv"]);
 const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const CELL = /^\((\d+(?:\.\d+)?)\)\s*(.+?)(?:\s*\[([A-Z]{2,4})\])?$/;
-const isSlot = (h) => /^(SUB\s*)?#\s*\d+$/i.test(h.trim());
-// Each sheet column, by its header, to the team field it holds. Slots and MANAGER are links, handled apart.
-const FIELD = { "@": "at", "#": "code", "TEAM": "name", "NATION": "name", "OVR": "ovr", "PLAYSTYLE": "style",
-  "FORMATION": "formation", "TIME WASTING": "timeWasting", "GK PASSING": "gkPassing", "DL BEHAVIOR": "dlBehavior",
-  "HOME": "home", "AWAY": "away", "LOCATION": "location", "STADIUM": "stadium", "LEAGUE": "group", "CONFERENCE": "group",
-  "CONTINENT": "group" };
 const dump = (rows) => "[\n" + rows.map(r => JSON.stringify(r)).join(",\n") + "\n]\n";
 const load = (f) => JSON.parse(readFileSync(join(DATA, f), "utf8"));
+const records = () => ({ players: load("players.json"), managers: load("managers.json"), teams: load("teams.json"), sheets: load("sheets.json") });
 
-async function importSheets() {
+function importSheets() {
+  const had = existsSync(join(DATA, "players.json")) ? records() : null;
   const sheets = [], teams = [], players = new Map(), managers = new Map();
-  const cellsOf = [];   // [team, kind, index, parsed] for the nationality pass
+  const cellsOf = [];   // [team, kind, index, parsed, as written] for the nationality pass
   for (const f of readdirSync(PRE).filter(f => f.endsWith(".tsv") && !SKIP.has(f)).sort()) {
     const raw = readFileSync(join(PRE, f), "utf8"), eol = raw.includes("\r\n") ? "\r\n" : "\n";
     const lines = raw.split(eol), finalEol = lines[lines.length - 1] === "";
@@ -35,7 +34,7 @@ async function importSheets() {
     sheets.push({ file, header: lines[0], eol: eol === "\r\n" ? "crlf" : "lf", finalEol });
     for (const line of lines.slice(1)) {
       const c = line.split("\t");
-      const t = { file, nation: NATIONAL.has(file) ? null : file === "MISC" ? null : file };
+      const t = { file, nation: null };
       header.forEach((h, i) => {
         const v = c[i] ?? "", H = h.trim().toUpperCase();
         if (isSlot(h)) {
@@ -52,17 +51,16 @@ async function importSheets() {
         else (t.extra ??= {})[h] = v;
       });
       if (c.length !== header.length) t.cols = c.length;
-      if (NATIONAL.has(file)) t.nation = t.code;
       teams.push(t);
     }
   }
-  // A club's own nation is the one the app gives it (MISC clubs take theirs from their competition), so an untagged
-  // man is read the way the app reads him. Needs the lab bundle: zsh test/rebuild.sh.
-  const E = await import(join(ROOT, "test/engine.mjs"));
-  for (const t of teams.filter(t => !NATIONAL.has(t.file))) {
-    const c = E.PRESET_CATALOG.find(x => x.code === t.code && x.name === t.name.trim() && !/International/.test(x.league));
-    if (!c?.nat) { console.error(`no nation for ${t.code} ${t.name}`); process.exit(1); }
-    t.nation = c.nat;
+  // A team's own nation: a national side is its code, a club on a nation's sheet that nation, and a club on the mixed
+  // sheet (MISC) the nation of its competition, as the app reads it -- known from the records already there.
+  const compNat = {};
+  for (const t of had?.teams || []) if (t.file === "MISC" && t.nation) compNat[t.group] = t.nation;
+  for (const t of teams) {
+    t.nation = NATIONAL.has(t.file) ? t.code : t.file !== "MISC" ? t.file : compNat[t.group] ?? null;
+    if (!t.nation) { console.error(`no nation for ${t.code} ${t.name.trim()}: a new competition on MISC.tsv ("${t.group}"). Add its nation to compNat in test/records.mjs.`); process.exit(1); }
   }
   // One record a person. A rating must agree wherever he is listed, or the import stops. His nationality is the
   // national side he plays for, else his tag, else his club's nation (a manager: tag, club, national side); a sheet
@@ -77,7 +75,7 @@ async function importSheets() {
     if (m[3]) c.tag = c.tag || m[3];
     if (!NATIONAL.has(t.file) && !m[3]) c.club = c.club || t.nation;
     if (NATIONAL.has(t.file) && k === "m" && !m[3]) c.ntm = c.ntm || t.code;
-    c.all.add(m[3] || t.nation || "?");
+    c.all.add(m[3] || t.nation);
     seen.set(key, c);
   }
   if (clash.length) { console.error("ratings disagree:\n  " + clash.join("\n  ")); process.exit(1); }
@@ -87,8 +85,14 @@ async function importSheets() {
     r.nat = (k === "p" ? c.nt || c.tag || c.club : c.tag || c.club || c.ntm) || null;
     if (c.all.size > 1) split.push(`${r.name} (${[...c.all].join("/")})`);
   }
-  const ids = (B, pre) => { let i = 0; const id = new Map(); for (const r of B.values()) { r.id = pre + String(++i).padStart(4, "0"); id.set(r.name, r.id); } return id; };
-  const pid = ids(players, "p"), mid = ids(managers, "m");
+  // IDs never change: a name the records already hold keeps its ID, and a new one takes the next free number.
+  const ids = (B, pre, old) => {
+    const id = new Map((old || []).map(r => [r.name, r.id]));
+    let next = Math.max(0, ...(old || []).map(r => +r.id.slice(1)));
+    for (const r of B.values()) { r.id = id.get(r.name) ?? pre + String(++next).padStart(4, "0"); id.set(r.name, r.id); }
+    return id;
+  };
+  const pid = ids(players, "p", had?.players), mid = ids(managers, "m", had?.managers);
   let kept = 0;
   const link = (t, B, id, m, v) => {
     const r = B.get(m[2]), want = r.nat && r.nat !== t.nation ? r.nat : "", has = m[3] || "";
@@ -99,54 +103,41 @@ async function importSheets() {
   for (const [t, k, i, m, v] of cellsOf) {
     if (k === "p") t.squad[i] = link(t, players, pid, m, v); else t.manager = link(t, managers, mid, m, v);
   }
-  if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own tag):\n  ${split.join("\n  ")}`);
-  mkdirSync(DATA, { recursive: true });
+  if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own text):\n  ${split.join("\n  ")}`);
+  const byId = (a, b) => +a.id.slice(1) - +b.id.slice(1);
   const order = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr });
-  writeFileSync(join(DATA, "players.json"), dump([...players.values()].map(order)));
-  writeFileSync(join(DATA, "managers.json"), dump([...managers.values()].map(order)));
+  if (had) {
+    const gone = (o, B) => o.filter(r => ![...B.values()].some(x => x.id === r.id)).length;
+    const fresh = (o, B) => [...B.values()].filter(r => !o.some(x => x.id === r.id)).length;
+    console.log(`players: ${fresh(had.players, players)} new, ${gone(had.players, players)} no longer on any sheet; managers: ${fresh(had.managers, managers)} new, ${gone(had.managers, managers)} gone`);
+  }
+  mkdirSync(DATA, { recursive: true });
+  writeFileSync(join(DATA, "players.json"), dump([...players.values()].sort(byId).map(order)));
+  writeFileSync(join(DATA, "managers.json"), dump([...managers.values()].sort(byId).map(order)));
   writeFileSync(join(DATA, "teams.json"), dump(teams));
   writeFileSync(join(DATA, "sheets.json"), dump(sheets));
   console.log(`${teams.length} teams, ${players.size} players, ${managers.size} managers -> src/data`);
 }
 
-function exportSheets(dir) {
-  const players = new Map(load("players.json").map(r => [r.id, r])), managers = new Map(load("managers.json").map(r => [r.id, r]));
-  const teams = load("teams.json");
-  const cell = (r, t, tag) => `(${r.ovr}) ${r.name}${(tag ?? (r.nat && r.nat !== t.nation ? r.nat : "")) ? ` [${tag ?? r.nat}]` : ""}`;
-  const say = (B, v, t) => v == null ? "" : typeof v === "string" ? cell(B.get(v), t) : v.raw ?? cell(B.get(v.id), t, v.tag);
-  for (const s of load("sheets.json")) {
-    const header = s.header.split("\t"), eol = s.eol === "crlf" ? "\r\n" : "\n", out = [s.header];
-    for (const t of teams.filter(t => t.file === s.file)) {
-      let k = 0;
-      const c = header.map(h => {
-        const H = h.trim().toUpperCase();
-        if (isSlot(h)) return say(players, t.squad[k++], t);
-        if (H === "MANAGER") return say(managers, t.manager, t);
-        return FIELD[H] ? t[FIELD[H]] ?? "" : t.extra?.[h] ?? "";
-      });
-      out.push((t.cols ? c.slice(0, t.cols).concat(Array(Math.max(0, t.cols - c.length)).fill("")) : c).join("\t"));
-    }
-    writeFileSync(join(dir, s.file + ".tsv"), out.join(eol) + (s.finalEol ? eol : ""));
-  }
-}
-
 const [cmd, arg] = process.argv.slice(2);
-if (cmd === "import") await importSheets();
-else if (cmd === "export") exportSheets(arg ? resolve(arg) : PRE);
-else if (cmd === "check") {
-  const dir = arg ? resolve(arg) : mkdtempSync(join(tmpdir(), "records-"));
+if (cmd === "import") importSheets();
+else if (cmd === "export") {
+  const dir = arg ? resolve(arg) : PRE, S = sheetsFromRecords(records());
   mkdirSync(dir, { recursive: true });
-  exportSheets(dir);
+  for (const [file, text] of Object.entries(S)) writeFileSync(join(dir, file + ".tsv"), text);
+  console.log(`${Object.keys(S).length} sheets written to ${dir}`);
+} else if (cmd === "check") {
+  const S = sheetsFromRecords(records());
   let bad = 0;
-  for (const s of load("sheets.json")) {
-    const a = readFileSync(join(PRE, s.file + ".tsv")), b = readFileSync(join(dir, s.file + ".tsv"));
-    if (Buffer.compare(a, b)) {
-      bad++;
-      const A = a.toString().split("\n"), B = b.toString().split("\n");
-      const i = A.findIndex((l, j) => l !== B[j]);
-      console.log(`${s.file}.tsv DIFFERS at line ${i + 1}\n  sheet:   ${(A[i] || "").slice(0, 300)}\n  records: ${(B[i] || "").slice(0, 300)}`);
-    }
+  for (const [file, text] of Object.entries(S)) {
+    const disk = readFileSync(join(PRE, file + ".tsv"), "utf8");
+    if (disk === text) continue;
+    bad++;
+    const A = disk.split("\n"), B = text.split("\n"), i = A.findIndex((l, j) => l !== B[j]);
+    console.log(`${file}.tsv DIFFERS at line ${i + 1}\n  sheet:   ${(A[i] || "").slice(0, 300)}\n  records: ${(B[i] || "").slice(0, 300)}`);
   }
-  console.log(bad ? `${bad} sheets differ` : "every sheet written from the records is byte-identical to src/presets");
+  const extra = readdirSync(PRE).filter(f => f.endsWith(".tsv") && !SKIP.has(f) && !(f.replace(/\.tsv$/, "") in S));
+  for (const f of extra) { bad++; console.log(`${f} has no records: import it`); }
+  console.log(bad ? `${bad} sheets differ from the records` : "every sheet written from the records is byte-identical to src/presets");
   process.exit(bad ? 1 : 0);
-} else { console.error("usage: node test/records.mjs import | export [dir] | check [dir]"); process.exit(2); }
+} else { console.error("usage: node test/records.mjs import | export [dir] | check"); process.exit(2); }

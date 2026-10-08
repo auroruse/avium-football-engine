@@ -4,21 +4,13 @@ import headerImg from "./header.png";
 // vite.config.js. Adding a photograph is the whole job; there is no list to update.
 import { STADIUM_IMAGES } from "virtual:stadium-images";
 import { PSTATS_FILES } from "virtual:pstats";
-import aviumTSV from "./presets/AVIUM.tsv?raw";
-import arterraTSV from "./presets/ARTERRA.tsv?raw";
-import aleTSV from "./presets/ALE.tsv?raw";
-import arvTSV from "./presets/ARV.tsv?raw";
-import askTSV from "./presets/ASK.tsv?raw";
-import elvTSV from "./presets/ELV.tsv?raw";
-import karTSV from "./presets/KAR.tsv?raw";
-import kfkTSV from "./presets/KFK.tsv?raw";
-import kkmTSV from "./presets/KKM.tsv?raw";
-import nchTSV from "./presets/NCH.tsv?raw";
-import shiTSV from "./presets/SHI.tsv?raw";
-import skjTSV from "./presets/SKJ.tsv?raw";
-import turTSV from "./presets/TUR.tsv?raw";
-import varTSV from "./presets/VAR.tsv?raw";
-import miscTSV from "./presets/MISC.tsv?raw";
+// THE PLAYERS, MANAGERS AND TEAMS (src/data): one record a person, squads as links to players. Written back out as
+// the preset sheets just below the imports, and parsed exactly as the files were.
+import playersRec from "./data/players.json";
+import managersRec from "./data/managers.json";
+import teamsRec from "./data/teams.json";
+import sheetsRec from "./data/sheets.json";
+import { sheetsFromRecords } from "./data/sheets.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, IDENTITY_KEYS, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -27,6 +19,13 @@ import { CFG as ME_CFG, ME_DT, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
 // it, and a re-export sitting among the imports goes with them.
 export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
+// THE SHEETS, FROM THE RECORDS. Each preset sheet is written from src/data -- byte for byte the file in src/presets,
+// which `node test/records.mjs check` keeps true -- so every team builds exactly as it did when the app read the
+// files. The app no longer reads src/presets; those are copies for the tools that still read sheets.
+const SHEETS = sheetsFromRecords({ players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec });
+const aviumTSV = SHEETS.AVIUM, arterraTSV = SHEETS.ARTERRA, aleTSV = SHEETS.ALE, arvTSV = SHEETS.ARV, askTSV = SHEETS.ASK,
+      elvTSV = SHEETS.ELV, karTSV = SHEETS.KAR, kfkTSV = SHEETS.KFK, kkmTSV = SHEETS.KKM, nchTSV = SHEETS.NCH,
+      shiTSV = SHEETS.SHI, skjTSV = SHEETS.SKJ, turTSV = SHEETS.TUR, varTSV = SHEETS.VAR, miscTSV = SHEETS.MISC;
 
 // Positive side no longer hard-clamps at the old +12-gap ceiling (1.0) — it keeps
 // climbing up to a +30 gap (2.5), so a real outlier stuck on a weak team still reads
