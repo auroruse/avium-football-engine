@@ -5626,6 +5626,11 @@ export default function App() {
   const [tab, setTab] = useState("leagues");
   const [uiTheme, setUiTheme] = useState(() => { if (!THEMES_ENABLED) return "default"; try { const v = localStorage.getItem("avium-theme"); return UI_THEME_IDS.has(v) ? v : "default"; } catch { return "default"; } });
   useEffect(() => { if (!THEMES_ENABLED) return; try { localStorage.setItem("avium-theme", uiTheme); } catch {} }, [uiTheme]);
+  // ARTERRA ON OR OFF, each viewer's own and kept in the browser like the theme; on unless turned off (Moukden and
+  // Kirin, 10 October 2026). Off, the world is Avium alone: the world switches go, and the lists, pickers, search,
+  // addresses and the Editor drop Arterra. A match or tournament already holding an Arterra side plays on.
+  const [arterraOn, setArterraOn] = useState(() => { try { return localStorage.getItem("avium-arterra") !== "off"; } catch { return true; } });
+  useEffect(() => { try { if (arterraOn) localStorage.removeItem("avium-arterra"); else localStorage.setItem("avium-arterra", "off"); } catch {} }, [arterraOn]);
 
   const [expandedParticipantLeagues, setExpandedParticipantLeagues] = useState(() => new Set());
   const [presetMsg, setPresetMsg] = useState("");
@@ -5681,7 +5686,11 @@ export default function App() {
     return changed ? { ...t, squad } : t;
   }), [teams, natOvrMap]);
   const teamById = useMemo(() => { const m = new Map(); effTeams.forEach(t => m.set(t.id, t)); return m.get.bind(m); }, [effTeams]);
-  const [world, setWorld] = useState("avium");
+  const [worldPick, setWorld] = useState("avium");
+  // With Arterra off the world stays Avium, whatever was picked before.
+  const world = arterraOn ? worldPick : "avium";
+  // A side the viewer can reach: any, or Avium's alone with Arterra off.
+  const sideShown = (t) => arterraOn || worldOf(t) === "avium";
   // Every picker lists out of this rather than out of `teams`. `teams` stays the whole roster, so
   // nothing selected, saved or already on the pitch is touched by a switch.
   const worldTeams = useMemo(() => teams.filter(t => inWorld(t, world)), [teams, world]);
@@ -6760,13 +6769,18 @@ export default function App() {
     const halfKey = m.et ? "etHtDone" : "htDone";
     // Anything the manager asked for is applied HERE, on the first slice of a stoppage, which is
     // where meAutoSubs already does its work. A change made while the ball is running waits.
+    // Each order is also pinned (mePos.stratPin): without it the score-and-clock adjustment put
+    // Tempo and Time Wasting back to their kick-off values within a minute.
     const drain = () => {
       const q = mePending.current;
       if (!q.subs.length && !Object.keys(q.strategy).length) return;
       const mp2 = m.s.mePos;
       if (!mp2.sp || mp2.sp.t !== 1) return;
-      for (const [side, st2] of Object.entries(q.strategy))
+      const pins = mp2.stratPin || (mp2.stratPin = { home: {}, away: {} });
+      for (const [side, st2] of Object.entries(q.strategy)) {
         m.s.strategy[side] = { ...m.s.strategy[side], ...st2 };
+        pins[side] = { ...pins[side], ...st2 };
+      }
       for (const sub of q.subs) meSub(m.s, sub.side, sub.outIdx, sub.benchIdx, m.out);
       mePending.current = { subs: [], strategy: {} };
       setMeFrame(f => f + 1);
@@ -8223,6 +8237,7 @@ export default function App() {
              other: [...new Set(RECORDS_BUILT.players.map(r => r.nat).filter(c => c && !named.has(c)))].sort().map(c => [c, c]),
              name: new Map(nts.map(t => [t.code, t.name])) };
   }, []);
+  const artNats = useMemo(() => new Set(natOptions.arterra.map(([c]) => c)), [natOptions]);
   // Every preset team rebuilt from these records exactly as the load builds them; the ones that changed go onto the
   // screen, and into PRESET_CATALOG, which a session load reads. Matched by record, since a team's id is its league and
   // code and a new code makes a new id; the open team panel follows it.
@@ -10229,7 +10244,7 @@ export default function App() {
     const qi = raw.indexOf("?");
     const segs = (qi < 0 ? raw : raw.slice(0, qi)).split("/").filter(Boolean)
       .map(x => { try { return decodeURIComponent(x); } catch { return x; } });
-    let w = new URLSearchParams(qi < 0 ? "" : raw.slice(qi + 1)).get("world") === "arterra" ? "arterra" : "avium";
+    let w = arterraOn && new URLSearchParams(qi < 0 ? "" : raw.slice(qi + 1)).get("world") === "arterra" ? "arterra" : "avium";
     let t = TAB_OF_SLUG[(segs[0] || "registry").toLowerCase()] || "leagues";
     if (t === "tournament" && !TOURNAMENTS_ENABLED) t = "leagues";
     routePend.current = null; routeReplace.current = true;
@@ -10239,7 +10254,7 @@ export default function App() {
       setTab(t);
       // Play Match's address names its two sides, and sets them unless a fixture or a parked match holds the page.
       if (t === "live" && segs[1] && segs[2] && !tPendingPlayLive && !(meRef.current && !meRef.current.ftDone)) {
-        const bySlug = (x) => teams.find(tm => urlSlug(tm.name) === urlSlug(x)) || null, h = bySlug(segs[1]), a = bySlug(segs[2]);
+        const bySlug = (x) => teams.find(tm => sideShown(tm) && urlSlug(tm.name) === urlSlug(x)) || null, h = bySlug(segs[1]), a = bySlug(segs[2]);
         if (h && a && h.id !== a.id) { setLmH(h.id); setLmA(a.id); }
       }
       if (t === "tournament") {
@@ -10261,7 +10276,7 @@ export default function App() {
     setPlayerOpen(null); setLgSeason(null); setClOpen(null); setLgRound(null); setLgTTab(0); setTab("leagues");
     const s1 = (segs[1] || "").toLowerCase(), s2 = segs[2] || "", s3 = (segs[3] || "").toLowerCase();
     const byCode = (nt, code) => !code ? null
-      : teams.find(x => isIntlLeague(x.league) === nt && (x.code || "").toLowerCase() === String(code).toLowerCase()) || null;
+      : teams.find(x => isIntlLeague(x.league) === nt && sideShown(x) && (x.code || "").toLowerCase() === String(code).toLowerCase()) || null;
     const teamPage = (tm, tb) => { if (worldOf(tm) !== w) setWorld(worldOf(tm));
       setReg({ ...REG_HOME, nation: nationCodeOf(tm), team: tm.id,
                tab: tb === "history" || tb === "honours" ? "history" : null }); };
@@ -10301,7 +10316,7 @@ export default function App() {
     };
     if (!s1) { setReg(REG_PORTAL); return; }
     if (s1 === "nations") {
-      const nt = byCode(true, s2) || teams.find(x => isIntlLeague(x.league) && urlSlug(x.name) === urlSlug(s2));
+      const nt = byCode(true, s2) || teams.find(x => isIntlLeague(x.league) && sideShown(x) && urlSlug(x.name) === urlSlug(s2));
       if (nt && worldOf(nt) !== w) setWorld(worldOf(nt));
       setReg(nt ? { ...REG_HOME, nation: nt.code } : REG_PORTAL);
       return;
@@ -10315,7 +10330,7 @@ export default function App() {
     if (s1 === "managers") {
       people("managers");
       // A manager by name: his page, in his own world.
-      const m = s2 ? uxManagers.find(x => urlSlug(x.name) === urlSlug(s2)) : null;
+      const m = s2 ? uxManagers.find(x => (arterraOn || x.world === "avium") && urlSlug(x.name) === urlSlug(s2)) : null;
       if (m) { if (m.world !== w) setWorld(m.world); setReg({ ...REG_HOME, sec: "managers", mgr: m.id, tab: s3 === "history" ? "history" : null }); }
       return;
     }
@@ -10520,7 +10535,7 @@ export default function App() {
     const best = (rows, n) => rows.filter(h => h.s < 9).sort((a, b) => a.s - b.s || a.label.localeCompare(b.label)).slice(0, n);
     const code = (c) => (c && c.toLowerCase() === q ? 0 : 9);
     return [
-      ...best(regNations.map(n => ({ kind: "Nation", key: "n:" + n.code, label: n.nt.name, team: n.nt, s: Math.min(score(n.nt.name), code(n.code)),
+      ...best(regNations.filter(n => arterraOn || n.world === "avium").map(n => ({ kind: "Nation", key: "n:" + n.code, label: n.nt.name, team: n.nt, s: Math.min(score(n.nt.name), code(n.code)),
         sub: n.world === "arterra" ? "Arterra" : n.clubs.length ? `${n.clubs.length} clubs` : "National team", go: () => openNation(n.code) })), 4),
       ...best(teams.filter(t => !isIntlLeague(t.league)).map(t => ({ kind: "Club", key: "c:" + t.id, label: t.name, team: t,
         s: Math.min(score(t.name), code(t.code)), sub: t.league === MISC_LEAGUE ? t.comp || "Non-League" : t.league, go: () => openTeam(t) })), 5),
@@ -10532,7 +10547,7 @@ export default function App() {
       ...best(uxArc.map(c => ({ kind: "Competition", key: "k:" + c.name, label: c.name, comp: c.name, s: score(c.name),
         sub: c.nat ? natTeamByCode.get(c.nat)?.name || c.nat : (UX_KINDS.find(([k]) => k === c.kind) || [])[1] || "", go: () => openComp(c.name) })), 3),
     ];
-  }, [regQ, regNations, teams, playerIndex, managerIndex, uxArc, natTeamByCode]);
+  }, [regQ, regNations, teams, playerIndex, managerIndex, uxArc, natTeamByCode, arterraOn]);
   useEffect(() => { setRegQIdx(0); }, [regQ]);
   useEffect(() => { if (reg.sec === "competitions" && lgComp && !lgIsDir(lgComp)) regLastComp.current = lgComp; }, [reg.sec, lgComp]);
 
@@ -11537,23 +11552,24 @@ export default function App() {
   const edCities = useMemo(() => [[null, Object.keys(atlasRec.cities).sort((a, b) => a.localeCompare(b)).map(c => ({ k: c, name: c }))]], []);
   // The sides on the rail: this person's own (every side for the overseer), the national sides first, then the clubs by league.
   const edSides = useMemo(() => {
-    const own = curRecs.teams.filter(t => overseer || ownsKey(teamKey(t)));
+    const own = curRecs.teams.filter(t => (overseer || ownsKey(teamKey(t))) && (arterraOn || t.file !== "ARTERRA"));
     const byLeague = new Map();
     for (const t of own.filter(t => !isNational(t))) { const tm = teams.find(x => x.rkey === teamKey(t)), lg = tm?.league || t.group || t.file;
       byLeague.set(lg, [...(byLeague.get(lg) || []), t]); }
     return [["National Sides", own.filter(t => isNational(t))], ...[...byLeague.entries()].sort((a, b) => a[0].localeCompare(b[0]))].filter(([, l]) => l.length);
-  }, [curRecs, overseer, scope, teams]);
+  }, [curRecs, overseer, scope, teams, arterraOn]);
   // The men on the rail: the editor's nation's players and everyone at their sides; anyone for the overseer.
   const edMen = useMemo(() => {
     const keys = new Set(curRecs.teams.filter(t => overseer || ownsKey(teamKey(t))).map(teamKey));
-    return curRecs.players.filter(p => !p.retired && (overseer || (scope.nations || []).includes(p.nat)
+    return curRecs.players.filter(p => !p.retired && (arterraOn || !artNats.has(p.nat)) && (overseer || (scope.nations || []).includes(p.nat)
       || [whereIs.get(p.id)?.club?.key, whereIs.get(p.id)?.nt?.key].some(k => k && keys.has(k))));
-  }, [curRecs, overseer, scope, whereIs]);
+  }, [curRecs, overseer, scope, whereIs, arterraOn, artNats]);
   const edMgrs = useMemo(() => {
     const keys = new Set(curRecs.teams.filter(t => overseer || ownsKey(teamKey(t))).map(teamKey));
     const at = new Map(); for (const t of curRecs.teams) { const m = idOf(t.manager); if (m) at.set(m, [...(at.get(m) || []), teamKey(t)]); }
-    return curRecs.managers.filter(m => overseer || (scope.nations || []).includes(m.nat) || (at.get(m.id) || []).some(k => keys.has(k)));
-  }, [curRecs, overseer, scope]);
+    return curRecs.managers.filter(m => (arterraOn || !artNats.has(m.nat))
+      && (overseer || (scope.nations || []).includes(m.nat) || (at.get(m.id) || []).some(k => keys.has(k))));
+  }, [curRecs, overseer, scope, arterraOn, artNats]);
   const edSidesOfMgr = (id) => curRecs.teams.filter(t => idOf(t.manager) === id);
   // A free manager's style, else the style of the side he runs (DESIGN.md: a side's style follows its manager).
   const edStyleOfMgr = (id) => { const m = mgrNow(id), t = edSidesOfMgr(id).find(x => !isNational(x)) || edSidesOfMgr(id)[0];
@@ -11563,7 +11579,7 @@ export default function App() {
   // A line of facts with a dot between them.
   const edDots = (...xs) => xs.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && <span className="ux-ed-dot">&middot;</span>}{x}</Fragment>);
   // The national sides as a side picker's choices, and the sides this person may send a man to.
-  const edNatChoices = (all) => [[null, [...natOptions.avium, ...natOptions.arterra].filter(([c]) => all || (scope.nations || []).includes(c))
+  const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
     .map(([c, n]) => ({ k: c, name: n, team: natTeamByCode.get(c), code: c }))]];
   const edSideChoices = (none, clubsOnly) => [...(none ? [[null, [{ k: "", name: "No Side" }]]] : []),
     ...edSides.map(([h, l]) => [h, l.filter(t => !clubsOnly || !isNational(t)).map(t => ({ k: teamKey(t), name: t.name.trim(), team: teamOfKey(teamKey(t)), code: t.code }))]).filter(([, l]) => l.length)];
@@ -12085,6 +12101,8 @@ export default function App() {
                   <select value={uiTheme} onChange={e => setUiTheme(e.target.value)}>
                     {UI_THEMES.map((th, i) => th ? <option key={th[0]} value={th[0]}>{th[1]}</option> : <option key={"r" + i} disabled>{"─".repeat(14)}</option>)}
                   </select></label>)}
+              <button type="button" role="menuitemcheckbox" aria-checked={arterraOn} className="ux-btnreset ux-menu-item" onClick={() => setArterraOn(v => !v)}>
+                Arterra<span className={"ux-tog" + (arterraOn ? " ux-on" : "")} aria-hidden="true"><i /></span></button>
               <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" onClick={() => { setUxMenu(null); setTab("docs"); }}>Documentation</button>
             </div></>)}
         </div>
@@ -12141,7 +12159,7 @@ export default function App() {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
       UX_HOME_PAGES.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoSec(id))));
-      if (cur !== "home") right = <WorldToggle value={world} onChange={setWorld} />;
+      if (cur !== "home" && arterraOn) right = <WorldToggle value={world} onChange={setWorld} />;
     } else if (tab === "leagues" && reg.sec === "competitions") {
       // A competition: its nation as the step up, its crest and name, its three pages, and on Season the season picked. The
       // section: Overview, Years (the year picked) and Head To Head.
@@ -12390,7 +12408,7 @@ export default function App() {
       <div className="ux-body" style={{ gridTemplateColumns: "300px 380px minmax(0, 1fr)" }}>
         <div className="ux-col">
           {uxPanel("Nations",
-            <div className="ux-seg" role="group" aria-label="World">
+            arterraOn && <div className="ux-seg" role="group" aria-label="World">
               {[["avium", "Avium"], ["arterra", "Arterra"]].map(([w, l]) => (
                 <button key={w} type="button" className={"ux-btnreset" + (world === w ? " ux-on" : "")} aria-pressed={world === w} onClick={() => setWorld(w)}>{l}</button>))}
             </div>,
@@ -14697,7 +14715,7 @@ export default function App() {
     });
     return uxPanel("Sides", (
       <div className="ux-ph-ctl"><span className="ux-chip"><span style={mono}>{tournamentTeamIds.length}</span>&nbsp;Picked</span>
-        <WorldToggle value={world} onChange={setWorld} />
+        {arterraOn && <WorldToggle value={world} onChange={setWorld} />}
         <button type="button" className="ux-btnreset ux-btn" onClick={() => { setTournamentTeamIds([]); setPresetMsg(""); }}>Clear</button></div>), (<>
       <div className="ux-filters">
         <label className="ux-search">{uxIcon("search", "ux-s")}<input value={tSidesQ} onChange={e => setTSidesQ(e.target.value)} placeholder="Search Sides" aria-label="Search Sides" /></label>
@@ -15642,7 +15660,7 @@ export default function App() {
         : <span key="c" className="ux-mban-crest ux-none" />;
       const name = lock ? <span key="n" className="ux-mban-name"><SlideName text={t?.name || ""} /></span>
         : <UxSidePick key="n" label={away ? "Pick Away Side" : "Pick Home Side"} value={t?.id} groups={groupsBut(other)} onPick={it => set(it.k)}
-            placeholder="Search Sides" cls="ux-sp-big" bare slide head={<WorldToggle value={world} onChange={setWorld} />} />;
+            placeholder="Search Sides" cls="ux-sp-big" bare slide head={arterraOn ? <WorldToggle value={world} onChange={setWorld} /> : null} />;
       const dice = !lock && <button key="d" type="button" className="ux-btnreset ux-iconbtn ux-mban-dice" title="Random Side" aria-label="Random Side" onClick={() => randomFor(side)}>{uxIcon("dice")}</button>;
       const id = (
         <div key="i" className="ux-mban-id">

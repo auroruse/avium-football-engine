@@ -184,6 +184,9 @@ export function meInit(s, slotsFor, rng) {
     // than from the live values, so a reaction never compounds on the last one, and so how well the
     // squad suits the system still governs the baseline the manager moves away from.
     stratBase: { home: { ...(s.strategy?.home || {}) }, away: { ...(s.strategy?.away || {}) } },
+    // Orders given from the app's Tactics panel. meChase and a change of style both leave these
+    // alone, so an order holds until the panel changes it again.
+    stratPin: { home: {}, away: {} },
     chaseT: { home: 0, away: 0 } };
   for (const side of ME_SIDES) {
     s.mePos.slots[side] = s.players[side].filter(p => p.pos !== "GK")
@@ -1819,7 +1822,9 @@ function meChase(s, out) {
       }
     }
     const k = mp.chaseT[side], w = k > 0 ? ME_CHASE_W.atk : ME_CHASE_W.def, m = Math.abs(k);
+    const pin = mp.stratPin?.[side];
     for (const key in ME_STRAT_RANGE) {
+      if (pin && key in pin) continue;
       const r = ME_STRAT_RANGE[key];
       st[key] = Math.max(r[0], Math.min(r[1], (base[key] || 0) + (w[key] || 0) * m));
     }

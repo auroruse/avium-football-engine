@@ -21,8 +21,13 @@ Home until Moukden and Kirin renamed it (9 October 2026). Players, Managers and 
 page bar: Overview, Players, Managers, Rating Changes; Moukden and
 Kirin, 9 October 2026). Custom Sides, the sides made in this browser, are gone (Moukden and Kirin, 10 October 2026).
 Registry stays lit on them, on a player's or a manager's page, and on a nation's and its clubs'
-pages. Search sits beside it, then the settings menu (the theme and the Documentation), Requests and the Cart for
+pages. Search sits beside it, then the settings menu (the theme, the Arterra switch and the Documentation), Requests and the Cart for
 editors, and the account menu. **Tournaments** is the third section, after Competitions (below).
+
+**The Arterra switch** (Moukden and Kirin, 10 October 2026) is each viewer's own, kept in the browser and on unless
+turned off. Off, the world is Avium alone: the four world switches go (Registry's title and its Nations panel, the side
+picker, the tournament's Sides), and search, addresses and the Editor drop Arterra's sides, players and managers. A match
+or tournament already holding an Arterra side plays on.
 
 ### Pages (the page bar)
 

@@ -8,7 +8,7 @@ export const DOCS = [
       "Every page has its own address. The browser's back and forward buttons work, the arrows beside the wordmark do the same, and any page can be sent to someone as a link.",
       { dl: [
         ["Search", "Finds nations, clubs, players, managers and competitions by the start of any word in the name, and a side by its code. The arrow keys move through the results and Enter opens one."],
-        ["Settings", "The gear: the colour theme, and this Documentation."],
+        ["Settings", "The gear: the colour theme, the Arterra switch, and this Documentation. With Arterra off, the app shows Avium only: no world switches, and no Arterra sides, players or managers in any list, search or picker. It is saved in your browser and changes nothing for anyone else."],
         ["Sign In", "With a GitHub account, for the ACU's editors. Reading needs no account."],
         ["Play Match", "The match screen. See Matches."],
       ] },
@@ -16,7 +16,7 @@ export const DOCS = [
     { id: "registry", title: "Registry", body: [
       "Registry is the record of who exists today: every nation, club, player and manager. Its pages are Overview, Players, Managers and Rating Changes. Overview has five panels.",
       { dl: [
-        ["Nations", "Every national side ranked by rating. The switch in the title moves between Avium and Arterra, which are never listed together."],
+        ["Nations", "Every national side ranked by rating. The switch in the title moves between Avium and Arterra, which are never listed together. It is gone while Arterra is off in Settings."],
         ["Your Nation", "When you are signed in as an editor, your nation: its rating, manager, style, ground and the titles it holds."],
         ["Leaders", "The season's best players: average rating, goals, assists, goal contributions, chances created, defensive actions, saves and appearances. The season is picked in the title."],
         ["Champions", "The current holder of every title still contested."],

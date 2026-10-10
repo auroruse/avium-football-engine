@@ -108,10 +108,11 @@ export function mePreMatch(team, opp, ctx = {}) {
   return { style: pick, read: them };
 }
 
-// Put a style on a side for the rest of the match: its whole instruction sheet and its plan.
+// Put a style on a side for the rest of the match: its whole instruction sheet and its plan. Orders
+// given from the Tactics panel (mePos.stratPin) stay on top of the new sheet.
 export function meSetStyle(s, side, style) {
   s.styles[side] = style;
-  s.strategy[side] = { ...s.strategy[side], ...meStrategyOf(style) };
+  s.strategy[side] = { ...s.strategy[side], ...meStrategyOf(style), ...(s.mePos?.stratPin?.[side] || {}) };
   (s.plan = s.plan || {})[side] = mePlanOf(style);
   if (s.mePos?.stratBase) s.mePos.stratBase[side] = { ...s.strategy[side] };
 }
