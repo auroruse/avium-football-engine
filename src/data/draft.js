@@ -10,8 +10,8 @@ import { badgeOrder } from "./badges.js";
 export const teamKey = (t) => t.id || t.file + "|" + t.code;
 const KINDS = {
   // pos is kept only for a man on no team (the position he last played, for whoever signs him); retired takes a man
-  // out of play for good while his record stays.
-  players: { fields: ["ovr", "nat", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
+  // out of play for good while his record stays. born is his date of birth, "YYYY-MM-DD" (src/data/icclock.js ages it).
+  players: { fields: ["ovr", "nat", "born", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
   managers: { fields: ["ovr"], key: (r) => r.id, label: (r) => r.name },
   teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad"], key: teamKey,
            label: (t) => t.name.trim() },
@@ -21,11 +21,11 @@ export const PLAYER_FIELDS = KINDS.players.fields;
 export const idOf = (v) => v && typeof v === "object" && "id" in v ? v.id : v;
 // A field as compared: badges in table order, a squad or a manager as the people it names.
 const norm = (f, v) => f === "badges" ? badgeOrder(v) : f === "squad" ? (v || []).map(s => idOf(s) ?? null)
-  : f === "manager" ? idOf(v) ?? null : f === "retired" ? !!v : f === "pos" ? v || null : v;
+  : f === "manager" ? idOf(v) ?? null : f === "retired" ? !!v : f === "pos" || f === "born" ? v || null : v;
 const same = (f, a, b) => JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null);
 
-// One player (or manager) record in the records' own key order; pos, badges and retired only when they say something.
-export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.pos ? { pos: r.pos } : null),
+// One player (or manager) record in the records' own key order; born, pos, badges and retired only when they say something.
+export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null), ...(r.pos ? { pos: r.pos } : null),
   ...(r.badges?.length ? { badges: badgeOrder(r.badges) } : null), ...(r.retired ? { retired: true } : null) });
 
 // How many people and teams a draft touches.
