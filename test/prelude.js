@@ -17,7 +17,8 @@ const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };
 const __rec = (f) => JSON.parse(readFileSync(__root + "src/data/" + f, "utf8"));
 const playersRec = __rec("players.json"), managersRec = __rec("managers.json"),
-      teamsRec = __rec("teams.json"), sheetsRec = __rec("sheets.json"), editorsRec = __rec("editors.json");
+      teamsRec = __rec("teams.json"), sheetsRec = __rec("sheets.json"), editorsRec = __rec("editors.json"),
+      atlasRec = __rec("atlas.json");
 // The sheets in src/presets are written FROM the records, for the tools that still read sheets. One edited by hand
 // never reaches the app, and every tool reading it would quietly disagree with the app -- so no harness loads then.
 {

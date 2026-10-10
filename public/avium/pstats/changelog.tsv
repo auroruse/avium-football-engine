@@ -1,8 +1,8 @@
 SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
-1932	World Cup Qualifiers	Heliodoro Medina	RCO	DEF	59	62
+1932	World Cup Qualifiers	Heliodoro Medina	AEM	DEF	59	62
 1932	World Cup Qualifiers	Axel Berg	LVO	GK	76	78
 1932	World Cup Qualifiers	Jesus Halconero	ASK	FWD	80	83
-1932	World Cup Qualifiers	Otar Tvalchrelidze	AEK	DEF	56	59
+1932	World Cup Qualifiers	Otar Tvalchrelidze	IX	DEF	56	59
 1932	World Cup Qualifiers	Lebogang Du Phiri	ASP	MID	70	72
 1932	World Cup Qualifiers	Dhanushkodi Thuraisingam	ARU	FWD	61	63
 1932	World Cup Qualifiers	Semyon Volkov	GIA	GK	73	75
@@ -721,12 +721,12 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Manu Kawelo	AED	FWD	56	55
 1934	International Football	Nakoa Kealoha	AED	DEF	60	59
 1934	International Football	Ulu Piipiilani	AED	MID	57	58
-1934	International Football	Aram Keshishyan	AEK	FWD	56	58
-1934	International Football	Armand Delaunay	AEK	MID	56	57
-1934	International Football	Giorgi Tskhovreba	AEK	MID	56	57
-1934	International Football	Nikoloz Nadaraia	AEK	GK	59	58
-1934	International Football	Otar Tvalchrelidze	AEK	DEF	59	58
-1934	International Football	Toghrul Bakhshiyev	AEK	DEF	64	65
+1934	International Football	Aram Keshishyan	IX1	FWD	56	58
+1934	International Football	Armand Delaunay	IX1	MID	56	57
+1934	International Football	Giorgi Tskhovreba	IX1	MID	56	57
+1934	International Football	Nikoloz Nadaraia	IX1	GK	59	58
+1934	International Football	Otar Tvalchrelidze	IX1	DEF	59	58
+1934	International Football	Toghrul Bakhshiyev	IX1	DEF	64	65
 1934	International Football	Ildefonso Morón	AEM	FWD	56	58
 1934	International Football	Khalil Alami	AEM	MID	54	56
 1934	International Football	Montasir El Andaloussi	AEM	DEF	64	62
@@ -876,9 +876,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Bolesław Kwiatkowski	COR	FWD	70	69
 1934	International Football	Radosław Gołębiowski	COR	FWD	72	73
 1934	International Football	Sławomir Jędrzejczyk	COR	MID	73	72
-1934	International Football	Egor Goryunov	CSK	FWD	73	71
-1934	International Football	Fyodor Korsakov	CSK	MID	72	70
-1934	International Football	Namsarai Ayusheev	CSK	MID	74	76
+1934	International Football	Egor Goryunov	CSR	FWD	73	71
+1934	International Football	Fyodor Korsakov	CSR	MID	72	70
+1934	International Football	Namsarai Ayusheev	CSR	MID	74	76
 1934	International Football	Dávid Pataky	DTK	GK	71	73
 1934	International Football	Miklós Szlitlán	DTK	DEF	71	73
 1934	International Football	Nimród Somogyi	DTK	FWD	70	72
@@ -991,16 +991,16 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Jan Morsztyn	MLM	MID	70	72
 1934	International Football	Leif Jonsson	MLM	DEF	69	67
 1934	International Football	Neil Dike	MLM	FWD	71	72
-1934	International Football	Atiqtalik Ahmaogak	MOR	GK	65	66
-1934	International Football	Dorofei Lestenkof	MOR	FWD	64	63
-1934	International Football	Eben Nageak	MOR	DEF	63	62
-1934	International Football	Feoktist Shishkoff	MOR	FWD	62	63
-1934	International Football	Katlian Kadashan	MOR	MID	67	66
-1934	International Football	Levi Kignak	MOR	FWD	64	63
-1934	International Football	Nanuq Oyagak	MOR	MID	68	67
-1934	International Football	Piquk Ipalook	MOR	DEF	63	64
-1934	International Football	Qillaq Nutaaq	MOR	MID	62	61
-1934	International Football	Veniamin Tarakanoff	MOR	MID	66	67
+1934	International Football	Atiqtalik Ahmaogak	IX3	GK	65	66
+1934	International Football	Dorofei Lestenkof	IX3	FWD	64	63
+1934	International Football	Eben Nageak	IX3	DEF	63	62
+1934	International Football	Feoktist Shishkoff	IX3	FWD	62	63
+1934	International Football	Katlian Kadashan	IX3	MID	67	66
+1934	International Football	Levi Kignak	IX3	FWD	64	63
+1934	International Football	Nanuq Oyagak	IX3	MID	68	67
+1934	International Football	Piquk Ipalook	IX3	DEF	63	64
+1934	International Football	Qillaq Nutaaq	IX3	MID	62	61
+1934	International Football	Veniamin Tarakanoff	IX3	MID	66	67
 1934	International Football	Almeri Palomäki	MRJ	MID	72	71
 1934	International Football	Iilpo Kolemainen	MRJ	MID	74	73
 1934	International Football	Ohto Voutilainen	MRJ	DEF	73	72
@@ -1071,14 +1071,14 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Osman Mamut	PER	DEF	70	71
 1934	International Football	Platon Denisov	PER	FWD	65	66
 1934	International Football	Sevastyan Roshchin	PER	FWD	70	71
-1934	International Football	Matěj Skočdopole	POL	DEF	72	69
-1934	International Football	Vilém Zlatohlavý	POL	FWD	70	67
-1934	International Football	Radim Vohánka	POL	MID	69	71
-1934	International Football	Aleš Nejezchleb	POL	FWD	70	69
-1934	International Football	Dušan Tóth	POL	DEF	69	68
-1934	International Football	Jakub Svoboda	POL	GK	71	70
-1934	International Football	Miroslav Přibyl	POL	FWD	74	75
-1934	International Football	Zbyněk Bezruč	POL	MID	69	68
+1934	International Football	Matěj Skočdopole	IX2	DEF	72	69
+1934	International Football	Vilém Zlatohlavý	IX2	FWD	70	67
+1934	International Football	Radim Vohánka	IX2	MID	69	71
+1934	International Football	Aleš Nejezchleb	IX2	FWD	70	69
+1934	International Football	Dušan Tóth	IX2	DEF	69	68
+1934	International Football	Jakub Svoboda	IX2	GK	71	70
+1934	International Football	Miroslav Přibyl	IX2	FWD	74	75
+1934	International Football	Zbyněk Bezruč	IX2	MID	69	68
 1934	International Football	Édouard Laroche	RCC	FWD	70	72
 1934	International Football	Aymeric Lescure	RCC	DEF	73	72
 1934	International Football	Fyodor Chistyakov	RUD	DEF	74	73
@@ -1176,9 +1176,9 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Neçirvan Barzani	ADV	FWD	84	85
 1934	International Football	Tamer Khalil	ADV	MID	77	75
 1934	International Football	Yaqub Ghattas	ADV	MID	75	74
-1934	International Football	Bastien Shengelia	AEK	FWD	76	74
-1934	International Football	Hayk Khitaryan	AEK	MID	82	81
-1934	International Football	Kakha Kvernadze	AEK	MID	83	85
+1934	International Football	Bastien Shengelia	IX1	FWD	76	74
+1934	International Football	Hayk Khitaryan	IX1	MID	82	81
+1934	International Football	Kakha Kvernadze	IX1	MID	83	85
 1934	International Football	Yassine Benali	AEM	GK	81	82
 1934	International Football	Youssef Valverde	AEM	MID	82	83
 1934	International Football	Arthur Kohlberg	ALE	DEF	81	82
@@ -1495,8 +1495,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1934	International Football	Soino Jaakola	PIE	MID	78	79
 1934	International Football	Teima Uibo	PIE	DEF	76	74
 1934	International Football	Tuomas Tuulensuu	PIE	FWD	77	75
-1934	International Football	Karel Černý	POL	FWD	79	80
-1934	International Football	Ladislav Kučera	POL	DEF	77	76
+1934	International Football	Karel Černý	IX2	FWD	79	80
+1934	International Football	Ladislav Kučera	IX2	DEF	77	76
 1934	International Football	August Rittenhouse	PON	MID	85	86
 1934	International Football	Conan Neitzel	PON	MID	78	77
 1934	International Football	Diedrich Fassbender	PON	MID	79	77
@@ -1679,8 +1679,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1935	1935 WC Qualifiers	Themistoklis Zervas	AST	MID	82	84
 1935	1935 WC Qualifiers	Aristeidis Georgiou	AST	DEF	75	76
 1935	1935 WC Qualifiers	Vlasios Nikolaou	AST	DEF	74	73
-1935	1935 WC Qualifiers	Carnig Chalikyan	AEK	FWD	58	59
-1935	1935 WC Qualifiers	Kakha Kvernadze	AEK	MID	85	86
+1935	1935 WC Qualifiers	Carnig Chalikyan	IX1	FWD	58	59
+1935	1935 WC Qualifiers	Kakha Kvernadze	IX1	MID	85	86
 1935	1935 WC Qualifiers	Heliodoro Medina	AEM	DEF	61	62
 1935	1935 WC Qualifiers	Montasir El Andaloussi	AEM	DEF	62	63
 1935	1935 WC Qualifiers	Youssef Valverde	AEM	MID	83	84
@@ -1736,8 +1736,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1935	1935 WC Qualifiers	Bibhuti Mohapatra	ENR	GK	67	68
 1935	1935 WC Qualifiers	Osman Mamut	PER	DEF	71	73
 1935	1935 WC Qualifiers	Ivan Gavrilovic	PER	DEF	71	72
-1935	1935 WC Qualifiers	Miroslav Přibyl	POL	FWD	75	77
-1935	1935 WC Qualifiers	Ladislav Kučera	POL	DEF	76	75
+1935	1935 WC Qualifiers	Miroslav Přibyl	IX2	FWD	75	77
+1935	1935 WC Qualifiers	Ladislav Kučera	IX2	DEF	76	75
 1935	1935 WC Qualifiers	August Rittenhouse	PON	MID	86	87
 1935	1935 WC Qualifiers	Tilman Zartmann	PON	DEF	80	81
 1935	1935 WC Qualifiers	Maximilian Mollenhauer	PON	GK	83	82
@@ -2021,8 +2021,8 @@ SEASON	COMPETITION	PLAYER	TEAM	POS	OLD	NEW
 1935	World Cup	Badr Chraibi	AEM	DEF	56	57
 1935	World Cup	Idriss Messaoudi	AEM	MID	56	57
 1935	World Cup	Othmane El Fassi	AEM	MID	56	57
-1935	World Cup	Iker Sasieta Gorriti	ALB	GK	74	73
-1935	World Cup	Xabier Aranburu Sasi	ALB	DEF	74	73
+1935	World Cup	Iker Sasieta Gorriti	IX	GK	74	73
+1935	World Cup	Xabier Aranburu Sasi	IX	DEF	74	73
 1935	World Cup	Albrecht Von Haast	ANH	MID	68	67
 1935	World Cup	Walther Meyer	ANH	MID	64	63
 1935	World Cup	Oriol Montagut	ASK	DEF	88	87

@@ -105,16 +105,20 @@ function importSheets() {
   }
   if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own text):\n  ${split.join("\n  ")}`);
   const byId = (a, b) => +a.id.slice(1) - +b.id.slice(1);
-  // The sheets carry no badges: a man's come from his record, by ID.
+  // The sheets carry no badges and no dates of birth: a man's come from his record, by ID (a manager's too).
   const badges = new Map((had?.players || []).filter(r => r.badges?.length).map(r => [r.id, r.badges]));
-  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id) });
-  // A man the records hold and no sheet lists is a free agent (or retired), not a deletion: he stays, as he was.
+  const born = new Map([...(had?.players || []), ...(had?.managers || [])].filter(r => r.born).map(r => [r.id, r.born]));
+  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id), born: r.born ?? born.get(r.id) });
+  // A man the records hold and no sheet lists is a free agent (or retired), not a deletion: he stays, as he was. A
+  // manager no side lists is out of work the same way (Josue Alferinho, 9 Oct 2026).
   for (const r of had?.players || []) if (![...players.values()].some(x => x.id === r.id)) players.set(r.name, { ...r });
+  for (const r of had?.managers || []) if (![...managers.values()].some(x => x.id === r.id)) managers.set(r.name, { ...r });
   if (had) {
     const gone = (o, B) => o.filter(r => ![...B.values()].some(x => x.id === r.id)).length;
     const fresh = (o, B) => [...B.values()].filter(r => !o.some(x => x.id === r.id)).length;
     const free = had.players.filter(r => !cellsOf.some(([, k, , m]) => k === "p" && m[2] === r.name)).length;
-    console.log(`players: ${fresh(had.players, players)} new, ${free} on no sheet (kept: free agents or retired); managers: ${fresh(had.managers, managers)} new, ${gone(had.managers, managers)} gone`);
+    const out = had.managers.filter(r => !cellsOf.some(([, k, , m]) => k === "m" && m[2] === r.name)).length;
+    console.log(`players: ${fresh(had.players, players)} new, ${free} on no sheet (kept: free agents or retired); managers: ${fresh(had.managers, managers)} new, ${out} on no sheet (kept), ${gone(had.managers, managers)} gone`);
   }
   mkdirSync(DATA, { recursive: true });
   writeFileSync(join(DATA, "players.json"), dumpRecords([...players.values()].sort(byId).map(order)));

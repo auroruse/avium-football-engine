@@ -620,11 +620,17 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
     secondYellows: allP(sd).filter(p => p.rc && (p.yc || 0) >= 2).length,
     injuries: out.injuries?.[sd] || 0,
   });
+  // What a result keeps of each man: the figures a tournament's tables read (accumulateMatchStats), copied off the live
+  // engine object. The object itself carries the brain's memory and plans, about 160KB a match in a tournament's save,
+  // so a group stage of 32 sides ran out of browser storage in its second round.
+  const PD = ["name", "fullName", "pos", "ovr", "ovr0", "sub", "_onAt", "_offAt", "mins", "goals", "assists", "rating", "yc", "rc",
+              "rcVariant", "inj", "injSev", "injPart", "passOk", "prog", "cc", "defActs", "saves", "stamina"];
+  const pdOf = (p) => { const o = {}; for (const k of PD) if (p[k] !== undefined) o[k] = p[k]; return o; };
   return { ftHome: ftH, ftAway: ftA, et, pen,
            cards: { home: cardsOf("home"), away: cardsOf("away") },
            scorers: out.scorers || { home: [], away: [] },
            ogs: out.ogs || { home: [], away: [] },
-           playerData: { home: allP("home"), away: allP("away") } };
+           playerData: { home: allP("home").map(pdOf), away: allP("away").map(pdOf) } };
 }
 
 // THE ONE DOOR INTO THE ENGINE FROM ANOTHER THREAD. Everything a fixture needs arrives as plain
