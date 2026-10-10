@@ -10167,7 +10167,30 @@ export default function App() {
   const [edDrag, setEdDrag] = useState(null);        // the place being dragged
   const [edFind, setEdFind] = useState("");          // the search beside the pitch
   const [edTrade, setEdTrade] = useState(null);      // a trade being built: { side, other, take: [ids], give: [ids] }
-  const [edNew, setEdNew] = useState(null);          // a New form: { kind, ...its fields }
+  // THE NEW FORMS, KEPT (Moukden and Kirin, 11 October 2026). A New form being filled in (a team, player, manager or
+  // league) is kept in this browser, one a tab, until it is sent or cancelled: another tab, a record picked from the rail
+  // or a reload puts it aside, and New brings it back as it was. A request the overseer is reviewing is not kept; it
+  // reopens from Requests. `edNew` is the form open on this tab, and setEdNew(null) is done with it (sent or cancelled).
+  const ED_FORMS_KEY = "avium-editor-forms";
+  const [edForms, setEdForms] = useState(() => { try { const v = JSON.parse(localStorage.getItem(ED_FORMS_KEY));
+    return v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([, f]) => f && !f.review).map(([k, f]) => [k, { ...f, rollOpen: false }])) : {}; }
+    catch { return {}; } });
+  useEffect(() => { try { if (Object.keys(edForms).length) localStorage.setItem(ED_FORMS_KEY, JSON.stringify(edForms)); else localStorage.removeItem(ED_FORMS_KEY); } catch {} }, [edForms]);
+  const [edRev, setEdRev] = useState(null);           // a request under review: its form, never kept
+  const [edFormOff, setEdFormOff] = useState({});     // the tabs whose kept form is put aside for a record
+  const edNew = edRev && edRev.kind === edSec ? edRev : !edFormOff[edSec] ? edForms[edSec] || null : null;
+  const setEdNew = (v) => {
+    if (typeof v === "function") {
+      if (edRev && edRev.kind === edSec) { setEdRev(r => (r ? v(r) : r)); return; }
+      setEdForms(m => { const n = v(m[edSec] || null), out = { ...m }; if (n) out[edSec] = n; else delete out[edSec]; return out; });
+      return;
+    }
+    if (v?.review) { setEdRev(v); return; }
+    if (v) { setEdRev(null); setEdFormOff(o => ({ ...o, [v.kind]: false })); setEdForms(m => ({ ...m, [v.kind]: v })); return; }
+    if (edRev && edRev.kind === edSec) { setEdRev(null); return; }
+    setEdForms(m => { const out = { ...m }; delete out[edSec]; return out; });
+  };
+  const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
   const [edMsg, setEdMsg] = useState("");             // why the last move could not be made
@@ -11553,7 +11576,7 @@ export default function App() {
   // and an editor's change to a code, ground or city are requests (src/data/rules.js), answered by the other nation or
   // the overseer. An editor's own sides are their nation's national side and clubs; a man's own record is the
   // overseer's, and the editor sees it locked. (The state is declared above the address code, beside the Documentation's.)
-  const edOpen = (sec, id) => { setTab("editor"); setEdSec(sec); setEdNew(null); setEdTrade(null); setEdSel(null); setEdQ(""); setEdDetails(null); setEdMsg("");
+  const edOpen = (sec, id) => { setTab("editor"); setEdSec(sec); edPutAside(sec); setEdTrade(null); setEdSel(null); setEdQ(""); setEdDetails(null); setEdMsg("");
     if (id) setEdPick(p => ({ ...p, [sec]: id })); };
   const edUid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const edFold = (s) => pFold(String(s || "")).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -11637,7 +11660,7 @@ export default function App() {
   const edRail = (kind, groups, pickedKey, pick) => (
     <section className="ux-panel ux-grow ux-ed-rail">
       <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => {
-        setEdNew(kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) }); setEdTrade(null); setEdSel(null); setEdMsg(""); }}>
+        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdTrade(null); setEdSel(null); setEdMsg(""); }}>
         {uxIcon("plus", "ux-s")}New {edKindName(kind)}</button></div>
       <div className="ux-ed-search"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
         <input type="search" placeholder="Search" aria-label="Search" value={edQ} onChange={e => setEdQ(e.target.value)} /></span></div>
@@ -11647,7 +11670,7 @@ export default function App() {
             <div className="ux-ed-lh">{h}<b style={mono}>{items.length}</b></div>
             {items.map(it => (
               <button key={it.key} type="button" role="option" aria-selected={pickedKey === it.key} className={"ux-btnreset ux-ed-row" + (pickedKey === it.key && !edNew ? " ux-on" : "")}
-                onClick={() => { pick(it.key); setEdNew(null); setEdTrade(null); setEdSel(null); setEdDetails(null); setEdMsg(""); }}>
+                onClick={() => { pick(it.key); edPutAside(); setEdTrade(null); setEdSel(null); setEdDetails(null); setEdMsg(""); }}>
                 {it.icon}<span className="ux-ed-rn"><SlideName text={it.name} /></span>{it.sub && <span className="ux-ed-rs">{it.sub}</span>}{it.right}{it.ovr != null && uxBadge(it.ovr)}
               </button>))}
           </Fragment>))}
@@ -12590,7 +12613,7 @@ export default function App() {
       // The Editor: Teams, Players, Managers and Requests.
       title = <h1>Editor</h1>;
       [["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["leagues", "Leagues"], ["requests", "Requests"]].forEach(([id, l]) =>
-        tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdNew(null); setEdTrade(null); setEdSel(null); setEdQ(""); })));
+        tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdTrade(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.
       const cur = (DOCS.find(p => p.id === docPage) || DOCS[0]).id;
