@@ -6,6 +6,7 @@ import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { without } from "./squads.js";
 import { STYLE_LBL } from "./styles.js";
 import { FORMATIONS } from "../engine/formations.ts";
+import { birthDateOk } from "./icclock.js";
 
 export const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const lc = (s) => String(s || "").toLowerCase();
@@ -25,9 +26,9 @@ export const owns = (scope, t) => scope.role === "overseer" || (scope.role === "
 export const ownersOf = (editors, t) => Object.entries(editors?.editors || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u);
 
 // What an editor may change on a team of their own. Ratings, nationality, badges, retiring a man, a manager's rating and
-// a national side's code are the overseer's.
+// a national side's code are the overseer's. A man's date of birth is also his nation's editors' to correct.
 const EDITOR_TEAM_FIELDS = new Set(["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad"]);
-const PLAYER_FIELD = { ovr: "rating", nat: "nationality", badges: "badges", retired: "retirement" };
+const PLAYER_FIELD = { ovr: "rating", nat: "nationality", born: "date of birth", badges: "badges", retired: "retirement" };
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 const world = (t) => (t.file === "ARTERRA" ? "arterra" : "avium");
 
@@ -53,6 +54,7 @@ function valueProblems(rec, next, changes) {
     if (c.kind === "players") {
       if (c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
       if (c.field === "nat" && !(typeof c.to === "string" && /^[A-Z]{2,4}$/.test(c.to))) bad("not a nationality");
+      if (c.field === "born" && c.to != null && !birthDateOk(c.to)) bad("a date of birth is a real date, for a man at least 14");
     }
     if (c.kind === "managers" && c.field === "ovr" && !rating(c.to)) bad("a rating is a whole number from 25 to 99");
     if (c.kind !== "teams") continue;
@@ -151,7 +153,8 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   // What may be touched at all.
   const sellingOnly = new Set();
   for (const c of changes) {
-    if (c.kind === "players" && !over) errors.push(`${c.name}: a player's ${PLAYER_FIELD[c.field] || c.field} is the overseer's to change`);
+    if (c.kind === "players" && !over && !(c.field === "born" && scope.nations.includes(playerBy.get(c.id)?.nat)))
+      errors.push(`${c.name}: a player's ${PLAYER_FIELD[c.field] || c.field} is the overseer's to change`);
     if (c.kind === "managers" && !over) errors.push(`${c.name}: a manager's rating is the overseer's to change`);
     if (c.kind !== "teams" || over) continue;
     const t = teamBy.get(c.id);
