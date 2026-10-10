@@ -11,7 +11,12 @@ export const FIELD = { "@": "at", "#": "code", "TEAM": "name", "NATION": "name",
   "HOME": "home", "AWAY": "away", "LOCATION": "location", "STADIUM": "stadium", "LEAGUE": "group", "CONFERENCE": "group",
   "CONTINENT": "group" };
 
-// { players, managers, teams, sheets } -> { AVIUM: "<the sheet's text>", NCH: ..., ... }
+// A club sheet's columns, for a nation whose first league is made in the Editor and so has no sheet yet.
+export const CLUB_HEADER = ["@", "#", "TEAM", "OVR", "PLAYSTYLE", "FORMATION", "TIME WASTING", "GK PASSING", "DL BEHAVIOR", "MANAGER",
+  ...Array.from({ length: 16 }, (_, i) => "#" + (i + 1)), "HOME", "AWAY", "LOCATION", "STADIUM", "LEAGUE"].join("\t");
+
+// { players, managers, teams, sheets } -> { AVIUM: "<the sheet's text>", NCH: ..., ... }; a team on a file with no sheet
+// yet gets a club sheet of its own.
 export function sheetsFromRecords({ players, managers, teams, sheets }) {
   const P = new Map(players.map(r => [r.id, r])), M = new Map(managers.map(r => [r.id, r]));
   // "(84) Jordan STANFORD [ELV]": the nation is written when it is not the team's own. A link that carries its own
@@ -23,8 +28,9 @@ export function sheetsFromRecords({ players, managers, teams, sheets }) {
   const say = (B, v, t) => v == null ? "" : typeof v === "string" ? cell(B.get(v), t) : v.raw ?? cell(B.get(v.id), t, v.tag);
   const byFile = {};
   for (const t of teams) (byFile[t.file] = byFile[t.file] || []).push(t);
-  const out = {};
-  for (const s of sheets) {
+  const out = {}, known = new Set(sheets.map(s => s.file));
+  const all = [...sheets, ...Object.keys(byFile).filter(f => !known.has(f)).sort().map(file => ({ file, header: CLUB_HEADER, eol: "lf", finalEol: false }))];
+  for (const s of all) {
     const header = s.header.split("\t"), eol = s.eol === "crlf" ? "\r\n" : "\n", lines = [s.header];
     for (const t of byFile[s.file] || []) {
       let k = 0;

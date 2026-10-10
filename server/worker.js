@@ -88,9 +88,9 @@ const readOne = async (env, p, dflt) => readJson(env, await mainHead(env), p, df
 async function readMain(env) {
   const head = await mainHead(env);
   const tree = (await gh(env, `/repos/${env.REPO}/git/commits/${head}`)).tree.sha;
-  const [players, managers, teams, sheets, editors, requests] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
-    .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", [])));
-  return { head, tree, rec: { players, managers, teams, sheets }, editors, requests };
+  const [players, managers, teams, sheets, editors, requests, leagues] = await Promise.all(["players", "managers", "teams", "sheets", "editors"]
+    .map(f => readJson(env, head, `src/data/${f}.json`)).concat(readJson(env, head, "src/data/requests.json", []), readJson(env, head, "src/data/leagues.json", [])));
+  return { head, tree, rec: { players, managers, teams, sheets, leagues }, editors, requests };
 }
 // One commit to main with these files, or a 422 if main moved meanwhile (the caller reads again and redoes).
 async function commit(env, head, tree, files, message) {
@@ -103,7 +103,7 @@ async function commit(env, head, tree, files, message) {
 // The files a change to the records rewrites: each records file and each sheet that differs.
 function filesFor(rec, next) {
   const out = {};
-  for (const k of ["players", "managers", "teams"]) { const a = dumpRecords(rec[k]), b = dumpRecords(next[k]); if (a !== b) out[`src/data/${k}.json`] = b; }
+  for (const k of ["players", "managers", "teams", "leagues"]) { const a = dumpRecords(rec[k] || []), b = dumpRecords(next[k] || []); if (a !== b) out[`src/data/${k}.json`] = b; }
   const before = sheetsFromRecords(rec), after = sheetsFromRecords(next);
   for (const f of Object.keys(after)) if (after[f] !== before[f]) out[`src/presets/${f}.tsv`] = after[f];
   return out;
@@ -192,7 +192,7 @@ async function handle(req, env) {
       if (!plan.apply && !plan.requests.length) return nothing;
       const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next), waiting = [...requests, ...plan.requests];
       if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify(waiting, null, 1) + "\n";
-      const added = ["players", "managers", "teams"].reduce((n, k) => n + (plan.apply?.add?.[k]?.length || 0), 0);
+      const added = ["players", "managers", "teams", "leagues"].reduce((n, k) => n + (plan.apply?.add?.[k]?.length || 0), 0);
       const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length + added : 0;
       if (!Object.keys(files).length) return nothing;
       const parts = [applied && `${applied} change${applied > 1 ? "s" : ""}`, plan.requests.length && `${plan.requests.length} request${plan.requests.length > 1 ? "s" : ""}`].filter(Boolean);

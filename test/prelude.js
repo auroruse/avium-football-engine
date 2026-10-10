@@ -5,6 +5,8 @@ const headerImg="",wc1933HeaderImg="",wc1934HeaderImg="";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath as __f2p } from "node:url";
 import { sheetsFromRecords } from "../src/data/sheets.js";
+import { leagueMaps } from "../src/data/leagues.js";
+import { rollSquad } from "../src/data/roll.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "../src/data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "../src/data/badges.js";
 import { STYLE_LBL } from "../src/data/styles.js";
@@ -17,7 +19,7 @@ const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };
 const __rec = (f) => JSON.parse(readFileSync(__root + "src/data/" + f, "utf8"));
 const playersRec = __rec("players.json"), managersRec = __rec("managers.json"),
-      teamsRec = __rec("teams.json"), sheetsRec = __rec("sheets.json"), editorsRec = __rec("editors.json"),
+      teamsRec = __rec("teams.json"), sheetsRec = __rec("sheets.json"), leaguesRec = __rec("leagues.json"), editorsRec = __rec("editors.json"),
       atlasRec = __rec("atlas.json");
 // The sheets in src/presets are written FROM the records, for the tools that still read sheets. One edited by hand
 // never reaches the app, and every tool reading it would quietly disagree with the app -- so no harness loads then.

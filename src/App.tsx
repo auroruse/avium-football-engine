@@ -10,7 +10,9 @@ import playersRec from "./data/players.json";
 import managersRec from "./data/managers.json";
 import teamsRec from "./data/teams.json";
 import sheetsRec from "./data/sheets.json";
+import leaguesRec from "./data/leagues.json";
 import { sheetsFromRecords } from "./data/sheets.js";
+import { leagueMaps } from "./data/leagues.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
 import { BADGES, BADGE_BY_ID, badgeOrder } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
@@ -18,6 +20,7 @@ import { STYLE_LBL } from "./data/styles.js";
 import { AFA_RANKINGS } from "./data/afa.js";
 import { MANAGER_HISTORY, TRACKED_FROM } from "./data/spells.js";
 import { ageOf, birthDateOk, icNow } from "./data/icclock.js";
+import { rollSquad } from "./data/roll.js";
 // What a player is worth, worked out as it is shown (src/data/value.js, shared with test/values.mjs).
 import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data/value.js";
 // Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
@@ -48,7 +51,7 @@ export { runPositionalMatch, simJob, simPositionalMatch } from "./sim/core";
 // dropped field by field once a build carries it, or after twenty minutes, so a later change by someone else shows.
 const DRAFT_KEY = "avium-records-draft", PENDING_KEY = "avium-records-published", PENDING_FOR = 20 * 60e3;
 const readPatch = (k) => { try { const d = JSON.parse(localStorage.getItem(k)); return d && d.v === 1 && d.players ? d : null; } catch { return null; } };
-const RECORDS_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec };
+const RECORDS_BUILT = { players: playersRec, managers: managersRec, teams: teamsRec, sheets: sheetsRec, leagues: leaguesRec };
 const RECORDS_BASE = (() => {
   const pend = readPatch(PENDING_KEY);
   if (!pend) return RECORDS_BUILT;
@@ -60,6 +63,9 @@ const RECORDS_BASE = (() => {
 })();
 const RECORDS = applyDraft(RECORDS_BASE, readPatch(DRAFT_KEY));
 const SHEETS = sheetsFromRecords(RECORDS);
+// THE LEAGUES (src/data/leagues.js): each one's tier, cup and nation by name, the name it carries now for any it had, and
+// the name its clubs' IDs were made with, so a rename loses none of its seasons, its badge or a saved tournament's clubs.
+const LG = leagueMaps(RECORDS.leagues);
 // THE REGISTRY SERVER (server/worker.js) signs editors in with GitHub, checks each save against the rules and commits it.
 // Coming back from GitHub, the address carries the session (#avium_session=...): it is taken out here, before the app's
 // own address handling reads the hash, and the page the person left is put back. The session says who they are and
@@ -83,14 +89,12 @@ const readSession = () => { try {
   return { token, login: String(o.login) };
 } catch { return null; } };
 // The record fields as the cart and the requests name them.
-const FIELD_LBL = { ovr: "Rating", nat: "Nationality", born: "Date Of Birth", badges: "Badges", retired: "Status", name: "Name", code: "Code", home: "Home Kit",
+const FIELD_LBL = { tier: "Tier", cup: "Cup", ovr: "Rating", nat: "Nationality", born: "Date Of Birth", badges: "Badges", retired: "Status", name: "Name", code: "Code", home: "Home Kit",
                     away: "Away Kit", stadium: "Stadium", location: "City", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad" };
 // How long ago an ISO time was, the way a list of requests says it.
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000;
   return !(s >= 0) ? "" : s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
-const aviumTSV = SHEETS.AVIUM, arterraTSV = SHEETS.ARTERRA, aleTSV = SHEETS.ALE, arvTSV = SHEETS.ARV, askTSV = SHEETS.ASK,
-      elvTSV = SHEETS.ELV, karTSV = SHEETS.KAR, kfkTSV = SHEETS.KFK, kkmTSV = SHEETS.KKM, nchTSV = SHEETS.NCH,
-      shiTSV = SHEETS.SHI, skjTSV = SHEETS.SKJ, turTSV = SHEETS.TUR, varTSV = SHEETS.VAR, miscTSV = SHEETS.MISC;
+const aviumTSV = SHEETS.AVIUM, arterraTSV = SHEETS.ARTERRA;
 
 // Positive side no longer hard-clamps at the old +12-gap ceiling (1.0) — it keeps
 // climbing up to a +30 gap (2.5), so a real outlier stuck on a weak team still reads
@@ -2471,6 +2475,8 @@ const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc
                       // lower case; the competition names match INTL_COMPS, which builds them off
                       // CONFERENCE_NAMES with " Conference" stripped.
                       western: "Western WC Qualifiers", eastern: "Eastern WC Qualifiers" };
+// A league renamed since its folder was named answers to its name now.
+for (const k of Object.keys(PSTATS_COMP)) PSTATS_COMP[k] = LG.now.get(PSTATS_COMP[k]) || PSTATS_COMP[k];
 // A season folder names two-digit years and the archive reaches back over a century boundary:
 // 88/89 is 1888/89 and 00/01 is 1900/01, so a flat 1900 + n files the oldest seasons last of all.
 // HOW MUCH FOOTBALL A MAN PLAYED, for tiebreaks and for the rating gate. Minutes where they were
@@ -2707,9 +2713,8 @@ const inWorld = (t, w) => worldOf(t) === w;
 // sheet is enough to make it appear in the rail and the tournament picker, with no code change.
 // Column 1 holds the club badge — an image floating over the cell, so it exports blank — and both
 // it and the league column are stripped before parseBulk sees the row.
-const NATION_TSV = { ALE: aleTSV, ARV: arvTSV, ASK: askTSV, ELV: elvTSV, KAR: karTSV, KFK: kfkTSV,
-                     KKM: kkmTSV, MISC: miscTSV, NCH: nchTSV, SHI: shiTSV, SKJ: skjTSV,
-                     TUR: turTSV, VAR: varTSV };
+// Every club sheet the records write, a nation whose first league was made in the Editor included.
+const NATION_TSV = Object.fromEntries(Object.keys(SHEETS).filter(f => f !== "AVIUM" && f !== "ARTERRA").map(f => [f, SHEETS[f]]));
 // Divisions whose sheets carry no per-player ratings. Every player in them inherits his club's team
 // skill, which is a default rather than an assessment of anyone — so they all read identically, and
 // in national-team selection they displace real, individually-rated players with placeholder names.
@@ -2763,9 +2768,9 @@ function nationLeagues(raw) {
 const MISC_LEAGUE = "Miscellaneous Aviumite";
 // The column holds one of two things: the name of a competition the club plays in, or -- for a
 // club that plays in none -- the bare name of its country. A nation name is therefore the marker
-// for NON-LEAGUE, and the two competitions that are named after neither their nation nor its
-// adjective have to be spelled out.
-const MISC_NAT = { "Divisione Prima Viciliana": "VIC", "Rudanian First League": "RUD" };
+// for NON-LEAGUE, and a competition's nation comes off its league record (src/data/leagues.json), which also covers the
+// two named after neither their nation nor its adjective.
+const MISC_NAT = Object.fromEntries(LG.nation);
 // `avium` is the national list a MISC club reads its nation off: the load passes PRESET_AVIUM, the record editor the
 // national list it has just rebuilt.
 const miscNatOf = (lg, avium) => MISC_NAT[lg] || avium.find(t => t.name === lg)?.code || null;
@@ -2792,9 +2797,8 @@ const IS_CONFERENCE = new Set(CONFERENCE_NAMES);
 // which put all 62 nations back under a single row. Fall back to the catalog by code rather than
 // migrating every stored roster — a hand-added nation lands in the right row too, if its code matches.
 const CONF_BY_CODE = new Map(PRESET_AVIUM.filter(t => t.code && t.conference).map(t => [t.code, t.conference]));
-const LEAGUE_TIER = { "Nichirin League Two": 2, "Karjanian Secondary League": 2, "2. Alemannische Oberliga": 2, "Liga-ye B\u0101lande": 2,
-                      "Karjanian Kolmonen": 3 };
-const leagueTier = (l) => LEAGUE_TIER[l] || (/\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
+// A league's tier off its record (0, none, reads as null); a competition with no record is a top flight unless it is a cup.
+const leagueTier = (l) => (LG.tier.has(l) ? LG.tier.get(l) || null : /\b(Cup|Collegiate)\b/i.test(l) ? null : 1);
 // Domestic cups, by the league whose clubs enter them. A cup is not a rail entry of its own:
 // it is a face of each league it draws on, the way the Shogun Cup belongs to both Nichirin tiers.
 // ── ADDRESSES. Every page the app shows has a URL: a reload lands where you were, Back and Forward
@@ -2825,13 +2829,7 @@ const LB_OF_SLUG = Object.fromEntries(Object.entries(LB_SLUG).map(([k, v]) => [v
 // Which cup a division's clubs enter, so the cup shows as a tab inside every league that plays in
 // it rather than as a competition of its own. All three Karjanian divisions enter the Karjanian Cup,
 // the way both Nichirian ones enter the Shogun Cup.
-const LEAGUE_CUPS = { "Nichirin League One": "Sei'i Tai Shogun Cup",
-                      "Nichirin League Two": "Sei'i Tai Shogun Cup",
-                      "Karjanian Premier League": "Karjanian Cup",
-                      "Karjanian Secondary League": "Karjanian Cup",
-                      "Karjanian Kolmonen": "Karjanian Cup",
-                      "Liga-ye Mellī": "Jām-e Mellī",
-                      "Liga-ye Bālande": "Jām-e Mellī" };
+const LEAGUE_CUPS = Object.fromEntries(LG.cup);                // off each league's record (src/data/leagues.json)
 const INTL_COMPS = [
   { name: "World Cup", scope: "intl" },
   { name: "Nations League", scope: "intl" },
@@ -2872,8 +2870,8 @@ const deaccent = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 // tiers have no badge of their own and never will, and its national crest says more about them than
 // a grey placeholder does. LEAGUE_NAT is declared further down; this only runs during render, long
 // after module init, so the reference is fine.
-const leagueLogoCandidates = (lg) => {
-  const n = String(lg || "").normalize("NFC");
+const leagueLogoCandidates = (lg, alts) => {
+  const n = String(lg || "").normalize("NFC"), was = [...(alts || []), ...(LG.former.get(n) || [])].map(x => String(x).normalize("NFC"));
   const nat = LEAGUE_NAT[lg];
   const w = lg === ARTERRA_LEAGUE ? "arterra" : "avium";
   const url = (dir, x, wd) => `${import.meta.env.BASE_URL}${wd || w}/${dir}/${encodeURIComponent(x)}.png`;
@@ -2882,7 +2880,7 @@ const leagueLogoCandidates = (lg) => {
   // sheets call it "Eastern" but the badge on disk is "Eastern Conference.png" (confLabel's name for it), so that is tried
   // first; asking only for "Eastern.png" left every conference and qualifier on the placeholder.
   const conf = IS_CONFERENCE.has(n) ? n : IS_CONFERENCE.has(COMP_SCOPE[n]) ? COMP_SCOPE[n] : null;
-  return [...new Set([n, deaccent(n), ...(conf ? [confLabel(conf), conf] : []), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
+  return [...new Set([n, deaccent(n), ...was.flatMap(x => [x, deaccent(x)]), ...(conf ? [confLabel(conf), conf] : []), n.split(" ")[0], n.replace(/^[A-Z]{2,5}\s+/, "")])].map(x => url("leagues", x))
     .concat(nat ? [url("badges", nat)] : [])
     .concat([url("leagues", LEAGUE_PLACEHOLDER, "avium")]);
 };
@@ -2914,12 +2912,12 @@ const HEADER_H = 48;
 // The share of a badge's canvas that is transparent above and below the artwork. Measured off the PNGs: 500px square,
 // crest inset 50px top and bottom.
 const CREST_PAD_RATIO = 0.10;
-function LeagueCrest({ league, size = 20, style }) {
+function LeagueCrest({ league, alts, size = 20, style }) {
   // A step, not a boolean: each failed load moves to the next spelling, and the last candidate is
   // always the placeholder, so this cannot loop or end on a broken image.
   const [step, setStep] = useState(0);
   useEffect(() => { setStep(0); }, [league]);
-  const cands = leagueLogoCandidates(league);
+  const cands = leagueLogoCandidates(league, alts);
   const src = cands[Math.min(step, cands.length - 1)];
   return <img src={src} alt="" width={size} height={size} onError={() => setStep(s => Math.min(s + 1, cands.length - 1))}
     style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, ...style }} />;
@@ -3341,12 +3339,13 @@ const CLUB_LEAGUES = [...new Set(PRESET_CLUBS.map(t => t.league))].sort((a, b) =
 // doing delicate work, and a nation that grows a real league crosses it on its own.
 const MIN_DIVISION = 6;
 const leagueSize = (lg) => PRESET_CLUBS.reduce((n, t) => n + (t.league === lg ? 1 : 0), 0);
-const isMiscLeague = (l) => l === MISC_LEAGUE || leagueSize(l) < MIN_DIVISION;
+// A league made in the Editor stands as one from its first club (Moukden and Kirin, 11 October 2026).
+const isMiscLeague = (l) => l === MISC_LEAGUE || (leagueSize(l) < MIN_DIVISION && !LG.listed.has(l));
 const REAL_LEAGUES = CLUB_LEAGUES.filter(l => !isMiscLeague(l));
 const MISC_LEAGUES = CLUB_LEAGUES.filter(isMiscLeague);
 // groupByLeague turns each null into a divider and drops the orphans, so an empty half costs nothing.
 const LEAGUE_ORDER = [...CONFERENCE_NAMES, ARTERRA_LEAGUE, null, ...REAL_LEAGUES, null, ...MISC_LEAGUES];
-const catalogOf = (avium, arterra, clubs) => [
+const catalogOf = (avium, arterra, clubs, first = LG.first) => [
   ...avium.map(t => ({ ...t, league: AVIUM_LEAGUE, world: "avium" })),
   ...arterra.map(({ conference, ...t }) => ({ ...t, league: ARTERRA_LEAGUE, world: "arterra",
                                                      ...(conference ? { continent: conference } : null) })),
@@ -3360,7 +3359,8 @@ const catalogOf = (avium, arterra, clubs) => [
   // A confederation belongs to a national team. Club rows have no such column, so a value landing
   // there is a stray cell — and an unrecognised one becomes its own row in the rail.
   ...(t.league === AVIUM_LEAGUE && conference ? { conference } : null),
-  id: t.league + "::" + (t.code || t.name),
+  // The league as it was first named: a renamed league's clubs keep the IDs saved tournaments and selections hold.
+  id: (first.get(t.league) || t.league) + "::" + (t.code || t.name),
 }));
 const PRESET_CATALOG = catalogOf(PRESET_AVIUM, PRESET_ARTERRA, PRESET_CLUBS);
 // EACH MAN'S RECORD, ON HIS SQUAD ENTRY. The sheets carry no IDs and no badges, so they are put on here, slot by slot
@@ -3389,8 +3389,8 @@ attachRecords(PRESET_CATALOG, RECORDS);
 const presetsFromRecords = (records) => {
   const S = sheetsFromRecords(records);
   const avium = parsePresetTSV(S.AVIUM, null, 1, false, true), arterra = parsePresetTSV(S.ARTERRA, null, 1, false, true);
-  const clubs = clubsFromSheets(Object.fromEntries(Object.keys(NATION_TSV).map(k => [k, S[k]])), avium);
-  return attachRecords(catalogOf(avium, arterra, clubs), records);
+  const clubs = clubsFromSheets(Object.fromEntries(Object.keys(S).filter(k => k !== "AVIUM" && k !== "ARTERRA").map(k => [k, S[k]])), avium);
+  return attachRecords(catalogOf(avium, arterra, clubs, leagueMaps(records.leagues).first), records);
 };
 
 function MdTable({ head, body, keyBase }) {
@@ -8270,7 +8270,7 @@ export default function App() {
   const isNatKey = (key) => ["AVIUM", "ARTERRA"].includes(recTeam.get(key)?.file);
   const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDiscardArm(false); setDraftOpen(false); };
   const removeItem = (item) => {
-    setUndoCart({ draft, what: item.trade ? "the trade" : item.rec ? item.rec.name : item.groups.map(g => g.kind === "teams" ? g.name : fullDisplayName(g.name)).join(" and ") });
+    setUndoCart({ draft, what: item.trade ? "the trade" : item.rec ? item.rec.name : item.groups.map(g => g.kind === "teams" || g.kind === "leagues" ? g.name : fullDisplayName(g.name)).join(" and ") });
     commitDraft(withoutItem(recBase, draft, item)); setSaveState(null);
   };
   // WHAT SAVING WOULD DO, by the server's own rules (src/data/rules.js) against the records as this page has them: what
@@ -8347,6 +8347,8 @@ export default function App() {
       const sw = (v) => <span className="ux-chg-sw"><i style={{ background: v }} /><span style={mono}>{v}</span></span>;
       return pair(sw(c.from), sw(c.to)); }
     if (c.field === "style") return pair(styleOf(c.from), styleOf(c.to));
+    if (c.field === "tier") return pair(c.from ? "Tier " + c.from : "No Tier", c.to ? "Tier " + c.to : "No Tier");
+    if (c.field === "cup") return pair(c.from || "No Cup", c.to || "No Cup");
     if (c.field === "manager") return pair(mName(c.from), mName(c.to));
     if (c.field === "squad") {
       const base = recTeam.get(c.id), fa = String(base?.formation || "").trim(), fb = String(formationAfter || fa).trim();
@@ -10169,6 +10171,7 @@ export default function App() {
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
   const [edMsg, setEdMsg] = useState("");             // why the last move could not be made
+  const [edCupNew, setEdCupNew] = useState(null);    // the league whose new cup is being named in place
   const [routeKick, setRouteKick] = useState(0);         // bumped by every address applied
   const routePend = useRef(null), routeReplace = useRef(true), routeBoot = useRef(false);
   const routeLast = useRef(null), docScroll = useRef(null), applyRouteRef = useRef(null);
@@ -10266,7 +10269,7 @@ export default function App() {
       }
       if (t === "docs") { const pg = DOCS.find(p => p.id === (segs[1] || "").toLowerCase()), id = pg && segs[2] ? segs[2].toLowerCase() : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["teams", "players", "managers", "requests"].includes(s) ? s : "teams"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["teams", "players", "managers", "leagues", "requests"].includes(s) ? s : "teams"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -11348,9 +11351,10 @@ export default function App() {
   const openInbox = () => { setUxMenu(null); setAcctOpen(false); closeCart(); loadRequests(); setInboxOpen(true); };
   const teamOfKey = (k) => teams.find(x => x.rkey === k) || null;
   const uxCbHead = (kind, name, team) => (<>
-    {kind === "teams" ? <span className="ux-cb-crest">{team && <TeamCrest team={team} size={22} />}</span> : <PlayerShot name={name} size={28} />}
-    <span className="ux-cb-name">{kind === "teams" ? name : fullDisplayName(name)}</span>
-    {kind === "managers" && <span className="ux-cb-kind">Manager</span>}</>);
+    {kind === "teams" ? <span className="ux-cb-crest">{team && <TeamCrest team={team} size={22} />}</span>
+      : kind === "leagues" ? <span className="ux-cb-crest"><LeagueCrest league={name} size={22} /></span> : <PlayerShot name={name} size={28} />}
+    <span className="ux-cb-name">{kind === "teams" || kind === "leagues" ? name : fullDisplayName(name)}</span>
+    {kind === "managers" && <span className="ux-cb-kind">Manager</span>}{kind === "leagues" && <span className="ux-cb-kind">League</span>}</>);
   const uxCbRow = (key, label, body) => <div key={key} className="ux-cb-r"><span className="ux-cb-f">{label}</span><span className="ux-cb-v">{body}</span></div>;
   // A trade in the cart, drawn as the request it will become.
   const edTradeReq = (tr) => { const on = curRecs.teams.find(t => teamKey(t) === tr.other)?.name.trim() || "";
@@ -11359,7 +11363,7 @@ export default function App() {
   const renderUxCart = () => {
     const busy = !!saveState?.busy;
     const problems = saveState?.errors?.length ? saveState.errors : session && cartList.length ? preview?.errors || [] : [];
-    const label = (g) => g.kind === "teams" ? g.name : fullDisplayName(g.name);
+    const label = (g) => g.kind === "teams" || g.kind === "leagues" ? g.name : fullDisplayName(g.name);
     const bad = problems.length > 0 || !!saveState?.err;
     return (<>
       <div className="ux-scrim" onClick={closeCart} />
@@ -11481,13 +11485,15 @@ export default function App() {
     </div>); };
   // A NEW RECORD asked for, from the server's request or the cart: who, his facts, and for the overseer Review.
   const uxNewBlock = (r, i, review, remove) => {
-    const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : "Manager";
+    const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : s.what === "leagues" ? "League" : "Manager";
     const nat = s.nat ? natTeamByCode.get(s.nat) : null, joins = s.side ? teamOfKey(s.side) : null;
-    const open = () => { setTab("editor"); setEdSec(s.what); setEdNew({ ...s, kind: s.what, review: true, reqId: r.id, by: r.by, at: r.at }); closeInbox(); };
+    const open = () => { setTab("editor"); setEdSec(s.what);
+      const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
+      setEdNew(s.what === "leagues" ? edLgFromRec(s, meta) : { ...s, kind: s.what, ...meta }); closeInbox(); };
     return (
     <div key={r.id || "n" + i} className="ux-rq">
       <div className="ux-rq-h">
-        <span className="ux-rq-crest">{s.what === "teams" ? uxIcon("plus", "ux-s") : <PlayerShot name={s.name || ""} size={28} />}</span>
+        <span className="ux-rq-crest">{s.what === "teams" ? uxIcon("plus", "ux-s") : s.what === "leagues" ? <LeagueCrest league={s.name || ""} size={28} /> : <PlayerShot name={s.name || ""} size={28} />}</span>
         <span className="ux-rq-t"><b><SlideName text={s.name || "Unnamed"} /></b><span>New {what}</span></span>
         {!remove && r.by && <span className="ux-rq-by"><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>}
       </div>
@@ -11503,6 +11509,17 @@ export default function App() {
           <div><dt>League</dt><dd><SlideName text={s.group || ""} /></dd></div>
           <div><dt>City</dt><dd>{s.location}</dd></div>
           <div><dt>Squad</dt><dd><span style={mono}>{(s.squad || []).filter(Boolean).length}</span> Of <span style={mono}>16</span></dd></div></>}
+        {s.what === "leagues" && (() => { const cl = s.clubs || [], isN = (v) => !!v && typeof v === "object";
+          const nw = cl.reduce((n, x) => n + (x.squad || []).filter(isN).length + (isN(x.manager) ? 1 : 0), 0);
+          const bl = cl.reduce((n, x) => n + (x.squad || []).filter(v => isN(v) && !(+v.ovr > 0)).length + (isN(x.manager) && !(+x.manager.ovr > 0) ? 1 : 0), 0);
+          const nt = natTeamByCode.get(s.nation);
+          return (<>
+            <div><dt>Nation</dt><dd>{nt && <TeamCrest team={nt} size={14} />}{natOptions.name.get(s.nation) || s.nation}</dd></div>
+            <div><dt>Tier</dt><dd style={mono}>{s.tier}</dd></div>
+            <div><dt>Cup</dt><dd><SlideName text={s.cup === "__new" ? s.cupName || "New Cup" : s.cup || "None"} /></dd></div>
+            <div><dt>Clubs</dt><dd style={mono}>{cl.length}</dd></div>
+            <div><dt>New Men</dt><dd style={mono}>{nw}</dd></div>
+            {bl > 0 && <div><dt>Blank Ratings</dt><dd style={mono}>{bl}</dd></div>}</>); })()}
       </dl>
       <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r.needs ? r : { ...r, needs: { [OVERSEER]: [] } })}{uxReqActs(r, !review, remove, review ? open : null)}</div>
     </div>); };
@@ -11544,7 +11561,7 @@ export default function App() {
   const edMine = (key) => overseer || ownsKey(key);
   const edTeamRec = (key) => curRecs.teams.find(t => teamKey(t) === key) || null;
   const edNatOf = (key) => { const r = edTeamRec(key); return r ? (isNational(r) ? r.code : r.nation) : null; };
-  const edKindName = (k) => (k === "teams" ? "Team" : k === "players" ? "Player" : "Manager");
+  const edKindName = (k) => (k === "teams" ? "Team" : k === "players" ? "Player" : k === "leagues" ? "League" : "Manager");
   const edSq = (t) => t.squad.map(v => idOf(v) ?? null), edLab = (t) => slotLabels(String(t.formation).trim(), t.squad.length);
   // The men an open request holds: none of them can move until it is settled.
   const edLockedMen = useMemo(() => new Set(requests.filter(r => !r.declined).flatMap(r => r.locks || []).filter(l => /^[pm]:/.test(l))), [requests]);
@@ -11558,6 +11575,14 @@ export default function App() {
       byLeague.set(lg, [...(byLeague.get(lg) || []), t]); }
     return [["National Sides", own.filter(t => isNational(t))], ...[...byLeague.entries()].sort((a, b) => a[0].localeCompare(b[0]))].filter(([, l]) => l.length);
   }, [curRecs, overseer, scope, teams, arterraOn]);
+  // The leagues on the Leagues rail, from the records with the cart laid over them: this person's nation's (every nation's
+  // for the overseer), each with its clubs.
+  const edLeagues = useMemo(() => {
+    const clubs = new Map();
+    for (const t of curRecs.teams) if (!isNational(t) && t.group) { const k = t.nation + "|" + t.group; clubs.set(k, [...(clubs.get(k) || []), t]); }
+    return (curRecs.leagues || []).filter(l => overseer || (scope.nations || []).includes(l.nation))
+      .map(l => ({ ...l, key: l.id, clubs: clubs.get(l.nation + "|" + l.name) || [] }));
+  }, [curRecs, overseer, scope]);
   // The men on the rail: the editor's nation's players and everyone at their sides; anyone for the overseer.
   const edMen = useMemo(() => {
     const keys = new Set(curRecs.teams.filter(t => overseer || ownsKey(teamKey(t))).map(teamKey));
@@ -11612,7 +11637,7 @@ export default function App() {
   const edRail = (kind, groups, pickedKey, pick) => (
     <section className="ux-panel ux-grow ux-ed-rail">
       <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => {
-        setEdNew({ kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) }); setEdTrade(null); setEdSel(null); setEdMsg(""); }}>
+        setEdNew(kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) }); setEdTrade(null); setEdSel(null); setEdMsg(""); }}>
         {uxIcon("plus", "ux-s")}New {edKindName(kind)}</button></div>
       <div className="ux-ed-search"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
         <input type="search" placeholder="Search" aria-label="Search" value={edQ} onChange={e => setEdQ(e.target.value)} /></span></div>
@@ -11623,9 +11648,10 @@ export default function App() {
             {items.map(it => (
               <button key={it.key} type="button" role="option" aria-selected={pickedKey === it.key} className={"ux-btnreset ux-ed-row" + (pickedKey === it.key && !edNew ? " ux-on" : "")}
                 onClick={() => { pick(it.key); setEdNew(null); setEdTrade(null); setEdSel(null); setEdDetails(null); setEdMsg(""); }}>
-                {it.icon}<span className="ux-ed-rn"><SlideName text={it.name} /></span>{it.sub && <span className="ux-ed-rs">{it.sub}</span>}{it.ovr != null && uxBadge(it.ovr)}
+                {it.icon}<span className="ux-ed-rn"><SlideName text={it.name} /></span>{it.sub && <span className="ux-ed-rs">{it.sub}</span>}{it.right}{it.ovr != null && uxBadge(it.ovr)}
               </button>))}
           </Fragment>))}
+        {!groups.some(([, l]) => l.length) && <div className="ux-empty-sm ux-ed-none">No {edKindName(kind)}s</div>}
       </div>
     </section>);
 
@@ -11936,14 +11962,14 @@ export default function App() {
       return (!at || edMine(teamKey(at))) && !edLockedMen.has("m:" + m.id); }).sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
     const fieldsOf = () => {
       const base = { what: k, name: (f.name || "").trim() };
-      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: f.pos, ovr: Math.round(+f.ovr), side: f.side || null, ...(overseer && f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
-      if (k === "managers") return { ...base, nat: f.nat, born: f.born, style: f.style, ovr: Math.round(+f.ovr) };
+      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: f.pos, ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(overseer && f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
+      if (k === "managers") return { ...base, nat: f.nat, born: f.born, style: f.style, ovr: f.ovr ? Math.round(+f.ovr) : null };
       return { ...base, nation, code: (f.code || "").trim().toUpperCase(), home: f.home || "#888888", away: f.away || "#ffffff",
         stadium: (f.ground || "").trim() + (String(f.cap || "").trim() ? ` (${String(f.cap).trim()})` : ""), location: f.city || "", group: f.group || "",
         formation: f.formation || "4-3-3", manager: f.manager || null, squad };
     };
     const ready = (f.name || "").trim() && (k === "teams" ? f.code && f.group && f.city && (f.ground || "").trim() && squad.slice(0, 11).every(Boolean) && squad.filter(Boolean).length === 16
-      : f.nat && f.born && +f.ovr >= 25 && +f.ovr <= 99 && (k !== "players" || f.pos) && (k !== "managers" || f.style));
+      : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && (k !== "players" || f.pos) && (k !== "managers" || f.style));
     return (
       <div className="ux-ed-rec">
         {uxPanel(review ? `Review New ${kind}` : `New ${kind}`, review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null, (
@@ -11951,11 +11977,11 @@ export default function App() {
             <dl className="ux-ed-dl">
               {field("Name", <input className="ux-ed-in" placeholder={k === "teams" ? "Club Name" : "Given Name SURNAME"} value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
               {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
-              {k !== "teams" && field("Date Of Birth", <input className="ux-ed-in" type="date" value={f.born || ""} onChange={e => upd({ born: e.target.value })} />)}
+              {k !== "teams" && field("Date Of Birth", edBornAge(f.born, f.age, upd, k === "managers" ? 90 : 60))}
               {k === "players" && field("Position", sel("Position", f.pos, Object.keys(POS_NAME).map(c => [c, `${c} ${POS_NAME[c]}`]), v => upd({ pos: v })))}
               {k === "players" && field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k })} />)}
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
-              {k !== "teams" && field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder="25 To 99" value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
+              {k !== "teams" && field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
               {overseer && k === "players" && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => (
                 <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + ((f.badges || []).includes(b.id) ? " ux-on" : "")} title={b.name}
                   onClick={() => upd({ badges: (f.badges || []).includes(b.id) ? f.badges.filter(x => x !== b.id) : [...(f.badges || []), b.id] })}><BadgeIcon id={b.id} size={22} /></button>))}</span>)}
@@ -12030,8 +12056,329 @@ export default function App() {
       </div>);
   };
 
+  // ── LEAGUES (DESIGN.md "Editor", Moukden and Kirin, 11 October 2026): a nation's leagues (src/data/leagues.json), each
+  // the name its clubs carry, with its tier and cup. Name, tier and cup are its editors' to change, into the cart; a New
+  // League is a request carrying its founding clubs and the new men they need, each rating proposed or left blank for the
+  // overseer, who sets them before he lets it in (src/data/rules.js). ──
+  const edLgBlankClub = () => ({ id: edUid(), name: "", code: "", home: "#888888", away: "#ffffff", ground: "", cap: "", city: "", formation: "4-4-2",
+    manager: null, squad: Array(16).fill(null) });
+  const edLgSeed = () => ({ kind: "leagues", name: "", nation: (scope.nations || [])[0] || "", tier: 1, cup: "", clubs: [edLgBlankClub()], open: 0 });
+  const edLgNew = (v) => !!v && typeof v === "object";
+  // A league request as the builder holds it: each club's ground and capacity apart, its city, and ratings as typed.
+  const edLgFromRec = (s, extra) => ({ kind: "leagues", name: s.name || "", nation: s.nation || "", tier: s.tier ?? 1, cup: s.cup || "", open: 0, ...extra,
+    clubs: (s.clubs || []).map(c => ({ id: edUid(), name: c.name || "", code: c.code || "", home: c.home || "#888888", away: c.away || "#ffffff",
+      ground: stripVenue(c.stadium || ""), cap: String(venueCap(c.stadium) || ""), city: c.location || "", formation: c.formation || "4-4-2",
+      manager: edLgNew(c.manager) ? { ...c.manager, ovr: c.manager.ovr ?? "" } : c.manager || null,
+      squad: (c.squad || []).map(v => (edLgNew(v) ? { ...v, ovr: v.ovr ?? "" } : v || null)) })) });
+  const edLgOf = (key) => edLeagues.find(l => l.key === key) || null;
+  // A date of birth for an age: a random day in the year of birth that gives that age today, in the world's own time.
+  const edBornFor = (age) => { const now = icNow(), y = now.getUTCFullYear(), m = now.getUTCMonth(), d = now.getUTCDate();
+    const hi = Date.UTC(y - age, m, d), lo = Date.UTC(y - age - 1, m, d) + 86400000;
+    return new Date(lo + Math.floor(Math.random() * ((hi - lo) / 86400000 + 1)) * 86400000).toISOString().slice(0, 10); };
+  // A date of birth with an Age beside it: type an age and the date is drawn for it; the die draws another.
+  const edBornAge = (born, age, set, max) => (
+    <span className="ux-ed-born">
+      <input className="ux-ed-in" type="date" aria-label="Date Of Birth" value={born || ""} onChange={e => set({ born: e.target.value, age: "" })} />
+      <span className="ux-ed-agel">Or Age</span>
+      <input className="ux-ed-in ux-ed-age" type="number" min={14} max={max} aria-label="Or Age" title="Picks A Date Of Birth For This Age" placeholder="–" style={mono}
+        value={born ? ageOf(born) ?? "" : age || ""} onChange={e => { const a = parseInt(e.target.value, 10);
+          set(a >= 14 && a <= max ? { born: edBornFor(a), age: "" } : { born: "", age: e.target.value }); }} />
+      <button type="button" className="ux-btnreset ux-cb-x" title="Another Date For This Age" aria-label="Another Date For This Age" disabled={!born}
+        onClick={() => set({ born: edBornFor(ageOf(born)) })}>{uxIcon("dice", "ux-s")}</button>
+    </span>);
+  // The rail: each nation's leagues under its name, top tier first.
+  const edLgRows = () => {
+    const nats = [...new Set(edLeagues.map(l => l.nation))].sort((a, b) => (natOptions.name.get(a) || a).localeCompare(natOptions.name.get(b) || b));
+    return nats.map(n => [natOptions.name.get(n) || n, edLeagues.filter(l => l.nation === n && edHit(edQ, l.name))
+      .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
+      .map(l => ({ key: l.key, name: l.name, icon: <LeagueCrest league={l.name} alts={l.formerly} size={20} />, sub: l.tier ? "Tier " + l.tier : "No Tier",
+                   right: <span className="ux-ed-rs ux-ed-cnt" style={mono}>{l.clubs.length}</span> }))]);
+  };
+  // A cup: one of the nation's, none, or a new one named on the spot.
+  const edLgCupPick = (nation, value, onPick) => {
+    const cups = [...new Set(edLeagues.filter(l => l.nation === nation).map(l => l.cup).filter(Boolean))].sort();
+    const all = value && value !== "__new" && !cups.includes(value) ? [...cups, value] : cups;
+    return <UxSidePick label="Cup" value={value || ""} placeholder="Search Cups" onPick={it => onPick(it.k)}
+      groups={[[null, [{ k: "", name: "No Cup" }, ...all.map(c => ({ k: c, name: c })), { k: "__new", name: "New Cup" }]]]} />;
+  };
+
+  // ── A LEAGUE: its name, tier and cup (its editor's to change), its clubs, and where it sits among its nation's ──
+  const renderEdLeague = (key) => {
+    const L = edLgOf(key); if (!L) return <div className="ux-panel ux-grow"><div className="ux-empty">No League</div></div>;
+    const mine = overseer || (scope.nations || []).includes(L.nation), set = (p) => edPut(draftWith(draft, recBase, L.id, p, "leagues"));
+    const nat = natTeamByCode.get(L.nation), natName = natOptions.name.get(L.nation) || L.nation;
+    const rows = L.clubs.map(r => ({ r, tm: teamOfKey(teamKey(r)) })).sort((a, b) => (Number(b.tm?.skill) || 0) - (Number(a.tm?.skill) || 0));
+    const avg = rows.length ? rows.reduce((s, x) => s + (Number(x.tm?.skill) || 0), 0) / rows.length : 0;
+    const natLgs = edLeagues.filter(l => l.nation === L.nation);
+    const tiers = [...new Set(natLgs.map(l => l.tier))].sort((a, b) => (a || 99) - (b || 99)).map(t => [t, natLgs.filter(l => l.tier === t)]);
+    const cups = [...new Set(natLgs.map(l => l.cup).filter(Boolean))].map(c => [c, natLgs.filter(l => l.cup === c)]);
+    return (
+      <div className="ux-ed-rec">
+        <section className="ux-panel ux-ed-head">
+          <div className="ux-ed-id">
+            <LeagueCrest league={L.name} alts={L.formerly} size={48} />
+            <div className="ux-ed-names">
+              <input className="ux-ed-in ux-ed-title" aria-label="Name" defaultValue={L.name} key={"ln:" + key + L.name} disabled={!mine}
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== L.name) set({ name: v }); }} />
+              <span className="ux-ed-sub"><span className="ux-tc">{nat && <TeamCrest team={nat} size={14} />}{natName}</span></span>
+            </div>
+            <div className="ux-ed-kits ux-ed-lgctl">
+              <label className="ux-ed-kit"><span>Tier</span>
+                <span className="ux-pick"><select aria-label="Tier" value={L.tier} disabled={!mine} onChange={e => set({ tier: +e.target.value })}>
+                  {[1, 2, 3, 4, 5, 0].map(t => <option key={t} value={t}>{t ? "Tier " + t : "No Tier"}</option>)}</select>{uxIcon("caret", "ux-xs")}</span></label>
+              <div className="ux-ed-kit"><span>Cup</span>
+                {edCupNew === key ? <input className="ux-ed-in" autoFocus placeholder="Cup Name" onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                    onBlur={e => { const v = e.target.value.trim(); setEdCupNew(null); if (v && v !== L.cup) set({ cup: v }); }} />
+                  : mine ? edLgCupPick(L.nation, L.cup, (k) => (k === "__new" ? setEdCupNew(key) : set({ cup: k || null })))
+                  : <span>{L.cup || "No Cup"}</span>}</div>
+            </div>
+          </div>
+          <dl className="ux-ed-facts">
+            <div><dt>Clubs</dt><dd style={mono}>{rows.length}</dd></div>
+            <div><dt>Average Rating</dt><dd>{uxBadge(avg)}</dd></div>
+          </dl>
+        </section>
+        <div className="ux-ed-body">
+          {uxPanel("Clubs", <span className="ux-chip" style={mono}>{rows.length}</span>, (
+            <div className="ux-pbody"><table className="ux-tbl">
+              <colgroup><col /><col style={{ width: 56 }} /><col style={{ width: 150 }} /><col style={{ width: 210 }} /><col style={{ width: 190 }} /><col style={{ width: 64 }} /></colgroup>
+              <thead><tr><th>Club</th><th>Code</th><th>City</th><th>Ground</th><th>Manager</th><th className="ux-c">Rating</th></tr></thead>
+              <tbody>{rows.map(({ r, tm }) => { const m = idOf(r.manager) ? mgrNow(idOf(r.manager)) : null;
+                return (
+                <tr key={r.id} className="ux-link" onClick={() => edOpen("teams", teamKey(r))}>
+                  <td><div className="ux-tc">{tm && <TeamCrest team={tm} size={16} />}<span>{r.name.trim()}</span></div></td>
+                  <td style={mono}>{r.code}</td>
+                  <td><span className="ux-fx">{stripVenue(r.location || "") || "–"}</span></td>
+                  <td><span className="ux-fx">{stripVenue(r.stadium || "") || "–"}</span></td>
+                  <td><span className={"ux-fx" + (m ? "" : " ux-dim")}>{m ? fullDisplayName(m.name) : "Vacant"}</span></td>
+                  <td className="ux-c">{tm && uxBadge(tm.skill)}</td>
+                </tr>); })}</tbody></table></div>), true)}
+          <div className="ux-col ux-ed-side">
+            {uxPanel("Pyramid", null, (
+              <div className="ux-ed-pyr">{tiers.map(([t, ls]) => (
+                <div key={t} className="ux-ed-tier"><span className="ux-ed-tn">{t ? <>Tier <b style={mono}>{t}</b></> : "No Tier"}</span>
+                  <div className="ux-ed-tls">{ls.map(l => (
+                    <button key={l.key} type="button" className={"ux-btnreset ux-ed-tl" + (l.key === key ? " ux-on" : "")} onClick={() => setEdPick(p => ({ ...p, leagues: l.key }))}>
+                      <LeagueCrest league={l.name} alts={l.formerly} size={20} /><span className="ux-ed-rn"><SlideName text={l.name} /></span>
+                      <span className="ux-ed-rs ux-ed-cnt" style={mono}>{l.clubs.length}</span></button>))}</div>
+                </div>))}</div>))}
+            {uxPanel("Cups", null, (
+              <div className="ux-ed-cups">{cups.map(([c, ls]) => (
+                <div key={c} className="ux-ed-cup"><LeagueCrest league={c} size={32} />
+                  <span className="ux-ed-cupn"><b><SlideName text={c} /></b><span>{ls.map(l => l.name).join(", ")}</span></span></div>))}
+                {!cups.length && <div className="ux-empty-sm">No Cup</div>}</div>))}
+          </div>
+        </div>
+      </div>);
+  };
+
+  // ── NEW LEAGUE: the league, its founding clubs (one open at a time) and that club's squad; new men come in with it ──
+  const renderEdNewLeague = (f0) => {
+    const f = f0 || edLgSeed(), review = !!f.review, req = review ? requests.find(r => r.id === f.reqId) : null;
+    const upd = (p) => setEdNew(n => ({ ...(n && n.kind === "leagues" ? n : f), ...p }));
+    const clubs = f.clubs || [], oi = Math.max(0, Math.min(f.open || 0, clubs.length - 1)), c = clubs[oi] || null;
+    const updC = (p) => upd({ clubs: clubs.map((x, i) => (i === oi ? { ...x, ...p } : x)) });
+    const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
+    const nation = f.nation || "", multi = overseer || (scope.nations || []).length > 1;
+    const slabs = c ? slotLabels(c.formation || "4-4-2", 16) : [];
+    const starters = (cl) => cl.squad.slice(0, 11).filter(Boolean).length;
+    const avgOf = (cl) => { const r = cl.squad.map(v => (!v ? null : edLgNew(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(x => x != null);
+      return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null; };
+    const done = (cl) => !!((cl.name || "").trim() && /^[A-Z0-9]{2,3}$/.test(cl.code || "") && cl.city && (cl.ground || "").trim() && starters(cl) === 11);
+    const unrated = (v) => edLgNew(v) && !(+v.ovr > 0);
+    const blanks = clubs.reduce((n, cl) => n + cl.squad.filter(unrated).length + (unrated(cl.manager) ? 1 : 0), 0);
+    const ready = !!((f.name || "").trim() && nation && clubs.length && clubs.every(done) && (f.cup !== "__new" || (f.cupName || "").trim()));
+    const taken = new Set(clubs.flatMap(cl => cl.squad.filter(v => typeof v === "string")));
+    const pool = !c || (f.q || "").trim().length < 2 ? [] : curRecs.players.filter(p => !p.retired && !taken.has(p.id) && edHit(f.q, p.name)
+      && (overseer || !whereIs.get(p.id)?.club || edMine(whereIs.get(p.id).club.key)) && !edLockedMen.has("p:" + p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 6);
+    const usedMgr = new Set(clubs.map(cl => cl.manager).filter(v => typeof v === "string"));
+    const mgrChoices = [[null, [{ k: "", name: "No Manager" }, { k: "__new", name: "New Manager" },
+      ...curRecs.managers.filter(m => !edSidesOfMgr(m.id).some(t => !isNational(t)) && !edLockedMen.has("m:" + m.id) && (!usedMgr.has(m.id) || c?.manager === m.id))
+        .sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
+    const np = f.np, setNp = (p) => upd({ np: { ...np, ...p } });
+    const swap = (a, b) => { if (a == null || b == null || a === b || !c) return; const s2 = [...c.squad]; [s2[a], s2[b]] = [s2[b], s2[a]];
+      upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: s2 } : x)), ...(np && np.at != null ? { np: null } : null) }); };
+    const put = (v, pos) => { const i = placeFor(c.squad, slabs, posFitCost, pos); if (i < 0) return;
+      upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: x.squad.map((y, k) => (k === i ? v : y)) } : x)), np: null, q: "" }); };
+    // What goes to the registry: whole ratings or none, the cup by name, each club's ground with its capacity, new men as
+    // the rules take them (traits only from the overseer).
+    const num = (v) => (+v > 0 ? Math.round(+v) : null);
+    const lgFields = () => ({ what: "leagues", name: (f.name || "").trim(), nation, tier: f.tier ?? 1,
+      cup: f.cup === "__new" ? ((f.cupName || "").trim() || null) : f.cup || null,
+      clubs: clubs.map(cl => ({ name: (cl.name || "").trim(), code: (cl.code || "").trim().toUpperCase(), home: cl.home, away: cl.away,
+        stadium: (cl.ground || "").trim() + (String(cl.cap || "").trim() ? ` (${String(cl.cap).trim()})` : ""), location: cl.city || "", formation: cl.formation,
+        manager: edLgNew(cl.manager) ? { name: (cl.manager.name || "").trim(), nat: cl.manager.nat || nation, born: cl.manager.born, style: cl.manager.style, ovr: num(cl.manager.ovr) }
+          : cl.manager || null,
+        squad: cl.squad.map(v => (!v ? null : !edLgNew(v) ? v : { name: (v.name || "").trim(), pos: v.pos, nat: v.nat || nation, born: v.born, ovr: num(v.ovr),
+          ...(overseer && v.badges?.length ? { badges: badgeOrder(v.badges) } : null) })) })) });
+    const rateIn = (v, onChange, label) => (
+      <input className={"ux-ed-in ux-ed-ovrin" + (+v.ovr > 0 ? "" : " ux-need")} aria-label={label} placeholder="–" style={mono} value={v.ovr || ""}
+        onChange={e => onChange(e.target.value)} onClick={e => e.stopPropagation()} />);
+    const colLeague = uxPanel(review ? "Review New League" : "New League",
+      review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null, (
+      <div className="ux-ed-form ux-ed-nlf">
+        <dl className="ux-ed-dl ux-ed-dl-n">
+          {field("Name", <input className="ux-ed-in" placeholder="League Name" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
+          {multi && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nation: it.k, cup: "" })} />)}
+          {field("Tier", <span className="ux-pick ux-ed-sel"><select aria-label="Tier" value={f.tier || 1} onChange={e => upd({ tier: +e.target.value })}>
+            {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>Tier {t}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+          {field("Cup", f.cup === "__new" ? <input className="ux-ed-in" autoFocus placeholder="Cup Name" value={f.cupName || ""} onChange={e => upd({ cupName: e.target.value })} />
+            : edLgCupPick(nation, f.cup, (k) => upd({ cup: k })))}
+        </dl>
+        <div className="ux-ed-lh ux-ed-lhp">Founding Clubs<b style={mono}>{clubs.length}</b></div>
+        <div className="ux-ed-nlcs">
+          {clubs.map((cl, i) => (
+            <button key={cl.id} type="button" className={"ux-btnreset ux-ed-nlc" + (i === oi ? " ux-on" : "")} onClick={() => upd({ open: i, np: null, q: "" })}>
+              <span className="ux-ed-sw" style={{ background: `linear-gradient(135deg, ${cl.home} 50%, ${cl.away} 50%)` }} />
+              <span className="ux-ed-rn"><SlideName text={(cl.name || "").trim() || "New Club"} /></span>
+              <span className="ux-ed-rs ux-ed-cavg" style={mono}>{avgOf(cl) != null ? avgOf(cl).toFixed(1) : "–"}</span>
+              <span className="ux-ed-rs" style={mono}>{cl.squad.filter(Boolean).length}/16</span>
+              <span className={"ux-ed-st" + (done(cl) ? " ux-ok" : "")} title={done(cl) ? "Ready" : starters(cl) < 11 ? `${11 - starters(cl)} Starters To Find` : "Details Missing"}>
+                {done(cl) ? uxIcon("check", "ux-xs") : starters(cl) < 11 ? <span style={mono}>{11 - starters(cl)}</span> : "!"}</span>
+            </button>))}
+          <button type="button" className="ux-btnreset ux-btn ux-ed-addc" onClick={() => upd({ clubs: [...clubs, edLgBlankClub()], open: clubs.length, np: null, q: "" })}>
+            {uxIcon("plus", "ux-s")}Add Club</button>
+        </div>
+        {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
+        {review && <dl className="ux-ed-dl ux-ed-dl-n">{field("Note", <input className="ux-ed-in" placeholder="Sent Back With A Rejection" value={f.note || ""} onChange={e => upd({ note: e.target.value })} />)}</dl>}
+        {!review && <p className="ux-ed-rule">Badges for the league and each club: 500 by 500 pixels, 50px of padding on every side and a 25px white outline.
+          Portraits: a chest-up headshot in a plain white shirt. Send images as a zip to @auroruse on Discord.</p>}
+        <div className="ux-ed-tfoot">
+          <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdNew(null)}>Cancel</button>
+          {review ? <span className="ux-ed-acts">
+              {blanks > 0 && <span className="ux-ed-need"><span style={mono}>{blanks}</span> Ratings To Set</span>}
+              <button type="button" className="ux-btnreset ux-btn ux-danger" disabled={!req || !!reqBusy}
+                onClick={async () => { await settle(req, "decline", { note: (f.note || "").trim() }); setEdNew(null); }}>Reject</button>
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!req || !ready || blanks > 0 || !!reqBusy}
+                onClick={async () => { const ok = await settle(req, "accept", { edits: lgFields() }); if (ok) setEdNew(null); }}>{reqBusy === req?.id ? "Saving" : "Approve"}</button></span>
+            : <span className="ux-ed-acts">
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready}
+                onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...lgFields() }] }); setEdNew(null); }}>{overseer ? "Add To Cart" : "Request"}</button></span>}
+        </div>
+      </div>), true, "lg");
+    const mg = c && edLgNew(c.manager) ? c.manager : null, setMg = (p) => updC({ manager: { ...mg, ...p } });
+    const colClub = c && uxPanel((c.name || "").trim() || "New Club",
+      <button type="button" className="ux-btnreset ux-btn ux-danger" style={{ marginLeft: "auto" }} disabled={clubs.length < 2}
+        onClick={() => upd({ clubs: clubs.filter((_, i) => i !== oi), open: Math.max(0, oi - 1), np: null, q: "" })}>Remove Club</button>, (
+      <div className="ux-ed-form">
+        <dl className="ux-ed-dl">
+          {field("Name", <input className="ux-ed-in" placeholder="Club Name" value={c.name} onChange={e => updC({ name: e.target.value })} />)}
+          {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={3} value={c.code} onChange={e => updC({ code: e.target.value.toUpperCase() })} style={mono} />)}
+          {field("Kits", <span className="ux-ed-kits ux-ed-kits-in">{[["home", "Home Kit"], ["away", "Away Kit"]].map(([q, l]) => (
+            <label key={q} className="ux-ed-kit"><span>{l}</span><input type="color" value={c[q]} onChange={e => updC({ [q]: e.target.value })} /><b style={mono}>{c[q].toUpperCase()}</b></label>))}</span>)}
+          {field("Ground", <input className="ux-ed-in" placeholder="Ground" value={c.ground} onChange={e => updC({ ground: e.target.value })} />)}
+          {field("Capacity", <input className="ux-ed-in ux-ed-num" placeholder="0" value={c.cap} onChange={e => updC({ cap: e.target.value })} style={mono} />)}
+          {field("City", <UxSidePick label="City" value={c.city} groups={edCities} placeholder="Search Cities" onPick={it => updC({ city: it.k })} />)}
+          {field("Formation", <span className="ux-pick ux-ed-sel"><select aria-label="Formation" value={c.formation} onChange={e => updC({ formation: e.target.value })}>
+            {FORMATIONS.map(x => <option key={x} value={x}>{x}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+          {field("Manager", <UxSidePick label="Manager" value={mg ? "__new" : c.manager || ""} groups={mgrChoices} placeholder="Search Managers"
+            onPick={it => updC({ manager: it.k === "__new" ? { name: "", style: "balanced", nat: nation, born: "", ovr: "" } : it.k || null })} />)}
+          {mg && <>
+            {field("Manager's Name", <input className="ux-ed-in" placeholder="Given Name SURNAME" value={mg.name} onChange={e => setMg({ name: e.target.value })} />)}
+            {field("Style", <span className="ux-pick ux-ed-sel"><select aria-label="Style" value={mg.style} onChange={e => setMg({ style: e.target.value })}>
+              {STYLES.map(s => <option key={s} value={s}>{STYLE_LBL[s]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+            {field("Date Of Birth", edBornAge(mg.born, mg.age, setMg, 90))}
+            {field("Rating", review ? rateIn(mg, v => setMg({ ovr: v }), "Manager's Rating")
+              : <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder="Blank" value={mg.ovr} onChange={e => setMg({ ovr: e.target.value })} style={mono} />)}
+          </>}
+        </dl>
+      </div>), true, "club");
+    const colSquad = c && uxPanel("Squad", (
+      <span className="ux-ed-sqctl">
+        <span className="ux-menu-wrap">
+          <button type="button" className={"ux-btnreset ux-btn" + (f.rollOpen ? " ux-on" : "")} aria-haspopup="dialog" aria-expanded={!!f.rollOpen}
+            onClick={() => upd({ rollOpen: !f.rollOpen })}>{uxIcon("dice", "ux-s")}Roll Ratings</button>
+          {f.rollOpen && (() => { const T = parseFloat(c.target), now = avgOf(c);
+            const rolls = c.squad.filter(v => edLgNew(v) && (!(+v.ovr > 0) || v.auto)).length, typed = c.squad.filter(v => edLgNew(v) && +v.ovr > 0 && !v.auto).length;
+            return (<>
+            <div className="ux-scrim" onClick={() => upd({ rollOpen: false })} />
+            <div className="ux-menu ux-ed-rollpop" role="dialog" aria-label="Roll Ratings" onKeyDown={e => { if (e.key === "Escape") upd({ rollOpen: false }); }}>
+              <div className="ux-ed-rollh">Roll Ratings</div>
+              <label className="ux-ed-rollrow"><span>Team Rating</span>
+                <input className="ux-ed-in ux-ed-age" type="number" min={25} max={99} autoFocus placeholder="–" style={mono} value={c.target || ""} onChange={e => updC({ target: e.target.value })} /></label>
+              <div className="ux-ed-rollrow"><span>Now</span><b style={mono}>{now != null ? now.toFixed(1) : "–"}</b></div>
+              <div className="ux-ed-rollf">
+                <span className="ux-cb-when">Rolls <span style={mono}>{rolls}</span>, Keeps <span style={mono}>{typed}</span> Typed</span>
+                <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(T >= 25 && T <= 99) || !rolls}
+                  onClick={() => updC({ squad: rollSquad(c.squad, slabs, T, (id) => recNow(id)?.ovr) })}>{uxIcon("dice", "ux-s")}Roll</button>
+              </div>
+            </div></>); })()}
+        </span>
+        <span className="ux-chip" style={mono}>{c.squad.filter(Boolean).length} / 16</span>
+      </span>), (
+      <div className="ux-ed-sqp">
+        <div className="ux-ed-sqlist">
+          {c.squad.map((v, i) => { const isN = edLgNew(v), p = !isN && v ? recNow(v) : null, nm = isN ? v.name : p ? p.name : "";
+            return (
+            <div key={i} className={"ux-ed-trow ux-ed-sqrow" + (edSel === i ? " ux-sel" : "") + (edDrag != null && edDrag !== i ? " ux-tgt" : "") + (np && np.at === i ? " ux-edit" : "")}
+              draggable={!!v} onDragStart={e => { setEdDrag(i); setEdSel(null); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(i)); } catch {} }}
+              onDragEnd={() => setEdDrag(null)} onDragOver={e => { if (edDrag != null) e.preventDefault(); }}
+              onDrop={e => { e.preventDefault(); swap(edDrag, i); setEdDrag(null); }}
+              onClick={() => { if (edSel == null) { if (v) setEdSel(i); } else { swap(edSel, i); setEdSel(null); } }}>
+              <b style={{ ...mono, color: POS_CLR[slabs[i]] }}>{slabs[i]}</b>
+              <span className="ux-ed-rn">{v ? <SlideName text={fullDisplayName(nm)} /> : <span className="ux-ed-open">{i < 11 ? "Starter" : "Bench"}</span>}</span>
+              {isN && <span className="ux-ed-newtag">New</span>}
+              <span className="ux-ed-rcell">{isN ? (review ? rateIn(v, val => updC({ squad: c.squad.map((x, j) => (j === i ? { ...x, ovr: val, auto: false } : x)) }), "Rating, " + fullDisplayName(nm))
+                  : +v.ovr > 0 ? uxBadge(+v.ovr) : <span className="ux-ed-blank">Blank</span>)
+                : p ? uxBadge(p.ovr) : null}</span>
+              <span className="ux-ed-bcell">{isN && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Edit " + fullDisplayName(nm)} title="Edit"
+                onClick={e => { e.stopPropagation(); setEdSel(null); upd({ np: { ...v, at: i }, rollOpen: false }); }}>{uxIcon("edit", "ux-s")}</button>}</span>
+              <span className="ux-ed-bcell">{v && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + fullDisplayName(nm)}
+                onClick={e => { e.stopPropagation(); setEdSel(null); updC({ squad: c.squad.map((x, j) => (j === i ? null : x)) }); }}>{uxIcon("close", "ux-s")}</button>}</span>
+            </div>); })}
+        </div>
+        {np ? (
+          <div className="ux-ed-np">
+            <div className="ux-ed-lh">{np.at != null ? "Edit New Player" : "New Player"}</div>
+            <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
+              {field("Name", <input className="ux-ed-in" placeholder="Given Name SURNAME" value={np.name || ""} onChange={e => setNp({ name: e.target.value })} />)}
+              {field("Position", <span className="ux-pick ux-ed-sel"><select aria-label="Position" value={np.pos || ""} onChange={e => setNp({ pos: e.target.value })}>
+                <option value="">Choose</option>{Object.keys(POS_NAME).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+              {field("Nationality", <UxSidePick label="Nationality" value={np.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setNp({ nat: it.k })} />)}
+              {field("Born", edBornAge(np.born, np.age, setNp, 60))}
+              {field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} aria-label="Rating"
+                value={np.ovr || ""} onChange={e => setNp({ ovr: e.target.value, auto: false })} style={mono} />)}
+              {overseer && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => { const on = (np.badges || []).includes(b.id);
+                return <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + (on ? " ux-on" : "")} title={b.name} aria-pressed={on}
+                  onClick={() => setNp({ badges: on ? np.badges.filter(x => x !== b.id) : [...(np.badges || []), b.id] })}><BadgeIcon id={b.id} size={20} /></button>; })}</span>)}
+            </dl>
+            <div className="ux-ed-npf">
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born}
+                onClick={() => { const { at, age, ...man } = np, v = { ...man, name: man.name.trim(), nat: man.nat || nation };
+                  if (at != null) upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: x.squad.map((y, k) => (k === at ? v : y)) } : x)), np: null });
+                  else put(v, v.pos); }}>{np.at != null ? "Save" : "Add"}</button></div>
+          </div>
+        ) : (<>
+          <div className="ux-ed-npbar">
+            <span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
+              <input type="search" placeholder="Search Players" aria-label="Search Players" value={f.q || ""} onChange={e => upd({ q: e.target.value })} /></span>
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: { name: "", pos: "", nat: nation, born: "", ovr: "" }, rollOpen: false })}>{uxIcon("plus", "ux-s")}New Player</button>
+          </div>
+          {pool.length > 0 && <div className="ux-ed-sqfind">{pool.map(p => { const at = whereIs.get(p.id)?.club?.key, st = at ? teamOfKey(at) : null;
+            return (
+            <div key={p.id} className="ux-ed-frow">
+              <PlayerShot name={p.name} size={26} />
+              <span className="ux-ed-fn"><b><SlideName text={fullDisplayName(p.name)} /></b>
+                <span><b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posOfId(p.id)}</b>{st ? <><TeamCrest team={st} size={14} />{st.code}</> : "Free Agent"}</span></span>
+              {uxBadge(p.ovr)}
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => put(p.id, posOfId(p.id))}>Add</button>
+            </div>); })}</div>}
+        </>)}
+      </div>), true, "squad");
+    return <div className="ux-ed-nl">{colLeague}{colClub}{colSquad}</div>;
+  };
+
   const renderUxEditor = () => {
     if (edSec === "requests") return renderEdRequests();
+    if (edSec === "leagues") {
+      const groups = edLgRows(), picked = edPick.leagues || groups.flatMap(([, l]) => l)[0]?.key;
+      return (
+        <div className="ux-body ux-ed">
+          {edRail("leagues", groups, picked, (k) => setEdPick(p => ({ ...p, leagues: k })))}
+          {edNew && edNew.kind === "leagues" ? renderEdNewLeague(edNew) : !edLeagues.length ? renderEdNewLeague(null) : renderEdLeague(picked)}
+        </div>);
+    }
     const q = edQ;
     const groups = edSec === "teams"
       ? edSides.map(([h, l]) => [h, l.filter(t => edHit(q, t.name, t.code)).map(t => ({ key: teamKey(t), name: t.name.trim(),
@@ -12242,7 +12589,7 @@ export default function App() {
     } else if (tab === "editor") {
       // The Editor: Teams, Players, Managers and Requests.
       title = <h1>Editor</h1>;
-      [["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["requests", "Requests"]].forEach(([id, l]) =>
+      [["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["leagues", "Leagues"], ["requests", "Requests"]].forEach(([id, l]) =>
         tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdNew(null); setEdTrade(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.

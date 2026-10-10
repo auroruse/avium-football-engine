@@ -316,12 +316,13 @@ picked: the momentum chart on Full Time.
 
 For the ACU's editors and the overseer (Moukden and Kirin, 10 October 2026, over five rounds of questions). A fourth
 section in the top bar, EDITOR, shown only to signed-in editors and the overseer. Its pages are tabs in the page bar:
-**Teams**, **Players**, **Managers** and **Requests**. The Edit Player and Edit Club buttons on player and side pages open
+**Teams**, **Players**, **Managers**, **Leagues** and **Requests**. The Edit Player and Edit Club buttons on player and side pages open
 that record here; the old dialogs go.
 
 **Who may change what.** The overseer changes everything. An editor changes only their own nation's sides, its national
 side and its clubs: their names and kits freely; their code, ground (with its capacity) and city by request to the
-overseer; their formations and the slots of their squads; and who plays for them and who manages them, by moving men. An
+overseer; their formations and the slots of their squads; who plays for them and who manages them, by moving men; and
+the name, tier and cup of their nation's leagues, outright. An
 editor never changes a man's rating, age or traits, and their editor shows those locked. A side's style follows its
 manager: appointing a manager brings his style, and only the overseer sets a style directly.
 
@@ -338,9 +339,26 @@ editor can release him from or move him between their own clubs, and call him up
 side. The overseer can also retire him. **Managers** works the same way: appoint him to one of your sides or release him;
 one at another nation's club is a trade; his rating is the overseer's.
 
+**Leagues** (Moukden and Kirin, 11 October 2026, over four rounds of questions and a mock) is the same rail: each nation's
+leagues under its name, with tier and club count. A league's page has its name, tier and cup in its head, changed outright;
+its clubs in a table, each opening on Teams; the nation's pyramid tier by tier, where two leagues may share a tier; and its
+cups with the leagues that enter each. Its record is `src/data/leagues.json`: a rename keeps the old name in `formerly`, so
+the archive's seasons, its badge and the clubs a saved tournament names still find it. **New League** is a request to the
+overseer, in three columns: the league (name, tier, a cup picked or named new) with its founding clubs, the club open (name,
+code, kits, ground, capacity, city, formation, a manager or a new one) and its sixteen places, filled from free agents and
+the editor's own men or with new players made there. A new man reopens from the pencil on his row; places swap by dragging
+one onto another or clicking one then the other. **Roll Ratings** on the squad is a tool, never a field: given a team rating
+it rates every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of
+2.3 (the clubs on file, measured 11 October 2026) and each bench man below the starter at his position, keeping typed
+ratings (`src/data/roll.js`). The overseer reviews a league with every field open and sets every blank rating before
+Approve. A league made this way stands as a league of its own from its first club; the ones from before keep the six-club
+rule. A nation with no club sheet gets one with its first league, and editors without clubs start here.
+
 **New records** are requests the overseer answers. A new player: name, nationality, date of birth, position, the side he
-joins (one of the editor's own sides, or none) and the rating the editor proposes. A new manager: name, nationality, date
-of birth, style and a proposed rating. The overseer may change any of it before letting it in (Moukden and Kirin, 10
+joins (one of the editor's own sides, or none) and the rating the editor proposes or leaves blank. A new manager: name,
+nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
+in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). Beside a date of birth, Or Age picks a random date
+that gives that age in the world's own time, and a die picks another. The overseer may change any of it before letting it in (Moukden and Kirin, 10
 October 2026). A new club: name, code,
 kits, ground and capacity, a city from the map's cities, its league and division, formation, manager, and a full squad of
 sixteen from free agents, its nation's men and new players requested with it. One line under each form gives the image
@@ -632,7 +650,9 @@ on panels, no hover lift. No panel without a question to answer.
   Simulating cover. `src/docs.js` holds the Documentation's text.
 - Who may change what, and what a saved cart becomes (outright changes, trades, new records, changes by request, the men a
   waiting request locks), is `src/data/rules.js`, which the registry server (`server/worker.js`) enforces and the app
-  previews; `test/rules.mjs` checks it on the real records. A change to the rules goes live when the server is redeployed. A screen not yet rebuilt sits under the two bars in
+  previews; `test/rules.mjs` checks it on the real records. A change to the rules goes live when the server is redeployed.
+  The leagues are `src/data/leagues.json` (`src/data/leagues.js` reads it), which the server writes beside the other
+  records and `node test/records.mjs check` holds to the clubs; Roll Ratings is `src/data/roll.js`. A screen not yet rebuilt sits under the two bars in
   the old canvas, at its old size.
 - `test/tourn.mjs`, `test/import.mjs` and `test/export.mjs` cut the tournament's functions out of App.tsx by name, so
   rebuilding Tournaments keeps those names.

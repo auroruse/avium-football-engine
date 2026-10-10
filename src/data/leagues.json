@@ -1,0 +1,21 @@
+[
+{"id":"l0001","name":"Alemannische Oberliga","nation":"ALE","tier":1,"cup":null},
+{"id":"l0002","name":"2. Alemannische Oberliga","nation":"ALE","tier":2,"cup":null},
+{"id":"l0003","name":"Championnat Arvernois","nation":"ARV","tier":1,"cup":null},
+{"id":"l0004","name":"Primera División","nation":"ASK","tier":1,"cup":null},
+{"id":"l0005","name":"Elvesterian Premier League","nation":"ELV","tier":1,"cup":null},
+{"id":"l0006","name":"Karjanian Premier League","nation":"KAR","tier":1,"cup":"Karjanian Cup"},
+{"id":"l0007","name":"Karjanian Secondary League","nation":"KAR","tier":2,"cup":"Karjanian Cup"},
+{"id":"l0008","name":"Karjanian Kolmonen","nation":"KAR","tier":3,"cup":"Karjanian Cup"},
+{"id":"l0009","name":"Frederikka Cup","nation":"KFK","tier":0,"cup":null},
+{"id":"l0010","name":"Kullanmaan Cup","nation":"KKM","tier":0,"cup":null},
+{"id":"l0011","name":"Nichirin League One","nation":"NCH","tier":1,"cup":"Sei'i Tai Shogun Cup"},
+{"id":"l0012","name":"Nichirin League Two","nation":"NCH","tier":2,"cup":"Sei'i Tai Shogun Cup"},
+{"id":"l0013","name":"Rudanian First League","nation":"RUD","tier":1,"cup":null},
+{"id":"l0014","name":"Hagbia Haleumi Hashiboniti","nation":"SHI","tier":1,"cup":null},
+{"id":"l0015","name":"Allskyärnskan","nation":"SKJ","tier":1,"cup":null},
+{"id":"l0016","name":"Turulországi Felsőliga","nation":"TUR","tier":1,"cup":null},
+{"id":"l0017","name":"Liga-ye Mellī","nation":"VAR","tier":1,"cup":"Jām-e Mellī"},
+{"id":"l0018","name":"Liga-ye Bālande","nation":"VAR","tier":2,"cup":"Jām-e Mellī"},
+{"id":"l0019","name":"Divisione Prima Viciliana","nation":"VIC","tier":1,"cup":null}
+]

@@ -4,7 +4,8 @@
 //
 //   node test/records.mjs import          src/presets/*.tsv -> src/data/*.json, keeping every existing ID
 //   node test/records.mjs export [dir]    src/data -> the sheets (default src/presets)
-//   node test/records.mjs check           do the sheets in src/presets match the records, byte for byte?
+//   node test/records.mjs check           do the sheets in src/presets match the records, byte for byte, and does every
+//                                         club's league have a record in src/data/leagues.json, and every league a club?
 //
 // import is how a sheet-sized change still gets in (a pasted squad): edit the sheet, import, and the same people keep
 // their IDs; a new name is a new record. ANCC and Slots are not squads.
@@ -152,6 +153,7 @@ else if (cmd === "export") {
   const S = sheetsFromRecords(records());
   let bad = 0;
   for (const [file, text] of Object.entries(S)) {
+    if (!existsSync(join(PRE, file + ".tsv"))) { bad++; console.log(`${file}.tsv is missing: export it`); continue; }
     const disk = readFileSync(join(PRE, file + ".tsv"), "utf8");
     if (disk === text) continue;
     bad++;
@@ -160,6 +162,13 @@ else if (cmd === "export") {
   }
   const extra = readdirSync(PRE).filter(f => f.endsWith(".tsv") && !SKIP.has(f) && !(f.replace(/\.tsv$/, "") in S));
   for (const f of extra) { bad++; console.log(`${f} has no records: import it`); }
-  console.log(bad ? `${bad} sheets differ from the records` : "every sheet written from the records is byte-identical to src/presets");
+  // The leagues (src/data/leagues.js): a club's league is its nation's and its `group`; a club in no league (a nation's
+  // name on the mixed sheet) has none.
+  const L = load("leagues.json"), T = records().teams, AV = new Map(T.filter(t => t.file === "AVIUM").map(t => [t.code, t.name.trim()]));
+  const has = new Set(L.map(l => l.nation + "|" + l.name));
+  for (const t of T) { if (NATIONAL.has(t.file) || !t.group || (t.file === "MISC" && AV.get(t.nation) === t.group)) continue;
+    if (!has.has(t.nation + "|" + t.group)) { bad++; console.log(`${t.name.trim()} plays in ${t.group}, which has no league record`); } }
+  for (const l of L) if (!T.some(t => t.nation === l.nation && t.group === l.name)) { bad++; console.log(`${l.name} has no clubs`); }
+  console.log(bad ? `${bad} problems between the sheets, the records and the leagues` : `every sheet written from the records is byte-identical to src/presets, and all ${L.length} leagues have their clubs`);
   process.exit(bad ? 1 : 0);
 } else { console.error("usage: node test/records.mjs import | export [dir] | check"); process.exit(2); }

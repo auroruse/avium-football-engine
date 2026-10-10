@@ -12,15 +12,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "rules-")), ENTRY = join(DIR, "entry.js"), OUT = join(DIR, "rules.mjs");
-writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
+writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
 const R = await import(pathToFileURL(OUT).href);
-const { planSave, settleRequest, applyDraft, draftWith, idOf, teamKey, vacate, posFitCost, slotLabels, sposFor, OVERSEER } = R;
+const { planSave, settleRequest, applyDraft, draftWith, idOf, teamKey, vacate, posFitCost, slotLabels, sposFor, OVERSEER, sheetsFromRecords } = R;
 
 let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined || cond ? "" : "   " + JSON.stringify(got).slice(0, 300)}`); };
-const rec = Object.fromEntries(["players", "managers", "teams", "sheets"].map(k => [k, JSON.parse(readFileSync(join(ROOT, `src/data/${k}.json`), "utf8"))]));
+const rec = Object.fromEntries(["players", "managers", "teams", "sheets", "leagues"].map(k => [k, JSON.parse(readFileSync(join(ROOT, `src/data/${k}.json`), "utf8"))]));
 const editors = JSON.parse(readFileSync(join(ROOT, "src/data/editors.json"), "utf8"));
 const ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
 const h = { labels: (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0 };
@@ -107,6 +107,58 @@ const freeA = vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr);
   const yes = r && settle(OV, r, "accept"), n3 = yes?.apply && after(yes.apply), club = n3?.teams.find(t => t.name === "FC Neustadt");
   ok("let in, it joins its nation's league with its sixteen", !yes.errors.length && club?.file === "ALE" && club.group === group && ids(club).filter(Boolean).length === 16, yes?.errors);
   ok("and its men have left their old clubs", !!club && ids(club).every(id => !id || n3.teams.filter(t => t.file === "ALE" && t.id !== club.id).every(t => !ids(t).includes(id)))); }
+
+console.log("leagues");
+const lg = (id) => rec.leagues.find(l => l.id === id), AO = rec.leagues.find(l => l.name === "Alemannische Oberliga"), NL1 = rec.leagues.find(l => l.name === "Nichirin League One");
+{ const s = plan(ED, { leagues: { [AO.id]: { name: "Bundesliga Alemannia", tier: 1 } } }), n = s.apply && after(s.apply), l = n?.leagues.find(x => x.id === AO.id);
+  ok("an editor renames their league outright", !s.errors.length && !s.requests.length && l?.name === "Bundesliga Alemannia", s.errors);
+  ok("its clubs carry the new name", !!n && n.teams.filter(t => t.group === "Bundesliga Alemannia").length === rec.teams.filter(t => t.group === AO.name).length
+    && !n.teams.some(t => t.group === AO.name));
+  ok("and the old one is kept", JSON.stringify(l?.formerly) === JSON.stringify([AO.name]), l); }
+{ const s = plan(ED, { leagues: { [NL1.id]: { name: "Nope League" } } });
+  ok("an editor may not touch another nation's league", s.errors.some(e => /not one of your leagues/.test(e)), s.errors); }
+{ const s = plan(ED, { leagues: { [AO.id]: { name: "2. Alemannische Oberliga" } } });
+  ok("a league's name is free", s.errors.some(e => /already called/.test(e)), s.errors); }
+{ const s = plan(ED, { leagues: { [AO.id]: { tier: 9 } } });
+  ok("a tier is 1 to 5 or none", s.errors.some(e => /a tier is/.test(e)), s.errors); }
+{ const s = plan(ED, { leagues: { [AO.id]: { cup: "Alemannischer Pokal" } } }), t = plan(ED, { leagues: { [AO.id]: { cup: "Nichirin League One" } } });
+  ok("a new cup is a name", !s.errors.length && after(s.apply).leagues.find(x => x.id === AO.id).cup === "Alemannischer Pokal", s.errors);
+  ok("never a league's", t.errors.some(e => /not a usable cup/.test(e)), t.errors); }
+const ESU_ED = "that1sealguy";
+const man = (name, pos, ovr) => ({ name, pos, nat: "ESU", born: "1910-05-05", ovr });
+const founding = (code, ovrs) => ({ name: "Test " + code, code, home: "#112233", away: "#ffffff", stadium: "Test Park (5,000)", location: "Testopolis", formation: "4-4-2",
+  manager: { name: "Max MANAGER", nat: "ESU", born: "1890-01-01", style: "counterattack", ovr: null },
+  squad: ["GK", "LB", "CB", "CB", "RB", "LM", "CM", "CM", "RM", "ST", "ST"].map((pos, i) => man(`Player ${code}${i} TEST`, pos, ovrs[i] ?? null)).concat([null, null, null, null, null]) });
+const NEWL = { id: "L1", what: "leagues", name: "E.S.U. Test League", nation: "ESU", tier: 1, cup: null, clubs: [founding("TQA", [70, 68, null, 66]), founding("TQB", [])] };
+let leagueReq;
+{ const s = plan(ESU_ED, { new: [NEWL] });
+  leagueReq = s.requests[0];
+  ok("a club-less nation's editor asks for a league, ratings left blank", !s.errors.length && leagueReq?.kind === "new" && leagueReq.what === "leagues" && leagueReq.needs[OVERSEER], s.errors);
+  ok("it holds nobody already on file", (leagueReq?.locks || []).length === 0, leagueReq?.locks);
+  const no = settle(OV, leagueReq, "accept");
+  ok("the overseer cannot let it in with ratings blank", no.errors?.some(e => /a rating is a whole number/.test(e)), no.errors); }
+{ const s = plan(ESU_ED, { new: [{ ...NEWL, nation: "NCH" }] });
+  ok("an editor's league is of their own nation", s.errors.some(e => /not a nation of yours/.test(e)), s.errors); }
+{ const s = plan(ESU_ED, { new: [{ ...NEWL, clubs: [{ ...founding("SPK", []) }] }] });
+  ok("a founding club's code is free", s.errors.some(e => /the code SPK is taken/.test(e)), s.errors); }
+{ const rated = (c) => ({ ...c, manager: { ...c.manager, ovr: 70 }, squad: c.squad.map(v => v && { ...v, ovr: v.ovr ?? 60 }) });
+  const edits = { ...leagueReq.rec, clubs: leagueReq.rec.clubs.map(rated) };
+  const yes = settle(OV, leagueReq, "accept", { edits }), n = yes.apply && after(yes.apply);
+  const L = n?.leagues.find(l => l.name === NEWL.name), clubs = n?.teams.filter(t => t.group === NEWL.name) || [];
+  ok("rated, the overseer lets it in", !yes.errors?.length && !!L && L.listed && L.nation === "ESU", yes.errors);
+  ok("its clubs on the nation's own sheet, sixteen places each", clubs.length === 2 && clubs.every(t => t.file === "ESU" && t.squad.length === 16 && ids(t).filter(Boolean).length === 11));
+  ok("its new men on file with the ratings set", clubs.every(t => ids(t).filter(Boolean).every(id => n.players.find(p => p.id === id)?.ovr >= 25))
+    && n.players.some(p => p.name === "Player TQA0 TEST" && p.ovr === 70) && clubs.every(t => n.managers.find(m => m.id === t.manager)?.ovr === 70));
+  const sheets = n && sheetsFromRecords(n);
+  ok("and the nation gets a sheet", !!sheets?.ESU && sheets.ESU.split("\n").length === 3 && sheets.ESU.includes("E.S.U. Test League"), Object.keys(sheets || {})); }
+{ const rated = { ...NEWL, clubs: NEWL.clubs.map(c => ({ ...c, manager: { ...c.manager, ovr: 66 }, squad: c.squad.map(v => v && { ...v, ovr: 61 }) })) };
+  const s = plan(OV, { new: [rated] }), n = s.apply && after(s.apply);
+  ok("the overseer's own league goes straight in", !s.errors.length && !s.requests.length && n?.leagues.some(l => l.name === NEWL.name), s.errors); }
+{ const s = plan(ED, { teams: { [teamKey(A)]: { squad: freeA } }, new: [{ id: "n9", what: "players", name: "Otto BLANK", nat: "ALE", born: "1912-03-04", pos: "CM", ovr: null, side: teamKey(A) }] });
+  const r = s.requests.find(x => x.kind === "new"), next = s.apply && after(s.apply);
+  ok("an ordinary new player may leave his rating to the overseer", !s.errors.length && r?.rec.ovr == null, s.errors);
+  const no = settle(OV, r, "accept", {}, next), yes = settle(OV, r, "accept", { edits: { ovr: 64 } }, next);
+  ok("who must set it to let him in", no.errors?.length > 0 && !yes.errors?.length && after(yes.apply, next).players.some(p => p.name === "Otto BLANK" && p.ovr === 64), [no.errors, yes.errors]); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);
