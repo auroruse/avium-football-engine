@@ -176,8 +176,9 @@ function tradeDraft(rec, d, tr, h) {
 const POSITION = new Set(Object.keys(POS_ROLE));
 function newProblems(rec, n, scope, over, h) {
   const out = [], label = n?.name || "A new record", bad = (what) => out.push(`${label}: ${what}`);
-  if (!n || !["players", "managers", "teams", "leagues"].includes(n.what)) return ["Not a new record"];
+  if (!n || !["players", "managers", "teams", "leagues", "batch"].includes(n.what)) return ["Not a new record"];
   if (n.what === "leagues") return leagueProblems(rec, n, scope, over);
+  if (n.what === "batch") return batchProblems(rec, n, scope, over, h);
   if (!text(n.name, n.what === "teams" ? 40 : 60)) bad("not a usable name");
   const mine = (code) => over || scope.nations.includes(code);
   if (n.what !== "teams") {
@@ -215,6 +216,45 @@ function newProblems(rec, n, scope, over, h) {
   }
   return out;
 }
+// A new man inside a request (a league's club, a list of new players): an editor's of their own nation, his rating left for
+// the overseer if they like, who must set it to let him in; traits only from the overseer.
+function newManProblems(m, kind, scope, over, bad) {
+  const w = m?.name || (kind === "players" ? "A new player" : "A new manager");
+  if (!m || typeof m !== "object") { bad(`${w}: not a ${kind === "players" ? "player" : "manager"}`); return; }
+  if (!text(m.name, 60)) bad(`${w}: not a usable name`);
+  if (!nationCode(m.nat)) bad(`${w}: not a nationality`); else if (!over && !scope.nations.includes(m.nat)) bad(`${w}: not a nationality of yours`);
+  if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
+  if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
+  if (kind === "players" && !POSITION.has(m.pos)) bad(`${w}: not a position`);
+  if (kind === "players" && m.badges?.length && !over) bad(`${w}: traits are the overseer's`);
+  if (kind === "managers" && !styleName(m.style)) bad(`${w}: not a style`);
+}
+// Where a list of new men goes in a side: each in turn, keepers first, to the open place that fits him best.
+const POS_ORDER = Object.keys(POS_ROLE).sort((a, b) => POS_ROLE[a][0] - POS_ROLE[b][0] || POS_ROLE[a][1] - POS_ROLE[b][1]);
+const byPosition = (men) => men.map((m, i) => [m, i]).sort((a, b) => POS_ORDER.indexOf(a[0].pos) - POS_ORDER.indexOf(b[0].pos) || a[1] - b[1]);
+function placesForMen(t, men, h) {
+  const sq = squadIds(t), lab = h.labels(t), at = new Map();
+  for (const [m, i] of byPosition(men)) { const k = placeFor(sq, lab, h.fit, m.pos); if (k < 0) continue; sq[k] = "#" + i; at.set(i, k); }
+  return { sq, at };
+}
+// A LIST OF NEW PLAYERS asked for at once (Moukden and Kirin, 11 October 2026): { what: "batch", name, side, men: [{ name, pos,
+// nat, born, ovr }] }, every man free or joining the one side named, which must have room for all of them.
+function batchProblems(rec, n, scope, over, h) {
+  const out = [], men = Array.isArray(n.men) ? n.men : [];
+  if (!men.length || men.length > 40) out.push("A list of new players holds one to forty");
+  for (const m of men) newManProblems(m, "players", scope, over, (what) => out.push(what));
+  if (n.side) {
+    const t = rec.teams.find(x => teamKey(x) === n.side);
+    if (!t) out.push("No such side");
+    else if (!owns(scope, t)) out.push(`${t.name.trim()} is not one of your sides`);
+    else {
+      if (isNational(t)) for (const m of men) if (m?.nat !== t.code) out.push(`${m?.name || "A new player"}: not a ${t.name.trim()} national`);
+      const room = placesForMen(t, men.filter(m => m && POSITION.has(m.pos)), h).at.size;
+      if (room < men.length) out.push(`${t.name.trim()} has room for ${room} of the ${men.length}`);
+    }
+  }
+  return out;
+}
 // A NEW LEAGUE asked for: { what: "leagues", name, nation, tier, cup, clubs: [{ name, code, home, away, stadium, location,
 // formation, manager, squad }] }. A club's manager is a manager's ID, a new manager ({ name, nat, born, style, ovr }) or
 // none; each of its sixteen places is empty, a player's ID or a new player ({ name, pos, nat, born, ovr, badges }). An
@@ -231,16 +271,7 @@ function leagueProblems(rec, n, scope, over) {
   if (!clubs.length || clubs.length > 40) bad(L, "a league starts with one to forty clubs");
   const { clubOf, mgrClubOf } = placesOf(rec), codes = new Set(), men = new Set(), mgrs = new Set();
   const ownedAt = (at) => !at || owns(scope, rec.teams.find(t => teamKey(t) === at));
-  const newMan = (m, kind, C) => {
-    const w = m.name || (kind === "players" ? "A new player" : "A new manager");
-    if (!text(m.name, 60)) bad(C, `${w}: not a usable name`);
-    if (!nationCode(m.nat)) bad(C, `${w}: not a nationality`); else if (!over && !scope.nations.includes(m.nat)) bad(C, `${w}: not a nationality of yours`);
-    if (!(m.born && birthDateOk(m.born))) bad(C, `${w}: a date of birth is a real date, for a man at least 14`);
-    if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(C, `${w}: a rating is a whole number from 25 to 99`);
-    if (kind === "players" && !POSITION.has(m.pos)) bad(C, `${w}: not a position`);
-    if (kind === "players" && m.badges?.length && !over) bad(C, `${w}: traits are the overseer's`);
-    if (kind === "managers" && !styleName(m.style)) bad(C, `${w}: not a style`);
-  };
+  const newMan = (m, kind, C) => newManProblems(m, kind, scope, over, (what) => bad(C, what));
   for (const c of clubs) {
     if (!isNew(c)) { bad(L, "not a club"); continue; }
     const C = c.name || "A founding club";
@@ -295,6 +326,17 @@ function createDraft(rec, d, n, h) {
     const id = nextId(next.managers, "m");
     add.managers.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, style: styleName(n.style) });
     return { errors: [], d: { ...out, add }, id };
+  }
+  if (n.what === "batch") {
+    // Each man on file; joining a side, into the place that fits him, keepers first; free, keeping his position.
+    const side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null, ids = [];
+    for (const m of n.men) { const id = nextId([...next.players, ...add.players], "p"); ids.push(id);
+      add.players.push({ id, name: m.name, nat: m.nat, ovr: m.ovr, born: m.born, ...(side ? null : { pos: m.pos }), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null) }); }
+    out = { ...out, add };
+    if (side) { const { sq, at } = placesForMen(side, n.men, h);
+      if (at.size < n.men.length) return { errors: [`${side.name.trim()} has room for ${at.size} of the ${n.men.length}`] };
+      out = draftWith(out, rec, n.side, { squad: sq.map(v => (typeof v === "string" && v.startsWith("#") ? ids[+v.slice(1)] : v)) }, "teams"); }
+    return { errors: [], d: out };
   }
   if (n.what === "leagues") {
     // The league, then each club with its new men, then the men and managers it takes leaving their old clubs.

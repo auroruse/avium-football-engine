@@ -358,7 +358,11 @@ rule. A nation with no club sheet gets one with its first league, and editors wi
 joins (one of the editor's own sides, or none) and the rating the editor proposes or leaves blank. A new manager: name,
 nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
 in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). Beside a date of birth, Or Age picks a random date
-that gives that age in the world's own time, and a die picks another. A New form being filled in is kept in this browser, one a
+that gives that age in the world's own time, and a die picks another. **Many** on New Player, and **Import** on a founding club's squad,
+take new players a line each, "Name, position" (Moukden and Kirin, 11 October 2026): read keepers first and down the
+pitch, one nationality for them all, each age drawn from a range (18 to 32 to start) with a date of birth for it, ratings
+blank or typed. On the Players tab the list is one request to the overseer (`what: "batch"`), its men free or joining one
+side with room for them all; on a squad they take its open places, each the one that fits him. A New form being filled in is kept in this browser, one a
 tab, until it is sent or cancelled: another tab, a record picked from the rail or a reload puts it aside, and New brings
 it back as it was (Moukden and Kirin, 11 October 2026). A request under review is not kept; it reopens from Requests. The overseer may change any of it before letting it in (Moukden and Kirin, 10
 October 2026). A new club: name, code,

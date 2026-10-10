@@ -1484,3 +1484,9 @@ input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 .ux-ed-rollf { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--ux-line); }
 .ux-ed-rcell { flex: none; width: 52px; display: flex; justify-content: center; }
 .ux-ed-bcell { flex: none; width: 24px; display: grid; place-items: center; }
+/* New players by the line: the list pasted, and the men read off it */
+textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; line-height: 1.5; resize: vertical; max-width: none; }
+.ux-ed-batch .ux-ed-dl textarea.ux-ed-ta { max-width: 520px; }
+.ux-ed-blist { flex: none; margin: 8px 16px 0; max-width: 760px; max-height: 44vh; border: 1px solid var(--ux-line); border-radius: 6px; }
+.ux-ed-blist .ux-ed-ovrin { margin: 0 auto; }
+.ux-ed-impbad { margin: 0; }

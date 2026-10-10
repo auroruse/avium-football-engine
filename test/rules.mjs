@@ -160,5 +160,26 @@ let leagueReq;
   const no = settle(OV, r, "accept", {}, next), yes = settle(OV, r, "accept", { edits: { ovr: 64 } }, next);
   ok("who must set it to let him in", no.errors?.length > 0 && !yes.errors?.length && after(yes.apply, next).players.some(p => p.name === "Otto BLANK" && p.ovr === 64), [no.errors, yes.errors]); }
 
+console.log("lists of new players");
+const lad = (name, pos, ovr = null, nat = "ALE") => ({ name, pos, nat, born: "1912-06-06", ovr });
+const LIST = { id: "b1", what: "batch", name: "3 New Players", side: null, men: [lad("Erich EINS", "GK"), lad("Fritz ZWEI", "CB"), lad("Gustav DREI", "ST", 63)] };
+let batchReq;
+{ const s = plan(ED, { new: [LIST] }); batchReq = s.requests[0];
+  ok("an editor asks for a list of new players, ratings blank", !s.errors.length && batchReq?.what === "batch" && batchReq.needs[OVERSEER], s.errors);
+  const no = settle(OV, batchReq, "accept");
+  ok("the overseer cannot let them in unrated", no.errors?.some(e => /a rating is a whole number/.test(e)), no.errors);
+  const yes = settle(OV, batchReq, "accept", { edits: { men: LIST.men.map(m => ({ ...m, ovr: m.ovr ?? 60 })) } }), n = yes.apply && after(yes.apply);
+  ok("rated, they come in as free agents with their positions", !yes.errors?.length && ["Erich EINS", "Fritz ZWEI", "Gustav DREI"].every(nm => { const p = n.players.find(x => x.name === nm);
+    return p && p.ovr >= 25 && p.pos; }) && n.players.find(x => x.name === "Gustav DREI").ovr === 63, yes.errors); }
+{ const s = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", null, "NCH")] }] });
+  ok("an editor's list is of their own nationals", s.errors.some(e => /not a nationality of yours/.test(e)), s.errors); }
+{ const s = plan(ED, { new: [{ ...LIST, side: teamKey(A) }] });
+  ok("a list joining a full side is refused", s.errors.some(e => /has room for 0 of the 3/.test(e)), s.errors); }
+{ const two = vacate(vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr), 14, h.labels(A), posFitCost, h.ovr);
+  const men = [lad("Hans LINKS", "ST", 60), lad("Karl RECHTS", "GK", 61)];
+  const s = plan(ED, { teams: { [teamKey(A)]: { squad: two } }, new: [{ ...LIST, side: teamKey(A), men }] }), next = s.apply && after(s.apply);
+  const yes = settle(OV, s.requests[0], "accept", {}, next), n = yes.apply && after(yes.apply, next), club = n?.teams.find(t => t.id === A.id);
+  ok("a list joining a side fills its open places", !s.errors.length && !yes.errors?.length && ["Hans LINKS", "Karl RECHTS"].every(nm => ids(club).includes(n.players.find(p => p.name === nm)?.id)), [s.errors, yes.errors]); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

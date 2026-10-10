@@ -11508,16 +11508,19 @@ export default function App() {
     </div>); };
   // A NEW RECORD asked for, from the server's request or the cart: who, his facts, and for the overseer Review.
   const uxNewBlock = (r, i, review, remove) => {
-    const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : s.what === "leagues" ? "League" : "Manager";
+    const s = r.rec ? { ...r.rec, what: r.what } : r, what = s.what === "teams" ? "Team" : s.what === "players" ? "Player" : s.what === "leagues" ? "League"
+      : s.what === "batch" ? "Players" : "Manager";
     const nat = s.nat ? natTeamByCode.get(s.nat) : null, joins = s.side ? teamOfKey(s.side) : null;
-    const open = () => { setTab("editor"); setEdSec(s.what);
+    const open = () => { setTab("editor"); setEdSec(s.what === "batch" ? "players" : s.what);
       const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
-      setEdNew(s.what === "leagues" ? edLgFromRec(s, meta) : { ...s, kind: s.what, ...meta }); closeInbox(); };
+      setEdNew(s.what === "leagues" ? edLgFromRec(s, meta)
+        : s.what === "batch" ? { kind: "players", mode: "many", side: s.side || null, list: (s.men || []).map(m => ({ ...m, ovr: m.ovr ?? "" })), ...meta }
+        : { ...s, kind: s.what, ...meta }); closeInbox(); };
     return (
     <div key={r.id || "n" + i} className="ux-rq">
       <div className="ux-rq-h">
-        <span className="ux-rq-crest">{s.what === "teams" ? uxIcon("plus", "ux-s") : s.what === "leagues" ? <LeagueCrest league={s.name || ""} size={28} /> : <PlayerShot name={s.name || ""} size={28} />}</span>
-        <span className="ux-rq-t"><b><SlideName text={s.name || "Unnamed"} /></b><span>New {what}</span></span>
+        <span className="ux-rq-crest">{s.what === "teams" || s.what === "batch" ? uxIcon("plus", "ux-s") : s.what === "leagues" ? <LeagueCrest league={s.name || ""} size={28} /> : <PlayerShot name={s.name || ""} size={28} />}</span>
+        <span className="ux-rq-t"><b><SlideName text={s.what === "batch" ? `${(s.men || []).length} Players` : s.name || "Unnamed"} /></b><span>New {what}</span></span>
         {!remove && r.by && <span className="ux-rq-by"><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>}
       </div>
       <dl className="ux-rq-facts">
@@ -11532,6 +11535,13 @@ export default function App() {
           <div><dt>League</dt><dd><SlideName text={s.group || ""} /></dd></div>
           <div><dt>City</dt><dd>{s.location}</dd></div>
           <div><dt>Squad</dt><dd><span style={mono}>{(s.squad || []).filter(Boolean).length}</span> Of <span style={mono}>16</span></dd></div></>}
+        {s.what === "batch" && (() => { const men = s.men || [], nats = [...new Set(men.map(m => m.nat))], ages = men.map(m => ageOf(m.born)).filter(a => a != null);
+          const side = s.side ? teamOfKey(s.side) : null, bl = men.filter(m => !(+m.ovr > 0)).length, nt = nats.length === 1 ? natTeamByCode.get(nats[0]) : null;
+          return (<>
+            <div><dt>Nationality</dt><dd>{nats.length === 1 ? <>{nt && <TeamCrest team={nt} size={14} />}{natOptions.name.get(nats[0]) || nats[0]}</> : <><span style={mono}>{nats.length}</span>&nbsp;Nations</>}</dd></div>
+            <div><dt>Joins</dt><dd>{side ? <><TeamCrest team={side} size={14} /><SlideName text={side.name} /></> : "No Side"}</dd></div>
+            <div><dt>Ages</dt><dd style={mono}>{ages.length ? `${Math.min(...ages)} To ${Math.max(...ages)}` : "–"}</dd></div>
+            {bl > 0 && <div><dt>Blank Ratings</dt><dd style={mono}>{bl}</dd></div>}</>); })()}
         {s.what === "leagues" && (() => { const cl = s.clubs || [], isN = (v) => !!v && typeof v === "object";
           const nw = cl.reduce((n, x) => n + (x.squad || []).filter(isN).length + (isN(x.manager) ? 1 : 0), 0);
           const bl = cl.reduce((n, x) => n + (x.squad || []).filter(v => isN(v) && !(+v.ovr > 0)).length + (isN(x.manager) && !(+x.manager.ovr > 0) ? 1 : 0), 0);
@@ -11968,8 +11978,112 @@ export default function App() {
       </div>);
   };
 
+  // ── NEW PLAYERS BY THE LINE (Moukden and Kirin, 11 October 2026): "Name, position" a line (a tab does for the comma),
+  // read keepers first and down the pitch, every man of one nationality, his age drawn from a range and his date of birth
+  // for it, his rating left blank. Used on a founding club's squad and on the Players tab. ──
+  const edParseMen = (text) => {
+    const men = [], bad = [];
+    String(text || "").split(/\r?\n/).forEach((raw, i) => {
+      const L = raw.trim(); if (!L) return;
+      const k = Math.max(L.lastIndexOf(","), L.lastIndexOf("\t")), name = k > 0 ? L.slice(0, k).trim() : L, pos = k > 0 ? L.slice(k + 1).trim().toUpperCase() : "";
+      if (k < 0) bad.push({ line: i + 1, why: "no position", text: L });
+      else if (!name || name.length > 60) bad.push({ line: i + 1, why: "no name", text: L });
+      else if (!POS_ROLE[pos]) bad.push({ line: i + 1, why: `${pos || "nothing"} is not a position`, text: L });
+      else men.push({ name, pos });
+    });
+    const order = Object.keys(POS_ROLE).sort((a, b) => POS_ROLE[a][0] - POS_ROLE[b][0] || POS_ROLE[a][1] - POS_ROLE[b][1]);
+    return { men: men.map((m, i) => [m, i]).sort((a, b) => order.indexOf(a[0].pos) - order.indexOf(b[0].pos) || a[1] - b[1]).map(([m]) => m), bad };
+  };
+  const edAges = (f) => { const lo = Math.max(14, parseInt(f?.amin, 10) || 18); return [lo, Math.max(lo, parseInt(f?.amax, 10) || 32)]; };
+  const edBornIn = ([lo, hi]) => edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1)));
+  // The list again after a change: a line kept keeps its date of birth (and any rating typed), unless the ages changed.
+  const edReList = (f, patch) => {
+    const g = { ...(f || {}), ...patch }, { men, bad } = edParseMen(g.text), ages = edAges(g);
+    const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, was = new Map((f?.list || []).map(m => [m.name + "|" + m.pos, m]));
+    const list = men.map(m => { const old = was.get(m.name + "|" + m.pos);
+      return { ...m, nat: g.nat || "", born: !redraw && old?.born ? old.born : edBornIn(ages), ovr: old?.ovr ?? "" }; });
+    delete g.redraw;
+    return { ...g, list, bad };
+  };
+  const edBadLines = (bad) => bad.length > 0 && (
+    <p className="ux-ed-rule ux-bad ux-ed-impbad">{bad.slice(0, 3).map(b => `Line ${b.line}: ${b.why}`).join(". ")}{bad.length > 3 ? `, and ${bad.length - 3} more` : ""}.</p>);
+  // One or many, on the New Player form's head.
+  const edManyToggle = (f) => (
+    <div className="ux-seg" role="group" aria-label="How Many" style={{ marginLeft: "auto" }}>
+      {[["one", "One"], ["many", "Many"]].map(([m, l]) => { const on = (f.mode || "one") === m;
+        return <button key={m} type="button" className={"ux-btnreset" + (on ? " ux-on" : "")} aria-pressed={on}
+          onClick={() => setEdNew(n => ({ ...n, mode: m, ...(m === "many" && n.amin == null ? { nat: n.nat || (scope.nations || [])[0] || "", amin: 18, amax: 32, text: "", list: [] } : null) }))}>{l}</button>; })}
+    </div>);
+
+  // ── NEW PLAYERS, MANY: the list, its nationality, ages and side, and every man in a table; one request for them all ──
+  const renderEdBatch = (f) => {
+    const review = !!f.review, req = review ? requests.find(r => r.id === f.reqId) : null;
+    const upd = (p) => setEdNew(n => ({ ...n, ...p })), relist = (p) => setEdNew(n => edReList(n, p));
+    const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
+    const list = f.list || [], bad = f.bad || [], side = f.side ? teamOfKey(f.side) : null, ages = edAges(f);
+    const num = (v) => (+v > 0 ? Math.round(+v) : null);
+    const blanks = list.filter(m => !(+m.ovr > 0)).length;
+    const rated = list.every(m => !m.ovr || (+m.ovr >= 25 && +m.ovr <= 99));
+    const fieldsOf = () => ({ what: "batch", name: `${list.length} New Players`, side: f.side || null,
+      men: list.map(m => ({ name: m.name, pos: m.pos, nat: m.nat, born: m.born, ovr: num(m.ovr) })) });
+    const ready = list.length > 0 && list.length <= 40 && !bad.length && rated && (!overseer || !blanks);
+    return (
+      <div className="ux-ed-rec">
+        {uxPanel(review ? "Review New Players" : "New Players", review ? (f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null) : edManyToggle(f), (
+          <div className="ux-ed-form ux-ed-batch">
+            {!review && <dl className="ux-ed-dl">
+              {field("Players", <textarea className="ux-ed-in ux-ed-ta" rows={7} spellCheck={false} aria-label="Players, One A Line"
+                placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB\nKoji MINAMI, ST"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
+              {field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => relist({ nat: it.k })} />)}
+              {field("Ages", <span className="ux-ed-born">
+                <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={f.amin ?? 18} onChange={e => relist({ amin: e.target.value })} style={mono} />
+                <span className="ux-ed-agel">To</span>
+                <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" value={f.amax ?? 32} onChange={e => relist({ amax: e.target.value })} style={mono} />
+                <button type="button" className="ux-btnreset ux-cb-x" title="Draw The Dates Again" aria-label="Draw The Dates Again" disabled={!list.length}
+                  onClick={() => relist({ redraw: true })}>{uxIcon("dice", "ux-s")}</button></span>)}
+              {field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k || null })} />)}
+            </dl>}
+            {edBadLines(bad)}
+            <div className="ux-pbody ux-ed-blist"><table className="ux-tbl">
+              <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 120 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 40 }} /></colgroup>
+              <thead><tr><th>Pos</th><th>Name</th><th>Nationality</th><th>Born</th><th className="ux-n">Age</th><th className="ux-c">Rating</th><th /></tr></thead>
+              <tbody>{list.map((m, i) => (
+                <tr key={i + m.name}>
+                  <td><b style={{ ...mono, color: POS_CLR[m.pos] }}>{m.pos}</b></td>
+                  <td><span className="ux-fx">{m.name}</span></td>
+                  <td><span className="ux-fx">{natOptions.name.get(m.nat) || m.nat || "–"}</span></td>
+                  <td style={mono}>{m.born ? uxDate(m.born) : "–"}</td>
+                  <td className="ux-n" style={mono}>{m.born ? ageOf(m.born) : "–"}</td>
+                  <td className="ux-c"><input className={"ux-ed-in ux-ed-ovrin" + (review && !(+m.ovr > 0) ? " ux-need" : "")} aria-label={"Rating, " + m.name}
+                    placeholder="–" style={mono} value={m.ovr ?? ""} onChange={e => upd({ list: list.map((x, j) => (j === i ? { ...x, ovr: e.target.value } : x)) })} /></td>
+                  <td>{review && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + m.name}
+                    onClick={() => upd({ list: list.filter((_, j) => j !== i) })}>{uxIcon("close", "ux-s")}</button>}</td>
+                </tr>))}</tbody></table>
+              {!list.length && <div className="ux-empty-sm ux-ed-none">No Players Yet</div>}
+            </div>
+            {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
+            {review && <dl className="ux-ed-dl">{field("Note", <input className="ux-ed-in" placeholder="Sent Back With A Rejection" value={f.note || ""} onChange={e => upd({ note: e.target.value })} />)}</dl>}
+            {!review && <p className="ux-ed-rule">Portraits: a chest-up headshot, the subject in a plain white shirt. Send images as a zip to @auroruse on Discord.</p>}
+            <div className="ux-ed-tfoot">
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdNew(null)}>Cancel</button>
+              {review ? <span className="ux-ed-acts">
+                  {blanks > 0 && <span className="ux-ed-need"><span style={mono}>{blanks}</span> Ratings To Set</span>}
+                  <button type="button" className="ux-btnreset ux-btn ux-danger" disabled={!req || !!reqBusy}
+                    onClick={async () => { await settle(req, "decline", { note: (f.note || "").trim() }); setEdNew(null); }}>Reject</button>
+                  <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!req || !list.length || blanks > 0 || !rated || !!reqBusy}
+                    onClick={async () => { const ok = await settle(req, "accept", { edits: fieldsOf() }); if (ok) setEdNew(null); }}>{reqBusy === req?.id ? "Saving" : "Approve"}</button></span>
+                : <span className="ux-ed-acts">
+                  {list.length > 0 && <span className="ux-cb-when"><span style={mono}>{list.length}</span> {list.length === 1 ? "Player" : "Players"}{side ? <>, To {side.name.trim()}</> : null}</span>}
+                  <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ready}
+                    onClick={() => { edPut({ ...draft, new: [...(draft.new || []), { id: edUid(), ...fieldsOf() }] }); setEdNew(null); }}>{overseer ? "Add To Cart" : "Request"}</button></span>}
+            </div>
+          </div>), true)}
+      </div>);
+  };
+
   // ── NEW: a requested team, player or manager (the overseer's goes straight in), or one the overseer is reviewing ──
   const renderEdNew = () => {
+    if (edNew.kind === "players" && edNew.mode === "many") return renderEdBatch(edNew);
     const f = edNew, k = f.kind, kind = edKindName(k), review = !!f.review, req = review ? requests.find(r => r.id === f.reqId) : null;
     const upd = (patch) => setEdNew(n => ({ ...n, ...patch }));
     const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
@@ -11995,7 +12109,8 @@ export default function App() {
       : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && (k !== "players" || f.pos) && (k !== "managers" || f.style));
     return (
       <div className="ux-ed-rec">
-        {uxPanel(review ? `Review New ${kind}` : `New ${kind}`, review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null, (
+        {uxPanel(review ? `Review New ${kind}` : `New ${kind}`, review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span>
+          : k === "players" ? edManyToggle(f) : null, (
           <div className="ux-ed-form">
             <dl className="ux-ed-dl">
               {field("Name", <input className="ux-ed-in" placeholder={k === "teams" ? "Club Name" : "Given Name SURNAME"} value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
@@ -12350,7 +12465,29 @@ export default function App() {
                 onClick={e => { e.stopPropagation(); setEdSel(null); updC({ squad: c.squad.map((x, j) => (j === i ? null : x)) }); }}>{uxIcon("close", "ux-s")}</button>}</span>
             </div>); })}
         </div>
-        {np ? (
+        {f.imp ? (() => { const imp = f.imp, read = edParseMen(imp.text), room = c.squad.filter(v => !v).length, setImp = (p) => upd({ imp: { ...imp, ...p } });
+            const add = () => { const ages = edAges(imp), sq = [...c.squad];
+              for (const m of read.men) { const i = placeFor(sq, slabs, posFitCost, m.pos); if (i >= 0) sq[i] = { name: m.name, pos: m.pos, nat: imp.nat || nation, born: edBornIn(ages), ovr: "" }; }
+              upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: sq } : x)), imp: null }); };
+            return (
+          <div className="ux-ed-np">
+            <div className="ux-ed-lh">Import Players</div>
+            <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB"}
+              value={imp.text} onChange={e => setImp({ text: e.target.value })} />
+            <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
+              {field("Nationality", <UxSidePick label="Nationality" value={imp.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setImp({ nat: it.k })} />)}
+              {field("Ages", <span className="ux-ed-born">
+                <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={imp.amin ?? 18} onChange={e => setImp({ amin: e.target.value })} style={mono} />
+                <span className="ux-ed-agel">To</span>
+                <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Oldest" value={imp.amax ?? 32} onChange={e => setImp({ amax: e.target.value })} style={mono} /></span>)}
+            </dl>
+            {edBadLines(read.bad)}
+            <div className="ux-ed-npf">
+              <span className="ux-cb-when" style={{ marginRight: "auto" }}><span style={mono}>{read.men.length}</span> Players, <span style={mono}>{room}</span> Open Places</span>
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ imp: null })}>Cancel</button>
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!read.men.length || read.men.length > room || read.bad.length > 0} onClick={add}>Add</button></div>
+          </div>); })()
+        : np ? (
           <div className="ux-ed-np">
             <div className="ux-ed-lh">{np.at != null ? "Edit New Player" : "New Player"}</div>
             <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
@@ -12376,7 +12513,8 @@ export default function App() {
           <div className="ux-ed-npbar">
             <span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
               <input type="search" placeholder="Search Players" aria-label="Search Players" value={f.q || ""} onChange={e => upd({ q: e.target.value })} /></span>
-            <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: { name: "", pos: "", nat: nation, born: "", ovr: "" }, rollOpen: false })}>{uxIcon("plus", "ux-s")}New Player</button>
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ imp: { text: "", nat: nation, amin: 18, amax: 32 }, np: null, rollOpen: false })}>Import</button>
+            <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: { name: "", pos: "", nat: nation, born: "", ovr: "" }, imp: null, rollOpen: false })}>{uxIcon("plus", "ux-s")}New Player</button>
           </div>
           {pool.length > 0 && <div className="ux-ed-sqfind">{pool.map(p => { const at = whereIs.get(p.id)?.club?.key, st = at ? teamOfKey(at) : null;
             return (
