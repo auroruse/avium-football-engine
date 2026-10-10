@@ -45,6 +45,8 @@ const mkImport = (state) => {
     setTKO:     (v) => { world.ko     = typeof v === "function" ? v(world.ko     ?? state.tKO)     : v; },
     setTPlayerStats: (v) => { world.stats = typeof v === "function" ? v(world.stats ?? state.tPlayerStats ?? {}) : v; },
     recalcStandings: eng.recalcStandings, propagateKO: eng.propagateKO,
+    // A knockout result played live may finish the tournament or open the next draw: both checked after it lands.
+    isKOComplete: () => false, tMaybeDrawNextKO: () => false, setTPhase: (v) => { world.phase = v; },
     rcSuspGames: (v, r) => v === "violent" ? 3 + Math.floor(r * 3)
                          : v === "abusive" ? 2 + Math.floor(r * 3)
                          : v === "sfp" ? 2 + Math.floor(r * 2) : 1,
