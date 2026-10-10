@@ -7,7 +7,8 @@
 //   GET  /me                       { login, role, nations }
 //   GET  /requests                 the requests waiting
 //   POST /save                     { cart }  -> { sha, applied, apply, requests, waiting } or 422 { errors }
-//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" }  -> { sha, done, apply, request, waiting }
+//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw", edits?, note? }  -> { sha, done, apply, request, waiting }
+//                                  (edits: the overseer's changes to a new record he accepts; note: what a decline sends back)
 //
 // `apply` is what went live (a draft over the records, null if nothing did), so the app can show it before the site
 // redeploys; `waiting` is every request still open afterwards.
@@ -191,7 +192,8 @@ async function handle(req, env) {
       if (!plan.apply && !plan.requests.length) return nothing;
       const next = plan.apply ? applyDraft(rec, plan.apply) : rec, files = filesFor(rec, next), waiting = [...requests, ...plan.requests];
       if (plan.requests.length) files["src/data/requests.json"] = JSON.stringify(waiting, null, 1) + "\n";
-      const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length : 0;
+      const added = ["players", "managers", "teams"].reduce((n, k) => n + (plan.apply?.add?.[k]?.length || 0), 0);
+      const applied = plan.apply ? draftChanges(rec, plan.apply).filter(c => c.field !== "pos").length + added : 0;
       if (!Object.keys(files).length) return nothing;
       const parts = [applied && `${applied} change${applied > 1 ? "s" : ""}`, plan.requests.length && `${plan.requests.length} request${plan.requests.length > 1 ? "s" : ""}`].filter(Boolean);
       return { files, message: `Registry: ${login}, ${parts.join(" and ")}`,
@@ -201,13 +203,13 @@ async function handle(req, env) {
   }
   const m = path.match(/^\/requests\/([\w-]+)$/);
   if (m && req.method === "POST") {
-    const { action } = await body(req);
+    const { action, edits, note } = await body(req);
     if (!["accept", "decline", "withdraw"].includes(action)) return json({ error: "Unknown action" }, 400);
     let errors = null;
     const result = await withMain(env, async ({ rec, editors, requests }) => {
       const r = requests.find(x => x.id === m[1]);
       if (!r) { errors = ["No such request"]; return { result: null }; }
-      const s = settleRequest(rec, editors, r, login, action, judge(rec));
+      const s = settleRequest(rec, editors, r, login, action, judge(rec), { edits, note });
       if (s.errors?.length) { errors = s.errors; return { result: null }; }
       const left = s.request ? requests.map(x => (x.id === r.id ? s.request : x)) : requests.filter(x => x.id !== r.id);
       const files = { ...(s.apply ? filesFor(rec, applyDraft(rec, s.apply)) : null), "src/data/requests.json": JSON.stringify(left, null, 1) + "\n" };

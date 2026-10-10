@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spartak Kanagawa</title><link rel="stylesheet" href="../ui.css"></head>
+<body><div class="app">
+<header class="topbar">
+  <img class="wordmark" src="../../src/header.png" alt="Avium Football Engine">
+  <button class="navbtn" aria-label="Back"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><button class="navbtn" aria-label="Forward"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>
+  <nav class="sections"><button class="sec">Home</button><button class="sec on">Nations<svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><button class="sec">Competitions<svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><button class="sec">Players<svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><button class="sec">Managers<svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></nav>
+  <div class="tb-right">
+    <label class="search"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input placeholder="Search Nations, Clubs, Players"></label>
+    <button class="iconbtn" aria-label="Requests, 2 for you"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="count">2</span></button>
+    <button class="avatar" aria-label="Account"><img src="../../public/avium/badges/NCH.png" alt=""></button>
+    <button class="play">Play Match <svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/></svg></button>
+  </div>
+</header>
+<nav class="pagebar">
+  <div class="pb-title"><span class="up"><img class="crest " src="../../public/avium/badges/NCH.png" alt="">Nichirin <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></span><img src="../../public/avium/badges/SPK.png" alt=""><h1>Spartak Kanagawa</h1></div>
+  <a class="pb-tab on" href="#">Overview</a><a class="pb-tab" href="#">Squad</a><a class="pb-tab" href="#">Tactics</a><a class="pb-tab" href="#">History</a><a class="pb-tab" href="#">Honours</a>
+  <div class="pb-right"><button class="btn"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>Edit Club</button><button class="btn"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/></svg>Play Match</button></div>
+</nav>
+<main class="body" style="grid-template-columns:468px 430px 290px minmax(0,1fr)">
+  <div class="col">
+    
+<section class="panel "><div class="ph"><h2 class="pt">Squad</h2><button class="pick">1933/34 <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="pb" style="flex:none"><table class="tbl">
+      <colgroup><col style="width:46px"><col><col style="width:62px"><col style="width:44px"><col style="width:34px"><col style="width:30px"><col style="width:30px"><col style="width:46px"></colgroup>
+      <thead><tr><th>Pos</th><th>Player</th><th>Nat</th><th class="c">Rtg</th><th class="n">GP</th><th class="n">G</th><th class="n">A</th><th class="n">Avg</th></tr></thead>
+      <tbody><tr class="link"><td><span class="pos gk">GK</span></td><td class="strong"><span class="fx">Jordan Stanford</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/ELV.png" alt=""><b class="code">ELV</b></div></td><td class="c"><span class="badge m-emerald ">84</span></td>
+      <td class="n">38</td><td class="n dim">–</td><td class="n dim">–</td>
+      <td class="n"><span class="r65 strong">6.7</span></td></tr><tr class="link"><td><span class="pos df">LB</span></td><td class="strong"><span class="fx">Kazuyoshi Hiranuma</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-emerald ">84</span></td>
+      <td class="n">37</td><td class="n dim">–</td><td class="n">1</td>
+      <td class="n"><span class="r65 strong">6.9</span></td></tr><tr class="link"><td><span class="pos df">CB</span></td><td class="strong"><span class="fx">Daigo Takanashi</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-emerald ">84</span></td>
+      <td class="n">38</td><td class="n">1</td><td class="n">4</td>
+      <td class="n"><span class="r7 strong">7.1</span></td></tr><tr class="link"><td><span class="pos df">CB</span></td><td class="strong"><span class="fx">Olander Strandberg</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/SKJ.png" alt=""><b class="code">SKJ</b></div></td><td class="c"><span class="badge m-emerald ">83</span></td>
+      <td class="n dim">–</td><td class="n dim">–</td><td class="n dim">–</td>
+      <td class="n"><span class="dim">–</span></td></tr><tr class="link"><td><span class="pos df">RB</span></td><td class="strong"><span class="fx">Arthur Kohlberg</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/ALE.png" alt=""><b class="code">ALE</b></div></td><td class="c"><span class="badge m-emerald ">82</span></td>
+      <td class="n">33</td><td class="n">1</td><td class="n">2</td>
+      <td class="n"><span class="r65 strong">6.9</span></td></tr><tr class="link"><td><span class="pos mf">CM</span></td><td class="strong"><span class="fx">Nuno Gouveia</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/ASK.png" alt=""><b class="code">ASK</b></div></td><td class="c"><span class="badge m-emerald ">83</span></td>
+      <td class="n">38</td><td class="n">4</td><td class="n">4</td>
+      <td class="n"><span class="r65 strong">6.9</span></td></tr><tr class="link"><td><span class="pos mf">CM</span></td><td class="strong"><span class="fx">Marcello La Barca</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/VIC.png" alt=""><b class="code">VIC</b></div></td><td class="c"><span class="badge m-amethyst ">87</span></td>
+      <td class="n">37</td><td class="n">3</td><td class="n">6</td>
+      <td class="n"><span class="r65 strong">6.9</span></td></tr><tr class="link"><td><span class="pos mf">CM</span></td><td class="strong"><span class="fx">Sixten Karlsson</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/SKJ.png" alt=""><b class="code">SKJ</b></div></td><td class="c"><span class="badge m-emerald ">80</span></td>
+      <td class="n">38</td><td class="n">5</td><td class="n">8</td>
+      <td class="n"><span class="r7 strong">7.0</span></td></tr><tr class="link"><td><span class="pos mf">AM</span></td><td class="strong"><span class="fx">Péter Szabó</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/TUR.png" alt=""><b class="code">TUR</b></div></td><td class="c"><span class="badge m-iri ">91</span></td>
+      <td class="n">37</td><td class="n">2</td><td class="n">2</td>
+      <td class="n"><span class="r65 strong">6.9</span></td></tr><tr class="link"><td><span class="pos mf">AM</span></td><td class="strong"><span class="fx">Denis Kuznetsov</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/RUD.png" alt=""><b class="code">RUD</b></div></td><td class="c"><span class="badge m-iri ">90</span></td>
+      <td class="n">36</td><td class="n">16</td><td class="n">10</td>
+      <td class="n"><span class="r7 strong">7.1</span></td></tr><tr class="link"><td><span class="pos fw">ST</span></td><td class="strong"><span class="fx">Florian Van Can</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/ALE.png" alt=""><b class="code">ALE</b></div></td><td class="c"><span class="badge m-iri ">92</span></td>
+      <td class="n dim">–</td><td class="n dim">–</td><td class="n dim">–</td>
+      <td class="n"><span class="dim">–</span></td></tr><tr class="sep"><td colspan="8"></td></tr><tr class="link"><td><span class="pos df">SUB</span></td><td class="strong"><span class="fx">Shūsaku Oginome</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-gold ">78</span></td>
+      <td class="n dim">–</td><td class="n dim">–</td><td class="n dim">–</td>
+      <td class="n"><span class="dim">–</span></td></tr><tr class="link"><td><span class="pos df">SUB</span></td><td class="strong"><span class="fx">Karl Hauschka</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/ALE.png" alt=""><b class="code">ALE</b></div></td><td class="c"><span class="badge m-gold ">77</span></td>
+      <td class="n dim">–</td><td class="n dim">–</td><td class="n dim">–</td>
+      <td class="n"><span class="dim">–</span></td></tr><tr class="link"><td><span class="pos df">SUB</span></td><td class="strong"><span class="fx">Katsuyoshi Endō</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-gold ">76</span></td>
+      <td class="n">37</td><td class="n">5</td><td class="n">1</td>
+      <td class="n"><span class="r65 strong">6.8</span></td></tr><tr class="link"><td><span class="pos df">SUB</span></td><td class="strong"><span class="fx">Reito Fuyutsuki</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-gold ">76</span></td>
+      <td class="n">20</td><td class="n">1</td><td class="n">2</td>
+      <td class="n"><span class="r65 strong">6.7</span></td></tr><tr class="link"><td><span class="pos df">SUB</span></td><td class="strong"><span class="fx">Yōhei Takigawa</span></td>
+      <td><div class="tc"><img class="crest " src="../../public/avium/badges/NCH.png" alt=""><b class="code">NCH</b></div></td><td class="c"><span class="badge m-gold ">75</span></td>
+      <td class="n">32</td><td class="n">8</td><td class="n">2</td>
+      <td class="n"><span class="r65 strong">6.7</span></td></tr></tbody></table></div></section>
+    
+<section class="panel grow"><div class="ph"><h2 class="pt">Season 1933/34</h2></div><div class="pb">
+    <div class="hero"><span class="big">1<small>st</small></span>
+      <div class="lines"><span class="t1">Nichirin League One</span></div>
+      <span class="big" style="margin-left:auto;color:var(--accent-ink)">82<small>PTS</small></span></div>
+    <div class="strip"><div><b>38</b><span>P</span></div><div><b>25</b><span>W</span></div><div><b>7</b><span>D</span></div><div><b>6</b><span>L</span></div><div><b>74</b><span>GF</span></div><div><b>44</b><span>GA</span></div><div><b>+30</b><span>GD</span></div></div>
+    <div class="form" style="padding:12px 12px 0"><i class="w">W</i><i class="w">W</i><i class="d">D</i><i class="w">W</i><i class="w">W</i><i class="w">W</i><i class="w">W</i><i class="d">D</i><i class="w">W</i><i class="w">W</i></div>
+    <dl style="margin-top:10px"><div class="kv"><dt>Top Scorer</dt><dd>Shō Itoshi <span class="sub">26</span></dd></div><div class="kv"><dt>Most Assists</dt><dd>Denis Kuznetsov <span class="sub">10</span></dd></div></dl></div></section>
+  </div>
+  <div class="col">
+<section class="panel grow"><div class="ph"><h2 class="pt">Formation</h2><button class="pick">4-3-2-1 <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="pitch-wrap"><div class="pitch"><svg class="lines" viewBox="0 0 68 105" fill="none" stroke="rgba(255,255,255,.6)" stroke-width=".3">
+    <rect x="1.5" y="1.5" width="65" height="102"/><path d="M1.5 52.5h65"/><circle cx="34" cy="52.5" r="9.15"/><circle cx="34" cy="52.5" r=".45" fill="rgba(255,255,255,.6)"/><circle cx="34" cy="12.5" r=".45" fill="rgba(255,255,255,.6)"/><circle cx="34" cy="92.5" r=".45" fill="rgba(255,255,255,.6)"/>
+    <rect x="13.84" y="1.5" width="40.32" height="16.5"/><rect x="24.84" y="1.5" width="18.32" height="5.5"/><path d="M26.7 18a9.15 9.15 0 0 0 14.6 0"/>
+    <rect x="13.84" y="87" width="40.32" height="16.5"/><rect x="24.84" y="98" width="18.32" height="5.5"/><path d="M26.7 87a9.15 9.15 0 0 1 14.6 0"/></svg><div class="pl" style="left:50%;top:93%;--pos:#ebcb8b">
+      <div class="pl-label"><span class="pl-first">Jordan</span><span class="pl-last">Stanford</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Jordan Stanford.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">84</span><span class="pl-pos">GK</span></div><div class="pl" style="left:15%;top:74%;--pos:#81a1c1">
+      <div class="pl-label"><span class="pl-first">Kazuyoshi</span><span class="pl-last">Hiranuma</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Kazuyoshi Hiranuma.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">84</span><span class="pl-pos">LB</span></div><div class="pl" style="left:38.3%;top:76%;--pos:#81a1c1">
+      <div class="pl-label"><span class="pl-first">Daigo</span><span class="pl-last">Takanashi</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Daigo Takanashi.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">84</span><span class="pl-pos">CB</span></div><div class="pl" style="left:61.7%;top:76%;--pos:#81a1c1">
+      <div class="pl-label"><span class="pl-first">Olander</span><span class="pl-last">Strandberg</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Olander Strandberg.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">83</span><span class="pl-pos">CB</span></div><div class="pl" style="left:85%;top:74%;--pos:#81a1c1">
+      <div class="pl-label"><span class="pl-first">Arthur</span><span class="pl-last">Kohlberg</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Arthur Kohlberg.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">82</span><span class="pl-pos">RB</span></div><div class="pl" style="left:28%;top:54%;--pos:#a3be8c">
+      <div class="pl-label"><span class="pl-first">Nuno</span><span class="pl-last">Gouveia</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/placeholder.jpg" alt=""></div>
+      <span class="badge m-emerald pl-rtg">83</span><span class="pl-pos">CM</span></div><div class="pl" style="left:50%;top:52%;--pos:#a3be8c">
+      <div class="pl-label"><span class="pl-first">Marcello</span><span class="pl-last">La Barca</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/placeholder.jpg" alt=""></div>
+      <span class="badge m-amethyst pl-rtg">87</span><span class="pl-pos">CM</span></div><div class="pl" style="left:72%;top:54%;--pos:#a3be8c">
+      <div class="pl-label"><span class="pl-first">Sixten</span><span class="pl-last">Karlsson</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Sixten Karlsson.png" alt=""></div>
+      <span class="badge m-emerald pl-rtg">80</span><span class="pl-pos">CM</span></div><div class="pl" style="left:38%;top:32%;--pos:#a3be8c">
+      <div class="pl-label"><span class="pl-first">Péter</span><span class="pl-last">Szabó</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Péter Szabó.png" alt=""></div>
+      <span class="badge m-iri pl-rtg">91</span><span class="pl-pos">AM</span></div><div class="pl" style="left:62%;top:32%;--pos:#a3be8c">
+      <div class="pl-label"><span class="pl-first">Denis</span><span class="pl-last">Kuznetsov</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Denis Kuznetsov.png" alt=""></div>
+      <span class="badge m-iri pl-rtg">90</span><span class="pl-pos">AM</span></div><div class="pl" style="left:50%;top:14%;--pos:#d08770">
+      <div class="pl-label"><span class="pl-first">Florian</span><span class="pl-last">Van Can</span></div>
+      <div class="pl-tok"><img src="../../public/avium/players/Florian Van Can.png" alt=""></div>
+      <span class="badge m-iri pl-rtg">92</span><span class="pl-pos">ST</span></div></div></div></section></div>
+  <div class="col">
+    
+<section class="panel "><div class="ph"><h2 class="pt">Club</h2></div><div style="position:relative;height:148px;margin:0 12px 10px;border-radius:6px;overflow:hidden">
+      <img src="../../public/avium/stadiums/Spartak Coliseum.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
+      <div style="position:absolute;inset:auto 0 0 0;padding:18px 10px 7px;background:linear-gradient(transparent,rgba(5,4,10,.92))">
+        <div style="font-size:13px;font-weight:600">Spartak Coliseum</div><div style="font-size:11px;color:var(--text-2)">Capacity 82,000</div></div></div>
+    <dl><div class="kv"><dt>City</dt><dd>Shinkeisei <span class="sub">36,955,000</span></dd></div>
+      <div class="kv"><dt>League</dt><dd><img class="crest" src="../../public/avium/leagues/Nichirin League One.png" alt=""> Nichirin League One</dd></div>
+      <div class="kv"><dt>Manager</dt><dd>Ansgar Vogelsang <img class="crest " src="../../public/avium/badges/PON.png" alt=""> <span class="badge m-gold ">79</span></dd></div>
+      <div class="kv"><dt>Style</dt><dd>Vertical Tiki-Taka</dd></div>
+      <div class="kv"><dt>Shape</dt><dd>4-3-2-1</dd></div>
+      <div class="kv"><dt>Time Wasting</dt><dd>Constantly</dd></div>
+      <div class="kv"><dt>Kits</dt><dd><svg class="kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z" fill="#a8232b" stroke="rgba(255,255,255,.55)" stroke-width="1"/></svg><svg class="kit" viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4l-7 4 3 6 3-1.5V28h12V12.5l3 1.5 3-6-7-4c-1 2-2.6 3-5 3s-4-1-5-3z" fill="#f2e6d0" stroke="rgba(255,255,255,.55)" stroke-width="1"/></svg></dd></div></dl></section>
+    
+<section class="panel "><div class="ph"><h2 class="pt">Honours</h2></div><div class="pb" style="flex:none"><table class="tbl"><colgroup><col><col style="width:34px"><col style="width:48px"></colgroup>
+      <thead><tr><th>Competition</th><th class="n">Won</th><th class="n">Last</th></tr></thead><tbody>
+    <tr class="link"><td><div class="tc"><img class="crest" src="../../public/avium/leagues/Nichirin League One.png" alt=""><span>Nichirin League One</span></div></td><td class="n strong" style="color:var(--gold)">13</td>
+      <td class="n dim">1934</td></tr>
+    <tr class="link"><td><div class="tc"><img class="crest" src="../../public/avium/leagues/Sei'i Tai Shogun Cup.png" alt=""><span>Sei'i Tai Shogun Cup</span></div></td><td class="n strong" style="color:var(--gold)">7</td>
+      <td class="n dim">1930</td></tr>
+    <tr class="link"><td><div class="tc"><img class="crest" src="../../public/avium/leagues/Club World Cup.png" alt=""><span>Club World Cup</span></div></td><td class="n strong" style="color:var(--gold)">3</td>
+      <td class="n dim">1931</td></tr></tbody></table></div></section>
+    
+<section class="panel grow"><div class="ph"><h2 class="pt">League Finishes</h2></div><div class="chart"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="10.28" y="50.00" width="1.95" height="50.00"
+      class="b"><title>1893: 8th / 14</title></rect><rect x="12.78" y="85.71" width="1.95" height="14.29"
+      class="b"><title>1894: 13th / 14</title></rect><rect x="15.28" y="28.57" width="1.95" height="71.43"
+      class="b"><title>1895: 5th / 14</title></rect><rect x="17.77" y="45.00" width="1.95" height="55.00"
+      class="b"><title>1896: 10th / 20</title></rect><rect x="20.27" y="35.00" width="1.95" height="65.00"
+      class="b"><title>1897: 8th / 20</title></rect><rect x="22.77" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1898: 2nd / 20</title></rect><rect x="25.27" y="25.00" width="1.95" height="75.00"
+      class="b"><title>1899: 6th / 20</title></rect><rect x="27.77" y="35.00" width="1.95" height="65.00"
+      class="b"><title>1900: 8th / 20</title></rect><rect x="30.27" y="25.00" width="1.95" height="75.00"
+      class="b"><title>1901: 6th / 20</title></rect><rect x="32.77" y="15.00" width="1.95" height="85.00"
+      class="b"><title>1902: 4th / 20</title></rect><rect x="35.27" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1903: 1st / 20</title></rect><rect x="37.77" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1904: 2nd / 20</title></rect><rect x="40.27" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1905: 1st / 20</title></rect><rect x="42.77" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1906: 1st / 20</title></rect><rect x="45.27" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1907: 1st / 20</title></rect><rect x="47.77" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1908: 2nd / 20</title></rect><rect x="50.27" y="25.00" width="1.95" height="75.00"
+      class="b"><title>1909: 6th / 20</title></rect><rect x="52.77" y="20.00" width="1.95" height="80.00"
+      class="b"><title>1910: 5th / 20</title></rect><rect x="55.27" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1911: 1st / 20</title></rect><rect x="57.77" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1912: 1st / 20</title></rect><rect x="60.27" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1913: 1st / 20</title></rect><rect x="62.77" y="10.00" width="1.95" height="90.00"
+      class="b"><title>1914: 3rd / 20</title></rect><rect x="65.28" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1921: 1st / 20</title></rect><rect x="67.78" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1922: 1st / 20</title></rect><rect x="70.28" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1923: 1st / 20</title></rect><rect x="72.78" y="15.00" width="1.95" height="85.00"
+      class="b"><title>1924: 4th / 20</title></rect><rect x="75.28" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1925: 2nd / 20</title></rect><rect x="77.78" y="35.00" width="1.95" height="65.00"
+      class="b"><title>1926: 8th / 20</title></rect><rect x="80.28" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1927: 1st / 20</title></rect><rect x="82.78" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1928: 2nd / 20</title></rect><rect x="85.28" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1929: 2nd / 20</title></rect><rect x="87.78" y="15.00" width="1.95" height="85.00"
+      class="b"><title>1930: 4th / 20</title></rect><rect x="90.28" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1931: 1st / 20</title></rect><rect x="92.78" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1932: 2nd / 20</title></rect><rect x="95.28" y="5.00" width="1.95" height="95.00"
+      class="b"><title>1933: 2nd / 20</title></rect><rect x="97.78" y="0.00" width="1.95" height="100.00"
+      class="b-gold"><title>1934: 1st / 20</title></rect></svg>
+    <div class="chart-x"><span>1889</span><span>1934</span></div></div></section>
+  </div>
+  <div class="col">
+    
+<section class="panel grow"><div class="ph"><h2 class="pt">Results</h2></div><div class="pb"><table class="tbl"><colgroup><col style="width:36px"><col><col style="width:22px"><col style="width:52px"></colgroup>
+      <tbody><tr class="link"><td class="dim">R38</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ISS.png" alt=""><span>Imperial Sports Society</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">3-1</span></td></tr><tr class="link"><td class="dim">R37</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/NIK.png" alt=""><span>Nikaidō Izumiya</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">2-0</span></td></tr><tr class="link"><td class="dim">R36</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/MAK.png" alt=""><span>AFC Makinohara</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res d">2-2</span></td></tr><tr class="link"><td class="dim">R35</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SEN.png" alt=""><span>Dai-Ichi Sen'ninhara</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R34</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SSK.png" alt=""><span>Tsukumo Shinkeisei</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">3-1</span></td></tr><tr class="link"><td class="dim">R33</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ORU.png" alt=""><span>Orughan FC</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">3-2</span></td></tr><tr class="link"><td class="dim">R32</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/DYM.png" alt=""><span>Dynamo Mizuhara</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">3-0</span></td></tr><tr class="link"><td class="dim">R31</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/KAM.png" alt=""><span>Kamabuchi Carnifex</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res d">1-1</span></td></tr><tr class="link"><td class="dim">R30</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/AYA.png" alt=""><span>Ayanami Sei-Hachiman</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">4-1</span></td></tr><tr class="link"><td class="dim">R29</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SUM.png" alt=""><span>Sumerajima SIPG</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">2-0</span></td></tr><tr class="link"><td class="dim">R28</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/NAG.png" alt=""><span>Kyōwa Naginomiya</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">0-3</span></td></tr><tr class="link"><td class="dim">R27</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SAT.png" alt=""><span>Satsuno Nightingales</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R26</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/TOY.png" alt=""><span>Toyama Thunderbolts</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">3-1</span></td></tr><tr class="link"><td class="dim">R25</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/FCH.png" alt=""><span>Locomotive Fūchumachi</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">3-0</span></td></tr><tr class="link"><td class="dim">R24</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SHZ.png" alt=""><span>Shizuku Athletic</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">0-2</span></td></tr><tr class="link"><td class="dim">R23</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/VIR.png" alt=""><span>Viridia Shikisen</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">1-3</span></td></tr><tr class="link"><td class="dim">R22</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ASH.png" alt=""><span>Ashihara FC</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">2-1</span></td></tr><tr class="link"><td class="dim">R21</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/TAK.png" alt=""><span>Takarazuka Kaigun</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">1-3</span></td></tr><tr class="link"><td class="dim">R20</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SHM.png" alt=""><span>Shimonosaki Marina</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res d">2-2</span></td></tr><tr class="link"><td class="dim">R19</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ISS.png" alt=""><span>Imperial Sports Society</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res d">3-3</span></td></tr><tr class="link"><td class="dim">R18</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/NIK.png" alt=""><span>Nikaidō Izumiya</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R17</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/MAK.png" alt=""><span>AFC Makinohara</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">1-2</span></td></tr><tr class="link"><td class="dim">R16</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SEN.png" alt=""><span>Dai-Ichi Sen'ninhara</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res d">1-1</span></td></tr><tr class="link"><td class="dim">R15</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SSK.png" alt=""><span>Tsukumo Shinkeisei</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res l">4-6</span></td></tr><tr class="link"><td class="dim">R14</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ORU.png" alt=""><span>Orughan FC</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">2-1</span></td></tr><tr class="link"><td class="dim">R13</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/DYM.png" alt=""><span>Dynamo Mizuhara</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">3-2</span></td></tr><tr class="link"><td class="dim">R12</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/KAM.png" alt=""><span>Kamabuchi Carnifex</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res d">2-2</span></td></tr><tr class="link"><td class="dim">R11</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/AYA.png" alt=""><span>Ayanami Sei-Hachiman</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">2-1</span></td></tr><tr class="link"><td class="dim">R10</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SUM.png" alt=""><span>Sumerajima SIPG</span></div></td><td class="c dim">A</td>
+      <td class="n"><span class="res w">2-1</span></td></tr><tr class="link"><td class="dim">R9</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/NAG.png" alt=""><span>Kyōwa Naginomiya</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">2-1</span></td></tr><tr class="link"><td class="dim">R8</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SAT.png" alt=""><span>Satsuno Nightingales</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R7</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/TOY.png" alt=""><span>Toyama Thunderbolts</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res d">0-0</span></td></tr><tr class="link"><td class="dim">R6</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/FCH.png" alt=""><span>Locomotive Fūchumachi</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R5</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SHZ.png" alt=""><span>Shizuku Athletic</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">1-0</span></td></tr><tr class="link"><td class="dim">R4</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/VIR.png" alt=""><span>Viridia Shikisen</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">2-0</span></td></tr><tr class="link"><td class="dim">R3</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/ASH.png" alt=""><span>Ashihara FC</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">2-0</span></td></tr><tr class="link"><td class="dim">R2</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/TAK.png" alt=""><span>Takarazuka Kaigun</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">3-1</span></td></tr><tr class="link"><td class="dim">R1</td><td><div class="tc"><img class="crest " src="../../public/avium/badges/SHM.png" alt=""><span>Shimonosaki Marina</span></div></td><td class="c dim">H</td>
+      <td class="n"><span class="res w">4-0</span></td></tr></tbody></table></div></section>
+    
+<section class="panel "><div class="ph"><h2 class="pt">Rating Changes</h2></div><div class="pb" style="flex:none"><table class="tbl"><colgroup><col style="width:44px"><col><col style="width:30px"><col style="width:30px"><col style="width:36px"></colgroup>
+      <thead><tr><th></th><th>Player</th><th class="n">Was</th><th class="n">Now</th><th class="n"></th></tr></thead><tbody><tr class="link"><td><span class="pos fw">FWD</span></td>
+      <td><span class="fx">Shō Itoshi</span></td><td class="n dim">87</td><td class="n">89</td>
+      <td class="n"><span class="delta up">+2</span></td></tr><tr class="link"><td><span class="pos fw">FWD</span></td>
+      <td><span class="fx">Denis Kuznetsov</span></td><td class="n dim">86</td><td class="n">88</td>
+      <td class="n"><span class="delta up">+2</span></td></tr><tr class="link"><td><span class="pos df">DEF</span></td>
+      <td><span class="fx">Daigo Takanashi</span></td><td class="n dim">83</td><td class="n">84</td>
+      <td class="n"><span class="delta up">+1</span></td></tr><tr class="link"><td><span class="pos mf">MID</span></td>
+      <td><span class="fx">Nuno Gouveia</span></td><td class="n dim">79</td><td class="n">80</td>
+      <td class="n"><span class="delta up">+1</span></td></tr><tr class="link"><td><span class="pos df">DEF</span></td>
+      <td><span class="fx">Kiyoshi Murandin</span></td><td class="n dim">84</td><td class="n">83</td>
+      <td class="n"><span class="delta down">-1</span></td></tr><tr class="link"><td><span class="pos df">DEF</span></td>
+      <td><span class="fx">Arthur Kohlberg</span></td><td class="n dim">82</td><td class="n">81</td>
+      <td class="n"><span class="delta down">-1</span></td></tr><tr class="link"><td><span class="pos mf">MID</span></td>
+      <td><span class="fx">Péter Szabó</span></td><td class="n dim">91</td><td class="n">89</td>
+      <td class="n"><span class="delta down">-2</span></td></tr><tr class="link"><td><span class="pos gk">GK</span></td>
+      <td><span class="fx">Jordan Stanford</span></td><td class="n dim">87</td><td class="n">85</td>
+      <td class="n"><span class="delta down">-2</span></td></tr><tr class="link"><td><span class="pos fw">FWD</span></td>
+      <td><span class="fx">Yōhei Takigawa</span></td><td class="n dim">79</td><td class="n">77</td>
+      <td class="n"><span class="delta down">-2</span></td></tr></tbody></table></div></section>
+  </div>
+</main></div></body></html>

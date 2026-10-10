@@ -222,7 +222,9 @@ export function mindLens(s, side, i, at) {
       arr.push(o);
     }
   }
-  if (!at) { p._lensK = key; p._lens = view; }
+  // Kept on the man for the rest of the tick, but out of sight: the view holds his whole side, him included, so as an
+  // ordinary property it made every player a cycle, and a tournament's save, which writes results out as JSON, failed.
+  if (!at) { p._lensK = key; Object.defineProperty(p, "_lens", { value: view, writable: true, configurable: true, enumerable: false }); }
   return view;
 }
 

@@ -5,7 +5,8 @@
 import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { isNational } from "./rules.js";
 
-// [{ key, groups: [{ key, kind, id, name, rows }] }], in the order the draft's changes come.
+// [{ key, groups: [{ key, kind, id, name, rows }] }], in the order the draft's changes come; then each trade ({ key,
+// trade, groups: [] }) and each new record asked for ({ key, rec, groups: [] }), an item apiece.
 export function cartItems(rec, draft) {
   const changes = draftChanges(rec, draft).filter(c => c.field !== "pos");
   const groups = new Map();
@@ -41,12 +42,15 @@ export function cartItems(rec, draft) {
     if (!items.has(r)) items.set(r, { key: r, groups: [] });
     items.get(r).groups.push(g);
   }
-  return [...items.values()];
+  return [...items.values(), ...(draft?.trades || []).map(tr => ({ key: "trade:" + tr.id, trade: tr, groups: [] })),
+    ...(draft?.new || []).map(n => ({ key: "new:" + n.id, rec: n, groups: [] }))];
 }
 
 // The draft without one item. A man's last position is kept only while he is on no team, so anyone the item had
 // released goes back to having none, and anyone it had signed back to the one his record keeps.
 export function withoutItem(rec, draft, item) {
+  if (item.trade || item.rec) { const k = item.trade ? "trades" : "new", id = (item.trade || item.rec).id, l = (draft[k] || []).filter(x => x.id !== id);
+    const d = { ...draft, [k]: l }; if (!l.length) delete d[k]; return d; }
   let d = { ...draft };
   for (const g of item.groups) { const grp = { ...(d[g.kind] || {}) }; delete grp[g.id]; d[g.kind] = grp; }
   const on = new Set(applyDraft(rec, d).teams.flatMap(t => t.squad.map(v => idOf(v)).filter(Boolean)));

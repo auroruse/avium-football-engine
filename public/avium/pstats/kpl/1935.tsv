@@ -1,0 +1,257 @@
+#	PLAYER	POS	TEAM	GP	ST	MIN	G		#	PLAYER	POS	TEAM	GP	ST	MIN	A		#	PLAYER	POS	TEAM	GP	ST	MIN	RTG		#	PLAYER	POS	TEAM	GP	ST	MIN	CC		#	PLAYER	POS	TEAM	GP	ST	MIN	DC		#	PLAYER	POS	TEAM	GP	ST	MIN	S
+1	Tarvo Puusepp	FWD	KUI	28	26	1663	24		1	Otto Kask	MID	KUI	30	22	1947	15		1	Konsta Yrjölä	DEF	AFK	29	29	2275	7.6		1	Kasper Kaljurand	MID	SYV	30	28	1837	71		1	Aonuma Jingūji	DEF	NOW	30	30	2568	118		1	Aleksanteri Räsänen	GK	ARK	18	18	1620	79
+2	Visker Nsytröm	FWD	KAL	29	29	1758	19		2	Kasper Kaljurand	MID	SYV	30	28	1837	13		2	Takuma Nakamura	FWD	KUI	29	25	1706	7.5		2	Otto Kask	MID	KUI	30	22	1947	63		2	Artyom Vladimovic	DEF	PJS	30	30	2521	113		2	Rautta Kokko	GK	RJK	23	23	2070	64
+3	Takuma Nakamura	FWD	KUI	29	25	1706	18		3	Daru Jafari	MID	MRJ	30	30	1891	11		3	Jaan Soosaar	MID	RJK	30	24	1963	7.5		3	Daru Jafari	MID	MRJ	30	30	1891	60		3	Otto Kask	MID	KUI	30	22	1947	106		3	Jean Montblanche	GK	AFK	21	21	1890	60
+4	Raitis Saarinen	FWD	TPS	28	22	1627	16		4	Takuma Nakamura	FWD	KUI	29	25	1706	10		4	Kasper Kaljurand	MID	SYV	30	28	1837	7.5		4	Takuma Nakamura	FWD	KUI	29	25	1706	52		4	Konsta Yrjölä	DEF	AFK	29	29	2275	104		4	Ludvig Laaksonen	GK	XIV	23	23	2070	60
+5	Tim Pukki	FWD	PIE	30	30	1630	14		5	Roope Hietala	MID	XIV	30	23	1857	8		5	Sentia Ojala	GK	VKS	6	6	540	7.4		5	Constantin Reverdin	MID	VKS	30	29	1920	51		5	Pietari Pietilä	MID	TPS	30	28	2048	99		5	Ernesto Torres	GK	PJS	20	20	1800	57
+6	Robin Pärn	FWD	VKS	24	22	1504	13		6	Aaro Turunen	MID	VKS	30	21	1891	8		6	Aleksi Kaasik	GK	RJK	7	7	630	7.4		6	Vitali Korovin	MID	NOW	30	30	1927	40		6	Kasper Kaljurand	MID	SYV	30	28	1837	97		6	Heikki Honkanen	GK	KAL	21	21	1890	56
+7	Bort Org	FWD	MRJ	29	27	1949	13		7	Gregor Toivonen	MID	KUI	29	22	1786	7		7	Aleksanteri Räsänen	GK	ARK	18	18	1620	7.4		7	Ezequiel Mulholland	MID	RSR	30	20	1768	39		7	Sentilla Ylitalen	DEF	KAL	30	29	2522	95		7	Petri Kumpulainen	GK	NOW	20	20	1800	55
+8	Erast Pobedonostsev	FWD	RJK	25	22	1672	12		8	Constantin Reverdin	MID	VKS	30	29	1920	7		8	Tarvo Puusepp	FWD	KUI	28	26	1663	7.4		8	Aaro Turunen	MID	VKS	30	21	1891	37		8	Antero Laajunen	DEF	TPS	28	22	2197	92		8	Kasperi Karinen	GK	RSR	20	20	1800	53
+9	Kuismaa Kivisild	FWD	RPS	28	22	1498	11		9	Robin Pärn	FWD	VKS	24	22	1504	6		9	Otto Kask	MID	KUI	30	22	1947	7.4		9	Roope Hietala	MID	XIV	30	23	1857	34		9	Eema Põder	DEF	RPS	29	28	2560	91		9	Aleksi Järveläinen	GK	KUI	27	27	2430	53
+10	Henrik Kristianson	FWD	SYV	29	23	1845	11		10	Elias Tooming	MID	RPS	30	28	2100	6		10	Aleksi Järveläinen	GK	KUI	27	27	2430	7.3		10	Kökta Saare	MID	VKS	30	29	1752	34		10	Veitto Harttikainen	DEF	ARK	30	28	2405	91		10	Aatos Väisänen	GK	VKS	24	24	2125	50
+11	Yngvar Gustavsonn	FWD	SYV	29	24	1746	11		11	Kanata Hanashima	FWD	RJK	30	30	2107	6		11	Ohttola Sillaste	DEF	RJK	30	30	2305	7.3		11	Jaan Soosaar	MID	RJK	30	24	1963	33		11	Takuma Nakamura	FWD	KUI	29	25	1706	90		11	Valtteri Aravirta	GK	PIE	23	23	2070	49
+12	Günther Rajala	FWD	XIV	30	30	1771	11		12	Litto Tulp	MID	PIE	30	20	1856	6		12	Tim Pukki	FWD	PIE	30	30	1630	7.3		12	Neçirvan Barzani	FWD	AFK	29	29	1877	31		12	Constantin Reverdin	MID	VKS	30	29	1920	90		12	Erik Aalto	GK	MRJ	23	23	2070	48
+13	Omar Kazluaska	FWD	MRJ	30	24	1848	11		13	Omar Kazluaska	FWD	MRJ	30	24	1848	6		13	Daru Jafari	MID	MRJ	30	30	1891	7.3		13	Omar Kazluaska	FWD	MRJ	30	24	1848	31		13	Toivo Arkalainen	DEF	PJS	30	30	2528	90		13	Christian Leino	GK	SYV	22	22	1980	45
+14	Nikolai Tormotoff	FWD	RSR	30	16	1758	11		14	Tarvo Puusepp	FWD	KUI	28	26	1663	5		14	Iilmeri Vähäsarja	GK	MRJ	7	7	630	7.2		14	Litto Tulp	MID	PIE	30	20	1856	30		14	Olavi Routsalainen	DEF	VKS	29	27	2477	86		14	Sámme Náinnas	GK	MPA	19	19	1710	43
+15	Salteni Pöyhönen	FWD	AFK	29	28	1763	10		15	Daivid Fedoroff	MID	XIV	29	27	1992	5		15	Aleks Kärkärinnen	GK	AFK	9	9	810	7.2		15	Tim Pukki	FWD	PIE	30	30	1630	29		15	James Feruccio	MID	AFK	30	21	2050	86		15	Taisto Konstalainen	GK	TPS	21	21	1890	43
+16	Constantin Reverdin	MID	VKS	30	29	1920	10		16	Konsta Yrjölä	DEF	AFK	29	29	2275	5		16	Isko Nieminen	GK	PJS	10	10	900	7.2		16	Yerucham Lehrer	MID	PJS	28	28	1913	28		16	Ivaan Mielonen	DEF	ARK	30	28	2481	85		16	Teemo Aasmae	GK	RPS	22	22	1980	41
+17	Kökta Saare	MID	VKS	30	29	1752	10		17	Csaba Görbe	FWD	RPS	30	12	1553	5		17	Aonuma Jingūji	DEF	NOW	30	30	2568	7.2		17	Elias Tooming	MID	RPS	30	28	2100	28		17	Andero Randmaa	DEF	NOW	26	23	2146	84		17	Isko Nieminen	GK	PJS	10	10	900	35
+18	Gustav Kalliokoski	FWD	PJS	30	30	1824	10		18	Erno Jumanen	MID	RJK	30	28	1995	5		18	Constantin Reverdin	MID	VKS	30	29	1920	7.2		18	Günther Rajala	FWD	XIV	30	30	1771	28		18	Oskari Paanalainen	DEF	MRJ	30	30	2349	84		18	Gustav Pennanen	GK	KAL	9	9	810	29
+19	András Arató	FWD	SYV	25	13	1487	9		19	Günther Rajala	FWD	XIV	30	30	1771	5		19	James Feruccio	MID	AFK	30	21	2050	7.2		19	Eetu Hämälainen	MID	PJS	30	22	1988	28		19	Daniel Korhonen	DEF	RPS	30	29	2479	83		19	Pouria Asghari	GK	ARK	12	12	1080	29
+20	Erik Jones	FWD	RPS	29	26	1608	9		20	Tim Pukki	FWD	PIE	30	30	1630	5		20	Ezequiel Mulholland	MID	RSR	30	20	1768	7.2		20	Pietari Pietilä	MID	TPS	30	28	2048	27		20	Antti Pohjolainen	DEF	AFK	30	29	2624	83		20	Mona Zhuravlyov	GK	NOW	10	10	900	27
+21	Saleim Razhimi	FWD	XIV	29	22	1706	9		21	Vladimir Smirnovic	MID	KUI	30	19	2023	5		21	Gustav Pennanen	GK	KAL	9	9	810	7.1		21	Gregor Toivonen	MID	KUI	29	22	1786	26		21	Balázs Aba	DEF	KUI	29	24	2065	82		21	Aleks Kärkärinnen	GK	AFK	9	9	810	26
+22	Csaba Görbe	FWD	RPS	30	12	1553	9		22	Ezequiel Mulholland	MID	RSR	30	20	1768	5		22	Ernesto Torres	GK	PJS	20	20	1800	7.1		22	Daivid Fedoroff	MID	XIV	29	27	1992	25		22	Ohttola Sillaste	DEF	RJK	30	30	2305	82		22	Rautta Korpela	GK	RSR	10	10	900	25
+23	Bruno Del Pino	FWD	RSR	30	29	1905	9		23	Kalle Räikkönen	DEF	VKS	27	21	1946	4		23	Jean Montblanche	GK	AFK	21	21	1890	7.1		23	Erno Jumanen	MID	RJK	30	28	1995	25		23	Jaan Soosaar	MID	RJK	30	24	1963	81		23	Aron Põldmaa	GK	RPS	8	8	720	24
+24	Yrjö Pietarinen	FWD	MPA	29	29	1784	8		24	Kuismaa Kivisild	FWD	RPS	28	22	1498	4		24	Robin Pärn	FWD	VKS	24	22	1504	7.1		24	Osmo Rástoš	MID	MPA	28	27	1804	22		24	Kasperi Savolainen	DEF	MPA	30	30	2481	81		24	Aleksi Kaasik	GK	RJK	7	7	630	20
+25	Uusita Tavakoli	FWD	ARK	26	13	1396	7		25	Aaro Soini	MID	TPS	29	17	1790	4		25	Kuismaa Kivisild	FWD	RPS	28	22	1498	7.1		25	Teemo Jylhä	FWD	KAL	30	30	2093	22		25	Carl Mathiassen	DEF	RSR	30	28	2569	81		25	Söls Hættán	GK	MPA	11	11	990	19
+26	Péter Alföldi	FWD	MRJ	28	12	1665	7		26	Neçirvan Barzani	FWD	AFK	29	29	1877	4		26	Visker Nsytröm	FWD	KAL	29	29	1758	7.1		26	Einari Välinen	MID	KUI	30	18	1950	22		26	Gregor Toivonen	MID	KUI	29	22	1786	80		26	Sentia Ojala	GK	VKS	6	6	540	18
+27	Saīd Farzan	FWD	NOW	30	30	1759	7		27	Pietari Pietilä	MID	TPS	30	28	2048	4		27	Bort Org	FWD	MRJ	29	27	1949	7.1		27	Robin Karlsson	MID	XIV	25	24	1870	21		27	Vladimir Smirnovic	MID	KUI	30	19	2023	80		27	Tazta Daryaei	GK	XIV	7	7	630	16
+28	Erno Jumanen	MID	RJK	30	28	1995	7		28	Boitto Ojanen	MID	KAL	30	20	1789	4		28	Günther Rajala	FWD	XIV	30	30	1771	7.1		28	Bort Org	FWD	MRJ	29	27	1949	21		28	Gerhard Inselne	DEF	TPS	29	29	2559	78		28	Eesko Vähäjärvi	GK	PIE	7	7	630	16
+29	Armes Purtunen	FWD	PIE	30	22	1635	7		29	Teemo Jylhä	FWD	KAL	30	30	2093	4		29	Artyom Vladimovic	DEF	PJS	30	30	2521	7.1		29	Johannn Schumacher	MID	RPS	30	29	2081	21		29	Lauri Purvalainen	MID	SYV	30	29	1985	78		29	Iilmeri Vähäsarja	GK	MRJ	7	7	630	15
+30	Kasper Kaljurand	MID	SYV	30	28	1837	7		30	Ryūhei Amamiya	MID	SYV	30	25	2103	4		30	Omar Kazluaska	FWD	MRJ	30	24	1848	7.1		30	Tarvo Puusepp	FWD	KUI	28	26	1663	20		30	Toivo Grigorovic	DEF	RJK	30	30	2700	76		30	Markko Vanhatalo	GK	TPS	9	9	810	14
+31	Einari Välinen	MID	KUI	30	18	1950	7		31	Lauri Purvalainen	MID	SYV	30	29	1985	4		31	Mona Zhuravlyov	GK	NOW	10	10	900	7.0		31	Zdeno Medved	DEF	XIV	29	22	1931	20		31	Daru Jafari	MID	MRJ	30	30	1891	76		31	Solmia Ylitalo	GK	SYV	8	8	720	10
+32	Kimi Vostanen	FWD	RJK	24	8	1482	6		32	Kökta Saare	MID	VKS	30	29	1752	4		32	Söls Hættán	GK	MPA	11	11	990	7.0		32	Yrjö Pietarinen	FWD	MPA	29	29	1784	20		32	Santteri Ylikangas	DEF	MRJ	30	30	2569	76		32	Damian Jalkanen	GK	KUI	3	3	270	5
+33	Taame Kankanpää	FWD	XIV	27	8	1435	6		33	Gustav Kalliokoski	FWD	PJS	30	30	1824	4		33	Rautta Kokko	GK	RJK	23	23	2070	7.0		33	Pêr Lostanlen	MID	VKS	30	27	2071	20		33	Into Kangas	MID	TPS	30	16	2076	75									
+34	Jaakima Porvorinen	FWD	PJS	29	19	1524	6		34	Antos Niillán	MID	MPA	30	19	1754	4		34	Robin Karlsson	MID	XIV	25	24	1870	7.0		34	Bruno Del Pino	FWD	RSR	30	29	1905	20		34	Aaron Kumpula	DEF	XIV	30	28	2475	75									
+35	Yūki Hattori	FWD	MRJ	29	27	1945	6		35	Einari Välinen	MID	KUI	30	18	1950	4		35	András Arató	FWD	SYV	25	13	1487	7.0		35	Robin Pärn	FWD	VKS	24	22	1504	19		35	Mikko Niskanen	DEF	KUI	30	27	2431	75									
+36	Neçirvan Barzani	FWD	AFK	29	29	1877	6		36	Anton Lehtoranten	MID	RSR	30	12	1790	4		36	Raitis Saarinen	FWD	TPS	28	22	1627	7.0		36	Luukas Väyrinen	MID	TPS	28	27	1811	19		36	Albert Kuusela	DEF	KUI	29	28	2504	74									
+37	Teemo Jylhä	FWD	KAL	30	30	2093	6		37	Kimi Vostanen	FWD	RJK	24	8	1482	3		37	Yngvar Gustavsonn	FWD	SYV	29	24	1746	7.0		37	Katsuki Watanabe	MID	PIE	30	27	2018	19		37	Roope Hietala	MID	XIV	30	23	1857	73									
+38	Aaro Turunen	MID	VKS	30	21	1891	6		38	Robin Karlsson	MID	XIV	25	24	1870	3		38	Roope Hietala	MID	XIV	30	23	1857	7.0		38	Lauri Purvalainen	MID	SYV	30	29	1985	19		38	Aaro Turunen	MID	VKS	30	21	1891	73									
+39	Sebastian Silfersparre	FWD	VKS	18	8	1155	5		39	Johann Berglund	MID	MRJ	26	21	1724	3		39	Aaro Turunen	MID	VKS	30	21	1891	7.0		39	Antos Niillán	MID	MPA	30	19	1754	19		39	Kökta Saare	MID	VKS	30	29	1752	72									
+40	Luuka Velikkon	FWD	NOW	24	10	1345	5		40	Aleksanteri Korhonenvaara	DEF	VKS	27	17	2047	3		40	Mikko Niskanen	DEF	KUI	30	27	2431	7.0		40	Kuismaa Kivisild	FWD	RPS	28	22	1498	18		40	Louis Blanche	DEF	PIE	30	27	2492	71									
+41	Vladimir Tsoikov	FWD	AFK	26	12	1575	5		41	James Smith	DEF	RJK	28	23	1962	3		41	Santteri Ylikangas	DEF	MRJ	30	30	2569	7.0		41	Juhani Honkinensto	MID	RPS	29	28	2083	18		41	Soino Jaakola	MID	PIE	30	20	1926	71									
+42	Jouno Oiva	FWD	TPS	27	17	1635	5		42	Yerucham Lehrer	MID	PJS	28	28	1913	3		42	Tazta Daryaei	GK	XIV	7	7	630	6.9		42	Henrik Kristianson	FWD	SYV	29	23	1845	18		42	Muotso Nihkolávo	DEF	MPA	29	28	2395	70									
+43	Nawaz Sarvi	FWD	TPS	27	20	1565	5		43	Marcel Metsa	DEF	RSR	28	28	2307	3		43	Solmia Ylitalo	GK	SYV	8	8	720	6.9		43	Yngvar Gustavsonn	FWD	SYV	29	24	1746	18		43	Toppa Rüütelkukk	MID	ARK	30	30	1970	70									
+44	Nakato Fujimoto	FWD	KAL	27	13	1646	5		44	Sojjo Sarapuu	DEF	RPS	29	29	2441	3		44	Sebastian Silfersparre	FWD	VKS	18	8	1155	6.9		44	Into Kangas	MID	TPS	30	16	2076	18		44	Katsuki Watanabe	MID	PIE	30	27	2018	70									
+45	Tuomas Tuulensuu	FWD	PIE	27	8	1454	5		45	Teimo Gæupà	FWD	MPA	29	13	1654	3		45	Taisto Konstalainen	GK	TPS	21	21	1890	6.9		45	Roððo Duongi	FWD	NOW	30	20	1709	18		45	Kalle Olstalainen	DEF	VKS	30	27	2423	70									
+46	Kanata Hanashima	FWD	RJK	30	30	2107	5		46	Yrjö Pietarinen	FWD	MPA	29	29	1784	3		46	Heikki Honkanen	GK	KAL	21	21	1890	6.9		46	Csaba Görbe	FWD	RPS	30	12	1553	18		46	Niiko Rautia	DEF	KAL	29	27	2475	69									
+47	Nicolai Taicescu	FWD	MPA	30	20	1805	5		47	Toppa Rüütelkukk	MID	ARK	30	30	1970	3		47	Valtteri Aravirta	GK	PIE	23	23	2070	6.9		47	Kanata Hanashima	FWD	RJK	30	30	2107	18		47	Ivan Gavrilovic	DEF	ARK	27	21	2043	68									
+48	Otto Kask	MID	KUI	30	22	1947	5		48	Sentilla Ylitalen	DEF	KAL	30	29	2522	3		48	Erik Aalto	GK	MRJ	23	23	2070	6.9		48	Ivan Yakhontoff	MID	VKS	30	15	1945	18		48	Teemo Jylhä	FWD	KAL	30	30	2093	68									
+49	Töhötöm Molnár	FWD	PJS	29	11	1577	4		49	Kurtsov Zaitsev	MID	KAL	30	29	2204	3		49	Erast Pobedonostsev	FWD	RJK	25	22	1672	6.9		49	Vladimir Smirnovic	MID	KUI	30	19	2023	18		49	Jaan Kuuskrand	DEF	XIV	30	28	2620	67									
+50	Teimo Gæupà	FWD	MPA	29	13	1654	4		50	Daniel Korhonen	DEF	RPS	30	29	2479	3		50	Uusita Tavakoli	FWD	ARK	26	13	1396	6.9		50	Raitis Saarinen	FWD	TPS	28	22	1627	17		50	Eemeli Uusitalo	DEF	SYV	30	29	2577	67									
+51	Jaan Soosaar	MID	RJK	30	24	1963	4		51	Aaron Kumpula	DEF	XIV	30	28	2475	3		51	James Smith	DEF	RJK	28	23	1962	6.9		51	Toppa Rüütelkukk	MID	ARK	30	30	1970	17		51	Taavetti Kankkunen	MID	TPS	25	18	1724	66									
+52	Folke Raudkalda	MID	XIV	30	9	1817	4		52	Ivan Yakhontoff	MID	VKS	30	15	1945	3		52	Yerucham Lehrer	MID	PJS	28	28	1913	6.9		52	Johann Berglund	MID	MRJ	26	21	1724	16		52	Sárat Duštá	DEF	MPA	30	28	2482	66									
+53	Roope Hietala	MID	XIV	30	23	1857	4		53	Eetu Hämälainen	MID	PJS	30	22	1988	3		53	Marcel Metsa	DEF	RSR	28	28	2307	6.9		53	Aaro Soini	MID	TPS	29	17	1790	16		53	Rasmus Järvik	DEF	SYV	30	29	2604	65									
+54	Bertel Vainojärven	MID	SYV	30	19	1949	4		54	Olli Aaskruus	DEF	MRJ	30	28	2207	3		54	Henrik Kristianson	FWD	SYV	29	23	1845	6.9		54	Jalo Rehn	MID	AFK	30	29	1950	16		54	James Smith	DEF	RJK	28	23	1962	64									
+55	Ivan Yakhontoff	MID	VKS	30	15	1945	4		55	Yuki Endō	MID	MRJ	30	21	2173	3		55	Olavi Routsalainen	DEF	VKS	29	27	2477	6.9		55	Yriö Kuokkanen	MID	NOW	24	19	1503	15		55	Ritomo Hoshino	MID	RPS	30	21	2205	64									
+56	Ezequiel Mulholland	MID	RSR	30	20	1768	4		56	James Feruccio	MID	AFK	30	21	2050	3		56	Yrjö Pietarinen	FWD	MPA	29	29	1784	6.9		56	Kalle Räikkönen	DEF	VKS	27	21	1946	15		56	Eetu Hämälainen	MID	PJS	30	22	1988	64									
+57	Robin Karlsson	MID	XIV	25	24	1870	3		57	Boris Lukyanovich	FWD	RSR	30	23	1929	3		57	Albert Kuusela	DEF	KUI	29	28	2504	6.9		57	Pedrik Pärtel	MID	VKS	28	21	2157	15		57	Einari Välinen	MID	KUI	30	18	1950	64									
+58	Johann Berglund	MID	MRJ	26	21	1724	3		58	Tituus Linntunen	DEF	KAL	23	14	1616	2		58	Gregor Toivonen	MID	KUI	29	22	1786	6.9		58	Kalle Ruokonen	MID	KAL	29	29	1999	15		58	Hietta Auvinen	DEF	XIV	29	28	2477	63									
+59	Gregor Toivonen	MID	KUI	29	22	1786	3		59	Ferencz Vágó	MID	KUI	23	9	1451	2		59	Neçirvan Barzani	FWD	AFK	29	29	1877	6.9		59	Balázs Aba	DEF	KUI	29	24	2065	15		59	Nuuti Miettinen	DEF	AFK	29	29	2460	63									
+60	Roððo Duongi	FWD	NOW	30	20	1709	3		60	Yriö Kuokkanen	MID	NOW	24	19	1503	2		60	Veitto Harttikainen	DEF	ARK	30	28	2405	6.9		60	Aonuma Jingūji	DEF	NOW	30	30	2568	15		60	Tarmo Pallonen	DEF	KUI	29	29	1973	62									
+61	Teppo Estinen	FWD	RJK	30	30	2125	3		61	Valde Latvala	MID	AFK	24	20	1573	2		61	Vitali Korovin	MID	NOW	30	30	1927	6.9		61	Soino Jaakola	MID	PIE	30	20	1926	15		61	Omar Kazluaska	FWD	MRJ	30	24	1848	62									
+62	Chenguang Pei	FWD	AFK	30	21	1888	3		62	Pekka Sihvonen	MID	SYV	24	6	1416	2		62	Sentilla Ylitalen	DEF	KAL	30	29	2522	6.9		62	Yuki Endō	MID	MRJ	30	21	2173	15		62	Taavi Saarela	MID	ARK	30	18	1874	61									
+63	Tippo Sooranpuunen	DEF	RPS	20	13	1454	2		63	András Arató	FWD	SYV	25	13	1487	2		63	Daniel Korhonen	DEF	RPS	30	29	2479	6.9		63	Kimi Vostanen	FWD	RJK	24	8	1482	14		63	Elias Tooming	MID	RPS	30	28	2100	61									
+64	Ferencz Vágó	MID	KUI	23	9	1451	2		64	Uusita Tavakoli	FWD	ARK	26	13	1396	2		64	Csaba Görbe	FWD	RPS	30	12	1553	6.9		64	Erast Pobedonostsev	FWD	RJK	25	22	1672	14		64	Olli Aaskruus	DEF	MRJ	30	28	2207	61									
+65	Arvin Lindqvist	MID	RPS	24	2	1206	2		65	Kamui Kobayashi	DEF	RPS	27	21	2139	2		65	Toivo Grigorovic	DEF	RJK	30	30	2700	6.9		65	Andreas Leijonhuft	MID	RPS	25	12	1575	14		65	Johann Berglund	MID	MRJ	26	21	1724	60									
+66	Andreas Leijonhuft	MID	RPS	25	12	1575	2		66	Taame Kankanpää	FWD	XIV	27	8	1435	2		66	Erno Jumanen	MID	RJK	30	28	1995	6.9		66	Balázs Jaminai	MID	RJK	28	20	1782	14		66	Yerucham Lehrer	MID	PJS	28	28	1913	60									
+67	Bætta Hyvärinen	DEF	XIV	27	15	1920	2		67	Tiitus Hyväronnen	MID	PJS	27	27	2022	2		67	Aaron Kumpula	DEF	XIV	30	28	2475	6.9		67	Konsta Yrjölä	DEF	AFK	29	29	2275	14		67	Bort Org	FWD	MRJ	29	27	1949	60									
+68	Luukas Väyrinen	MID	TPS	28	27	1811	2		68	Markku Lappalainen	DEF	AFK	27	20	1933	2		68	Louis Blanche	DEF	PIE	30	27	2492	6.9		68	Aarne Kainulainen	MID	NOW	30	19	1890	14		68	Teima Uibo	DEF	PIE	26	24	2099	59									
+69	Balázs Jaminai	MID	RJK	28	20	1782	2		69	Luukas Väyrinen	MID	TPS	28	27	1811	2		69	Kökta Saare	MID	VKS	30	29	1752	6.9		69	Boitto Ojanen	MID	KAL	30	20	1789	14		69	Kristian Hansen	DEF	PIE	29	28	2576	59									
+70	Pedrik Pärtel	MID	VKS	28	21	2157	2		70	Osmo Rástoš	MID	MPA	28	27	1804	2		70	Gustav Kalliokoski	FWD	PJS	30	30	1824	6.9		70	Ritomo Hoshino	MID	RPS	30	21	2205	14		70	Neçirvan Barzani	FWD	AFK	29	29	1877	59									
+71	Osmo Rástoš	MID	MPA	28	27	1804	2		71	Péter Alföldi	FWD	MRJ	28	12	1665	2		71	Oskari Paanalainen	DEF	MRJ	30	30	2349	6.9		71	Ryūhei Amamiya	MID	SYV	30	25	2103	14		71	Allain Kansalteninen	DEF	RJK	30	30	2330	59									
+72	Hugo Ploomõts	MID	ARK	29	28	2276	2		72	Hugo Ploomõts	MID	ARK	29	28	2276	2		72	Nikolai Tormotoff	FWD	RSR	30	16	1758	6.9		72	Gustav Kalliokoski	FWD	PJS	30	30	1824	14		72	Tim Pukki	FWD	PIE	30	30	1630	59									
+73	Otto Hannuksela	FWD	ARK	29	17	1537	2		73	Taikō Aoki	MID	ARK	29	16	1973	2		73	Bruno Del Pino	FWD	RSR	30	29	1905	6.9		73	Anton Lehtoranten	MID	RSR	30	12	1790	14		73	Ivan Yakhontoff	MID	VKS	30	15	1945	59									
+74	Daivid Fedoroff	MID	XIV	29	27	1992	2		74	Portik Likkastov	DEF	TPS	29	23	2176	2		74	Aron Põldmaa	GK	RPS	8	8	720	6.8		74	Ferencz Vágó	MID	KUI	23	9	1451	13		74	Marcel Metsa	DEF	RSR	28	28	2307	58									
+75	Konsta Yrjölä	DEF	AFK	29	29	2275	2		75	Fernando Esturas	DEF	NOW	29	23	2212	2		75	Pouria Asghari	GK	ARK	12	12	1080	6.8		75	James Smith	DEF	RJK	28	23	1962	13		75	Kalle Ruokonen	MID	KAL	29	29	1999	58									
+76	Aallto Mikhailoff	MID	ARK	30	28	1925	2		76	Kalle Ruokonen	MID	KAL	29	29	1999	2		76	Sámme Náinnas	GK	MPA	19	19	1710	6.8		76	Visker Nsytröm	FWD	KAL	29	29	1758	13		76	Aaro Soini	MID	TPS	29	17	1790	57									
+77	Santteri Haapalainen	MID	KAL	30	11	1762	2		77	Juhani Honkinensto	MID	RPS	29	28	2083	2		77	Kasperi Karinen	GK	RSR	20	20	1800	6.8		77	Kurtsov Zaitsev	MID	KAL	30	29	2204	13		77	Zdeno Medved	DEF	XIV	29	22	1931	57									
+78	Johannn Schumacher	MID	RPS	30	29	2081	2		78	Yrjö Hietanen	DEF	XIV	29	29	2100	2		78	Ludvig Laaksonen	GK	XIV	23	23	2070	6.8		78	Daniel Korhonen	DEF	RPS	30	29	2479	13		78	Boitto Ojanen	MID	KAL	30	20	1789	57									
+79	Ulrik Zilinkas	MID	RJK	30	11	1782	2		79	Zdeno Medved	DEF	XIV	29	22	1931	2		79	Aron Tulpaa	DEF	KAL	24	20	1831	6.8		79	Nicolai Taicescu	FWD	MPA	30	20	1805	13		79	Kurtsov Zaitsev	MID	KAL	30	29	2204	57									
+80	Lauri Purvalainen	MID	SYV	30	29	1985	2		80	Yngvar Gustavsonn	FWD	SYV	29	24	1746	2		80	Kimi Vostanen	FWD	RJK	24	8	1482	6.8		80	James Feruccio	MID	AFK	30	21	2050	13		80	Daivid Fedoroff	MID	XIV	29	27	1992	56									
+81	Ilmari Kiviojanen	FWD	MPA	30	28	2062	2		81	Töhötöm Molnár	FWD	PJS	29	11	1577	2		81	Aatos Väisänen	GK	VKS	24	24	2125	6.8		81	Boris Lukyanovich	FWD	RSR	30	23	1929	13		81	Fernando Esturas	DEF	NOW	29	23	2212	55									
+82	Mikko Niskanen	DEF	KUI	30	27	2431	2		82	Jaakima Porvorinen	FWD	PJS	29	19	1524	2		82	Taame Kankanpää	FWD	XIV	27	8	1435	6.8		82	András Arató	FWD	SYV	25	13	1487	12		82	Yrjö Hietanen	DEF	XIV	29	29	2100	55									
+83	Vladimir Smirnovic	MID	KUI	30	19	2023	2		83	Albert Kuusela	DEF	KUI	29	28	2504	2		83	Robert Pollikoski	DEF	PJS	27	19	1845	6.8		83	Nawaz Sarvi	FWD	TPS	27	20	1565	12		83	Markku Hongisto	MID	PIE	30	16	2019	55									
+84	Olli Aaskruus	DEF	MRJ	30	28	2207	2		84	Aonuma Jingūji	DEF	NOW	30	30	2568	2		84	Antero Laajunen	DEF	TPS	28	22	2197	6.8		84	Erik Jones	FWD	RPS	29	26	1608	12		84	Márton Nagy	MID	SYV	30	29	2196	55									
+85	Daru Jafari	MID	MRJ	30	30	1891	2		85	Saīd Farzan	FWD	NOW	30	30	1759	2		85	Pedrik Pärtel	MID	VKS	28	21	2157	6.8		85	Jaakima Porvorinen	FWD	PJS	29	19	1524	12		85	Hermes Toivolainen	DEF	TPS	25	17	1835	54									
+86	Boris Lukyanovich	FWD	RSR	30	23	1929	2		86	Vitali Korovin	MID	NOW	30	30	1927	2		86	Osmo Rástoš	MID	MPA	28	27	1804	6.8		86	Teppo Estinen	FWD	RJK	30	30	2125	12		86	Aalto Huttunen	DEF	NOW	30	29	2441	54									
+87	Sándor Bodor	MID	RJK	20	7	1225	1		87	Ritomo Hoshino	MID	RPS	30	21	2205	2		87	Gerhard Inselne	DEF	TPS	29	29	2559	6.8		87	Nemanja Petrovic	FWD	RSR	30	29	2372	12		87	Eski Ruudanen	DEF	RSR	30	30	2218	54									
+88	Teemo Õunapuu	MID	RSR	21	10	1199	1		88	Toivo Grigorovic	DEF	RJK	30	30	2700	2		88	Daivid Fedoroff	MID	XIV	29	27	1992	6.8		88	Jouno Oiva	FWD	TPS	27	17	1635	11		88	Aron Tulpaa	DEF	KAL	24	20	1831	53									
+89	Ukko Ojala	MID	PJS	24	19	1668	1		89	Ulrik Zilinkas	MID	RJK	30	11	1782	2		89	Saleim Razhimi	FWD	XIV	29	22	1706	6.8		89	Taame Kankanpää	FWD	XIV	27	8	1435	11		89	Pedrik Pärtel	MID	VKS	28	21	2157	53									
+90	Pekka Sihvonen	MID	SYV	24	6	1416	1		90	Jaan Soosaar	MID	RJK	30	24	1963	2		90	Kristian Hansen	DEF	PIE	29	28	2576	6.8		90	Tiitus Hyväronnen	MID	PJS	27	27	2022	11		90	Yuki Endō	MID	MRJ	30	21	2173	53									
+91	Taavetti Kankkunen	MID	TPS	25	18	1724	1		91	Louis Blanche	DEF	PIE	30	27	2492	2		91	Jaakima Porvorinen	FWD	PJS	29	19	1524	6.8		91	Sojjo Sarapuu	DEF	RPS	29	29	2441	11		91	Ezequiel Mulholland	MID	RSR	30	20	1768	53									
+92	Onni Pitkänen	MID	PIE	26	10	1513	1		92	Markku Hongisto	MID	PIE	30	16	2019	2		92	Muotso Nihkolávo	DEF	MPA	29	28	2395	6.8		92	Yrjö Hietanen	DEF	XIV	29	29	2100	11		92	Santeri Helkanen	DEF	SYV	25	20	1958	52									
+93	Peders Lávrrohaš	MID	MPA	26	18	1885	1		93	Katsuki Watanabe	MID	PIE	30	27	2018	2		93	Balázs Aba	DEF	KUI	29	24	2065	6.8		93	Salteni Pöyhönen	FWD	AFK	29	28	1763	11		93	Portik Likkastov	DEF	TPS	29	23	2176	52									
+94	Ivan Gavrilovic	DEF	ARK	27	21	2043	1		94	Bertel Vainojärven	MID	SYV	30	19	1949	2		94	Salteni Pöyhönen	FWD	AFK	29	28	1763	6.8		94	Saīd Farzan	FWD	NOW	30	30	1759	11		94	Kanta Zielenski	DEF	KUI	29	17	2103	52									
+95	Kamui Kobayashi	DEF	RPS	27	21	2139	1		95	Paavo Seppälä	DEF	VKS	30	28	2007	2		95	Toppa Rüütelkukk	MID	ARK	30	30	1970	6.8		95	Ulrik Zilinkas	MID	RJK	30	11	1782	11		95	Pêr Lostanlen	MID	VKS	30	27	2071	52									
+96	Uusi Poutanen	MID	VKS	27	8	1705	1		96	Pêr Lostanlen	MID	VKS	30	27	2071	2		96	Pietari Pietilä	MID	TPS	30	28	2048	6.8		96	Bertel Vainojärven	MID	SYV	30	19	1949	11		96	Oliver Koivula	MID	PJS	30	14	2005	52									
+97	Aleksanteri Korhonenvaara	DEF	VKS	27	17	2047	1		97	Ilmari Kiviojanen	FWD	MPA	30	28	2062	2		97	Saīd Farzan	FWD	NOW	30	30	1759	6.8		97	Nikolai Tormotoff	FWD	RSR	30	16	1758	11		97	Taisto Tervorinen	DEF	ARK	27	27	2044	51									
+98	Tiitus Hyväronnen	MID	PJS	27	27	2022	1		98	Santteri Ylikangas	DEF	MRJ	30	30	2569	2		98	Teemo Jylhä	FWD	KAL	30	30	2093	6.8		98	Zintá Dunginen	MID	KAL	23	11	1461	10		98	Luukas Väyrinen	MID	TPS	28	27	1811	51									
+99	Ivan Kenderic	DEF	MRJ	27	21	2024	1		99	Eski Ruudanen	DEF	RSR	30	30	2218	2		99	Elias Tooming	MID	RPS	30	28	2100	6.8		99	Robert Pollikoski	DEF	PJS	27	19	1845	10		99	Erno Jumanen	MID	RJK	30	28	1995	51									
+100	Yerucham Lehrer	MID	PJS	28	28	1913	1		100	Nikolai Tormotoff	FWD	RSR	30	16	1758	2		100	Litto Tulp	MID	PIE	30	20	1856	6.8		100	Portik Likkastov	DEF	TPS	29	23	2176	10		100	Kamui Kobayashi	DEF	RPS	27	21	2139	50									
+101	Aaro Soini	MID	TPS	29	17	1790	1		101	Nemanja Petrovic	FWD	RSR	30	29	2372	2		101	Armes Purtunen	FWD	PIE	30	22	1635	6.8		101	Saleim Razhimi	FWD	XIV	29	22	1706	10		101	Robert Pollikoski	DEF	PJS	27	19	1845	50									
+102	Bittu Õunlepik	FWD	KAL	29	18	1932	1		102	Sándor Bodor	MID	RJK	20	7	1225	1		102	Rasmus Järvik	DEF	SYV	30	29	2604	6.8		102	Leevi Kaaren	MID	PIE	29	27	2098	10		102	Ivan Kenderic	DEF	MRJ	27	21	2024	50									
+103	Sojjo Sarapuu	DEF	RPS	29	29	2441	1		103	Zoltán Tóth	DEF	PIE	21	21	1834	1		103	Lauri Purvalainen	MID	SYV	30	29	1985	6.8		103	Teimo Gæupà	FWD	MPA	29	13	1654	10		103	Samara Josefovic	DEF	RSR	27	18	1850	50									
+104	Juhani Honkinensto	MID	RPS	29	28	2083	1		104	Teemo Õunapuu	MID	RSR	21	10	1199	1		104	Bertel Vainojärven	MID	SYV	30	19	1949	6.8		104	Jarmo Sillanpää	DEF	TPS	30	30	2093	10		104	Litto Tulp	MID	PIE	30	20	1856	50									
+105	Hietta Auvinen	DEF	XIV	29	28	2477	1		105	Leevi Suominen	MID	TPS	22	14	1622	1		105	Kalle Olstalainen	DEF	VKS	30	27	2423	6.8		105	Folke Raudkalda	MID	XIV	30	9	1817	10		105	Paavo Seppälä	DEF	VKS	30	28	2007	50									
+106	Yrjö Hietanen	DEF	XIV	29	29	2100	1		106	Robert Kivisilta	DEF	PIE	22	20	1841	1		106	Ivan Yakhontoff	MID	VKS	30	15	1945	6.8		106	Aaron Kumpula	DEF	XIV	30	28	2475	10		106	Markku Lappalainen	DEF	AFK	27	20	1933	49									
+107	Leevi Kaaren	MID	PIE	29	27	2098	1		107	Johann Falkenhayn	DEF	SYV	22	12	1513	1		107	Toivo Arkalainen	DEF	PJS	30	30	2528	6.8		107	Markku Hongisto	MID	PIE	30	16	2019	10		107	Balázs Jaminai	MID	RJK	28	20	1782	49									
+108	Albert Kuusela	DEF	KUI	29	28	2504	1		108	Zintá Dunginen	MID	KAL	23	11	1461	1		108	Eetu Hämälainen	MID	PJS	30	22	1988	6.8		108	Paavo Seppälä	DEF	VKS	30	28	2007	10		108	Tarvo Puusepp	FWD	KUI	28	26	1663	49									
+109	Iilpo Kolemainen	MID	MRJ	29	10	1746	1		109	Arvin Lindqvist	MID	RPS	24	2	1206	1		109	Sárat Duštá	DEF	MPA	30	28	2482	6.8		109	Mikko Niskanen	DEF	KUI	30	27	2431	10		109	Bertel Vainojärven	MID	SYV	30	19	1949	48									
+110	Nuuti Miettinen	DEF	AFK	29	29	2460	1		110	Ukko Ojala	MID	PJS	24	19	1668	1		110	Antos Niillán	MID	MPA	30	19	1754	6.8		110	Charle Valtterinen	FWD	RSR	30	23	2060	10		110	Rauli Jokinen	DEF	KUI	30	25	2410	48									
+111	Ivaan Mielonen	DEF	ARK	30	28	2481	1		111	Noori Samalainen	DEF	MPA	24	19	1967	1		111	Rauli Jokinen	DEF	KUI	30	25	2410	6.8		111	Sebastian Silfersparre	FWD	VKS	18	8	1155	9		111	Jalo Rehn	MID	AFK	30	29	1950	48									
+112	Toppa Rüütelkukk	MID	ARK	30	30	1970	1		112	Nazer Shahrivar	MID	MPA	24	12	1512	1		112	Einari Välinen	MID	KUI	30	18	1950	6.8		112	Peders Lávrrohaš	MID	MPA	26	18	1885	9		112	Ruosto Ruohamäkinen	DEF	MPA	21	15	1611	47									
+113	Into Kangas	MID	TPS	30	16	2076	1		113	Hermes Toivolainen	DEF	TPS	25	17	1835	1		113	Vladimir Smirnovic	MID	KUI	30	19	2023	6.8		113	Nakato Fujimoto	FWD	KAL	27	13	1646	9		113	Aleksanteri Korhonenvaara	DEF	VKS	27	17	2047	47									
+114	Pietari Pietilä	MID	TPS	30	28	2048	1		114	Taavetti Kankkunen	MID	TPS	25	18	1724	1		114	Olli Aaskruus	DEF	MRJ	30	28	2207	6.8		114	Kamui Kobayashi	DEF	RPS	27	21	2139	9		114	Tiitus Hyväronnen	MID	PJS	27	27	2022	47									
+115	Rainer Pakarinen	MID	NOW	30	29	2307	1		115	Erast Pobedonostsev	FWD	RJK	25	22	1672	1		115	Yuki Endō	MID	MRJ	30	21	2173	6.8		115	Péter Alföldi	FWD	MRJ	28	12	1665	9		115	Sojjo Sarapuu	DEF	RPS	29	29	2441	47									
+116	Zhalek Cheremesinoff	MID	NOW	30	12	1955	1		116	Andreas Leijonhuft	MID	RPS	25	12	1575	1		116	Antti Pohjolainen	DEF	AFK	30	29	2624	6.8		116	Töhötöm Molnár	FWD	PJS	29	11	1577	9		116	Leevi Kaaren	MID	PIE	29	27	2098	47									
+117	Vitali Korovin	MID	NOW	30	30	1927	1		117	Vladimir Tsoikov	FWD	AFK	26	12	1575	1		117	Rautta Korpela	GK	RSR	10	10	900	6.7		117	Tarmo Pallonen	DEF	KUI	29	29	1973	9		117	Kalle Räikkönen	DEF	VKS	27	21	1946	46									
+118	Boitto Ojanen	MID	KAL	30	20	1789	1		118	Taisto Tervorinen	DEF	ARK	27	27	2044	1		118	Petri Kumpulainen	GK	NOW	20	20	1800	6.7		118	Ohttola Sillaste	DEF	RJK	30	30	2305	9		118	Aallto Mikhailoff	MID	ARK	30	28	1925	46									
+119	Daniel Korhonen	DEF	RPS	30	29	2479	1		119	Jouno Oiva	FWD	TPS	27	17	1635	1		119	Tippo Sooranpuunen	DEF	RPS	20	13	1454	6.7		119	Armes Purtunen	FWD	PIE	30	22	1635	9		119	Robin Karlsson	MID	XIV	25	24	1870	45									
+120	Ritomo Hoshino	MID	RPS	30	21	2205	1		120	Nakato Fujimoto	FWD	KAL	27	13	1646	1		120	Ruosto Ruohamäkinen	DEF	MPA	21	15	1611	6.7		120	Kasperi Savolainen	DEF	MPA	30	30	2481	9		120	Salteni Pöyhönen	FWD	AFK	29	28	1763	45									
+121	Allain Kansalteninen	DEF	RJK	30	30	2330	1		121	Uusi Poutanen	MID	VKS	27	8	1705	1		121	Karin Tuomela	DEF	RSR	21	16	1688	6.7		121	Olli Aaskruus	DEF	MRJ	30	28	2207	9		121	Dömötör Barta	DEF	ARK	22	16	1597	44									
+122	Ohttola Sillaste	DEF	RJK	30	30	2305	1		122	Robert Pollikoski	DEF	PJS	27	19	1845	1		122	Teemo Aasmae	GK	RPS	22	22	1980	6.7		122	Leevi Suominen	MID	TPS	22	14	1622	8		122	Peders Lávrrohaš	MID	MPA	26	18	1885	44									
+123	Aaron Kumpula	DEF	XIV	30	28	2475	1		123	Lajos Újföldi	MID	PJS	27	10	1632	1		123	Christian Leino	GK	SYV	22	22	1980	6.7		123	Arvin Lindqvist	MID	RPS	24	2	1206	8		123	Hugo Ploomõts	MID	ARK	29	28	2276	44									
+124	Litto Tulp	MID	PIE	30	20	1856	1		124	Ivan Kenderic	DEF	MRJ	27	21	2024	1		124	Ferencz Vágó	MID	KUI	23	9	1451	6.7		124	Ukko Ojala	MID	PJS	24	19	1668	8		124	Yriö Kuokkanen	MID	NOW	24	19	1503	43									
+125	Ryūhei Amamiya	MID	SYV	30	25	2103	1		125	Samara Josefovic	DEF	RSR	27	18	1850	1		125	Chu Hwang	DEF	RJK	24	7	1503	6.7		125	Valde Latvala	MID	AFK	24	20	1573	8		125	Iilpo Kolemainen	MID	MRJ	29	10	1746	43									
+126	Kalle Olstalainen	DEF	VKS	30	27	2423	1		126	Antero Laajunen	DEF	TPS	28	22	2197	1		126	Taavetti Kankkunen	MID	TPS	25	18	1724	6.7		126	Tuomas Tuulensuu	FWD	PIE	27	8	1454	8		126	Vitali Korovin	MID	NOW	30	30	1927	43									
+127	Pêr Lostanlen	MID	VKS	30	27	2071	1		127	Balázs Jaminai	MID	RJK	28	20	1782	1		127	Andreas Leijonhuft	MID	RPS	25	12	1575	6.7		127	Hugo Ploomõts	MID	ARK	29	28	2276	8		127	Juhani Sinnar	MID	AFK	30	10	1710	43									
+128	Eetu Hämälainen	MID	PJS	30	22	1988	1		128	Eema Põder	DEF	RPS	29	28	2560	1		128	Peders Lávrrohaš	MID	MPA	26	18	1885	6.7		128	Yūki Hattori	FWD	MRJ	29	27	1945	8		128	Bruno Del Pino	FWD	RSR	30	29	1905	43									
+129	Oliver Koivula	MID	PJS	30	14	2005	1		129	Erik Jones	FWD	RPS	29	26	1608	1		129	Johann Berglund	MID	MRJ	26	21	1724	6.7		129	Aallto Mikhailoff	MID	ARK	30	28	1925	8		129	Robert Kivisilta	DEF	PIE	22	20	1841	42									
+130	Gregor Tsorovic	MID	MPA	30	14	1804	1		130	Hietta Auvinen	DEF	XIV	29	28	2477	1		130	Vladimir Tsoikov	FWD	AFK	26	12	1575	6.7		130	Rainer Pakarinen	MID	NOW	30	29	2307	8		130	Johann Falkenhayn	DEF	SYV	22	12	1513	42									
+131	Antos Niillán	MID	MPA	30	19	1754	1		131	Saleim Razhimi	FWD	XIV	29	22	1706	1		131	Kalle Räikkönen	DEF	VKS	27	21	1946	6.7		131	Santteri Haapalainen	MID	KAL	30	11	1762	8		131	Ferencz Vágó	MID	KUI	23	9	1451	42									
+132	Rauli Jokinen	DEF	KUI	30	25	2410	1		132	Kristian Hansen	DEF	PIE	29	28	2576	1		132	Aleksanteri Korhonenvaara	DEF	VKS	27	17	2047	6.7		132	Albert Pottaslainen	MID	RSR	23	18	1520	7		132	Ukko Ojala	MID	PJS	24	19	1668	42									
+133	Yuki Endō	MID	MRJ	30	21	2173	1		133	Leevi Kaaren	MID	PIE	29	27	2098	1		133	Ivan Kenderic	DEF	MRJ	27	21	2024	6.7		133	Aron Tulpaa	DEF	KAL	24	20	1831	7		133	Noori Samalainen	DEF	MPA	24	19	1967	42									
+134	Jalo Rehn	MID	AFK	30	29	1950	1		134	Henrik Kristianson	FWD	SYV	29	23	1845	1		134	Markku Lappalainen	DEF	AFK	27	20	1933	6.7		134	Nazer Shahrivar	MID	MPA	24	12	1512	7		134	Uusi Poutanen	MID	VKS	27	8	1705	42									
+135	Carl Mathiassen	DEF	RSR	30	28	2569	1		135	Balázs Aba	DEF	KUI	29	24	2065	1		135	Samara Josefovic	DEF	RSR	27	18	1850	6.7		135	Uusita Tavakoli	FWD	ARK	26	13	1396	7		135	Antos Niillán	MID	MPA	30	19	1754	42									
+136	Eski Ruudanen	DEF	RSR	30	30	2218	1		136	Tarmo Pallonen	DEF	KUI	29	29	1973	1		136	Balázs Jaminai	MID	RJK	28	20	1782	6.7		136	Taikō Aoki	MID	ARK	29	16	1973	7		136	Raitis Saarinen	FWD	TPS	28	22	1627	41									
+137	Charle Valtterinen	FWD	RSR	30	23	2060	1		137	Bort Org	FWD	MRJ	29	27	1949	1		137	Péter Alföldi	FWD	MRJ	28	12	1665	6.7		137	Olavi Routsalainen	DEF	VKS	29	27	2477	7		137	Tituus Linntunen	DEF	KAL	23	14	1616	40									
+138	Anton Lehtoranten	MID	RSR	30	12	1790	1		138	Yūki Hattori	FWD	MRJ	29	27	1945	1		138	Aaro Soini	MID	TPS	29	17	1790	6.7		138	Albert Kuusela	DEF	KUI	29	28	2504	7		138	Jouno Oiva	FWD	TPS	27	17	1635	40									
+									139	Salteni Pöyhönen	FWD	AFK	29	28	1763	1		139	Eema Põder	DEF	RPS	29	28	2560	6.7		139	Iilpo Kolemainen	MID	MRJ	29	10	1746	7		139	Osmo Rástoš	MID	MPA	28	27	1804	40									
+									140	Ivaan Mielonen	DEF	ARK	30	28	2481	1		140	Erik Jones	FWD	RPS	29	26	1608	6.7		140	Taavi Saarela	MID	ARK	30	18	1874	7		140	Taikō Aoki	MID	ARK	29	16	1973	40									
+									141	Jarmo Sillanpää	DEF	TPS	30	30	2093	1		141	Hietta Auvinen	DEF	XIV	29	28	2477	6.7		141	Gregor Tsorovic	MID	MPA	30	14	1804	7		141	Visker Nsytröm	FWD	KAL	29	29	1758	40									
+									142	Into Kangas	MID	TPS	30	16	2076	1		142	Yrjö Hietanen	DEF	XIV	29	29	2100	6.7		142	Eski Ruudanen	DEF	RSR	30	30	2218	7		142	Tippo Sooranpuunen	DEF	RPS	20	13	1454	39									
+									143	Aarne Kainulainen	MID	NOW	30	19	1890	1		143	Zdeno Medved	DEF	XIV	29	22	1931	6.7		143	Sándor Bodor	MID	RJK	20	7	1225	6		143	Teepoo Nasarinen	MID	ARK	26	14	1705	39									
+									144	Rainer Pakarinen	MID	NOW	30	29	2307	1		144	Ivaan Mielonen	DEF	ARK	30	28	2481	6.7		144	Teemo Õunapuu	MID	RSR	21	10	1199	6		144	Jarmo Sillanpää	DEF	TPS	30	30	2093	39									
+									145	Roððo Duongi	FWD	NOW	30	20	1709	1		145	Taavi Saarela	MID	ARK	30	18	1874	6.7		145	Pekka Sihvonen	MID	SYV	24	6	1416	6		145	Santteri Haapalainen	MID	KAL	30	11	1762	39									
+									146	Santteri Haapalainen	MID	KAL	30	11	1762	1		146	Aarne Kainulainen	MID	NOW	30	19	1890	6.7		146	Uusi Poutanen	MID	VKS	27	8	1705	6		146	Valde Latvala	MID	AFK	24	20	1573	38									
+									147	Johannn Schumacher	MID	RPS	30	29	2081	1		147	Boitto Ojanen	MID	KAL	30	20	1789	6.7		147	Ivan Kenderic	DEF	MRJ	27	21	2024	6		147	Patrik Miettula	MID	KAL	27	20	1819	38									
+									148	Teppo Estinen	FWD	RJK	30	30	2125	1		148	Ritomo Hoshino	MID	RPS	30	21	2205	6.7		148	Samara Josefovic	DEF	RSR	27	18	1850	6		148	Rainer Pakarinen	MID	NOW	30	29	2307	38									
+									149	Folke Raudkalda	MID	XIV	30	9	1817	1		149	Allain Kansalteninen	DEF	RJK	30	30	2330	6.7		149	Eema Põder	DEF	RPS	29	28	2560	6		149	Ulrik Zilinkas	MID	RJK	30	11	1782	38									
+									150	Soino Jaakola	MID	PIE	30	20	1926	1		150	Ulrik Zilinkas	MID	RJK	30	11	1782	6.7		150	Aalto Huttunen	DEF	NOW	30	29	2441	6		150	Gregor Tsorovic	MID	MPA	30	14	1804	38									
+									151	Rasmus Järvik	DEF	SYV	30	29	2604	1		151	Kanata Hanashima	FWD	RJK	30	30	2107	6.7		151	Sentilla Ylitalen	DEF	KAL	30	29	2522	6		151	Nemanja Petrovic	FWD	RSR	30	29	2372	38									
+									152	Márton Nagy	MID	SYV	30	29	2196	1		152	Katsuki Watanabe	MID	PIE	30	27	2018	6.7		152	Allain Kansalteninen	DEF	RJK	30	30	2330	6		152	Leevi Suominen	MID	TPS	22	14	1622	37									
+									153	Kalle Olstalainen	DEF	VKS	30	27	2423	1		153	Soino Jaakola	MID	PIE	30	20	1926	6.7		153	Louis Blanche	DEF	PIE	30	27	2492	6		153	Chu Hwang	DEF	RJK	24	7	1503	37									
+									154	Toivo Arkalainen	DEF	PJS	30	30	2528	1		154	Paavo Seppälä	DEF	VKS	30	28	2007	6.7		154	Márton Nagy	MID	SYV	30	29	2196	6		154	Pekka Sihvonen	MID	SYV	24	6	1416	37									
+									155	Sárat Duštá	DEF	MPA	30	28	2482	1		155	Pêr Lostanlen	MID	VKS	30	27	2071	6.7		155	Ilmari Kiviojanen	FWD	MPA	30	28	2062	6		155	Nawaz Sarvi	FWD	TPS	27	20	1565	37									
+									156	Kasperi Savolainen	DEF	MPA	30	30	2481	1		156	Kasperi Savolainen	DEF	MPA	30	30	2481	6.7		156	Rauli Jokinen	DEF	KUI	30	25	2410	6		156	Aarne Kainulainen	MID	NOW	30	19	1890	37									
+									157	Mikko Niskanen	DEF	KUI	30	27	2431	1		157	Jalo Rehn	MID	AFK	30	29	1950	6.7		157	Almeri Palomäki	MID	MRJ	17	8	1186	5		157	Teppo Estinen	FWD	RJK	30	30	2125	37									
+									158	Juhani Sinnar	MID	AFK	30	10	1710	1		158	Carl Mathiassen	DEF	RSR	30	28	2569	6.7		158	Hermes Toivolainen	DEF	TPS	25	17	1835	5		158	Günther Rajala	FWD	XIV	30	30	1771	37									
+									159	Chenguang Pei	FWD	AFK	30	21	1888	1		159	Anton Lehtoranten	MID	RSR	30	12	1790	6.7		159	Patrik Miettula	MID	KAL	27	20	1819	5		159	Chenguang Pei	FWD	AFK	30	21	1888	37									
+									160	Charle Valtterinen	FWD	RSR	30	23	2060	1		160	Eesko Vähäjärvi	GK	PIE	7	7	630	6.6		160	Aleksanteri Korhonenvaara	DEF	VKS	27	17	2047	5		160	Andreas Leijonhuft	MID	RPS	25	12	1575	36									
+									161	Bruno Del Pino	FWD	RSR	30	29	1905	1		161	Alvari Pietilä	MID	AFK	19	10	1345	6.6		161	Marcel Metsa	DEF	RSR	28	28	2307	5		161	Juhani Honkinensto	MID	RPS	29	28	2083	36									
+																		162	Sándor Bodor	MID	RJK	20	7	1225	6.6		162	Fernando Esturas	DEF	NOW	29	23	2212	5		162	Jaakima Porvorinen	FWD	PJS	29	19	1524	36									
+																		163	Zoltán Tóth	DEF	PIE	21	21	1834	6.6		163	Bittu Õunlepik	FWD	KAL	29	18	1932	5		163	Csaba Görbe	FWD	RPS	30	12	1553	36									
+																		164	Teemo Õunapuu	MID	RSR	21	10	1199	6.6		164	Nuuti Miettinen	DEF	AFK	29	29	2460	5		164	Kanata Hanashima	FWD	RJK	30	30	2107	36									
+																		165	Johann Falkenhayn	DEF	SYV	22	12	1513	6.6		165	Oliver Koivula	MID	PJS	30	14	2005	5		165	Armes Purtunen	FWD	PIE	30	22	1635	36									
+																		166	Yriö Kuokkanen	MID	NOW	24	19	1503	6.6		166	Santteri Ylikangas	DEF	MRJ	30	30	2569	5		166	Gustav Kalliokoski	FWD	PJS	30	30	1824	36									
+																		167	Arvin Lindqvist	MID	RPS	24	2	1206	6.6		167	Chenguang Pei	FWD	AFK	30	21	1888	5		167	Zoltán Tóth	DEF	PIE	21	21	1834	35									
+																		168	Noori Samalainen	DEF	MPA	24	19	1967	6.6		168	Kaake Räsänainen	MID	XIV	15	7	999	4		168	Robin Pärn	FWD	VKS	24	22	1504	35									
+																		169	Nazer Shahrivar	MID	MPA	24	12	1512	6.6		169	Markku Jäämaalainen	FWD	KUI	15	9	957	4		169	András Arató	FWD	SYV	25	13	1487	35									
+																		170	Valde Latvala	MID	AFK	24	20	1573	6.6		170	Alvari Pietilä	MID	AFK	19	10	1345	4		170	Paates Kajatamäki	DEF	NOW	26	15	1757	35									
+																		171	Pekka Sihvonen	MID	SYV	24	6	1416	6.6		171	Zoltán Tóth	DEF	PIE	21	21	1834	4		171	Vladimir Tsoikov	FWD	AFK	26	12	1575	35									
+																		172	Hermes Toivolainen	DEF	TPS	25	17	1835	6.6		172	Dömötör Barta	DEF	ARK	22	16	1597	4		172	Bætta Hyvärinen	DEF	XIV	27	15	1920	35									
+																		173	Teepoo Nasarinen	MID	ARK	26	14	1705	6.6		173	Noori Samalainen	DEF	MPA	24	19	1967	4		173	Erik Jones	FWD	RPS	29	26	1608	35									
+																		174	Andero Randmaa	DEF	NOW	26	23	2146	6.6		174	Taavetti Kankkunen	MID	TPS	25	18	1724	4		174	Teemo Højland	MID	SYV	26	14	1784	34									
+																		175	Teemo Højland	MID	SYV	26	14	1784	6.6		175	Teima Uibo	DEF	PIE	26	24	2099	4		175	Lajos Újföldi	MID	PJS	27	10	1632	34									
+																		176	Jouno Oiva	FWD	TPS	27	17	1635	6.6		176	Onni Pitkänen	MID	PIE	26	10	1513	4		176	Henrik Kristianson	FWD	SYV	29	23	1845	34									
+																		177	Ivan Gavrilovic	DEF	ARK	27	21	2043	6.6		177	Vladimir Tsoikov	FWD	AFK	26	12	1575	4		177	Yrjö Pietarinen	FWD	MPA	29	29	1784	34									
+																		178	Nakato Fujimoto	FWD	KAL	27	13	1646	6.6		178	Bætta Hyvärinen	DEF	XIV	27	15	1920	4		178	Zhalek Cheremesinoff	MID	NOW	30	12	1955	34									
+																		179	Kamui Kobayashi	DEF	RPS	27	21	2139	6.6		179	Lajos Újföldi	MID	PJS	27	10	1632	4		179	Roððo Duongi	FWD	NOW	30	20	1709	34									
+																		180	Bætta Hyvärinen	DEF	XIV	27	15	1920	6.6		180	Markku Lappalainen	DEF	AFK	27	20	1933	4		180	Zintá Dunginen	MID	KAL	23	11	1461	33									
+																		181	Tuomas Tuulensuu	FWD	PIE	27	8	1454	6.6		181	Hietta Auvinen	DEF	XIV	29	28	2477	4		181	Otto Hannuksela	FWD	ARK	29	17	1537	33									
+																		182	Tiitus Hyväronnen	MID	PJS	27	27	2022	6.6		182	Eemeli Uusitalo	DEF	SYV	30	29	2577	4		182	Ilkka Vuorinen	DEF	PJS	29	28	2432	33									
+																		183	Luukas Väyrinen	MID	TPS	28	27	1811	6.6		183	Toivo Arkalainen	DEF	PJS	30	30	2528	4		183	Ohto Voutilainen	DEF	MRJ	25	11	1704	32									
+																		184	Hugo Ploomõts	MID	ARK	29	28	2276	6.6		184	Juhani Sinnar	MID	AFK	30	10	1710	4		184	Kuismaa Kivisild	FWD	RPS	28	22	1498	32									
+																		185	Taikō Aoki	MID	ARK	29	16	1973	6.6		185	Carl Mathiassen	DEF	RSR	30	28	2569	4		185	Nicolai Taicescu	FWD	MPA	30	20	1805	32									
+																		186	Otto Hannuksela	FWD	ARK	29	17	1537	6.6		186	Robert Kivisilta	DEF	PIE	22	20	1841	3		186	Anton Lehtoranten	MID	RSR	30	12	1790	32									
+																		187	Niiko Rautia	DEF	KAL	29	27	2475	6.6		187	Johann Falkenhayn	DEF	SYV	22	12	1513	3		187	Erno Koittilainen	DEF	PJS	20	13	1416	31									
+																		188	Kalle Ruokonen	MID	KAL	29	29	1999	6.6		188	Teepoo Nasarinen	MID	ARK	26	14	1705	3		188	Bittu Õunlepik	FWD	KAL	29	18	1932	31									
+																		189	Sojjo Sarapuu	DEF	RPS	29	29	2441	6.6		189	Teemo Højland	MID	SYV	26	14	1784	3		189	Saleim Razhimi	FWD	XIV	29	22	1706	30									
+																		190	Juhani Honkinensto	MID	RPS	29	28	2083	6.6		190	Taisto Tervorinen	DEF	ARK	27	27	2044	3		190	Ryūhei Amamiya	MID	SYV	30	25	2103	30									
+																		191	Leevi Kaaren	MID	PIE	29	27	2098	6.6		191	Antero Laajunen	DEF	TPS	28	22	2197	3		191	Ilmari Kiviojanen	FWD	MPA	30	28	2062	30									
+																		192	Töhötöm Molnár	FWD	PJS	29	11	1577	6.6		192	Gerhard Inselne	DEF	TPS	29	29	2559	3		192	Aake Toivalainen	DEF	AFK	28	13	1925	29									
+																		193	Teimo Gæupà	FWD	MPA	29	13	1654	6.6		193	Muotso Nihkolávo	DEF	MPA	29	28	2395	3		193	Seppo Puhakka	MID	ARK	25	16	1775	28									
+																		194	Tarmo Pallonen	DEF	KUI	29	29	1973	6.6		194	Kanta Zielenski	DEF	KUI	29	17	2103	3		194	Yngvar Gustavsonn	FWD	SYV	29	24	1746	28									
+																		195	Kanta Zielenski	DEF	KUI	29	17	2103	6.6		195	Veitto Harttikainen	DEF	ARK	30	28	2405	3		195	Saīd Farzan	FWD	NOW	30	30	1759	28									
+																		196	Iilpo Kolemainen	MID	MRJ	29	10	1746	6.6		196	Kalle Olstalainen	DEF	VKS	30	27	2423	3		196	Nikolai Tormotoff	FWD	RSR	30	16	1758	28									
+																		197	Yūki Hattori	FWD	MRJ	29	27	1945	6.6		197	Artyom Vladimovic	DEF	PJS	30	30	2521	3		197	Erast Pobedonostsev	FWD	RJK	25	22	1672	27									
+																		198	Nuuti Miettinen	DEF	AFK	29	29	2460	6.6		198	Sárat Duštá	DEF	MPA	30	28	2482	3		198	Onni Pitkänen	MID	PIE	26	10	1513	27									
+																		199	Aallto Mikhailoff	MID	ARK	30	28	1925	6.6		199	Kolomir Onappovic	MID	NOW	21	11	1393	2		199	Péter Alföldi	FWD	MRJ	28	12	1665	27									
+																		200	Jarmo Sillanpää	DEF	TPS	30	30	2093	6.6		200	Tituus Linntunen	DEF	KAL	23	14	1616	2		200	Boris Lukyanovich	FWD	RSR	30	23	1929	27									
+																		201	Into Kangas	MID	TPS	30	16	2076	6.6		201	Chu Hwang	DEF	RJK	24	7	1503	2		201	Markku Jäämaalainen	FWD	KUI	15	9	957	26									
+																		202	Rainer Pakarinen	MID	NOW	30	29	2307	6.6		202	Otto Hannuksela	FWD	ARK	29	17	1537	2		202	Teemo Õunapuu	MID	RSR	21	10	1199	26									
+																		203	Roððo Duongi	FWD	NOW	30	20	1709	6.6		203	Niiko Rautia	DEF	KAL	29	27	2475	2		203	Albert Pottaslainen	MID	RSR	23	18	1520	26									
+																		204	Kurtsov Zaitsev	MID	KAL	30	29	2204	6.6		204	Ilkka Vuorinen	DEF	PJS	29	28	2432	2		204	Tuomas Tuulensuu	FWD	PIE	27	8	1454	26									
+																		205	Johannn Schumacher	MID	RPS	30	29	2081	6.6		205	Toivo Grigorovic	DEF	RJK	30	30	2700	2		205	Teimo Gæupà	FWD	MPA	29	13	1654	26									
+																		206	Jaan Kuuskrand	DEF	XIV	30	28	2620	6.6		206	Rasmus Järvik	DEF	SYV	30	29	2604	2		206	Yūki Hattori	FWD	MRJ	29	27	1945	26									
+																		207	Folke Raudkalda	MID	XIV	30	9	1817	6.6		207	Sentia Ojala	GK	VKS	6	6	540	1		207	Johannn Schumacher	MID	RPS	30	29	2081	26									
+																		208	Markku Hongisto	MID	PIE	30	16	2019	6.6		208	Sámme Náinnas	GK	MPA	19	19	1710	1		208	Nazer Shahrivar	MID	MPA	24	12	1512	25									
+																		209	Ryūhei Amamiya	MID	SYV	30	25	2103	6.6		209	Tippo Sooranpuunen	DEF	RPS	20	13	1454	1		209	Folke Raudkalda	MID	XIV	30	9	1817	25									
+																		210	Márton Nagy	MID	SYV	30	29	2196	6.6		210	Ernesto Torres	GK	PJS	20	20	1800	1		210	Charle Valtterinen	FWD	RSR	30	23	2060	25									
+																		211	Eemeli Uusitalo	DEF	SYV	30	29	2577	6.6		211	Erno Koittilainen	DEF	PJS	20	13	1416	1		211	Alvari Pietilä	MID	AFK	19	10	1345	24									
+																		212	Oliver Koivula	MID	PJS	30	14	2005	6.6		212	Ruosto Ruohamäkinen	DEF	MPA	21	15	1611	1		212	Karin Tuomela	DEF	RSR	21	16	1688	24									
+																		213	Gregor Tsorovic	MID	MPA	30	14	1804	6.6		213	Karin Tuomela	DEF	RSR	21	16	1688	1		213	Uusita Tavakoli	FWD	ARK	26	13	1396	23									
+																		214	Nicolai Taicescu	FWD	MPA	30	20	1805	6.6		214	Luuka Velikkon	FWD	NOW	24	10	1345	1		214	Taame Kankanpää	FWD	XIV	27	8	1435	23									
+																		215	Eski Ruudanen	DEF	RSR	30	30	2218	6.6		215	Seppo Puhakka	MID	ARK	25	16	1775	1		215	Töhötöm Molnár	FWD	PJS	29	11	1577	23									
+																		216	Boris Lukyanovich	FWD	RSR	30	23	1929	6.6		216	Ohto Voutilainen	DEF	MRJ	25	11	1704	1		216	Arvin Lindqvist	MID	RPS	24	2	1206	22									
+																		217	Kaake Räsänainen	MID	XIV	15	7	999	6.5		217	Paates Kajatamäki	DEF	NOW	26	15	1757	1		217	Sebastian Silfersparre	FWD	VKS	18	8	1155	21									
+																		218	Markku Jäämaalainen	FWD	KUI	15	9	957	6.5		218	Andero Randmaa	DEF	NOW	26	23	2146	1		218	Kolomir Onappovic	MID	NOW	21	11	1393	21									
+																		219	Almeri Palomäki	MID	MRJ	17	8	1186	6.5		219	Ivan Gavrilovic	DEF	ARK	27	21	2043	1		219	Kimi Vostanen	FWD	RJK	24	8	1482	21									
+																		220	Erno Koittilainen	DEF	PJS	20	13	1416	6.5		220	Aleksi Järveläinen	GK	KUI	27	27	2430	1		220	Nakato Fujimoto	FWD	KAL	27	13	1646	21									
+																		221	Kolomir Onappovic	MID	NOW	21	11	1393	6.5		221	Kristian Hansen	DEF	PIE	29	28	2576	1		221	Almeri Palomäki	MID	MRJ	17	8	1186	20									
+																		222	Leevi Suominen	MID	TPS	22	14	1622	6.5		222	Ivaan Mielonen	DEF	ARK	30	28	2481	1		222	Sándor Bodor	MID	RJK	20	7	1225	20									
+																		223	Robert Kivisilta	DEF	PIE	22	20	1841	6.5		223	Zhalek Cheremesinoff	MID	NOW	30	12	1955	1		223	Kaake Räsänainen	MID	XIV	15	7	999	17									
+																		224	Tituus Linntunen	DEF	KAL	23	14	1616	6.5		224	Jaan Kuuskrand	DEF	XIV	30	28	2620	1		224	Luuka Velikkon	FWD	NOW	24	10	1345	17									
+																		225	Albert Pottaslainen	MID	RSR	23	18	1520	6.5		225	Oskari Paanalainen	DEF	MRJ	30	30	2349	1		225	Aatos Väisänen	GK	VKS	24	24	2125	3									
+																		226	Zintá Dunginen	MID	KAL	23	11	1461	6.5		226	Antti Pohjolainen	DEF	AFK	30	29	2624	1		226	Mona Zhuravlyov	GK	NOW	10	10	900	2									
+																		227	Ukko Ojala	MID	PJS	24	19	1668	6.5											227	Ernesto Torres	GK	PJS	20	20	1800	2									
+																		228	Luuka Velikkon	FWD	NOW	24	10	1345	6.5											228	Jean Montblanche	GK	AFK	21	21	1890	2									
+																		229	Seppo Puhakka	MID	ARK	25	16	1775	6.5											229	Aleksi Järveläinen	GK	KUI	27	27	2430	2									
+																		230	Santeri Helkanen	DEF	SYV	25	20	1958	6.5											230	Tazta Daryaei	GK	XIV	7	7	630	1									
+																		231	Ohto Voutilainen	DEF	MRJ	25	11	1704	6.5											231	Eesko Vähäjärvi	GK	PIE	7	7	630	1									
+																		232	Teima Uibo	DEF	PIE	26	24	2099	6.5											232	Gustav Pennanen	GK	KAL	9	9	810	1									
+																		233	Onni Pitkänen	MID	PIE	26	10	1513	6.5											233	Taisto Konstalainen	GK	TPS	21	21	1890	1									
+																		234	Taisto Tervorinen	DEF	ARK	27	27	2044	6.5											234	Teemo Aasmae	GK	RPS	22	22	1980	1									
+																		235	Nawaz Sarvi	FWD	TPS	27	20	1565	6.5											235	Christian Leino	GK	SYV	22	22	1980	1									
+																		236	Patrik Miettula	MID	KAL	27	20	1819	6.5											236	Ludvig Laaksonen	GK	XIV	23	23	2070	1									
+																		237	Uusi Poutanen	MID	VKS	27	8	1705	6.5											237	Valtteri Aravirta	GK	PIE	23	23	2070	1									
+																		238	Lajos Újföldi	MID	PJS	27	10	1632	6.5											238	Erik Aalto	GK	MRJ	23	23	2070	1									
+																		239	Fernando Esturas	DEF	NOW	29	23	2212	6.5																											
+																		240	Zhalek Cheremesinoff	MID	NOW	30	12	1955	6.5																											
+																		241	Aalto Huttunen	DEF	NOW	30	29	2441	6.5																											
+																		242	Santteri Haapalainen	MID	KAL	30	11	1762	6.5																											
+																		243	Teppo Estinen	FWD	RJK	30	30	2125	6.5																											
+																		244	Juhani Sinnar	MID	AFK	30	10	1710	6.5																											
+																		245	Chenguang Pei	FWD	AFK	30	21	1888	6.5																											
+																		246	Charle Valtterinen	FWD	RSR	30	23	2060	6.5																											
+																		247	Dömötör Barta	DEF	ARK	22	16	1597	6.4																											
+																		248	Aake Toivalainen	DEF	AFK	28	13	1925	6.4																											
+																		249	Portik Likkastov	DEF	TPS	29	23	2176	6.4																											
+																		250	Ilkka Vuorinen	DEF	PJS	29	28	2432	6.4																											
+																		251	Ilmari Kiviojanen	FWD	MPA	30	28	2062	6.4																											
+																		252	Nemanja Petrovic	FWD	RSR	30	29	2372	6.4																											
+																		253	Markko Vanhatalo	GK	TPS	9	9	810	6.3																											
+																		254	Paates Kajatamäki	DEF	NOW	26	15	1757	6.3																											
+																		255	Bittu Õunlepik	FWD	KAL	29	18	1932	6.3																											
+																		256	Damian Jalkanen	GK	KUI	3	3	270	7.1																											
