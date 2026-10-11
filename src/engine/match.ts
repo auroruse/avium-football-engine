@@ -12,7 +12,7 @@ import { meGkAt, meIntoGoal, mePlanSave, mePlanSaveBall, meReplanSave } from "./
 import { meBlock, meCarryPick, meDuties, meOppDist, meRuns, meShape, meSlots, meTactical } from "./brain";
 import { meSPBegin, meSPFetch, meSPReady, meSPShape, meSPTake } from "./setpiece";
 import { meXgCal, meDecide, meShotP, meShotSit, meWindUp } from "./decide";
-import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
+import { MT, mindChoose, mindDead, mindDuel, mindFirstTime, mindInit, mindOnPass, mindOnThrow, mindSense, mindSetPiece, mindTick, mindTouchAngle } from "./mind";
 import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meClosest, meCtrl, meDanger, meDir, meGoalX, meIntercept, meKeeper, meKeeperIx, meLaneBlock, meOffsideLine, meOther, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs } from "./geometry";
 
 // ==================== POSITIONAL MATCH ENGINE =============================================
@@ -309,6 +309,16 @@ export function meMove(s, rng) {
     // everybody else holds where the shape has him; the rebound is a loose ball like any other.
     let scramble = (mp.idx < 0 || mp.flight) && !mp.sp && !mp.shot ? mp.desig[side] : -1;
     if (mp.flight && mp.fside === side && mp.fj >= 0) scramble = mp.fj;
+    // THE BALL OFF HIS FOOT IS THERE TO BE WON (user, 11 October 2026: defenders "jockey slowly around a ball when
+    // there's clearly a chance to change directions and intercept it"). A dribbler keeps the ball as his until it is
+    // touchKeep away, so a knock-on or a heavy touch sent nobody at it: the presser's jockey point follows the man's
+    // body, not the ball. Off his foot and with their quickest man there first, that man goes for the ball.
+    if (s.brain === 2 && scramble < 0 && mp.idx >= 0 && mp.side !== side && !mp.sp && !mp.shot && !mp.flight) {
+      const c = s.players[mp.side]?.[mp.idx], j = mp.desig[side], dq = j >= 0 ? ps[j] : null;
+      if (c && dq && !dq.off && dq.pos !== "GK" && Math.hypot(c.x - mp.bx, c.y - mp.by) > CFG.knockLooseR
+          && (dq._ttbMs ?? 1e9) + CFG.knockBeatMs < meTimeToBallMs(c, mp.bx, mp.by, meSpeed(meAttrs(c), c.stamina)))
+        scramble = j;
+    }
     for (let i = 0; i < ps.length; i++) {
       const p = ps[i];
       if (p.off) { p.vx = 0; p.vy = 0; continue; }  // sent off
@@ -343,6 +353,26 @@ export function meMove(s, rng) {
         if (mp.idx < 0 && p._icx !== undefined) { tx = p._icx; ty = p._icy; budget = p._icMs || 0; }
         else { tx = mp.bx; ty = mp.by; }
       }
+      // THE BALL IN BEHIND IS MET ON THE RUN (user, 11 October 2026: through balls "straight into the keeper", "struck
+      // way too powerfully for the receiver"). The pass is solved for him running his line to its aim (pass.ts), and he
+      // was then steered by the intercept instead: the first point of the ball's path he could reach, which for a ball
+      // coming from behind is behind him. He checked back, met it a dozen metres early at fifteen metres a second or
+      // let it run past, and it rolled on to the keeper or out. He runs his line to the aim until the ball is on him.
+      const ppT = mp.passPending;
+      const thruRun = i === scramble && mp.flight && mp.fside === side && mp.fj === i && p.pos !== "GK"
+        && !!ppT && ppT.thru && !ppT.high && ppT.ax != null
+        && (ppT.ax - mp.bx) * (p.x - mp.bx) + (ppT.ay - mp.by) * (p.y - mp.by) > 0
+        && Math.hypot(mp.bx - p.x, mp.by - p.y) > CFG.thruRunNear;
+      if (thruRun) { tx = ppT.ax; ty = ppT.ay; budget = 0; }
+      // A ball still above his waist is not met along the ground: walking into its line takes him back under it.
+      const airBall = i === scramble && mp.bz > CFG.recvAirZ;
+      // A LOOSE BALL AT HIS FEET IS ATTACKED, NOT LED. Inside looseAttackR of a ball nobody has played, he goes at the
+      // ball itself. Sent to where the forecast would have it a quarter of a second on, he ran level with it, then a
+      // stride in front of it at its own pace, and could not turn back onto it before somebody else arrived (traced,
+      // 11 October 2026: the man named for it a metre from it for a second and more, five times a match).
+      const looseAtk = i === scramble && mp.idx < 0 && !ppT && !gkShot && p.pos !== "GK" && !airBall && !thruRun
+        && Math.hypot(mp.bx - p.x, mp.by - p.y) < CFG.looseAttackR;
+      if (looseAtk) { tx = mp.bx + mp.bvx * CFG.looseLead; ty = mp.by + mp.bvy * CFG.looseLead; budget = 0; }
       const a = meAttrs(p);
       // Running with the ball costs you speed. That is the only thing having it changes.
       // A keeper jogs about his box, but a keeper going for a ball dives, and a dive is quick.
@@ -426,7 +456,7 @@ export function meMove(s, rng) {
       // let it come -- every pass to feet met a statue, and the touch was taken from a standstill.
       // He now walks into it along its line, quicker with a man on him, so he meets it moving.
       let meet = 0;
-      if (i === scramble && !gkShot && !deadBall && onLine && mp.idx < 0 && d < CFG.scrambleStop) {
+      if (i === scramble && !gkShot && !deadBall && onLine && mp.idx < 0 && d < CFG.scrambleStop && !thruRun && !airBall && !looseAtk) {
         const bdx = mp.bx - p.x, bdy = mp.by - p.y, bd = Math.hypot(bdx, bdy);
         if (bd > 0.05 && (mp.bvx * bdx + mp.bvy * bdy) < 0) {        // it is still coming to him
           let nearO = Infinity;
@@ -442,7 +472,7 @@ export function meMove(s, rng) {
       // arriving behind him take it. That is the jockeying.
       const coming = mp.bvx * (p.x - mp.bx) + mp.bvy * (p.y - mp.by) > 0;
       const stopAt = (mp.sp && p._spSet) ? 0.12 : p.pos === "GK" ? 0.25 : onBall ? 0
-                   : i === scramble ? (deadBall || !onLine || meet || !coming ? 0 : CFG.scrambleStop)
+                   : i === scramble ? (deadBall || !onLine || meet || !coming || thruRun || airBall || looseAtk ? 0 : CFG.scrambleStop)
                    : p._closing ? CFG.closeStop : 1.3;
       if (d < stopAt) { p.vx = 0; p.vy = 0; continue; }   // arrived; stop rather than jiggle on the spot
       // GetLazyVelocity (elizacontroller.cpp:437-474): how hard you run depends on who you are, what
@@ -1897,8 +1927,10 @@ export function meTick(s, rng, out) {
       // Read off the restart before it is taken, because meSPTake clears it. The card is applied
       // AFTER the ball has gone, so a second yellow can send him off without the delivery having to
       // come off the boot of a man who is already walking.
-      const wW = mp.sp.waste || 0, wI = mp.sp.ti, wS = mp.sp.side, wX = mp.sp.x, wY = mp.sp.y;
+      const wW = mp.sp.waste || 0, wI = mp.sp.ti, wS = mp.sp.side, wX = mp.sp.x, wY = mp.sp.y, wK = mp.sp.kind;
       meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy);
+      // A throw-in is a pass to the man it is thrown to, and the thrower steps back onto the pitch (mindOnThrow).
+      if (s.brain === 2 && wK === "throw" && mp.passPending?.k === "throw" && mp.fj >= 0) mindOnThrow(s, wS, wI, mp.fj);
       if (wW > 0 && rng.u() < CFG.wasteCard * wW) {
         const q = s.players[wS]?.[wI];
         if (q && !q.off) {
@@ -3233,6 +3265,12 @@ export function meTick(s, rng, out) {
   // (against the forecast when it is loose). Per team: the best of those, and a slew-limited EMA
   // of the CONTEST ratio -- not who holds it, but who would win the race to it. During a fifty-
   // fifty the balance already moves; a full swing still takes a couple of seconds (team.cpp:319-326).
+  // How long ago the ball last changed (ball.ts, _pChg): that much of everybody's reading of it is done. Only once no
+  // pass is outstanding (a touch gone astray, a rebound, a tackle): a pass still on its way keeps the reading the
+  // passer priced it with (mePassRisk), because the whole pass decision is calibrated against that race. Not keyed on
+  // mp.flight, which stays set on a deflected ball: two loose balls in three still carried it.
+  const seenMs = mp._pChg != null && !mp.passPending ? Math.max(0, mp.tick - mp._pChg) * ME_DT * 1000 : 0;
+  const airPred = mp.flight && mp.pred ? mp.pred.some(z => z[2] > CFG.recvAirZ) : false;
   for (const sd of ME_SIDES) {
     let bi = -1, bms = Infinity;
     for (let i = 0; i < s.players[sd].length; i++) {
@@ -3246,8 +3284,21 @@ export function meTick(s, rng, out) {
       // Charged the full lag, the near end of the flight was "out of reach" and he was sent to a point
       // far down it: on real grass a pass a metre off target ran past him at his side and out of play,
       // about eleven times a match. He pays rcvLag of it.
-      else { const ic = meIntercept(q, mp, vmax, undefined, mp.flight && mp.fside === sd && mp.fj === i ? CFG.rcvLag : 1);
-             q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms; }
+      else {
+        const rcv = mp.flight && mp.fside === sd && mp.fj === i, lagM = rcv ? CFG.rcvLag : 1;
+        let ic = meIntercept(q, mp, vmax, undefined, lagM, seenMs);
+        // THE HIGH BALL IS TAKEN WHERE IT COMES DOWN (user, 11 October 2026: "the receiver sometimes doesn't adjust
+        // correctly and just completely fails to touch it, even when not under pressure"). He was sent to the first
+        // point of the flight under his head, and the ground-ball meeting below then walked him a metre or two back
+        // toward the passer, under a ball still above his reach, which bounced behind him. With nobody to beat to it,
+        // the man it was played to goes to where it has dropped to recvAirZ and takes it there; with somebody who
+        // would get to it first, he goes up for it where he can reach it, as before.
+        if (rcv && airPred && q.pos !== "GK") {
+          const lo = meIntercept(q, mp, vmax, undefined, lagM, seenMs, CFG.recvAirZ);
+          if (lo.ok && mp.ttbBest[meOther(sd)] > lo.ms + CFG.recvAirMs) ic = lo;
+        }
+        q._icx = ic.x; q._icy = ic.y; q._icMs = ic.slotMs; ms = ic.ms;
+      }
       q._ttbMs = ms;
       // ...and THE KEEPER IS NOT THE MAN SENT AFTER A LOOSE BALL unless he has decided to come for it
       // (brain.ts, _gkOut). Nearest to it near his own area, he was being sent after every one, whatever

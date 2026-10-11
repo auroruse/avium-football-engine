@@ -762,6 +762,22 @@ function mindRunTarget(s, side, p, g) {
   if (Math.hypot(p.x - p._rx, p.y - p._ry) < 1.5 || p._runT <= 0) { p._run = null; p._runT = 0; p._cool = MT.runCool; }
 }
 
+// THE THROW IS A PASS, and the man who threw it is back in play the moment it leaves his hands (user, 11 October
+// 2026: "the thrower threw it to a teammate, who immediately passed it back to him; he missed the touch and the ball
+// went back out"). Nothing recorded who a throw went to, so the "not straight back" limit in mind/decide.ts never
+// applied after one, and nobody stepped the thrower onto the pitch: he threw from half a metre inside the line and
+// drifted off it, so the cheapest ball there is, a first-time side-foot back the way it came, found him with the
+// touchline at his heels, and anything short of a perfect touch put it out for theirs. Now the man it is thrown to has
+// got it from the thrower, and the thrower steps in off the line at once, so a ball back to him is a one-two into
+// his run, away from the line.
+export function mindOnThrow(s, side, by, to) {
+  const mp = s.mePos, us = s.players[side], p = us[by], q = us[to];
+  if (!p || p.off || p.pos === "GK") return;
+  if (q && q !== p) { q._gotFrom = by; q._gotT = mp.tick; }
+  const inY = p.y < ME_HALF_W ? 1 : -1;
+  startRun(s, side, p, "wall", depthOf(side, p.x) + 2, p.y + inY * MT.throwStepIn);
+}
+
 // THE PASS IS STRUCK: does the passer go, and does a third man go? Instead of the first brain's dice,
 // each is a run with a reason: a give-and-go needs grass beyond his marker and a man who makes them; the
 // third man needs a ball into feet that will be laid off, and somebody onside with room behind the line.

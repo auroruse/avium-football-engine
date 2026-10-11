@@ -51,8 +51,14 @@ The app shows a man out of position at about the rating he plays the place at (`
 `positions2.mjs` on goal difference; a slot's main skills count whole and any other skill's gap counts less the larger it
 is, which twelve moves played out by `positions-check.mjs` confirmed within their noise), ringed in
 the loss colour on every pitch, for the eleven only: the eleven's rating counts it, a side's own rating and the AFA
-Rankings do not. A player's page lights his own positions and puts any other place a side plays him in the loss colour;
-lists show "CM" or "CM/DM". Bench places keep a broad group (a club's keeper, defender, two midfielders and forward; a
+Rankings do not. Out of position means the place costs him (`posDrop` above 0, the user, 11 October 2026): a free move,
+a left back on the right or a central midfielder holding, is not flagged. Flagged, he carries the alert: on a pitch a
+red warning triangle centred over his place's label and the cost (a drawn arrow down and the points) in a block of his
+rating's width over it; in a list the triangle and the cost after his place; each opens the out-of-position card
+(TraitCard, `data-oop`). A player's page lights his own positions and puts a place a side plays him out of position in
+the loss colour, with a line for each such side under the pitch (and on his Players card); the Players list puts the
+alert beside his positions. Lists of a side show where each man plays, one place: the eleven's place, a bench man his
+first position (the editor's bench, his position that fits the place); his banner and the Players list give both. Bench places keep a broad group (a club's keeper, defender, two midfielders and forward; a
 national side's the groups of its eleven): substitutes are sorted into the places their positions fit wherever men come
 or go, and a man left in another group's place is marked, not refused. Substitutions, injury and ban cover, rotation,
 formation changes and the manager's shape change all place men by their own positions; a substitute takes the slot of
@@ -514,7 +520,9 @@ sizes is the whole scale, and a size off it is a bug.
 
 ### Icons
 
-Inline SVG, 1.5px stroke, round caps and joins, 16px in bars, 14px in rows. No emoji, no icon font.
+Inline SVG, 1.5px stroke, round caps and joins, 16px in bars, 14px in rows. No emoji, no icon font. No typed triangles
+either (the user, 11 October 2026): a rise or fall in a line of text is a drawn arrow (`UxArrow`) in the text's own
+colour, as tall as its capitals with a stroke near its weight, and a sort order or a closed list a drawn caret.
 
 ### Motion
 

@@ -149,6 +149,12 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   const kindTech = (t, kn) => kn === 1 ? t
     : clamp(1 - kn * (1 - t) - (kn - 1) * CFG.passNoiseDeg / CFG.passNoiseSkill, 0, 1);
   const loftAt = Math.min(CFG.loftD - (st.passingDir || 0) * CFG.loftDir, meGroundMaxD());
+  // NOT A BALL FOR THEIR KEEPER (user, 11 October 2026: through balls "forward ones straight into the keeper"). A ball
+  // into a runner's path is his only if he gets there before their keeper does: the keeper comes for it at the pace he
+  // actually comes at (gkScramble), and a ball he reaches first, or with the runner, is a ball to him.
+  const gkThem = meKeeper(s.players[meOther(side)]);
+  const gkFirst = (ax, ay, tRun) => !!gkThem && meTimeToBallMs(gkThem, ax, ay, meSpeed(meAttrs(gkThem), gkThem.stamina) * CFG.gkScramble)
+                                            < tRun * 1000 + CFG.gkFirstMs;
   const inBox = (x, y) => Math.abs(meGoalX(side) - x) < CFG.crossBoxX && Math.abs(y - ME_HALF_W) < CFG.crossBoxY;
   const ownHalf = (p.x - meGoalX(meOther(side))) * dir < PITCH_L / 2;
   let crossOn = false;
@@ -365,10 +371,10 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
         const g = meMeetGround(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd);
         const gOk = !!g && g.d <= CFG.groundMaxD;
         const gBlk = gOk ? meLaneBlock(s, side, p.x, p.y, g.ax, g.ay) : Infinity;
-        if (gOk) consider(q, j, { ax: g.ax, ay: g.ay, k: committed ? "through" : "space", high: false, va: g.va, tb: g.t, thru: true, blk: gBlk });
+        if (gOk && !gkFirst(g.ax, g.ay, g.t)) consider(q, j, { ax: g.ax, ay: g.ay, k: committed ? "through" : "space", high: false, va: g.va, tb: g.t, thru: true, blk: gBlk });
         if (committed && (rk === "behind" || rk === "wall")) {
           const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, ux, uy, vd, "over", CFG.overLand);
-          if (o && o.d >= CFG.overMinD) {
+          if (o && o.d >= CFG.overMinD && !gkFirst(o.ax, o.ay, o.t)) {
             const oBlk = meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true);
             if (!gOk || o.d > loftAt || oBlk * CFG.laneK + CFG.loftBar < gBlk * CFG.laneK)
               consider(q, j, { ax: o.ax, ay: o.ay, k: "over", high: true, kind: "over", tb: meLoftT(o.d, "over"), thru: true, blk: oBlk });
@@ -387,7 +393,7 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
         const tx = meGoalX(side) - dir * 6, ty = ME_HALF_W + (q.y - ME_HALF_W) * 0.6;
         const tl = Math.hypot(tx - q.x, ty - q.y) || 1;
         const o = meMeetLoft(p.x, p.y, q.x, q.y, qvx, qvy, (tx - q.x) / tl, (ty - q.y) / tl, qTop, "over", CFG.overLand);
-        if (o && o.d >= CFG.overMinD && (o.ax - off) * dir > 1)
+        if (o && o.d >= CFG.overMinD && (o.ax - off) * dir > 1 && !gkFirst(o.ax, o.ay, o.t))
           consider(q, j, { ax: o.ax, ay: o.ay, k: "over", high: true, kind: "over", tb: meLoftT(o.d, "over"), thru: true, rel: true,
                            blk: meLaneBlock(s, side, p.x, p.y, o.ax, o.ay, true) });
       }
