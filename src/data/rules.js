@@ -1,18 +1,19 @@
 // THE REGISTRY'S RULES: who may change what, and what a saved cart becomes. The registry server (server/worker.js)
 // enforces them, and it is the only place that counts; the app reads the same rules to show each person what they can
-// touch. `h` is how squads are judged: h.labels(team) its slot positions, h.fit(a, b) the position cost, h.ovr(id) a
-// man's rating.
+// touch. `h` is how squads are judged: h.labels(team) its slot positions (and each bench place's group), h.fit(a, b) the
+// position cost, h.ovr(id) a man's rating and h.pos(id) his own positions.
 //
 // The overseer changes everything. An editor changes their own nation's sides (its national side and its clubs): names
 // and kits outright; codes, grounds and cities by request to the overseer; formations, slots, and who plays for and
 // manages them, by moving men. A man from another nation's club comes by a trade, which that nation answers (the
 // overseer where it has no editor). New players, managers, clubs and leagues are requests the overseer answers, editing
 // them first if he likes; a new man's rating may wait for him. A player's or manager's own record (rating, age,
-// nationality, traits) is never an editor's. A league's name, tier and cup are its nation's editors' to change outright.
+// nationality, traits) is never an editor's, but an editor may ask the overseer to change one of their own players'
+// positions. A league's name, tier and cup are its nation's editors' to change outright.
 import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { placeFor, without } from "./squads.js";
 import { STYLE_LBL } from "./styles.js";
-import { POS_ROLE } from "./positions.js";
+import { GROUP_NAME, POS_ROLE, fitsPlace, posList } from "./positions.js";
 import { FORMATIONS } from "../engine/formations.ts";
 import { birthDateOk } from "./icclock.js";
 import { leagueNameFree, leagueRecord } from "./leagues.js";
@@ -65,6 +66,9 @@ const codeClash = (teams, code, t) => teams.find(x => x !== t && x.code === code
 const tierOk = (v) => Number.isInteger(v) && v >= 0 && v <= 5;
 const cupOk = (v, leagues) => text(v, 50) && !(leagues || []).some(l => l.name.toLowerCase() === v.toLowerCase());
 const isNew = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+// A player's positions as a record keeps them: one or two real positions, each once.
+const posOk = (v) => { const raw = Array.isArray(v) ? v : typeof v === "string" && v ? v.split("/") : [];
+  return raw.length >= 1 && raw.length <= 2 && posList(raw).length === raw.length; };
 function valueProblems(rec, next, changes) {
   const out = [], mgrs = new Set(next.managers.map(m => m.id)), nextBy = new Map(next.teams.map(t => [teamKey(t), t]));
   for (const c of changes) {
@@ -75,6 +79,7 @@ function valueProblems(rec, next, changes) {
       if (c.field === "nat" && !nationCode(c.to)) bad("not a nationality");
       if (c.field === "born" && c.to != null && !birthDateOk(c.to)) bad("a date of birth is a real date, for a man at least 14");
       if (c.field === "style" && c.to != null && !STYLE_NAMES.has(c.to)) bad("not a style");
+      if (c.kind === "players" && c.field === "pos" && !posOk(c.to)) bad("a player has one or two positions");
     }
     if (c.kind === "leagues") {
       if (c.field === "name") { if (!text(c.to, 50)) bad("not a usable name"); else if (!leagueNameFree(next.leagues, c.to, c.id)) bad(`a league is already called ${c.to}`); }
@@ -93,24 +98,11 @@ function valueProblems(rec, next, changes) {
   return out;
 }
 
-// A man who ends up on no team keeps the position he last played, for whoever signs him; a man back on a team drops it.
-function withPositions(rec, d, h) {
-  const before = new Map(), next = applyDraft(rec, d), on = new Set();
-  for (const t of rec.teams) { const lab = h.labels(t); squadIds(t).forEach((id, i) => {
-    if (id && (!before.has(id) || !isNational(t))) before.set(id, lab[i]); }); }
-  for (const t of next.teams) for (const id of squadIds(t)) if (id) on.add(id);
-  const byId = new Map(rec.players.map(r => [r.id, r]));
-  let out = d;
-  for (const [id, pos] of before) if (!on.has(id) && !byId.get(id)?.pos) out = draftWith(out, rec, id, { pos }, "players");
-  for (const id of on) if (byId.get(id)?.pos) out = draftWith(out, rec, id, { pos: null }, "players");
-  return out;
-}
-
 // Whether a set of changed teams still adds up: squads the same size, no man twice in one squad or at two clubs, eleven
 // starters each, nobody retired.
-function squadProblems(rec, next, keys) {
+function squadProblems(rec, next, keys, h) {
   const out = [], base = new Map(rec.teams.map(t => [teamKey(t), t])), retired = new Set(next.players.filter(r => r.retired).map(r => r.id));
-  const known = new Set(next.players.map(r => r.id));
+  const known = new Set(next.players.map(r => r.id)), posOf = new Map(next.players.map(r => [r.id, r.pos])), nameOf = new Map(next.players.map(r => [r.id, r.name]));
   const clubs = new Map();
   for (const t of next.teams) if (!isNational(t)) for (const id of squadIds(t)) if (id) clubs.set(id, [...(clubs.get(id) || []), t.name.trim()]);
   for (const t of next.teams.filter(t => keys.has(teamKey(t)))) {
@@ -125,6 +117,11 @@ function squadProblems(rec, next, keys) {
       if (retired.has(id)) out.push(`${name}: a retired player is in the squad`);
       if (!isNational(t) && clubs.get(id)?.length > 1) out.push(`${name}: a player would be at two clubs (${clubs.get(id).join(", ")})`);
     }
+    // Each bench place takes a man of its group (Moukden and Kirin, 11 October 2026): a club's keeper, defender, two
+    // midfielders and forward; a national side's the groups of its eleven.
+    if (h?.labels) { const lab = h.labels(t);
+      sq.forEach((id, i) => { if (i < 11 || !id || !GROUP_NAME[lab[i]] || fitsPlace(posOf.get(id), lab[i])) return;
+        out.push(`${name}: ${nameOf.get(id) || "a player"} is not a ${GROUP_NAME[lab[i]].toLowerCase()}, for a ${GROUP_NAME[lab[i]].toLowerCase()}'s place on the bench`); }); }
   }
   return [...new Set(out)];
 }
@@ -153,10 +150,11 @@ function tradeDraft(rec, d, tr, h) {
   for (const id of outs) if (!sa.includes(id)) errors.push(`${A.name.trim()} no longer has ${name(id)}`);
   for (const id of mgrs) if (idOf(B.manager) !== id) errors.push(`${B.name.trim()} no longer has that manager`);
   if (errors.length) return { errors };
-  const la = h.labels(A), lb = h.labels(B), posAt = (sq, lab, id) => lab[sq.indexOf(id)] || "CM";
+  const la = h.labels(A), lb = h.labels(B), own = (id) => posList(h.pos?.(id));
+  const posAt = (sq, lab, id) => (own(id).length ? own(id) : lab[sq.indexOf(id)] || "CM");
   const posIn = new Map(ins.map(id => [id, posAt(sb, lb, id)])), posOut = new Map(outs.map(id => [id, posAt(sa, la, id)]));
-  for (const id of outs) sa = without(sa, id, la, h.fit, h.ovr);
-  for (const id of ins) sb = without(sb, id, lb, h.fit, h.ovr);
+  for (const id of outs) sa = without(sa, id, la, h.fit, h.ovr, h.pos);
+  for (const id of ins) sb = without(sb, id, lb, h.fit, h.ovr, h.pos);
   for (const id of ins) { const i = placeFor(sa, la, h.fit, posIn.get(id)); if (i < 0) errors.push(`${A.name.trim()} has no free place for ${name(id)}`); else sa[i] = id; }
   for (const id of outs) { const i = placeFor(sb, lb, h.fit, posOut.get(id)); if (i < 0) errors.push(`${B.name.trim()} has no free place for ${name(id)}`); else sb[i] = id; }
   if (errors.length) return { errors };
@@ -173,7 +171,6 @@ function tradeDraft(rec, d, tr, h) {
 
 // A NEW RECORD asked for, checked: { what: "players" | "managers" | "teams", ...its fields }. An editor's must be of
 // their own nations, a player joining one of their own sides; the overseer's may be anything.
-const POSITION = new Set(Object.keys(POS_ROLE));
 function newProblems(rec, n, scope, over, h) {
   const out = [], label = n?.name || "A new record", bad = (what) => out.push(`${label}: ${what}`);
   if (!n || !["players", "managers", "teams", "leagues", "batch"].includes(n.what)) return ["Not a new record"];
@@ -188,11 +185,11 @@ function newProblems(rec, n, scope, over, h) {
     if (over ? !rating(n.ovr) : n.ovr != null && !rating(n.ovr)) bad("a rating is a whole number from 25 to 99");
   }
   if (n.what === "players") {
-    if (!POSITION.has(n.pos)) bad("not a position");
+    if (!posOk(n.pos)) bad("a player has one or two positions");
     if (n.side) { const t = rec.teams.find(x => teamKey(x) === n.side);
       if (!t) bad("no such side"); else if (!owns(scope, t)) bad(`${t.name.trim()} is not one of your sides`);
       else if (isNational(t) && t.code !== n.nat) bad(`not a ${t.name.trim()} national`);
-      else if (placeFor(squadIds(t), h.labels(t), h.fit, n.pos) < 0) bad(`${t.name.trim()} has no free place`); }
+      else if (placeFor(squadIds(t), h.labels(t), h.fit, posList(n.pos)) < 0) bad(`${t.name.trim()} has no free place`); }
   }
   if (n.what === "managers" && !styleName(n.style)) bad("not a style");
   if (n.what === "teams") {
@@ -225,16 +222,17 @@ function newManProblems(m, kind, scope, over, bad) {
   if (!nationCode(m.nat)) bad(`${w}: not a nationality`); else if (!over && !scope.nations.includes(m.nat)) bad(`${w}: not a nationality of yours`);
   if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
-  if (kind === "players" && !POSITION.has(m.pos)) bad(`${w}: not a position`);
+  if (kind === "players" && !posOk(m.pos)) bad(`${w}: a player has one or two positions`);
   if (kind === "players" && m.badges?.length && !over) bad(`${w}: traits are the overseer's`);
   if (kind === "managers" && !styleName(m.style)) bad(`${w}: not a style`);
 }
 // Where a list of new men goes in a side: each in turn, keepers first, to the open place that fits him best.
 const POS_ORDER = Object.keys(POS_ROLE).sort((a, b) => POS_ROLE[a][0] - POS_ROLE[b][0] || POS_ROLE[a][1] - POS_ROLE[b][1]);
-const byPosition = (men) => men.map((m, i) => [m, i]).sort((a, b) => POS_ORDER.indexOf(a[0].pos) - POS_ORDER.indexOf(b[0].pos) || a[1] - b[1]);
+const firstPos = (m) => posList(m.pos)[0] || "CM";
+const byPosition = (men) => men.map((m, i) => [m, i]).sort((a, b) => POS_ORDER.indexOf(firstPos(a[0])) - POS_ORDER.indexOf(firstPos(b[0])) || a[1] - b[1]);
 function placesForMen(t, men, h) {
   const sq = squadIds(t), lab = h.labels(t), at = new Map();
-  for (const [m, i] of byPosition(men)) { const k = placeFor(sq, lab, h.fit, m.pos); if (k < 0) continue; sq[k] = "#" + i; at.set(i, k); }
+  for (const [m, i] of byPosition(men)) { const k = placeFor(sq, lab, h.fit, posList(m.pos)); if (k < 0) continue; sq[k] = "#" + i; at.set(i, k); }
   return { sq, at };
 }
 // A LIST OF NEW PLAYERS asked for at once (Moukden and Kirin, 11 October 2026): { what: "batch", name, side, men: [{ name, pos,
@@ -249,7 +247,7 @@ function batchProblems(rec, n, scope, over, h) {
     else if (!owns(scope, t)) out.push(`${t.name.trim()} is not one of your sides`);
     else {
       if (isNational(t)) for (const m of men) if (m?.nat !== t.code) out.push(`${m?.name || "A new player"}: not a ${t.name.trim()} national`);
-      const room = placesForMen(t, men.filter(m => m && POSITION.has(m.pos)), h).at.size;
+      const room = placesForMen(t, men.filter(m => m && posOk(m.pos)), h).at.size;
       if (room < men.length) out.push(`${t.name.trim()} has room for ${room} of the ${men.length}`);
     }
   }
@@ -307,7 +305,7 @@ function leagueProblems(rec, n, scope, over) {
 // The next free ID of a kind (p0001, m0001, t0001, l0001), counting the records and any added in this draft.
 const nextId = (rows, letter) => { const top = rows.reduce((m, r) => Math.max(m, Number(String(r.id).slice(1)) || 0), 0);
   return letter + String(top + 1).padStart(4, "0"); };
-// A NEW RECORD put into the records: the player (on his side, or a free agent keeping his position), the manager, or
+// A NEW RECORD put into the records: the player with his positions (on his side, or a free agent), the manager, or
 // the club, its men leaving their old clubs (benches filling in) and its manager his.
 function createDraft(rec, d, n, h) {
   const next = applyDraft(rec, d), add = { players: [...(d?.add?.players || [])], managers: [...(d?.add?.managers || [])], teams: [...(d?.add?.teams || [])],
@@ -315,9 +313,9 @@ function createDraft(rec, d, n, h) {
   let out = { v: 1, players: {}, ...(d || {}) };
   if (n.what === "players") {
     const id = nextId(next.players, "p"), side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null;
-    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, ...(side ? null : { pos: n.pos }), ...(n.badges?.length ? { badges: n.badges } : null) });
+    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, pos: posList(n.pos), ...(n.badges?.length ? { badges: n.badges } : null) });
     out = { ...out, add };
-    if (side) { const sq = squadIds(side), i = placeFor(sq, h.labels(side), h.fit, n.pos);
+    if (side) { const sq = squadIds(side), i = placeFor(sq, h.labels(side), h.fit, posList(n.pos));
       if (i < 0) return { errors: [`${side.name.trim()} has no free place for ${n.name}`] };
       sq[i] = id; out = draftWith(out, rec, n.side, { squad: sq }, "teams"); }
     return { errors: [], d: out, id };
@@ -328,10 +326,10 @@ function createDraft(rec, d, n, h) {
     return { errors: [], d: { ...out, add }, id };
   }
   if (n.what === "batch") {
-    // Each man on file; joining a side, into the place that fits him, keepers first; free, keeping his position.
+    // Each man on file with his positions; joining a side, into the place that fits him, keepers first.
     const side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null, ids = [];
     for (const m of n.men) { const id = nextId([...next.players, ...add.players], "p"); ids.push(id);
-      add.players.push({ id, name: m.name, nat: m.nat, ovr: m.ovr, born: m.born, ...(side ? null : { pos: m.pos }), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null) }); }
+      add.players.push({ id, name: m.name, nat: m.nat, ovr: m.ovr, born: m.born, pos: posList(m.pos), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null) }); }
     out = { ...out, add };
     if (side) { const { sq, at } = placesForMen(side, n.men, h);
       if (at.size < n.men.length) return { errors: [`${side.name.trim()} has room for ${at.size} of the ${n.men.length}`] };
@@ -347,7 +345,7 @@ function createDraft(rec, d, n, h) {
       const squad = c.squad.map(v => {
         if (!isNew(v)) return v || null;
         const id = nextId(everyone(), "p");
-        add.players.push({ id, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) });
+        add.players.push({ id, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) });
         return id;
       });
       let manager = null, style = "Balanced";
@@ -369,7 +367,7 @@ function createDraft(rec, d, n, h) {
       for (const pid of c.squad.filter(v => typeof v === "string")) {
         const at = clubOf.get(pid); if (!at) continue;
         const t = applyDraft(rec, out).teams.find(x => teamKey(x) === at);
-        out = draftWith(out, rec, at, { squad: without(squadIds(t), pid, h.labels(t), h.fit, h.ovr) }, "teams");
+        out = draftWith(out, rec, at, { squad: without(squadIds(t), pid, h.labels(t), h.fit, h.ovr, h.pos) }, "teams");
       }
       if (typeof c.manager === "string" && mgrClubOf.get(c.manager)) out = draftWith(out, rec, mgrClubOf.get(c.manager), { manager: null }, "teams");
     }
@@ -388,7 +386,7 @@ function createDraft(rec, d, n, h) {
   add.teams.push(team); out = { ...out, add };
   for (const pid of n.squad.filter(Boolean)) { const at = clubOf.get(pid); if (!at) continue;
     const t = applyDraft(rec, out).teams.find(x => teamKey(x) === at);
-    out = draftWith(out, rec, at, { squad: without(squadIds(t), pid, h.labels(t), h.fit, h.ovr) }, "teams"); }
+    out = draftWith(out, rec, at, { squad: without(squadIds(t), pid, h.labels(t), h.fit, h.ovr, h.pos) }, "teams"); }
   if (mgrSide) out = draftWith(out, rec, teamKey(mgrSide), { manager: null }, "teams");
   return { errors: [], d: out, id };
 }
@@ -409,10 +407,8 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   const list = (l) => l == null || (Array.isArray(l) && l.every(x => x && typeof x === "object" && !Array.isArray(x)));
   if (!cart || typeof cart !== "object" || !["players", "managers", "teams", "leagues"].every(k => group(cart[k])) || !list(cart.trades) || !list(cart.new) || cart.add
       || Object.values(cart.teams || {}).some(p => "squad" in p && !Array.isArray(p.squad))) return { ...none, errors: ["Not a cart"] };
-  // Positions are bookkeeping the server keeps, whatever the cart says.
   const draft = { v: 1, ...(cart.managers ? { managers: cart.managers } : null), ...(cart.leagues ? { leagues: cart.leagues } : null), teams: cart.teams || {},
-    players: Object.fromEntries(Object.entries(cart.players || {})
-      .map(([id, p]) => [id, Object.fromEntries(Object.entries(p).filter(([f]) => f !== "pos"))]).filter(([, p]) => Object.keys(p).length)) };
+    players: cart.players || {} };
   const changes = draftChanges(rec, draft), trades = cart.trades || [], news = cart.new || [];
   if (!changes.length && !trades.length && !news.length) return none;
   const errors = [], teamBy = new Map(rec.teams.map(t => [teamKey(t), t])), leagueBy = new Map((rec.leagues || []).map(l => [l.id, l]));
@@ -450,10 +446,15 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
 
   // What may be touched at all, and what an editor sends to the overseer.
   const details = new Map();                                          // team -> { code, stadium, location } asked for
+  const posAsks = new Map();                                          // player -> the positions asked for
+  const myMan = (id) => scope.nations.includes(playerBy.get(id)?.nat) || owns(scope, teamBy.get(clubOf.get(id)))
+    || rec.teams.some(t => isNational(t) && owns(scope, t) && squadIds(t).includes(id));
   const mgrStyle = (id) => { const at = mgrClubOf.get(id); return at ? teamBy.get(at).style : mgrBy.get(id)?.style || null; };
   for (const c of changes) {
     // A league's name, tier and cup are its nation's editors' to change outright.
     if (c.kind === "leagues") { if (!over && !scope.nations.includes(leagueBy.get(c.id)?.nation)) errors.push(`${c.name}: not one of your leagues`); continue; }
+    // An editor asks the overseer to change a player's positions: one of their nation's, or a man at one of their sides.
+    if (c.kind === "players" && c.field === "pos" && !over) { if (!myMan(c.id)) errors.push(`${c.name}: not one of your players`); else posAsks.set(c.id, c.to); continue; }
     if ((c.kind === "players" || c.kind === "managers") && !over) { errors.push(`${c.name}: a ${c.kind === "players" ? "player" : "manager"}'s record is the overseer's to change`); continue; }
     if (c.kind !== "teams" || over) continue;
     const t = teamBy.get(c.id);
@@ -486,17 +487,19 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   }
 
   // The part that goes live now: the patches less the changes sent to the overseer.
-  let live = { v: 1, players: draft.players, ...(draft.managers ? { managers: draft.managers } : null), ...(draft.leagues ? { leagues: draft.leagues } : null),
+  let live = { v: 1, players: over ? draft.players : {}, ...(draft.managers ? { managers: draft.managers } : null), ...(draft.leagues ? { leagues: draft.leagues } : null),
                teams: Object.fromEntries(Object.entries(draft.teams).map(([k, p]) => [k, details.has(k) ? Object.fromEntries(Object.entries(p).filter(([f]) => !BY_REQUEST.has(f))) : p])
                  .filter(([, p]) => Object.keys(p).length)) };
   const touched = new Set(Object.keys(live.teams));
-  errors.push(...squadProblems(rec, applyDraft(rec, live), touched));
+  errors.push(...squadProblems(rec, applyDraft(rec, live), touched, h));
 
   const requests = [], base = { by: scope.login, at: now, approved: [] };
   for (const [k, patch] of details) {
     const t = teamBy.get(k);
     requests.push({ ...base, id: newId(), kind: "details", team: k, teamName: t.name.trim(), patch, needs: { [OVERSEER]: editors?.overseers || [] }, locks: [] });
   }
+  for (const [id, pos] of posAsks)
+    requests.push({ ...base, id: newId(), kind: "pos", player: id, teamName: playerBy.get(id)?.name || id, patch: { pos }, needs: { [OVERSEER]: editors?.overseers || [] }, locks: [] });
 
   // Trades: the other nation answers; the overseer's go live as they stand.
   const h2 = h;
@@ -530,9 +533,9 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
       else { live = made.d; for (const t of live.add?.teams || []) touched.add(teamKey(t)); } continue; }
     requests.push({ ...base, id: newId(), kind: "new", what: n.what, teamName: n.name, rec: fields, needs: { [OVERSEER]: editors?.overseers || [] }, locks: menLocks({ rec: fields }) });
   }
-  if (over) errors.push(...squadProblems(rec, applyDraft(rec, live), touched));
+  if (over) errors.push(...squadProblems(rec, applyDraft(rec, live), touched, h));
   if (errors.length) return { ...none, errors: [...new Set(errors)] };
-  return { scope, errors: [], apply: draftSizeOf(live) ? withPositions(rec, live, h) : null, requests };
+  return { scope, errors: [], apply: draftSizeOf(live) ? live : null, requests };
 }
 const draftSizeOf = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d[k] || {}).length + (d.add?.[k]?.length || 0), 0);
 
@@ -565,11 +568,16 @@ export function settleRequest(rec, editors, request, login, action, h, extra = {
     const probs = valueProblems(rec, next, draftChanges(rec, d));
     return probs.length ? { errors: probs } : { errors: [], done: true, apply: d, request: null };
   }
+  if (request.kind === "pos") {
+    if (!rec.players.some(p => p.id === request.player)) return { errors: ["The player is gone"] };
+    const d = draftWith(null, rec, request.player, request.patch, "players"), probs = valueProblems(rec, applyDraft(rec, d), draftChanges(rec, d));
+    return probs.length ? { errors: probs } : { errors: [], done: true, apply: d, request: null };
+  }
   if (request.kind === "trade") {
     const r = tradeDraft(rec, null, { side: request.team, other: request.other, ins: request.ins, outs: request.outs }, h);
     if (r.errors.length) return { errors: r.errors };
-    const problems = squadProblems(rec, applyDraft(rec, r.d), new Set([request.team, request.other]));
-    return problems.length ? { errors: problems } : { errors: [], done: true, apply: withPositions(rec, r.d, h), request: null };
+    const problems = squadProblems(rec, applyDraft(rec, r.d), new Set([request.team, request.other]), h);
+    return problems.length ? { errors: problems } : { errors: [], done: true, apply: r.d, request: null };
   }
   if (request.kind === "new") {
     const n = { ...request.rec, ...(over && extra.edits && typeof extra.edits === "object" ? extra.edits : null), what: request.what };
@@ -578,8 +586,8 @@ export function settleRequest(rec, editors, request, login, action, h, extra = {
     const made = createDraft(rec, null, n, h);
     if (made.errors.length) return { errors: made.errors };
     const keys = new Set(Object.keys(made.d.teams || {}).concat((made.d.add?.teams || []).map(teamKey)));
-    const problems = squadProblems(rec, applyDraft(rec, made.d), keys);
-    return problems.length ? { errors: problems } : { errors: [], done: true, apply: withPositions(rec, made.d, h), request: null };
+    const problems = squadProblems(rec, applyDraft(rec, made.d), keys, h);
+    return problems.length ? { errors: problems } : { errors: [], done: true, apply: made.d, request: null };
   }
 
   // A request filed before trades: the receiving team's whole change, its men from the selling clubs.
@@ -594,13 +602,13 @@ export function settleRequest(rec, editors, request, login, action, h, extra = {
     const from = teamBy.get(m.from), cur = applyDraft(rec, d).teams.find(x => teamKey(x) === m.from);
     if (m.kind === "player") {
       if (!squadIds(from).includes(m.id)) return { errors: [`${m.fromName} no longer has that player`] };
-      d = draftWith(d, rec, m.from, { squad: without(squadIds(cur), m.id, h.labels(cur), h.fit, h.ovr) }, "teams");
+      d = draftWith(d, rec, m.from, { squad: without(squadIds(cur), m.id, h.labels(cur), h.fit, h.ovr, h.pos) }, "teams");
     } else {
       if (idOf(from.manager) !== m.id) return { errors: [`${m.fromName} no longer has that manager`] };
       d = draftWith(d, rec, m.from, { manager: null }, "teams");
     }
   }
-  const problems = squadProblems(rec, applyDraft(rec, d), new Set([request.team, ...request.moves.map(m => m.from)]));
+  const problems = squadProblems(rec, applyDraft(rec, d), new Set([request.team, ...request.moves.map(m => m.from)]), h);
   if (problems.length) return { errors: problems };
-  return { errors: [], done: true, apply: withPositions(rec, d, h), request: null };
+  return { errors: [], done: true, apply: d, request: null };
 }

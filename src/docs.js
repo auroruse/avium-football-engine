@@ -4,12 +4,13 @@
 export const DOCS = [
   { id: "app", title: "The App", sections: [
     { id: "getting-around", title: "Getting Around", body: [
-      "The top bar holds the three sections, Registry, Competitions and Tournaments, with Play Match on the right. Under it, the page bar names the page you are on and lists the section's pages as tabs. A page about one club, nation, player, manager or competition starts the page bar with its name, and with the step above it where there is one: a club's nation, a player's club.",
+      "The top bar holds the three sections, Registry, Competitions and Tournaments, with Play Match on the right, and a fourth, Editor, for a signed-in editor. Under it, the page bar names the page you are on and lists the section's pages as tabs. A page about one club, nation, player, manager or competition starts the page bar with its name, and with the step above it where there is one: a club's nation, a player's club.",
       "Every page has its own address. The browser's back and forward buttons work, the arrows beside the wordmark do the same, and any page can be sent to someone as a link.",
       { dl: [
         ["Search", "Finds nations, clubs, players, managers and competitions by the start of any word in the name, and a side by its code. The arrow keys move through the results and Enter opens one."],
         ["Settings", "The gear: the colour theme, the Arterra switch, and this Documentation. With Arterra off, the app shows Avium only: no world switches, and no Arterra sides, players or managers in any list, search or picker. It is saved in your browser and changes nothing for anyone else."],
-        ["Sign In", "With a GitHub account, for the ACU's editors. Reading needs no account."],
+        ["Sign In", "With a GitHub account, for the ACU's editors. Reading needs no account. See Editing."],
+        ["Requests And Cart", "An editor's: what is waiting on an answer, and the changes not yet saved. See Editing."],
         ["Play Match", "The match screen. See Matches."],
       ] },
     ] },
@@ -278,6 +279,74 @@ export const DOCS = [
         ["Export", "The season's report, its player stats and its bracket."],
         ["Reset", "Back to the start, after asking twice."],
       ] },
+    ] },
+  ] },
+  { id: "editing", title: "Editing", sections: [
+    { id: "editors", title: "Editors And The Overseer", body: [
+      "Each editor keeps their own nation: its national side, its clubs and its leagues. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The overseer can change anything, and answers the requests editors send.",
+      { dl: [
+        ["Yours To Change", "A side's name and kits, its formation and who plays where; signing free agents and moving men between your own sides; calling men up to your national side; appointing and releasing managers; and a league's name, tier and cup."],
+        ["By Request", "A side's ground, capacity and city, a club's code, and every new player, manager, club and league. The overseer answers these."],
+        ["By Trade", "A man or manager at another nation's club, answered by that nation."],
+        ["The Overseer's", "Every man's own record: his name, nationality, date of birth, rating and traits, shown locked. A club plays its manager's style, so a new manager brings his with him."],
+      ] },
+    ] },
+    { id: "cart", title: "The Cart", body: [
+      "Nothing in the Editor is saved until the cart is. Each change goes into the Cart in the top bar, a block for each player, manager, side or league with every field it changes, old to new. Live on a block means saving puts it on the site; Request means it waits for an answer. Remove takes a block out, with Undo to put it back, and Empty Cart clears the lot after asking twice. The cart is kept in this browser until it is saved.",
+      "Save checks the whole cart against the rules first and lists anything wrong at its foot. A cart with a problem saves nothing. Saved changes are on the site in a minute or two, and any requests in the cart are sent at the same time.",
+    ] },
+    { id: "requests", title: "Requests", body: [
+      "Requests, in the top bar, lists what is waiting: For You, the requests you can answer, then Yours, the ones you sent. The Editor's Requests tab shows the same in full, with a third list, New Records, for the overseer. Each request shows its side, who asked and when, the men coming in and going out, and who it is waiting for, with a tick against each who has agreed.",
+      { dl: [
+        ["Accept, Decline", "Answer a request sent to you."],
+        ["Withdraw", "Takes back one of yours before it is answered."],
+        ["Dismiss", "Clears one of yours that was declined. It stays in Yours, with the note it was declined with, until you do."],
+        ["Review", "The overseer's, on a new record: it opens in the Editor with every field open. Approve lets it in as it then stands, once every blank rating is set, and Reject sends it back with a note."],
+      ] },
+      "Decline, Withdraw and Dismiss each ask twice.",
+    ] },
+    { id: "teams", title: "Teams", body: [
+      "Teams lists your sides down the left, the national side first and then your clubs by league, under New Team and a search. The overseer sees every side. The side picked fills the page. Its name and kits are edited in place, and Request A Change opens its ground, capacity and city, and a club's code, for Add To Cart to send to the overseer.",
+      "The squad stands on a pitch in the side's formation, with the bench beside it. Drag a man onto another place to swap the two, or click one and then the other. A new formation moves every man to the place nearest his position. Clicking a man brings up Release (Drop, on a national side) to let him go; if he started, the bench man who best fits his place moves up into it. The cross on a bench row does the same.",
+      "Sign, beside the pitch (Call Up on a national side), searches every player and manager. A free agent, or a man from another of your clubs, comes straight in; a man at another nation's club reads Trade. A national side finds only its own nationals. Appoint brings in a manager, and the cross beside the manager releases him. A man named in a request that is still waiting cannot move, and is marked Waiting On A Request.",
+    ] },
+    { id: "trades", title: "Trades", body: [
+      "A man or manager at another nation's club comes by trade. Trade, on his row in the search, opens the trade beside the pitch with him Coming In. Click your own men on the pitch or the bench to send them the other way as Going Out, for an exchange, then Add To Cart. Saving sends it to that nation's editors, or to the overseer where it has none.",
+      "Any one of them can accept or decline it, and it goes through whole or not at all. Until it is answered, only the men in it are held. Accepting checks again that it still fits both squads. Trades are between clubs; a national side calls up its own nationals instead.",
+    ] },
+    { id: "players-managers", title: "Players And Managers", body: [
+      "Players lists your nation's men and everyone at your sides, and Managers the same for managers, each under New Player or New Manager and a search. Edit Player on a player's page, and Edit Club or Edit Team on your own side's page, open that record here.",
+      "A player's page shows his record and his sides. Release lets him go from your club, Move To or Sign For puts him at another of your clubs, and Call Up and Drop take him on and off your national side. A manager's page has Release and Appoint To; one at another nation's club comes by trade. The overseer can also change a man's record here, and retire a player.",
+    ] },
+    { id: "leagues", title: "Leagues", body: [
+      "Leagues lists your nation's leagues by tier, with each one's number of clubs. A league's name, tier and cup sit at the top of its page, yours to change without a request: a tier from 1 to 5, or none, and a cup from your nation's, none, or a new one named there. Two leagues can share a tier, for regional divisions. Below come the league's clubs, each opening on Teams, the nation's pyramid tier by tier, and its cups with the leagues that enter each.",
+      "A renamed league keeps its old names, so its past seasons, its badge and the clubs in saved tournaments still find it.",
+    ] },
+    { id: "new-records", title: "New Players, Managers And Clubs", body: [
+      "New Player, New Manager and New Team, at the top of each list, make a request to the overseer, who may change anything in it before letting it in. The overseer's own go in when the cart is saved.",
+      { dl: [
+        ["New Player", "Name, nationality, date of birth and position, the side he joins (one of yours, or none), and a rating."],
+        ["New Manager", "Name, nationality, date of birth, style and a rating."],
+        ["New Team", "A club in one of your nation's leagues: name, code, kits, ground and capacity, a city from the map, league, formation and manager, and a squad of sixteen from free agents and your own players."],
+      ] },
+      "An editor makes men of their own nation only. Beside a date of birth, Or Age picks a random date that gives that age in the world's own time, and the die picks another. A rating can be proposed or left blank, and the overseer sets every blank one before letting the man in.",
+    ] },
+    { id: "many", title: "Many Players At Once", body: [
+      "Many, at the top of New Player, sends a whole list as one request. Type or paste the players a line each, as a name, a comma and a position code, for instance Kenji MORISHITA, GK. The codes are the ones in Positions, under Ratings. A tab does for the comma, so two columns copied from a spreadsheet work as they are. The list is sorted keepers first and on up the pitch.",
+      "One nationality covers them all, and each man gets a random date of birth for an age in the range you set, 18 to 32 to start; the die draws them all again. Ratings start blank and can be typed into the table. A line that cannot be read is named under the box, and the list cannot be sent until it is fixed. The list joins one of your sides with room for every man on it, or none, and holds up to forty men.",
+      "Import, on a squad in New League, takes the same lines into that squad, each man to the open place that fits him best. Its Add stays off while there are more men than open places.",
+    ] },
+    { id: "new-leagues", title: "New Leagues", body: [
+      "New League asks for a league and its founding clubs, in three columns. The first holds the league (its name, tier, and a cup picked or named new) and its founding clubs, each ticked once it is ready, with Add Club for another. The second is the club open: name, code, kits, ground and capacity, city, formation, and a manager who is free or made new there. The third is that club's squad.",
+      "Fill a squad with free agents and your own men from the search, make a man with New Player, or paste a list with Import (see Many Players At Once). Each club needs its eleven starters, and the bench can wait. A new man reopens from the pencil on his row, and two places swap by dragging one onto the other or clicking one and then the other.",
+      "Roll Ratings, on the squad, rates the new men for you. Give it the team rating you want and Roll rates every new man left blank, or rolled before, so the squad averages it: the starters a little above it, and each bench man below the starter in his position. Ratings you typed, and men already on file, stay as they are.",
+      "A league made here is listed among the leagues from its first club; an older one needs six. An editor whose nation has no leagues yet starts here, as the Leagues tab opens on New League.",
+    ] },
+    { id: "kept-forms", title: "Unfinished Forms", body: [
+      "A New form you are filling in is kept in this browser until you send it or press Cancel, one for each tab. Going to another tab, picking a record from the list or reloading the page puts it aside, and New brings it back as you left it. A request the overseer is reviewing is not kept; it opens again from Requests.",
+    ] },
+    { id: "images", title: "Badges And Portraits", body: [
+      "Images are not uploaded in the app: send them as a zip to @auroruse on Discord. A badge, for a club or a league, is 500 by 500 pixels with 50 pixels of padding on every side and a 25 pixel white outline. A portrait is a chest-up headshot, the subject in a plain white shirt.",
     ] },
   ] },
 ];

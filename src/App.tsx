@@ -31,7 +31,7 @@ import { OVERSEER, isNational, owns, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { placeFor, vacate, without } from "./data/squads.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
-import { POS_ROLE, posFitCost } from "./data/positions.js";
+import { GROUP_NAME, POSITIONS, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -2626,7 +2626,8 @@ function refitLineup(squad, formation) {
   // same target — otherwise the understudies stop lining up with the starters they cover. The
   // 5-man bench has its own fixed shape and is passed through untouched.
   const order = (group) => {
-  const nat = group.map(p => p.natPos || p.spos || p.pos);
+  // Each man's own positions where he has them (the nearer of his two counts), else the place he was picked for.
+  const nat = group.map(p => (p.own?.length ? p.own : p.natPos || p.spos || p.pos));
   const n = 11, slotOf = new Array(n).fill(-1), taken = new Array(n).fill(false);
   // Formations repeat slots (4-3-3 has three CMs) but weight them differently via atkW, so a pure
   // position match leaves the order among equal slots arbitrary and toggling formation would shuffle
@@ -2660,7 +2661,9 @@ function refitLineup(squad, formation) {
 function refitAs(squad, formation) {
   const old = refitLineup(squad, formation);
   const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize);
-  nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; });
+  // ...and who he is: his record, traits and own positions come with him (a rebuilt man used to lose his traits).
+  nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos;
+    if (o.rid) p.rid = o.rid; if (o.badges) p.badges = o.badges; if (o.own) p.own = o.own; });
   return nsq;
 }
 
@@ -3380,6 +3383,9 @@ function attachRecords(catalog, records) {
       e.rid = id;
       const b = P.get(id)?.badges;
       if (b?.length) e.badges = b;
+      // His own positions (src/data/positions.js): he plays either at his full rating, and anywhere else on their skills.
+      const own = posList(P.get(id)?.pos);
+      if (own.length) e.own = own;
     });
   }
   return catalog;
