@@ -65,12 +65,17 @@ their side's eleven.
 three from 90. Bronze opens at 75, silver at 80, gold at 85, and a man's best trait is of the best tier his rating opens
 (one of it at most), the rest from the tiers below. A keeper carries Shot Stopper or Commanding, split evenly at each
 rating, and from 80 one of Long Ball, Short Passing or Composed. Inside a tier every trait is held by as many men as
-every other, give or take one. A trait goes only to positions it suits: where `test/specs/badges.mjs` measured it, and
-Dead Ball, Long Shot and First Touch also for forwards, Tackler and Long Ball also for full-backs and central
-midfielders, so that every man can take one of his top tier. `test/traits.mjs` chose them (one min-cost flow: every
-man his count, the equal totals, a top-tier trait for all 340 who could take one, then the best fits from his career
-a game against men of his position at his rating, and his age); `write` keeps any traits a man already has and counts
-them, so a rerun only fills the men without. The overseer edits any man's traits on his page afterwards, from a list
+every other, give or take one. A trait can cross into any position where it means something in a match (`OPEN` in
+`test/traits.mjs`), and is likelier where it was measured (`NATURAL`): the first run kept traits to their measured
+positions and every position came out one habit (93% of centre-backs rated 80-84 Disciplined, 82% of wingers Crosser),
+while the user's own picks for the men rated 90 or more crossed positions on a quarter of their traits ("There should be
+distinctness all around", 11 October 2026). So inside each rating band and position the n-th man to take a trait pays
+more for it past his group's fair share; the second run (`redo`, which gives everyone under 90 his traits again and
+keeps the 90s as the user set them) crossed positions on 23% of traits, with no trait on more than about a third of any
+position and band. `test/traits.mjs` chooses them in one min-cost flow: every man his count, the equal totals, a
+top-tier trait for everyone who could take one, then variety, then the best fits from his career a game against men of
+his position at his rating, and his age; `write` keeps any traits a man already has and counts them, so a rerun only
+fills the men without. The overseer edits any man's traits on his page afterwards, from a list
 a tier with a tick against each he carries (App.tsx edTraitList). Hovering or focusing any trait, anywhere, shows its
 card: art, name, tier and the Traits table's words (TraitCard; whatever stands for a trait carries `data-trait`, found
 by delegation, the card fixed to the window so no clipping panel cuts it).

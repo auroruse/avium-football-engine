@@ -183,7 +183,7 @@ export const DOCS = [
     ] },
     { id: "traits", title: "Traits", body: [
       "A trait is what a player is known for: a habit in how he plays, and an edge in the one skill the habit needs. A trait does the same for everyone who has it, and a player without one plays exactly to his rating. Traits come in three tiers, gold, silver and bronze, by how much they are worth in a match.",
-      "Only players rated 75 or more carry traits: one at 75 to 79, two at 80 to 89, three from 90. Bronze traits open at 75, silver at 80 and gold at 85, and a player's best trait is of the best tier his rating opens, the rest from the tiers below. A keeper carries Shot Stopper or Commanding, and from 80 one of Long Ball, Short Passing or Composed. Each trait goes only to positions it suits, and inside a tier every trait is held by about as many players as every other.",
+      "Only players rated 75 or more carry traits: one at 75 to 79, two at 80 to 89, three from 90. Bronze traits open at 75, silver at 80 and gold at 85, and a player's best trait is of the best tier his rating opens, the rest from the tiers below. A keeper carries Shot Stopper or Commanding, and from 80 one of Long Ball, Short Passing or Composed. A trait usually belongs to a player's position, though about one in four crosses into another, and players of the same position and rating are spread across many traits rather than sharing one. Inside a tier every trait is held by about as many players as every other.",
       "Hovering a trait anywhere in the app shows its card: its name, its tier and what it does.",
       { live: "traits" },
     ] },
