@@ -15,7 +15,7 @@ export const DOCS = [
       ] },
     ] },
     { id: "registry", title: "Registry", body: [
-      "Registry is the record of who exists today: every nation, club, player and manager. Its pages are Overview, Players, Managers and Rating Changes. Overview has five panels.",
+      "Registry is the record of who exists today: every nation, club, player and manager. Its pages are Overview, Teams, Players, Managers and Rating Changes. Overview has five panels.",
       { dl: [
         ["Nations", "Every national side ranked by rating. The switch in the title moves between Avium and Arterra, which are never listed together. It is gone while Arterra is off in Settings."],
         ["Your Nation", "When you are signed in as an editor, your nation: its rating, manager, style, ground and the titles it holds."],
@@ -40,6 +40,10 @@ export const DOCS = [
     { id: "managers", title: "Managers", body: [
       "Managers works like Players. Filter by name, style, seat (clubs, national sides, both, or free agents) and nationality, with the manager's card on the right. Win rates at clubs and with national sides are kept apart. A rate from fewer than ten matches is grey and sorts below the rest.",
       "A manager's page has his banner (style, rating, both win rates, age), then Tactics, his side on a pitch with the role he gives each man; Sides, each side's record this season; and Results. His History has his Career, a row a side, the Competitions he managed in, and his Honours. A free agent's page is his banner over his history.",
+    ] },
+    { id: "teams", title: "Teams", body: [
+      "Teams lists every club, or every national side by the switch in its title, with its nation and league (a national side's conference), its rating, its eleven's attack, midfield and defence, its bench, its city, its style and formation, and its squad's value. Filter by name, nation and league, or conference; click a heading to sort. Click a side for its card on the right; double-click it, or click the card's banner, to open it.",
+      "The card has the side's crest on its colours fading into its ground, its rating, style, formation and squad value, and its manager; then its strength by line, its best players and its honours.",
     ] },
     { id: "rating-changes", title: "Rating Changes", body: [
       "Rating Changes lists every ratings refresh on file. Batches, down the left, lists each refresh, newest first, with its rises and falls. Changes, in the middle, lists the picked batch a player a row, searchable and filtered by side or by rises and falls. Sides, on the right, gives each side's net change; picking a side filters Changes to it, and picking it again clears it.",
@@ -188,7 +192,7 @@ export const DOCS = [
       { live: "traits" },
     ] },
     { id: "side-strength", title: "Side Strength", body: [
-      "A side's rating is the average of its whole squad, bench included: sixteen men at a club, twenty-two for a national side. Play Match also shows the starting eleven's rating (XI OVR), the bench's, and the eleven's attack, midfield and defence, each man in the eleven counted at the rating he plays his place at. The scorebug and Full Time show the eleven's rating the same way, and it moves when a substitute comes on.",
+      "A side's rating is the average of its whole squad, bench included: sixteen men at a club, twenty-two for a national side. Play Match's Strength Comparison shows the eleven's attack, midfield and defence, each man counted at the rating he plays his place at, and the bench's rating; Teams shows the same for every side. The scorebug and Full Time show the eleven's rating the same way, and it moves when a substitute comes on.",
       "A side's rating never enters a match. Every duel, pass and shot is settled by the men involved, so the eleven on the pitch and the men who come off the bench decide it. Home advantage changes how a side plays and how the referee sees it, never anyone's rating.",
     ] },
     { id: "afa-rankings", title: "AFA Rankings", body: [
@@ -290,18 +294,19 @@ export const DOCS = [
     { id: "editors", title: "Editors And The Overseer", body: [
       "Each editor keeps their own nation: its national side, its clubs and its leagues. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The overseer can change anything, and answers the requests editors send.",
       { dl: [
-        ["Yours To Change", "A side's name and kits, its formation and who plays where; signing free agents and moving men between your own sides; calling men up to your national side; appointing and releasing managers; and a league's name, tier and cup."],
+        ["Yours To Change", "A side's name and kits, its formation and who plays where; your national side's call-ups and manager; and a league's name, tier and cup."],
         ["By Request", "A side's ground, capacity and city, a club's code, one of your players' positions, and every new player, manager, club and league. The overseer answers these."],
-        ["By Trade", "A man or manager at another nation's club, answered by that nation."],
+        ["On Trades", "Every move of a man or manager between clubs, and signing and releasing free agents. A deal between your own clubs, or with free agents, goes live at once; one with another nation's club is an offer that nation accepts."],
         ["The Overseer's", "Every man's own record: his name, nationality, date of birth, rating and traits, shown locked; his positions too, which you may ask to change. A club plays its manager's style, so a new manager brings his with him."],
       ] },
     ] },
     { id: "cart", title: "The Cart", body: [
       "Nothing in the Editor is saved until the cart is. Each change goes into the Cart in the top bar, a block for each player, manager, side or league with every field it changes, old to new. Live on a block means saving puts it on the site; Request means it waits for an answer. Remove takes a block out, with Undo to put it back, and Empty Cart clears the lot after asking twice. The cart is kept in this browser until it is saved.",
       "Save checks the whole cart against the rules first and lists anything wrong at its foot. A cart with a problem saves nothing. Saved changes are on the site in a minute or two, and any requests in the cart are sent at the same time.",
+      "Deals never go into the cart: they are sent from Trades, and take the cart's changes to their clubs with them.",
     ] },
     { id: "requests", title: "Requests", body: [
-      "Requests, in the top bar, lists what is waiting: For You, the requests you can answer, then Yours, the ones you sent. The Editor's Requests tab shows the same in full, with a third list, New Records, for the overseer. Each request shows its side, who asked and when, the men coming in and going out, and who it is waiting for, with a tick against each who has agreed.",
+      "Requests, in the top bar, lists what is waiting: For You, the requests you can answer, then Yours, the ones you sent. The Editor's Requests tab shows the same in full, with a third list, New Records, for the overseer. Each request shows its side, who asked and when, the men coming in and going out, and who it is waiting for, with a tick against each who has agreed. Offers from Trades show in the top bar too, each with Open, which takes you to it on Trades; the Requests tab leaves them to Trades.",
       { dl: [
         ["Accept, Decline", "Answer a request sent to you."],
         ["Withdraw", "Takes back one of yours before it is answered."],
@@ -312,17 +317,20 @@ export const DOCS = [
     ] },
     { id: "teams", title: "Teams", body: [
       "Teams lists your sides down the left, the national side first and then your clubs by league, under New Team and a search. The overseer sees every side. The side picked fills the page. Its name and kits are edited in place, and Request A Change opens its ground, capacity and city, and a club's code, for Add To Cart to send to the overseer.",
-      "The squad stands on a pitch in the side's formation, with the bench beside it. Drag a man onto another place to swap the two, or click one and then the other. A man out of position shows the rating he would play the place at, ringed in red, with the warning triangle and what the place costs him. A new formation moves every man to the place nearest his positions. Clicking a man brings up Release (Drop, on a national side) to let him go; if he started, the bench man who best fits his place moves up into it. The cross on a bench row does the same.",
+      "The squad stands on a pitch in the side's formation, with the bench beside it. Drag a man onto another place to swap the two, or click one and then the other. A man out of position shows the rating he would play the place at, ringed in red, with the warning triangle and what the place costs him. A new formation moves every man to the place nearest his positions. A club's men join and leave it on Trades. On a national side, clicking a man brings up Drop to let him go, as does the cross on a bench row; if he started, the bench man who best fits his place moves up into it.",
       "Each bench place takes a man of its group, shown beside it: a club's five are a keeper, a defender, two midfielders and a forward, and a national side's eleven follow the groups of its starting eleven. A filled place shows the man's position that fits it. Signings, trades and new players are sorted into the places their positions fit, as far as the bench allows, and a man left in another group's place is marked in red.",
-      "Sign, beside the pitch (Call Up on a national side), searches every player and manager. A free agent, or a man from another of your clubs, comes straight in; a man at another nation's club reads Trade. A national side finds only its own nationals. Appoint brings in a manager, and the cross beside the manager releases him. A man named in a request that is still waiting cannot move, and is marked Waiting On A Request.",
+      "A national side's page has Eligible Nationals beside the pitch: its nationals not in the squad, best first, with a search. Click one to call him up. With every place filled, the squad then waits for the man he replaces: click him on the pitch or the bench, and the new man takes his place. Appoint, on the Manager panel, brings in a manager, and the cross beside him releases him. A man named in an offer or request that is still waiting cannot move, and is marked Waiting On A Request.",
     ] },
     { id: "trades", title: "Trades", body: [
-      "A man or manager at another nation's club comes by trade. Trade, on his row in the search, opens the trade beside the pitch with him Coming In. Click your own men on the pitch or the bench to send them the other way as Going Out, for an exchange, then Add To Cart. Saving sends it to that nation's editors, or to the overseer where it has none.",
-      "Any one of them can accept or decline it, and it goes through whole or not at all. Until it is answered, only the men in it are held. Accepting checks again that it still fits both squads. Trades are between clubs; a national side calls up its own nationals instead.",
+      "Trades is where men change clubs: signings, releases, moves between your own clubs and swaps with other nations' clubs, managers as well as players, between as many clubs as you like. Down the left are your offers: Your Move, the ones waiting on you; Waiting, yours and the ones you have accepted that still wait on others; and Declined. New Deal starts another.",
+      "Your club stands on the left. Add, on the right, brings in another club, or Free Agents to sign from; each gets a tab, and the cross on a tab takes it out. Click a man to put him in the deal: with one other club he goes to it, and with more the click asks where he goes, to a club or to free agency. Click him again to take him out. Each club counts its places as the deal stands, and one that would hold too many asks who makes way, with Release beside each of its men; the deal cannot go until every squad fits. A man coming in takes the place of a man leaving, but a keeper's place only ever goes to a keeper, and a starting place left empty is filled from the bench.",
+      "The Deal lists what each club gets and gives, and where each man coming in will play. A deal between your own clubs, or with free agents, goes live with Confirm. One with another nation's club is an offer: Send Offer sends it to that nation's editors, or to the overseer where it has none. The overseer has Apply Now as well, to put it straight in.",
+      "Every club in an offer accepts the same version. Accept, Decline (with a note) or Counter answer it: a counter changes the deal from your side and sends it back to every other club to accept again. Withdraw takes back one of yours. Until it is settled only the men in it are held, and each accept checks again that it still fits.",
+      "Sending or accepting a deal also saves the cart's changes to its clubs, so nothing you arranged is lost. National sides are not traded: they call up their own nationals on their own page (see Teams).",
     ] },
     { id: "players-managers", title: "Players And Managers", body: [
       "Players lists your nation's men and everyone at your sides, and Managers the same for managers, each under New Player or New Manager and a search. Edit Player on a player's page, and Edit Club or Edit Team on your own side's page, open that record here.",
-      "A player's page shows his record, his positions among it, and his sides. Request A Change beside his positions sends new ones to the overseer. Release lets him go from your club, Move To or Sign For puts him at another of your clubs, and Call Up and Drop take him on and off your national side. A manager's page has Release and Appoint To; one at another nation's club comes by trade. The overseer can also change a man's record here, and retire a player.",
+      "A player's page shows his record, his positions among it, and his sides. Request A Change beside his positions sends new ones to the overseer. He moves on Trades, and your national side calls him up on its own page. A manager's page shows the sides he runs, and he moves on Trades too. The overseer can also change a man's record here, and retire a player.",
     ] },
     { id: "leagues", title: "Leagues", body: [
       "Leagues lists your nation's leagues by tier, with each one's number of clubs. A league's name, tier and cup sit at the top of its page, yours to change without a request: a tier from 1 to 5, or none, and a cup from your nation's, none, or a new one named there. Two leagues can share a tier, for regional divisions. Below come the league's clubs, each opening on Teams, the nation's pyramid tier by tier, and its cups with the leagues that enter each.",

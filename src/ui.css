@@ -410,6 +410,8 @@
 .ux-posc { display: flex; align-items: center; gap: 4px; }
 .ux-posc .ux-pyr-mv { margin-left: 6px; }
 .ux-hist-lg { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-align: left; -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
+/* The name inside is the link, as wide as the name and no wider: the span fills the cell and fades a cut name's far edge. */
+.ux-hist-lg > button, .ux-hero .ux-t1 > button { white-space: nowrap; vertical-align: top; }
 .ux-hrow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; column-gap: 12px; padding: 10px 12px; }
 .ux-hrow:nth-child(even) { background: var(--ux-panel-2); }
 .ux-hrow-t b { display: block; font-size: 13px; font-weight: 600; line-height: 1.3; }
@@ -582,6 +584,32 @@
 /* The manager card: his style the widest of the four facts; his honours give way, and scroll, when the column runs out of
    room. */
 .ux-plc-facts.ux-mgf { grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)); }
+/* THE TEAMS PAGE'S CARD (App.tsx uxTmCard): the crest on its kit colours, fading into its ground on the right. */
+.ux-tmc-ban { align-items: center; gap: 14px; padding: 0 14px; cursor: pointer; }
+.ux-tmc-ban:hover .ux-plc-last, .ux-tmc-ban:focus-visible .ux-plc-last { text-decoration: underline; text-underline-offset: 4px; }
+.ux-tmc-ban:focus-visible { outline: 2px solid var(--ux-accent); outline-offset: -2px; }
+.ux-tmc-photo { position: absolute; top: 0; right: 0; bottom: 0; width: 68%; }
+.ux-tmc-photo::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--c1) 0%, color-mix(in srgb, var(--c1) 55%, transparent) 38%, transparent 82%),
+              linear-gradient(0deg, rgba(0, 0, 0, .45) 0%, transparent 55%); }
+.ux-tmc-crest { position: relative; flex: none; width: 84px; height: 84px; display: grid; place-items: center;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .35)); }
+.ux-tmc-ban .ux-plc-id { position: relative; text-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.ux-plc-facts.ux-tmf { grid-template-columns: minmax(0, .8fr) minmax(0, 1.9fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+/* Its manager, a row under the facts that opens his page. */
+.ux-role.ux-tmc-mgr { grid-template-columns: 32px minmax(0, 1fr) auto; height: 52px; }
+.ux-role.ux-tmc-mgr:disabled { cursor: default; }
+.ux-role.ux-tmc-mgr:disabled:hover { background: none; }
+
+.ux-tms { display: flex; flex-direction: column; gap: 9px; padding: 4px 14px 14px; }
+.ux-tms-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 32px; align-items: center; gap: 10px; height: 20px; }
+.ux-tms-l { font-size: 12px; font-weight: 700; color: var(--ux-text-3); }
+.ux-roles.ux-tmc-best .ux-role { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.ux-roles.ux-tmc-best .ux-role-t > span b { font-weight: 700; }
+.ux-tm-nm { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+/* A side in a cell (a manager's club and national side): its crest and name are the link, the rest of the cell the row's. */
+.ux-seat { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.ux-seat > :first-child { flex: none; }
 .ux-panel.ux-shrink { flex-shrink: 1; }
 /* Tactics: his side on the pitch beside a row a place. */
 .ux-tac { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
@@ -959,7 +987,7 @@
 .ux-mb-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 28px; padding: 0 12px; min-width: 0; font-size: 12px; }
 .ux-mb-row:nth-child(even) { background: var(--ux-panel-2); }
 .ux-mb-sn { font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
-.ux-mb-n { display: block; min-width: 0; text-align: left; overflow: hidden; }
+.ux-mb-n { display: block; min-width: 0; max-width: 100%; justify-self: start; text-align: left; overflow: hidden; }
 /* Between them: each figure faces the other across the line it measures. */
 .ux-mcmp { display: flex; flex-direction: column; gap: 4px; padding: 0 12px 10px; }
 .ux-mcmp-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 70px minmax(0, 1fr) 32px; align-items: center; gap: 8px; height: 20px; }
@@ -1594,3 +1622,89 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-ed-blist { flex: none; margin: 8px 16px 0; max-width: 760px; max-height: 44vh; border: 1px solid var(--ux-line); border-radius: 6px; }
 .ux-ed-blist .ux-ed-ovrin { margin: 0 auto; }
 .ux-ed-impbad { margin: 0; }
+
+/* TRADES (DESIGN.md "Editor", 11 October 2026): the offers down the left, the deal's two sides side by side, and the deal. */
+.ux-tr { grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr) clamp(280px, 22vw, 340px); }
+.ux-tr-col { min-width: 0; }
+.ux-tr-h { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px 12px 8px; flex-shrink: 0; border-bottom: 1px solid var(--ux-line); }
+.ux-tr-hn { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; font-size: 11px; color: var(--ux-text-3); }
+.ux-tr-hn > b { font: 700 16px/1.1 var(--ux-f-title); letter-spacing: .03em; text-transform: uppercase; color: var(--ux-text); overflow: hidden; }
+.ux-tr-hn > span { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.ux-tr-sp { width: 100%; max-width: 300px; height: 30px; font: 700 15px/1 var(--ux-f-title); letter-spacing: .03em; text-transform: uppercase; }
+.ux-tr-fai { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ux-panel-3);
+  font-size: 11px; font-weight: 700; color: var(--ux-text-2); }
+.ux-tr-cnt { flex: none; display: inline-flex; align-items: baseline; gap: 2px; font-size: 12px; color: var(--ux-text-3); }
+.ux-tr-cnt b { font-size: 15px; font-weight: 600; color: var(--ux-text); }
+.ux-tr-cnt.ux-over b { color: var(--ux-loss); }
+.ux-tr-need { flex-shrink: 0; margin: 8px 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--ux-loss);
+  background: color-mix(in srgb, var(--ux-loss) 12%, transparent); }
+.ux-tr-q { padding: 8px 8px 0; flex-shrink: 0; }
+.ux-tr-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 8px; }
+.ux-tr-sub { padding: 10px 6px 4px; font-size: 11px; font-weight: 500; color: var(--ux-text-3); }
+.ux-tr-row { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 4px 0 0; border-radius: 6px; transition: background var(--ux-fast); }
+.ux-tr-row:hover { background: var(--ux-panel-2); }
+.ux-tr-man { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; height: 100%; padding: 0 6px; text-align: left; font-size: 12px; color: var(--ux-text); }
+/* Shown, not changed (an offer being read, or a man another offer holds): full strength, the row says why. */
+.ux-tr-man:disabled { cursor: default; opacity: 1; filter: none; }
+.ux-tr-pos { flex: none; width: 34px; font-size: 11px; }
+.ux-tr-nm { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 500; }
+.ux-tr-row.ux-st-out { background: color-mix(in srgb, var(--ux-draw) 13%, transparent); box-shadow: inset 2px 0 0 var(--ux-draw); }
+.ux-tr-row.ux-st-in { background: color-mix(in srgb, var(--ux-win) 13%, transparent); box-shadow: inset 2px 0 0 var(--ux-win); }
+.ux-tr-row.ux-st-rel { background: color-mix(in srgb, var(--ux-loss) 13%, transparent); box-shadow: inset 2px 0 0 var(--ux-loss); }
+.ux-tr-row.ux-held { opacity: .45; }
+.ux-tr-row.ux-tr-open { padding-left: 6px; gap: 8px; }
+.ux-tr-row.ux-tr-open:hover { background: none; }
+.ux-tr-tag { flex: none; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.ux-tr-tag.ux-st-out { color: var(--ux-draw); background: color-mix(in srgb, var(--ux-draw) 18%, transparent); }
+.ux-tr-tag.ux-st-in { color: var(--ux-win); background: color-mix(in srgb, var(--ux-win) 18%, transparent); }
+.ux-tr-tag.ux-st-rel { color: var(--ux-loss); background: color-mix(in srgb, var(--ux-loss) 18%, transparent); }
+.ux-tr-rel { flex: none; height: 24px; padding: 0 8px; font-size: 11px; }
+.ux-tr-rel.ux-on { color: var(--ux-loss); border-color: var(--ux-loss); }
+.ux-tr-rr { height: 46px; }
+.ux-tr-rt { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.ux-tr-rt > b { font-size: 13px; font-weight: 500; overflow: hidden; }
+.ux-tr-rt > span { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 400; color: var(--ux-text-3); white-space: nowrap; }
+.ux-tr-sum { min-width: 0; }
+.ux-tr-sbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 12px 8px; }
+.ux-tr-blk { padding: 6px 0 10px; border-bottom: 1px solid color-mix(in srgb, var(--ux-line) 60%, transparent); }
+.ux-tr-blk:last-of-type { border-bottom: 0; }
+.ux-tr-bh { display: flex; align-items: center; gap: 8px; height: 30px; font-size: 13px; }
+.ux-tr-bh > b { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; }
+.ux-tr-lh { padding: 6px 0 2px; font-size: 11px; color: var(--ux-text-3); }
+.ux-tr-line { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 12px; }
+.ux-tr-ln { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.ux-tr-ln > b { font-size: 13px; font-weight: 500; overflow: hidden; }
+.ux-tr-ln > span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ux-text-3); white-space: nowrap; overflow: hidden; }
+.ux-tr-up { padding: 4px 0 0; font-size: 11px; color: var(--ux-text-3); }
+.ux-tr-foot { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--ux-line); flex-shrink: 0; }
+.ux-tr-msg { display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.4; }
+.ux-tr-msg.ux-good { flex-direction: row; align-items: center; gap: 6px; color: var(--ux-up); }
+.ux-tr-msg.ux-bad { color: var(--ux-loss); }
+.ux-tr-acts { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ux-tr-acts .ux-cb-when { white-space: normal; }
+/* A club's page arranges its own squad: its bench and manager stand together beside the pitch. */
+.ux-ed-tbody.ux-ed-club { grid-template-columns: min(46vw, calc((100vh - 300px) * .75 + 24px)) minmax(300px, 1fr); }
+.ux-ed-side > .ux-panel:first-child.ux-grow { min-height: 0; }
+/* A national side's eligible nationals: a row a man, a click to call him up. */
+.ux-ed-nrow { width: 100%; padding: 0 6px; border-radius: 6px; text-align: left; border-bottom: 0; }
+.ux-ed-nrow:hover:not(:disabled) { background: var(--ux-panel-2); }
+.ux-ed-nrow.ux-on { background: color-mix(in srgb, var(--ux-win) 13%, transparent); box-shadow: inset 2px 0 0 var(--ux-win); }
+.ux-ed-nrow:disabled { opacity: .45; cursor: not-allowed; }
+.ux-ed-callbar span { color: var(--ux-win); font-weight: 600; white-space: normal; line-height: 1.35; }
+/* A deal's other clubs: a tab each (and Free Agents), Add for another; a man with more than one place to go asks where. */
+.ux-tr-tabs { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 8px; flex-wrap: wrap; flex-shrink: 0; border-bottom: 1px solid var(--ux-line); }
+.ux-tr-tab { display: inline-flex; align-items: center; gap: 2px; max-width: 220px; height: 30px; padding: 0 2px 0 0; border-radius: 6px; border: 1px solid var(--ux-line); }
+.ux-tr-tab.ux-on { background: var(--ux-panel-3); border-color: var(--ux-line-2); box-shadow: inset 0 -2px 0 var(--ux-accent); }
+.ux-tr-tab.ux-over { border-color: var(--ux-loss); }
+.ux-tr-tabb { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 100%; padding: 0 6px 0 8px; font-size: 12px; font-weight: 600; color: var(--ux-text); }
+.ux-tr-tab .ux-cb-x { width: 22px; height: 22px; }
+.ux-tr-fai.ux-sm { width: 18px; height: 18px; font-size: 8px; }
+.ux-tr-add { width: auto; min-width: 90px; max-width: 260px; height: 30px; }
+.ux-tr-row.ux-pk { background: var(--ux-panel-3); }
+.ux-tr-dest { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px 40px; padding: 8px; border-radius: 6px; background: var(--ux-panel-2); font-size: 11px; color: var(--ux-text-3); }
+.ux-tr-dest .ux-btn { height: 26px; gap: 6px; }
+.ux-tr-dest .ux-btn.ux-on { border-color: var(--ux-accent-ink); color: var(--ux-text); }
+.ux-tr-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ux-up); white-space: nowrap; }
+.ux-tr-bh .ux-tr-ok { margin-left: auto; }
+.ux-tr-bh .ux-tr-ok + .ux-tr-cnt { margin-left: 8px; }
+.ux-tr-wait .ux-rq-wait { flex-wrap: wrap; }

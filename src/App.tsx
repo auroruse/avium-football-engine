@@ -30,6 +30,7 @@ import atlasRec from "./data/atlas.json";
 import { OVERSEER, isNational, natLevel, owns, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
+import { dealPlan } from "./data/deals.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
 import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
@@ -2955,7 +2956,7 @@ const REG_PORTAL = { ...REG_HOME, sec: "home" };
 // Players and Managers are pages of Registry (its page bar), not sections of their own (the user, 9 Oct 2026). Registry
 // was Home until the user renamed it the same day; its id stays home.
 const UX_SECS = [["home", "Registry"], ["competitions", "Competitions"], ...(TOURNAMENTS_ENABLED ? [["tournaments", "Tournaments"]] : [])];
-const UX_HOME_PAGES = [["home", "Overview"], ["players", "Players"], ["managers", "Managers"], ["changes", "Rating Changes"]];
+const UX_HOME_PAGES = [["home", "Overview"], ["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["changes", "Rating Changes"]];
 // THE ARCHIVE'S COMPETITIONS (Competitions, 9 October 2026): what kind each is, the nation a domestic one belongs to, and
 // every name one goes by, for an address read before the archive's index has arrived.
 const UX_KINDS = [["league", "Leagues"], ["cup", "Cups"], ["intl", "International"], ["retired", "Retired"]];
@@ -4747,6 +4748,17 @@ const UxArrow = ({ up = false }) => (
   <svg className={"ux-arw" + (up ? " ux-arw-up" : "")} viewBox="0 0 8 12" aria-hidden="true"><path d="M4 1.5v9M1.2 7.6L4 10.5l2.8-2.9" /></svg>);
 const UxCaret = ({ up = false }) => (
   <svg className={"ux-crt" + (up ? " ux-crt-up" : "")} viewBox="0 0 10 6" aria-hidden="true"><path d="M1.2 1.2L5 4.8l3.8-3.6" /></svg>);
+// A SIDE'S STRENGTH BY LINE: its eleven by line at the ratings they play their places at (src/data/positions.js ovrAt), the
+// keeper counted in DEF, and its bench at full. Play Match's strength comparison and the Teams page both read it.
+const UX_LINES = [["ATT", /^(LW|RW|ST|FWD)$/], ["MID", /^(DM|CM|AM|LM|RM|MID)$/], ["DEF", /^(GK|CB|LB|RB|LWB|RWB|DEF)$/]];
+const uxLinesOf = (xi, bench, skill) => {
+  const at = (p) => (p.own?.length && p.spos ? ovrAt(p.ovr ?? skill ?? 0, p.own, p.spos) : p.ovr ?? skill ?? 0);
+  const o = {};
+  for (const [l, re] of UX_LINES) { const ps = (xi || []).filter(p => p && re.test(p.spos || p.pos)); o[l] = ps.length ? ps.reduce((a, p) => a + at(p), 0) / ps.length : null; }
+  const b = (bench || []).filter(Boolean);
+  o.BENCH = b.length ? b.reduce((a, p) => a + (p.ovr ?? skill ?? 0), 0) / b.length : null;
+  return o;
+};
 // Who is out of position on any sheet, worked out once for each set of sides (App.tsx uxOopIdx).
 const UX_OOP_CACHE = new WeakMap();
 const TraitCard = () => {
@@ -10287,8 +10299,16 @@ export default function App() {
   const [edQ, setEdQ] = useState("");                // the rail's search
   const [edSel, setEdSel] = useState(null);          // the place picked on the pitch or bench, waiting for the one it swaps with
   const [edDrag, setEdDrag] = useState(null);        // the place being dragged
-  const [edFind, setEdFind] = useState("");          // the search beside the pitch
-  const [edTrade, setEdTrade] = useState(null);      // a trade being built: { side, other, take: [ids], give: [ids] }
+  const [trOpen, setTrOpen] = useState(null);        // Trades: the offer open (a request's id), or null for a deal being made
+  const [trDeal, setTrDeal] = useState(null);        // the deal on show: { sides (this person's club first), fa (Free Agents open), tab, moves, counter }
+  const [trPick, setTrPick] = useState(null);        // the man whose destination is being asked (kind + id)
+  const [trQ, setTrQ] = useState("");                // the search over free agents
+  const [trBusy, setTrBusy] = useState(false);
+  const [trMsg, setTrMsg] = useState(null);          // { ok | bad, text }: what the last send or answer did
+  const [trNote, setTrNote] = useState("");          // a decline's note
+  const [trArm, setTrArm] = useState(null);          // "decline" | "withdraw": the second step
+  const [edCall, setEdCall] = useState(null);        // a national call-up waiting for the man he replaces: { key, id }
+  const [edNatQ, setEdNatQ] = useState("");          // the search over a national side's eligible nationals
   // THE NEW FORMS, KEPT (Moukden and Kirin, 11 October 2026). A New form being filled in (a team, player, manager or
   // league) is kept in this browser, one a tab, until it is sent or cancelled: another tab, a record picked from the rail
   // or a reload puts it aside, and New brings it back as it was. A request the overseer is reviewing is not kept; it
@@ -10340,6 +10360,15 @@ export default function App() {
     const report = lgMd[lgSeasonObj.id.replace(/\.tsv$/i, ".md")];
     return lgSeasonObj.md && report === undefined ? null : seasonFaces(lgSeasonObj, report);
   }, [lgSeasonObj, lgMd]);
+  // THE TEAMS PAGE (user, 11 October 2026): clubs or national sides, the search, filters and sort, the side in the card and
+  // how far the list is scrolled. Declared before the address, which carries the view.
+  const [uxTmView, setUxTmView] = useState("clubs");
+  const [uxTmQ, setUxTmQ] = useState("");
+  const [uxTmNat, setUxTmNat] = useState("");
+  const [uxTmLg, setUxTmLg] = useState("");
+  const [uxTmSort, setUxTmSort] = useState({ k: "ovr", asc: false });
+  const [uxTmPick, setUxTmPick] = useState(null);
+  const uxTmBox = useRef(null), uxTmTop = useRef(0);
   const routeHash = useMemo(() => {
     const segs = [TAB_SLUG[tab] || "registry"];
     // The Registry: a nation, a club or a national side (by code, and the tab when it is not the first), or a section
@@ -10350,6 +10379,7 @@ export default function App() {
                 if (reg.tab === "history" || reg.tab === "honours") segs.push("history"); }
       else if (reg.nation) segs.push("nations", reg.nation.toLowerCase());
     }
+    if (tab === "leagues" && reg.sec === "teams") { segs.push("teams"); if (uxTmView === "nt") segs.push("national-teams"); }
     if (tab === "leagues" && reg.sec === "managers") {
       segs.push("managers");
       const m = reg.mgr ? uxManagers.find(x => x.id === reg.mgr) : null;
@@ -10384,7 +10414,7 @@ export default function App() {
     if (tab === "docs") { segs.push((DOCS.find(p => p.id === docPage) || DOCS[0]).id); if (docSec) segs.push(docSec); }
     if (tab === "editor") segs.push(edSec);
     return "#/" + segs.map(encodeURIComponent).join("/") + (world !== "avium" ? "?world=" + world : "");
-  }, [tab, reg, teams, lgComp, lgSubEff, playerOpen, lgSeasonObj, lgSeasonView, lgTTab, lgRound, clOpen, tLeaderboard, docSec, docPage, edSec, world, uxManagers, tPage, tView, tSlots, tActiveSlot, meView, lmH, lmA, teamById]);
+  }, [tab, reg, teams, lgComp, lgSubEff, playerOpen, lgSeasonObj, lgSeasonView, lgTTab, lgRound, clOpen, tLeaderboard, docSec, docPage, edSec, world, uxManagers, tPage, tView, tSlots, tActiveSlot, meView, lmH, lmA, teamById, uxTmView]);
   // An address, opened. Anything it names that the app cannot place now is parked in routePend
   // for the resolver below. A name that matches nothing is dropped, and the bar is then rewritten
   // to the page that did open.
@@ -10415,7 +10445,7 @@ export default function App() {
       }
       if (t === "docs") { const pg = DOCS.find(p => p.id === (segs[1] || "").toLowerCase()), id = pg && segs[2] ? segs[2].toLowerCase() : null;
         setDocPage(pg ? pg.id : null); setDocSec(id); setDocOn(id); docScroll.current = id; }
-      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["teams", "players", "managers", "leagues", "requests"].includes(s) ? s : "teams"); }
+      if (t === "editor") { const s = (segs[1] || "").toLowerCase(); setEdSec(["teams", "players", "managers", "leagues", "trades", "requests"].includes(s) ? s : "teams"); }
       return;
     }
     // THE REGISTRY. Its own addresses first (nations, clubs, national sides), then the sections still showing the
@@ -10471,6 +10501,7 @@ export default function App() {
       return;
     }
     if (s1 === "clubs" || s1 === "national-teams") { const tm = byCode(s1 === "national-teams", s2); if (tm) teamPage(tm, s3); else setReg(REG_HOME); return; }
+    if (s1 === "teams") { setReg({ ...REG_HOME, sec: "teams" }); setUxTmView(s2.toLowerCase() === "national-teams" ? "nt" : "clubs"); return; }
     if (s1 === "players") {
       const f = s2.toLowerCase();
       if (f === "rating-changelog") people("changelog", segs[3]); else if (f === "hall-of-fame") people("hof", segs[3], segs[4]); else people("players", segs[2], segs[3]);
@@ -10654,6 +10685,7 @@ export default function App() {
     setRegQ(""); setRegQOpen(false);
     if (sec === "nations") { regGo({}); return; }
     setPlayerOpen(null); setTab("leagues");
+    if (sec === "teams") { setReg({ ...REG_HOME, sec }); return; }
     if (sec === "competitions") { setReg({ ...REG_HOME, sec }); if (world !== "avium") setWorld("avium"); return; }
     setReg({ ...REG_HOME, sec });
     lgOpenComp(LG_ALL_PLAYERS);
@@ -10724,6 +10756,15 @@ export default function App() {
       const ss = uxCareers.get(k)?.band === "GK" ? pstats.seasons.filter(s => Object.keys(s.boards || {}).length) : (uxBoardIdx.get(k) || []).map(([s]) => s);
       return [...new Set(ss.filter(s => s.md).map(s => s.id.replace(/\.tsv$/i, ".md")))];
     }
+    // The Teams page reads the card's side's own competitions (its honours): the side picked, else the strongest in view,
+    // which leads the list.
+    if (reg.sec === "teams") {
+      const nt = uxTmView === "nt";
+      const pickT = (uxTmPick && teamById(uxTmPick)) || teams.filter(t => sideShown(t) && worldOf(t) === world && isIntlLeague(t.league) === nt)
+        .sort((a, b) => (Number(b.skill) || 0) - (Number(a.skill) || 0))[0] || null;
+      const comps = pickT ? regRecordComps(pickT) : [];
+      return pstats.seasons.filter(s => s.md && comps.includes(s.comp)).map(s => s.id.replace(/\.tsv$/i, ".md"));
+    }
     // A manager's page reads his sides' competitions, for their seasons and results.
     if (reg.sec === "managers" && reg.mgr) {
       const m = uxManagers.find(x => x.id === reg.mgr), comps = new Set(m ? uxMgrSides(m).flatMap(regRecordComps) : []);
@@ -10759,7 +10800,7 @@ export default function App() {
     const comps = regTeamObj ? (reg.tab === "history" || reg.tab === "honours" || overview ? regRecordComps(regTeamObj) : [])
       : reg.nation ? natComps(reg.nation) : [];
     return pstats.seasons.filter(s => s.md && comps.includes(s.comp)).map(s => s.id.replace(/\.tsv$/i, ".md"));
-  }, [tab, reg, regTeamObj, pstats, playerOpen, uxBoardIdx, uxCareers, uxManagers, uxTenures, world, lmH, lmA, teamById]);
+  }, [tab, reg, regTeamObj, pstats, playerOpen, uxBoardIdx, uxCareers, uxManagers, uxTenures, world, lmH, lmA, teamById, uxTmView, uxTmPick, teams, arterraOn]);
   const regMdBusy = useRef(new Set());
   useEffect(() => {
     const need = regWant.filter(p => lgMd[p] === undefined && !regMdBusy.current.has(p));
@@ -11246,7 +11287,7 @@ export default function App() {
   // A manager's page, opened from the Managers page or wherever his name is shown.
   const uxMgr = tab === "leagues" && reg.sec === "managers" && reg.mgr ? uxManagers.find(m => m.id === reg.mgr) || null : null;
   const uxScreen = tab !== "leagues" ? null : uxPlayerName ? (reg.tab === "history" ? "playerhist" : "player")
-    : uxMgr ? "manager" : reg.sec === "managers" ? "managers"
+    : uxMgr ? "manager" : reg.sec === "managers" ? "managers" : reg.sec === "teams" ? "teams"
     : reg.sec === "players" && lgSub === "changelog" && !playerOpen ? "changes"
     : reg.sec === "players" && lgSub !== "changelog" && !playerOpen ? "players"
     : reg.sec === "home" || (reg.sec === "nations" && !reg.nation && !reg.team) ? "home"
@@ -11401,6 +11442,26 @@ export default function App() {
   // The Season view: a year's figures for every man who played that year, every competition added up the way Leaders adds
   // them, with the club he played them for. The year picked, else Leaders' own.
   const uxPsY = uxPsYear ?? uxYear;
+  // A side's last five on record, oldest first, the way form is read (Play Match).
+  const uxFormOf = (t) => { const key = archKey(t.name), comps = regRecordComps(t);
+    return (pstats?.seasons || []).filter(s => s.md && comps.includes(s.comp))
+      .flatMap(s => (uxClubRows(s, key) || []).map(r => ({ ...r, s, comp: uxCompAbbr(s) })))
+      .sort((a, b) => uxWhen(b.s) - uxWhen(a.s) || b.t - a.t || b.cup - a.cup).slice(0, 5).reverse(); };
+  // THE TEAMS PAGE'S ROWS, worked out when it is open: every side in this world with its strength by line (uxLinesOf, its
+  // listed eleven and bench), its squad's value (each man's own, as the Players page has it), its nation or conference.
+  const uxTmRows = useMemo(() => {
+    if (uxScreen !== "teams") return [];
+    return teams.filter(t => sideShown(t) && worldOf(t) === world).map(t => {
+      const nt = isIntlLeague(t.league), sq = (t.squad || []).filter(Boolean);
+      const L = uxLinesOf(sq.filter(p => !p.bench), sq.filter(p => p.bench), t.skill);
+      const natCode = nationCodeOf(t), natT = natCode ? natTeamByCode.get(natCode) || null : null;
+      let value = null;
+      if (pstats) { let v = 0, any = false;
+        for (const e of sq) { const rec = e.rid ? recNow(e.rid) : null; if (rec) { v += valueOf(valueInputs(rec, uxValueCtx, uxTrends)) || 0; any = true; } }
+        if (any) value = v; }
+      return { t, nt, L, natCode, natT, value, conf: nt ? String(t.conference || CONF_BY_CODE.get(t.code) || "") : "", key: pFold(t.name) };
+    });
+  }, [uxScreen, teams, world, arterraOn, pstats, uxValueCtx, uxTrends, recById, draft, natTeamByCode]);
   const uxPsSeason = useMemo(() => {
     const tot = new Map();
     if (uxScreen !== "players" || !pstats || uxPsY == null) return tot;
@@ -11472,13 +11533,14 @@ export default function App() {
   useLayoutEffect(() => { if (uxScreen === "players" && uxPsBox.current) uxPsBox.current.scrollTop = uxPsTop; }, [uxScreen]);
   useEffect(() => { if (uxMgBox.current) uxMgBox.current.scrollTop = 0; uxMgTop.current = 0; }, [uxMgQ, uxMgStyle, uxMgSeat, uxMgNat, uxMgSort, world]);
   useLayoutEffect(() => { if (uxScreen === "managers" && uxMgBox.current) uxMgBox.current.scrollTop = uxMgTop.current; }, [uxScreen]);
+  useLayoutEffect(() => { if (uxScreen === "teams" && uxTmBox.current) uxTmBox.current.scrollTop = uxTmTop.current; }, [uxScreen]);
   useEffect(() => { if (uxRcBox.current) uxRcBox.current.scrollTop = 0; setUxRcTop(0); }, [clOpen, uxRcQ, uxRcSide, uxRcDir, uxRcSort, world]);
   useLayoutEffect(() => { if (uxScreen === "changes" && uxRcBox.current) uxRcBox.current.scrollTop = uxRcTop; }, [uxScreen]);
 
   // ── The top bar ──
   // A nation's pages and its clubs', the players and the managers are all reached from Home, so Home stays lit on them.
   const uxSecOn = (id) => id === "editor" ? tab === "editor" : id === "tournaments" ? tab === "tournament"
-    : tab === "leagues" && (reg.sec === id || (id === "home" && ["nations", "players", "managers"].includes(reg.sec)));
+    : tab === "leagues" && (reg.sec === id || (id === "home" && ["nations", "players", "managers", "teams"].includes(reg.sec)));
   const uxGoSec = (id) => {
     setUxMenu(null); setAcctOpen(false);
     if (id === "editor") { setTab("editor"); return; }
@@ -11621,6 +11683,7 @@ export default function App() {
       <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r)}{uxReqActs(r, mine, remove)}</div>
     </div>); };
   const uxReqBlock = (r, mine, remove) => {
+    if (r.kind === "deal") return uxDealBlock(r);
     if (r.kind === "new") return uxNewBlock(r, r.id, overseer && !mine && !r.declined, remove);
     if (r.kind === "pos") return uxPosBlock(r, mine, remove);
     const tm = teamOfKey(r.team);
@@ -11729,7 +11792,7 @@ export default function App() {
   // and an editor's change to a code, ground or city are requests (src/data/rules.js), answered by the other nation or
   // the overseer. An editor's own sides are their nation's national side and clubs; a man's own record is the
   // overseer's, and the editor sees it locked. (The state is declared above the address code, beside the Documentation's.)
-  const edOpen = (sec, id) => { setTab("editor"); setEdSec(sec); edPutAside(sec); setEdTrade(null); setEdSel(null); setEdQ(""); setEdDetails(null); setEdMsg("");
+  const edOpen = (sec, id) => { setTab("editor"); setEdSec(sec); edPutAside(sec); setEdCall(null); setEdSel(null); setEdQ(""); setEdDetails(null); setEdMsg("");
     if (id) setEdPick(p => ({ ...p, [sec]: id })); };
   const edUid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const edFold = (s) => pFold(String(s || "")).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -11834,7 +11897,7 @@ export default function App() {
   const edRail = (kind, groups, pickedKey, pick) => (
     <section className="ux-panel ux-grow ux-ed-rail">
       <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => {
-        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdTrade(null); setEdSel(null); setEdMsg(""); }}>
+        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdCall(null); setEdSel(null); setEdMsg(""); }}>
         {uxIcon("plus", "ux-s")}New {edKindName(kind)}</button></div>
       <div className="ux-ed-search"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
         <input type="search" placeholder="Search" aria-label="Search" value={edQ} onChange={e => setEdQ(e.target.value)} /></span></div>
@@ -11844,7 +11907,7 @@ export default function App() {
             <div className="ux-ed-lh">{h}<b style={mono}>{items.length}</b></div>
             {items.map(it => (
               <button key={it.key} type="button" role="option" aria-selected={pickedKey === it.key} className={"ux-btnreset ux-ed-row" + (pickedKey === it.key && !edNew ? " ux-on" : "")}
-                onClick={() => { pick(it.key); edPutAside(); setEdTrade(null); setEdSel(null); setEdDetails(null); setEdMsg(""); }}>
+                onClick={() => { pick(it.key); edPutAside(); setEdCall(null); setEdSel(null); setEdDetails(null); setEdMsg(""); }}>
                 {it.icon}<span className="ux-ed-rn"><SlideName text={it.name} /></span>{it.sub && <span className="ux-ed-rs">{it.sub}</span>}{it.right}{it.ovr != null && uxBadge(it.ovr)}
               </button>))}
           </Fragment>))}
@@ -11861,41 +11924,71 @@ export default function App() {
     const held = (id) => !!id && edLockedMen.has("p:" + id);
     const swap = (a, b) => { if (a == null || b == null || a === b) return; const s = [...sq]; [s[a], s[b]] = [s[b], s[a]];
       if (s.slice(0, 11).some(v => !v)) return; set({ squad: s }); };
-    const pickPlace = (i) => { if (!mine) return; if (edTrade) { const id = sq[i]; if (!id || held(id)) return;
-        setEdTrade(t => ({ ...t, give: t.give.includes(id) ? t.give.filter(x => x !== id) : [...t.give, id] })); return; }
+    const call = nat && edCall?.key === key ? edCall : null;
+    const pickPlace = (i) => { if (!mine) return; if (call) { callInto(i); return; }
       if (edSel == null) setEdSel(i); else { swap(edSel, i); setEdSel(null); } };
     const release = (i) => { if (sq[i]) edRelease(key, sq[i]); setEdSel(null); };
+    // A NATIONAL CALL-UP (user, 11 October 2026): into an open place, else into the place of the man picked to drop.
+    const callUp = (id) => { if (open) { edBringTo(key, id); return; } setEdCall(c => (c?.id === id ? null : { key, id })); setEdSel(null); };
+    const callInto = (i) => { if (held(sq[i])) return; const s = [...sq]; s[i] = call.id;
+      set({ squad: arrangeBench(s, lab, ownOfId, fitsPlace) }); setEdCall(null); setEdSel(null); };
     // A new shape re-slots the eleven by each man's own positions (a national bench follows its eleven).
     const reform = (nf) => { const n = sq.length, rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
       set({ formation: nf, squad: refitLineup(rows, nf).map(e => e.rid ?? null) }); };
     const open = sq.some(v => !v);
-    // A man coming in: a free agent or one of this person's own men moves at once; anyone else opens a trade.
-    const bring = (id) => { const from = nat ? null : whereIs.get(id)?.club?.key;
-      if (from && !edMine(from)) { setEdTrade({ side: key, other: from, take: [id], give: [] }); setEdFind(""); return; }
-      edBringTo(key, id); setEdFind(""); };
-    const appoint = (id) => { const at = edSidesOfMgr(id).filter(t => !isNational(t) && teamKey(t) !== key);
-      if (!nat && at.some(t => !edMine(teamKey(t)))) { setEdTrade({ side: key, other: teamKey(at[0]), take: [], give: [], mgr: id }); setEdFind(""); return; }
-      edAppoint(key, id); setEdFind(""); };
     const man = (i) => { const id = sq[i], p = id ? recNow(id) : null; return { id, p, nm: p ? p.name : "" }; };
     const mgr = idOf(r.manager) ? mgrNow(idOf(r.manager)) : null;
-    // The search beside the pitch: players (a national side only its own nationals) and managers, strongest first.
-    const found = edFind.trim().length < 2 ? [] : [
-      ...curRecs.players.filter(p => !p.retired && !sq.includes(p.id) && (!nat || p.nat === r.code) && edHit(edFind, p.name)).map(p => ({ kind: "player", r: p })),
-      ...curRecs.managers.filter(m => idOf(r.manager) !== m.id && edHit(edFind, m.name)).map(m => ({ kind: "manager", r: m })),
-    ].sort((a, b) => b.r.ovr - a.r.ovr).slice(0, 10);
-    const sideOfMan = (f) => f.kind === "player" ? (nat ? whereIs.get(f.r.id)?.nt?.key : whereIs.get(f.r.id)?.club?.key) : teamKey(edSidesOfMgr(f.r.id).find(t => !isNational(t)) || {});
-    const placeCls = (i) => "ux-ed-pl" + (edSel === i ? " ux-sel" : "") + (edTrade?.give.includes(sq[i]) ? " ux-out" : "") + (edDrag != null && edDrag !== i ? " ux-tgt" : "") + (held(sq[i]) ? " ux-held" : "");
+    // A national side's eligible nationals, strongest first, and the managers it may appoint.
+    const pool = nat && mine ? curRecs.players.filter(p => !p.retired && p.nat === r.code && !sq.includes(p.id) && edHit(edNatQ, p.name))
+      .sort((a, b) => b.ovr - a.ovr).slice(0, 60) : [];
+    const mgrChoices = nat && mine ? [[null, curRecs.managers.filter(m => m.id !== idOf(r.manager) && !edLockedMen.has("m:" + m.id))
+      .sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]] : [];
+    const placeCls = (i) => "ux-ed-pl" + (edSel === i ? " ux-sel" : "") + (call && sq[i] ? " ux-out" : "") + (edDrag != null && edDrag !== i ? " ux-tgt" : "") + (held(sq[i]) ? " ux-held" : "");
     const dnd = (i) => mine ? {
-      draggable: !!sq[i] && !edTrade, onDragStart: (e) => { setEdDrag(i); setEdSel(null); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(i)); } catch {} },
+      draggable: !!sq[i] && !call, onDragStart: (e) => { setEdDrag(i); setEdSel(null); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(i)); } catch {} },
       onDragEnd: () => setEdDrag(null), onDragOver: (e) => { if (edDrag != null) e.preventDefault(); },
       onDrop: (e) => { e.preventDefault(); swap(edDrag, i); setEdDrag(null); } } : {};
-    const tradeSide = edTrade ? edTeamRec(edTrade.other) : null;
     // Code, ground and city: the overseer's, so an editor's change to them goes as a request.
     const det = edDetails && edDetails.key === key ? edDetails : null, updDet = (p) => setEdDetails(x => ({ ...x, ...p }));
     const sendDet = () => { const city = det.city || "", ground = det.ground.trim(), cap = String(det.cap || "").trim();
       set({ ...(nat ? null : { code: det.code.trim().toUpperCase() }), stadium: ground + (cap ? ` (${cap})` : ""),
             location: city === stripVenue(r.location || "") ? r.location : city });
       setEdDetails(null); };
+    // The bench and the manager: beside a national side's pitch with its eligible nationals; a club's stand together.
+    const benchPanel = uxPanel("Bench", null, (
+              <div className="ux-ed-bench">
+                {sq.slice(11).map((_, j) => { const i = 11 + j, { id, p, nm } = man(i);
+                  return (
+                  <div key={i} className={"ux-ed-brow " + placeCls(i)} {...dnd(i)} title={held(id) ? "Waiting On A Request" : undefined}>
+                    {/* A bench place takes a man of its group (a keeper, a defender, a midfielder or a forward): an open place shows
+                        its group, a filled one the position of his that fits it (else his first), in red when he is not of the group. */}
+                    {(() => { const own = id ? ownOfId(id) : [], odd = !!id && !fitsPlace(own, lab[i]), shown = id && own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
+                      return <b className={"ux-ed-bpos" + (odd ? " ux-oop" : "")} style={{ ...mono, color: POS_CLR[shown] }}
+                        title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` + (odd ? `: Not A ${GROUP_NAME[lab[i]]}` : "") : undefined}>{shown}</b>; })()}
+                    <button type="button" className="ux-btnreset ux-ed-bman" onClick={() => pickPlace(i)} aria-pressed={edSel === i}>
+                      {id ? <><PlayerShot name={nm} size={24} /><span className="ux-ed-rn"><SlideName text={fullDisplayName(nm)} /></span></> : <span className="ux-ed-open">Open</span>}</button>
+                    {p && uxBadge(p.ovr)}
+                    {mine && nat && id && !call && !held(id) && <button type="button" className="ux-btnreset ux-cb-x" title="Drop" aria-label={"Drop " + fullDisplayName(nm)}
+                      onClick={() => release(i)}>{uxIcon("close", "ux-s")}</button>}
+                  </div>); })}
+                {mine && call && (
+                  <div className="ux-ed-selbar ux-ed-callbar"><span>Calling Up {fullDisplayName(recNow(call.id)?.name || "")}: Pick Who Is Dropped</span>
+                    <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdCall(null)}>Cancel</button></div>)}
+                {mine && !call && edSel != null && (
+                  <div className="ux-ed-selbar"><span>{fullDisplayName(man(edSel).nm) || "Open"}</span>
+                    {nat && man(edSel).id && !held(man(edSel).id) && <button type="button" className="ux-btnreset ux-btn ux-danger" onClick={() => release(edSel)}>Drop</button>}
+                    <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdSel(null)}>Cancel</button></div>)}
+              </div>), true);
+    const mgrPanel = uxPanel("Manager", nat && mine ? <span style={{ marginLeft: "auto" }}><UxSidePick label="Appoint" value="" groups={mgrChoices} placeholder="Search Managers" onPick={it => edAppoint(key, it.k)} /></span> : null, (
+              <div className="ux-ed-mgr">
+                {mgr ? <>
+                  <span className="ux-ed-face"><PlayerShot name={mgr.name} size={40} /></span>
+                  <span className="ux-ed-mn"><b><SlideName text={fullDisplayName(mgr.name)} /></b><span>{uxStyleName(styleKeyOf(r.style) || "balanced")}</span></span>
+                  {uxBadge(mgr.ovr)}
+                  {mine && nat && !edLockedMen.has("m:" + mgr.id) && <button type="button" className="ux-btnreset ux-cb-x" title="Release" aria-label={"Release " + fullDisplayName(mgr.name)}
+                    onClick={() => set({ manager: null })}>{uxIcon("close", "ux-s")}</button>}</>
+                  : <span className="ux-empty">No Manager</span>}
+              </div>));
     return (
       <div className="ux-ed-rec">
         {/* The side's head: crest, name and kits (its own to change), then code, ground and city (by request for an editor). */}
@@ -11934,7 +12027,7 @@ export default function App() {
               cap: String(venueCap(r.stadium) || ""), city: stripVenue(r.location || "") })}>{uxIcon("edit", "ux-s")}{overseer ? "Change" : "Request A Change"}</button>}
           </dl>)}
         </section>
-        <div className="ux-ed-body ux-ed-tbody">
+        <div className={"ux-ed-body ux-ed-tbody" + (nat ? "" : " ux-ed-club")}>
           {uxPanel("Squad", mine ? (
             <label className="ux-pick" style={{ marginLeft: "auto" }}><select aria-label="Formation" value={fm} onChange={e => reform(e.target.value)}>
               {FORMATIONS.map(f => <option key={f} value={f}>{f}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>)
@@ -11953,86 +12046,31 @@ export default function App() {
                     {p && uxPlTraits(p.badges)}
                   </div>); })}
               </div></div>), true)}
-          {uxPanel("Bench", null, (
-              <div className="ux-ed-bench">
-                {sq.slice(11).map((_, j) => { const i = 11 + j, { id, p, nm } = man(i);
-                  return (
-                  <div key={i} className={"ux-ed-brow " + placeCls(i)} {...dnd(i)} title={held(id) ? "Waiting On A Request" : undefined}>
-                    {/* A bench place takes a man of its group (a keeper, a defender, a midfielder or a forward): an open place shows
-                        its group, a filled one the position of his that fits it (else his first), in red when he is not of the group. */}
-                    {(() => { const own = id ? ownOfId(id) : [], odd = !!id && !fitsPlace(own, lab[i]), shown = id && own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
-                      return <b className={"ux-ed-bpos" + (odd ? " ux-oop" : "")} style={{ ...mono, color: POS_CLR[shown] }}
-                        title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` + (odd ? `: Not A ${GROUP_NAME[lab[i]]}` : "") : undefined}>{shown}</b>; })()}
-                    <button type="button" className="ux-btnreset ux-ed-bman" onClick={() => pickPlace(i)} aria-pressed={edSel === i}>
-                      {id ? <><PlayerShot name={nm} size={24} /><span className="ux-ed-rn"><SlideName text={fullDisplayName(nm)} /></span></> : <span className="ux-ed-open">Open</span>}</button>
-                    {p && uxBadge(p.ovr)}
-                    {mine && id && !edTrade && !held(id) && <button type="button" className="ux-btnreset ux-cb-x" title={nat ? "Drop" : "Release"} aria-label={(nat ? "Drop " : "Release ") + fullDisplayName(nm)}
-                      onClick={() => release(i)}>{uxIcon("close", "ux-s")}</button>}
-                  </div>); })}
-                {mine && edSel != null && !edTrade && (
-                  <div className="ux-ed-selbar"><span>{fullDisplayName(man(edSel).nm) || "Open"}</span>
-                    {man(edSel).id && !held(man(edSel).id) && <button type="button" className="ux-btnreset ux-btn ux-danger" onClick={() => release(edSel)}>{nat ? "Drop" : "Release"}</button>}
-                    <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdSel(null)}>Cancel</button></div>)}
-              </div>), true)}
+          {nat ? <>
+          {benchPanel}
           <div className="ux-col ux-ed-side">
-            {uxPanel("Manager", null, (
-              <div className="ux-ed-mgr">
-                {mgr ? <>
-                  <span className="ux-ed-face"><PlayerShot name={mgr.name} size={40} /></span>
-                  <span className="ux-ed-mn"><b><SlideName text={fullDisplayName(mgr.name)} /></b><span>{uxStyleName(styleKeyOf(r.style) || "balanced")}</span></span>
-                  {uxBadge(mgr.ovr)}
-                  {mine && !edLockedMen.has("m:" + mgr.id) && <button type="button" className="ux-btnreset ux-cb-x" title="Release" aria-label={"Release " + fullDisplayName(mgr.name)}
-                    onClick={() => set({ manager: null })}>{uxIcon("close", "ux-s")}</button>}</>
-                  : <span className="ux-empty">No Manager</span>}
-              </div>))}
-            {edTrade && tradeSide ? uxPanel("Trade", (
-              <button type="button" className="ux-btnreset ux-cb-x" style={{ marginLeft: "auto" }} aria-label="Cancel The Trade" onClick={() => setEdTrade(null)}>{uxIcon("close", "ux-s")}</button>), (
-              <div className="ux-ed-trade">
-                <div className="ux-ed-with">{teamOfKey(edTrade.other) && <TeamCrest team={teamOfKey(edTrade.other)} size={22} />}
-                  <span><b>{tradeSide.name.trim()}</b><span>{natOptions.name.get(edNatOf(edTrade.other)) || ""}</span></span></div>
-                <div className="ux-ed-lh">Coming In</div>
-                {[...edTrade.take.map(id => ({ id, p: recNow(id), m: false })), ...(edTrade.mgr ? [{ id: edTrade.mgr, p: mgrNow(edTrade.mgr), m: true }] : [])].map(({ id, p, m }) => (
-                  <div key={id} className="ux-ed-trow"><b style={{ ...mono, color: m ? undefined : POS_CLR[posOfId(id)] }}>{m ? "MGR" : posOfId(id)}</b>
-                    <span className="ux-ed-rn"><SlideName text={fullDisplayName(p?.name || id)} /></span>{p && uxBadge(p.ovr)}</div>))}
-                <div className="ux-ed-lh">Going Out</div>
-                {edTrade.give.length ? edTrade.give.map(id => { const p = recNow(id);
-                  return (<div key={id} className="ux-ed-trow"><b style={{ ...mono, color: POS_CLR[posOfId(id)] }}>{posOfId(id)}</b>
-                    <span className="ux-ed-rn"><SlideName text={fullDisplayName(p?.name || id)} /></span>{p && uxBadge(p.ovr)}
-                    <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Keep " + fullDisplayName(p?.name || id)}
-                      onClick={() => setEdTrade(t => ({ ...t, give: t.give.filter(x => x !== id) }))}>{uxIcon("close", "ux-s")}</button></div>); })
-                  : <div className="ux-empty-sm">None</div>}
-                <div className="ux-ed-tfoot">
-                  <span className="ux-cb-when">Waiting For {(ownersOfKey(edTrade.other).join(", ")) || "The Overseer"}</span>
-                  <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => {
-                    edPut({ ...draft, trades: [...(draft.trades || []), { id: edUid(), side: edTrade.side, other: edTrade.other,
-                      ins: [...edTrade.take.map(id => ({ kind: "player", id })), ...(edTrade.mgr ? [{ kind: "manager", id: edTrade.mgr }] : [])],
-                      outs: edTrade.give.map(id => ({ kind: "player", id })) }] });
-                    setEdTrade(null); }}>Add To Cart</button>
-                </div>
-              </div>), true)
-            : mine && uxPanel(nat ? "Call Up" : "Sign", null, (
+            {mgrPanel}
+            {nat && mine && uxPanel("Eligible Nationals", null, (
               <div className="ux-ed-find">
                 <span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
-                  <input type="search" placeholder="Search Players And Managers" aria-label="Search Players And Managers" value={edFind} onChange={e => setEdFind(e.target.value)} /></span>
+                  <input type="search" placeholder="Search Nationals" aria-label="Search Nationals" value={edNatQ} onChange={e => setEdNatQ(e.target.value)} /></span>
                 {edMsg && <div className="ux-drop-msg ux-bad">{edMsg}</div>}
                 <div className="ux-ed-list">
-                  {found.map(f => { const sk = sideOfMan(f), st = sk ? teamOfKey(sk) : null, own = sk && edMine(sk), isP = f.kind === "player";
-                    const act = isP ? (!sk ? "Sign" : sk === key ? null : own ? "Move Here" : nat ? "Call Up" : "Trade") : (!sk || own || nat ? "Appoint" : "Trade");
-                    const busy = edLockedMen.has((isP ? "p:" : "m:") + f.r.id), can = !busy && (!isP || act === "Trade" || open);
+                  {pool.map(p => { const ck = whereIs.get(p.id)?.club?.key, st = ck ? teamOfKey(ck) : null, busy = edLockedMen.has("p:" + p.id), on = call?.id === p.id;
                     return (
-                    <div key={f.kind + f.r.id} className="ux-ed-frow">
-                      <PlayerShot name={f.r.name} size={26} />
-                      <span className="ux-ed-fn"><b><SlideName text={fullDisplayName(f.r.name)} /></b>
-                        <span>{isP ? <b style={{ ...mono, color: POS_CLR[posOfId(f.r.id)] }}>{posOfId(f.r.id)}</b> : <b style={mono}>MGR</b>}
-                          {st ? <><TeamCrest team={st} size={14} />{st.code || st.name}</> : "Free Agent"}</span></span>
-                      {uxBadge(f.r.ovr)}
-                      {act && <button type="button" className={"ux-btnreset ux-btn" + (act === "Trade" ? " ux-warn" : "")} disabled={!can}
-                        title={busy ? "Waiting On A Request" : can ? undefined : "Squad Full"} onClick={() => (isP ? bring(f.r.id) : appoint(f.r.id))}>{act}</button>}
-                    </div>); })}
-                  {edFind.trim().length >= 2 && !found.length && <div className="ux-empty-sm">No Matches</div>}
+                    <button key={p.id} type="button" className={"ux-btnreset ux-ed-frow ux-ed-nrow" + (on ? " ux-on" : "")} disabled={busy} aria-pressed={on}
+                      title={busy ? "Waiting On A Request" : undefined} onClick={() => callUp(p.id)}>
+                      <PlayerShot name={p.name} size={26} />
+                      <span className="ux-ed-fn"><b><SlideName text={fullDisplayName(p.name)} /></b>
+                        <span><b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posText(ownOfId(p.id)) || posOfId(p.id)}</b>
+                          {st ? <><TeamCrest team={st} size={14} /><SlideName text={st.name} /></> : "Free Agent"}</span></span>
+                      {uxBadge(p.ovr)}
+                    </button>); })}
+                  {!pool.length && <div className="ux-empty-sm">No Nationals Left</div>}
                 </div>
               </div>), true)}
-          </div>
+          </div></> : (
+          <div className="ux-col ux-ed-side">{benchPanel}{mgrPanel}</div>)}
         </div>
       </div>);
   };
@@ -12041,7 +12079,7 @@ export default function App() {
   const renderEdPlayer = (id) => {
     const p = recNow(id); if (!p) return <div className="ux-panel ux-grow"><div className="ux-empty">No Player</div></div>;
     const w = whereIs.get(id) || {}, club = w.club?.key ? edTeamRec(w.club.key) : null, nt = w.nt?.key ? edTeamRec(w.nt.key) : null;
-    const natSide = natTeamByCode.get(p.nat), natRec = natSide?.rkey ? edTeamRec(natSide.rkey) : null, age = ageOf(p.born), pos = posOfId(id);
+    const natSide = natTeamByCode.get(p.nat), age = ageOf(p.born), pos = posOfId(id);
     const held = edLockedMen.has("p:" + id), setP = (patch) => edPut(draftWith(draft, recBase, id, patch, "players"));
     const fact = (label, value, editor) => (
       <div className="ux-ed-fact"><dt>{label}</dt><dd>{overseer && editor ? editor : <>{value}{!overseer && edLock}</>}</dd></div>);
@@ -12064,7 +12102,6 @@ export default function App() {
           : (<span className="ux-ed-pos">{own.length ? own.map(x => <b key={x} style={{ ...mono, color: POS_CLR[x] }}>{x}</b>) : "–"}
               {myMan && !held ? <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdPosAsk({ id, a: own[0] || "", b: own[1] || "" })}>{uxIcon("edit", "ux-s")}Request A Change</button> : edLock}</span>)}
       </dd></div>);
-    const otherClubs = edSideChoices(false, true).map(([h, l]) => [h, l.filter(it => it.k !== w.club?.key)]).filter(([, l]) => l.length);
     return (
       <div className="ux-ed-rec">
         <section className="ux-panel ux-ed-head">
@@ -12096,17 +12133,11 @@ export default function App() {
               <div className="ux-ed-srow"><span className="ux-ed-sl">Club</span>
                 {club ? <span className="ux-ed-sn">{teamOfKey(teamKey(club)) && <TeamCrest team={teamOfKey(teamKey(club))} size={22} />}<b><SlideName text={club.name.trim()} /></b></span>
                   : <span className="ux-ed-sn ux-ed-open">Free Agent</span>}
-                {!held && club && edMine(teamKey(club)) && <button type="button" className="ux-btnreset ux-btn" onClick={() => edRelease(teamKey(club), id)}>Release</button>}
-                {!held && (!club || edMine(teamKey(club))) && otherClubs.length > 0 && (
-                  <UxSidePick label={club ? "Move To" : "Sign For"} value="" groups={otherClubs} placeholder="Search Clubs" onPick={it => edBringTo(it.k, id)} />)}
               </div>
               <div className="ux-ed-srow"><span className="ux-ed-sl">National Side</span>
                 {nt ? <span className="ux-ed-sn">{teamOfKey(teamKey(nt)) && <TeamCrest team={teamOfKey(teamKey(nt))} size={22} />}<b><SlideName text={nt.name.trim()} /></b></span>
                   : <span className="ux-ed-sn ux-ed-open">Not Called Up</span>}
-                {!held && nt && edMine(teamKey(nt)) && <button type="button" className="ux-btnreset ux-btn" onClick={() => edRelease(teamKey(nt), id)}>Drop</button>}
-                {!held && !nt && natRec && edMine(teamKey(natRec)) && <button type="button" className="ux-btnreset ux-btn" onClick={() => edBringTo(teamKey(natRec), id)}>Call Up</button>}
               </div>
-              {edMsg && <div className="ux-drop-msg ux-bad" style={{ paddingTop: 10 }}>{edMsg}</div>}
               {overseer && !p.retired && (
                 <div className="ux-ed-tfoot"><span />
                   <button type="button" className={"ux-btnreset ux-btn ux-danger" + (edArm === "retire:" + id ? " ux-arm" : "")}
@@ -12123,7 +12154,6 @@ export default function App() {
     const sides = edSidesOfMgr(id), natSide = natTeamByCode.get(m.nat), age = ageOf(m.born), sk = edStyleOfMgr(id), held = edLockedMen.has("m:" + id);
     const setM = (patch) => edPut(draftWith(draft, recBase, id, patch, "managers"));
     const fact = (label, value, editor) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{overseer && editor ? editor : <>{value}{!overseer && edLock}</>}</dd></div>;
-    const free = edSideChoices(false, false).map(([h, l]) => [h, l.filter(it => !sides.some(t => teamKey(t) === it.k))]).filter(([, l]) => l.length);
     return (
       <div className="ux-ed-rec">
         <section className="ux-panel ux-ed-head">
@@ -12154,12 +12184,8 @@ export default function App() {
             <div className="ux-ed-sides">
               {sides.length ? sides.map(t => { const tm = teamOfKey(teamKey(t));
                 return (<div key={teamKey(t)} className="ux-ed-srow"><span className="ux-ed-sl">{isNational(t) ? "National Side" : "Club"}</span>
-                  <span className="ux-ed-sn">{tm && <TeamCrest team={tm} size={22} />}<b><SlideName text={t.name.trim()} /></b></span>
-                  {!held && edMine(teamKey(t)) && <button type="button" className="ux-btnreset ux-btn" onClick={() => edPut(draftWith(draft, recBase, teamKey(t), { manager: null }, "teams"))}>Release</button>}</div>); })
+                  <span className="ux-ed-sn">{tm && <TeamCrest team={tm} size={22} />}<b><SlideName text={t.name.trim()} /></b></span></div>); })
                 : <div className="ux-ed-srow"><span className="ux-ed-sl">Club</span><span className="ux-ed-sn ux-ed-open">Free Agent</span></div>}
-              {!held && free.length > 0 && (
-                <div className="ux-ed-srow"><span className="ux-ed-sl">Appoint</span>
-                  <UxSidePick label="Appoint To" value="" groups={free} placeholder="Search Sides" onPick={it => edAppoint(it.k, id)} /></div>)}
             </div>))}
         </div>
       </div>);
@@ -12382,16 +12408,16 @@ export default function App() {
       </div>);
   };
 
-  // ── REQUESTS: every one in full, For You, Yours and (the overseer) the new records waiting ──
+  // ── REQUESTS: every one in full but the offers (on Trades), For You, Yours and (the overseer) the new records waiting ──
   const renderEdRequests = () => {
-    const isNew = (r) => r.kind === "new";
-    const forMe = reqFor.filter(r => !reqMine.includes(r) && !(overseer && isNew(r))), newRecs = overseer ? reqFor.filter(r => isNew(r) && !reqMine.includes(r)) : [];
+    const isNew = (r) => r.kind === "new", mineNow = reqMine.filter(r => r.kind !== "deal");
+    const forMe = reqFor.filter(r => !reqMine.includes(r) && r.kind !== "deal" && !(overseer && isNew(r))), newRecs = overseer ? reqFor.filter(r => isNew(r) && !reqMine.includes(r)) : [];
     const col = (title, list) => uxPanel(title, <b className="ux-drop-n" style={mono}>{list.length}</b>,
       <div className="ux-drop-body">{list.length ? list.map(r => uxReqBlock(r, reqMine.includes(r))) : <div className="ux-empty">None</div>}</div>, true);
     return (
       <div className="ux-body ux-ed-req">
         {col("For You", forMe)}
-        {col("Yours", reqMine)}
+        {col("Yours", mineNow)}
         {overseer && col("New Records", newRecs)}
       </div>);
   };
@@ -12736,8 +12762,356 @@ export default function App() {
     return <div className="ux-ed-nl">{colLeague}{colClub}{colSquad}</div>;
   };
 
+  // ── TRADES (DESIGN.md "Editor"; user, 11 October 2026): every move of a man between clubs, between any number of clubs.
+  // Down the left the offers; beside them the deal: this person's club, a tab for each other club in it and for Free Agents,
+  // and what each club gets and gives (src/data/deals.js). A deal between one's own clubs, or with free agency, goes live
+  // at once; one with other nations' clubs is an offer each of them accepts, Accept, Decline or Counter, the same version
+  // for all (src/data/rules.js). The cart's changes to the clubs in a deal go with it. ──
+  const trMe = () => String(scope.login || "").toLowerCase();
+  const trSentByMe = (r) => String(r.by || "").toLowerCase() === trMe();
+  const trTeamItem = (t) => ({ k: teamKey(t), name: t.name.trim(), team: teamOfKey(teamKey(t)), code: t.code });
+  const trName = (k) => edTeamRec(k)?.name.trim() || "";
+  // This person's clubs, by league (every club for the overseer).
+  const trOwnClubs = () => edSides.map(([h, l]) => [h, l.filter(t => !isNational(t)).map(trTeamItem)]).filter(([, l]) => l.length);
+  // What can join a deal: free agency (when it is not in it yet), then every club not in it, by nation.
+  const trAddable = (dl) => {
+    const by = new Map();
+    for (const t of curRecs.teams) {
+      const tm = teamOfKey(teamKey(t));
+      if (isNational(t) || dl.sides.includes(teamKey(t)) || !tm || !sideShown(tm)) continue;
+      const n = natOptions.name.get(t.nation) || t.nation;
+      by.set(n, [...(by.get(n) || []), trTeamItem(t)]);
+    }
+    return [...(dl.fa ? [] : [[null, [{ k: "FA", name: "Free Agents" }]]]),
+      ...[...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([n, l]) => [n, l.sort((a, b) => a.name.localeCompare(b.name))])];
+  };
+  // A deal starts from one of this person's own nation's clubs (the overseer's too), else the first club they may trade for.
+  const trFresh = (side) => { const all = trOwnClubs().flatMap(([, l]) => l);
+    return { sides: [side || (all.find(it => (scope.nations || []).includes(edNatOf(it.k))) || all[0])?.k].filter(Boolean), fa: false, tab: null, moves: [] }; };
+  // A deal changed. An offer that has gone meanwhile (accepted, withdrawn) leaves a new deal behind it.
+  const trSet = (fn) => { const gone = trOpen && !requests.some(x => x.id === trOpen);
+    if (gone) setTrOpen(null); setTrPick(null); setTrDeal(d => fn(d && !gone ? d : trFresh(d?.sides?.[0]))); };
+  // A man held by another open offer or request (the one open here does not count).
+  const trLocked = (kind, id) => requests.some(r => !r.declined && r.id !== trOpen && (r.locks || []).includes((kind === "manager" ? "m:" : "p:") + id));
+  const trManName = (kind, id) => fullDisplayName((kind === "manager" ? mgrNow(id) : recNow(id))?.name || id);
+  // Where a man in a deal stands now: a club's key, or null for a free agent.
+  const trFrom = (m) => { if (m.kind !== "manager") return whereIs.get(m.id)?.club?.key || null;
+    const t = edSidesOfMgr(m.id).find(x => !isNational(x)); return t ? teamKey(t) : null; };
+  const trPlanOf = (dl) => (dl && dl.sides.length && (dl.sides.length > 1 || dl.fa) ? dealPlan(recBase, draft, { sides: dl.sides, moves: dl.moves }, judge) : null);
+  const trNew = (side) => { setTrOpen(null); setTrArm(null); setTrMsg(null); setTrNote(""); setTrQ(""); setTrPick(null); setTrDeal(trFresh(side)); };
+  // An offer opened: this person's club on the left (the one they sent it for, or the one it waits on them for).
+  const trMineIn = (r) => { const ss = r.sides || [r.team, r.other].filter(Boolean);
+    if (trSentByMe(r)) return ss[0];
+    return ss.find(k => Object.keys(r.needs || {}).includes(k) && (overseer ? (scope.nations || []).includes(edNatOf(k)) : ownsKey(k)))
+      || Object.keys(r.needs || {})[0] || ss[0]; };
+  const trView = (r) => { const ss = r.sides || [r.team, r.other].filter(Boolean), mine = trMineIn(r), sides = [mine, ...ss.filter(k => k !== mine)];
+    const fa = (r.moves || []).some(m => !trFrom(m) && m.to);
+    setTrOpen(r.id); setTrArm(null); setTrMsg(null); setTrNote(""); setTrQ(""); setTrPick(null);
+    setTrDeal({ sides, fa, tab: sides[1] || (fa ? "FA" : null), moves: r.moves || [] }); };
+
+  // A man's row in a club or in free agency: his place, his face and name, his rating, and what the deal does with him.
+  // Clicking him puts him in the deal: straight to the one place he can go, or, with more than one, it asks where; Release
+  // lets him go to free agency, offered where a club must make way.
+  const trRow = (dl, kind, id, pos, at, edit, ask) => {
+    const r = kind === "manager" ? mgrNow(id) : recNow(id), m = dl.moves.find(x => x.kind === kind && x.id === id) || null, lk = trLocked(kind, id);
+    const dests = at ? dl.sides.filter(k => k !== at) : dl.sides, key = kind + id, pick = trPick === key;
+    const st = m ? (!m.to ? " ux-st-rel" : !at ? " ux-st-in" : " ux-st-out") : "";
+    const put = (dest) => trSet(d => { const rest = d.moves.filter(x => !(x.kind === kind && x.id === id));
+      return { ...d, moves: dest === undefined ? rest : [...rest, { kind, id, to: dest }] }; });
+    // One place to go: there and back with a click. None (a club alone with free agency): released. More: ask.
+    const click = () => { if (dests.length > 1) { setTrPick(p => (p === key ? null : key)); return; }
+      const to = dests.length ? dests[0] : null; put(m && (m.to || null) === to ? undefined : to); };
+    const tagOf = () => (!m.to ? "Released" : "To " + (edTeamRec(m.to)?.code || trName(m.to)));
+    return (
+      <Fragment key={key}>
+        <div className={"ux-tr-row" + st + (lk ? " ux-held" : "") + (pick ? " ux-pk" : "")} title={lk ? "Waiting On Another Offer" : undefined}>
+          <button type="button" className="ux-btnreset ux-tr-man" disabled={!edit || lk} aria-pressed={!!m} aria-expanded={dests.length > 1 ? pick : undefined} onClick={click}>
+            <b className="ux-tr-pos" style={{ ...mono, color: kind === "manager" ? "var(--ux-text-2)" : POS_CLR[pos] }}>{pos}</b>
+            <PlayerShot name={r?.name || ""} size={26} />
+            <span className="ux-tr-nm"><SlideName text={fullDisplayName(r?.name || id)} /></span>
+            {m && <span className={"ux-tr-tag" + st}>{tagOf()}</span>}
+            {r && uxBadge(r.ovr)}
+          </button>
+          {edit && !lk && at && dests.length === 1 && ((ask && !m) || (m && !m.to)) && <button type="button" className={"ux-btnreset ux-btn ux-tr-rel" + (m && !m.to ? " ux-on" : "")}
+            onClick={() => put(m && !m.to ? undefined : null)}>Release</button>}
+        </div>
+        {pick && edit && (
+          <div className="ux-tr-dest" role="group" aria-label={"Where " + fullDisplayName(r?.name || id) + " Goes"}>
+            <span>Send To</span>
+            {dests.map(k => <button key={k} type="button" className={"ux-btnreset ux-btn" + (m?.to === k ? " ux-on" : "")} onClick={() => put(k)}>
+              {teamOfKey(k) && <TeamCrest team={teamOfKey(k)} size={14} />}{trName(k)}</button>)}
+            {at && <button type="button" className={"ux-btnreset ux-btn" + (m && !m.to ? " ux-on" : "")} onClick={() => put(null)}>Free Agency</button>}
+            {m && <button type="button" className="ux-btnreset ux-btn" onClick={() => put(undefined)}>Take Out</button>}
+          </div>)}
+      </Fragment>);
+  };
+  // A club in the deal: its manager, its eleven and its bench, counted against its places, asking who makes way when it
+  // would hold too many. `head` is its name or the picker that changes it.
+  const trCol = (key, dl, plan, edit, head) => {
+    const t = edTeamRec(key); if (!t) return <div className="ux-empty">No Side</div>;
+    const tm = teamOfKey(key), sq = edSq(t), lab = edLab(t), s = plan?.sides?.[key];
+    const count = s ? s.after : sq.filter(Boolean).length, need = (plan?.need || []).filter(n => n.side === key);
+    const askP = need.some(n => n.what === "players"), askM = need.some(n => n.what === "manager"), mgr = idOf(t.manager);
+    const live = edit && (dl.sides.length > 1 || dl.fa);
+    const benchPos = (id, i) => ownOfId(id).find(x => fitsPlace([x], lab[i])) || ownOfId(id)[0] || lab[i];
+    const open = (i) => <div key={"o" + i} className="ux-tr-row ux-tr-open"><b className="ux-tr-pos" style={mono}>{lab[i]}</b><span className="ux-ed-open">Open</span></div>;
+    return (<>
+      <div className="ux-tr-h">
+        {tm && <TeamCrest team={tm} size={34} />}
+        <span className="ux-tr-hn">{head || <b><SlideName text={t.name.trim()} /></b>}
+          <span>{edDots(tm?.league || t.group, natOptions.name.get(edNatOf(key)) || edNatOf(key))}</span></span>
+        <span className={"ux-tr-cnt" + (count > sq.length ? " ux-over" : "")} title="Men For Places"><b style={mono}>{count}</b>/<span style={mono}>{sq.length}</span></span>
+      </div>
+      {need.length > 0 && <div className="ux-tr-need" role="status">{askM ? `Pick Where ${trManName("manager", mgr)} Goes` : `${count - sq.length} Too Many: Pick Who Makes Way`}</div>}
+      <div className="ux-tr-list">
+        <div className="ux-tr-sub">Manager</div>
+        {mgr ? trRow(dl, "manager", mgr, "MGR", key, live, askM)
+          : <div className="ux-tr-row ux-tr-open"><b className="ux-tr-pos" style={mono}>MGR</b><span className="ux-ed-open">None</span></div>}
+        <div className="ux-tr-sub">Starting Eleven</div>
+        {sq.slice(0, 11).map((id, i) => (id ? trRow(dl, "player", id, lab[i], key, live, askP) : open(i)))}
+        <div className="ux-tr-sub">Bench</div>
+        {sq.slice(11).map((id, j) => (id ? trRow(dl, "player", id, benchPos(id, 11 + j), key, live, askP) : open(11 + j)))}
+      </div></>);
+  };
+  // Free agency in the deal: every free player and manager, best first, searched; a click signs him.
+  const trFaCol = (dl, edit) => {
+    const q = trQ.trim(), signed = new Set(dl.moves.filter(m => !trFrom(m)).map(m => m.kind + m.id));
+    const clubMgr = new Set(curRecs.teams.filter(t => !isNational(t)).map(t => idOf(t.manager)).filter(Boolean));
+    const ps = curRecs.players.filter(p => !p.retired && !whereIs.get(p.id)?.club && (arterraOn || !artNats.has(p.nat)) && (signed.has("player" + p.id) || !q || edHit(q, p.name)))
+      .sort((a, b) => (signed.has("player" + b.id) - signed.has("player" + a.id)) || b.ovr - a.ovr).slice(0, 80);
+    const ms = curRecs.managers.filter(m => !clubMgr.has(m.id) && (arterraOn || !artNats.has(m.nat)) && (signed.has("manager" + m.id) || !q || edHit(q, m.name)))
+      .sort((a, b) => (signed.has("manager" + b.id) - signed.has("manager" + a.id)) || b.ovr - a.ovr).slice(0, q ? 20 : 6);
+    return (<>
+      <div className="ux-tr-h">
+        <span className="ux-tr-fai" style={mono}>FA</span>
+        <span className="ux-tr-hn"><b>Free Agents</b><span>Players And Managers Without A Club</span></span>
+      </div>
+      <div className="ux-tr-q"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
+        <input type="search" placeholder="Search Free Agents" aria-label="Search Free Agents" value={trQ} onChange={e => setTrQ(e.target.value)} /></span></div>
+      <div className="ux-tr-list">
+        {ms.length > 0 && <><div className="ux-tr-sub">Managers</div>{ms.map(m => trRow(dl, "manager", m.id, "MGR", null, edit, false))}</>}
+        <div className="ux-tr-sub">Players</div>
+        {ps.map(p => trRow(dl, "player", p.id, posOfId(p.id), null, edit, false))}
+        {!ps.length && <div className="ux-empty-sm ux-ed-none">No Free Agents</div>}
+      </div></>);
+  };
+  // The other parties: a tab each (a club, or Free Agents), with Add for another, and the one picked beneath.
+  const trOthers = (dl, plan, edit) => {
+    const others = dl.sides.slice(1), tabs = [...others, ...(dl.fa ? ["FA"] : [])], tab = tabs.includes(dl.tab) ? dl.tab : tabs[0] || null;
+    const changing = edit && !dl.counter;
+    const drop = (k) => trSet(d => ({ ...d, ...(k === "FA" ? { fa: false, moves: d.moves.filter(m => trFrom(m)) }
+      : { sides: d.sides.filter(x => x !== k), moves: d.moves.filter(m => m.to !== k && trFrom(m) !== k) }), tab: null }));
+    const add = (it) => trSet(d => (it.k === "FA" ? { ...d, fa: true, tab: "FA" } : { ...d, sides: [...d.sides, it.k], tab: it.k }));
+    const need = (k) => (plan?.need || []).some(n => n.side === k);
+    return (
+      <section className="ux-panel ux-grow ux-tr-col" aria-label="Other Clubs">
+        <div className="ux-tr-tabs" role="tablist" aria-label="Other Clubs">
+          {tabs.map(k => { const on = k === tab, tm = k === "FA" ? null : teamOfKey(k);
+            return (
+            <span key={k} className={"ux-tr-tab" + (on ? " ux-on" : "") + (need(k) ? " ux-over" : "")}>
+              <button type="button" role="tab" aria-selected={on} className="ux-btnreset ux-tr-tabb" onClick={() => trSet(d => ({ ...d, tab: k }))}>
+                {tm ? <TeamCrest team={tm} size={16} /> : <span className="ux-tr-fai ux-sm" style={mono}>FA</span>}<SlideName text={k === "FA" ? "Free Agents" : trName(k)} /></button>
+              {changing && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Take Out " + (k === "FA" ? "Free Agents" : trName(k))} onClick={() => drop(k)}>{uxIcon("close", "ux-xs")}</button>}
+            </span>); })}
+          {changing && <UxSidePick label={tabs.length ? "Add" : "Add A Club Or Free Agents"} value="" groups={trAddable(dl)} placeholder="Search Clubs" cls="ux-tr-add" bare onPick={add} />}
+        </div>
+        {!tab ? <div className="ux-empty">No Other Side</div> : tab === "FA" ? trFaCol(dl, edit) : trCol(tab, dl, plan, edit, null)}
+      </section>);
+  };
+  // THE DEAL: each club's comings and goings (the place each man coming in takes, and whose it was), whether it fits, and
+  // what can be done with it: Confirm, Send Offer, Apply Now (the overseer), or an offer's Accept, Counter and Decline.
+  const trSum = (dl, plan, r, edit) => {
+    const moves = dl.moves.map(m => ({ ...m, from: trFrom(m) })), fits = !!plan && !plan.errors.length;
+    const keys = dl.sides.filter(k => k === dl.sides[0] || moves.some(m => m.from === k || m.to === k));
+    const line = (m, side) => {
+      const p = m.kind === "manager" ? mgrNow(m.id) : recNow(m.id), s = plan?.sides?.[side], at = s?.ins.find(x => x.id === m.id), lab = edLab(edTeamRec(side));
+      const pos = m.kind === "manager" ? "MGR" : posOfId(m.id);
+      const where = m.kind === "manager" ? "Manager" : at ? <>{at.was ? <>For {fullDisplayName(recNow(at.was)?.name || "")}</> : at.i < 11 ? "Starts" : "Bench"}<span className="ux-ed-dot">&middot;</span>
+        <b style={{ ...mono, color: POS_CLR[lab[at.i]] }}>{lab[at.i]}</b></> : m.from ? <>From <SlideName text={trName(m.from)} /></> : "Free Agent";
+      return (
+        <div key={"i" + m.kind + m.id} className="ux-tr-line">
+          <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[pos] }}>{pos}</b>
+          <span className="ux-tr-ln"><b><SlideName text={fullDisplayName(p?.name || m.id)} /></b><span>{where}</span></span>
+          {p && uxBadge(p.ovr)}
+        </div>);
+    };
+    const block = (k) => {
+      const ins = moves.filter(m => m.to === k), outs = moves.filter(m => m.from === k), s = plan?.sides?.[k], tm = teamOfKey(k);
+      return (
+        <div key={k} className="ux-tr-blk">
+          <div className="ux-tr-bh">{tm && <TeamCrest team={tm} size={20} />}<b><SlideName text={trName(k)} /></b>
+            {r && (r.approved || []).includes(k) && <span className="ux-tr-ok">{uxIcon("check", "ux-xs")}Accepted</span>}
+            {s && <span className={"ux-tr-cnt" + (s.after > s.len ? " ux-over" : "")}><b style={mono}>{s.after}</b>/<span style={mono}>{s.len}</span></span>}</div>
+          <div className="ux-tr-lh">Gets</div>
+          {ins.length ? ins.map(m => line(m, k)) : <div className="ux-empty-sm">Nobody</div>}
+          <div className="ux-tr-lh">Gives</div>
+          {outs.length ? outs.map(m => (
+            <div key={"o" + m.kind + m.id} className="ux-tr-line">
+              <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[posOfId(m.id)] }}>{m.kind === "manager" ? "MGR" : posOfId(m.id)}</b>
+              <span className="ux-tr-ln"><b><SlideName text={trManName(m.kind, m.id)} /></b><span>{m.to ? <>To <SlideName text={trName(m.to)} /></> : "Released"}</span></span>
+              {uxBadge((m.kind === "manager" ? mgrNow(m.id) : recNow(m.id))?.ovr)}
+            </div>)) : <div className="ux-empty-sm">Nobody</div>}
+          {(s?.up || []).map(u => <div key={"u" + u.id} className="ux-tr-up">{fullDisplayName(recNow(u.id)?.name || "")} Moves Up To <b style={mono}>{edLab(edTeamRec(k))[u.i]}</b></div>)}
+        </div>);
+    };
+    const parts = keys.slice(1);
+    // Who it would wait on: each other club this person does not answer for (rules.js, the overseer's offer the same way).
+    const answersFor = (k) => (overseer ? (scope.nations || []).includes(edNatOf(k)) || !ownersOfKey(k).some(u => u.toLowerCase() !== trMe()) : edMine(k));
+    const askOf = parts.filter(k => !edMine(k)), offerTo = parts.filter(k => !answersFor(k));
+    const busy = trBusy || !!reqBusy, msg = r && reqMsg[r.id] ? { bad: true, text: reqMsg[r.id] } : trMsg, me = trMineIn(r || {});
+    const arm = (key, label, confirm, go) => (
+      <button type="button" className={"ux-btnreset ux-btn" + (trArm === key ? " ux-arm" : "") + (key === "decline" || key === "withdraw" ? " ux-danger" : "")} disabled={busy}
+        onClick={() => (trArm === key ? go() : setTrArm(key))}>{trArm === key ? confirm : label}</button>);
+    let acts = null;
+    if (edit && dl.counter) acts = (<>
+      <button type="button" className="ux-btnreset ux-btn" disabled={busy} onClick={() => trView(r)}>Cancel</button>
+      <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !fits} onClick={() => trAnswer(r, "counter", { moves: dl.moves, sides: dl.sides })}>Send Counter</button></>);
+    else if (edit) acts = overseer ? (<>
+      {offerTo.length > 0 && <button type="button" className="ux-btnreset ux-btn" disabled={busy || !fits} onClick={() => trGo(dl, true)}>Send Offer</button>}
+      <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !fits} onClick={() => trGo(dl, false)}>Apply Now</button></>)
+      : <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !fits} onClick={() => trGo(dl, askOf.length > 0)}>{askOf.length ? "Send Offer" : "Confirm"}</button>;
+    else if (r?.declined) acts = trSentByMe(r) ? arm("withdraw", "Dismiss", "Confirm Dismiss", () => trAnswer(r, "withdraw")) : null;
+    else if (r && trSentByMe(r)) acts = arm("withdraw", "Withdraw", "Confirm Withdraw", () => trAnswer(r, "withdraw"));
+    else if (r && (r.approved || []).includes(me)) acts = <span className="ux-tr-ok">{uxIcon("check", "ux-xs")}You Accepted</span>;
+    else if (r) acts = (<>
+      {arm("decline", "Decline", "Confirm Decline", () => trAnswer(r, "decline", { note: trNote.trim() }))}
+      <button type="button" className="ux-btnreset ux-btn" disabled={busy} onClick={() => { setTrArm(null); trSet(d => ({ ...d, counter: r.id })); }}>Counter</button>
+      <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={busy || !fits} onClick={() => trAnswer(r, "accept")}>{busy ? "Saving" : "Accept"}</button></>);
+    const waitsNew = !r && edit && (overseer ? null : askOf.length ? <span className="ux-cb-when">Waits For {askOf.map(k => ownersOfKey(k).join(", ") || "The Overseer").join(", ")}</span> : null);
+    return (
+      <section className="ux-panel ux-grow ux-tr-sum" aria-label="Deal">
+        <div className="ux-ph"><h2 className="ux-pt">{r ? ((r.rounds || 1) > 1 ? "Counter" : "Offer") : "Deal"}</h2>
+          {r && <span className="ux-rq-by" style={{ marginLeft: "auto" }}><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>}</div>
+        <div className="ux-tr-sbody">
+          {moves.length > 0 ? keys.map(block) : <div className="ux-empty">No One In The Deal</div>}
+          {r?.declined && <div className="ux-tr-msg ux-bad">Declined by {r.declined.by}{r.declined.note ? <>: {r.declined.note}</> : null}</div>}
+        </div>
+        <div className="ux-tr-foot">
+          {moves.length > 0 && plan && (plan.errors.length
+            ? <div className="ux-tr-msg ux-bad" role="alert">{plan.errors.map((e, i) => <div key={i}>{e}</div>)}</div>
+            : <div className="ux-tr-msg ux-good">{uxIcon("check", "ux-xs")}{keys.length > 1 ? "Fits Every Squad" : "Fits The Squad"}</div>)}
+          {msg && <div className={"ux-tr-msg" + (msg.bad ? " ux-bad" : " ux-good")} role={msg.bad ? "alert" : "status"}>{msg.text}</div>}
+          {r && !r.declined && (trSentByMe(r) || (r.approved || []).length > 0) && <div className="ux-tr-wait">{uxReqWait(r)}</div>}
+          {trArm === "decline" && <input className="ux-ed-in" placeholder="Note, Sent Back With It" aria-label="Note" value={trNote} onChange={e => setTrNote(e.target.value)} />}
+          <div className="ux-tr-acts">{waitsNew || <span />}<span className="ux-ed-acts">{acts}</span></div>
+        </div>
+      </section>);
+  };
+  // THE OFFERS down the left: New Deal, then Your Move, Waiting, Declined and (the overseer) those between others.
+  const trRail = (groups, open) => (
+    <section className="ux-panel ux-grow ux-ed-rail">
+      <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => trNew()}>{uxIcon("plus", "ux-s")}New Deal</button></div>
+      <div className="ux-ed-list" role="listbox" aria-label="Offers">
+        {groups.map(([h, list]) => list.length > 0 && (
+          <Fragment key={h}>
+            <div className="ux-ed-lh">{h}<b style={mono}>{list.length}</b></div>
+            {list.map(r => { const ss = r.sides || [r.team, r.other].filter(Boolean), mine = trMineIn(r), them = ss.filter(k => k !== mine), tm = teamOfKey(them[0]), n = (r.moves || []).length;
+              const nm = (k) => (r.names || {})[k] || trName(k);
+              return (
+              <button key={r.id} type="button" role="option" aria-selected={open?.id === r.id} className={"ux-btnreset ux-ed-row ux-tr-rr" + (open?.id === r.id ? " ux-on" : "")} onClick={() => trView(r)}>
+                {tm ? <TeamCrest team={tm} size={22} /> : <span className="ux-crest-gap" style={{ width: 22 }} />}
+                <span className="ux-tr-rt"><b><SlideName text={nm(them[0]) + (them.length > 1 ? ` And ${them.length - 1} More` : "")} /></b>
+                  <span>{(r.rounds || 1) > 1 ? "Counter" : "Offer"}<span className="ux-ed-dot">&middot;</span><span style={mono}>{n}</span> {n === 1 ? "Man" : "Men"}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span></span>
+              </button>); })}
+          </Fragment>))}
+        {!groups.some(([, l]) => l.length) && <div className="ux-empty-sm ux-ed-none">No Offers</div>}
+      </div>
+    </section>);
+  // The cart's items that touch these clubs go with a deal (user, 11 October 2026), so nothing arranged is lost.
+  const trItemsFor = (keys) => cartList.filter(it => it.groups.some(g => g.kind === "teams" && keys.includes(g.id)));
+  const trMini = (items) => { let c = { v: 1, players: {} };
+    for (const it of items) for (const g of it.groups) c = { ...c, [g.kind]: { ...(c[g.kind] || {}), [g.id]: draft[g.kind][g.id] } };
+    return c; };
+  const trSave = async (cart, items) => {
+    const res = await authed("/save", { cart }), data = await res.json().catch(() => ({}));
+    if (res.status === 401) { signOut(); setTrMsg({ bad: true, text: "Your sign-in ran out. Sign in again." }); return null; }
+    if (!res.ok) { setTrMsg({ bad: true, text: (data.errors || [data.error || `The registry answered ${res.status}`]).join(" ") }); loadRequests(); return null; }
+    let d2 = draft; for (const it of items) d2 = withoutItem(recBase, d2, it);
+    const next = landed(data.apply); saveDraft(d2); showRecords(applyDraft(next, d2));
+    if (Array.isArray(data.waiting)) setRequests(data.waiting); else loadRequests();
+    return data;
+  };
+  // Confirm, Apply Now or Send Offer: the deal (with the cart's changes to its clubs) to the server.
+  const trGo = async (dl, offer) => {
+    if (trBusy || !session) return;
+    const items = trItemsFor(dl.sides);
+    setTrBusy(true); setTrMsg(null); setTrArm(null);
+    try {
+      const data = await trSave({ ...trMini(items), deals: [{ sides: dl.sides, moves: dl.moves, ...(offer ? { offer: true } : null) }] }, items);
+      if (!data) return;
+      const sent = (data.requests || []).find(x => x.kind === "deal");
+      if (sent) { trView(sent); setTrMsg({ ok: true, text: "Offer Sent" }); }
+      else { setTrOpen(null); setTrDeal({ ...trFresh(dl.sides[0]) }); setTrMsg({ ok: true, text: "Done. Live on the site in a minute or two." }); }
+    } catch (e) { setTrMsg({ bad: true, text: String(e?.message || e) }); }
+    finally { setTrBusy(false); }
+  };
+  // An answer: Accept and Counter save the cart's changes to the clubs first.
+  const trAnswer = async (r, action, extra = {}) => {
+    if (trBusy || reqBusy || !session) return;
+    setTrBusy(true); setTrMsg(null); setTrArm(null);
+    try {
+      if (action === "accept" || action === "counter") {
+        const items = trItemsFor(r.sides || [r.team, r.other].filter(Boolean));
+        if (items.length && !(await trSave(trMini(items), items))) return;
+      }
+      if (!(await settle(r, action, extra))) return;
+      if (action === "counter") { trSet(d => ({ ...d, counter: null })); setTrMsg({ ok: true, text: "Counter Sent" }); }
+      else if (action === "accept" && Object.keys(r.needs || {}).length > 1) setTrMsg({ ok: true, text: "Accepted" });
+      else { setTrOpen(null); setTrDeal(trFresh(trMineIn(r)));
+        setTrMsg({ ok: true, text: action === "accept" ? "Accepted. Live on the site in a minute or two." : action === "decline" ? "Declined" : "Withdrawn" }); }
+    } finally { setTrBusy(false); }
+  };
+  const renderEdTrades = () => {
+    const deals = requests.filter(r => r.kind === "deal");
+    // Yours to answer: an offer waiting on one of your nation's clubs, or (the overseer) on a club nobody else answers for.
+    const mine = (r, k) => (overseer ? (scope.nations || []).includes(edNatOf(k)) || !(r.needs[k] || []).length : ownsKey(k));
+    const yourMove = deals.filter(r => !r.declined && !trSentByMe(r) && Object.keys(r.needs || {}).some(k => !(r.approved || []).includes(k) && mine(r, k)));
+    const waiting = deals.filter(r => !r.declined && !yourMove.includes(r) && (trSentByMe(r) || Object.keys(r.needs || {}).some(k => (r.approved || []).includes(k) && mine(r, k))));
+    const declined = deals.filter(r => r.declined && trSentByMe(r));
+    const others = overseer ? deals.filter(r => !r.declined && !yourMove.includes(r) && !waiting.includes(r)) : [];
+    const r = trOpen ? deals.find(x => x.id === trOpen) || null : null;
+    const dl = trDeal && (r || !trOpen) ? trDeal : trFresh(), edit = !r || !!dl.counter, plan = trPlanOf(dl);
+    const rail = trRail([["Your Move", yourMove], ["Waiting", waiting], ["Declined", declined], ...(overseer ? [["Between Others", others]] : [])], r);
+    if (!dl.sides.length) return (
+      <div className="ux-body ux-ed ux-tr">{rail}<section className="ux-panel ux-grow"><div className="ux-empty">No Clubs Of Yours</div></section></div>);
+    const head = edit && !dl.counter
+      ? <UxSidePick label="Your Club" value={dl.sides[0]} groups={trOwnClubs()} placeholder="Search Your Clubs" cls="ux-tr-sp" bare
+          onPick={it => trSet(d => ({ ...d, sides: [it.k], fa: d.fa, tab: null, moves: [] }))} /> : null;
+    return (
+      <div className="ux-body ux-ed ux-tr">
+        {rail}
+        <section className="ux-panel ux-grow ux-tr-col" aria-label={trName(dl.sides[0])}>{trCol(dl.sides[0], dl, plan, edit, head)}</section>
+        {trOthers(dl, plan, edit)}
+        {trSum(dl, plan, r, edit)}
+      </div>);
+  };
+  // AN OFFER in the top bar's Requests: who, to which clubs, the men each club gets, and Open (on Trades).
+  const uxDealBlock = (r) => {
+    const ss = r.sides || [r.team, r.other].filter(Boolean), A = teamOfKey(ss[0]), nm = (k) => (r.names || {})[k] || trName(k);
+    const man = (m) => { const p = m.kind === "manager" ? recMgr.get(m.id) : recById.get(m.id), from = trFrom(m);
+      return uxReqMan(m.kind + m.id, p?.name || m.id, p?.ovr, m.kind === "manager" ? "MGR" : posOfId(m.id), from ? teamOfKey(from) : null,
+        from ? <>From <SlideName text={nm(from)} /></> : "Free Agent"); };
+    const rel = (r.moves || []).filter(m => !m.to);
+    return (
+      <div key={r.id} className="ux-rq">
+        <div className="ux-rq-h">
+          <span className="ux-rq-crest">{A && <TeamCrest team={A} size={28} />}</span>
+          <span className="ux-rq-t"><b><SlideName text={nm(ss[0])} /></b><span>{(r.rounds || 1) > 1 ? "Counter" : "Offer"} To {ss.slice(1).map(nm).join(", ")}</span></span>
+          <span className="ux-rq-by"><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>
+        </div>
+        <div className="ux-rq-cols" style={{ gridTemplateColumns: `repeat(${Math.min(ss.length, 3)}, minmax(0, 1fr))` }}>
+          {ss.map(k => { const gets = (r.moves || []).filter(m => m.to === k);
+            return <div key={k}><div className="ux-rq-lh">To <SlideName text={nm(k)} /></div>{gets.length ? gets.map(man) : <div className="ux-empty-sm">Nobody</div>}</div>; })}
+        </div>
+        {rel.length > 0 && <div className="ux-rq-also">{uxCbRow("rel", "Released", rel.map(m => trManName(m.kind, m.id)).join(", "))}</div>}
+        <div className="ux-rq-f">{r.declined ? <span className="ux-rq-wait"><span className="ux-bad">Declined by {r.declined.by}{r.declined.note ? <>: {r.declined.note}</> : null}</span></span> : uxReqWait(r)}
+          <button type="button" className="ux-btnreset ux-btn ux-btn-pri" onClick={() => { closeInbox(); edOpen("trades"); trView(r); }}>Open</button></div>
+      </div>);
+  };
+
   const renderUxEditor = () => {
     if (edSec === "requests") return renderEdRequests();
+    if (edSec === "trades") return renderEdTrades();
     if (edSec === "leagues") {
       const groups = edLgRows(), picked = edPick.leagues || groups.flatMap(([, l]) => l)[0]?.key;
       return (
@@ -12869,7 +13243,7 @@ export default function App() {
       // In work, Overview and History; out of it, his history is the whole page.
       if (uxMgr.club || uxMgr.nt) { const cur = reg.tab === "history" ? "history" : "overview";
         [["overview", "Overview"], ["history", "History"]].forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => setReg(r => ({ ...r, tab: id === "history" ? "history" : null }))))); }
-    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers")))) {
+    } else if (tab === "leagues" && (uxScreen === "home" || (!uxPl && (reg.sec === "players" || reg.sec === "managers" || reg.sec === "teams")))) {
       const cur = uxScreen === "home" ? "home" : reg.sec === "players" && lgSub === "changelog" ? "changes" : reg.sec;
       title = <h1>Registry</h1>;
       UX_HOME_PAGES.forEach(([id, label]) => tabs.push(pageTab(id, label, cur === id, () => uxGoSec(id))));
@@ -12954,10 +13328,10 @@ export default function App() {
       tabs.push(pageTab("match", lmFixtureName(tg), true));
       right = renderUxMatchBar();
     } else if (tab === "editor") {
-      // The Editor: Teams, Players, Managers and Requests.
+      // The Editor: Teams, Players, Managers, Leagues, Trades and Requests.
       title = <h1>Editor</h1>;
-      [["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["leagues", "Leagues"], ["requests", "Requests"]].forEach(([id, l]) =>
-        tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdTrade(null); setEdSel(null); setEdQ(""); })));
+      [["teams", "Teams"], ["players", "Players"], ["managers", "Managers"], ["leagues", "Leagues"], ["trades", "Trades"], ["requests", "Requests"]].forEach(([id, l]) =>
+        tabs.push(pageTab(id, l, edSec === id, () => { setEdSec(id); setEdCall(null); setEdSel(null); setEdQ(""); })));
     } else if (tab === "docs") {
       // Documentation: a page a topic.
       const cur = (DOCS.find(p => p.id === docPage) || DOCS[0]).id;
@@ -13178,7 +13552,7 @@ export default function App() {
           {my && uxPanel("Your Nation", null, (<>
             <div className="ux-hero">
               <TeamCrest team={my} size={48} />
-              <div className="ux-lines"><button type="button" className="ux-btnreset ux-t1 ux-hero-nm ux-a" onClick={() => openNation(uxMy.code)}>{my.name}</button></div>
+              <div className="ux-lines"><span className="ux-t1 ux-hero-nm"><button type="button" className="ux-btnreset ux-a" onClick={() => openNation(uxMy.code)}>{my.name}</button></span></div>
               <span style={{ marginLeft: "auto" }}>{uxBadge(my.skill, true)}</span>
             </div>
             <dl style={{ margin: 0 }}>
@@ -13487,7 +13861,7 @@ export default function App() {
                 return (
                 <tr key={r.y}>
                   <td className="ux-dim" style={mono}>{uxSeasonLabel(r.y)}</td>
-                  <td>{L ? <div className="ux-tc"><LeagueCrest league={L.s.comp} size={16} />{seasonLink(L, L.s.comp, "ux-hist-lg")}</div> : <span className="ux-dim">&#8211;</span>}</td>
+                  <td>{L ? <div className="ux-tc"><LeagueCrest league={L.s.comp} size={16} /><span className="ux-hist-lg">{seasonLink(L, L.s.comp)}</span></div> : <span className="ux-dim">&#8211;</span>}</td>
                   <td>{res ? (
                     <div className="ux-posc">
                       <b className={won ? "ux-gold" : undefined} style={mono}>{res.league ? ordinal(res.pos) : res.stage === "Winner" ? "1st" : uxStage(res.stage)}</b>
@@ -13896,7 +14270,7 @@ export default function App() {
               <tbody>{yr.map(x => (
                 <tr key={x.s.id}>
                   <td><div className="ux-tc"><LeagueCrest league={x.s.comp} size={16} />
-                    {uxCanOpenSeason(x.s) ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openSeasonPage(x.s)}>{x.s.comp}</button> : <span>{x.s.comp}</span>}</div></td>
+                    {uxCanOpenSeason(x.s) ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openSeasonPage(x.s)}>{x.s.comp}</button></span> : <span>{x.s.comp}</span>}</div></td>
                   <td title={x.side?.name}><div className="ux-tc">{x.side && <TeamCrest team={x.side} size={16} />}<b className="ux-code" style={mono}>{x.team}</b></div></td>
                   {num(x.gp)}{num(x.G)}{num(x.A)}{num(x.CC)}{num(x.DC)}{num(x.SV)}{rtgTd(x.RTG)}
                 </tr>))}
@@ -14135,8 +14509,9 @@ export default function App() {
     const pick = rows.find(r => r.m.id === uxMgPick) || rows[0] || null;
     const S = (key, label, cls, text, title) => uxSortTh(uxMgSort, setUxMgSort, key, label, cls, text, title);
     const seat = (t, cls) => (
-      <td className={cls} title={t?.name} onClick={t ? (e) => { e.stopPropagation(); openTeam(t); } : undefined}>
-        <div className="ux-tc">{t && <TeamCrest team={t} size={16} />}{t ? <span className="ux-a ux-still"><SlideName text={t.name} /></span> : <span className="ux-dim">–</span>}</div></td>);
+      <td className={cls} title={t?.name}>
+        <div className="ux-tc">{t ? <button type="button" className="ux-btnreset ux-a ux-seat" onClick={(e) => { e.stopPropagation(); openTeam(t); }}><TeamCrest team={t} size={16} /><SlideName text={t.name} /></button>
+          : <span className="ux-dim">–</span>}</div></td>);
     const COLS = [40, 182, 44, 64, 118, 52, 72, 64, 128, 116];
     // A win rate: white once he has the matches for it to count, grey below that; the record it is off on hover.
     const winTd = (x, w) => (
@@ -14224,6 +14599,157 @@ export default function App() {
             <div className="ux-ph"><h2 className="ux-pt">Honours</h2></div>
             {uxMgrHonours(honours)}
           </section>)}
+      </div>);
+  };
+
+  // ════ TEAMS: every club, or every national side, listed as Players and Managers are, its card down the right (user,
+  // 11 October 2026: "#, Club, Nation, League, OVR, ATT, MID, DEF, BENCH, City ... as well as anything else relevant";
+  // clubs and national sides switched between, under a tab called Teams) ════
+  const UX_TM_STRENGTH = ["ATT", "MID", "DEF", "BENCH"];
+  const renderUxTeams = () => {
+    const nt = uxTmView === "nt", q = pFold(uxTmQ);
+    const base = uxTmRows.filter(r => r.nt === nt);
+    const nats = nt ? [...new Set(base.map(r => r.conf).filter(Boolean))].sort().map(c => [c, c])
+      : [...new Set(base.map(r => r.natCode).filter(Boolean))].map(c => [c, natTeamByCode.get(c)?.name || c]).sort((a, b) => a[1].localeCompare(b[1]));
+    const lgs = nt ? [] : [...new Set(base.filter(r => !uxTmNat || r.natCode === uxTmNat).map(r => r.t.league))].sort((a, b) => a.localeCompare(b));
+    const rows = base.filter(r => (!q || r.key.includes(q) || String(r.t.code || "").toLowerCase() === q)
+      && (!uxTmNat || (nt ? r.conf === uxTmNat : r.natCode === uxTmNat)) && (nt || !uxTmLg || r.t.league === uxTmLg));
+    const { k, asc } = uxTmSort, dir = asc ? 1 : -1;
+    const val = (r) => k === "name" ? r.t.name : k === "nat" ? (nt ? r.conf : r.natT?.name || r.natCode) : k === "league" ? r.t.league
+      : k === "ovr" ? r.t.skill : k === "city" ? r.t.city || null : k === "style" ? STYLE_LBL[r.t.style || "balanced"]
+      : k === "shape" ? r.t.formation || "4-3-3" : k === "value" ? r.value : r.L[k.toUpperCase()];
+    rows.sort((a, b) => { const va = val(a), vb = val(b), na = va == null || va === "", nb = vb == null || vb === "";
+      if (na || nb) return na === nb ? (b.t.skill || 0) - (a.t.skill || 0) : na ? 1 : -1;
+      const d = typeof va === "string" ? va.localeCompare(vb) : va - vb; return d ? d * dir : (b.t.skill || 0) - (a.t.skill || 0) || a.t.name.localeCompare(b.t.name); });
+    const pick = rows.find(r => r.t.id === uxTmPick) || rows[0] || null;
+    const S = (key, label, cls, text, title) => uxSortTh(uxTmSort, setUxTmSort, key, label, cls, text, title);
+    // Each column at the width its widest entry and its heading (with the sort arrow) measured in the browser (11 October
+    // 2026); the side's name takes whatever is left, and below the sum the list scrolls inside itself rather than cutting
+    // names short.
+    const COLS = nt ? [36, null, 80, 44, 44, 44, 44, 60, 154, 120, 86, 64] : [40, null, 66, 194, 44, 44, 44, 44, 60, 110, 120, 86, 64];
+    const minW = COLS.reduce((a, w) => a + (w || 0), 0) + (nt ? 210 : 214);
+    const setView = (v) => { if ((v === "nt") === nt) return; setUxTmView(v); setUxTmNat(""); setUxTmLg(""); setUxTmPick(null);
+      uxTmTop.current = 0; if (uxTmBox.current) uxTmBox.current.scrollTop = 0; };
+    const dash = <span className="ux-dim">&#8211;</span>;
+    return (
+      <div className="ux-body" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>
+        <section className="ux-panel">
+          <div className="ux-ph"><h2 className="ux-pt">Teams</h2>
+            <div className="ux-ph-ctl">
+              <div className="ux-seg" role="group" aria-label="Teams">
+                {[["clubs", "Clubs"], ["nt", "National Teams"]].map(([v, l]) => (
+                  <button key={v} type="button" className={"ux-btnreset" + ((v === "nt") === nt ? " ux-on" : "")} aria-pressed={(v === "nt") === nt} onClick={() => setView(v)}>{l}</button>))}
+              </div>
+            </div></div>
+          <div className="ux-filters">
+            <label className="ux-search">{uxIcon("search", "ux-s")}<input value={uxTmQ} onChange={e => setUxTmQ(e.target.value)} placeholder={nt ? "Search National Teams" : "Search Clubs"} aria-label={nt ? "Search National Teams" : "Search Clubs"} /></label>
+            {nt ? uxPickG("Conference", uxTmNat, [[null, [["", "All Conferences"], ...nats]]], setUxTmNat)
+                : uxPickG("Nation", uxTmNat, [[null, [["", "All Nations"], ...nats]]], v => { setUxTmNat(v); setUxTmLg(""); })}
+            {!nt && uxPickG("League", uxTmLg, [[null, [["", "All Leagues"], ...lgs.map(l => [l, l])]]], setUxTmLg)}
+            <span className="ux-fcount"><span style={mono}>{rows.length}</span> {nt ? (rows.length === 1 ? "National Team" : "National Teams") : rows.length === 1 ? "Club" : "Clubs"}</span>
+          </div>
+          <div className="ux-pbody ux-ps" ref={uxTmBox} tabIndex={0} aria-label="Teams"
+            onKeyDown={(e) => uxRowKeys(e, rows, pick, r => setUxTmPick(r.t.id), r => openTeam(r.t), uxTmBox.current)}
+            onScroll={() => { uxTmTop.current = uxTmBox.current?.scrollTop || 0; }}>
+            <table className="ux-tbl" style={{ minWidth: minW }}>
+              <colgroup>{COLS.map((w, i) => <col key={i} style={w ? { width: w } : undefined} />)}</colgroup>
+              <thead><tr><th>#</th>{S("name", nt ? "National Team" : "Club", null, true)}
+                {nt ? S("nat", "Conference", null, true) : <>{S("nat", "Nation", null, true)}{S("league", "League", null, true)}</>}
+                {S("ovr", "OVR", "ux-c")}{S("att", "ATT", "ux-c", false, "Attack")}{S("mid", "MID", "ux-c", false, "Midfield")}{S("def", "DEF", "ux-c", false, "Defence")}
+                {S("bench", "BENCH", "ux-c", false, "Bench")}{S("city", "City", null, true)}{S("style", "Style", null, true)}{S("shape", "Formation", null, true)}
+                {S("value", "Value", "ux-n", false, "Squad Value")}</tr></thead>
+              <tbody>{rows.map((r, i) => (
+                <tr key={r.t.id} className={"ux-link" + (r === pick ? " ux-sel" : "")} onClick={() => setUxTmPick(r.t.id)} onDoubleClick={() => openTeam(r.t)}>
+                  <td className="ux-dim" style={mono}>{i + 1}</td>
+                  <td><div className="ux-tc"><TeamCrest team={r.t} size={18} />
+                    <button type="button" className="ux-btnreset ux-a ux-nm ux-tm-nm" onClick={(e) => { e.stopPropagation(); openTeam(r.t); }}><SlideName text={r.t.name} /></button></div></td>
+                  {nt ? <td>{r.conf || dash}</td> : <>
+                    <td title={r.natT?.name || r.natCode}><div className="ux-tc">{r.natT && <TeamCrest team={r.natT} size={16} />}<b className="ux-code" style={mono}>{r.natCode || "–"}</b></div></td>
+                    <td title={r.t.league}><div className="ux-tc"><LeagueCrest league={r.t.league} size={16} /><span><SlideName text={r.t.league} /></span></div></td></>}
+                  <td className="ux-c">{r.t.skill != null ? uxBadge(r.t.skill) : dash}</td>
+                  {UX_TM_STRENGTH.map(l => <td key={l} className="ux-c">{r.L[l] != null ? uxBadge(r.L[l]) : dash}</td>)}
+                  <td title={r.t.city || undefined}>{r.t.city ? <SlideName text={r.t.city} /> : dash}</td>
+                  <td>{uxStyleName(r.t.style)}</td>
+                  <td style={mono}>{r.t.formation || "4-3-3"}</td>
+                  <td className="ux-n" style={mono}>{r.value != null ? moneyLabel(r.value) : dash}</td>
+                </tr>))}
+                {!rows.length && <tr><td colSpan={COLS.length} className="ux-dim">{nt ? "No National Teams Found" : "No Clubs Found"}</td></tr>}</tbody>
+            </table>
+          </div>
+        </section>
+        {pick ? uxTmCard(pick) : <div />}
+      </div>);
+  };
+  // The card, built as the player's and the manager's: its crest on its kit colours fading into its ground (the whole banner
+  // opens the side; user, 11 October 2026), OVR, Style, Formation and Value, and its manager; then its strength by line,
+  // its best players and its honours. No season standing, form, ground, city or capacity (user, the same day).
+  const uxTmCard = (r) => {
+    const { t, nt, L, natT, value } = r;
+    const c1 = t.primaryColor || "var(--ux-panel-3)", c2 = t.secondaryColor || c1;
+    const ink = t.primaryColor && (lumOf(t.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
+    const st = stripVenue(t.stadium || ""), photo = STADIUM_IMAGES.includes(st);
+    const barPct = (v) => (v == null ? 0 : Math.max(4, Math.min(100, (v - 60) / 30 * 100)));
+    const mgr = t.manager ? uxMgrBy.get(pFold(t.manager)) || null : null;
+    const mOvr = t.mgmt ?? mgr?.ovr ?? null, mAge = mgr?.born ? ageOf(mgr.born) : null;
+    const go = () => openTeam(t);
+    const best = (t.squad || []).filter(p => p && (p.fullName || p.name)).slice().sort((a, b) => (b.ovr ?? 0) - (a.ovr ?? 0)).slice(0, 4);
+    const roles = best.length ? rolesOf(t) : {};
+    const record = pstats ? regRecord(t) : { titles: [] };
+    const titles = (nt ? record.titles.filter(([c]) => UX_HONOURS.includes(c)) : record.titles).slice(0, 6);
+    return (
+      <div className="ux-col ux-psc">
+        <section className="ux-panel ux-plc" aria-label={t.name}>
+          <div className="ux-plc-ban ux-tmc-ban" style={{ ["--c1"]: c1, ["--c2"]: c2, color: ink }} role="link" tabIndex={0} aria-label={t.name}
+            onClick={go} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }}>
+            {photo && <div className="ux-tmc-photo"><StadiumImg name={st} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 0, border: "none" }} /></div>}
+            <div className="ux-tmc-crest"><TeamCrest team={t} size={84} /></div>
+            <div className="ux-plc-id">
+              <span className="ux-plc-first">{nt ? "National Team" + (r.conf ? " · " + r.conf : "") : t.league}</span>
+              <span className="ux-plc-last">{t.name}</span>
+              {!nt && natT && <div className="ux-plc-crests">
+                <button type="button" className="ux-btnreset" aria-label={natT.name} title={natT.name} onClick={(e) => { e.stopPropagation(); openTeam(natT); }}><TeamCrest team={natT} size={30} /></button>
+                <LeagueCrest league={t.league} size={30} /></div>}
+            </div>
+          </div>
+          <dl className="ux-plc-facts ux-tmf">
+            <div><dt>OVR</dt><dd>{t.skill != null ? uxBadge(t.skill) : "–"}</dd></div>
+            <div><dt>Style</dt><dd>{uxStyleName(t.style)}</dd></div>
+            <div><dt>Formation</dt><dd style={mono}>{t.formation || "4-3-3"}</dd></div>
+            <div><dt>Value</dt><dd style={mono}>{value != null ? moneyLabel(value) : "–"}</dd></div>
+          </dl>
+          {t.manager && (
+            <button type="button" className="ux-btnreset ux-role ux-tmc-mgr" onClick={() => mgr && openManager(mgr)} disabled={!mgr}>
+              <PlayerShot name={t.manager} size={32} />
+              <span className="ux-role-t"><b>{t.manager}</b><span>Manager{mgr?.nat ? <> &middot; <span style={mono}>{mgr.nat}</span></> : null}{mAge != null ? <> &middot; Age <span style={mono}>{mAge}</span></> : null}</span></span>
+              {mOvr != null ? uxBadge(mOvr) : null}
+            </button>)}
+        </section>
+        {uxPanel("Strength", null, (
+          <div className="ux-tms">{UX_TM_STRENGTH.map(l => (
+            <div key={l} className="ux-tms-row">
+              <span className="ux-tms-l" style={mono}>{l}</span>
+              <div className="ux-mcmp-bar"><i style={{ width: barPct(L[l]) + "%", background: ovrHex(Math.round(L[l] || 0)) }} /></div>
+              {L[l] != null ? <OvrBadge v={L[l]} /> : <span className="ux-dim">&#8211;</span>}
+            </div>))}</div>))}
+        {best.length > 0 && uxPanel("Best Players", null, (
+          <div className="ux-roles ux-tmc-best">{best.map((p, i) => { const nm = p.fullName || p.name;
+            // Where he plays and the role his side's style, shape and slot give him (rolesOf), in grey; a substitute has
+            // his own first position and no role until he comes on (user, 11 October 2026).
+            const pos = !p.bench && p.spos ? p.spos : p.own?.[0] || p.spos || p.pos, role = p.bench ? null : ROLE_NAME[roles[p.name]] || null;
+            return (
+              <button key={i} type="button" className="ux-btnreset ux-role" onClick={() => playerByName.has(nm) && openPlayer(nm)}>
+                <PlayerShot name={nm} size={28} />
+                <span className="ux-role-t"><b>{fullDisplayName(nm)}</b><span><b style={{ ...mono, color: POS_CLR[pos] || "inherit" }}>{pos}</b> {role ? role[0] : "Substitute"}</span></span>
+                {p.ovr != null ? uxBadge(p.ovr) : null}
+              </button>); })}</div>))}
+        {titles.length > 0 && uxPanel("Honours", null, (
+          <div className="ux-pbody ux-fit"><table className="ux-tbl">
+            <colgroup><col /><col style={{ width: 40 }} /><col style={{ width: 54 }} /></colgroup>
+            <thead><tr><th>Competition</th><th className="ux-n">Won</th><th className="ux-n">Last</th></tr></thead>
+            <tbody>{titles.map(([comp, ss2]) => (
+              <tr key={comp}><td><div className="ux-tc"><LeagueCrest league={comp} size={16} /><span>{comp}</span></div></td>
+                <td className="ux-n ux-strong" style={{ ...mono, color: "var(--ux-gold)" }}>{ss2.length}</td><td className="ux-n ux-dim" style={mono}>{ss2[0].season}</td></tr>))}</tbody>
+          </table></div>))}
       </div>);
   };
 
@@ -14363,7 +14889,7 @@ export default function App() {
       <div className="ux-tc ux-rt"><span className="ux-rtn">{t ? <button type="button" className={"ux-btnreset ux-a" + (bold ? " ux-strong" : "")} onClick={go}>{name}</button>
         : <span className={bold ? "ux-strong" : undefined}>{name}</span>}</span>{uxArcCrest(name)}</div>);
     return (
-      <div className="ux-tc">{uxArcCrest(name)}{t ? <button type="button" className={"ux-btnreset ux-a ux-hist-lg" + (bold ? " ux-strong" : "")} onClick={go}>{name}</button>
+      <div className="ux-tc">{uxArcCrest(name)}{t ? <span className={"ux-hist-lg" + (bold ? " ux-strong" : "")}><button type="button" className="ux-btnreset ux-a" onClick={go}>{name}</button></span>
         : <span className={bold ? "ux-strong" : undefined}>{name}</span>}</div>);
   };
   // A man off a season's figures: his portrait and name (opening his page), and a figure after it.
@@ -14372,7 +14898,7 @@ export default function App() {
     const go = playerByName.has(e.player);
     return (
       <div className="ux-tc"><PlayerShot name={e.player} size={18} />
-        {go ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={ev => { ev.stopPropagation(); openPlayer(e.player); }}>{e.player}</button> : <span>{e.player}</span>}
+        {go ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={ev => { ev.stopPropagation(); openPlayer(e.player); }}>{e.player}</button></span> : <span>{e.player}</span>}
         {fig != null && <b style={mono}>{fig}</b>}</div>);
   };
   // The man a board puts first, a tie going to whoever scored more: the Player Stats table's own order.
@@ -14484,7 +15010,7 @@ export default function App() {
                   return (
                     <tr key={c.name}>
                       <td><div className="ux-tc"><LeagueCrest league={c.name} size={16} />
-                        <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => uxGoComp(c.name)}>{c.name}</button></div></td>
+                        <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => uxGoComp(c.name)}>{c.name}</button></span></div></td>
                       <td className="ux-c" style={mono}>{ss.length}</td>
                       <td className="ux-sep">{uxArcSide(hold)}</td>
                       <td>{top?.n ? <div className="ux-tc">{uxArcCrest(top.name)}<span>{top.name}</span><b className="ux-gold" style={mono}>{top.n}</b></div>
@@ -14522,7 +15048,7 @@ export default function App() {
               {rows.map(({ c, s, sum }) => (
                 <tr key={s.id} className={s.hist ? undefined : "ux-link"} onClick={() => !s.hist && openSeasonPage(s)}>
                   <td><div className="ux-tc"><LeagueCrest league={c.name} size={16} />
-                    <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={e => { e.stopPropagation(); uxGoComp(c.name); }}>{c.name}</button></div></td>
+                    <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={e => { e.stopPropagation(); uxGoComp(c.name); }}>{c.name}</button></span></div></td>
                   <td className="ux-dim" style={mono}>{uxSeasonName(s)}</td>
                   <td>{uxArcSide(sum?.champ, true)}</td>
                   {league ? <td className="ux-n ux-strong" style={mono}>{sum?.pts ?? dash}</td>
@@ -14916,10 +15442,10 @@ export default function App() {
               <tr key={r.player}>
                 <td className="ux-dim" style={mono}>{i + 1}</td>
                 <td><div className="ux-tc"><PlayerShot name={r.player} size={18} />
-                  {go ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openPlayer(r.player)}>{r.player}</button> : <span>{r.player}</span>}</div></td>
+                  {go ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openPlayer(r.player)}>{r.player}</button></span> : <span>{r.player}</span>}</div></td>
                 <td style={{ ...mono, color: POS_CLR[r.pos] || "var(--ux-text-2)", fontWeight: 700, fontSize: 11 }}>{r.pos}</td>
                 <td><div className="ux-tc">{t ? <TeamCrest team={t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}
-                  {t ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openTeam(t)}>{t.name}</button> : <span>{formerName(r.team)}</span>}</div></td>
+                  {t ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(t)}>{t.name}</button></span> : <span>{formerName(r.team)}</span>}</div></td>
                 {STATS.map(([k]) => <td key={k} className={"ux-n" + (k === sort.k ? " ux-strong" : "") + (r[k] == null ? " ux-dim" : "")} style={{ ...mono, ...(k === "RTG" && r[k] != null ? { color: ratingColor(r[k]) } : null) }}>
                   {r[k] == null ? "–" : k === "RTG" ? Number(r[k]).toFixed(2).replace(/0$/, "") : r[k]}</td>)}
               </tr>); })}
@@ -15904,7 +16430,7 @@ export default function App() {
                 <tr key={r.p.team + "|" + r.p.name}>
                   <td className="ux-dim" style={mono}>{i + 1}</td>
                   <td><div className="ux-tc"><PlayerShot name={r.nm} size={18} />
-                    {go ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openPlayer(r.nm)}>{r.nm}</button> : <span>{r.nm}</span>}</div></td>
+                    {go ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openPlayer(r.nm)}>{r.nm}</button></span> : <span>{r.nm}</span>}</div></td>
                   <td style={{ ...mono, color: POS_CLR[r.p.pos] || "var(--ux-text-2)", fontWeight: 700, fontSize: 11 }}>{r.p.pos}</td>
                   <td><div className="ux-tc">{t ? <TeamCrest team={t} size={16} /> : <span className="ux-crest-gap" style={{ width: 16 }} />}<span>{r.p.team}</span></div></td>
                   {uxNum(r.gp)}{uxNum(r.p.goals || 0)}{uxNum(r.p.assists || 0)}{uxAvgTd(r.avg, r.ok)}{uxNum(r.p.cc || 0)}{uxNum(r.p.defActs || 0)}{uxNum(r.p.saves || 0)}
@@ -16523,33 +17049,22 @@ export default function App() {
         </div></div>), true, side + "-xi");
     };
     // ── Between them ──
-    // OVR is the side's rating, XI OVR and BENCH OVR its eleven's and its bench's (Moukden and Kirin, 10 October 2026), and
-    // ATT, MID and DEF the eleven's by line, the keeper counted in DEF.
-    const LINES = [["ATT", /^(LW|RW|ST|FWD)$/], ["MID", /^(DM|CM|AM|LM|RM|MID)$/], ["DEF", /^(GK|CB|LB|RB|LWB|RWB|DEF)$/]];
-    // The eleven are counted at the ratings they play their places at (src/data/positions.js ovrAt); the bench, and the
-    // side's own rating, at their full ones.
-    const atOf = (p, t) => (p.own?.length && p.spos ? ovrAt(p.ovr ?? t.skill ?? 0, p.own, p.spos) : p.ovr ?? t.skill ?? 0);
-    const lineOf = (t, side, re) => { const ps = (sh[side]?.xi || []).filter(p => re.test(p.spos || p.pos));
-      return ps.length ? ps.reduce((a, p) => a + atOf(p, t), 0) / ps.length : null; };
-    const avgOf = (ps, t) => (ps.length ? ps.reduce((a, p) => a + (p.ovr ?? t.skill ?? 0), 0) / ps.length : null);
-    const xiOf = (ps, t) => (ps.length ? ps.reduce((a, p) => a + atOf(p, t), 0) / ps.length : null);
-    const cmpRows = hT && aT ? [["OVR", hT.skill, aT.skill], ["XI OVR", xiOf(sh.home.xi, hT), xiOf(sh.away.xi, aT)],
-      ["BENCH OVR", avgOf(sh.home.bench, hT), avgOf(sh.away.bench, aT)], ...LINES.map(([l, re]) => [l, lineOf(hT, "home", re), lineOf(aT, "away", re)])] : [];
+    // ATT, MID and DEF are the eleven's by line and BENCH the bench's (uxLinesOf; user, 11 October 2026: "only keep ATT,
+    // MID, DEF, and BENCH", so OVR and XI OVR are gone).
+    const cmpL = hT && aT ? [uxLinesOf(sh.home.xi, sh.home.bench, hT.skill), uxLinesOf(sh.away.xi, sh.away.bench, aT.skill)] : null;
+    const cmpRows = cmpL ? ["ATT", "MID", "DEF", "BENCH"].map(l => [l, cmpL[0][l], cmpL[1][l]]) : [];
     const barPct = (v) => (v == null ? 0 : Math.max(4, Math.min(100, (v - 60) / 30 * 100)));
     const strength = uxPanel("Strength Comparison", null, hT && aT ? (
       <div className="ux-mcmp">{cmpRows.map(([l, a, b]) => (
-        <div key={l} className={"ux-mcmp-row" + (l === "ATT" ? " ux-gap" : "")}>
+        <div key={l} className={"ux-mcmp-row" + (l === "BENCH" ? " ux-gap" : "")}>
           <OvrBadge v={a} />
           <div className="ux-mcmp-bar ux-l"><i style={{ width: barPct(a) + "%", background: ovrHex(Math.round(a || 0)) }} /></div>
           <span className="ux-mcmp-l" style={mono}>{l}</span>
           <div className="ux-mcmp-bar"><i style={{ width: barPct(b) + "%", background: ovrHex(Math.round(b || 0)) }} /></div>
           <OvrBadge v={b} />
         </div>))}</div>) : <div className="ux-empty">Pick Two Sides</div>, false, "m-cmp");
-    // Form: each side's last five on record, oldest first, the way form is read, each in its half.
-    const formOf = (t) => { const key = archKey(t.name), comps = regRecordComps(t);
-      return (pstats?.seasons || []).filter(s => s.md && comps.includes(s.comp))
-        .flatMap(s => (uxClubRows(s, key) || []).map(r => ({ ...r, s, comp: uxCompAbbr(s) })))
-        .sort((a, b) => uxWhen(b.s) - uxWhen(a.s) || b.t - a.t || b.cup - a.cup).slice(0, 5).reverse(); };
+    // Form: each side's last five on record, oldest first (uxFormOf), each in its half.
+    const formOf = uxFormOf;
     const form = uxPanel("Form", null, (
       <div className="ux-mform">{[[hT, ""], [aT, " ux-r"]].map(([t, r0], k) => { if (!t) return <div key={k} />; const f = formOf(t); return (
         <div key={k} className={"ux-mform-side" + r0}>
@@ -16725,7 +17240,7 @@ export default function App() {
               <tr key={x.t.rkey + x.s.id}>
                 <td className="ux-dim" style={mono}>{uxSeasonName(x.s)}</td>
                 <td><div className="ux-tc"><LeagueCrest league={x.s.comp} size={16} />
-                  {uxCanOpenSeason(x.s) ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openSeasonPage(x.s)}>{x.s.comp}</button> : <span>{x.s.comp}</span>}</div></td>
+                  {uxCanOpenSeason(x.s) ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openSeasonPage(x.s)}>{x.s.comp}</button></span> : <span>{x.s.comp}</span>}</div></td>
                 {/* A retconned side wears the code it had in that tournament: IX, or IX1 and on where there were several. */}
                 {many && <td title={sideNameIn(x.t, x.s) || x.t.name}>{side(x.t.as ? { ...x.t, code: FORMER_BY_NAME[sideNameIn(x.t, x.s)] || x.t.code } : x.t, true)}</td>}
                 <td>{finish(x)}</td>{recTds(x.rec)}
@@ -16893,8 +17408,8 @@ export default function App() {
                 <tr key={i} className={first && i > 0 ? "ux-yr" : undefined}>
                   <td className="ux-dim" style={mono}>{first ? uxSeasonLabel(x.y) : ""}</td>
                   <td><div className="ux-tc">{x.pure ? <span className="ux-crest-gap" style={{ width: 16 }} /> : <LeagueCrest league={comp} size={16} />}
-                    {uxCanOpenSeason(x.s) ? <button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openSeasonPage(x.s)}>{comp}</button> : <span>{comp}</span>}</div></td>
-                  <td>{x.side ? <div className="ux-tc"><TeamCrest team={x.side} size={16} /><button type="button" className="ux-btnreset ux-a ux-hist-lg" onClick={() => openTeam(x.side)}>{x.side.name}</button></div>
+                    {uxCanOpenSeason(x.s) ? <span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openSeasonPage(x.s)}>{comp}</button></span> : <span>{comp}</span>}</div></td>
+                  <td>{x.side ? <div className="ux-tc"><TeamCrest team={x.side} size={16} /><span className="ux-hist-lg"><button type="button" className="ux-btnreset ux-a" onClick={() => openTeam(x.side)}>{x.side.name}</button></span></div>
                     : <span className="ux-dim">{formerName(x.team)}</span>}</td>
                   {x.s ? <>{num(x.gp)}{num(x.G)}{num(x.A)}{num(x.CC)}{num(x.DC)}{num(x.SV)}
                     <td className="ux-n" style={mono}>{x.RTG != null ? <span className="ux-strong" style={{ color: ratingColor(x.RTG) }}>{uxRtg(x.RTG)}</span> : uxNone}</td></>
@@ -16936,6 +17451,7 @@ export default function App() {
           {uxScreen === "playerhist" && uxPl && renderUxPlayerHistory(uxPl)}
           {uxScreen === "players" && renderUxPlayers()}
           {uxScreen === "managers" && renderUxManagers()}
+          {uxScreen === "teams" && renderUxTeams()}
           {uxScreen === "manager" && uxMgr && renderUxManager(uxMgr)}
           {uxScreen === "changes" && renderUxChanges()}
           {uxScreen === "comps" && renderUxComps()}

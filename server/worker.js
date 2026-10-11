@@ -7,8 +7,10 @@
 //   GET  /me                       { login, role, nations }
 //   GET  /requests                 the requests waiting
 //   POST /save                     { cart }  -> { sha, applied, apply, requests, waiting } or 422 { errors }
-//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw", edits?, note? }  -> { sha, done, apply, request, waiting }
-//                                  (edits: the overseer's changes to a new record he accepts; note: what a decline sends back)
+//   POST /requests/<id>            { action: "accept" | "decline" | "withdraw" | "counter", edits?, note?, moves?, sides? }
+//                                  -> { sha, done, apply, request, waiting }
+//                                  (edits: the overseer's changes to a new record he accepts; note: what a decline sends back;
+//                                  moves and sides: a counter's deal, src/data/deals.js)
 //
 // `apply` is what went live (a draft over the records, null if nothing did), so the app can show it before the site
 // redeploys; `waiting` is every request still open afterwards.
@@ -203,17 +205,17 @@ async function handle(req, env) {
   }
   const m = path.match(/^\/requests\/([\w-]+)$/);
   if (m && req.method === "POST") {
-    const { action, edits, note } = await body(req);
-    if (!["accept", "decline", "withdraw"].includes(action)) return json({ error: "Unknown action" }, 400);
+    const { action, edits, note, moves, sides } = await body(req);
+    if (!["accept", "decline", "withdraw", "counter"].includes(action)) return json({ error: "Unknown action" }, 400);
     let errors = null;
     const result = await withMain(env, async ({ rec, editors, requests }) => {
       const r = requests.find(x => x.id === m[1]);
       if (!r) { errors = ["No such request"]; return { result: null }; }
-      const s = settleRequest(rec, editors, r, login, action, judge(rec), { edits, note });
+      const s = settleRequest(rec, editors, r, login, action, judge(rec), { edits, note, moves, sides, others: requests });
       if (s.errors?.length) { errors = s.errors; return { result: null }; }
       const left = s.request ? requests.map(x => (x.id === r.id ? s.request : x)) : requests.filter(x => x.id !== r.id);
       const files = { ...(s.apply ? filesFor(rec, applyDraft(rec, s.apply)) : null), "src/data/requests.json": JSON.stringify(left, null, 1) + "\n" };
-      return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s request`,
+      return { files, message: `Registry: ${login} ${action}s ${r.teamName}'s ${r.kind === "deal" ? "offer" : "request"}`,
                result: { done: !!s.done, apply: s.apply || null, request: s.request, waiting: left } };
     });
     return errors ? json({ errors }, 422) : json(result);

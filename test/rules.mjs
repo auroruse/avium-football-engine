@@ -1,6 +1,7 @@
 // THE REGISTRY'S RULES (src/data/rules.js), on the real records: what an editor may change outright, what goes to the
 // overseer as a request (a code, a ground, a city; a new player, manager or club), a trade with another nation (one way
-// and an exchange) and its answer, the men a waiting request locks, and a decline's note. Every case is checked the way
+// and an exchange) and its answer, the men a waiting request locks, and a decline's note; and deals (src/data/deals.js),
+// between any number of clubs, with free agency, their offers, counters and every club's accept. Every case is checked the way
 // the server checks it: planSave on a cart, then settleRequest on the request it made.
 //
 //   node test/rules.mjs        (bundles src/data with esbuild first)
@@ -234,6 +235,47 @@ console.log("positions (Moukden and Kirin, 11 October 2026)");
   const swapped = [...sq]; swapped[11] = fwd; swapped[15] = gk;
   const s = plan(OV, { teams: { [teamKey(A)]: { squad: swapped } } });
   ok("a substitute may sit in another group's place: the app marks it, nothing refuses it", !s.errors.length, s.errors); }
+
+console.log("deals (Trades, 11 October 2026)");
+{ const SKJ_ED = "SwiftorArrow", C = rec.teams.find(t => t.file === "SKJ" && t.nation === "SKJ"), k = teamKey;
+  const a = ids(A), b = ids(B), c = ids(C), clubOf = (d, id) => after(d).teams.find(t => !["AVIUM", "ARTERRA"].includes(t.file) && ids(t).includes(id))?.id || "free";
+  const p1 = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[0], to: k(B) }, { kind: "player", id: b[5], to: k(A) }] }] }), r1 = p1.requests[0];
+  ok("a swap with another nation's club is an offer to it", !p1.errors.length && !p1.apply && r1?.kind === "deal" && Object.keys(r1.needs).join() === k(B), p1);
+  ok("it locks only its men", JSON.stringify(r1.locks.sort()) === JSON.stringify(["p:" + a[0], "p:" + b[5]].sort()), r1?.locks);
+  ok("its sender cannot accept it", settle(ED, r1, "accept").errors?.length > 0);
+  const y1 = settle(NCH_ED, r1, "accept");
+  ok("the other club's accept puts it live", y1.done && clubOf(y1.apply, a[0]) === B.id && clubOf(y1.apply, b[5]) === A.id, y1);
+  const c1 = settle(NCH_ED, r1, "counter", { moves: [{ kind: "player", id: a[0], to: k(B) }, { kind: "player", id: b[7], to: k(A) }], others: [r1] });
+  ok("a counter goes back from the other side, waiting on the first", !c1.errors.length && c1.request.team === k(B) && c1.request.rounds === 2 && Object.keys(c1.request.needs).join() === k(A), c1);
+  ok("...whose accept puts it live", settle(ED, c1.request, "accept").done);
+  const busy = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[0], to: k(B) }, { kind: "player", id: b[6], to: k(A) }] }] }, [r1]);
+  ok("a man in a waiting offer cannot go in another", busy.errors.some(e => /waiting on a request/.test(e)), busy.errors);
+  const one = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[1], to: k(B) }] }] });
+  ok("one man into a full squad asks who makes way", one.errors.some(e => /pick who makes way/.test(e)), one.errors);
+  const way = plan(ED, { deals: [{ sides: [k(A), k(B)], moves: [{ kind: "player", id: a[1], to: k(B) }, { kind: "player", id: b[15], to: null }] }] });
+  ok("with one of theirs released it is an offer", !way.errors.length && way.requests[0]?.kind === "deal", way.errors);
+  const own = plan(ED, { deals: [{ sides: [k(A), k(A2)], moves: [{ kind: "player", id: a[12], to: k(A2) }, { kind: "player", id: ids(A2)[12], to: k(A) }] }] });
+  ok("a deal between one's own clubs goes live", !own.errors.length && !own.requests.length && clubOf(own.apply, a[12]) === A2.id, own.errors);
+  const clubbed = new Set(rec.teams.filter(t => !["AVIUM", "ARTERRA"].includes(t.file)).flatMap(ids)), fa = rec.players.find(p => !p.retired && !clubbed.has(p.id));
+  const sign = plan(ED, { deals: [{ sides: [k(A)], moves: [{ kind: "player", id: fa.id, to: k(A) }, { kind: "player", id: a[15], to: null }] }] });
+  ok("a signing with a release goes live", !sign.errors.length && clubOf(sign.apply, fa.id) === A.id && clubOf(sign.apply, a[15]) === "free", sign.errors);
+  // The first offer sent their keeper's place a midfielder's way: the bench keeper takes it, the midfielder the bench.
+  ok("a keeper's place goes to no outfielder", after(y1.apply).teams.find(t => t.id === A.id).squad.map(idOf)[0] === a[11], after(y1.apply).teams.find(t => t.id === A.id).squad.map(idOf));
+  const ov = plan(OV, { deals: [{ sides: [k(B), k(A)], moves: [{ kind: "player", id: b[5], to: k(A) }, { kind: "player", id: a[0], to: k(B) }] }] });
+  ok("the overseer's deal goes live as it stands", !ov.errors.length && !ov.requests.length && clubOf(ov.apply, a[0]) === B.id, ov.errors);
+  const ovo = plan(OV, { deals: [{ sides: [k(B), k(A)], offer: true, moves: [{ kind: "player", id: b[5], to: k(A) }, { kind: "player", id: a[0], to: k(B) }] }] });
+  ok("sent as an offer, the overseer's waits on the other nation's editor", !ovo.errors.length && !ovo.apply && JSON.stringify(ovo.requests[0]?.needs) === JSON.stringify({ [k(A)]: [ED] }), ovo);
+  const B2 = rec.teams.find(t => t.file === "NCH" && t.id !== B.id);
+  const ovn = plan(OV, { deals: [{ sides: [k(B), k(B2)], offer: true, moves: [{ kind: "player", id: b[12], to: k(B2) }, { kind: "player", id: ids(B2)[12], to: k(B) }] }] });
+  ok("an offer between his own nation's clubs is refused", ovn.errors.some(e => /Nobody else answers/.test(e)), ovn.errors);
+  const tri = plan(ED, { deals: [{ sides: [k(A), k(B), k(C)], moves: [{ kind: "player", id: a[12], to: k(B) }, { kind: "player", id: b[12], to: k(C) }, { kind: "player", id: c[12], to: k(A) }] }] }), r3 = tri.requests[0];
+  ok("a three-club swap waits on both other nations", !tri.errors.length && Object.keys(r3?.needs || {}).sort().join() === [k(B), k(C)].sort().join() && r3.sides.length === 3, tri);
+  const n3 = settle(SKJ_ED, r3, "accept");
+  ok("one club's accept leaves it waiting on the other", !n3.done && JSON.stringify(n3.request?.approved) === JSON.stringify([k(C)]), n3);
+  const y3 = settleRequest(rec, { ...editors, overseers: [] }, n3.request, NCH_ED, "accept", h);
+  ok("the last club's accept puts it live", y3.done && clubOf(y3.apply, a[12]) === B.id && clubOf(y3.apply, b[12]) === C.id && clubOf(y3.apply, c[12]) === A.id, y3);
+  const c3 = settle(SKJ_ED, r3, "counter", { moves: [{ kind: "player", id: a[12], to: k(B) }, { kind: "player", id: b[12], to: k(C) }, { kind: "player", id: c[13], to: k(A) }], others: [r3] });
+  ok("a counter from one club waits on every other again", !c3.errors.length && c3.request.team === k(C) && Object.keys(c3.request.needs).sort().join() === [k(A), k(B)].sort().join() && !c3.request.approved.length, c3); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

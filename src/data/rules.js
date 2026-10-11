@@ -12,6 +12,7 @@
 // positions. A league's name, tier and cup are its nation's editors' to change outright.
 import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
 import { arrangeBench, placeFor, without } from "./squads.js";
+import { dealLocks, dealPlan, dealSides } from "./deals.js";
 import { STYLE_LBL } from "./styles.js";
 import { POS_ROLE, fitsPlace, posList } from "./positions.js";
 import { FORMATIONS } from "../engine/formations.ts";
@@ -426,12 +427,12 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   if (scope.role === "viewer") return { ...none, errors: ["Not an approved editor"] };
   const group = (g) => g == null || (typeof g === "object" && !Array.isArray(g) && Object.values(g).every(p => p && typeof p === "object" && !Array.isArray(p)));
   const list = (l) => l == null || (Array.isArray(l) && l.every(x => x && typeof x === "object" && !Array.isArray(x)));
-  if (!cart || typeof cart !== "object" || !["players", "managers", "teams", "leagues"].every(k => group(cart[k])) || !list(cart.trades) || !list(cart.new) || cart.add
+  if (!cart || typeof cart !== "object" || !["players", "managers", "teams", "leagues"].every(k => group(cart[k])) || !list(cart.trades) || !list(cart.deals) || !list(cart.new) || cart.add
       || Object.values(cart.teams || {}).some(p => "squad" in p && !Array.isArray(p.squad))) return { ...none, errors: ["Not a cart"] };
   const draft = { v: 1, ...(cart.managers ? { managers: cart.managers } : null), ...(cart.leagues ? { leagues: cart.leagues } : null), teams: cart.teams || {},
     players: cart.players || {} };
-  const changes = draftChanges(rec, draft), trades = cart.trades || [], news = cart.new || [];
-  if (!changes.length && !trades.length && !news.length) return none;
+  const changes = draftChanges(rec, draft), trades = cart.trades || [], deals = cart.deals || [], news = cart.new || [];
+  if (!changes.length && !trades.length && !deals.length && !news.length) return none;
   const errors = [], teamBy = new Map(rec.teams.map(t => [teamKey(t), t])), leagueBy = new Map((rec.leagues || []).map(l => [l.id, l]));
   // What waits on an open request: the men it names, or, for a request filed before men were locked, whole sides.
   const open = (pending || []).filter(r => !r.declined);
@@ -544,6 +545,30 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
       needs: { [tr.other]: ownersOf(editors, B) }, locks: men });
   }
 
+  // DEALS (src/data/deals.js), between any number of clubs: live at once when this person answers for every club in it
+  // (free agency needs nobody); otherwise an offer, which each other club's editors accept, the same version for all. The
+  // overseer's go live unless he sends one as an offer, which then waits on every club whose nation has another editor.
+  const dealt = new Set();
+  const answers = (k) => { const t = teamBy.get(k);
+    return over ? scope.nations.includes(nationOf(t)) || !ownersOf(editors, t).some(u => lc(u) !== lc(scope.login)) : owns(scope, t); };
+  for (const dl of deals) {
+    const sides = dealSides(dl);
+    if (!sides.length || !Array.isArray(dl.moves) || sides.some(k => !teamBy.get(k))) { errors.push("Not a deal"); continue; }
+    const A = teamBy.get(sides[0]);
+    if (!owns(scope, A)) { errors.push(`${A.name.trim()}: not one of your teams`); continue; }
+    for (const l of dealLocks(dl)) if (lockedMen.has(l)) errors.push(`${who(l)}: waiting on a request`);
+    const fit = dealPlan(rec, live, { sides, moves: dl.moves }, h);
+    if (fit.errors.length) { errors.push(...fit.errors); continue; }
+    const parts = [sides[0], ...fit.parts.filter(k => k !== sides[0])];
+    const ask = over && !dl.offer ? [] : parts.filter(k => k !== sides[0] && !answers(k));
+    if (over && dl.offer && !ask.length) { errors.push(`Nobody else answers for ${parts.slice(1).map(k => teamBy.get(k).name.trim()).join(" or ") || "it"}: apply it now`); continue; }
+    if (!ask.length) { live = fit.d; for (const k of fit.parts) dealt.add(k); continue; }
+    const moves = fit.moves.map(m => ({ kind: m.kind, id: m.id, to: m.to }));
+    requests.push({ ...base, id: newId(), kind: "deal", team: sides[0], teamName: A.name.trim(), sides: parts,
+      names: Object.fromEntries(parts.map(k => [k, teamBy.get(k).name.trim()])), moves, rounds: 1,
+      needs: Object.fromEntries(ask.map(k => [k, ownersOf(editors, teamBy.get(k))])), locks: dealLocks({ moves }) });
+  }
+
   // New records: the overseer answers an editor's; the overseer's own go straight in.
   for (const n of news) {
     // Checked against the records as they will stand once this cart is in: a place it opens is a place he can take.
@@ -554,16 +579,18 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
       else { live = made.d; for (const t of live.add?.teams || []) touched.add(teamKey(t)); } continue; }
     requests.push({ ...base, id: newId(), kind: "new", what: n.what, teamName: n.name, rec: fields, needs: { [OVERSEER]: editors?.overseers || [] }, locks: menLocks({ rec: fields }) });
   }
-  if (over) errors.push(...squadProblems(rec, applyDraft(rec, live), touched, h));
+  if (over || dealt.size) errors.push(...squadProblems(rec, applyDraft(rec, live), over ? new Set([...touched, ...dealt]) : dealt, h));
   if (errors.length) return { ...none, errors: [...new Set(errors)] };
   return { scope, errors: [], apply: draftSizeOf(live) ? live : null, requests };
 }
 const draftSizeOf = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d[k] || {}).length + (d.add?.[k]?.length || 0), 0);
 
-// SETTLING A REQUEST. action: "accept" | "decline" | "withdraw"; `extra` carries the overseer's edits to a new record
-// and the note a decline sends back. Returns { errors, done, apply, request }: `request` is the request as it now stands
-// (null once gone; a declined one stays, with its note, until its maker dismisses it), `apply` the draft to go live when
-// the last answer is in.
+// SETTLING A REQUEST. action: "accept" | "decline" | "withdraw" | "counter"; `extra` carries the overseer's edits to a new
+// record, the note a decline sends back, and a counter's deal (moves, sides) with every other request (others), whose men
+// it may not take. Returns { errors, done, apply, request }: `request` is the request as it now stands (null once gone; a
+// declined one stays, with its note, until its maker dismisses it), `apply` the draft to go live when the last answer is
+// in. A counter is the deal changed by a club it waits on, from that club's side: the new version, which every other club
+// then accepts again.
 export function settleRequest(rec, editors, request, login, action, h, extra = {}) {
   const scope = scopeOf(editors, login), over = scope.role === "overseer";
   const teamBy = new Map(rec.teams.map(t => [teamKey(t), t]));
@@ -574,6 +601,32 @@ export function settleRequest(rec, editors, request, login, action, h, extra = {
   }
   if (request.declined) return { errors: ["Already declined"] };
   if (!answersFor.length) return { errors: ["Not yours to answer"] };
+  if (action === "counter") {
+    if (request.kind !== "deal" || !Array.isArray(extra.moves)) return { errors: ["Only an offer can be countered"] };
+    const mine = answersFor.find(k => k !== request.team) || answersFor[0];
+    const sides = [mine, ...dealSides({ sides: Array.isArray(extra.sides) && extra.sides.length ? extra.sides : request.sides }).filter(k => k !== mine)];
+    if (sides.some(k => !teamBy.get(k))) return { errors: ["Not a deal"] };
+    const held = new Set((extra.others || []).filter(r => r.id !== request.id && !r.declined).flatMap(r => (r.locks || []).filter(l => /^[pm]:/.test(l))));
+    const busy = dealLocks({ moves: extra.moves }).filter(l => held.has(l));
+    if (busy.length) return { errors: busy.map(l => `${(l.startsWith("m:") ? rec.managers : rec.players).find(x => x.id === l.slice(2))?.name || l.slice(2)}: waiting on a request`) };
+    const fit = dealPlan(rec, null, { sides, moves: extra.moves }, h);
+    if (fit.errors.length) return { errors: fit.errors };
+    const parts = [mine, ...fit.parts.filter(k => k !== mine)];
+    const answers = (k) => { const t = teamBy.get(k);
+      return over ? scope.nations.includes(nationOf(t)) || !ownersOf(editors, t).some(u => lc(u) !== lc(scope.login)) : owns(scope, t); };
+    const ask = parts.filter(k => k !== mine && !answers(k));
+    if (!ask.length) return { errors: ["Nobody else answers for this deal: accept it instead"] };
+    const moves = fit.moves.map(m => ({ kind: m.kind, id: m.id, to: m.to }));
+    return { errors: [], done: false, apply: null, request: { ...request, team: mine, teamName: teamBy.get(mine).name.trim(), sides: parts,
+      names: Object.fromEntries(parts.map(k => [k, teamBy.get(k).name.trim()])), moves, by: scope.login, at: new Date().toISOString(),
+      rounds: (request.rounds || 1) + 1, needs: Object.fromEntries(ask.map(k => [k, ownersOf(editors, teamBy.get(k))])), approved: [], locks: dealLocks({ moves }) } };
+  }
+  // A deal is checked at every accept, not just the last: one that no longer fits cannot be agreed to.
+  let dealFit = null;
+  if (request.kind === "deal" && action === "accept") {
+    dealFit = dealPlan(rec, null, { sides: request.sides, moves: request.moves }, h);
+    if (dealFit.errors.length) return { errors: dealFit.errors };
+  }
   if (action === "decline") {
     if (!request.kind) return { errors: [], done: true, apply: null, request: null };
     const note = text(extra.note, 200, true) ? extra.note : "";
@@ -593,6 +646,10 @@ export function settleRequest(rec, editors, request, login, action, h, extra = {
     if (!rec.players.some(p => p.id === request.player)) return { errors: ["The player is gone"] };
     const d = draftWith(null, rec, request.player, request.patch, "players"), probs = valueProblems(rec, applyDraft(rec, d), draftChanges(rec, d));
     return probs.length ? { errors: probs } : { errors: [], done: true, apply: d, request: null };
+  }
+  if (request.kind === "deal") {
+    const problems = squadProblems(rec, applyDraft(rec, dealFit.d), new Set(dealFit.parts), h);
+    return problems.length ? { errors: problems } : { errors: [], done: true, apply: dealFit.d, request: null };
   }
   if (request.kind === "trade") {
     const r = tradeDraft(rec, null, { side: request.team, other: request.other, ins: request.ins, outs: request.outs }, h);

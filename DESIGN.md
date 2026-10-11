@@ -17,9 +17,9 @@ navigation, and every panel answers one question.
 ### Sections (the top bar)
 
 Registry · Competitions, and **Play match** as the one primary button on the right, where FM27 has Continue. Registry was
-Home until Moukden and Kirin renamed it (9 October 2026). Players, Managers and Rating Changes are pages of Registry (its
-page bar: Overview, Players, Managers, Rating Changes; Moukden and
-Kirin, 9 October 2026). Custom Sides, the sides made in this browser, are gone (Moukden and Kirin, 10 October 2026).
+Home until Moukden and Kirin renamed it (9 October 2026). Players, Managers, Teams and Rating Changes are pages of Registry
+(its page bar: Overview, Teams, Players, Managers, Rating Changes; Moukden and Kirin, 9 October 2026; Teams 11 October
+2026, first after Overview). Custom Sides, the sides made in this browser, are gone (Moukden and Kirin, 10 October 2026).
 Registry stays lit on them, on a player's or a manager's page, and on a nation's and its clubs'
 pages. Search sits beside it, then the settings menu (the theme, the Arterra switch and the Documentation), Requests and the Cart for
 editors, and the account menu. **Tournaments** is the third section, after Competitions (below).
@@ -289,8 +289,8 @@ October 2026). A neutral ground is picked from the ground's name itself, a searc
 Under it, three columns. Down each outside, the side's **Team Sheet**: its eleven on the Pitch at the panel's full height,
 in a real pitch's widest proportions, or its bench (a row a man, given name and SURNAME, the surname bold: "John DOE"), by the switch in its
 title row, which reads the formation and Bench (Moukden and Kirin, 10 October 2026: "Do manager and bench need their own
-column?", then "Dude have you seen how crowded the pitches are"). Between them: **Strength Comparison** (OVR, XI OVR and
-BENCH OVR, then the eleven's ATT, MID and DEF, each pair facing across its label), **Form** (each side's last five, on one
+column?", then "Dude have you seen how crowded the pitches are"). Between them: **Strength Comparison** (the eleven's ATT,
+MID and DEF, then BENCH, each pair facing across its label; the user, 11 October 2026: "only keep ATT, MID, DEF, and BENCH"), **Form** (each side's last five, on one
 line), **Head To Head** (their record and every meeting on file) and **Rules** (Result: Draw Allowed or Extra Time And
 Penalties; Injuries; Second Leg with the first leg's score, which counts in a friendly too, and Away Goals). Sides play
 as listed under their managers: nothing about a side changes before kick-off, and Subs and Tactics stay in the live
@@ -365,7 +365,7 @@ picked: the momentum chart on Full Time.
 
 For the ACU's editors and the overseer (Moukden and Kirin, 10 October 2026, over five rounds of questions). A fourth
 section in the top bar, EDITOR, shown only to signed-in editors and the overseer. Its pages are tabs in the page bar:
-**Teams**, **Players**, **Managers**, **Leagues** and **Requests**. The Edit Player and Edit Club buttons on player and side pages open
+**Teams**, **Players**, **Managers**, **Leagues**, **Trades** and **Requests**. The Edit Player and Edit Club buttons on player and side pages open
 that record here; the old dialogs go.
 
 **Who may change what.** The overseer changes everything. An editor changes only their own nation's sides, its national
@@ -379,15 +379,17 @@ manager: appointing a manager brings his style, and only the overseer sets a sty
 **Teams** is a picker rail down the left (New Team at the top, a search, then the editor's own sides; the overseer sees
 every side) with the picked side filling the rest: its name and kits, its code, ground and city (a request), its
 formation, and its squad on a pitch with the bench beside it. Drag a man onto another slot or bench place to swap the
-two, or click one and then the other. Beside the pitch a search covers every player and manager: a free agent, or a man
-from one of the editor's own sides, moves at once; a man at another nation's club opens a trade, to which men going back
-the other way can be added before it is sent. Changing the formation re-slots the eleven.
+two, or click one and then the other. Changing the formation re-slots the eleven. A club's page arranges its own squad
+and nothing more: every move of a man between clubs is made on Trades (user, 11 October 2026). A national side's page
+calls men up side by side, like a deal: its squad beside its eligible nationals, searchable and best first. A click calls
+a man up; at 22 of 22 the man he replaces is picked from the squad, and he takes that man's place. Drop stays on the
+squad, and a national side appoints its manager on its own page.
 
 **Players** is the same rail (New Player, a search, the editor's nation's men first). A player's page shows his facts
-(name, nationality, date of birth, rating, traits), locked for an editor and open to the overseer, and his sides: an
-editor can release him from or move him between their own clubs, and call him up to or drop him from their national
-side. The overseer can also retire him. **Managers** works the same way: appoint him to one of your sides or release him;
-one at another nation's club is a trade; his rating is the overseer's.
+(name, nationality, date of birth, rating, traits), locked for an editor and open to the overseer, and his sides, shown
+and not changed here: his moves are made on Trades, his call-ups on his national side's page. The overseer can also retire
+him. **Managers** works the same way: his sides are shown, his moves between clubs are made on Trades, and his rating is
+the overseer's.
 
 **Leagues** (Moukden and Kirin, 11 October 2026, over four rounds of questions and a mock) is the same rail: each nation's
 leagues under its name, with tier and club count. A league's page has its name, tier and cup in its head, changed outright;
@@ -425,11 +427,33 @@ sixteen from free agents, its nation's men and new players requested with it. On
 rules: badges 500 by 500 with 50px of padding on every side and a 25px white outline, portraits a chest-up headshot in a
 plain white shirt, sent as a zip to @auroruse on Discord.
 
-**Trades** are a one-way move or an exchange (men going both ways), proposed as one request and accepted or declined
-whole, by the other nation's editors or, where it has none, the overseer. While one waits only the men named in it are
-locked, and accepting re-checks that it still fits both squads.
+**Trades** (user, 11 October 2026, over four rounds of questions: "Moving players around teams is shit right now
+because it just shows that the other team is full") is where every move of a man between clubs is made: a signing, a
+release, a move between one's own clubs and a swap with other nations' clubs, managers as well as players, between any
+number of clubs ("What about multi team swaps?"). Down the left are the offers: New Deal at the top, then Your Move
+(offers and counters waiting on this person), Waiting (theirs, waiting on others) and Declined (with its note, until
+dismissed). The deal fills the rest. The editor's own club stands on the left; on the right a tab for each other club in
+the deal and for Free Agents (a search over every free player and manager, best first), with Add for another. Each club
+shows its manager, its eleven and its bench, with its places counted (16 of 16). Clicking a man puts him in the deal;
+with one other club he goes to it, and with more, or with Free Agents open, the click asks where he goes (each club, or
+free agency). Clicking him again takes him out. A man coming in takes the place of a man leaving, the one that fits him
+best, starters first, but never a keeper's place for an outfielder or the other way round; a starting place left with
+nobody coming in is filled from the bench, and anyone still coming in takes an open place. A club that would hold more
+men than places, or two managers, asks who makes way: each of its men gets Release beside him, and the man picked either
+goes in the deal (a click) or to free agency (Release). Beside the clubs the deal reads as each club's comings and
+goings, with the place each newcomer takes, and whether it fits.
 
-**Requests** is the full view of every request: For You, Yours and, for the overseer, the new records waiting. A new
+A deal between one's own clubs, or with free agency, goes live at once (Confirm). A deal with other nations' clubs is an
+offer, sent at once (Send Offer), to each of those nations' editors or, where a nation has none, the overseer. Every club
+accepts the same version: each answers Accept, Decline (with a note) or Counter, and a counter (the deal changed as they
+like, from their side) becomes the new version, which every other club then accepts again, until all have accepted, one
+declines or its sender withdraws it. The overseer has both Apply Now and Send Offer, so he can trade as Nichirin's editor
+like anyone else. While an offer waits only the men in it are locked, and the last accept checks again that it still
+fits every squad. Sending, accepting or applying a deal also saves the cart's changes to the clubs in it. Offers never go
+through the cart. National sides are not traded.
+
+**Requests** is the full view of every request but the offers, which live on Trades: For You, Yours and, for the
+overseer, the new records waiting. A new
 record opens in the Editor with every field open to the overseer; Approve lets it in as edited, Reject sends it back with
 a note. The top bar's Cart and Requests stay as the quick view, and every change is saved from the cart, as before.
 
@@ -610,6 +634,14 @@ engine never rates a man for a role.
 SURNAME, his nation's and club's crests; the portrait in the banner's proportions, its bottom quarter below the foot, so
 no picture's cut sides show), the four banner facts in a strip, his roles as on Positions, his line for the
 season (the Season view's year, else his newest) and his career's, and View Player.
+
+**Teams** (the user, 11 October 2026). Every club, or every national side by a switch in the title, as Players and Managers
+are listed: #, Club (National Team), Nation and League (Conference), OVR, ATT, MID, DEF, BENCH, City, Style, Formation and
+Value, filterable and sortable. ATT, MID, DEF and BENCH are the listed eleven's by line at the ratings they play their places at and the
+bench's, read by uxLinesOf exactly as Play Match's Strength Comparison. Its card: the crest on the side's kit colours
+fading into its ground's photo, the whole banner opening the side (no View button), OVR, Style, Formation and Value (the
+squad's, each man's own) and its manager (opening his page); then Strength (bars), Best Players (top four by rating) and
+Honours. No season standing, form, ground, city or capacity, and no AFA ranking (the user, 11 October 2026).
 
 **Manager card.** The Managers page's right column, built as the player card: his banner in small (his club's colours,
 else his national side's or his nation's, portrait, given name over SURNAME, the crests of his nation and his sides),
