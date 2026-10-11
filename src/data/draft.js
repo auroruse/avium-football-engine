@@ -11,6 +11,7 @@
 // A league (src/data/leagues.js) is patched by its ID too, and a new name is carried onto every one of its clubs.
 import { badgeOrder } from "./badges.js";
 import { leagueRecord } from "./leagues.js";
+import { posList } from "./positions.js";
 
 export const teamKey = (t) => t.id || t.file + "|" + t.code;
 const KINDS = {
@@ -25,13 +26,15 @@ const KINDS = {
 export const PLAYER_FIELDS = KINDS.players.fields;
 // A cell kept as the sheet wrote it ({ id, tag } or { id, raw }) is still that man.
 export const idOf = (v) => v && typeof v === "object" && "id" in v ? v.id : v;
-// A field as compared: badges in table order, a squad or a manager as the people it names.
+// A field as compared: badges in table order, a squad or a manager as the people it names, positions as a list.
 const norm = (f, v) => f === "badges" ? badgeOrder(v) : f === "squad" ? (v || []).map(s => idOf(s) ?? null)
-  : f === "manager" ? idOf(v) ?? null : f === "retired" ? !!v : f === "pos" || f === "born" || f === "cup" ? v || null : v;
+  : f === "manager" ? idOf(v) ?? null : f === "retired" ? !!v : f === "pos" ? (Array.isArray(v) ? (v.length ? v : null) : posList(v).length ? posList(v) : null)
+  : f === "born" || f === "cup" ? v || null : v;
 const same = (f, a, b) => JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null);
 
 // One player (or manager) record in the records' own key order; born, pos, badges and retired only when they say something.
-export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null), ...(r.pos ? { pos: r.pos } : null),
+export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r.ovr, ...(r.born ? { born: r.born } : null),
+  ...(posList(r.pos).length ? { pos: posList(r.pos) } : null),
   // A manager out of work keeps the style he would bring to a side (a manager in work plays his side's).
   ...(r.style ? { style: r.style } : null),
   ...(r.badges?.length ? { badges: badgeOrder(r.badges) } : null), ...(r.retired ? { retired: true } : null) });

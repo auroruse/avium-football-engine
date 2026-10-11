@@ -2,13 +2,13 @@
 // they change, and groups that only make sense together become one item, so removing it never leaves half a move
 // behind: a man who left one drafted club and joined another ties the two clubs (a transfer is one item, both sides),
 // a manager the same, and a retired man ties to every team he left. A call-up moves nobody, so it ties nothing.
-import { applyDraft, draftChanges, draftWith, idOf, teamKey } from "./draft.js";
+import { draftChanges, teamKey } from "./draft.js";
 import { isNational } from "./rules.js";
 
 // [{ key, groups: [{ key, kind, id, name, rows }] }], in the order the draft's changes come; then each trade ({ key,
 // trade, groups: [] }) and each new record asked for ({ key, rec, groups: [] }), an item apiece.
 export function cartItems(rec, draft) {
-  const changes = draftChanges(rec, draft).filter(c => c.field !== "pos");
+  const changes = draftChanges(rec, draft);
   const groups = new Map();
   for (const c of changes) {
     const k = c.kind + ":" + c.id;
@@ -46,17 +46,12 @@ export function cartItems(rec, draft) {
     ...(draft?.new || []).map(n => ({ key: "new:" + n.id, rec: n, groups: [] }))];
 }
 
-// The draft without one item. A man's last position is kept only while he is on no team, so anyone the item had
-// released goes back to having none, and anyone it had signed back to the one his record keeps.
+// The draft without one item.
 export function withoutItem(rec, draft, item) {
   if (item.trade || item.rec) { const k = item.trade ? "trades" : "new", id = (item.trade || item.rec).id, l = (draft[k] || []).filter(x => x.id !== id);
     const d = { ...draft, [k]: l }; if (!l.length) delete d[k]; return d; }
   let d = { ...draft };
   for (const g of item.groups) { const grp = { ...(d[g.kind] || {}) }; delete grp[g.id]; d[g.kind] = grp; }
-  const on = new Set(applyDraft(rec, d).teams.flatMap(t => t.squad.map(v => idOf(v)).filter(Boolean)));
-  const base = new Map(rec.players.map(r => [r.id, r]));
-  for (const [id, p] of Object.entries(d.players || {}))
-    if ("pos" in p && (on.has(id) || p.pos == null)) d = draftWith(d, rec, id, { pos: on.has(id) ? null : base.get(id)?.pos ?? null }, "players");
   for (const k of ["managers", "teams"]) if (d[k] && !Object.keys(d[k]).length) { d = { ...d }; delete d[k]; }
   return d;
 }
