@@ -383,8 +383,7 @@ a note. The top bar's Cart and Requests stay as the quick view, and every change
 
 Written for the ACU's editors and readers (Moukden and Kirin, 10 October 2026): every screen and how the engine plays a
 match, in plain terms with few numbers. It opens from the settings menu. Its pages
-are tabs in the page bar (The App, Matches, Styles And Managers, Ratings, Tournaments; editing waits on the editor's
-rebuild). Each page lists its
+are tabs in the page bar (The App, Matches, Styles And Managers, Ratings, Tournaments, Editing). Each page lists its
 sections in a Contents panel on the left, lit as they are read, and reads in one panel beside it: the prose held to about
 820px, the tables the panel's width. A page and a section are part of the address. The text is `src/docs.js`; what can
 be read off the engine (the playstyles) is read live, so it cannot drift from what the engine plays.

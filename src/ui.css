@@ -290,6 +290,8 @@
   line-height: 1.25; text-align: center; }
 .ux-pl-rtg { left: -11px; }
 .ux-pl-pos { right: -11px; background: var(--chrome-bg); border: 1px solid var(--pos); color: var(--pos); }
+/* A man out of his own positions (src/data/positions.js): the place's label in the loss colour beside his ringed rating. */
+.ux-pl-pos.ux-oop { border-color: var(--ux-loss); color: var(--ux-loss); }
 
 /* ── Finishes, one bar a season ──────────────────────────────────────────────────────────────── */
 .ux-chart { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 2px 12px 10px; }
@@ -1301,6 +1303,10 @@ input.ux-ed-title:hover:not(:disabled), input.ux-ed-title:focus { border-color: 
 .ux-ed-brow.ux-sel { background: var(--ux-panel-3); box-shadow: inset 2px 0 0 var(--ux-accent-ink); }
 .ux-ed-brow.ux-out { box-shadow: inset 2px 0 0 var(--ux-draw); }
 .ux-ed-bpos { width: 30px; font-size: 11px; flex: none; }
+.ux-ed-bpos.ux-oop { color: var(--ux-loss) !important; }
+.ux-ed-bown { margin-left: auto; padding-left: 8px; font-size: 11px; color: var(--ux-text-2); flex: none; }
+.ux-ed-pos { display: inline-flex; align-items: center; gap: 8px; }
+.ux-ed-pos .ux-btn { margin-left: 8px; }
 .ux-ed-bman { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; text-align: left; font-size: 12px; color: var(--ux-text); }
 .ux-ed-open { font-size: 12px; color: var(--ux-text-3); }
 .ux-ed-selbar { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 8px 6px 0; border-top: 1px solid var(--ux-line); font-size: 12px; }

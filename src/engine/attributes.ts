@@ -1,5 +1,6 @@
 // Player attributes, derived from one absolute OVR.
 import { CFG, DEFAULT_OVR, ME_BADGES } from "./config";
+import { FORMATIONS, formAtkW, sposFor } from "./formations";
 
 // A player's badges (config.ts ME_BADGES) merged into one set of effects, kept on him. A man with none gets the same
 // empty set, so every read of it adds nothing and multiplies by one.
@@ -67,17 +68,64 @@ export const ME_COMPRESS = 0.60, ME_OVR_MID = 70;
 
 export const meOvr = (p) => ME_OVR_MID + ((p.ovr ?? DEFAULT_OVR) - ME_OVR_MID) * ME_COMPRESS;
 
-export function meAttrs(p) {
-  if (p._att) return p._att;
-  const t = ME_TILT[p.pos] || ME_TILT.MID, o = meOvr(p), aw = meAtkW(p) - 0.45, fx = meBadgeFx(p);
+// HIS OWN POSITION'S SKILLS (Moukden and Kirin, 11 October 2026). Every player has one or two positions of his own
+// (p.own), and in either of them he is exactly the player he always was: the slot's line and attacking weight make
+// him. Anywhere else he keeps the skills of his own position, the nearer of his two: a striker at centre-back tackles
+// like a striker. A position's own skills are those of the slots it fills across every shape -- its line, or the
+// blend of lines it is played in (a winger is a forward in a front three and a midfielder in a 4-1-4-1), and its mean
+// attacking weight. He is never better than the man who belongs there: each skill is the lower of his own and the
+// slot's, so playing a man out of position can only cost, and the cost is what his own position lacks for this one.
+// The keeper is apart: whoever stands in goal has the keeper's skills and an outfielder plays it at half his rating
+// (src/engine/match.ts), as before.
+const lineOf = (f) => { const d = f.split("-").map(Number), g = ["GK"];
+  for (let i = 0; i < d[0]; i++) g.push("DEF");
+  for (let k = 1; k < d.length - 1; k++) for (let i = 0; i < d[k]; i++) g.push("MID");
+  for (let i = 0; i < d[d.length - 1]; i++) g.push("FWD");
+  return g; };
+export const ME_OWN = (() => {
+  const acc = {};
+  for (const f of FORMATIONS) { const s = sposFor(f), g = lineOf(f), a = formAtkW(f);
+    s.forEach((p, i) => { const e = (acc[p] ||= { n: 0, w: {}, a: 0 }); e.n++; e.w[g[i]] = (e.w[g[i]] || 0) + 1; e.a += a[i]; }); }
+  const out = {};
+  for (const [p, e] of Object.entries(acc)) {
+    const t = {}; for (const k of Object.keys(ME_TILT.MID)) t[k] = Object.entries(e.w).reduce((s, [G, n]) => s + ME_TILT[G][k] * n / e.n, 0);
+    out[p] = { tilt: t, atkW: e.a / e.n };
+  }
+  return out;
+})();
+// The grid the squad tools judge distance on (src/data/positions.js POS_ROLE), for the nearer of his two.
+const OWN_XY = { GK:[0,0], LB:[1,-1], CB:[1,0], RB:[1,1], LWB:[1.5,-1], RWB:[1.5,1], DM:[2,0], CM:[3,0], AM:[4,0], LM:[3,-1], RM:[3,1], LW:[4,-1], RW:[4,1], ST:[5,0] };
+const ownCost = (a, b) => { const A = OWN_XY[a], B = OWN_XY[b]; return A && B ? Math.abs(A[0] - B[0]) + 1.2 * Math.abs(A[1] - B[1]) : 99; };
+// The position he plays this slot from when it is not one of his: null in position, with no positions known, or in
+// goal (whoever is in goal has the keeper's skills).
+export function meOwnFor(p) {
+  const own = p?.own, sp = p?.spos;
+  if (!own || !own.length || !sp || own.includes(sp) || sp === "GK" || p.pos === "GK" || p.inGoal || !ME_OWN[sp]) return null;
+  // The nearer of his two; a keeper played outfield, with no outfield position, keeps a keeper's skills.
+  const known = own.filter(x => ME_OWN[x]), out = known.filter(x => x !== "GK").length ? known.filter(x => x !== "GK") : known;
+  if (!out.length) return null;
+  return out.reduce((b, x) => (ownCost(x, sp) < ownCost(b, sp) ? x : b), out[0]);
+}
+
+function attrsWith(p, t, aw) {
+  const o = meOvr(p), fx = meBadgeFx(p);
   const c = (v) => Math.max(20, Math.min(99, v));
   // `air` is how high he gets and how well he heads it: his strength, unless a badge says he is better in the air
-  // than his build (Aerial) -- or stronger on the ground than in the air (Strong adds to strength only).
-  return (p._att = { pace: c(o + t.pace + (fx.pace ?? 0)), pass: c(o + t.pass), shoot: c(o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0)),
+  // than his build (Aerial) -- or stronger on the ground than in the air (Strong adds to strength only). No trait
+  // carries a `pass` effect; the term is there for the lab, which measures what each skill is worth.
+  return { pace: c(o + t.pace + (fx.pace ?? 0)), pass: c(o + t.pass + (fx.pass ?? 0)), shoot: c(o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0)),
     shootRaw: o + t.shoot + aw * CFG.shootAtkW + (fx.shoot ?? 0), reflexRaw: o + t.reflex + (fx.reflex ?? 0),
     tackle: c(o + t.tackle - aw * 12 + (fx.tackle ?? 0)), position: c(o + t.position + (fx.position ?? 0)), strength: c(o + t.strength + (fx.strength ?? 0)),
     air: c(o + t.strength + (fx.air ?? 0)),
-    reflex: c(o + t.reflex + (fx.reflex ?? 0)), touch: c(o + t.touch + (fx.touch ?? 0)) });
+    reflex: c(o + t.reflex + (fx.reflex ?? 0)), touch: c(o + t.touch + (fx.touch ?? 0)) };
+}
+export function meAttrs(p) {
+  if (p._att) return p._att;
+  const slot = attrsWith(p, ME_TILT[p.pos] || ME_TILT.MID, meAtkW(p) - 0.45), own = meOwnFor(p);
+  if (!own) return (p._att = slot);
+  const O = ME_OWN[own], mine = attrsWith(p, O.tilt, Math.min(1, Math.max(0, O.atkW / 40)) - 0.45), att = {};
+  for (const k in slot) att[k] = Math.min(slot[k], mine[k]);
+  return (p._att = att);
 }
 
 // Top speed in m/s. Stamina is applied here rather than baked into the attribute so that a tiring

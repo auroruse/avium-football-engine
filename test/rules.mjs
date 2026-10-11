@@ -23,7 +23,8 @@ const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "o
 const rec = Object.fromEntries(["players", "managers", "teams", "sheets", "leagues"].map(k => [k, JSON.parse(readFileSync(join(ROOT, `src/data/${k}.json`), "utf8"))]));
 const editors = JSON.parse(readFileSync(join(ROOT, "src/data/editors.json"), "utf8"));
 const ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
-const h = { labels: (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0 };
+const posOfRec = new Map(rec.players.map(p => [p.id, p.pos || []]));
+const h = { labels: (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0, pos: (id) => posOfRec.get(id) || [] };
 const ids = (t) => t.squad.map(v => idOf(v) ?? null);
 const ED = "mrrv533-creator", OV = "auroruse", NCH_ED = "auroruse";       // ALE's editor; the overseer (who also edits NCH)
 const A = rec.teams.find(t => t.file === "ALE" && t.code === "ARM"), A2 = rec.teams.find(t => t.file === "ALE" && t.code === "HAN");
@@ -180,6 +181,32 @@ let batchReq;
   const s = plan(ED, { teams: { [teamKey(A)]: { squad: two } }, new: [{ ...LIST, side: teamKey(A), men }] }), next = s.apply && after(s.apply);
   const yes = settle(OV, s.requests[0], "accept", {}, next), n = yes.apply && after(yes.apply, next), club = n?.teams.find(t => t.id === A.id);
   ok("a list joining a side fills its open places", !s.errors.length && !yes.errors?.length && ["Hans LINKS", "Karl RECHTS"].every(nm => ids(club).includes(n.players.find(p => p.name === nm)?.id)), [s.errors, yes.errors]); }
+
+console.log("positions (Moukden and Kirin, 11 October 2026)");
+{ const p = ids(A)[5];
+  const s = plan(OV, { players: { [p]: { pos: ["CM", "DM"] } } });
+  ok("the overseer changes a player's positions outright", !s.errors.length && !s.requests.length && after(s.apply).players.find(x => x.id === p).pos.join("/") === "CM/DM", s); }
+{ const p = ids(A)[5];
+  const s = plan(ED, { players: { [p]: { pos: ["CM", "DM"] } } }), r = s.requests[0];
+  ok("an editor's change to one of their players' positions is a request to the overseer", !s.errors.length && !s.apply && r?.kind === "pos" && Object.keys(r.needs).join() === OVERSEER, s);
+  const no = settle(ED, r, "accept");
+  ok("...which only the overseer answers", no.errors.length > 0, no);
+  const yes = settle(OV, r, "accept");
+  ok("...and his accept lets it in", !yes.errors.length && yes.done && after(yes.apply).players.find(x => x.id === p).pos.join("/") === "CM/DM", yes); }
+{ const p = ids(B)[5];
+  const s = plan(ED, { players: { [p]: { pos: ["ST"] } } });
+  ok("an editor cannot ask for another nation's player", s.errors.some(e => /not one of your players/.test(e)), s.errors); }
+{ const p = ids(A)[5];
+  const three = plan(OV, { players: { [p]: { pos: ["CM", "DM", "AM"] } } }), none = plan(OV, { players: { [p]: { pos: ["XX"] } } });
+  ok("three positions, or one that is not a position, are refused", three.errors.some(e => /one or two positions/.test(e)) && none.errors.some(e => /one or two positions/.test(e)), [three.errors, none.errors]); }
+{ const s = plan(OV, { new: [{ id: "n1", what: "players", name: "Test TWOPOS", nat: "ALE", born: "1910-05-05", pos: ["CB", "RB"], ovr: 60 }] });
+  const np = s.apply && after(s.apply).players.find(x => x.name === "Test TWOPOS");
+  ok("a new player keeps both his positions", !s.errors.length && np?.pos?.join("/") === "CB/RB", s.errors); }
+{ // A release, then a signing into the place it opened: the substitutes end in the places their groups fit.
+  const sq = ids(A), lab = slotLabels(sposFor, String(A.formation).trim(), sq.length), gk = sq[11], fwd = sq[15];
+  const swapped = [...sq]; swapped[11] = fwd; swapped[15] = gk;
+  const s = plan(OV, { teams: { [teamKey(A)]: { squad: swapped } } });
+  ok("a substitute may sit in another group's place: the app marks it, nothing refuses it", !s.errors.length, s.errors); }
 
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

@@ -29,9 +29,9 @@ import editorsRec from "./data/editors.json";
 import atlasRec from "./data/atlas.json";
 import { OVERSEER, isNational, owns, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
-import { placeFor, vacate, without } from "./data/squads.js";
+import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
-import { POS_ROLE, posFitCost } from "./data/positions.js";
+import { CLUB_BENCH, GROUP_NAME, POSITIONS, POS_GROUP as GROUP_OF, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "./data/positions.js";
 import stadiumsTSV from "./stadiums.tsv?raw";
 import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
@@ -90,7 +90,8 @@ const readSession = () => { try {
 } catch { return null; } };
 // The record fields as the cart and the requests name them.
 const FIELD_LBL = { tier: "Tier", cup: "Cup", ovr: "Rating", nat: "Nationality", born: "Date Of Birth", badges: "Badges", retired: "Status", name: "Name", code: "Code", home: "Home Kit",
-                    away: "Away Kit", stadium: "Stadium", location: "City", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad" };
+                    away: "Away Kit", stadium: "Stadium", location: "City", formation: "Formation", style: "Style", manager: "Manager", squad: "Squad",
+                    pos: "Positions" };
 // How long ago an ISO time was, the way a list of requests says it.
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000;
   return !(s >= 0) ? "" : s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
@@ -632,6 +633,9 @@ function capAtEleven(starters, bench) {
 // so a swap that only reorders the arrays is silently undone at kickoff, and the side that takes
 // the field is the one selection was trying to change.
 const asStarter = (p) => { const q = { ...p }; delete q.bench; return q; };
+// Two men changing places: a man with positions of his own takes the other's slot, its line and attacking weight, and
+// plays it on his own positions; without them each keeps the label he had, as before.
+const swapSlot = (p, to) => (p.own?.length ? { ...p, spos: to.spos, pos: to.pos, atkW: to.atkW } : p);
 const asBench = (p) => ({ ...p, bench: true });
 function managerSelect(starters, bench, kf, staminaData, context) {
   const dataOf = p => staminaData[kf(p.name)];
@@ -705,11 +709,13 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     const formOf = (q) => (dataOf(q)?.form || 0) * FORM_SELECT_WEIGHT;
     const bestBench = bench.reduce((best, b, bi) => {
       if (b.pos !== p.pos) return best;
-      const eff = fatigueOvr(b.ovr ?? UNRATED_OVR, b.stamina) + formOf(b);
+      // ...at the rating he would play this place at, where he has positions of his own.
+      const at = b.own?.length && p.spos ? ovrAt(b.ovr ?? UNRATED_OVR, b.own, p.spos) : b.ovr ?? UNRATED_OVR;
+      const eff = fatigueOvr(at, b.stamina) + formOf(b);
       return (!best || eff > best.eff) ? { idx: bi, ovr: b.ovr, eff } : best;
     }, null);
     if (!bestBench) continue;
-    const gap = fatigueOvr(p.ovr ?? UNRATED_OVR, st) + formOf(p) - bestBench.eff;
+    const gap = fatigueOvr(p.own?.length && p.spos ? ovrAt(p.ovr ?? UNRATED_OVR, p.own, p.spos) : p.ovr ?? UNRATED_OVR, st) + formOf(p) - bestBench.eff;
     let shouldRotate = false;
     let priority = 0;
     // Everything below this is workload management — it fires off stamina and consecutive starts,
@@ -758,8 +764,8 @@ function managerSelect(starters, bench, kf, staminaData, context) {
     }
     const out = starters[c.idx];
     const inP = bench[c.benchIdx];
-    starters[c.idx] = asStarter(inP);
-    bench[c.benchIdx] = asBench(out);
+    starters[c.idx] = asStarter(swapSlot(inP, out));
+    bench[c.benchIdx] = asBench(swapSlot(out, inP));
     usedBench.add(c.benchIdx);
     rotations++;
   }
@@ -776,7 +782,7 @@ function managerSelect(starters, bench, kf, staminaData, context) {
       if (cs < CONSEC_START_CAP) continue;
       const bi = bench.findIndex(b => b.pos === starters[i].pos && !usedBench.has(bench.indexOf(b)));
       if (bi === -1) continue;
-      const out = starters[i]; starters[i] = asStarter(bench[bi]); bench[bi] = asBench(out);
+      const out = starters[i]; starters[i] = asStarter(swapSlot(bench[bi], out)); bench[bi] = asBench(swapSlot(out, bench[bi]));
       usedBench.add(bi); rotations++;
     }
   }
@@ -798,14 +804,24 @@ function splitAvailSquad(squad, teamName, unavail, staminaData, rotationCtx) {
   const used = new Set();
   const repMap = new Map();
   for (const out of unavailStarters) {
-    let rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
+    // A man with positions of his own covers by the rating he would play the place at (src/data/positions.js ovrAt):
+    // the best of the bench there, a keeper only for a keeper. Without them, the first of the same line.
+    let rep = null;
+    if (out.spos && availBench.some(p => p.own?.length)) {
+      for (const p of availBench) { if (used.has(p.name) || (p.pos === "GK") !== (out.pos === "GK")) continue;
+        const v = p.own?.length ? ovrAt(p.ovr ?? 65, p.own, out.spos) : (p.ovr ?? 65) - (p.pos === out.pos ? 0 : 8);
+        if (!rep || v > rep.v) rep = { p, v }; }
+      rep = rep?.p || null;
+    }
+    if (!rep) rep = availBench.find(p => p.pos === out.pos && !used.has(p.name));
     if (!rep) rep = availBench.find(p => p.pos !== "GK" && !used.has(p.name));
     if (!rep) rep = availBench.find(p => !used.has(p.name));
     if (rep) { repMap.set(out.name, rep); used.add(rep.name); }
   }
   let startResult = [];
   for (const p of starters) {
-    if (unavail.has(keyOf(p.name))) { const rep = repMap.get(p.name); if (rep) startResult.push(rep); }
+    // He takes the place he covers, its slot and line, and plays it on his own positions (src/engine/attributes.ts).
+    if (unavail.has(keyOf(p.name))) { const rep = repMap.get(p.name); if (rep) startResult.push(rep.own?.length ? { ...rep, spos: p.spos, pos: p.pos, atkW: p.atkW } : rep); }
     else startResult.push(p);
   }
   let benchResult = availBench.filter(p => !used.has(p.name));
@@ -2626,7 +2642,8 @@ function refitLineup(squad, formation) {
   // same target — otherwise the understudies stop lining up with the starters they cover. The
   // 5-man bench has its own fixed shape and is passed through untouched.
   const order = (group) => {
-  const nat = group.map(p => p.natPos || p.spos || p.pos);
+  // Each man's own positions where he has them (the nearer of his two counts), else the place he was picked for.
+  const nat = group.map(p => (p.own?.length ? p.own : p.natPos || p.spos || p.pos));
   const n = 11, slotOf = new Array(n).fill(-1), taken = new Array(n).fill(false);
   // Formations repeat slots (4-3-3 has three CMs) but weight them differently via atkW, so a pure
   // position match leaves the order among equal slots arbitrary and toggling formation would shuffle
@@ -2660,7 +2677,9 @@ function refitLineup(squad, formation) {
 function refitAs(squad, formation) {
   const old = refitLineup(squad, formation);
   const nsq = buildSquad(formation, old.length ? old.map(p => p.name) : null, old.find(p => p.bench)?.benchSize);
-  nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos; });
+  // ...and who he is: his record, traits and own positions come with him (a rebuilt man used to lose his traits).
+  nsq.forEach((p, i) => { const o = old[i]; if (!o) return; if (o.ovr != null) p.ovr = o.ovr; if (o.fullName) p.fullName = o.fullName; if (o.nat) p.nat = o.nat; p.natPos = o.natPos || o.spos || p.spos;
+    if (o.rid) p.rid = o.rid; if (o.badges) p.badges = o.badges; if (o.own) p.own = o.own; });
   return nsq;
 }
 
@@ -3380,6 +3399,9 @@ function attachRecords(catalog, records) {
       e.rid = id;
       const b = P.get(id)?.badges;
       if (b?.length) e.badges = b;
+      // His own positions (src/data/positions.js): he plays either at his full rating, and anywhere else on their skills.
+      const own = posList(P.get(id)?.pos);
+      if (own.length) e.own = own;
     });
   }
   return catalog;
@@ -4477,6 +4499,9 @@ function buildPlayerIndex(teams) {
       // what they play, so dropping it outright left 46 nations unable to fill a bench at all.
       const sp = p.spos || p.pos;
       if (sp) { if (!isIntl) e.clubPos.add(sp); else if (!p.bench) e.natPos.add(sp); else e.bandPos.add(sp); }
+      // His own positions, where his record has them, are what he plays (src/data/positions.js); the slots are only
+      // where his sides happen to put him.
+      if (p.own?.length) e.ownPos = p.own;
       if (isIntl) { e.nationality = t.name; e.natCode = t.code; e.capped = true; e.ovr = eff; e.pos = p.pos; if (p.fullName) e.fullName = p.fullName; e.natSkill = t.skill || 0; }
       else { if (!e.clubs.some(c => c.name === t.name)) e.clubs.push({ name: t.name, code: t.code || abbr(t.name, t.code), league: t.league }); if (!e.nationality) { const nc = p.nat || t.nat || LEAGUE_NAT[t.league]; e.nationality = resNat(nc); e.natCode = nc; } e.clubSkill = Math.max(e.clubSkill, t.skill || 0); }
     });
@@ -4488,8 +4513,9 @@ function buildPlayerIndex(teams) {
   // sheet opens with Haugland 85 at left-back, and preferring his club's CB left an unrelated 75
   // as the only man the index believed could play there.
   arr.forEach(p => { const u = [...p.clubPos, ...p.natPos];
-    p.pos = (u.length ? u : [...p.bandPos]).sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).filter((x, i, a2) => a2.indexOf(x) === i).join("/") || p.pos;
-    delete p.clubPos; delete p.natPos; delete p.bandPos; });
+    p.pos = p.ownPos?.length ? p.ownPos.join("/")
+      : (u.length ? u : [...p.bandPos]).sort((a,b) => posOrd.indexOf(a) - posOrd.indexOf(b)).filter((x, i, a2) => a2.indexOf(x) === i).join("/") || p.pos;
+    delete p.clubPos; delete p.natPos; delete p.bandPos; delete p.ownPos; });
   // Tiebreak equal ratings by club skill, then national team skill.
   return arr.sort((a, b) => (b.ovr || 0) - (a.ovr || 0) || (b.clubSkill || 0) - (a.clubSkill || 0) || (b.natSkill || 0) - (a.natSkill || 0));
 }
@@ -8251,7 +8277,8 @@ export default function App() {
   };
   const commitDraft = (d) => { saveDraft(d); showRecords(applyDraft(recBase, d)); };
   const styleKeyOf = (label) => Object.keys(STYLE_LBL).find(k => STYLE_LBL[k].toLowerCase() === String(label || "").trim().toLowerCase()) || null;
-  const slotLabels = (formation, n) => { const xi = sposFor(formation); return [...xi, ...(n > 16 ? xi : ["GK", "CB", "CM", "CM", "ST"])].slice(0, n); };
+  // A squad's places (src/data/positions.js slotLabels): the eleven's positions, then each bench place's group.
+  const slotLabels = (formation, n) => { const xi = sposFor(formation); return [...xi, ...(n > 16 ? xi.map(p => GROUP_OF[p] || "MID") : CLUB_BENCH)].slice(0, n); };
   // TRANSFERS. Where each man is now (the records with the cart over them), the position he plays (for placing a
   // signing), and the squad moves themselves (src/data/squads.js): a starter leaving is replaced from his side's bench.
   const curRecs = useMemo(() => applyDraft(recBase, draft), [recBase, draft]);
@@ -8265,7 +8292,9 @@ export default function App() {
     }
     return m;
   }, [curRecs]);
-  const posOfId = (id) => whereIs.get(id)?.club?.pos || whereIs.get(id)?.nt?.pos || recNow(id)?.pos || "CM";
+  // A man's own positions (his record's), and the one he is shown by: his first, else where his sides play him.
+  const ownOfId = (id) => posList(recNow(id)?.pos);
+  const posOfId = (id) => ownOfId(id)[0] || [whereIs.get(id)?.club?.pos, whereIs.get(id)?.nt?.pos].find(x => POS_ROLE[x]) || "CM";
   const ovrOfId = (id) => recNow(id)?.ovr ?? 0;
   const isNatKey = (key) => ["AVIUM", "ARTERRA"].includes(recTeam.get(key)?.file);
   const discardDraft = () => { saveDraft({ v: 1, players: {} }); showRecords(recBase); setDiscardArm(false); setDraftOpen(false); };
@@ -8276,7 +8305,7 @@ export default function App() {
   // WHAT SAVING WOULD DO, by the server's own rules (src/data/rules.js) against the records as this page has them: what
   // it would refuse, and, for each item, the owners it would wait on (none: it goes live).
   const judge = useMemo(() => ({ labels: (t) => slotLabels(String(t.formation).trim(), t.squad.length), fit: posFitCost,
-                                 ovr: (id) => recById.get(id)?.ovr ?? 0 }), [recById]);
+                                 ovr: (id) => recById.get(id)?.ovr ?? 0, pos: (id) => posList(recById.get(id)?.pos) }), [recById]);
   const preview = useMemo(() => {
     if (!draftSize(draft)) return null;
     const editors = { overseers: overseer ? [scope.login] : [],
@@ -8366,6 +8395,7 @@ export default function App() {
       </span>);
     }
     if (c.field === "retired") return <span className={c.to ? "ux-chg-dn" : undefined}>{c.to ? "Retired" : "Active"}</span>;
+    if (c.field === "pos") return pair(posText(c.from) || "–", posText(c.to) || "–", true);
     if (!Array.isArray(c.to) && !Array.isArray(c.from)) return pair(String(c.from ?? "–"), String(c.to ?? "–"));
     const to = Array.isArray(c.to) ? c.to : [], from = Array.isArray(c.from) ? c.from : [];
     const add = to.filter(x => !from.includes(x)), rem = from.filter(x => !to.includes(x));
@@ -10192,6 +10222,7 @@ export default function App() {
   };
   const edPutAside = (sec = edSec) => { setEdRev(null); setEdFormOff(o => ({ ...o, [sec]: true })); };
   const [edDetails, setEdDetails] = useState(null);  // a side's code, ground and city as being changed: { key, code, ground, cap, city }
+  const [edPosAsk, setEdPosAsk] = useState(null);    // an editor asking for a player's positions: { id, a, b }
   const [edArm, setEdArm] = useState(null);          // a two-step action waiting for its second click
   const [edMsg, setEdMsg] = useState("");             // why the last move could not be made
   const [edCupNew, setEdCupNew] = useState(null);    // the league whose new cup is being named in place
@@ -11403,8 +11434,10 @@ export default function App() {
           {cartList.map(it => {
             if (it.trade) return uxReqBlock(edTradeReq(it.trade), true, busy ? null : () => removeItem(it));
             if (it.rec) return uxNewBlock({ ...it.rec, id: it.key }, it.key, false, busy ? null : () => removeItem(it));
-            // A change to a code, a ground or a city is the overseer's: for an editor it goes as a request.
-            const asks = isEditor && !overseer && !problems.length ? (preview?.requests || []).filter(r => r.kind === "details" && it.groups.some(g => g.kind === "teams" && g.id === r.team)) : [];
+            // A change to a code, a ground or a city, or to a player's positions, is the overseer's: for an editor it goes
+            // as a request.
+            const asks = isEditor && !overseer && !problems.length ? (preview?.requests || []).filter(r =>
+              (r.kind === "details" && it.groups.some(g => g.kind === "teams" && g.id === r.team)) || (r.kind === "pos" && it.groups.some(g => g.kind === "players" && g.id === r.player))) : [];
             return (
             <div key={it.key} className="ux-cb">
               {it.groups.map((g, gi) => (
@@ -11479,8 +11512,23 @@ export default function App() {
     : mine ? uxReqArm(r, "withdraw", "Withdraw", "Confirm Withdraw") : (<>
       {uxReqArm(r, "decline", "Decline", "Confirm Decline")}
       <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!!reqBusy} onClick={() => settle(r, "accept")}>{reqBusy === r.id ? "Saving" : "Accept"}</button></>);
+  // A CHANGE TO A PLAYER'S POSITIONS asked of the overseer: who, the positions he has and the ones asked for.
+  const uxPosBlock = (r, mine, remove) => {
+    const p = recById.get(r.player), nm = p?.name || r.teamName || "";
+    return (
+    <div key={r.id} className="ux-rq">
+      <div className="ux-rq-h">
+        <span className="ux-rq-crest"><PlayerShot name={nm} size={28} /></span>
+        <span className="ux-rq-t"><b><SlideName text={fullDisplayName(nm)} /></b><span>Positions</span></span>
+        {!remove && r.by && <span className="ux-rq-by"><img src={uxGh(r.by)} alt="" />{r.by}<span className="ux-ed-dot">&middot;</span>{ago(r.at)}</span>}
+      </div>
+      <div className="ux-rq-also">{uxCbRow("pos", "Positions", (
+        <span className="ux-chg-p" style={mono}><span className="ux-chg-o">{posText(p?.pos) || "–"}</span><span className="ux-chg-a" aria-label="to">&#8594;</span><span>{posText(r.patch?.pos) || "–"}</span></span>))}</div>
+      <div className="ux-rq-f">{remove && overseer ? <span className="ux-rq-wait" /> : uxReqWait(r)}{uxReqActs(r, mine, remove)}</div>
+    </div>); };
   const uxReqBlock = (r, mine, remove) => {
     if (r.kind === "new") return uxNewBlock(r, r.id, overseer && !mine && !r.declined, remove);
+    if (r.kind === "pos") return uxPosBlock(r, mine, remove);
     const tm = teamOfKey(r.team);
     const moves = r.moves || (r.ins || []).map(m => ({ ...m, from: r.other, fromName: r.otherName }));
     const give = r.give || (r.outs || []).map(o => o.id), other = r.other || moves[0]?.from, otherName = r.otherName || moves[0]?.fromName || "";
@@ -11515,7 +11563,7 @@ export default function App() {
       const meta = { review: true, reqId: r.id, by: r.by, at: r.at };
       setEdNew(s.what === "leagues" ? edLgFromRec(s, meta)
         : s.what === "batch" ? { kind: "players", mode: "many", side: s.side || null, list: (s.men || []).map(m => ({ ...m, ovr: m.ovr ?? "" })), ...meta }
-        : { ...s, kind: s.what, ...meta }); closeInbox(); };
+        : { ...s, kind: s.what, ...(s.what === "players" ? { pos: posList(s.pos)[0] || "", pos2: posList(s.pos)[1] || "" } : null), ...meta }); closeInbox(); };
     return (
     <div key={r.id || "n" + i} className="ux-rq">
       <div className="ux-rq-h">
@@ -11525,7 +11573,8 @@ export default function App() {
       </div>
       <dl className="ux-rq-facts">
         {s.nat && <div><dt>Nationality</dt><dd>{nat && <TeamCrest team={nat} size={14} />}{natOptions.name.get(s.nat) || s.nat}</dd></div>}
-        {s.pos && <div><dt>Position</dt><dd><b style={{ ...mono, color: POS_CLR[s.pos] }}>{s.pos}</b>{POS_NAME[s.pos]}</dd></div>}
+        {posList(s.pos).length > 0 && (() => { const l = posList(s.pos);
+          return <div><dt>{l.length > 1 ? "Positions" : "Position"}</dt><dd>{l.length > 1 ? <b style={mono}>{posText(l)}</b> : <><b style={{ ...mono, color: POS_CLR[l[0]] }}>{l[0]}</b>{POS_NAME[l[0]]}</>}</dd></div>; })()}
         {s.born && <div><dt>Born</dt><dd><span style={mono}>{uxDate(s.born)}</span>{ageOf(s.born) != null && <span className="ux-rq-age">Age <span style={mono}>{ageOf(s.born)}</span></span>}</dd></div>}
         {s.what === "players" && <div><dt>Joins</dt><dd>{joins ? <><TeamCrest team={joins} size={14} /><SlideName text={joins.name} /></> : "No Side"}</dd></div>}
         {s.style && <div><dt>Style</dt><dd>{uxStyleName(styleKeyOf(STYLE_LBL[s.style] || s.style) || "balanced")}</dd></div>}
@@ -11644,16 +11693,14 @@ export default function App() {
   // MOVES on the records, each into the cart. A man released from a club keeps his last position for whoever signs him.
   const edPut = (d) => { commitDraft(d); setEdMsg(""); };
   const edRelease = (key, id) => { const t = edTeamRec(key); if (!t) return; const sq = edSq(t), lab = edLab(t), i = sq.indexOf(id); if (i < 0) return;
-    let d = draftWith(draft, recBase, key, { squad: vacate(sq, i, lab, posFitCost, ovrOfId) }, "teams");
-    if (!isNational(t)) d = draftWith(d, recBase, id, { pos: lab[i] }, "players");
-    edPut(d); };
+    edPut(draftWith(draft, recBase, key, { squad: vacate(sq, i, lab, posFitCost, ovrOfId, ownOfId) }, "teams")); };
   // Into one of this person's sides: from nowhere, or from another of their clubs (which loses him, its bench filling in).
-  const edBringTo = (key, id) => { const t = edTeamRec(key), nat = isNational(t), sq = edSq(t), lab = edLab(t), i = placeFor(sq, lab, posFitCost, posOfId(id));
+  const edBringTo = (key, id) => { const t = edTeamRec(key), nat = isNational(t), sq = edSq(t), lab = edLab(t), i = placeFor(sq, lab, posFitCost, ownOfId(id).length ? ownOfId(id) : posOfId(id));
     if (i < 0) { setEdMsg(`${t.name.trim()} has no free place`); return; }
     const from = nat ? null : whereIs.get(id)?.club?.key; sq[i] = id;
-    let d = draftWith(draft, recBase, key, { squad: sq }, "teams");
-    if (from && from !== key) { const f = edTeamRec(from); d = draftWith(d, recBase, from, { squad: without(edSq(f), id, edLab(f), posFitCost, ovrOfId) }, "teams"); }
-    if (!nat) d = draftWith(d, recBase, id, { pos: null }, "players");
+    // ...and the substitutes sorted into the bench places their groups fit, where the bench allows.
+    let d = draftWith(draft, recBase, key, { squad: arrangeBench(sq, lab, ownOfId, fitsPlace) }, "teams");
+    if (from && from !== key) { const f = edTeamRec(from); d = draftWith(d, recBase, from, { squad: without(edSq(f), id, edLab(f), posFitCost, ovrOfId, ownOfId) }, "teams"); }
     edPut(d); };
   // A manager into one of this person's sides, bringing his style; a club he leaves is left without one.
   const edAppoint = (key, id) => { const t = edTeamRec(key), at = edSidesOfMgr(id).filter(x => !isNational(x) && teamKey(x) !== key);
@@ -11662,8 +11709,8 @@ export default function App() {
     if (!isNational(t)) for (const x of at) d = draftWith(d, recBase, teamKey(x), { manager: null }, "teams");
     edPut(d); };
   const edRetire = (id) => {
-    let d = draftWith(draft, recBase, id, { retired: true, pos: posOfId(id) }, "players");
-    for (const t of applyDraft(recBase, d).teams) { const sq = edSq(t); if (sq.includes(id)) d = draftWith(d, recBase, teamKey(t), { squad: without(sq, id, edLab(t), posFitCost, ovrOfId) }, "teams"); }
+    let d = draftWith(draft, recBase, id, { retired: true }, "players");
+    for (const t of applyDraft(recBase, d).teams) { const sq = edSq(t); if (sq.includes(id)) d = draftWith(d, recBase, teamKey(t), { squad: without(sq, id, edLab(t), posFitCost, ovrOfId, ownOfId) }, "teams"); }
     edPut(d); };
 
   // THE RAIL: New, a search, and the records under their headings.
@@ -11701,7 +11748,8 @@ export default function App() {
         setEdTrade(t => ({ ...t, give: t.give.includes(id) ? t.give.filter(x => x !== id) : [...t.give, id] })); return; }
       if (edSel == null) setEdSel(i); else { swap(edSel, i); setEdSel(null); } };
     const release = (i) => { if (sq[i]) edRelease(key, sq[i]); setEdSel(null); };
-    const reform = (nf) => { const n = sq.length, rows = sq.map((rid, i) => ({ rid, natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
+    // A new shape re-slots the eleven by each man's own positions (a national bench follows its eleven).
+    const reform = (nf) => { const n = sq.length, rows = sq.map((rid, i) => ({ rid, own: rid ? ownOfId(rid) : [], natPos: lab[i], spos: lab[i], bench: i >= 11, benchSize: n - 11 }));
       set({ formation: nf, squad: refitLineup(rows, nf).map(e => e.rid ?? null) }); };
     const open = sq.some(v => !v);
     // A man coming in: a free agent or one of this person's own men moves at once; anyone else opens a trade.
@@ -11783,9 +11831,8 @@ export default function App() {
                     <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last || "Open"} /></span></div>
                     <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm ? `${fullDisplayName(nm)}, ${pos}` : `Open, ${pos}`} aria-pressed={edSel === i}
                       onClick={() => pickPlace(i)}>{id ? <PlayerShot name={nm} size="100%" /> : null}</button>
-                    {p && <span className="ux-pl-rtg" style={{ background: ovrSheen(ovrMetal(p.ovr)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(p.ovr)}</span>}
-                    <span className="ux-pl-pos" style={mono}>{pos}</span>
+                    {p && uxPitchRtg(p.ovr, ownOfId(id), pos)}
+                    <span className={"ux-pl-pos" + (p && uxOop(ownOfId(id), pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
                   </div>); })}
               </div></div>), true)}
           {uxPanel("Bench", null, (
@@ -11793,9 +11840,12 @@ export default function App() {
                 {sq.slice(11).map((_, j) => { const i = 11 + j, { id, p, nm } = man(i);
                   return (
                   <div key={i} className={"ux-ed-brow " + placeCls(i)} {...dnd(i)} title={held(id) ? "Waiting On A Request" : undefined}>
-                    <b className="ux-ed-bpos" style={{ ...mono, color: POS_CLR[lab[i]] }}>{lab[i]}</b>
+                    {/* A bench place takes a man of its group: a keeper, a defender, a midfielder or a forward. */}
+                    <b className={"ux-ed-bpos" + (id && !fitsPlace(ownOfId(id), lab[i]) ? " ux-oop" : "")} style={{ ...mono, color: POS_CLR[lab[i]] }}
+                      title={GROUP_NAME[lab[i]] ? GROUP_NAME[lab[i]] + (id && !fitsPlace(ownOfId(id), lab[i]) ? ": Not One" : "") : undefined}>{lab[i]}</b>
                     <button type="button" className="ux-btnreset ux-ed-bman" onClick={() => pickPlace(i)} aria-pressed={edSel === i}>
-                      {id ? <><PlayerShot name={nm} size={24} /><span className="ux-ed-rn"><SlideName text={fullDisplayName(nm)} /></span></> : <span className="ux-ed-open">Open</span>}</button>
+                      {id ? <><PlayerShot name={nm} size={24} /><span className="ux-ed-rn"><SlideName text={fullDisplayName(nm)} /></span>
+                        <span className="ux-ed-bown" style={mono}>{posText(ownOfId(id))}</span></> : <span className="ux-ed-open">Open</span>}</button>
                     {p && uxBadge(p.ovr)}
                     {mine && id && !edTrade && !held(id) && <button type="button" className="ux-btnreset ux-cb-x" title={nat ? "Drop" : "Release"} aria-label={(nat ? "Drop " : "Release ") + fullDisplayName(nm)}
                       onClick={() => release(i)}>{uxIcon("close", "ux-s")}</button>}
@@ -11876,6 +11926,25 @@ export default function App() {
     const held = edLockedMen.has("p:" + id), setP = (patch) => edPut(draftWith(draft, recBase, id, patch, "players"));
     const fact = (label, value, editor) => (
       <div className="ux-ed-fact"><dt>{label}</dt><dd>{overseer && editor ? editor : <>{value}{!overseer && edLock}</>}</dd></div>);
+    // HIS POSITIONS (src/data/positions.js): one or two, both played at his full rating. The overseer sets them; an editor
+    // asks for a change for one of their own men, which goes to the overseer as a request.
+    const own = posList(p.pos), myMan = overseer || (scope.nations || []).includes(p.nat) || (club && edMine(teamKey(club))) || (nt && edMine(teamKey(nt)));
+    const posPick = (label, val, onPick, none) => (
+      <label className="ux-pick ux-ed-sel"><select aria-label={label} value={val || ""} onChange={e => onPick(e.target.value)}>
+        {none && <option value="">None</option>}{POSITIONS.map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>);
+    const two = (a, b) => [a, b].filter(Boolean).filter((x, i, l) => l.indexOf(x) === i);
+    const ask = edPosAsk?.id === id ? edPosAsk : null;
+    const posFact = (
+      <div className="ux-ed-fact"><dt>{own.length > 1 ? "Positions" : "Position"}</dt><dd>
+        {overseer ? (<span className="ux-ed-born">{posPick("Position", own[0], v => v && setP({ pos: two(v, own[1]) }))}
+            {posPick("Second Position", own[1], v => setP({ pos: two(own[0], v) }), true)}</span>)
+          : ask ? (<span className="ux-ed-born">{posPick("Position", ask.a, v => setEdPosAsk({ ...ask, a: v }))}{posPick("Second Position", ask.b, v => setEdPosAsk({ ...ask, b: v }), true)}
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdPosAsk(null)}>Cancel</button>
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!ask.a || posText(two(ask.a, ask.b)) === posText(own)}
+                onClick={() => { setP({ pos: two(ask.a, ask.b) }); setEdPosAsk(null); }}>Add To Cart</button></span>)
+          : (<span className="ux-ed-pos">{own.length ? own.map(x => <b key={x} style={{ ...mono, color: POS_CLR[x] }}>{x}</b>) : "–"}
+              {myMan && !held ? <button type="button" className="ux-btnreset ux-btn" onClick={() => setEdPosAsk({ id, a: own[0] || "", b: own[1] || "" })}>{uxIcon("edit", "ux-s")}Request A Change</button> : edLock}</span>)}
+      </dd></div>);
     const otherClubs = edSideChoices(false, true).map(([h, l]) => [h, l.filter(it => it.k !== w.club?.key)]).filter(([, l]) => l.length);
     return (
       <div className="ux-ed-rec">
@@ -11884,7 +11953,7 @@ export default function App() {
             <span className="ux-ed-face"><PlayerShot name={p.name} size={56} /></span>
             <div className="ux-ed-names"><span className="ux-ed-title">{fullDisplayName(p.name)}</span>
               <span className="ux-ed-sub">{edDots(<>{natSide && <TeamCrest team={natSide} size={16} />}{natOptions.name.get(p.nat) || p.nat}</>,
-                <b style={{ ...mono, color: POS_CLR[pos] }}>{pos}</b>, age != null && <>Age <span style={mono}>{age}</span></>, held && "Waiting On A Request")}</span></div>
+                <b style={{ ...mono, color: POS_CLR[pos] }}>{posText(own) || pos}</b>, age != null && <>Age <span style={mono}>{age}</span></>, held && "Waiting On A Request")}</span></div>
             <span style={{ marginLeft: "auto" }}>{uxBadge(p.ovr, true)}</span>
           </div>
         </section>
@@ -11897,6 +11966,7 @@ export default function App() {
                 <UxSidePick label="Nationality" value={p.nat} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => it.k !== p.nat && setP({ nat: it.k })} />)}
               {fact("Date Of Birth", p.born ? <span style={mono}>{uxDate(p.born)}</span> : "–", <input className="ux-ed-in" type="date" defaultValue={p.born || ""} aria-label="Date Of Birth"
                 onBlur={e => { const v = e.target.value; if (v !== (p.born || "") && (!v || birthDateOk(v))) setP({ born: v || null }); }} />)}
+              {posFact}
               {fact("Rating", uxBadge(p.ovr), <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} defaultValue={p.ovr} aria-label="Rating" style={mono}
                 onBlur={e => { const v = Math.round(+e.target.value); if (v >= 25 && v <= 99 && v !== p.ovr) setP({ ovr: v }); }} />)}
               {fact("Traits", badgeOrder(p.badges).length ? <span className="ux-ed-traits">{badgeOrder(p.badges).map(b => <BadgeIcon key={b} id={b} size={20} />)}</span> : "None",
@@ -11985,22 +12055,25 @@ export default function App() {
     const men = [], bad = [];
     String(text || "").split(/\r?\n/).forEach((raw, i) => {
       const L = raw.trim(); if (!L) return;
-      const k = Math.max(L.lastIndexOf(","), L.lastIndexOf("\t")), name = k > 0 ? L.slice(0, k).trim() : L, pos = k > 0 ? L.slice(k + 1).trim().toUpperCase() : "";
-      if (k < 0) bad.push({ line: i + 1, why: "no position", text: L });
+      // "Name, position" or "Name, position, second position"; a name may carry commas of its own.
+      const parts = L.split(/[,\t]/).map(x => x.trim()), up = (x) => String(x || "").toUpperCase(), n = parts.length;
+      const two = n >= 3 && POS_ROLE[up(parts[n - 2])] && POS_ROLE[up(parts[n - 1])];
+      const pos = n < 2 ? [] : two ? [up(parts[n - 2]), up(parts[n - 1])] : [up(parts[n - 1])], name = parts.slice(0, n - (two ? 2 : 1)).join(", ").trim();
+      if (n < 2) bad.push({ line: i + 1, why: "no position", text: L });
       else if (!name || name.length > 60) bad.push({ line: i + 1, why: "no name", text: L });
-      else if (!POS_ROLE[pos]) bad.push({ line: i + 1, why: `${pos || "nothing"} is not a position`, text: L });
-      else men.push({ name, pos });
+      else if (!POS_ROLE[pos[0]]) bad.push({ line: i + 1, why: `${pos[0] || "nothing"} is not a position`, text: L });
+      else men.push({ name, pos: posList(pos) });
     });
     const order = Object.keys(POS_ROLE).sort((a, b) => POS_ROLE[a][0] - POS_ROLE[b][0] || POS_ROLE[a][1] - POS_ROLE[b][1]);
-    return { men: men.map((m, i) => [m, i]).sort((a, b) => order.indexOf(a[0].pos) - order.indexOf(b[0].pos) || a[1] - b[1]).map(([m]) => m), bad };
+    return { men: men.map((m, i) => [m, i]).sort((a, b) => order.indexOf(a[0].pos[0]) - order.indexOf(b[0].pos[0]) || a[1] - b[1]).map(([m]) => m), bad };
   };
   const edAges = (f) => { const lo = Math.max(14, parseInt(f?.amin, 10) || 18); return [lo, Math.max(lo, parseInt(f?.amax, 10) || 32)]; };
   const edBornIn = ([lo, hi]) => edBornFor(lo + Math.floor(Math.random() * (hi - lo + 1)));
   // The list again after a change: a line kept keeps its date of birth (and any rating typed), unless the ages changed.
   const edReList = (f, patch) => {
     const g = { ...(f || {}), ...patch }, { men, bad } = edParseMen(g.text), ages = edAges(g);
-    const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, was = new Map((f?.list || []).map(m => [m.name + "|" + m.pos, m]));
-    const list = men.map(m => { const old = was.get(m.name + "|" + m.pos);
+    const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, was = new Map((f?.list || []).map(m => [m.name + "|" + posText(m.pos), m]));
+    const list = men.map(m => { const old = was.get(m.name + "|" + posText(m.pos));
       return { ...m, nat: g.nat || "", born: !redraw && old?.born ? old.born : edBornIn(ages), ovr: old?.ovr ?? "" }; });
     delete g.redraw;
     return { ...g, list, bad };
@@ -12033,7 +12106,7 @@ export default function App() {
           <div className="ux-ed-form ux-ed-batch">
             {!review && <dl className="ux-ed-dl">
               {field("Players", <textarea className="ux-ed-in ux-ed-ta" rows={7} spellCheck={false} aria-label="Players, One A Line"
-                placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB\nKoji MINAMI, ST"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
+                placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB\nKoji MINAMI, ST"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
               {field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => relist({ nat: it.k })} />)}
               {field("Ages", <span className="ux-ed-born">
                 <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={f.amin ?? 18} onChange={e => relist({ amin: e.target.value })} style={mono} />
@@ -12045,11 +12118,11 @@ export default function App() {
             </dl>}
             {edBadLines(bad)}
             <div className="ux-pbody ux-ed-blist"><table className="ux-tbl">
-              <colgroup><col style={{ width: 52 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 120 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 40 }} /></colgroup>
+              <colgroup><col style={{ width: 66 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 120 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 40 }} /></colgroup>
               <thead><tr><th>Pos</th><th>Name</th><th>Nationality</th><th>Born</th><th className="ux-n">Age</th><th className="ux-c">Rating</th><th /></tr></thead>
               <tbody>{list.map((m, i) => (
                 <tr key={i + m.name}>
-                  <td><b style={{ ...mono, color: POS_CLR[m.pos] }}>{m.pos}</b></td>
+                  <td><b style={{ ...mono, color: POS_CLR[posList(m.pos)[0]] }}>{posText(m.pos)}</b></td>
                   <td><span className="ux-fx">{m.name}</span></td>
                   <td><span className="ux-fx">{natOptions.name.get(m.nat) || m.nat || "–"}</span></td>
                   <td style={mono}>{m.born ? uxDate(m.born) : "–"}</td>
@@ -12099,7 +12172,7 @@ export default function App() {
       return (!at || edMine(teamKey(at))) && !edLockedMen.has("m:" + m.id); }).sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
     const fieldsOf = () => {
       const base = { what: k, name: (f.name || "").trim() };
-      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: f.pos, ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(overseer && f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
+      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: posList([f.pos, f.pos2]), ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(overseer && f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
       if (k === "managers") return { ...base, nat: f.nat, born: f.born, style: f.style, ovr: f.ovr ? Math.round(+f.ovr) : null };
       return { ...base, nation, code: (f.code || "").trim().toUpperCase(), home: f.home || "#888888", away: f.away || "#ffffff",
         stadium: (f.ground || "").trim() + (String(f.cap || "").trim() ? ` (${String(f.cap).trim()})` : ""), location: f.city || "", group: f.group || "",
@@ -12117,6 +12190,9 @@ export default function App() {
               {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
               {k !== "teams" && field("Date Of Birth", edBornAge(f.born, f.age, upd, k === "managers" ? 90 : 60))}
               {k === "players" && field("Position", sel("Position", f.pos, Object.keys(POS_NAME).map(c => [c, `${c} ${POS_NAME[c]}`]), v => upd({ pos: v })))}
+              {k === "players" && field("Second Position", (
+                <label className="ux-pick ux-ed-sel"><select aria-label="Second Position" value={f.pos2 || ""} onChange={e => upd({ pos2: e.target.value })}>
+                  <option value="">None</option>{Object.keys(POS_NAME).filter(c => c !== f.pos).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>))}
               {k === "players" && field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k })} />)}
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
               {k !== "teams" && field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
@@ -12152,7 +12228,7 @@ export default function App() {
                 </div>
                 <span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
                   <input type="search" placeholder="Search Free Agents And Your Players" aria-label="Search Players" value={f.q || ""} onChange={e => upd({ q: e.target.value })} /></span>
-                {pool.map(p => { const at = whereIs.get(p.id)?.club?.key, st = at ? teamOfKey(at) : null, i = placeFor(squad, slabs, posFitCost, posOfId(p.id));
+                {pool.map(p => { const at = whereIs.get(p.id)?.club?.key, st = at ? teamOfKey(at) : null, i = placeFor(squad, slabs, posFitCost, ownOfId(p.id).length ? ownOfId(p.id) : posOfId(p.id));
                   return (
                   <div key={p.id} className="ux-ed-frow">
                     <PlayerShot name={p.name} size={26} />
@@ -12460,7 +12536,7 @@ export default function App() {
                   : +v.ovr > 0 ? uxBadge(+v.ovr) : <span className="ux-ed-blank">Blank</span>)
                 : p ? uxBadge(p.ovr) : null}</span>
               <span className="ux-ed-bcell">{isN && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Edit " + fullDisplayName(nm)} title="Edit"
-                onClick={e => { e.stopPropagation(); setEdSel(null); upd({ np: { ...v, at: i }, rollOpen: false }); }}>{uxIcon("edit", "ux-s")}</button>}</span>
+                onClick={e => { e.stopPropagation(); setEdSel(null); upd({ np: { ...v, pos: posList(v.pos)[0] || "", pos2: posList(v.pos)[1] || "", at: i }, rollOpen: false }); }}>{uxIcon("edit", "ux-s")}</button>}</span>
               <span className="ux-ed-bcell">{v && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + fullDisplayName(nm)}
                 onClick={e => { e.stopPropagation(); setEdSel(null); updC({ squad: c.squad.map((x, j) => (j === i ? null : x)) }); }}>{uxIcon("close", "ux-s")}</button>}</span>
             </div>); })}
@@ -12472,7 +12548,7 @@ export default function App() {
             return (
           <div className="ux-ed-np">
             <div className="ux-ed-lh">Import Players</div>
-            <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB"}
+            <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB"}
               value={imp.text} onChange={e => setImp({ text: e.target.value })} />
             <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
               {field("Nationality", <UxSidePick label="Nationality" value={imp.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setImp({ nat: it.k })} />)}
@@ -12494,6 +12570,8 @@ export default function App() {
               {field("Name", <input className="ux-ed-in" placeholder="Given Name SURNAME" value={np.name || ""} onChange={e => setNp({ name: e.target.value })} />)}
               {field("Position", <span className="ux-pick ux-ed-sel"><select aria-label="Position" value={np.pos || ""} onChange={e => setNp({ pos: e.target.value })}>
                 <option value="">Choose</option>{Object.keys(POS_NAME).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
+              {field("Second", <span className="ux-pick ux-ed-sel"><select aria-label="Second Position" value={np.pos2 || ""} onChange={e => setNp({ pos2: e.target.value })}>
+                <option value="">None</option>{Object.keys(POS_NAME).filter(x => x !== np.pos).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
               {field("Nationality", <UxSidePick label="Nationality" value={np.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setNp({ nat: it.k })} />)}
               {field("Born", edBornAge(np.born, np.age, setNp, 60))}
               {field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} aria-label="Rating"
@@ -12505,7 +12583,7 @@ export default function App() {
             <div className="ux-ed-npf">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
               <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born}
-                onClick={() => { const { at, age, ...man } = np, v = { ...man, name: man.name.trim(), nat: man.nat || nation };
+                onClick={() => { const { at, age, pos2, ...man } = np, v = { ...man, pos: posList([man.pos, pos2]), name: man.name.trim(), nat: man.nat || nation };
                   if (at != null) upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: x.squad.map((y, k) => (k === at ? v : y)) } : x)), np: null });
                   else put(v, v.pos); }}>{np.at != null ? "Save" : "Add"}</button></div>
           </div>
@@ -12523,7 +12601,7 @@ export default function App() {
               <span className="ux-ed-fn"><b><SlideName text={fullDisplayName(p.name)} /></b>
                 <span><b style={{ ...mono, color: POS_CLR[posOfId(p.id)] }}>{posOfId(p.id)}</b>{st ? <><TeamCrest team={st} size={14} />{st.code}</> : "Free Agent"}</span></span>
               {uxBadge(p.ovr)}
-              <button type="button" className="ux-btnreset ux-btn" onClick={() => put(p.id, posOfId(p.id))}>Add</button>
+              <button type="button" className="ux-btnreset ux-btn" onClick={() => put(p.id, ownOfId(p.id).length ? ownOfId(p.id) : posOfId(p.id))}>Add</button>
             </div>); })}</div>}
         </>)}
       </div>), true, "squad");
@@ -12828,6 +12906,16 @@ export default function App() {
         <thead><tr><th>Part Of The Pitch</th><th>Roles</th></tr></thead>
         <tbody>{groups.map(([g, rs]) => <tr key={g}><td>{g}</td><td>{rs.map(([n, s]) => <span key={s} className="ux-doc-role">{n} <b style={mono}>{s}</b></span>)}</td></tr>)}</tbody>
       </table>); }
+    // What a man loses out of his own positions, for some common moves (src/data/positions.js POS_DROP), read live.
+    if (k === "posdrop") { const moves = [["CM", "DM"], ["CM", "AM"], ["LB", "RB"], ["LW", "RW"], ["CB", "LB"], ["LB", "LM"], ["LM", "LB"], ["CB", "DM"],
+        ["DM", "CB"], ["AM", "ST"], ["ST", "AM"], ["LW", "ST"], ["CM", "CB"], ["CB", "ST"], ["ST", "CB"]];
+      return (
+      <table className="ux-doc-tbl ux-doc-sm">
+        <colgroup><col style={{ width: 160 }} /><col /></colgroup>
+        <thead><tr><th>Move</th><th>Rating Lost</th></tr></thead>
+        <tbody>{moves.map(([a, b]) => <tr key={a + b}><td><b style={{ ...mono, color: POS_CLR[a] }}>{a}</b> At <b style={{ ...mono, color: POS_CLR[b] }}>{b}</b></td>
+          <td style={mono}>{posDrop([a], b)}</td></tr>)}</tbody>
+      </table>); }
     // The positions in their colours, by group.
     if (k === "positions") return (
       <table className="ux-doc-tbl ux-doc-sm">
@@ -12899,6 +12987,13 @@ export default function App() {
       </div>);
   };
   const uxBadge = (v, big) => <span style={{ ...ovrBlock(v), ...(big ? { minWidth: 40, padding: "5px 8px", fontSize: 15, lineHeight: "18px" } : {}), ...mono }}>{showOvr(v)}</span>;
+  // A MAN'S RATING ON A PITCH (src/data/positions.js, Moukden and Kirin, 11 October 2026): in one of his own positions his
+  // rating; out of them the rating he plays the place at, ringed, with his own positions on hover.
+  const uxOop = (own, place) => !!(own?.length && place && POS_ROLE[place] && !own.includes(place));
+  const uxPitchRtg = (ovr, own, place) => { const oop = uxOop(own, place), v = oop ? ovrAt(ovr, own, place) : ovr;
+    return (<span className={"ux-pl-rtg" + (oop ? " ux-oop" : "")} title={oop ? `Out Of Position, ${posText(own)}: Plays As ${showOvr(v)}` : undefined}
+      style={{ background: ovrSheen(ovrMetal(v)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
+        boxShadow: (oop ? "0 0 0 2px var(--ux-loss), " : "") + "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(v)}</span>); };
 
   // The map's pins, one kind at a time.
   const uxAtlasPins = useMemo(() => atlasPins.filter(p => p.kind === uxAtlasKind), [atlasPins, uxAtlasKind]);
@@ -13112,9 +13207,8 @@ export default function App() {
                   <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
                     <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                     <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                    <span className="ux-pl-rtg" style={{ background: ovrSheen(ovrMetal(ovr)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(ovr)}</span>
-                    <span className="ux-pl-pos" style={mono}>{pos}</span>
+                    {uxPitchRtg(ovr, p.own, pos)}
+                    <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
                   </div>); })}
             </div></div>), true)}
         </div>
@@ -13516,7 +13610,7 @@ export default function App() {
     }
     if (!spots.size) for (const [sp, t] of benched) put(sp, t);
     if (!spots.size) for (const ps of pos) if (UX_POS_XY[ps]) put(ps, null);
-    const shown = pos.length ? pos : [...spots.keys()];
+    const ownPos = posList(rec?.pos), shown = ownPos.length ? ownPos : pos.length ? pos : [...spots.keys()];
     // His roles: what each side he starts for deals him, as a match deals them (rolesOf: the side's style, its shape and
     // his slot); a man on the bench has none until he comes on. His country first, as the banner's crests run.
     const roles = uxRoleRows(sheets);
@@ -13595,10 +13689,13 @@ export default function App() {
           {uxPanel("Positions", null, (<>
             <div className="ux-pitch-wrap"><div className="ux-pitch" role="img" aria-label={[...spots.keys()].join(", ")}>
               {UX_PITCH_LINES}
-              {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const on = spots.get(ps);
+              {/* His own positions lit (src/data/positions.js), each with the sides that play him there; a place a side plays
+                  him that is not one of his in the loss colour, with the rating he plays it at. */}
+              {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const on = spots.get(ps), mine = ownPos.includes(ps), oop = !!on && ownPos.length > 0 && !mine;
                 return (
-                  <div key={ps} className={"ux-spot" + (on ? " ux-on" : "")} style={{ left: x + "%", top: y + "%", ["--pos"]: POS_CLR[ps] }}>
-                    {on && <span style={mono}>{ps}</span>}
+                  <div key={ps} className={"ux-spot" + (on || mine ? " ux-on" : "") + (oop ? " ux-oop" : "")} style={{ left: x + "%", top: y + "%", ["--pos"]: oop ? "var(--ux-loss)" : POS_CLR[ps] }}
+                    title={oop && ovr != null ? `Out Of Position: Plays As ${showOvr(ovrAt(ovr, ownPos, ps))}` : undefined}>
+                    {(on || mine) && <span style={mono}>{ps}</span>}
                     {on && on.length > 0 && <div className="ux-spot-cr">{on.map(t => <TeamCrest key={t.id} team={t} size="var(--cr)" />)}</div>}
                   </div>); })}
             </div></div>
@@ -16230,9 +16327,8 @@ export default function App() {
               <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
                 <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                 <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                <span className="ux-pl-rtg" style={{ background: ovrSheen(ovrMetal(ovr)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(ovr)}</span>
-                <span className="ux-pl-pos" style={mono}>{pos}</span>
+                {uxPitchRtg(ovr, p.own, pos)}
+                <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
               </div>); })}
         </div></div>), true, side + "-xi");
     };
@@ -16240,10 +16336,14 @@ export default function App() {
     // OVR is the side's rating, XI OVR and BENCH OVR its eleven's and its bench's (Moukden and Kirin, 10 October 2026), and
     // ATT, MID and DEF the eleven's by line, the keeper counted in DEF.
     const LINES = [["ATT", /^(LW|RW|ST|FWD)$/], ["MID", /^(DM|CM|AM|LM|RM|MID)$/], ["DEF", /^(GK|CB|LB|RB|LWB|RWB|DEF)$/]];
+    // The eleven are counted at the ratings they play their places at (src/data/positions.js ovrAt); the bench, and the
+    // side's own rating, at their full ones.
+    const atOf = (p, t) => (p.own?.length && p.spos ? ovrAt(p.ovr ?? t.skill ?? 0, p.own, p.spos) : p.ovr ?? t.skill ?? 0);
     const lineOf = (t, side, re) => { const ps = (sh[side]?.xi || []).filter(p => re.test(p.spos || p.pos));
-      return ps.length ? ps.reduce((a, p) => a + (p.ovr ?? t.skill ?? 0), 0) / ps.length : null; };
+      return ps.length ? ps.reduce((a, p) => a + atOf(p, t), 0) / ps.length : null; };
     const avgOf = (ps, t) => (ps.length ? ps.reduce((a, p) => a + (p.ovr ?? t.skill ?? 0), 0) / ps.length : null);
-    const cmpRows = hT && aT ? [["OVR", hT.skill, aT.skill], ["XI OVR", avgOf(sh.home.xi, hT), avgOf(sh.away.xi, aT)],
+    const xiOf = (ps, t) => (ps.length ? ps.reduce((a, p) => a + atOf(p, t), 0) / ps.length : null);
+    const cmpRows = hT && aT ? [["OVR", hT.skill, aT.skill], ["XI OVR", xiOf(sh.home.xi, hT), xiOf(sh.away.xi, aT)],
       ["BENCH OVR", avgOf(sh.home.bench, hT), avgOf(sh.away.bench, aT)], ...LINES.map(([l, re]) => [l, lineOf(hT, "home", re), lineOf(aT, "away", re)])] : [];
     const barPct = (v) => (v == null ? 0 : Math.max(4, Math.min(100, (v - 60) / 30 * 100)));
     const strength = uxPanel("Strength Comparison", null, hT && aT ? (
@@ -16515,9 +16615,8 @@ export default function App() {
                       <div key={i} className="ux-pl" style={{ left: sp[0] + "%", top: sp[1] + "%", ["--pos"]: POS_CLR[pos] || POS_CLR[p.pos] || "var(--chrome-border)" }}>
                         <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                         <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
-                        <span className="ux-pl-rtg" style={{ background: ovrSheen(ovrMetal(ovr)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
-                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(ovr)}</span>
-                        <span className="ux-pl-pos" style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}</span>
+                        {uxPitchRtg(ovr, p.own, pos)}
+                        <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}</span>
                       </div>); })}
                 </div></div>
                 <div className="ux-pbody"><table className="ux-tbl">
@@ -17861,9 +17960,12 @@ export default function App() {
             // scorebug average sitting ten points low. ovr0 is the snapshot taken before it.
             // It still moves with a substitution -- which is the reason this is computed live at all
             // -- because a different man on the pitch is a different base rating.
+            // Each man at the rating he plays his place at (src/data/positions.js ovrAt): a man out of his own positions
+            // counts for less. An outfielder who has gone in goal counts at his sheet rating, as before.
             const xiOvr = (side) => {
               const ps = st?.players?.[side] || [];
-              return ps.length ? ps.reduce((a, p) => a + (p.ovr0 ?? p.ovr ?? 0), 0) / ps.length : 0;
+              const at = (p) => (p.own?.length && p.spos && !p.inGoal ? ovrAt(p.ovr0 ?? p.ovr ?? 0, p.own, p.spos) : p.ovr0 ?? p.ovr ?? 0);
+              return ps.length ? ps.reduce((a, p) => a + at(p), 0) / ps.length : 0;
             };
             // MINUTES AND SECONDS. meMinute floors to the minute and clamps at 90, which is right for
             // a timestamp on an event but reads as a stopped clock on a scoreboard. This one is not
