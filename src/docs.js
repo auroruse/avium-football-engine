@@ -292,7 +292,7 @@ export const DOCS = [
   ] },
   { id: "editing", title: "Editing", sections: [
     { id: "editors", title: "Editors And The Overseer", body: [
-      "Each editor keeps their own nation: its national side, its clubs and its leagues. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The overseer can change anything, and answers the requests editors send.",
+      "Each editor keeps their own nation: its national side, its clubs and its leagues. An editor may also be given another nation's clubs and leagues without its national side. Sign in with the GitHub account the overseer has listed for you, and the top bar gains the Editor section, Requests and the Cart. The overseer can change anything, and answers the requests editors send.",
       { dl: [
         ["Yours To Change", "A side's name and kits, its formation and who plays where; your national side's call-ups and manager; and a league's name, tier and cup."],
         ["By Request", "A side's ground, capacity and city, a club's code, one of your players' positions, and every new player, manager, club and league. The overseer answers these."],

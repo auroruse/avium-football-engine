@@ -27,7 +27,7 @@ import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data
 import editorsRec from "./data/editors.json";
 // Where every nation and city sits on the Avium Map (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
-import { OVERSEER, isNational, natLevel, owns, planSave } from "./data/rules.js";
+import { OVERSEER, clubNations, isNational, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 import { dealPlan } from "./data/deals.js";
@@ -8357,9 +8357,8 @@ export default function App() {
   const reqFor = useMemo(() => requests.filter(r => !r.declined && (overseer
     || Object.keys(r.needs || {}).some(k => !(r.approved || []).includes(k) && ownsKey(k)))), [requests, overseer, scope, recTeam]);
   const reqMine = useMemo(() => requests.filter(r => !!scope.login && String(r.by).toLowerCase() === scope.login.toLowerCase()), [requests, scope]);
-  // Who answers for a team: its nation's editors, as this build lists them.
-  const ownersOfKey = (k) => { const t = recTeam.get(k); if (!t) return [];
-    const n = isNational(t) ? t.code : t.nation; return Object.entries(editorsRec.editors || {}).filter(([, ns]) => ns.includes(n)).map(([u]) => u); };
+  // Who answers for a team: its nation's editors (and, for a club, anyone given its nation's clubs), as this build lists them.
+  const ownersOfKey = (k) => { const t = recTeam.get(k); return t ? ownersOf(editorsRec, t) : []; };
   const natOptions = useMemo(() => {
     const nts = PRESET_CATALOG.filter(t => isIntlLeague(t.league)), named = new Set(nts.map(t => t.code));
     const byName = (a, b) => a[1].localeCompare(b[1]);
@@ -8414,7 +8413,8 @@ export default function App() {
   const preview = useMemo(() => {
     if (!draftSize(draft)) return null;
     const editors = { overseers: overseer ? [scope.login] : [],
-                      editors: { ...(editorsRec.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) } };
+                      editors: { ...(editorsRec.editors || {}), ...(scope.role === "editor" ? { [scope.login]: scope.nations } : null) },
+                      clubs: { ...(editorsRec.clubs || {}), ...(scope.role === "editor" ? { [scope.login]: scope.clubs || [] } : null) } };
     return planSave(recBase, editors, requests, scope.login, draft, judge, "", () => "");
   }, [draftList, recBase, draft, requests, scope, overseer, judge]);
   // What went live is main's now: the base moves, and it stays laid under the cart in this browser until a build carries
@@ -11820,7 +11820,7 @@ export default function App() {
   const edLeagues = useMemo(() => {
     const clubs = new Map();
     for (const t of curRecs.teams) if (!isNational(t) && t.group) { const k = t.nation + "|" + t.group; clubs.set(k, [...(clubs.get(k) || []), t]); }
-    return (curRecs.leagues || []).filter(l => overseer || (scope.nations || []).includes(l.nation))
+    return (curRecs.leagues || []).filter(l => overseer || clubNations(scope).includes(l.nation))
       .map(l => ({ ...l, key: l.id, clubs: clubs.get(l.nation + "|" + l.name) || [] }));
   }, [curRecs, overseer, scope]);
   // The men on the rail: the editor's nation's players and everyone at their sides; anyone for the overseer.
@@ -11863,7 +11863,7 @@ export default function App() {
           </div>))}</div>
       </div>);
   };
-  const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
+  const edNatChoices = (all, codes = scope.nations || []) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || codes.includes(c))
     .map(([c, n]) => ({ k: c, name: n, team: natTeamByCode.get(c), code: c }))]];
   // An editor's new player of another nation: the rating he must stay below, his nation's level (rules.js natLevel), or 0
   // when it has none; null when nothing limits him (the editor's own nationals, and the overseer's).
@@ -11898,7 +11898,7 @@ export default function App() {
   const edRail = (kind, groups, pickedKey, pick) => (
     <section className="ux-panel ux-grow ux-ed-rail">
       <div className="ux-ph"><button type="button" className="ux-btnreset ux-btn ux-btn-pri ux-ed-new" onClick={() => {
-        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: (scope.nations || [])[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdCall(null); setEdSel(null); setEdMsg(""); }}>
+        setEdNew(edForms[kind] || (kind === "leagues" ? edLgSeed() : { kind, ...(kind === "teams" ? { nation: clubNations(scope)[0] || "", formation: "4-3-3", squad: Array(16).fill(null) } : null) })); setEdCall(null); setEdSel(null); setEdMsg(""); }}>
         {uxIcon("plus", "ux-s")}New {edKindName(kind)}</button></div>
       <div className="ux-ed-search"><span className="ux-search ux-ed-q">{uxIcon("search", "ux-s")}
         <input type="search" placeholder="Search" aria-label="Search" value={edQ} onChange={e => setEdQ(e.target.value)} /></span></div>
@@ -12353,7 +12353,7 @@ export default function App() {
                 placeholder={overseer ? "25 To 99" : cap != null ? `Below ${cap}` : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
               {k === "players" && field("Traits", edTraitList(f.badges, (id, on) => upd({ badges: on ? f.badges.filter(x => x !== id) : [...(f.badges || []), id] }), f.ovr, !overseer))}
               {k === "teams" && <>
-                {(overseer || (scope.nations || []).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
+                {(overseer || clubNations(scope).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer, clubNations(scope))} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
                 {field("League", sel("League", f.group, leagues.map(g => [g, g]), v => upd({ group: v })))}
                 {field("Code", <input className="ux-ed-in ux-ed-num" placeholder="ABC" maxLength={3} value={f.code || ""} onChange={e => upd({ code: e.target.value.toUpperCase() })} style={mono} />)}
                 {field("Kits", <span className="ux-ed-kits ux-ed-kits-in">{[["home", "Home Kit", "#888888"], ["away", "Away Kit", "#ffffff"]].map(([q, l, dflt]) => (
@@ -12429,7 +12429,7 @@ export default function App() {
   // overseer, who sets them before he lets it in (src/data/rules.js). ──
   const edLgBlankClub = () => ({ id: edUid(), name: "", code: "", home: "#888888", away: "#ffffff", ground: "", cap: "", city: "", formation: "4-4-2",
     manager: null, squad: Array(16).fill(null) });
-  const edLgSeed = () => ({ kind: "leagues", name: "", nation: (scope.nations || [])[0] || "", tier: 1, cup: "", clubs: [edLgBlankClub()], open: 0 });
+  const edLgSeed = () => ({ kind: "leagues", name: "", nation: clubNations(scope)[0] || "", tier: 1, cup: "", clubs: [edLgBlankClub()], open: 0 });
   const edLgNew = (v) => !!v && typeof v === "object";
   // A league request as the builder holds it: each club's ground and capacity apart, its city, and ratings as typed.
   const edLgFromRec = (s, extra) => ({ kind: "leagues", name: s.name || "", nation: s.nation || "", tier: s.tier ?? 1, cup: s.cup || "", open: 0, ...extra,
@@ -12472,7 +12472,7 @@ export default function App() {
   // ── A LEAGUE: its name, tier and cup (its editor's to change), its clubs, and where it sits among its nation's ──
   const renderEdLeague = (key) => {
     const L = edLgOf(key); if (!L) return <div className="ux-panel ux-grow"><div className="ux-empty">No League</div></div>;
-    const mine = overseer || (scope.nations || []).includes(L.nation), set = (p) => edPut(draftWith(draft, recBase, L.id, p, "leagues"));
+    const mine = overseer || clubNations(scope).includes(L.nation), set = (p) => edPut(draftWith(draft, recBase, L.id, p, "leagues"));
     const nat = natTeamByCode.get(L.nation), natName = natOptions.name.get(L.nation) || L.nation;
     const rows = L.clubs.map(r => ({ r, tm: teamOfKey(teamKey(r)) })).sort((a, b) => (Number(b.tm?.skill) || 0) - (Number(a.tm?.skill) || 0));
     const avg = rows.length ? rows.reduce((s, x) => s + (Number(x.tm?.skill) || 0), 0) / rows.length : 0;
@@ -12546,7 +12546,7 @@ export default function App() {
     const clubs = f.clubs || [], oi = Math.max(0, Math.min(f.open || 0, clubs.length - 1)), c = clubs[oi] || null;
     const updC = (p) => upd({ clubs: clubs.map((x, i) => (i === oi ? { ...x, ...p } : x)) });
     const field = (label, el) => <div className="ux-ed-fact"><dt>{label}</dt><dd>{el}</dd></div>;
-    const nation = f.nation || "", multi = overseer || (scope.nations || []).length > 1;
+    const nation = f.nation || "", multi = overseer || clubNations(scope).length > 1;
     const slabs = c ? slotLabels(c.formation || "4-4-2", 16) : [];
     const starters = (cl) => cl.squad.slice(0, 11).filter(Boolean).length;
     const avgOf = (cl) => { const r = cl.squad.map(v => (!v ? null : edLgNew(v) ? (+v.ovr > 0 ? +v.ovr : null) : recNow(v)?.ovr ?? null)).filter(x => x != null);
@@ -12586,7 +12586,7 @@ export default function App() {
       <div className="ux-ed-form ux-ed-nlf">
         <dl className="ux-ed-dl ux-ed-dl-n">
           {field("Name", <input className="ux-ed-in" placeholder="League Name" value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
-          {multi && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nation: it.k, cup: "" })} />)}
+          {multi && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer, clubNations(scope))} placeholder="Search Nations" onPick={it => upd({ nation: it.k, cup: "" })} />)}
           {field("Tier", <span className="ux-pick ux-ed-sel"><select aria-label="Tier" value={f.tier || 1} onChange={e => upd({ tier: +e.target.value })}>
             {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>Tier {t}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
           {field("Cup", f.cup === "__new" ? <input className="ux-ed-in" autoFocus placeholder="Cup Name" value={f.cupName || ""} onChange={e => upd({ cupName: e.target.value })} />
@@ -13230,7 +13230,7 @@ export default function App() {
               <div className="ux-scrim" onClick={() => setAcctOpen(false)} />
               <div className="ux-menu" role="menu" aria-label="Account" onKeyDown={e => { if (e.key === "Escape") setAcctOpen(false); }}>
                 <div className="ux-menu-head"><b>{session.login}</b>
-                  {overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {scope.nations.map(c => natOptions.name.get(c) || c).join(", ")}</> : "Viewer"}</div>
+                  {overseer ? "Overseer" : scope.role === "editor" ? <>Editor &middot; {[...scope.nations.map(c => natOptions.name.get(c) || c), ...(scope.clubs || []).map(c => `${natOptions.name.get(c) || c} Clubs`)].join(", ")}</> : "Viewer"}</div>
                 <button type="button" role="menuitem" className="ux-btnreset ux-menu-item" autoFocus onClick={signOut}>Sign Out</button>
               </div></>)}
           </div>

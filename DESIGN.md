@@ -371,7 +371,9 @@ that record here; the old dialogs go.
 **Who may change what.** The overseer changes everything. An editor changes only their own nation's sides, its national
 side and its clubs: their names and kits freely; their code, ground (with its capacity) and city by request to the
 overseer; their formations and the slots of their squads; who plays for them and who manages them, by moving men; and
-the name, tier and cup of their nation's leagues, outright. An
+the name, tier and cup of their nation's leagues, outright. An editor may also keep another nation's clubs and leagues
+without its national side (editors.json `clubs`; the user, 11 October 2026: "Give the Karjanian access to the Turulian
+LEAGUE (not NT)"): those clubs are theirs as their own are, and that nation's players still count as another nation's. An
 editor never changes a man's rating, age or traits, and their editor shows those locked; a player's positions are
 locked too, with Request A Change beside them for one of the editor's own men (a request to the overseer). A side's style follows its
 manager: appointing a manager brings his style, and only the overseer sets a style directly.

@@ -277,5 +277,20 @@ console.log("deals (Trades, 11 October 2026)");
   const c3 = settle(SKJ_ED, r3, "counter", { moves: [{ kind: "player", id: a[12], to: k(B) }, { kind: "player", id: b[12], to: k(C) }, { kind: "player", id: c[13], to: k(A) }], others: [r3] });
   ok("a counter from one club waits on every other again", !c3.errors.length && c3.request.team === k(C) && Object.keys(c3.request.needs).sort().join() === [k(A), k(B)].sort().join() && !c3.request.approved.length, c3); }
 
+console.log("a nation's clubs without its national side (the user, 11 October 2026)");
+{ const KAR_ED = "zezelandnationstates-hash", TC = rec.teams.find(t => t.file === "TUR" && t.nation === "TUR"), TN = rec.teams.find(t => t.file === "AVIUM" && t.code === "TUR");
+  const L = (rec.leagues || []).find(l => l.nation === "TUR");
+  const sc = R.scopeOf(editors, KAR_ED);
+  ok("the Karjanian editor keeps Turulia's clubs, and Turulia stays off their nations", sc.role === "editor" && sc.clubs.includes("TUR") && !sc.nations.includes("TUR"), sc);
+  const club = plan(KAR_ED, { teams: { [teamKey(TC)]: { name: TC.name.trim() + " FC", home: "#123456" } } });
+  ok("they rename and recolour a Turulian club outright", !club.errors.length && !club.requests.length && after(club.apply).teams.find(t => t.id === TC.id).home === "#123456", club.errors);
+  const nt = plan(KAR_ED, { teams: { [teamKey(TN)]: { home: "#123456" } } });
+  ok("they cannot touch Turulia's national side", nt.errors.some(e => /not one of your teams/.test(e)), nt.errors);
+  const lg = L && plan(KAR_ED, { leagues: { [L.id]: { tier: 2 } } });
+  ok("they change the Turulian league outright", L && !lg.errors.length, lg?.errors);
+  ok("they answer for a Turulian club, and only for its club", R.ownersOf(editors, TC).includes(KAR_ED) && !R.ownersOf(editors, TN).includes(KAR_ED), [R.ownersOf(editors, TC), R.ownersOf(editors, TN)]);
+  const dl = plan(ED, { deals: [{ sides: [teamKey(A), teamKey(TC)], moves: [{ kind: "player", id: ids(A)[12], to: teamKey(TC) }, { kind: "player", id: ids(TC)[12], to: teamKey(A) }] }] });
+  ok("an offer to a Turulian club waits on them", !dl.errors.length && JSON.stringify(dl.requests[0]?.needs) === JSON.stringify({ [teamKey(TC)]: [KAR_ED] }), dl); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

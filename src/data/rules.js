@@ -29,16 +29,24 @@ export const nationOf = (t) => (isNational(t) ? t.code : t.nation);
 // city.
 export const OVERSEER = "@overseer";
 
-// Someone's standing: the overseer has every right; an editor has the nations listed against their GitHub name.
+// Someone's standing: the overseer has every right; an editor has the nations listed against their GitHub name, and
+// any nations whose clubs and leagues alone they keep (editors.json "clubs": the user, 11 October 2026, "Give the
+// Karjanian access to the Turulian LEAGUE (not NT)").
 export function scopeOf(editors, login) {
-  const l = lc(login);
+  const l = lc(login), mine = (book) => Object.entries(book || {}).filter(([u]) => lc(u) === l).flatMap(([, n]) => n);
   const overseer = (editors?.overseers || []).some(o => lc(o) === l);
-  const nations = Object.entries(editors?.editors || {}).filter(([u]) => lc(u) === l).flatMap(([, n]) => n);
-  return { login: String(login || ""), role: overseer ? "overseer" : nations.length ? "editor" : "viewer", nations };
+  const nations = mine(editors?.editors), clubs = mine(editors?.clubs).filter(c => !nations.includes(c));
+  return { login: String(login || ""), role: overseer ? "overseer" : nations.length || clubs.length ? "editor" : "viewer", nations, clubs };
 }
-export const owns = (scope, t) => scope.role === "overseer" || (!!t && scope.role === "editor" && scope.nations.includes(nationOf(t)));
-// The people who answer for a team: its nation's editors (the overseer can answer for any).
-export const ownersOf = (editors, t) => Object.entries(editors?.editors || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u);
+// The nations whose clubs and leagues someone keeps: their own, and those whose clubs alone they were given.
+export const clubNations = (scope) => [...(scope.nations || []), ...(scope.clubs || [])];
+export const owns = (scope, t) => scope.role === "overseer" || (!!t && scope.role === "editor"
+  && (scope.nations.includes(nationOf(t)) || (!isNational(t) && (scope.clubs || []).includes(nationOf(t)))));
+// The people who answer for a team: its nation's editors, and for a club anyone given that nation's clubs (the overseer
+// can answer for any).
+export const ownersOf = (editors, t) => [...new Set([
+  ...Object.entries(editors?.editors || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u),
+  ...(isNational(t) ? [] : Object.entries(editors?.clubs || {}).filter(([, n]) => n.includes(nationOf(t))).map(([u]) => u))])];
 
 // What an editor may change on a team of their own outright, and what goes to the overseer as a request.
 const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "formation", "style", "manager", "squad"]);
@@ -193,7 +201,7 @@ function newProblems(rec, n, scope, over, h) {
   if (n.what === "leagues") return leagueProblems(rec, n, scope, over);
   if (n.what === "batch") return batchProblems(rec, n, scope, over, h);
   if (!text(n.name, n.what === "teams" ? 40 : 60)) bad("not a usable name");
-  const mine = (code) => over || scope.nations.includes(code);
+  const mine = (code) => over || scope.nations.includes(code), mineClubs = (code) => over || clubNations(scope).includes(code);
   if (n.what !== "teams") {
     if (!nationCode(n.nat)) bad("not a nationality");
     else if (!mine(n.nat)) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
@@ -212,7 +220,7 @@ function newProblems(rec, n, scope, over, h) {
   if (n.what === "managers" && !styleName(n.style)) bad("not a style");
   if (n.what === "teams") {
     const nation = n.nation, clubs = rec.teams.filter(t => !isNational(t) && t.nation === nation);
-    if (!clubs.length) bad("a new club belongs to a nation with a league"); else if (!mine(nation)) bad("not a nation of yours");
+    if (!clubs.length) bad("a new club belongs to a nation with a league"); else if (!mineClubs(nation)) bad("not a nation of yours");
     if (!TEAM_VALUE.code(n.code)) bad("not a usable code");
     else if (rec.teams.some(t => t.code === n.code && world(t) === (clubs[0]?.file === "ARTERRA" ? "arterra" : "avium"))) bad(`the code ${n.code} is taken`);
     for (const f of ["home", "away", "stadium", "location", "formation"]) if (!TEAM_VALUE[f](n[f])) bad(`not a usable ${TEAM_FIELD[f]}`);
@@ -283,7 +291,7 @@ function leagueProblems(rec, n, scope, over) {
   const out = [], bad = (who, what) => out.push(`${who}: ${what}`), L = n.name || "A new league";
   if (!text(n.name, 50)) bad(L, "not a usable name"); else if (!leagueNameFree(rec.leagues, n.name)) bad(L, `a league is already called ${n.name}`);
   if (!rec.teams.some(t => t.file === "AVIUM" && t.code === n.nation)) bad(L, "not a nation of Avium");
-  else if (!over && !scope.nations.includes(n.nation)) bad(L, "not a nation of yours");
+  else if (!over && !clubNations(scope).includes(n.nation)) bad(L, "not a nation of yours");
   if (!tierOk(n.tier)) bad(L, "a tier is 1 to 5, or none");
   if (n.cup != null && !cupOk(n.cup, rec.leagues)) bad(L, "not a usable cup");
   const clubs = Array.isArray(n.clubs) ? n.clubs : [];
@@ -474,7 +482,7 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   const mgrStyle = (id) => { const at = mgrClubOf.get(id); return at ? teamBy.get(at).style : mgrBy.get(id)?.style || null; };
   for (const c of changes) {
     // A league's name, tier and cup are its nation's editors' to change outright.
-    if (c.kind === "leagues") { if (!over && !scope.nations.includes(leagueBy.get(c.id)?.nation)) errors.push(`${c.name}: not one of your leagues`); continue; }
+    if (c.kind === "leagues") { if (!over && !clubNations(scope).includes(leagueBy.get(c.id)?.nation)) errors.push(`${c.name}: not one of your leagues`); continue; }
     // An editor asks the overseer to change a player's positions: one of their nation's, or a man at one of their sides.
     if (c.kind === "players" && c.field === "pos" && !over) { if (!myMan(c.id)) errors.push(`${c.name}: not one of your players`); else posAsks.set(c.id, c.to); continue; }
     if ((c.kind === "players" || c.kind === "managers") && !over) { errors.push(`${c.name}: a ${c.kind === "players" ? "player" : "manager"}'s record is the overseer's to change`); continue; }
