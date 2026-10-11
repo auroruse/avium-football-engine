@@ -181,6 +181,10 @@ export const MT = {
   // ---- duels -----------------------------------------------------------------------------------
   tkBar: 0.62,         // the chance of winning it a defender wants before he goes in, all else even
   cynBase: 0.035,      // a slice's chance of the foul on purpose to stop a break, before temperament
+  // IN HIS OWN AREA HE PULLS OUT OF IT: what is left there of a missed tackle's chance of being a foul, and of the foul on
+  // purpose. The first brain had it (CFG.foulBoxScale); the second never did, and gave 0.95 penalties a match against a
+  // real 0.28, half a goal a match on its own (12 October 2026). Contact in the area keeps its own 0.22 (mindDuel).
+  boxTackleFoul: 0.3, boxCynFoul: 0.1,
   contactFoul: 0.05,   // a slice's chance a man tight on the carrier holds, pushes or climbs on him
   sepR: 3.2,           // m; team-mates closer than this ease apart (the shape does the real spacing)
   sepW: 0.25,

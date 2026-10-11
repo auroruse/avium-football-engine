@@ -242,7 +242,7 @@ export function mindDuel(s, rng, out, foul) {
     // at pace, and not good enough to be sure of it.
     const closeV = Math.max(0, ((p.vx || 0) * (c.x - p.x) + (p.vy || 0) * (c.y - p.y)) / Math.max(0.3, pick.dP) / ME_DT);
     const pFoul = clamp(0.13 + 0.40 * behind + (slide ? 0.20 : 0) + 0.04 * closeV - 0.22 * tackSkill(p)
-                        + (st.tackling || 0) * 0.05, 0.03, 0.85) * (meBadgeFx(p).foul ?? 1);
+                        + (st.tackling || 0) * 0.05, 0.03, 0.85) * (meBadgeFx(p).foul ?? 1) * (inBoxC(c) ? MT.boxTackleFoul : 1);
     if (rng.u() < pFoul * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["tackle", inBoxC(c)]); foul.commit(p, c, closeV); return; }
     // Beaten: committed and gone past, he has to turn and run.
     p._beat = slide ? CFG.tkBeatT + 6 : CFG.tkBeatT;
@@ -280,7 +280,8 @@ export function mindDuel(s, rng, out, foul) {
     let back = 0;
     for (const q of us) if (q && !q.off && q.pos !== "GK" && ((q.x - c.x) * (gx - c.x) > 0)) back++;
     if (back > 3 || danger < 0.04) continue;
-    const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2) * (meBadgeFx(p).foul ?? 1);
+    const pCyn = MT.cynBase * (1 + (st.tackling || 0) * 0.8) * ((p.yc || 0) ? 0.25 : 1) * (1 + danger * 2) * (meBadgeFx(p).foul ?? 1)
+               * (inBoxC(c) ? MT.boxCynFoul : 1);
     if (rng.u() < pCyn * hFoul) { if (globalThis.__fouls) globalThis.__fouls.push(["cynical", inBoxC(c)]); foul.commit(p, c, 1.5); return; }
   }
 }

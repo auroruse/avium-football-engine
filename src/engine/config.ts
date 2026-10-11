@@ -121,7 +121,10 @@ export const SP = {
   // kicks with, and that comes from where he plays: a man whose natural place is on the left of the
   // XI is left-footed. Central players are right-footed, as most footballers are.
   spRunup: 3.0, spRunupSide: 1.7, spRunTol: 0.60, spLeftOf: 4,
-  spShootRange: 27,     // a free kick inside this is struck at goal rather than delivered
+  // A free kick nearer the goal than spShootRange in a straight line, from where the posts stand at least spShootAng degrees
+  // apart, is struck at goal; any other is delivered (setpiece.ts meFkAtGoal). 12 degrees keeps every kick from the middle
+  // out to 27 m and sends the box's corner (10) and anything wider in as a cross.
+  spShootRange: 27, spShootAng: 12,
   spWall: 4, spWallDist: 9.15,
   // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
   // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
