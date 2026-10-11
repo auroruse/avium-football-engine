@@ -64,8 +64,9 @@ const ok = (name, cond, got) => {
 // m.tourn.agg is leg one's goals turned round for THIS leg's home side, so agg[0] is the home
 // side's leg-one tally (which they scored away) and agg[1] the visitors'.
 console.log("\naggregate and away goals");
+// Built as the app builds a fixture's match (meBuild): the rule rides on the match itself, copied from the tie's.
 const M = (h, a, agg, ag) => ({ out: { goals: { home: h, away: a } },
-                                tourn: agg ? { agg, awayGoalsRule: !!ag } : null });
+                                tourn: agg ? { agg, awayGoalsRule: !!ag } : null, awayGoals: !!agg && !!ag });
 
 ok("a one-off draw is level",             meLevel(M(1, 1, null)) === true);
 ok("a one-off win is not",                meLevel(M(2, 1, null)) === false);
