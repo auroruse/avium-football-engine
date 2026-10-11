@@ -344,10 +344,12 @@ fixture.
 ### Full Time
 
 The page a result is screenshotted from, carrying every fact of the match (Moukden and Kirin, 10 October 2026: "full time
-should be optimized for screenshots to show all match info"). It fills the window at one scale, drawn on a 1600 by 900
+should be optimized for screenshots to show all match info"). It fills the window at one scale, drawn on a 1600 by 1092
 design. Top down:
 
-**The banner** puts the result over the ground's photo, like Play Match's; with no photo the kit colours run out from
+**The banner** puts the result over the ground's photo, like Play Match's, the whole of it: every ground is a 5:1
+panorama, so the banner is a fifth of the page's width tall (user, 11 October 2026: "show the full stadium image
+uncropped"), and the page grew from 900 to 1092 for it rather than squeeze the squads; with no photo the kit colours run out from
 each half under a shade that keeps white text readable on a light kit. Over the score, the competition and round
 (1935 World Cup · Group A, Round 1; Friendly; Friendly · Second Leg); under it FULL TIME, AET, the shootout or the
 aggregate, then the ground, its city and its nation. Each side has its crest, its name, its code with its eleven's OVR and
@@ -355,10 +357,11 @@ its shape, and its manager with his style.
 
 Then the timeline (cards, injuries and missed or saved penalties, never substitutions); the team sheets either side, with
 the minute beside every man who came on or went off; between them possession, the seventeen numbers, the Played Live
-count under Reds for a tournament's fixture, and the Top Player; and every goal along the bottom, playing on hover.
+count under Reds for a tournament's fixture; and every goal along the bottom, playing on hover. The top player is a star
+by his name in his sheet, no longer a card of his own.
 
 **Copy Image** sits with the buttons, which keep out of the picture until the mouse moves. It copies the page to the
-clipboard as a 1920 by 1080 picture whatever the window's shape, without the buttons, ready to paste into Discord, and so
+clipboard as a 1920 by 1310 picture whatever the window's shape, without the buttons, ready to paste into Discord, and so
 does Command-C (Ctrl-C) with nothing selected. Not
 picked: the momentum chart on Full Time.
 

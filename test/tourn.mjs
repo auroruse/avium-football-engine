@@ -114,7 +114,7 @@ const mapBody = rptSrc.slice(rptSrc.indexOf("const men = (side) =>"), rptSrc.ind
 const men = new Function("m", mapBody + "\nreturn men;")({
   s: {
     players: { home: [
-      ...POS.map((pos, i) => ({ name: "S" + i, pos, ovr: 60, ovr0: 80, rating: 7.1, passOk: 30, defActs: 2, saves: 0 })).slice(0, 9),
+      ...POS.map((pos, i) => ({ name: "S" + i, fullName: "Starter " + i, pos, ovr: 60, ovr0: 80, rating: 7.1, passOk: 30, defActs: 2, saves: 0 })).slice(0, 9),
       { name: "B1", pos: "DEF", ovr: 55, ovr0: 68, rating: 6.4, passOk: 9, defActs: 1, _onAt: 60 },
       { name: "B2", pos: "MID", ovr: 55, ovr0: 67, rating: 6.6, passOk: 12, defActs: 0, _onAt: 70 },
     ], away: [] },
@@ -132,6 +132,21 @@ ok("the men who came off started",        rows.filter(r => ["S9", "S10"].include
 ok("base OVR, not the tired one",         rows.find(r => r.name === "S0").ovr === 80);
 ok("passes carried per man",              rows.find(r => r.name === "B2").passOk === 12);
 ok("no chances field left behind",        rows.every(r => r.chances === undefined));
+// A cup's first round played live filed its men under their short names alone ("nonexistent people", 11 October 2026).
+ok("each man's full name goes with him",  rows.find(r => r.name === "S0").fullName === "Starter 0" && rows.find(r => r.name === "B1").fullName === null);
+
+// ── 4. A SAVE FROM BEFORE IS MENDED ──────────────────────────────────────────
+console.log("\na save's short-named men take their full names from its sides");
+const tStatsNamed = new Function(slice("function tStatsNamed(") + "\nreturn tStatsNamed;")();
+const side = { name: "Spartak Kanagawa", squad: [{ name: "F. Van Can", fullName: "Florian Van Can" }, { name: "P. Szabó", fullName: "Péter Szabó" }] };
+const filed = { "Spartak Kanagawa|F. Van Can": { name: "F. Van Can", team: "Spartak Kanagawa", goals: 4 },
+                "Spartak Kanagawa|P. Szabó": { name: "P. Szabó", fullName: "Péter Szabó", team: "Spartak Kanagawa", goals: 1 },
+                "Kannushi|A. Nobody": { name: "A. Nobody", team: "Kannushi", goals: 0 } };
+const mended = tStatsNamed(filed, [side, null]);
+ok("a short-named man takes his full name", mended["Spartak Kanagawa|F. Van Can"].fullName === "Florian Van Can" && mended["Spartak Kanagawa|F. Van Can"].goals === 4);
+ok("a named one is left as he was",         mended["Spartak Kanagawa|P. Szabó"] === filed["Spartak Kanagawa|P. Szabó"]);
+ok("one no side names stays as he was",     !mended["Kannushi|A. Nobody"].fullName);
+ok("nothing to mend gives the same save",   tStatsNamed(mended, [side]) === mended);
 
 console.log(fails ? "\n" + fails + " FAILED" : "\nall passed");
 process.exit(fails ? 1 : 0);

@@ -613,6 +613,20 @@ function groupByLeague(list) {
 // starter. This used to append the replacements instead: everyone listed after the missing man moved
 // one slot back, and since a bench opens with its keeper, any outfield absence sent the backup keeper
 // on in the last slot, where he stood in goal beside the first-choice keeper and left nine outfielders.
+// A TOURNAMENT'S MEN BY THEIR FULL NAMES. A match played live and imported filed its men under their short names alone
+// until 11 October 2026 (a cup's leaders were "nonexistent people"), and a man keeps the line he was first filed under, so a
+// save from before is mended from its sides' squads: a line with no full name takes its man's, found by side and short name.
+function tStatsNamed(stats, teams) {
+  const full = new Map();
+  for (const t of teams || []) for (const p of t?.squad || []) if (p?.fullName && !full.has(t.name + "|" + p.name)) full.set(t.name + "|" + p.name, p.fullName);
+  let out = null;
+  for (const [k, e] of Object.entries(stats || {})) {
+    if (!e || e.fullName) continue;
+    const f = full.get(e.team + "|" + e.name);
+    if (f) (out ||= { ...stats })[k] = { ...e, fullName: f };
+  }
+  return out || stats;
+}
 function filterSquad(squad, teamName, unavailSet, staminaData, rotationCtx) {
   if (!squad) return null;
   const sel = splitAvailSquad(squad, teamName, unavailSet || new Set(), staminaData, rotationCtx);
@@ -2471,6 +2485,8 @@ function fullDisplayName(raw) {
 // calendar and the cups. A league season is detected from the record -- the clubs its boards and
 // tables name belong to one preset league -- so a new league is a folder drop and nothing else.
 // nl1 and nl2 stay because changelog.tsv keys its rows on them.
+// The full-time page's design height: 900, and the 192 more an uncropped 5:1 ground takes over the old 128-pixel banner.
+const FT_PAGE_H = 1092;
 const PSTATS_COMP = { nl1: "Nichirin League One", nl2: "Nichirin League Two", wc: "World Cup",
                       stsc: "Sei'i Tai Shogun Cup", cwc: "Club World Cup", cws: "Club World Shield",
                       // A domestic cup is entered from more than one division, so its clubs never
@@ -5940,8 +5956,8 @@ export default function App() {
   const [meSideTab, setMeSideTab] = useState("feed");
   // Subs and Tactics pause the match while open; this remembers that it was they who paused it, so closing plays on.
   const mePanelHeld = useRef(false);
-  // FULL TIME ON THE CLIPBOARD. Copy Image renders the page out of sight at its design size, 1600 x 900, takes it at
-  // 1920 x 1080, and resolves the promise the clipboard was handed in the click (Moukden and Kirin, 10 October 2026).
+  // FULL TIME ON THE CLIPBOARD. Copy Image renders the page out of sight at its design size, 1600 x FT_PAGE_H, takes it at
+  // 1920 wide (1920 x 1310), and resolves the promise the clipboard was handed in the click (Moukden and Kirin, 10 October 2026).
   // The picture is taken by src/shot.js, with the page's own stylesheets (user, 11 October 2026: it "literally takes
   // longer than screenshotting"); html-to-image, which copies every style onto every element, is only the fallback.
   const [ftShot, setFtShot] = useState(null);
@@ -5964,8 +5980,8 @@ export default function App() {
           await new Promise(r => setTimeout(r, 50));
         }
         const at = { position: "static", left: "0", top: "0" };
-        const blob = await shotBlob(el, { width: 1600, height: 900, scale: 1920 / 1600, rootStyle: at })
-          .catch(() => toBlob(el, { width: 1600, height: 900, pixelRatio: 1920 / 1600, cacheBust: false, style: at }));
+        const blob = await shotBlob(el, { width: 1600, height: FT_PAGE_H, scale: 1920 / 1600, rootStyle: at })
+          .catch(() => toBlob(el, { width: 1600, height: FT_PAGE_H, pixelRatio: 1920 / 1600, cacheBust: false, style: at }));
         if (!blob) throw new Error("no picture");
         ftShot.res(blob);
       } catch (e) { ftShot.rej(e); }
@@ -6274,7 +6290,9 @@ export default function App() {
     const tn = m.tourn; if (!tn?.target) return;
     const men = (side) => [...(m.s.players[side] || []), ...(m.s.subbedOff?.[side] || [])]
       .filter(Boolean).map(p => ({
-        name: p.name, pos: p.pos,
+        // HIS FULL NAME TOO (user, 11 October 2026: a cup's leaders were "nonexistent people"). Without it a man the import
+        // filed first was a short name for the rest of the tournament: no face, no page, a stranger in its Player Stats.
+        name: p.name, fullName: p.fullName || null, pos: p.pos,
         // BASE RATING, not the live one. A man is not a worse player at full time for having run
         // ninety minutes, and the tournament's tables are read as who these players are.
         ovr: Math.round(p.ovr0 ?? p.ovr ?? 70),
@@ -7938,7 +7956,8 @@ export default function App() {
         const tns = new Set([homeTeamObj.name, awayTeamObj.name]);
         for (const k of Object.keys(next)) { if (tns.has(next[k].team)) { if (next[k].suspended > 0) next[k].suspended--; if (next[k].injOut > 0) next[k].injOut--; } }
         for (const [k, v] of Object.entries({...homeEntries, ...awayEntries})) {
-          if (!next[k]) next[k] = { name:v.name, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, mins:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, prog:0, cc:0, defActs:0, saves:0 };
+          if (next[k] && !next[k].fullName && v.fullName) next[k].fullName = v.fullName;
+          if (!next[k]) next[k] = { name:v.name, fullName:v.fullName||null, pos:v.pos, ovr:v.ovr||65, team:v.team, code:v.code, goals:0, assists:0, matches:0, subApp:0, mins:0, totalRating:0, yellows:0, suspended:0, injOut:0, passOk:0, prog:0, cc:0, defActs:0, saves:0 };
           const d = homeDiffs[k] || awayDiffs[k];
           next[k].goals += d.goals;
           next[k].assists += d.assists;
@@ -8254,7 +8273,9 @@ export default function App() {
     setTConfig(c => ({ ...c, ...(ss.tConfig || {}), qualZones: ss.tConfig?.qualZones || c.qualZones, tiebreakers: ss.tConfig?.tiebreakers || c.tiebreakers }));
     setTGroups(ss.tGroups || []);
     setTKO(ss.tKO || null);
-    setTPlayerStats(ss.tPlayerStats || {});
+    setTPlayerStats(tStatsNamed(ss.tPlayerStats || {}, [...(ss.tGroups || []).flatMap(g => g.teams || []),
+      ...[...(ss.tKO?.rounds || []), ...(ss.tKO?.losers || [])].flatMap(r => (r.matches || []).flatMap(m => [m?.home, m?.away])),
+      ...(ss.tournamentTeamIds || []).map(id => teamById(id))]));
     // A stage in between (a draw, or a pick by hand) comes back with its own state and reopens where it was; a save from
     // before that state was kept goes back to the stage the draw or the pick was for, one button from starting it again.
     setTPhase(settledPhase(ss.tPhase, ss.tGroups, ss.tKO, ss.tStage));
@@ -9272,7 +9293,7 @@ export default function App() {
         const next = {};
         for (const pk of Object.keys(prev)) next[pk] = {...prev[pk]};
         const initP = (p) => ({name:p.name,fullName:p.fullName||null,team:teamObj.name,code:teamObj.code||"",pos:p.pos,ovr:Math.round(p.ovr0 ?? p.ovr ?? 70),goals:0,assists:0,matches:0,subApp:0,mins:0,totalRating:0,passOk:0,prog:0,cc:0,defActs:0,saves:0});
-        simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); });
+        simPlayers.forEach(p => { const k = keyOf(p.name); if (!next[k]) next[k] = initP(p); else if (!next[k].fullName && p.fullName) next[k].fullName = p.fullName; });
         for (const [k, d] of Object.entries(diffs)) {
           next[k].matches = (next[k].matches||0) + d.matches;
           next[k].subApp = (next[k].subApp||0) + d.subApp;
@@ -19022,6 +19043,12 @@ export default function App() {
                                 xs={z.badge === "xs"} sm={z.badge === "sm"} /></span>
                     <span style={{ ...cellBase, display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
                       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(q.fullName || q.name, q.name)}</span>
+                      {/* The best game anyone had, a star by his name where the match's sheet shows him (user, 11 October 2026:
+                          "the top player thing can just turn into a star next to MVP's name"). */}
+                      {topMan && topMan[1] === side && (topMan[0].fullName || topMan[0].name) === (q.fullName || q.name) && (
+                        <svg viewBox="0 0 24 24" aria-label="Top Player" role="img" style={{ flexShrink: 0, width: z.mark[1] + 3, height: z.mark[1] + 3,
+                             marginLeft: 4, fill: "var(--ux-gold)" }}><title>Top Player</title>
+                          <path d="M12 2.6l2.85 5.9 6.5.85-4.75 4.5 1.2 6.45L12 17.2l-5.8 3.1 1.2-6.45-4.75-4.5 6.5-.85z" /></svg>)}
                       {q.rc ? card("var(--ui-danger)") : null}
                       {!q.rc && q.yc ? card("var(--ui-warn)") : null}
                       {q.inj ? <span style={{ marginLeft: 4, fontSize: z.tagFs, color: "var(--ui-warn)" }}>INJ</span> : null}
@@ -19074,7 +19101,6 @@ export default function App() {
             };
             // The best game anyone had, as a card: the sidebar's while a match runs, the report's after.
             const TOP_SIDE = { pad: "12px 15px", shot: 36, gap: 11, lab: 8, name: 11.5, meta: 9, crest: 11, rate: 14 };
-            const TOP_FT = { pad: "9px 14px", shot: 42, gap: 13, lab: 8.5, name: 14, meta: 10.5, crest: 13, rate: 20 };
             const topCard = (z) => {
               if (!topMan || !topMan[0]) return null;
               const [p, side] = topMan;
@@ -19105,14 +19131,17 @@ export default function App() {
             };
 
             // ── FULL TIME ─────────────────────────────────────────────────────────────────────────
-            // ONE PAGE AT ONE SIZE, filling the window. Designed around 1600 x 900 and scaled by as much
+            // ONE PAGE AT ONE SIZE, filling the window. Designed around 1600 x FT_PAGE_H and scaled by as much
             // of that as the window holds, so type is the same size at any window shape; the spare
             // width goes to the centre column and the timeline, the spare height mostly to the goals and
             // the rest to the ground's photo. The live layout it replaces reflowed with the window: on a
             // short one the goals fell below the fold, on a tall one the sidebar opened a gap. Top down:
             // the result, when things happened, the team sheets either side of the ground and the
             // numbers, and every goal. The buttons stay out of the picture until the mouse moves.
-            const FT_W = 1600, FT_H = 900, FT_BAND = 128, FT_LINE = 88, FT_GOALS = 214;
+            // THE GROUND UNCROPPED (user, 11 October 2026: "show the full stadium image uncropped"). Every ground on file is a 5:1
+            // panorama, so the banner is a fifth of the page's width tall and holds all of it; the page grew by what that took
+            // (1600 x 900 to 1600 x FT_PAGE_H) rather than squeeze the squads.
+            const FT_W = 1600, FT_H = FT_PAGE_H, FT_LINE = 88, FT_GOALS = 214;
             const ftReport = () => {
               const other = (sd) => sd === "home" ? "away" : "home";
               // The timeline's events, off the engine's own ledgers rather than the feed: the feed keeps
@@ -19185,8 +19214,8 @@ export default function App() {
               ftCopyRef.current = ftCopy;
               const page = (k, dw, dh, shot) => {
                 // Spare height: six parts in ten to the goals, the rest to the middle band.
-                const goalsH = FT_GOALS + Math.round((dh - FT_H) * 0.6);
-                const MID = dh - FT_BAND - FT_LINE - goalsH - 26;
+                const goalsH = FT_GOALS + Math.round((dh - FT_H) * 0.6), bandH = Math.round(dw / 5);
+                const MID = dh - bandH - FT_LINE - goalsH - 26;
                 // The team sheets are the tallest thing in the middle band, so their row height is what
                 // gives: about 19 px a man for a 22-man squad, tighter for a bigger one, never a scrollbar.
                 const rowH = Math.max(12, Math.min(22, Math.floor((MID - 26 - 16 - 3 - 9) / nRows)));
@@ -19230,7 +19259,7 @@ export default function App() {
                     {/* THE RESULT over the ground it was played at, like Play Match's banner (Moukden and Kirin, 10 October
                         2026): the competition and round over the score, the ground under it, and each side's name with its
                         manager and shape. No photo on file keeps the kit colours running out from each half. */}
-                    <div className="ux-ftban" style={{ height: FT_BAND, backgroundImage: hasPhoto ? "none" : sbBg }}>
+                    <div className="ux-ftban" style={{ height: bandH, backgroundImage: hasPhoto ? "none" : sbBg }}>
                       {hasPhoto && <div className="ux-mban-photo" style={{ backgroundImage: stadiumBg(venue) }} aria-hidden="true" />}
                       {hasPhoto ? <div className="ux-mban-veil" aria-hidden="true" /> : <div className="ux-ftban-tint" aria-hidden="true" />}
                       {ftSide(m.hT, "home")}
@@ -19273,7 +19302,9 @@ export default function App() {
                           <div style={{ fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", textAlign: "center",
                                         color: "var(--chrome-muted)", marginTop: 6 }}>Possession</div>
                         </div>
-                        <div style={{ flexShrink: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
+                        {/* The numbers centred in what the possession bar leaves, the top player now a star in his sheet. */}
+                        <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center" }}>
+                        <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }}>
                           <div>{statsWith(zBar)}</div>
                           <div>
                             {statsWithout(zBar)}
@@ -19285,7 +19316,7 @@ export default function App() {
                                 <RcBadge n={_rc.get(rk)} theme={uiTheme} k={k} /></div>)}
                           </div>
                         </div>
-                        {topMan && topMan[0] && <div style={{ flexShrink: 0, ...panel }}>{topCard(TOP_FT)}</div>}
+                        </div>
                       </div>
                       {sheet("away")}
                     </div>
@@ -19336,7 +19367,7 @@ export default function App() {
                                         alignItems: "center", gap: 8, padding: 8, borderRadius: 10,
                                         background: "var(--chrome-panel)", border: "1px solid var(--chrome-border)",
                                         boxShadow: "0 8px 28px rgba(0,0,0,.5)" }}>
-                      {/* The picture, without these buttons, at 1920 x 1080 whatever the window's shape. */}
+                      {/* The picture, without these buttons, at 1920 x 1310 whatever the window's shape. */}
                       <button onClick={ftCopy} disabled={!!ftShot} style={{ ...btn, minWidth: 116 }}>
                         {ftCopied === "ok" ? "Copied" : ftCopied === "fail" ? "Copy Failed" : ftShot ? "Copying" : "Copy Image"}</button>
                       {m.tourn ? (<>
