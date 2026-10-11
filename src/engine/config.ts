@@ -615,6 +615,11 @@ foulAggr: 0.25,
   // carrying a knock is treated as this much more tired than he reads. subSamePos favours a like-for
   // -like change over a better player out of position.
   subCap: 5, subFromTick: 1700, subStamina: 74, subKnockBias: 14, subSamePos: 8,
+  // THE SECOND BRAIN'S BENCH (match.ts meCoachSubs; user, 11 October 2026), set by reasoning, not measured: before the
+  // hour (subLateMin) a change for tired legs only below subEarly, legs that are gone; from it the usual subStamina line,
+  // up to subReadPts / 2 higher for the best manager and as much lower for the worst. At most subWindows stoppages for
+  // changes in the ninety (the break not counted, one more in extra time), subWinGap minutes or more apart.
+  subEarly: 55, subLateMin: 60, subReadPts: 6, subWindows: 3, subWinGap: 8,
   // Stamina per metre run. Swept in test/stamsweep.mjs against what it does to the bench, because
   // the two are one question -- a threshold cannot fire if nobody ever gets near it:
   //   0.0026 -> half time 93.8, full time median 87.8, 0.29 subs a match   (what shipped)

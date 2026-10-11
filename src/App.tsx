@@ -38,6 +38,7 @@ import { makePool, jobSeed, poolSize } from "./sim/pool";
 import { CM, FIT_MISS, FIT_OOP_DEPTH, FIT_POS_XY, FIT_ROLE_W, FIT_WEAK, FORMATIONS, FORM_SPOS, FPOS2, R, RNG, STRAT_DEF, STYLE_FIT_NEED, STYLE_FIT_SPOS, _fitOf, _fitParts, buildSquad, computeStyleFit, createMatchState, fill, fitEffOvr, fitRoleW, flipUrg, meBench, meFitFor, meFreshOut, meSide, meStrategyFor, parseOvr, pick, pitchSlots, quickPenShootout, runPositionalMatch, simFirstLeg, simJob, simPositionalMatch, simSecondLeg, simTwoLegMatch, sposFor, rolesFor } from "./sim/core";
 import participantsTSV from "./participants.tsv?raw";
 import { toBlob } from "html-to-image";
+import { shotBlob, shotWarm } from "./shot.js";
 import { DOCS, TRAIT_DOC, POS_NAME } from "./docs.js";
 import { CFG as ME_CFG, ME_DT, ME_DEF_FORM, ME_MIND_PRICE, ME_STYLE_DEF, STYLE_PRESET, meStrategyOf, ME_ET_TICKS, ME_HALF_W, ME_INJURY, ME_INJ_SEASON, ME_MATCH_TICKS, ME_RED_WHY, ME_TPM, PITCH_L, meAdded, meAddedMin, meBallStep, meDead, meDir, meFinalise, meGoalX, meInit, meMinute, meOther, mePickInjury, mePkInit, mePkLineUp, mePkNext, mePkResult, mePkSetup, mePkTaker, mePkTally, mePkTick, meSPShape, meShootout, meSub, meTick, ROLE_NAME, meStyleDef, meManagersPreMatch } from "./engine";
 // AFTER the last import, deliberately: the harness builder strips everything up to and including
@@ -5890,18 +5891,22 @@ export default function App() {
   const mePanelHeld = useRef(false);
   // FULL TIME ON THE CLIPBOARD. Copy Image renders the page out of sight at its design size, 1600 x 900, takes it at
   // 1920 x 1080, and resolves the promise the clipboard was handed in the click (Moukden and Kirin, 10 October 2026).
+  // The picture is taken by src/shot.js, with the page's own stylesheets (user, 11 October 2026: it "literally takes
+  // longer than screenshotting"); html-to-image, which copies every style onto every element, is only the fallback.
   const [ftShot, setFtShot] = useState(null);
   const [ftCopied, setFtCopied] = useState("");
   const ftShotRef = useRef(null);
   useEffect(() => {
     if (!ftShot) return;
     const go = async () => {
-      // Two frames and a beat: the copy mounts, the timeline measures its labels, the badges draw.
-      await new Promise(r => setTimeout(r, 160));
+      // Three frames: the copy mounts, the timeline measures its labels and lays them out again; then its pictures decode.
+      for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(() => r()));
       try {
         const el = ftShotRef.current; if (!el) throw new Error("no picture");
-        const blob = await toBlob(el, { width: 1600, height: 900, pixelRatio: 1920 / 1600, cacheBust: false,
-                                        style: { position: "static", left: "0", top: "0" } });
+        await Promise.all([...el.querySelectorAll("img")].map(im => im.decode().catch(() => {})));
+        const at = { position: "static", left: "0", top: "0" };
+        const blob = await shotBlob(el, { width: 1600, height: 900, scale: 1920 / 1600, rootStyle: at })
+          .catch(() => toBlob(el, { width: 1600, height: 900, pixelRatio: 1920 / 1600, cacheBust: false, style: at }));
         if (!blob) throw new Error("no picture");
         ftShot.res(blob);
       } catch (e) { ftShot.rej(e); }
@@ -5917,6 +5922,12 @@ export default function App() {
   const mePending = useRef({ subs: [], strategy: {} });
   const meSubPick = useRef(null);        // the man taken off, waiting for his replacement
   const meRef = useRef(null), meTimer = useRef(null);
+  const ftPageRef = useRef(null);
+  useEffect(() => {
+    if (meView !== "post") return;
+    const id = setTimeout(() => { if (meRef.current?.ftDone) shotWarm(ftPageRef.current); }, 800);
+    return () => clearTimeout(id);
+  }, [meView]);
   // A TOURNAMENT FIXTURE'S CONTEXT, handed from the tournament tab to the match. Who was
   // available after suspensions and injuries, what the tie is worth, which ground, what leg
   // one finished. Null for a friendly kicked off from the setup screen.
@@ -19251,7 +19262,7 @@ export default function App() {
                   </div>);
               };
               return (
-                <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)" }}>
+                <div ref={ftPageRef} style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--chrome-bg)" }}>
                   <FitCanvas w={FT_W} h={FT_H}>{(k, dw, dh) => page(k, dw, dh, false)}</FitCanvas>
                   {/* The clipboard's copy: the page at its design size, out of sight, without its buttons. */}
                   {ftShot && (

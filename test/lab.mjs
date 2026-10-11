@@ -95,9 +95,15 @@ export function play(E, hT, aT, seed) {
     own: { home: 0, away: 0 }, fin: { home: 0, away: 0 }, reg: { home: [], away: [] },
     def: { home: [0, 0, 0, 0], away: [0, 0, 0, 0] }, atk: { home: [0, 0, 0], away: [0, 0, 0] },
     run: { home: 0, away: 0 }, prev: new Map() };
+  // The bench: the minute of every change, and how tired each side's outfield was at half time.
+  const SUB = { home: [], away: [] }, nSub = { home: 0, away: 0 };
+  let stamHT = null;
+  const stamOf = (sd) => { const on = st.players[sd].filter(p => p && !p.off && p.pos !== "GK"); return on.reduce((x, p) => x + (p.stamina ?? 100), 0) / (on.length || 1); };
   for (let t = 0; t < E.ME_MATCH_TICKS + E.meAdded(st); t++) {
     out.min = E.meMinute(t); out.add = E.meAddedMin(t);
     E.meTick(st, rng, out);
+    for (const sd of SIDES) { const c = st.subs?.[sd] || 0; while (nSub[sd] < c) { SUB[sd].push(out.min); nSub[sd]++; } }
+    if (!stamHT && t >= E.ME_MATCH_TICKS / 2) stamHT = { home: stamOf("home"), away: stamOf("away") };
     if (mp.sp) { O.sp = true; O.prev.clear(); continue; }
     // How far everyone runs in open play.
     for (const sd of SIDES) for (const p of st.players[sd]) {
@@ -173,6 +179,8 @@ export function play(E, hT, aT, seed) {
       line: r4(dfs[0] / (dfs[3] || 1)), blen: r4(dfs[1] / (dfs[3] || 1)), dwid: r4(dfs[2] / (dfs[3] || 1)),
       awid: r4(ats[0] / (ats[2] || 1)), ahead: r4(ats[1] / (ats[2] || 1)),
       run: r4(O.run[sd] / 10), stam: r4(on.reduce((t, p) => t + (p.stamina ?? 100), 0) / (on.length || 1)),
+      stamHT: r4(stamHT?.[sd] ?? 0), nsub: SUB[sd].length, sub45: SUB[sd].filter(m => m < 45).length, sub60: SUB[sd].filter(m => m < 60).length,
+      subT: SUB[sd].reduce((a, b) => a + b, 0),
       fouls: out.fouls[sd], yel: out.yellows?.[sd] ?? 0, red: out.reds?.[sd] ?? 0, cor: out.corners[sd],
     };
   }
