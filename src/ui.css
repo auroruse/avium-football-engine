@@ -290,8 +290,13 @@
   line-height: 1.25; text-align: center; }
 .ux-pl-rtg { left: -11px; }
 .ux-pl-pos { right: -11px; background: var(--chrome-bg); border: 1px solid var(--pos); color: var(--pos); }
-/* A man out of his own positions (src/data/positions.js): the place's label in the loss colour beside his ringed rating. */
+/* A man out of position (App.tsx uxOop, only where the place costs him rating): the place's label in the loss colour beside
+   his ringed rating, the warning triangle on his circle's top right and what the place costs him over his rating. */
 .ux-pl-pos.ux-oop { border-color: var(--ux-loss); color: var(--ux-loss); }
+.ux-pl-drop { position: absolute; left: 0; right: 0; bottom: calc(100% + 7px); padding: 1px 0; border-radius: 4px; text-align: center;
+  background: var(--chrome-bg); color: var(--ux-loss); text-shadow: none; box-shadow: 0 0 0 2px var(--ux-loss); white-space: nowrap; }
+.ux-pl-warn { position: absolute; left: 50%; bottom: calc(100% + 7.25px); width: 16px; height: 16px; margin-left: -8px; }
+.ux-pl-warn .ux-warn-i { width: 16px; height: 16px; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .7)); }
 /* His traits on an arc just outside the bottom of his circle (App.tsx uxPlTraits); only the icons take the pointer. */
 .ux-pl-tr { position: absolute; inset: 0; pointer-events: none; --tr-r: 30px; }
 .ux-pl-tr img { position: absolute; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; pointer-events: auto; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .7)); }
@@ -351,7 +356,7 @@
 .ux-facts dd.ux-form { gap: 3px; padding: 0; }
 .ux-facts-sub { color: rgba(255, 255, 255, .62); font-weight: 500; }
 .ux-facts-mv { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; }
-.ux-facts-mv svg { width: 9px; height: 9px; fill: currentColor; }
+.ux-facts-mv .ux-arw { margin-right: 0; }
 .ux-facts-mv.ux-up { color: var(--ux-win); } .ux-facts-mv.ux-down { color: var(--ux-loss); }
 .ux-honours { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; min-width: 0; }
 .ux-hon { display: inline-flex; align-items: center; gap: 10px; box-sizing: border-box; height: 56px; padding: 0 14px 0 10px; border-radius: 6px; background: rgba(6, 11, 20, .8);
@@ -375,7 +380,8 @@
 .ux-pyr-club.ux-came-down .ux-pyr-crest { background: color-mix(in srgb, var(--ux-down) 18%, var(--ux-panel-3)); }
 .ux-pyr-mv { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .45); }
-.ux-pyr-mv svg { width: 9px; height: 9px; fill: #fff; }
+.ux-pyr-mv { color: #fff; }
+.ux-pyr-mv .ux-arw { width: 7px; height: 10px; margin: 0; stroke-width: 2.1; }
 .ux-pyr-mv.ux-up { background: var(--ux-up); } .ux-pyr-mv.ux-down { background: var(--ux-down); }
 .ux-pyr-pos { font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--ux-text-3); }
 .ux-pyr-pos.ux-gold { color: var(--ux-gold); font-weight: 700; }
@@ -1103,12 +1109,15 @@
 .ux-sub-team { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ux-sub-lab { display: flex; justify-content: space-between; margin: 12px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ux-text-3); }
 .ux-sub-lab .ux-full { color: var(--ui-danger); }
-.ux-sub-row { display: grid; grid-template-columns: 24px 30px minmax(0, 1fr) 12px 38px 44px 32px 26px; align-items: center; gap: 8px; width: 100%; height: 32px;
+.ux-sub-row { display: grid; grid-template-columns: 24px 58px minmax(0, 1fr) 12px 38px 40px 32px 26px; align-items: center; gap: 6px; width: 100%; height: 32px;
   padding: 0 8px; border: 1px solid transparent; border-radius: 6px; font-size: 12px; text-align: left; }
 .ux-sub-row:hover:not(:disabled) { background: var(--ux-panel-3); }
 .ux-sub-row.ux-on { border-color: var(--ux-accent); background: color-mix(in srgb, var(--ux-accent) 12%, transparent); }
 .ux-sub-row:disabled { opacity: .35; cursor: default; }
 .ux-sub-face { width: 24px; height: 24px; border-radius: 50%; overflow: hidden; background: var(--ux-panel-3); }
+/* Where he plays, and the out-of-position alert after it (App.tsx uxOopMark). */
+.ux-sub-pos { display: flex; align-items: center; min-width: 0; }
+.ux-sub-pos .ux-oopm { margin-left: 3px; }
 .ux-sub-ci { display: inline-flex; align-items: center; }
 .ux-sub-d { font: 700 9px/1 'JetBrains Mono', 'Fira Code', monospace; text-align: right; }
 .ux-sub-d.ux-up { color: var(--ui-ok); }
@@ -1391,6 +1400,48 @@ input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 .ux-tcard-tier.ux-silver { color: var(--ux-text-2); }
 .ux-tcard-tier.ux-bronze { color: color-mix(in srgb, var(--ux-draw) 55%, var(--ux-loss)); }
 .ux-tcard p { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--ux-text-2); }
+/* A drawn arrow or caret in a line of text (App.tsx UxArrow, UxCaret): the text's own colour, as tall as its capitals, a
+   stroke near its weight. Up is the same mark turned over. */
+.ux-arw { display: inline-block; flex: none; width: .52em; height: .76em; margin-right: .12em; vertical-align: baseline; overflow: visible;
+  fill: none; stroke: currentColor; stroke-width: 2.15; stroke-linecap: round; stroke-linejoin: round; }
+.ux-crt { display: inline-block; flex: none; width: .72em; height: .43em; vertical-align: .16em; overflow: visible;
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.ux-arw.ux-arw-up, .ux-crt.ux-crt-up { transform: rotate(180deg); }
+th .ux-crt { margin-left: .4em; }
+/* THE OUT-OF-POSITION ALERT (App.tsx UX_WARN, uxOopMark, uxPitchRtg): a red triangle, and in a list what the place costs
+   him after it; its card (TraitCard) names his own positions and, a row each, where he plays and what he plays it as. */
+.ux-warn-i { display: block; flex: none; width: 13px; height: 13px; }
+.ux-warn-i path:first-child { fill: var(--ux-loss); }
+.ux-warn-i .ux-warn-x { fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; }
+.ux-oopm { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; vertical-align: middle; color: var(--ux-loss);
+  font: 700 10px/1 'JetBrains Mono', 'Fira Code', monospace; white-space: nowrap; }
+.ux-oopm.ux-oopm-xs { margin-left: 4px; gap: 1px; font-size: 8px; }
+.ux-oopm.ux-oopm-xs .ux-warn-i { width: 9px; height: 9px; }
+.ux-poss .ux-oopm { margin-left: 0; }
+/* A line for each side that plays him out of position (App.tsx uxOopList), on his page and his card. */
+.ux-oopl { flex: none; border-top: 1px solid var(--ux-line); }
+.ux-oopl-r { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; width: 100%; height: 44px;
+  padding: 0 12px; text-align: left; transition: background var(--ux-fast); }
+.ux-oopl-r:nth-child(even) { background: var(--ux-panel-2); }
+.ux-oopl-r:hover { background: var(--ux-panel-3); }
+.ux-oopl-r > .ux-warn-i { width: 18px; height: 18px; justify-self: center; }
+.ux-oopl-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ux-oopl-t > b { font-size: 13px; font-weight: 600; color: var(--ux-loss); white-space: nowrap; }
+.ux-oopl-t > span { display: flex; align-items: center; min-width: 0; font-size: 11px; color: var(--ux-text-3); white-space: nowrap; }
+.ux-oopl-t > span > :first-child { flex: none; margin-right: 5px; }
+.ux-oopl-t > span b { flex: none; font-weight: 700; color: var(--ux-text-2); }
+.ux-oopl-d { font-size: 12px; color: var(--ux-loss); }
+.ux-ocard .ux-tcard-h { grid-template-columns: 28px minmax(0, 1fr); }
+.ux-ocard-i .ux-warn-i { width: 28px; height: 28px; }
+.ux-ocard-own { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 11px; color: var(--ux-text-3); }
+.ux-ocard-own b { display: inline; font-size: 11px; font-weight: 700; }
+.ux-ocard-rows { margin-top: 10px; border-top: 1px solid var(--ux-line); }
+.ux-ocard-r { display: grid; grid-template-columns: minmax(0, 1fr) 34px auto 34px; align-items: center; column-gap: 8px; height: 26px; font-size: 12px;
+  color: var(--ux-text-2); border-bottom: 1px solid color-mix(in srgb, var(--ux-line) 60%, transparent); }
+.ux-ocard-r:last-child { border-bottom: 0; }
+.ux-ocard-r b { font-weight: 700; color: var(--ux-text); }
+.ux-ocard-s { white-space: nowrap; overflow: hidden; -webkit-mask-image: var(--ux-fade); mask-image: var(--ux-fade); }
+.ux-ocard-r .ux-ocard-d { color: var(--ux-loss); text-align: right; }
 .ux-ed-sides { display: flex; flex-direction: column; padding: 0 16px 12px; min-height: 0; flex: 1 1 auto; }
 .ux-ed-srow { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid color-mix(in srgb, var(--ux-line) 60%, transparent); }
 .ux-ed-sl { width: 110px; flex: none; font-size: 11px; color: var(--ux-text-3); }
