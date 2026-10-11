@@ -113,7 +113,7 @@ export const DOCS = [
     ] },
     { id: "stamina", title: "Stamina And Substitutions", body: [
       "Every man starts fresh, and his stamina drains with every metre he runs, faster while his side presses and at a quicker tempo. Nobody recovers during a match, and a tired man loses pace and touch.",
-      "A side has three substitutions, or five with a bench of eleven, made at a dead ball. The managers make them for both sides, in a live match too: an injured man at once (a keeper only for a keeper), tired men from about the half hour, a forward when chasing late and a defender when holding a lead. The man who comes on is the one who would play the place best by his own positions, and he takes the slot of the man he replaces. In a live match you can make them yourself from Subs.",
+      "A side has three substitutions, or five with a bench of eleven, made at a dead ball. The managers make them for both sides, in a live match too: an injured man at once (a keeper only for a keeper); before the hour only a man who is spent, from the hour the tired ones, a better manager a few minutes sooner; and a forward when chasing late and a defender when holding a lead. Like the law, a side makes its changes at no more than three stoppages, half time not counted. The man who comes on is the one who would play the place best by his own positions, and he takes the slot of the man he replaces. In a live match you can make them yourself from Subs.",
     ] },
     { id: "stoppage", title: "Added Time, Extra Time And Penalties", body: [
       "Added time is a little over half the time the ball was dead, and wasting time while ahead makes restarts longer. In a live match each half has its own added time, and the referee waits for a quiet moment to blow. Extra time is two halves.",
@@ -148,7 +148,7 @@ export const DOCS = [
         ["Ten Men", "Unless he is behind, he turns to his most cautious neighbouring style."],
         ["Holding A Lead", "One up in the last quarter of an hour, he may move to the neighbouring formation that commits the fewest men forward. He never changes formation to chase a match."],
         ["Orders", "When his side is being outplayed he gives two to four men individual orders."],
-        ["Substitutions", "Made at a dead ball: injuries at once, tired men from about the half hour, a forward when chasing and a defender when protecting."],
+        ["Substitutions", "Made at a dead ball: injuries at once, a spent man before the hour and tired men after it, a forward when chasing and a defender when protecting, at three stoppages at most besides half time."],
       ] },
     ] },
     { id: "formations", title: "Formations", body: [
