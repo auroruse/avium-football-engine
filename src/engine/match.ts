@@ -22,7 +22,7 @@ import { ME_HALF_W, ME_MAP_STRIDE, ME_SIDES, PITCH_L, PITCH_W, meBuildMaps, meCl
 // what succeeds, so every setting costs something somewhere -- turn the press up and the space
 // behind it is really there for someone to run into. That is the whole reason for the rewrite.
 export { ME_HZ, ME_DT, ME_TPM } from "./config";
-import { STYLE_PRESET, ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_FIT, ME_HOME_ADV, ME_MGR, ME_MIND_PRICE, ME_STYLE_PRICE, ME_RED_SAID, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute, mePickInjury } from "./config";
+import { STYLE_PRESET, ME_CHASE, ME_CHASE_W, ME_DEAD_SCALE, ME_DT, ME_FIT, ME_HOME_ADV, ME_MATCH_TICKS, ME_MGR, ME_MIND_PRICE, ME_STYLE_PRICE, ME_RED_SAID, ME_SIM_MIN, ME_STRAT_RANGE, ME_TPM, meDrill, meMinute, mePickInjury } from "./config";
 
 // ---- setup ------------------------------------------------------------------------------
 // Positions live ON the player records, not in a side table, so cloneState already deep-copies them
@@ -1445,56 +1445,80 @@ export function meAutoSubs(s, side, out) {
   }
 }
 
-// THE SECOND BRAIN'S BENCH. The same mechanics as meAutoSubs -- an injury is replaced at once, a keeper
-// only by a keeper, one tactical change a stoppage -- with the manager in it. A good one replaces tired
-// legs sooner (his line is higher) and reads the scoreline: chasing late he sends on the most attacking
-// man who can play the position, protecting a lead the most defensive. A poor one waits for the legs to
-// go and picks on rating alone.
+// THE SECOND BRAIN'S BENCH (user, 11 October 2026: "Why the hell are subs so early?"). The rebuild of 2 October let a
+// better manager change sooner and on a higher line, from tick 1700 (35 minutes) on: a pressing side, tiring first, had
+// made its five changes before half time. Now an injury is replaced at once, and for tired legs the clock decides how
+// tired. Before the hour only legs that are gone (subEarly; a knock or a booking still counts against a man); from the
+// hour the usual line, a few points higher for a manager who reads the game, so he acts a few minutes sooner but never
+// before it. Changes come the way the law has them: at most three stoppages in the ninety (one more in extra time), the
+// break not counted, each taking its share of the changes left, and a manager gives one window time to tell before he
+// opens the next (subWinGap). Chasing late he sends on the most attacking man who can play the position, protecting a
+// lead the most defensive. The answers were the user's: stamina only, managers read the game better, three windows.
 export function meCoachSubs(s, side, out) {
   const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
   s.subs = s.subs || { home: 0, away: 0 };
   const bench = s.bench?.[side]; if (!bench) return;
+  const mp = s.mePos, min = meMinute(mp.tick), et = mp.tick >= ME_MATCH_TICKS;
   const g = Math.max(0, Math.min(1, ((s.mgmt?.[side] ?? ME_MGR.mgmtDef) - 40) / 50));
-  const lead = (s.mePos.goals?.[side] ?? 0) - (s.mePos.goals?.[meOther(side)] ?? 0);
-  const late = s.mePos.tick >= CFG.subFromTick * 1.35;
+  const lead = (mp.goals?.[side] ?? 0) - (mp.goals?.[meOther(side)] ?? 0);
+  const late = et || min >= CFG.subLateMin;
   const want = late && lead < 0 ? 1 : late && lead > 0 ? -1 : 0;     // chase, protect, or neither
-  const line = CFG.subStamina + (g - 0.4) * 10;                      // 70 for a poor coach, 80 for the best
-  for (let guard = 0; guard < 3 && s.subs[side] < cap; guard++) {
-    const ps = s.players[side];
-    let pick = -1, worst = Infinity, forced = false;
-    for (let i = 0; i < ps.length; i++) {
-      const q = ps[i]; if (!q) continue;
-      if (q.off && q.inj) { pick = i; forced = true; break; }
-      if (q.off) continue;
-      if (s.mePos.tick < CFG.subFromTick * (1.15 - 0.3 * g)) continue;
-      let tired = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0) - ((q.yc || 0) ? CFG.subBooked : 0);
-      // Chasing, a defensive man is the one to give up; protecting, an attacking one.
-      if (want > 0 && (q._role2?.rest ?? 0) >= 0.7 && q.pos !== "GK") tired -= 8 * g;
-      if (want < 0 && q.pos === "FWD") tired -= 8 * g;
-      if (tired < line && tired < worst) { worst = tired; pick = i; }
-    }
-    if (pick < 0) return;
-    const out0 = s.players[side][pick], need = out0.pos;
+  const line = late ? CFG.subStamina + (g - 0.5) * CFG.subReadPts : CFG.subEarly;
+  // The best man on the bench for the place, and the kind the game wants as much as the coach can read it.
+  const benchFor = (out0) => {
     let bi = -1, bv = -Infinity;
     for (let j = 0; j < bench.length; j++) {
       const b = bench[j]; if (!b) continue;
-      if (need === "GK" && !meIsKeeper(b)) continue;
-      if (need !== "GK" && meIsKeeper(b)) continue;
-      let v = meBenchWorth(b, need, out0.spos);
-      // The game he is in decides which kind of man comes on, as much as the coach can read it.
+      if (out0.pos === "GK" && !meIsKeeper(b)) continue;
+      if (out0.pos !== "GK" && meIsKeeper(b)) continue;
+      let v = meBenchWorth(b, out0.pos, out0.spos);
       const kind = meBenchKind(b);
       if (want > 0) v += ((kind === "FWD" ? 6 : kind === "MID" ? 2 : -4)) * g;
       if (want < 0) v += ((kind === "DEF" ? 6 : kind === "MID" ? 3 : -5)) * g;
       if (v > bv) { bv = v; bi = j; }
     }
-    if (bi < 0) return;
-    if (!meSub(s, side, pick, bi, out)) return;
-    if (out?.mgrLog && !forced) {
+    return bi;
+  };
+  // A man who cannot continue, whatever the clock or the windows say.
+  for (let i = 0; i < s.players[side].length && s.subs[side] < cap; i++) {
+    const q = s.players[side][i];
+    if (!q || !(q.off && q.inj)) continue;
+    const bi = benchFor(q);
+    if (bi >= 0) meSub(s, side, i, bi, out);
+  }
+  if (s.subs[side] >= cap) return;
+  // THE WINDOWS. The break is the first stoppage of the second half, once, and takes none of them.
+  const W = ((s.subWin = s.subWin || {})[side] = s.subWin[side] || { used: 0, at: -Infinity, ht: false });
+  const brk = !W.ht && !et && min >= 45 && min < 47;
+  if (!et && min >= 45) W.ht = true;
+  const windows = CFG.subWindows + (et ? 1 : 0);
+  if (!brk && (W.used >= windows || mp.tick - W.at < CFG.subWinGap * ME_MATCH_TICKS / 90)) return;
+  // How tired each man is to his manager: a knock and a booking count against him, and the game he is in decides who
+  // is given up first -- chasing, a defensive man; protecting, an attacking one.
+  const tired = [];
+  for (const q of s.players[side]) {
+    if (!q || q.off) continue;
+    let t = (q.stamina ?? 100) - (q.knock > 0 ? CFG.subKnockBias : 0) - ((q.yc || 0) ? CFG.subBooked : 0);
+    if (want > 0 && (q._role2?.rest ?? 0) >= 0.7 && q.pos !== "GK") t -= 8 * g;
+    if (want < 0 && q.pos === "FWD") t -= 8 * g;
+    if (t < line) tired.push([t, q]);
+  }
+  if (!tired.length) return;
+  tired.sort((x, y) => x[0] - y[0]);
+  // Its share of the changes left: five in three windows go two, two and one.
+  const share = Math.ceil((cap - s.subs[side]) / Math.max(1, windows - W.used + (brk ? 1 : 0)));
+  let made = 0;
+  for (const [, q] of tired) {
+    if (made >= share || s.subs[side] >= cap) break;
+    const i = s.players[side].indexOf(q), bi = benchFor(q);
+    if (i < 0 || bi < 0 || !meSub(s, side, i, bi, out)) continue;
+    made++;
+    if (out?.mgrLog) {
       const L = out.mgrLog[side] = out.mgrLog[side] || [];
       if (L.length < 40) L.push({ min: out.min ?? 0, k: "sub", t: want > 0 ? "Chasing it: fresh legs further forward" : want < 0 ? "Seeing it out: fresh legs at the back" : "Fresh legs" });
     }
-    if (!forced) return;
   }
+  if (made && !brk) { W.used++; W.at = mp.tick; }
 }
 
 // ── NOBODY IN GOAL ──────────────────────────────────────────────────────────────────────────
