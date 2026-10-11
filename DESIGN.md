@@ -614,7 +614,9 @@ score in the app is written this way, however its file spelt it.
 then a dark strip of its AFA ranking (with the move since the year before), manager, style and last five results,
 beside honours chips the strip's height. A side with no ground photo wears a sash of its second colour; the kit's second
 colour edges every banner. Below it, each division is a band of club tiles, as wide as its clubs need: last season's
-champion on gold, the clubs that came up or went down on faint green or red beside their arrows.
+champion on gold, the clubs that came up or went down on faint green or red beside their arrows. A division that has not
+started its next season shows instead who its finished table sends up and down, arrowed where they stand (the league's
+`up` and `down` places and any playoff its report records); nobody moves until the next season.
 
 **Player banner.** The width of the page, in his club's colours (his national side's when he has no club). Behind
 everything his surname, huge and faint in the kit's second colour, every letter whole, filling the banner edge to edge:

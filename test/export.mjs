@@ -16,8 +16,8 @@ const fn = (name) => {
   }
   return SRC.slice(i, j);
 };
-const READER = new Function(fn("parseSeasonReport") + fn("parseTournTabs") + fn("tournWinner") +
-  "return { parseSeasonReport, parseTournTabs, tournWinner };")();
+const READER = new Function(fn("parseSeasonReport") + fn("parseTournTabs") + fn("tournWinner") + fn("seasonMoves") + fn("playoffTie") +
+  "return { parseSeasonReport, parseTournTabs, tournWinner, seasonMoves, playoffTie };")();
 
 let fails = 0;
 const ok = (n, c, got) => { if (!c) { fails++; console.log("  FAIL  " + n + (got === undefined ? "" : "   " + JSON.stringify(got))); } else console.log("  ok    " + n); };
@@ -46,6 +46,21 @@ console.log("\nleague season");
   ok("...and is a section of its own, its stage and its tie kept", P.extra.length === 1 && P.extra[0].name === "Promotion Playoff"
      && P.extra[0].body.some(l => l === "### Final") && P.extra[0].body.some(l => l.includes("**Alpha** vs Gamma")), P.extra);
   ok("a season without one has none", R.extra.length === 0, R.extra);
+}
+
+console.log("\nwho a finished season sends up and down");
+{
+  const t = ["A", "B", "C", "D", "E", "F", "G", "H"], tie = (s) => READER.playoffTie(s.split("\n"));
+  const po = tie("### Final\n\n| Match | Score |\n|---|---|\n| **E** vs C | 1-0 |");
+  ok("a playoff is won by its bold side", po?.win === "E" && po?.lose === "C", po);
+  ok("...else by the score, two legs by the aggregate", tie("| Match | Leg 1 | Leg 2 | Agg |\n|---|---|---|---|\n| X vs Y | 1-0 | 0-2 | 1-2 |")?.win === "Y");
+  ok("a level tie with no winner marked settles nothing", tie("| Match | Score |\n|---|---|\n| X vs Y | 1-1 |") === null);
+  const mv = (rules, ties, above, below) => Object.fromEntries(READER.seasonMoves(t, rules, ties, above, below));
+  ok("the top places go up and the bottom ones down", JSON.stringify(mv({ up: 2, down: 3 }, [], true, true)) === JSON.stringify({ A: "up", B: "up", F: "down", G: "down", H: "down" }), mv({ up: 2, down: 3 }, [], true, true));
+  ok("nobody goes up from the top division, nor down from the bottom one", JSON.stringify(mv({ up: 2, down: 3 }, [], false, false)) === "{}");
+  ok("a playoff winner of the division takes a place up besides", mv({ up: 2 }, [po], true, false).E === "up" && mv({ up: 2 }, [po], true, false).C === undefined, mv({ up: 2 }, [po], true, false));
+  const rel = { win: "Z", lose: "G" };
+  ok("a relegation playoff lost to the division below sends its man down", mv({ down: 1 }, [rel], false, true).G === "down" && mv({ down: 1 }, [{ win: "G", lose: "Z" }], false, true).G === undefined);
 }
 
 console.log("\nknockout cup, one leg, a shootout and extra time");

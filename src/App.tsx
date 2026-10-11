@@ -3472,6 +3472,44 @@ function parseSeasonReport(text) {
   const restMd = rest.filter(L => !/^---+\s*$/.test(L)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return { rounds, final, rest: restMd, extra };
 }
+// WHO A FINISHED SEASON SENDS UP AND DOWN (user, 11 October 2026: "the pyramids need to reflect pro/rel (but not move
+// yet, that's for next season)"). `names` is its final table in order, `rules` its league's record (`up` and `down`, the
+// places that go outright), `ties` the playoffs its report records ({ win, lose }), `above` and `below` whether its nation
+// has a division on either side. A playoff winner of this division goes up besides (NL2's third place); a man of this
+// division beaten by one from outside it goes down (a relegation playoff lost). Keys are as the table writes them.
+function seasonMoves(names, rules, ties, above, below) {
+  const out = new Map(), mine = new Set(names);
+  if (above) for (const k of names.slice(0, rules?.up || 0)) out.set(k, "up");
+  if (below && rules?.down) for (const k of names.slice(-rules.down)) out.set(k, "down");
+  for (const { win, lose } of ties || []) {
+    if (above && mine.has(win) && !out.has(win)) out.set(win, "up");
+    if (below && mine.has(lose) && !mine.has(win)) out.set(lose, "down");
+  }
+  return out;
+}
+// The tie that settles a playoff: its section's last match. The bold side won (the archive's rule), else the score did,
+// the aggregate where a tie had two legs. Null when the section holds no decided match.
+function playoffTie(body) {
+  let head = null, row = null;
+  for (const L of body || []) {
+    const t = L.trim();
+    if (!t.startsWith("|") || /^\|[\s:|-]+\|?$/.test(t)) continue;
+    const cs = t.replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map(c => c.trim());
+    if (cs.some(c => /^match$/i.test(c))) { head = cs.map(c => c.toLowerCase()); continue; }
+    if (head && /\svs\.?\s/i.test(cs[head.indexOf("match")] || "")) row = cs;
+  }
+  if (!row) return null;
+  const sides = row[head.indexOf("match")].split(/\s+vs\.?\s+/i);
+  if (sides.length !== 2) return null;
+  let w = sides.findIndex(x => /\*\*/.test(x));
+  if (w < 0) {
+    const g = String(row[head.indexOf("agg") >= 0 ? head.indexOf("agg") : head.indexOf("score")] || "").match(/(\d+)\s*-\s*(\d+)/);
+    if (!g || +g[1] === +g[2]) return null;
+    w = +g[1] > +g[2] ? 0 : 1;
+  }
+  const name = (x) => x.replace(/\*+/g, "").trim();
+  return { win: name(sides[w]), lose: name(sides[1 - w]) };
+}
 // A tournament report: every `## Heading` is a tab; what sits above the first one is the
 // preamble. The converter guarantees the shape, so this stays a dumb splitter.
 function parseTournTabs(text) {
@@ -10988,7 +11026,7 @@ export default function App() {
     const st = stripVenue(t.stadium || ""), cap = venueCap(t.stadium) || t.stadiumCap || null, photo = STADIUM_IMAGES.includes(st);
     const k1 = t.primaryColor || "var(--ux-panel-3)", k2 = t.secondaryColor || k1;
     const conf = isNT ? (t.conference || CONF_BY_CODE.get(t.code) || null) : null;
-    let place = px?.was || null, moved = px?.moved || null;
+    let place = px?.was || null, moved = px?.moved || px?.next || null;
     if (!isNT && !px && n) {
       const key = archKey(t.name);
       for (const g of n.groups.filter(g2 => g2.real)) {
@@ -13974,11 +14012,24 @@ export default function App() {
       for (const g of tiers) { const L = lasts.get(g.comp), i = L?.names ? L.names.indexOf(k) : -1;
         if (i >= 0) return { comp: g.comp, tier: leagueTier(g.comp) || 1, pos: i + 1, of: L.names.length, season: L.s.season }; }
       return null; };
+    // A division whose clubs are still the ones in its last table has not started its next season: who that table sends
+    // up and down is marked where they stand (seasonMoves), and nobody moves until the next season moves them.
+    const tierNums = tiers.map(g => leagueTier(g.comp) || 1);
+    const going = new Map(tiers.map(g => {
+      const L = lasts.get(g.comp), tier = leagueTier(g.comp) || 1;
+      if (!L?.names?.length) return [g.comp, null];
+      const keys = new Set(g.clubs.map(t => archKey(t.name)));
+      if (keys.size !== L.names.length || !L.names.every(k => keys.has(k))) return [g.comp, null];
+      const ties = (uxRep(L.s)?.extra || []).map(x => playoffTie(x.body)).filter(Boolean).map(x => ({ win: archKey(x.win), lose: archKey(x.lose) }));
+      return [g.comp, seasonMoves(L.names, { up: LG.up.get(g.comp), down: LG.down.get(g.comp) }, ties,
+                                  tierNums.some(n2 => n2 < tier), tierNums.some(n2 => n2 > tier))];
+    }));
     const rows = tiers.map(g => {
-      const tier = leagueTier(g.comp) || 1, L = lasts.get(g.comp);
+      const tier = leagueTier(g.comp) || 1, L = lasts.get(g.comp), G = going.get(g.comp);
       const clubs = g.clubs.map(t => { const was = placeOf(t);
         return { t, was, pos: was && was.comp === g.comp ? was.pos : null,
-                 moved: was && was.comp !== g.comp && was.season === L?.s?.season ? (was.tier > tier ? "up" : "down") : null }; })
+                 moved: was && was.comp !== g.comp && was.season === L?.s?.season ? (was.tier > tier ? "up" : "down") : null,
+                 next: G?.get(archKey(t.name)) || null }; })
         // Who came down first (in the order they finished above), then who stayed, then who came up, then the rest.
         .map(x => ({ ...x, band: x.moved === "down" ? 0 : x.pos != null ? 1 : x.moved === "up" ? 2 : 3 }))
         .sort((a, b) => a.band - b.band || (a.was?.pos ?? 999) - (b.was?.pos ?? 999) || (Number(b.t.skill) || 0) - (Number(a.t.skill) || 0));
@@ -13990,16 +14041,16 @@ export default function App() {
       const r = el.getBoundingClientRect(), p = pyr.getBoundingClientRect(), v = (el.closest(".ux-pbody") || pyr).getBoundingClientRect();
       setPyrHover({ t, px: x || null, x: r.left + r.width / 2 - p.left, top: r.top - p.top, bottom: r.bottom - p.top, viewTop: v.top - p.top, viewBottom: v.bottom - p.top });
     };
-    const club = (t, x, champ) => (
-      <button key={t.id} type="button" className={"ux-btnreset ux-pyr-club" + (champ ? " ux-champ" : "") + (x?.moved ? " ux-came-" + x.moved : "")} aria-label={t.name} onClick={() => openTeam(t)}
+    const club = (t, x, champ) => { const mv = x?.moved || x?.next; return (
+      <button key={t.id} type="button" className={"ux-btnreset ux-pyr-club" + (champ ? " ux-champ" : "") + (mv ? " ux-came-" + mv : "")} aria-label={t.name} onClick={() => openTeam(t)}
         onMouseEnter={e => hoverAt(e, t, x)} onFocus={e => hoverAt(e, t, x)} onMouseLeave={() => setPyrHover(null)} onBlur={() => setPyrHover(null)}>
         <span className="ux-pyr-crest"><TeamCrest team={t} size="100%" />
-          {x?.moved && (
-            <span className={"ux-pyr-mv ux-" + x.moved} title={x.moved === "up" ? "Promoted" : "Relegated"}>
-              <UxArrow up={x.moved === "up"} /></span>)}
+          {mv && (
+            <span className={"ux-pyr-mv ux-" + mv} title={mv === "up" ? "Promoted" : "Relegated"}>
+              <UxArrow up={mv === "up"} /></span>)}
         </span>
         {x !== undefined && <span className={"ux-pyr-pos" + (champ ? " ux-gold" : "")} style={mono}>{x?.pos ?? "–"}</span>}
-      </button>);
+      </button>); };
     const rail = (key, head, list) => (
       <div key={key} className="ux-pyr-row">
         <div className="ux-pyr-head">{head}</div>

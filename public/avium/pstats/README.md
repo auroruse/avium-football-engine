@@ -62,7 +62,14 @@ its own: NL2 1935 closes with `## Promotion Playoff`, its `### Quarter-finals`, 
 `### Final` captions over knockout fixture tables in the formats below. Each shows as a tab beside the
 rounds, drawn the way a tournament's stages are, and a club's page lists those matches with its
 season. The table, the champion and the player boards stay the league's own: playoff statistics are
-not added to the season's boards.
+not added to the season's boards. A playoff between two divisions is filed in both seasons' reports,
+so each club's page and each season shows it: Varahmehr 1935 closes the Mellī's with `## Relegation
+Playoff` and the Bālande's with `## Promotion Playoff`, the same tie in both.
+
+**The Registry's pyramid reads these.** Until a division starts its next season (its clubs are still
+the ones in its last table), the clubs that table sends up and down carry the arrows where they stand:
+the places a league's record gives in `up` and `down` (`src/data/leagues.json`), and besides those, a
+playoff's last match, its winner going up from the division below or its loser down from the one above.
 
 **Everything else** — every tournament — is the canonical tab format: each `## Heading` renders
 as a tab inside the season, what sits above the first `##` is the preamble, and a `### Sub`
