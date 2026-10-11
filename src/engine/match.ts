@@ -515,7 +515,7 @@ export function meMove(s, rng) {
       // what a side that is not pressing actually does.
       const pStrat = s.strategy?.[side] || {};
       const pressHot = d < CFG.pressSprintD
-        || (pStrat.pressingLOE || 0) > 0
+        || ((pStrat.pressingLOE || 0) > 0 && (p.stamina ?? 100) > CFG.pressLegsRun)
         || (mp.bx - meGoalX(meOther(side))) * meDir(side) < CFG.pressOwnD;
       const chase = i === scramble || onBall || (p._cut ?? 0) > 0
                  || (p._duty === "press" && pressHot)
@@ -718,7 +718,13 @@ export function meMove(s, rng) {
       // pressing now scales with how much defending the opponent makes you do, which is the whole
       // of what "making the ball do the work" is supposed to buy a possession side. Tempo is the
       // mirror: playing quick costs legs while you HAVE the ball.
-      * (1 + Math.max(0, (s.mePos?.side !== side ? (s.strategy?.[side]?.pressingLOE || 0) * CFG.pressDrain : 0)
+      // ...AND IT FADES WITH HIS LEGS (11 Oct 2026). Paid in full on every defending metre for ninety minutes, a
+      // pressing side stood at 65 at half time and made most of its changes before the hour. A man presses as hard as
+      // he has legs for: the surcharge falls away as his stamina runs down to pressLegs, and below pressLegsRun he
+      // stops sprinting to press because the instruction says so (see pressHot), so the press fades in the last half
+      // hour instead of the side running empty.
+      * (1 + Math.max(0, (s.mePos?.side !== side ? (s.strategy?.[side]?.pressingLOE || 0) * CFG.pressDrain
+            * Math.max(0, Math.min(1, ((p.stamina ?? 100) - CFG.pressLegs) / (100 - CFG.pressLegs))) : 0)
                           + (s.mePos?.side === side ? (s.strategy?.[side]?.tempo || 0) * CFG.tempoDrain : 0))));
       // The ball is NOT dragged along with him. He is running near an object.
       p._avgV = (p._avgV ?? 0) * 0.9 + (step / ME_DT) * 0.1;   // ~10-tick lungs for the breath model
