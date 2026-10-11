@@ -1360,6 +1360,11 @@ input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 .ux-ed-tpick.ux-on img, .ux-ed-tpick:hover img { opacity: 1; }
 .ux-ed-tbox { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ux-line-2); border-radius: 4px; color: transparent; }
 .ux-ed-tpick.ux-on .ux-ed-tbox { background: var(--ux-accent); border-color: var(--ux-accent); color: #ffffff; }
+/* A player's traits in a line (the Players page's card, App.tsx uxPsCard). */
+/* The card's column scrolls rather than cutting its last panel off in a short window. */
+.ux-psc { overflow-y: auto; }
+.ux-tchips { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 0 12px 12px; }
+.ux-tchip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ux-text); white-space: nowrap; }
 /* The trait card (App.tsx TraitCard): fixed to the window, out of the pointer's way. */
 .ux-tcard { position: fixed; z-index: 1000; width: 264px; padding: 12px; background: var(--ux-panel); border: 1px solid var(--ux-line-2);
   border-radius: 8px; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); pointer-events: none; }

@@ -13943,7 +13943,8 @@ export default function App() {
   const uxStrip = (cells) => (
     <div className="ux-pbody ux-fit ux-strip-wrap"><div className="ux-strip">{cells.map(([k, v, clr]) => (
       <div key={k}><b style={{ ...mono, ...(clr ? { color: clr } : null) }}>{v ?? "–"}</b><span>{k}</span></div>))}</div></div>);
-  // The card: his banner in small, the four banner facts, View Player; then his roles, this season and his career.
+  // The card: his banner in small, the four banner facts, View Player; then his roles, this season, his career and his
+  // traits (in a line, each opening its card on hover).
   const uxPsCard = (r) => {
     const { p, nm, disp, natT, clubT } = r, hof = p.hof || null;
     const kit = clubT || natT, c1 = kit?.primaryColor || "var(--ux-panel-3)", c2 = kit?.secondaryColor || c1;
@@ -13958,8 +13959,9 @@ export default function App() {
     for (const x of per.values()) { yr.gp += x.gp; yr.G += x.G || 0; yr.A += x.A || 0; if (x.RTG != null) { yr.rs += x.RTG * x.gp; yr.rg += x.gp; } }
     const rtg = (rs, rg, gate) => (rg ? [(rs / rg).toFixed(2).replace(/0$/, ""), rg >= gate ? ratingColor(rs / rg) : "var(--ux-text-3)"] : [null, null]);
     const [yv, yc] = rtg(yr.rs, yr.rg, UX_RTG_MIN_GP), c = r.c, [cv, cc] = c ? rtg(c.rs, c.rg, careerRtg.minGp) : [null, null];
+    const traits = badgeOrder((r.f?.rid ? recNow(r.f.rid) : null)?.badges || []).filter(id => BADGE_BY_ID[id]);
     return (
-      <div className="ux-col">
+      <div className="ux-col ux-psc">
         <section className="ux-panel ux-plc" aria-label={disp}>
           <div className="ux-plc-ban" style={{ ["--c1"]: c1, ["--c2"]: c2, color: ink }}>
             <div className="ux-plc-face"><UxFace key={disp} name={disp} /></div>
@@ -13981,6 +13983,9 @@ export default function App() {
         {roles.length > 0 && uxPanel("Roles", null, uxRolesList(roles))}
         {yr.gp > 0 && uxPanel("Season " + uxSeasonLabel(ny), null, uxStrip([["GP", yr.gp], ["G", yr.G], ["A", yr.A], ["Avg", yv, yc]]))}
         {c && c.gp > 0 && uxPanel("Career", null, uxStrip([["Seasons", r.yrs], ["GP", c.gp], ["G", c.G], ["A", c.A], ["Avg", cv, cc]]))}
+        {traits.length > 0 && uxPanel("Traits", null, (
+          <div className="ux-tchips">{traits.map(id => (
+            <span key={id} className="ux-tchip" data-trait={id}><BadgeIcon id={id} size={22} />{BADGE_BY_ID[id].name}</span>))}</div>))}
       </div>);
   };
 
