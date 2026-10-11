@@ -292,5 +292,24 @@ console.log("a nation's clubs without its national side (the user, 11 October 20
   const dl = plan(ED, { deals: [{ sides: [teamKey(A), teamKey(TC)], moves: [{ kind: "player", id: ids(A)[12], to: teamKey(TC) }, { kind: "player", id: ids(TC)[12], to: teamKey(A) }] }] });
   ok("an offer to a Turulian club waits on them", !dl.errors.length && JSON.stringify(dl.requests[0]?.needs) === JSON.stringify({ [teamKey(TC)]: [KAR_ED] }), dl); }
 
+console.log("sheet cells a save keeps (11 October 2026)");
+// Saving the Dynamo Mizuhara and CSKA Radagorsk trade stripped the nation tags off CSKA men who were not in it: a cell the
+// sheet wrote its own way stays as it was while its man stays at the side, and goes when he leaves it.
+{ const k = teamKey, DYM = rec.teams.find(t => t.id === "t0205"), CSR = rec.teams.find(t => t.id === "t0200");
+  const cells = (t) => t.squad.filter(v => v && typeof v === "object").map(v => JSON.stringify(v));
+  const swap = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: "p1182", to: k(CSR) }, { kind: "player", id: "p1422", to: k(DYM) }] }] });
+  const csr = swap.apply && after(swap.apply).teams.find(t => t.id === CSR.id);
+  ok("a swap leaves the other men's tagged cells as they were", !swap.errors.length && JSON.stringify(cells(csr)) === JSON.stringify(cells(CSR)) && cells(CSR).length === 7, [swap.errors, csr && cells(csr)]);
+  ok("...and the sheet still writes them", !!csr && sheetsFromRecords(after(swap.apply)).MISC.includes("[RUD]\t") && (sheetsFromRecords(after(swap.apply)).MISC.match(/\[RUD\]/g) || []).length === (sheetsFromRecords(rec).MISC.match(/\[RUD\]/g) || []).length);
+  const out = plan(OV, { deals: [{ sides: [k(DYM), k(CSR)], moves: [{ kind: "player", id: "p1182", to: k(CSR) }, { kind: "player", id: "p1222", to: k(DYM) }] }] });
+  const n = out.apply && after(out.apply), dym = n?.teams.find(t => t.id === DYM.id), csr2 = n?.teams.find(t => t.id === CSR.id);
+  ok("a tagged man who leaves is written from his record at his new club", !out.errors.length && dym.squad.includes("p1222") && cells(csr2).length === 6, [out.errors, dym?.squad, csr2 && cells(csr2)]);
+  const rate = after(plan(OV, { players: { p1222: { ovr: 70 } } }).apply).teams.find(t => t.id === CSR.id);
+  ok("a new rating keeps his tag", JSON.stringify(rate.squad[1]) === JSON.stringify({ id: "p1222", tag: "RUD" }), rate.squad[1]);
+  const natd = after(plan(OV, { players: { p1222: { nat: "ALE" } } }).apply).teams.find(t => t.id === CSR.id);
+  ok("a new nationality writes him fresh", natd.squad[1] === "p1222", natd.squad[1]);
+  const VJK = rec.teams.find(t => t.id === "t0170"), raw = after(plan(OV, { players: { p2861: { ovr: 63 } } }).apply).teams.find(t => t.id === VJK.id);
+  ok("a cell kept as raw text is written fresh by any edit to its man", raw.squad[2] === "p2861", raw.squad[2]); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

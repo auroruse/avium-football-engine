@@ -43,12 +43,22 @@ export const playerRecord = (r) => ({ id: r.id, name: r.name, nat: r.nat, ovr: r
 export const draftSize = (d) => ["players", "managers", "teams", "leagues"].reduce((n, k) => n + Object.keys(d?.[k] || {}).length + (d?.add?.[k]?.length || 0), 0)
   + (d?.trades?.length || 0) + (d?.new?.length || 0);
 
+// A patch names a squad's men, and a manager, by ID. A man the sheet wrote its own way ({ id, tag } or { id, raw }) keeps
+// that cell while he stays at the side, wherever in the squad he moves; one who arrives is written from his record,
+// since the cell he left was his old side's sheet's (user, 11 October 2026: saving a trade stripped the nation tags off
+// three of CSKA Radagorsk's men who were not in it).
+const keepCells = (was, now) => {
+  const cell = new Map((was || []).filter(v => v && typeof v === "object" && v.id).map(v => [v.id, v]));
+  return (now || []).map(v => (typeof v === "string" && cell.has(v) ? cell.get(v) : v));
+};
+
 // The records with the draft laid over them. Nothing in the draft that names a missing record is applied.
 export function applyDraft(rec, draft) {
   if (!draftSize(draft)) return rec;
   const ps = draft.players || {}, ms = draft.managers || {}, ts = draft.teams || {};
-  // A cell kept as the sheet wrote it is written fresh once its man is edited: its text would carry his old rating.
-  const fresh = (book) => (v) => v && typeof v === "object" && v.id && book[v.id] ? v.id : v;
+  // A cell kept as the sheet wrote it is written fresh once what it spells out is edited: raw text carries his old
+  // rating and name, so any edit to the man; a tag is his nation on that sheet, so only an edit to his nationality.
+  const fresh = (book) => (v) => v && typeof v === "object" && v.id && book[v.id] && ("raw" in v || "nat" in book[v.id]) ? v.id : v;
   const fp = fresh(ps), fm = fresh(ms), add = draft.add || {}, ls = draft.leagues || {};
   // A renamed league takes its clubs with it, and keeps the name it leaves in `formerly`.
   const moved = new Map();
@@ -62,6 +72,8 @@ export function applyDraft(rec, draft) {
     teams: [...rec.teams.map(t => {
       const p = ts[teamKey(t)];
       let n = p ? { ...t, ...Object.fromEntries(KINDS.teams.fields.filter(f => f in p).map(f => [f, p[f]])) } : t;
+      if (p && "squad" in p) n = { ...n, squad: keepCells(t.squad, n.squad) };
+      if (p && "manager" in p) n = { ...n, manager: keepCells([t.manager], [n.manager])[0] };
       if (n.squad.some(v => fp(v) !== v)) n = { ...n, squad: n.squad.map(fp) };
       if (fm(n.manager) !== n.manager) n = { ...n, manager: fm(n.manager) };
       if (moved.has(n.nation + "|" + n.group)) n = { ...n, group: moved.get(n.nation + "|" + n.group) };
