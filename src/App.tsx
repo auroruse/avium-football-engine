@@ -3076,8 +3076,11 @@ function UxSidePick({ label, value, groups, onPick, placeholder = "Search", cls,
       {!bare && cur?.team && <TeamCrest team={cur.team} size={14} />}<span className="ux-sp-n">{slide ? <SlideName text={cur?.name || label} /> : cur?.name || label}</span>
       <svg className="ux-i ux-xs" viewBox="0 0 24 24" aria-hidden="true">{UX_ICON.caret}</svg></button>
     {open && at && (<>
-      <div className="ux-scrim" onClick={() => close(false)} />
-      <div className="ux-sp-menu" style={at}>
+      {/* INSIDE A <label> (the club details form's City) every click on the menu or the scrim was passed on to the
+          label's first control, this picker's own button, which opened it again: picking a city or clicking away left it
+          open, and the scrim caught every click on the page (user, 11 October 2026). A cancelled click is not passed on. */}
+      <div className="ux-scrim" onClick={e => { e.preventDefault(); close(false); }} />
+      <div className="ux-sp-menu" style={at} onClick={e => e.preventDefault()}>
         {head && <div className="ux-sp-head">{head}</div>}
         <label className="ux-search"><svg className="ux-i ux-s" viewBox="0 0 24 24" aria-hidden="true">{UX_ICON.search}</svg>
           <input ref={inp} type="search" role="combobox" aria-expanded="true" aria-controls={lid} aria-label={"Search, " + label}
