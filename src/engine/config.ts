@@ -121,7 +121,10 @@ export const SP = {
   // kicks with, and that comes from where he plays: a man whose natural place is on the left of the
   // XI is left-footed. Central players are right-footed, as most footballers are.
   spRunup: 3.0, spRunupSide: 1.7, spRunTol: 0.60, spLeftOf: 4,
-  spShootRange: 27,     // a free kick inside this is struck at goal rather than delivered
+  // A free kick nearer the goal than spShootRange in a straight line, from where the posts stand at least spShootAng degrees
+  // apart, is struck at goal; any other is delivered (setpiece.ts meFkAtGoal). 12 degrees keeps every kick from the middle
+  // out to 27 m and sends the box's corner (10) and anything wider in as a cross.
+  spShootRange: 27, spShootAng: 12,
   spWall: 4, spWallDist: 9.15,
   // How far the defending side has to stand off the ball, per restart. Ten yards at a free kick and
   // a corner, two metres at a throw; a goal kick, a kickoff and a penalty each have their own rule
@@ -2135,6 +2138,9 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // dropped to recvAirZ m, unless the other side's best man would reach the ball recvAirMs sooner than he gets there,
   // when he goes up for it. While it is above recvAirZ the ground-ball stand-off and walk-in do not apply.
   recvAirZ: 1.0, recvAirMs: 300,
+  // ...but not the balls a side puts INTO THE BOX to be headed (match.ts boxBall/boxHead): the kinds listed here are
+  // attacked in the air when they meet the man in the area, and headed at goal inside headShotR.
+  boxBallK: { cross: 1, corner: 1, longthrow: 1, freekick: 1 },
   // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
   thruRunNear: 3.0,
   // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
@@ -2439,6 +2445,8 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // headNoiseDuel more with a man jumping with him, headNoisePace more on a ball coming at 20 m/s, and
   // up to headNoiseZ m/s of error in how it comes off his head vertically.
   headNoise: 11, headNoiseSkill: 0.5, headNoiseDuel: 0.6, headNoisePace: 0.3, headNoiseZ: 3,
+  // headSigma 0 keeps that triangular error; above 0 the error is a gaussian of headSigma times it, aimed headVz0 m/s up.
+  headSigma: 0, headVz0: 0.35,
   // THE RUN-UP. shotRunV is the closing speed that buys all of it -- 5 m/s, which is a man properly
   // running onto it rather than a man shuffling forward. shotVRun is what it adds to the strike and
   // shotNoiseRun is what it costs in accuracy, because hitting one on the run is harder as well as
@@ -2792,7 +2800,10 @@ gkDiveV: 2.9,
   // Aiming NEARER THE POST measured worse, not better: the woodwork takes what the keeper does not.
   // Note this is not "which way he dives" -- with the capsule, a correct read is very nearly a
   // certain save, so this number is really his chance of getting it right AND reaching it.
-  spPenBack: 10, spPenSpread: 12, spPenAim: 0.84, spPenRead: 0.10, spPenReadSkill: 0.25,
+  // 12 October 2026: 89% scored over 750 open-play penalties (test/specs/setpieces.mjs), the keeper changes of early
+  // October and the Dead Ball trait having moved it. Aim 0.72 alone took it to 82%, read 0.25 alone to 87%; together, aim
+  // 0.66 and read 0.20 aim at the real 76-77%.
+  spPenBack: 10, spPenSpread: 12, spPenAim: 0.66, spPenRead: 0.20, spPenReadSkill: 0.25,
   // A SHOOTOUT KICK READS DIFFERENTLY, and the reason is positional rather than psychological.
   // The numbers above are right for open play and measurably so -- pensim puts an in-match penalty
   // at 73.6% scored and 19.8% saved against a real 76/19 -- but they are right there partly by
@@ -2857,7 +2868,9 @@ gkDiveV: 2.9,
   // the substep contest all put more balls into bodies at height), so 0.06 gave 0.42 handball penalties a
   // match, a third of them with a red for a blocked shot, and a third of all goals were penalties.
   // 0.0105 is the same one in fifteen matches on today's geometry.
-  handMinZ: 0.85, handP: 0.0105,
+  // handP 0.0105 -> 0.0063 (12 October 2026): handballs gave 0.10 penalties a match, about a third of all of them by then,
+  // against a real 0.06 (see MT.boxTackleFoul).
+  handMinZ: 0.85, handP: 0.0063,
   // How close he gets to a man carrying it in his area before he sets himself. Inside gkSmotherR,
   // so standing him up and taking it off him are the same movement.
   // How far in front of the ball he sets himself when closing a carrier in his area, ON his angle.
