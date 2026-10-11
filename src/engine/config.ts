@@ -1985,6 +1985,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // xG a match, Juego de Posicion -0.10, Kick and Rush level; a side pressing from the front ends about 37 stamina
   // points below a Balanced one.
   pressDrain: 1.20,
+  // The press fades with the legs (11 Oct 2026): the surcharge scales from full at 100 stamina to nothing at pressLegs,
+  // and a man under pressLegsRun no longer sprints to press on the instruction alone. At 1.20 paid in full a pressing
+  // side stood near 65 at half time and 34-46 at full time, and made about 60% of its changes before the hour.
+  pressLegs: 40, pressLegsRun: 60,
   // TRIED AND DROPPED (7 Oct 2026): the same surcharge for the counter-press (possLost +1) at 0.8. The counter-press
   // adds xG to every style it is tried on, Park the Bus included (+0.24, and it CONCEDES less), so it looked like the
   // free lunch to price -- but priced in legs the fourteen styles came out exactly as spread as before (0.62 xG a
