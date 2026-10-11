@@ -1708,3 +1708,7 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-tr-bh .ux-tr-ok { margin-left: auto; }
 .ux-tr-bh .ux-tr-ok + .ux-tr-cnt { margin-left: 8px; }
 .ux-tr-wait .ux-rq-wait { flex-wrap: wrap; }
+/* Transfer values (user, 11 October 2026): each man's before his rating, and a club's value in and out of the deal. */
+.ux-tr-val { flex: none; width: 58px; text-align: right; font-size: 12px; color: var(--ux-text-2); }
+.ux-tr-vals { display: flex; gap: 14px; padding: 0 0 2px 28px; font-size: 11px; color: var(--ux-text-3); }
+.ux-tr-vals b { font-size: 12px; font-weight: 600; color: var(--ux-text); }

@@ -440,8 +440,9 @@ free agency). Clicking him again takes him out. A man coming in takes the place 
 best, starters first, but never a keeper's place for an outfielder or the other way round; a starting place left with
 nobody coming in is filled from the bench, and anyone still coming in takes an open place. A club that would hold more
 men than places, or two managers, asks who makes way: each of its men gets Release beside him, and the man picked either
-goes in the deal (a click) or to free agency (Release). Beside the clubs the deal reads as each club's comings and
-goings, with the place each newcomer takes, and whether it fits.
+goes in the deal (a click) or to free agency (Release). Every player shows his transfer value where he stands now
+(user, the same day). Beside the clubs the deal reads as each club's comings and goings, with the value it gets and
+gives, the place each newcomer takes, and whether it fits.
 
 A deal between one's own clubs, or with free agency, goes live at once (Confirm). A deal with other nations' clubs is an
 offer, sent at once (Send Offer), to each of those nations' editors or, where a nation has none, the overseer. Every club

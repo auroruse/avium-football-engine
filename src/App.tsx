@@ -7099,10 +7099,11 @@ export default function App() {
   const [tournQ, setTournQ] = useState("");
   const [tournPosF, setTournPosF] = useState("ALL");
   const [tournTeamF, setTournTeamF] = useState("");
-  // Season stats + rating changelog. null until the Players tab is first opened.
+  // Season stats + rating changelog. null until the Registry, Play Match or the Editor (whose Trades shows values) is first
+  // opened.
   const [pstats, setPstats] = useState(null);
   useEffect(() => {
-    if ((tab !== "leagues" && tab !== "live") || pstats) return;
+    if ((tab !== "leagues" && tab !== "live" && tab !== "editor") || pstats) return;
     let dead = false;
     (async () => {
       const seasons = [], changelog = [], hof = [], winnersRaw = [];
@@ -12794,6 +12795,11 @@ export default function App() {
   // A man held by another open offer or request (the one open here does not count).
   const trLocked = (kind, id) => requests.some(r => !r.declined && r.id !== trOpen && (r.locks || []).includes((kind === "manager" ? "m:" : "p:") + id));
   const trManName = (kind, id) => fullDisplayName((kind === "manager" ? mgrNow(id) : recNow(id))?.name || id);
+  // A player's transfer value where he stands now (src/data/value.js; the user, 11 October 2026); managers have none.
+  const trValueOf = (kind, id) => { if (kind === "manager" || !pstats) return null; const rec = recNow(id);
+    return rec ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null; };
+  const trValue = (kind, id) => { const v = trValueOf(kind, id);
+    return <span className="ux-tr-val" style={mono}>{kind === "manager" ? "" : v != null ? moneyLabel(v) : "–"}</span>; };
   // Where a man in a deal stands now: a club's key, or null for a free agent.
   const trFrom = (m) => { if (m.kind !== "manager") return whereIs.get(m.id)?.club?.key || null;
     const t = edSidesOfMgr(m.id).find(x => !isNational(x)); return t ? teamKey(t) : null; };
@@ -12830,6 +12836,7 @@ export default function App() {
             <PlayerShot name={r?.name || ""} size={26} />
             <span className="ux-tr-nm"><SlideName text={fullDisplayName(r?.name || id)} /></span>
             {m && <span className={"ux-tr-tag" + st}>{tagOf()}</span>}
+            {trValue(kind, id)}
             {r && uxBadge(r.ovr)}
           </button>
           {edit && !lk && at && dests.length === 1 && ((ask && !m) || (m && !m.to)) && <button type="button" className={"ux-btnreset ux-btn ux-tr-rel" + (m && !m.to ? " ux-on" : "")}
@@ -12932,9 +12939,12 @@ export default function App() {
         <div key={"i" + m.kind + m.id} className="ux-tr-line">
           <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[pos] }}>{pos}</b>
           <span className="ux-tr-ln"><b><SlideName text={fullDisplayName(p?.name || m.id)} /></b><span>{where}</span></span>
+          {trValue(m.kind, m.id)}
           {p && uxBadge(p.ovr)}
         </div>);
     };
+    // The value of the men a club gets and of those it gives, each man at his value where he stands now.
+    const worth = (list) => { const vs = list.map(m => trValueOf(m.kind, m.id)).filter(v => v != null); return vs.length ? moneyLabel(vs.reduce((a, b) => a + b, 0)) : "–"; };
     const block = (k) => {
       const ins = moves.filter(m => m.to === k), outs = moves.filter(m => m.from === k), s = plan?.sides?.[k], tm = teamOfKey(k);
       return (
@@ -12942,6 +12952,8 @@ export default function App() {
           <div className="ux-tr-bh">{tm && <TeamCrest team={tm} size={20} />}<b><SlideName text={trName(k)} /></b>
             {r && (r.approved || []).includes(k) && <span className="ux-tr-ok">{uxIcon("check", "ux-xs")}Accepted</span>}
             {s && <span className={"ux-tr-cnt" + (s.after > s.len ? " ux-over" : "")}><b style={mono}>{s.after}</b>/<span style={mono}>{s.len}</span></span>}</div>
+          <div className="ux-tr-vals"><span>Incoming <b style={mono}>{worth(ins.filter(m => m.kind === "player"))}</b></span>
+            <span>Outgoing <b style={mono}>{worth(outs.filter(m => m.kind === "player"))}</b></span></div>
           <div className="ux-tr-lh">Gets</div>
           {ins.length ? ins.map(m => line(m, k)) : <div className="ux-empty-sm">Nobody</div>}
           <div className="ux-tr-lh">Gives</div>
@@ -12949,6 +12961,7 @@ export default function App() {
             <div key={"o" + m.kind + m.id} className="ux-tr-line">
               <b className="ux-tr-pos" style={{ ...mono, color: m.kind === "manager" ? "var(--ux-text-2)" : POS_CLR[posOfId(m.id)] }}>{m.kind === "manager" ? "MGR" : posOfId(m.id)}</b>
               <span className="ux-tr-ln"><b><SlideName text={trManName(m.kind, m.id)} /></b><span>{m.to ? <>To <SlideName text={trName(m.to)} /></> : "Released"}</span></span>
+              {trValue(m.kind, m.id)}
               {uxBadge((m.kind === "manager" ? mgrNow(m.id) : recNow(m.id))?.ovr)}
             </div>)) : <div className="ux-empty-sm">Nobody</div>}
           {(s?.up || []).map(u => <div key={"u" + u.id} className="ux-tr-up">{fullDisplayName(recNow(u.id)?.name || "")} Moves Up To <b style={mono}>{edLab(edTeamRec(k))[u.i]}</b></div>)}
