@@ -10,7 +10,9 @@ export default {
       if (a.path === "virtual:pstats")
         return { contents: `export const PSTATS_FILES = ${JSON.stringify(walk(ROOT + "/public/avium/pstats").filter(f => /\.(tsv|md)$/i.test(f) && !/README/i.test(f)))};` };
       if (a.path === "virtual:stadium-images")
-        return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(walk(ROOT + "/public/avium/stadiums").filter(f => /\.jpe?g$/i.test(f)).map(f => f.replace(/\.jpe?g$/i, "")))};` };
+        { const fs2 = walk(ROOT + "/public/avium/stadiums").filter(f => /\.(jpe?g|png)$/i.test(f)).sort(), ext = {};
+          for (const f of fs2) { const n = f.replace(/\.(jpe?g|png)$/i, "").normalize("NFC"); if (!ext[n]) ext[n] = f.slice(n.length); }
+          return { contents: `export const STADIUM_IMAGES = ${JSON.stringify(Object.keys(ext))}; export const STADIUM_EXT = ${JSON.stringify(ext)};` }; }
       return { contents: "export default {};" };
     });
   },

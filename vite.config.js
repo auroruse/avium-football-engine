@@ -8,22 +8,27 @@ import path from 'node:path'
 // the stadium browser offers one -- so the app has to KNOW before it renders, and a browser cannot
 // list a directory over HTTP. Vite serves public/ verbatim and import.meta.glob only reaches src/,
 // so the enumeration happens here, at build and on dev start, and arrives as a virtual module.
-// Adding a JPEG to public/avium/stadiums is now the whole job; forgetting the manifest is not possible.
+// Adding a JPEG or a PNG to public/avium/stadiums is now the whole job; forgetting the manifest is not possible.
+// STADIUM_EXT says which extension each ground's file has, exactly as written (a host that minds case gets the case
+// it was given), so the app asks for the one file that exists rather than guessing between them.
 const VID = 'virtual:stadium-images'
+const STADIUM_FILE = /\.(jpe?g|png)$/i
 const stadiumImages = () => {
   const dir = path.resolve('public/avium/stadiums')
-  if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir)
-    .filter(f => /\.(jpe?g)$/i.test(f))
-    .map(f => f.replace(/\.(jpe?g)$/i, '').normalize('NFC'))
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+  if (!fs.existsSync(dir)) return { names: [], ext: {} }
+  const ext = {}
+  for (const f of fs.readdirSync(dir).filter(f => STADIUM_FILE.test(f)).sort()) {
+    const name = f.replace(STADIUM_FILE, '').normalize('NFC')
+    if (!ext[name]) ext[name] = f.slice(f.length - f.match(STADIUM_FILE)[0].length)
+  }
+  return { names: Object.keys(ext).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())), ext }
 }
 
 const stadiumManifest = () => ({
   name: 'stadium-manifest',
   resolveId: (id) => (id === VID ? '\0' + VID : null),
   load: (id) => (id === '\0' + VID
-    ? `export const STADIUM_IMAGES = ${JSON.stringify(stadiumImages())};`
+    ? (({ names, ext }) => `export const STADIUM_IMAGES = ${JSON.stringify(names)}; export const STADIUM_EXT = ${JSON.stringify(ext)};`)(stadiumImages())
     : null),
   // A photograph dropped in while the dev server is running invalidates the module, so the list
   // refreshes without a restart.

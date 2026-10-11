@@ -1340,8 +1340,35 @@ input.ux-ed-title:hover:not(:disabled), input.ux-ed-title:focus { border-color: 
 input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 .ux-ed-sel { margin-left: 0; height: 28px; }
 .ux-ed-traits { display: flex; flex-wrap: wrap; gap: 4px; }
-.ux-ed-trait { display: inline-grid; border-radius: 6px; padding: 2px; opacity: .35; transition: opacity var(--ux-fast), background var(--ux-fast); }
-.ux-ed-trait.ux-on, .ux-ed-trait:hover { opacity: 1; background: var(--ux-panel-3); }
+/* The trait picker (App.tsx edTraitList): a list a tier, each row the trait's art, its name and a tick box. */
+.ux-ed-tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 16px; width: 100%; padding: 2px 0 6px; }
+.ux-ed-tcol { min-width: 0; display: flex; flex-direction: column; }
+.ux-ed-fact:has(> dd > .ux-ed-tlist) { align-items: start; }
+.ux-ed-fact:has(> dd > .ux-ed-tlist) > dt { padding-top: 14px; }
+.ux-ed-th { padding: 6px 8px; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.ux-ed-th.ux-gold { color: var(--ux-gold); }
+.ux-ed-th.ux-silver { color: var(--ux-text-2); }
+.ux-ed-th.ux-bronze { color: color-mix(in srgb, var(--ux-draw) 55%, var(--ux-loss)); }
+.ux-ed-trow { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; align-items: center; column-gap: 8px; height: 30px; padding: 0 8px;
+  border-radius: 6px; font-size: 12px; text-align: left; color: var(--ux-text-2); transition: background var(--ux-fast), color var(--ux-fast); }
+.ux-ed-trow > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ux-ed-trow img { opacity: .5; transition: opacity var(--ux-fast); }
+.ux-ed-trow:hover { background: var(--ux-panel-3); color: var(--ux-text); }
+.ux-ed-trow.ux-on { color: var(--ux-text); background: color-mix(in srgb, var(--ux-accent) 14%, transparent); }
+.ux-ed-trow.ux-on img, .ux-ed-trow:hover img { opacity: 1; }
+.ux-ed-tbox { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ux-line-2); border-radius: 4px; color: transparent; }
+.ux-ed-trow.ux-on .ux-ed-tbox { background: var(--ux-accent); border-color: var(--ux-accent); color: #ffffff; }
+/* The trait card (App.tsx TraitCard): fixed to the window, out of the pointer's way. */
+.ux-tcard { position: fixed; z-index: 1000; width: 264px; padding: 12px; background: var(--ux-panel); border: 1px solid var(--ux-line-2);
+  border-radius: 8px; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); pointer-events: none; }
+.ux-tcard-h { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; column-gap: 10px; }
+.ux-tcard-h img { display: block; }
+.ux-tcard-h b { display: block; font-size: 14px; font-weight: 600; color: var(--ux-text); }
+.ux-tcard-tier { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.ux-tcard-tier.ux-gold { color: var(--ux-gold); }
+.ux-tcard-tier.ux-silver { color: var(--ux-text-2); }
+.ux-tcard-tier.ux-bronze { color: color-mix(in srgb, var(--ux-draw) 55%, var(--ux-loss)); }
+.ux-tcard p { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--ux-text-2); }
 .ux-ed-sides { display: flex; flex-direction: column; padding: 0 16px 12px; min-height: 0; flex: 1 1 auto; }
 .ux-ed-srow { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid color-mix(in srgb, var(--ux-line) 60%, transparent); }
 .ux-ed-sl { width: 110px; flex: none; font-size: 11px; color: var(--ux-text-3); }
@@ -1475,7 +1502,6 @@ input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 .ux-ed-born input[type=date] { flex: 1 1 auto; min-width: 0; max-width: 180px; }
 .ux-ed-agel { flex: none; font-size: 11px; color: var(--ux-text-3); }
 .ux-ed-in.ux-ed-age { width: 52px; max-width: 52px; flex: none; text-align: center; padding: 0 4px; }
-.ux-ed-npdl .ux-ed-traits { padding: 6px 0; }
 .ux-ed-npdl .ux-pick select { padding-right: 26px; }
 .ux-ed-npdl .ux-ed-sel { width: auto; }
 .ux-ed-cavg { color: var(--ux-text-2); }

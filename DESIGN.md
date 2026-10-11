@@ -70,7 +70,10 @@ Dead Ball, Long Shot and First Touch also for forwards, Tackler and Long Ball al
 midfielders, so that every man can take one of his top tier. `test/traits.mjs` chose them (one min-cost flow: every
 man his count, the equal totals, a top-tier trait for all 340 who could take one, then the best fits from his career
 a game against men of his position at his rating, and his age); `write` keeps any traits a man already has and counts
-them, so a rerun only fills the men without. The overseer edits any man's traits on his page afterwards.
+them, so a rerun only fills the men without. The overseer edits any man's traits on his page afterwards, from a list
+a tier with a tick against each he carries (App.tsx edTraitList). Hovering or focusing any trait, anywhere, shows its
+card: art, name, tier and the Traits table's words (TraitCard; whatever stands for a trait carries `data-trait`, found
+by delegation, the card fixed to the window so no clipping panel cuts it).
 
 **Who managed whom** is src/data/spells.js (Moukden and Kirin, 9 October 2026): the archive credits every season from
 1931/32 on (the first with player statistics) to a manager. Everyone has run his current sides since then, except at the

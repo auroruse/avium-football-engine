@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Fra
 import headerImg from "./header.png";
 // Read off public/stadiums at build time -- see the stadium-manifest plugin in
 // vite.config.js. Adding a photograph is the whole job; there is no list to update.
-import { STADIUM_IMAGES } from "virtual:stadium-images";
+import { STADIUM_IMAGES, STADIUM_EXT } from "virtual:stadium-images";
 import { PSTATS_FILES } from "virtual:pstats";
 // THE PLAYERS, MANAGERS AND TEAMS (src/data): one record a person, squads as links to players. Written back out as
 // the preset sheets just below the imports, and parsed exactly as the files were.
@@ -3906,7 +3906,7 @@ const STADIUM_META = new Map(STADIUM_ROWS.map(r => [r.stadium.normalize("NFC"), 
 // Four candidates layered as one background: CSS paints the first that loads and silently skips the
 // rest, so a miss costs nothing. Both normalizations because macOS writes accented filenames as NFD
 // (Fudō, Chūkyō, Kyōwa) while a name typed into source is NFC — same name, different bytes, and the
-// server matches on bytes. Both extensions because the folder holds a mix.
+// server matches on bytes. The extension is the one the manifest found on the file (JPEG or PNG).
 // Stadiums whose file is stored under a different name from the one they display. "Hikari
 // Heliodrome @ TIU" was the only one: the file was correct, the encoding was correct and the server
 // answered 200 for the URL, but neither the picker thumbnail nor the match backdrop would load it —
@@ -3918,7 +3918,8 @@ const stadiumSrcs = (name) => [name.normalize("NFC"), name.normalize("NFD")]
   // only "Hikari Heliodrome @ TIU" has an "@" to trip on. The raw form is legal inside url("...");
   // the browser encodes the spaces itself and leaves the "@" alone.
   .flatMap(n => [encodeURIComponent(n), n])
-  .flatMap(n => [".jpg", ".jpeg"].map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`));
+  // The extension the manifest found for this ground (JPEG or PNG); a name it does not know tries both JPEG spellings.
+  .flatMap(n => (STADIUM_EXT[name.normalize("NFC")] ? [STADIUM_EXT[name.normalize("NFC")]] : [".jpg", ".jpeg"]).map(ext => `${import.meta.env.BASE_URL}avium/stadiums/${n}${ext}`));
 const stadiumBg = (name) => stadiumSrcs(name).map(u => `url("${u}")`).join(", ");
 // A ground shown at its own aspect ratio has to be a real <img>: a background-image has no
 // intrinsic size, so a div can only ever be told a height. Same candidate list, walked on error
@@ -4708,12 +4709,52 @@ const shotChain = (name) => {
     .concat(`${import.meta.env.BASE_URL}avium/players/placeholder.jpg`);
 };
 // A player badge as drawn in public/player-badges: the art carries its own tier (metal and pips), and the name rides
-// along as the image's text for anyone who cannot see it.
+// along as the image's text for anyone who cannot see it. Hovering it shows its card (TraitCard).
 const BadgeIcon = ({ id, size = 22 }) => {
   const b = BADGE_BY_ID[id];
   if (!b) return null;
-  return <img src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={b.name} title={b.name}
+  return <img src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={b.name} data-trait={id}
               width={size} height={size} draggable={false} style={{ display: "block", flexShrink: 0 }} />;
+};
+// THE TRAIT CARD (user, 11 October 2026). Hovering or focusing a trait anywhere shows its card: its art, name and tier,
+// and what it does in the Traits table's words (docs.js TRAIT_DOC). One card for the whole app, found by delegation:
+// whatever stands for a trait carries data-trait, its id. Fixed to the window, so no panel that clips can cut it, and
+// never in the pointer's way; under the trait, or over it near the window's foot, and inside the window's edges.
+const TIER_LBL = { gold: "Gold", silver: "Silver", bronze: "Bronze" };
+const TraitCard = () => {
+  const [at, setAt] = useState(null), [pos, setPos] = useState(null), ref = useRef(null);
+  useEffect(() => {
+    const find = (n) => (n && n.closest ? n.closest("[data-trait]") : null);
+    const show = (e) => { const el = find(e.target); setAt(a => (!el ? null : a?.el === el ? a : { id: el.getAttribute("data-trait"), el })); };
+    const leave = (e) => { if (!e.relatedTarget) setAt(null); };
+    const hide = () => setAt(null);
+    document.addEventListener("pointerover", show); document.addEventListener("focusin", show);
+    document.addEventListener("pointerout", leave); document.addEventListener("focusout", leave);
+    window.addEventListener("scroll", hide, true); window.addEventListener("resize", hide);
+    return () => {
+      document.removeEventListener("pointerover", show); document.removeEventListener("focusin", show);
+      document.removeEventListener("pointerout", leave); document.removeEventListener("focusout", leave);
+      window.removeEventListener("scroll", hide, true); window.removeEventListener("resize", hide);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (!at || !ref.current) return;
+    const r = at.el.getBoundingClientRect(), c = ref.current.getBoundingClientRect(), M = 8, G = 6;
+    const left = Math.max(M, Math.min(window.innerWidth - c.width - M, r.left + r.width / 2 - c.width / 2));
+    const top = r.bottom + G + c.height > window.innerHeight - M ? Math.max(M, r.top - G - c.height) : r.bottom + G;
+    setPos({ el: at.el, left, top });
+  }, [at]);
+  const b = at && BADGE_BY_ID[at.id];
+  if (!b) return null;
+  const placed = pos && pos.el === at.el ? pos : null;
+  return (
+    <div ref={ref} className="ux-tcard" role="tooltip" style={placed ? { left: placed.left, top: placed.top } : { left: 0, top: 0, visibility: "hidden" }}>
+      <div className="ux-tcard-h">
+        <img src={`${import.meta.env.BASE_URL}player-badges/${b.id}.svg`} alt="" width={40} height={40} draggable={false} />
+        <div><b>{b.name}</b><span className={"ux-tcard-tier ux-" + b.tier}>{TIER_LBL[b.tier]}</span></div>
+      </div>
+      {TRAIT_DOC[b.id] && <p>{TRAIT_DOC[b.id]}</p>}
+    </div>);
 };
 const PlayerShot = ({ name, size, style }) => {
   const chain = shotChain(name);
@@ -5975,7 +6016,7 @@ export default function App() {
                           {badges && (p.badges || []).length > 0 && (
                             <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: cf(3), display: "flex", gap: cf(1.5) }}>
                               {p.badges.map(id => BADGE_BY_ID[id] && (
-                                <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} title={BADGE_BY_ID[id].name}
+                                <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id}
                                   draggable={false} style={{ width: cf(12), height: cf(12), display: "block" }} />))}
                             </span>)}
                         </div>); })}
@@ -8400,8 +8441,8 @@ export default function App() {
     const to = Array.isArray(c.to) ? c.to : [], from = Array.isArray(c.from) ? c.from : [];
     const add = to.filter(x => !from.includes(x)), rem = from.filter(x => !to.includes(x));
     return (<span className="ux-chg">
-      {add.map(id => <span key={"+" + id} className="ux-chg-bd"><b className="ux-chg-up">+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
-      {rem.map(id => <span key={"-" + id} className="ux-chg-bd ux-chg-o"><b className="ux-chg-dn">&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
+      {add.map(id => <span key={"+" + id} className="ux-chg-bd" data-trait={id}><b className="ux-chg-up">+</b><BadgeIcon id={id} size={18} />{BADGE_BY_ID[id]?.name}</span>)}
+      {rem.map(id => <span key={"-" + id} className="ux-chg-bd ux-chg-o" data-trait={id}><b className="ux-chg-dn">&#8722;</b><BadgeIcon id={id} size={18} /><s>{BADGE_BY_ID[id]?.name}</s></span>)}
     </span>);
   };
   // The per-season stats table: the six boards merged to a row per player, every recorded stat a
@@ -11686,6 +11727,16 @@ export default function App() {
   // A line of facts with a dot between them.
   const edDots = (...xs) => xs.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && <span className="ux-ed-dot">&middot;</span>}{x}</Fragment>);
   // The national sides as a side picker's choices, and the sides this person may send a man to.
+  // THE TRAITS, PICKED FROM A LIST (user, 11 October 2026): under each tier every trait by its art and name, ticked when
+  // the man carries it; each row toggles, and hovering one shows its card. toggle(id, on) gives or takes it.
+  const edTraitList = (sel, toggle) => (
+    <div className="ux-ed-tlist">{["gold", "silver", "bronze"].map(tier => (
+      <div key={tier} className="ux-ed-tcol" role="group" aria-label={TIER_LBL[tier] + " Traits"}>
+        <div className={"ux-ed-th ux-" + tier}>{TIER_LBL[tier]}</div>
+        {BADGES.filter(b => b.tier === tier).map(b => { const on = (sel || []).includes(b.id);
+          return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-trow" + (on ? " ux-on" : "")} aria-pressed={on}
+            onClick={() => toggle(b.id, on)}><BadgeIcon id={b.id} size={20} /><span>{b.name}</span><i className="ux-ed-tbox" aria-hidden="true">{uxIcon("check", "ux-xs")}</i></button>; })}
+      </div>))}</div>);
   const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
     .map(([c, n]) => ({ k: c, name: n, team: natTeamByCode.get(c), code: c }))]];
   // An editor's new player of another nation: the rating he must stay below, his nation's level (rules.js natLevel), or 0
@@ -11975,9 +12026,7 @@ export default function App() {
               {fact("Rating", uxBadge(p.ovr), <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} defaultValue={p.ovr} aria-label="Rating" style={mono}
                 onBlur={e => { const v = Math.round(+e.target.value); if (v >= 25 && v <= 99 && v !== p.ovr) setP({ ovr: v }); }} />)}
               {fact("Traits", badgeOrder(p.badges).length ? <span className="ux-ed-traits">{badgeOrder(p.badges).map(b => <BadgeIcon key={b} id={b} size={20} />)}</span> : "None",
-                <span className="ux-ed-traits">{BADGES.map(b => { const on = (p.badges || []).includes(b.id);
-                  return <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + (on ? " ux-on" : "")} title={b.name} aria-pressed={on}
-                    onClick={() => setP({ badges: badgeOrder(on ? p.badges.filter(x => x !== b.id) : [...(p.badges || []), b.id]) })}><BadgeIcon id={b.id} size={22} /></button>; })}</span>)}
+                edTraitList(p.badges, (id, on) => setP({ badges: badgeOrder(on ? p.badges.filter(x => x !== id) : [...(p.badges || []), id]) })))}
             </dl>))}
           {uxPanel("Sides", null, (
             <div className="ux-ed-sides">
@@ -12204,9 +12253,7 @@ export default function App() {
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
               {k !== "teams" && field("Rating", <input className={"ux-ed-in ux-ed-num" + (cap != null && !edUnderCap(f.nat, f.ovr) ? " ux-need" : "")} type="number" min={25} max={cap != null ? cap - 1 : 99}
                 placeholder={overseer ? "25 To 99" : cap != null ? `Below ${cap}` : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
-              {overseer && k === "players" && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => (
-                <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + ((f.badges || []).includes(b.id) ? " ux-on" : "")} title={b.name}
-                  onClick={() => upd({ badges: (f.badges || []).includes(b.id) ? f.badges.filter(x => x !== b.id) : [...(f.badges || []), b.id] })}><BadgeIcon id={b.id} size={22} /></button>))}</span>)}
+              {overseer && k === "players" && field("Traits", edTraitList(f.badges, (id, on) => upd({ badges: on ? f.badges.filter(x => x !== id) : [...(f.badges || []), id] })))}
               {k === "teams" && <>
                 {(overseer || (scope.nations || []).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
                 {field("League", sel("League", f.group, leagues.map(g => [g, g]), v => upd({ group: v })))}
@@ -12587,9 +12634,7 @@ export default function App() {
                 max={edCapOf(np.nat || nation) != null ? edCapOf(np.nat || nation) - 1 : 99} aria-label="Rating"
                 placeholder={overseer ? "25 To 99" : edCapOf(np.nat || nation) != null ? `Below ${edCapOf(np.nat || nation)}` : "Blank"}
                 value={np.ovr || ""} onChange={e => setNp({ ovr: e.target.value, auto: false })} style={mono} />)}
-              {overseer && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => { const on = (np.badges || []).includes(b.id);
-                return <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + (on ? " ux-on" : "")} title={b.name} aria-pressed={on}
-                  onClick={() => setNp({ badges: on ? np.badges.filter(x => x !== b.id) : [...(np.badges || []), b.id] })}><BadgeIcon id={b.id} size={20} /></button>; })}</span>)}
+              {overseer && field("Traits", edTraitList(np.badges, (id, on) => setNp({ badges: on ? np.badges.filter(x => x !== id) : [...(np.badges || []), id] })))}
             </dl>
             <div className="ux-ed-npf">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
@@ -12888,7 +12933,7 @@ export default function App() {
         <colgroup><col style={{ width: 190 }} /><col style={{ width: 80 }} /><col /></colgroup>
         <thead><tr><th>Trait</th><th>Tier</th><th>How He Plays</th></tr></thead>
         <tbody>{BADGES.map(b => (
-          <tr key={b.id}><td><span className="ux-doc-chip"><BadgeIcon id={b.id} size={18} />{b.name}</span></td>
+          <tr key={b.id}><td><span className="ux-doc-chip" data-trait={b.id}><BadgeIcon id={b.id} size={18} />{b.name}</span></td>
             <td className={"ux-doc-tier ux-" + b.tier}>{b.tier[0].toUpperCase() + b.tier.slice(1)}</td><td>{TRAIT_DOC[b.id] || ""}</td></tr>))}</tbody>
       </table>);
     // What each style pays or is paid at kick-off, in rating points on every man (ME_MIND_PRICE), lowest first.
@@ -13717,7 +13762,7 @@ export default function App() {
           </>), true)}
           {traits.length > 0 && uxPanel("Traits", null, (
             <div className="ux-pbody ux-fit">{traits.map(b => (
-              <div key={b.id} className="ux-trait"><BadgeIcon id={b.id} size={28} /><b>{b.name}</b><span>{b.tier[0].toUpperCase() + b.tier.slice(1)}</span></div>))}</div>))}
+              <div key={b.id} className="ux-trait" data-trait={b.id}><BadgeIcon id={b.id} size={28} /><b>{b.name}</b><span>{b.tier[0].toUpperCase() + b.tier.slice(1)}</span></div>))}</div>))}
         </div>
         <div className="ux-col">
           {uxPanel("Season Stats", years.length > 0 && uxPick("Season", String(year), years.map(y => [String(y), uxSeasonLabel(y)]), v => setUxPlSel({ who: name, y: +v })),
@@ -16746,6 +16791,7 @@ export default function App() {
         <p>The engine needs a landscape window at least <b>{MIN_WINDOW_W}px</b> wide. Widen the window, rotate the device or open it on a desktop.</p>
       </div>
       <div className="ux-app">
+        <TraitCard />
         {renderUxTopBar()}
         {renderUxPageBar()}
         <main className="ux-main">
