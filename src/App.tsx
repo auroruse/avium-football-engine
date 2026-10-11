@@ -11734,7 +11734,7 @@ export default function App() {
       <div key={tier} className="ux-ed-tcol" role="group" aria-label={TIER_LBL[tier] + " Traits"}>
         <div className={"ux-ed-th ux-" + tier}>{TIER_LBL[tier]}</div>
         {BADGES.filter(b => b.tier === tier).map(b => { const on = (sel || []).includes(b.id);
-          return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-trow" + (on ? " ux-on" : "")} aria-pressed={on}
+          return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-tpick" + (on ? " ux-on" : "")} aria-pressed={on}
             onClick={() => toggle(b.id, on)}><BadgeIcon id={b.id} size={20} /><span>{b.name}</span><i className="ux-ed-tbox" aria-hidden="true">{uxIcon("check", "ux-xs")}</i></button>; })}
       </div>))}</div>);
   const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
