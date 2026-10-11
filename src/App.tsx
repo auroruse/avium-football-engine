@@ -27,7 +27,7 @@ import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data
 import editorsRec from "./data/editors.json";
 // Where every nation and city sits on the Avium Map (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
-import { OVERSEER, isNational, owns, planSave } from "./data/rules.js";
+import { OVERSEER, isNational, natLevel, owns, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
 // The position grid and the fit cost (src/data/positions.js), shared with the registry server.
@@ -11688,6 +11688,10 @@ export default function App() {
   // The national sides as a side picker's choices, and the sides this person may send a man to.
   const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
     .map(([c, n]) => ({ k: c, name: n, team: natTeamByCode.get(c), code: c }))]];
+  // An editor's new player of another nation: the rating he must stay below, his nation's level (rules.js natLevel), or 0
+  // when it has none; null when nothing limits him (the editor's own nationals, and the overseer's).
+  const edCapOf = (nat) => (overseer || !nat || (scope.nations || []).includes(nat) ? null : natLevel(curRecs, nat) ?? 0);
+  const edUnderCap = (nat, v) => { const c = edCapOf(nat); return c == null || (+v >= 25 && +v < c); };
   const edSideChoices = (none, clubsOnly) => [...(none ? [[null, [{ k: "", name: "No Side" }]]] : []),
     ...edSides.map(([h, l]) => [h, l.filter(t => !clubsOnly || !isNational(t)).map(t => ({ k: teamKey(t), name: t.name.trim(), team: teamOfKey(teamKey(t)), code: t.code }))]).filter(([, l]) => l.length)];
   // MOVES on the records, each into the cart. A man released from a club keeps his last position for whoever signs him.
@@ -12101,7 +12105,7 @@ export default function App() {
     const rated = list.every(m => !m.ovr || (+m.ovr >= 25 && +m.ovr <= 99));
     const fieldsOf = () => ({ what: "batch", name: `${list.length} New Players`, side: f.side || null,
       men: list.map(m => ({ name: m.name, pos: m.pos, nat: m.nat, born: m.born, ovr: num(m.ovr) })) });
-    const ready = list.length > 0 && list.length <= 40 && !bad.length && rated && (!overseer || !blanks);
+    const ready = list.length > 0 && list.length <= 40 && !bad.length && rated && (!overseer || !blanks) && list.every(m => edUnderCap(m.nat, m.ovr));
     return (
       <div className="ux-ed-rec">
         {uxPanel(review ? "Review New Players" : "New Players", review ? (f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null) : edManyToggle(f), (
@@ -12109,7 +12113,7 @@ export default function App() {
             {!review && <dl className="ux-ed-dl">
               {field("Players", <textarea className="ux-ed-in ux-ed-ta" rows={7} spellCheck={false} aria-label="Players, One A Line"
                 placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB\nKoji MINAMI, ST"} value={f.text || ""} onChange={e => relist({ text: e.target.value })} />)}
-              {field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => relist({ nat: it.k })} />)}
+              {field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => relist({ nat: it.k })} />)}
               {field("Ages", <span className="ux-ed-born">
                 <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={f.amin ?? 18} onChange={e => relist({ amin: e.target.value })} style={mono} />
                 <span className="ux-ed-agel">To</span>
@@ -12129,8 +12133,8 @@ export default function App() {
                   <td><span className="ux-fx">{natOptions.name.get(m.nat) || m.nat || "–"}</span></td>
                   <td style={mono}>{m.born ? uxDate(m.born) : "–"}</td>
                   <td className="ux-n" style={mono}>{m.born ? ageOf(m.born) : "–"}</td>
-                  <td className="ux-c"><input className={"ux-ed-in ux-ed-ovrin" + (review && !(+m.ovr > 0) ? " ux-need" : "")} aria-label={"Rating, " + m.name}
-                    placeholder="–" style={mono} value={m.ovr ?? ""} onChange={e => upd({ list: list.map((x, j) => (j === i ? { ...x, ovr: e.target.value } : x)) })} /></td>
+                  <td className="ux-c"><input className={"ux-ed-in ux-ed-ovrin" + ((review && !(+m.ovr > 0)) || !edUnderCap(m.nat, m.ovr) ? " ux-need" : "")} aria-label={"Rating, " + m.name}
+                    placeholder={edCapOf(m.nat) != null ? "<" + edCapOf(m.nat) : "–"} style={mono} value={m.ovr ?? ""} onChange={e => upd({ list: list.map((x, j) => (j === i ? { ...x, ovr: e.target.value } : x)) })} /></td>
                   <td>{review && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + m.name}
                     onClick={() => upd({ list: list.filter((_, j) => j !== i) })}>{uxIcon("close", "ux-s")}</button>}</td>
                 </tr>))}</tbody></table>
@@ -12180,8 +12184,9 @@ export default function App() {
         stadium: (f.ground || "").trim() + (String(f.cap || "").trim() ? ` (${String(f.cap).trim()})` : ""), location: f.city || "", group: f.group || "",
         formation: f.formation || "4-3-3", manager: f.manager || null, squad };
     };
+    const cap = k === "players" ? edCapOf(f.nat) : null;
     const ready = (f.name || "").trim() && (k === "teams" ? f.code && f.group && f.city && (f.ground || "").trim() && squad.slice(0, 11).every(Boolean) && squad.filter(Boolean).length === 16
-      : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && (k !== "players" || f.pos) && (k !== "managers" || f.style));
+      : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && edUnderCap(k === "players" ? f.nat : null, f.ovr) && (k !== "players" || f.pos) && (k !== "managers" || f.style));
     return (
       <div className="ux-ed-rec">
         {uxPanel(review ? `Review New ${kind}` : `New ${kind}`, review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span>
@@ -12189,7 +12194,7 @@ export default function App() {
           <div className="ux-ed-form">
             <dl className="ux-ed-dl">
               {field("Name", <input className="ux-ed-in" placeholder={k === "teams" ? "Club Name" : "Given Name SURNAME"} value={f.name || ""} onChange={e => upd({ name: e.target.value })} />)}
-              {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
+              {k !== "teams" && field("Nationality", <UxSidePick label="Nationality" value={f.nat || ""} groups={edNatChoices(overseer || k === "players")} placeholder="Search Nations" onPick={it => upd({ nat: it.k })} />)}
               {k !== "teams" && field("Date Of Birth", edBornAge(f.born, f.age, upd, k === "managers" ? 90 : 60))}
               {k === "players" && field("Position", sel("Position", f.pos, Object.keys(POS_NAME).map(c => [c, `${c} ${POS_NAME[c]}`]), v => upd({ pos: v })))}
               {k === "players" && field("Second Position", (
@@ -12197,7 +12202,8 @@ export default function App() {
                   <option value="">None</option>{Object.keys(POS_NAME).filter(c => c !== f.pos).map(c => <option key={c} value={c}>{c} {POS_NAME[c]}</option>)}</select>{uxIcon("caret", "ux-xs")}</label>))}
               {k === "players" && field("Joins", <UxSidePick label="Joins" value={f.side || ""} groups={edSideChoices(true)} placeholder="Search Sides" onPick={it => upd({ side: it.k })} />)}
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
-              {k !== "teams" && field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
+              {k !== "teams" && field("Rating", <input className={"ux-ed-in ux-ed-num" + (cap != null && !edUnderCap(f.nat, f.ovr) ? " ux-need" : "")} type="number" min={25} max={cap != null ? cap - 1 : 99}
+                placeholder={overseer ? "25 To 99" : cap != null ? `Below ${cap}` : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
               {overseer && k === "players" && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => (
                 <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + ((f.badges || []).includes(b.id) ? " ux-on" : "")} title={b.name}
                   onClick={() => upd({ badges: (f.badges || []).includes(b.id) ? f.badges.filter(x => x !== b.id) : [...(f.badges || []), b.id] })}><BadgeIcon id={b.id} size={22} /></button>))}</span>)}
@@ -12516,7 +12522,8 @@ export default function App() {
               <div className="ux-ed-rollf">
                 <span className="ux-cb-when">Rolls <span style={mono}>{rolls}</span>, Keeps <span style={mono}>{typed}</span> Typed</span>
                 <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(T >= 25 && T <= 99) || !rolls}
-                  onClick={() => updC({ squad: rollSquad(c.squad, slabs, T, (id) => recNow(id)?.ovr) })}>{uxIcon("dice", "ux-s")}Roll</button>
+                  onClick={() => updC({ squad: rollSquad(c.squad, slabs, T, (id) => recNow(id)?.ovr, Math.random,
+                    (v) => { const lim = edCapOf(v.nat || nation); return lim == null ? 99 : lim - 1; }) })}>{uxIcon("dice", "ux-s")}Roll</button>
               </div>
             </div></>); })()}
         </span>
@@ -12553,7 +12560,7 @@ export default function App() {
             <textarea className="ux-ed-in ux-ed-ta" rows={6} spellCheck={false} aria-label="Players, One A Line" placeholder={"Kenji MORISHITA, GK\nShohei KUWABARA, CB, RB"}
               value={imp.text} onChange={e => setImp({ text: e.target.value })} />
             <dl className="ux-ed-dl ux-ed-dl-n ux-ed-npdl">
-              {field("Nationality", <UxSidePick label="Nationality" value={imp.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setImp({ nat: it.k })} />)}
+              {field("Nationality", <UxSidePick label="Nationality" value={imp.nat || nation} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => setImp({ nat: it.k })} />)}
               {field("Ages", <span className="ux-ed-born">
                 <input className="ux-ed-in ux-ed-age" type="number" min={14} max={60} aria-label="Youngest" value={imp.amin ?? 18} onChange={e => setImp({ amin: e.target.value })} style={mono} />
                 <span className="ux-ed-agel">To</span>
@@ -12574,9 +12581,11 @@ export default function App() {
                 <option value="">Choose</option>{Object.keys(POS_NAME).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
               {field("Second", <span className="ux-pick ux-ed-sel"><select aria-label="Second Position" value={np.pos2 || ""} onChange={e => setNp({ pos2: e.target.value })}>
                 <option value="">None</option>{Object.keys(POS_NAME).filter(x => x !== np.pos).map(x => <option key={x} value={x}>{x} {POS_NAME[x]}</option>)}</select>{uxIcon("caret", "ux-xs")}</span>)}
-              {field("Nationality", <UxSidePick label="Nationality" value={np.nat || nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => setNp({ nat: it.k })} />)}
+              {field("Nationality", <UxSidePick label="Nationality" value={np.nat || nation} groups={edNatChoices(true)} placeholder="Search Nations" onPick={it => setNp({ nat: it.k })} />)}
               {field("Born", edBornAge(np.born, np.age, setNp, 60))}
-              {field("Rating", <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} placeholder={overseer ? "25 To 99" : "Blank"} aria-label="Rating"
+              {field("Rating", <input className={"ux-ed-in ux-ed-num" + (+np.ovr > 0 && !edUnderCap(np.nat || nation, np.ovr) ? " ux-need" : "")} type="number" min={25}
+                max={edCapOf(np.nat || nation) != null ? edCapOf(np.nat || nation) - 1 : 99} aria-label="Rating"
+                placeholder={overseer ? "25 To 99" : edCapOf(np.nat || nation) != null ? `Below ${edCapOf(np.nat || nation)}` : "Blank"}
                 value={np.ovr || ""} onChange={e => setNp({ ovr: e.target.value, auto: false })} style={mono} />)}
               {overseer && field("Traits", <span className="ux-ed-traits">{BADGES.map(b => { const on = (np.badges || []).includes(b.id);
                 return <button key={b.id} type="button" className={"ux-btnreset ux-ed-trait" + (on ? " ux-on" : "")} title={b.name} aria-pressed={on}
@@ -12584,7 +12593,7 @@ export default function App() {
             </dl>
             <div className="ux-ed-npf">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
-              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born}
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born || (+np.ovr > 0 && !edUnderCap(np.nat || nation, np.ovr))}
                 onClick={() => { const { at, age, pos2, ...man } = np, v = { ...man, pos: posList([man.pos, pos2]), name: man.name.trim(), nat: man.nat || nation };
                   if (at != null) upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: x.squad.map((y, k) => (k === at ? v : y)) } : x)), np: null });
                   else put(v, v.pos); }}>{np.at != null ? "Save" : "Add"}</button></div>

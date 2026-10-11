@@ -183,6 +183,7 @@ export const DOCS = [
     ] },
     { id: "traits", title: "Traits", body: [
       "A trait is what a player is known for: a habit in how he plays, and an edge in the one skill the habit needs. A trait does the same for everyone who has it, and a player without one plays exactly to his rating. Traits come in three tiers, gold, silver and bronze, by how much they are worth in a match.",
+      "Only players rated 75 or more carry traits: one at 75 to 79, two at 80 to 89, three from 90. Bronze traits open at 75, silver at 80 and gold at 85, and a player's best trait is of the best tier his rating opens, the rest from the tiers below. A keeper carries Shot Stopper or Commanding, and from 80 one of Long Ball, Short Passing or Composed. Each trait goes only to positions it suits, and inside a tier every trait is held by about as many players as every other.",
       { live: "traits" },
     ] },
     { id: "side-strength", title: "Side Strength", body: [
@@ -333,7 +334,8 @@ export const DOCS = [
         ["New Manager", "Name, nationality, date of birth, style and a rating."],
         ["New Team", "A club in one of your nation's leagues: name, code, kits, ground and capacity, a city from the map, league, formation and manager, and a squad of sixteen from free agents and your own players."],
       ] },
-      "An editor makes men of their own nation only. Beside a date of birth, Or Age picks a random date that gives that age in the world's own time, and the die picks another. A rating can be proposed or left blank, and the overseer sets every blank one before letting the man in.",
+      "Beside a date of birth, Or Age picks a random date that gives that age in the world's own time, and the die picks another. A rating can be proposed or left blank, and the overseer sets every blank one before letting the man in.",
+      "An editor's new managers are of their own nation. A new player can be of any nation, but one from outside the editor's own needs a rating below that nation's level, its national side's rating, and cannot be left blank: the Rating box shows the limit, and Roll Ratings in New League keeps him under it.",
     ] },
     { id: "many", title: "Many Players At Once", body: [
       "Many, at the top of New Player, sends a whole list as one request. Type or paste the players a line each, as a name, a comma and a position code, with a second position after another comma if he has one: Kenji MORISHITA, GK or Shohei KUWABARA, CB, RB. The codes are the ones in Positions, under Ratings. A tab does for the comma, so two columns copied from a spreadsheet work as they are. The list is sorted keepers first and on up the pitch.",

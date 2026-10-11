@@ -44,6 +44,22 @@ const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "formation", "style"
 const BY_REQUEST = new Set(["code", "stadium", "location"]);
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
 const world = (t) => (t.file === "ARTERRA" ? "arterra" : "avium");
+// A NATION'S LEVEL: its national side's rating as the app shows it, the average of its squad's ratings to a tenth and
+// then to a whole number. An editor may make a player of another nation rated below it (user, 11 October 2026). Null
+// when the nation has no national side with a rated man.
+export function natLevel(rec, code) {
+  const t = rec.teams.find(x => isNational(x) && x.code === code);
+  if (!t) return null;
+  const ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
+  const rs = squadIds(t).map(id => ovr.get(id)).filter(v => typeof v === "number");
+  return rs.length ? Math.round(Math.round(rs.reduce((a, b) => a + b, 0) / rs.length * 10) / 10) : null;
+}
+// What stops an editor's new player of another nation: none when he is rated below that nation's level.
+function foreignProblem(rec, nat, ovr) {
+  const lvl = natLevel(rec, nat);
+  if (lvl == null) return "not a nationality of yours";
+  return rating(ovr) && ovr < lvl ? null : `a ${rec.teams.find(x => isNational(x) && x.code === nat).name.trim()} national needs a rating below ${lvl}`;
+}
 
 // Whether each changed value can go into the records and the sheets written from them. A sheet is tab-separated, so a
 // tab or a line break in a name would break every tool that reads it. A code names one team in its world. (Badges and
@@ -168,7 +184,8 @@ function tradeDraft(rec, d, tr, h) {
 }
 
 // A NEW RECORD asked for, checked: { what: "players" | "managers" | "teams", ...its fields }. An editor's must be of
-// their own nations, a player joining one of their own sides; the overseer's may be anything.
+// their own nations, a player joining one of their own sides, or a player of another nation rated below its level; the
+// overseer's may be anything.
 function newProblems(rec, n, scope, over, h) {
   const out = [], label = n?.name || "A new record", bad = (what) => out.push(`${label}: ${what}`);
   if (!n || !["players", "managers", "teams", "leagues", "batch"].includes(n.what)) return ["Not a new record"];
@@ -177,7 +194,8 @@ function newProblems(rec, n, scope, over, h) {
   if (!text(n.name, n.what === "teams" ? 40 : 60)) bad("not a usable name");
   const mine = (code) => over || scope.nations.includes(code);
   if (n.what !== "teams") {
-    if (!nationCode(n.nat)) bad("not a nationality"); else if (!mine(n.nat)) bad("not a nationality of yours");
+    if (!nationCode(n.nat)) bad("not a nationality");
+    else if (!mine(n.nat)) { const why = n.what === "players" ? foreignProblem(rec, n.nat, n.ovr) : "not a nationality of yours"; if (why) bad(why); }
     if (!(n.born && birthDateOk(n.born))) bad("a date of birth is a real date, for a man at least 14");
     // An editor may leave the rating for the overseer, who sets it to let the man in.
     if (over ? !rating(n.ovr) : n.ovr != null && !rating(n.ovr)) bad("a rating is a whole number from 25 to 99");
@@ -212,12 +230,14 @@ function newProblems(rec, n, scope, over, h) {
   return out;
 }
 // A new man inside a request (a league's club, a list of new players): an editor's of their own nation, his rating left for
-// the overseer if they like, who must set it to let him in; traits only from the overseer.
-function newManProblems(m, kind, scope, over, bad) {
+// the overseer if they like, who must set it to let him in; or a player of another nation, rated below its level. Traits
+// only from the overseer.
+function newManProblems(rec, m, kind, scope, over, bad) {
   const w = m?.name || (kind === "players" ? "A new player" : "A new manager");
   if (!m || typeof m !== "object") { bad(`${w}: not a ${kind === "players" ? "player" : "manager"}`); return; }
   if (!text(m.name, 60)) bad(`${w}: not a usable name`);
-  if (!nationCode(m.nat)) bad(`${w}: not a nationality`); else if (!over && !scope.nations.includes(m.nat)) bad(`${w}: not a nationality of yours`);
+  if (!nationCode(m.nat)) bad(`${w}: not a nationality`);
+  else if (!over && !scope.nations.includes(m.nat)) { const why = kind === "players" ? foreignProblem(rec, m.nat, m.ovr) : "not a nationality of yours"; if (why) bad(`${w}: ${why}`); }
   if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
   if (kind === "players" && !posOk(m.pos)) bad(`${w}: a player has one or two positions`);
@@ -238,7 +258,7 @@ function placesForMen(t, men, h) {
 function batchProblems(rec, n, scope, over, h) {
   const out = [], men = Array.isArray(n.men) ? n.men : [];
   if (!men.length || men.length > 40) out.push("A list of new players holds one to forty");
-  for (const m of men) newManProblems(m, "players", scope, over, (what) => out.push(what));
+  for (const m of men) newManProblems(rec, m, "players", scope, over, (what) => out.push(what));
   if (n.side) {
     const t = rec.teams.find(x => teamKey(x) === n.side);
     if (!t) out.push("No such side");
@@ -267,7 +287,7 @@ function leagueProblems(rec, n, scope, over) {
   if (!clubs.length || clubs.length > 40) bad(L, "a league starts with one to forty clubs");
   const { clubOf, mgrClubOf } = placesOf(rec), codes = new Set(), men = new Set(), mgrs = new Set();
   const ownedAt = (at) => !at || owns(scope, rec.teams.find(t => teamKey(t) === at));
-  const newMan = (m, kind, C) => newManProblems(m, kind, scope, over, (what) => bad(C, what));
+  const newMan = (m, kind, C) => newManProblems(rec, m, kind, scope, over, (what) => bad(C, what));
   for (const c of clubs) {
     if (!isNew(c)) { bad(L, "not a club"); continue; }
     const C = c.name || "A founding club";

@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "rules-")), ENTRY = join(DIR, "entry.js"), OUT = join(DIR, "rules.mjs");
-writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
+writeFileSync(ENTRY, ["data/rules.js", "data/draft.js", "data/squads.js", "data/positions.js", "data/sheets.js", "data/roll.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { sposFor } from ${JSON.stringify(join(ROOT, "src/engine/formations.ts"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
 const R = await import(pathToFileURL(OUT).href);
@@ -92,8 +92,18 @@ const freeA = vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr);
   const no = settle(ED, r, "accept", {}, next); ok("an editor cannot let him in", no.errors?.length > 0, no);
   const yes = settle(OV, r, "accept", { edits: { ovr: 66 } }, next), n2 = yes.apply && after(yes.apply, next), made = n2?.players.find(p => p.name === "Hans MÜLLER");
   ok("the overseer lets him in as edited, onto his side", !yes.errors.length && made?.ovr === 66 && ids(n2.teams.find(t => t.id === A.id)).includes(made.id), yes.errors); }
-{ const s = plan(ED, { new: [{ id: "n2", what: "players", name: "Taro YAMADA", nat: "NCH", born: "1912-03-04", pos: "CM", ovr: 70, side: "" }] });
-  ok("an editor's new player is of their own nation", s.errors.some(e => /not a nationality of yours/.test(e)), s.errors); }
+// Another nation's player, from an editor: rated below that nation's level, its national side's rating as the app shows it.
+const NCH_LVL = R.natLevel(rec, "NCH");
+const taro = (ovr) => ({ id: "n2", what: "players", name: "Taro YAMADA", nat: "NCH", born: "1912-03-04", pos: "CM", ovr, side: "" });
+{ const s = plan(ED, { new: [taro(NCH_LVL - 1)] }), r = s.requests.find(x => x.kind === "new");
+  ok("an editor may ask for another nation's player rated below its level", !s.errors.length && r?.rec.nat === "NCH", s.errors);
+  const yes = r && settle(OV, r, "accept");
+  ok("which the overseer lets in", !yes?.errors?.length && after(yes.apply).players.some(p => p.name === "Taro YAMADA" && p.ovr === NCH_LVL - 1), yes?.errors); }
+{ const at = plan(ED, { new: [taro(NCH_LVL)] }), blank = plan(ED, { new: [taro(null)] });
+  ok("but not at its level", at.errors.some(e => e === `Taro YAMADA: a Nichirin national needs a rating below ${NCH_LVL}`), at.errors);
+  ok("nor unrated", blank.errors.some(e => /needs a rating below/.test(e)), blank.errors); }
+{ const s = plan(ED, { new: [{ id: "n2", what: "managers", name: "Taro YAMADA", nat: "NCH", born: "1880-03-04", style: "counterattack", ovr: 60 }] });
+  ok("an editor's new manager is of their own nation", s.errors.some(e => /not a nationality of yours/.test(e)), s.errors); }
 { const s = plan(ED, { new: [{ id: "n3", what: "managers", name: "Karl BAUER", nat: "ALE", born: "1890-05-06", style: "counterattack", ovr: 72 }] });
   const r = s.requests[0], yes = r && settle(OV, r, "accept");
   ok("a new manager is let in by the overseer", !s.errors.length && !yes.errors.length && after(yes.apply).managers.some(m => m.name === "Karl BAUER" && m.style === "Counter-Attack"), [s.errors, yes?.errors]); }
@@ -140,6 +150,12 @@ let leagueReq;
   ok("the overseer cannot let it in with ratings blank", no.errors?.some(e => /a rating is a whole number/.test(e)), no.errors); }
 { const s = plan(ESU_ED, { new: [{ ...NEWL, nation: "NCH" }] });
   ok("an editor's league is of their own nation", s.errors.some(e => /not a nation of yours/.test(e)), s.errors); }
+{ const foreign = (ovr) => ({ ...NEWL, clubs: [{ ...NEWL.clubs[0], squad: NEWL.clubs[0].squad.map((v, i) => (i === 10 ? { ...v, nat: "NCH", ovr } : v)) }, NEWL.clubs[1]] });
+  const s = plan(ESU_ED, { new: [foreign(null)] }), t = plan(ESU_ED, { new: [foreign(NCH_LVL - 1)] });
+  ok("a founding club's man of another nation needs a rating below its level", s.errors.some(e => /a Nichirin national needs a rating below/.test(e)) && !t.errors.length, [s.errors, t.errors]); }
+{ const sq = Array.from({ length: 16 }, (_, i) => ({ pos: i ? "CM" : "GK", ovr: "", nat: i % 2 ? "NCH" : "ESU" })), lab = sq.map(v => v.pos);
+  const rolled = R.rollSquad(sq, lab, 80, () => null, Math.random, (v) => (v.nat === "NCH" ? 70 : 99));
+  ok("the rating roll keeps such a man under his ceiling", rolled.every(v => v.nat !== "NCH" || +v.ovr <= 70) && rolled.some(v => v.nat === "ESU" && +v.ovr > 70), rolled.map(v => v.nat + v.ovr)); }
 { const s = plan(ESU_ED, { new: [{ ...NEWL, clubs: [{ ...founding("SPK", []) }] }] });
   ok("a founding club's code is free", s.errors.some(e => /the code SPK is taken/.test(e)), s.errors); }
 { const rated = (c) => ({ ...c, manager: { ...c.manager, ovr: 70 }, squad: c.squad.map(v => v && { ...v, ovr: v.ovr ?? 60 }) });
@@ -172,8 +188,8 @@ let batchReq;
   const yes = settle(OV, batchReq, "accept", { edits: { men: LIST.men.map(m => ({ ...m, ovr: m.ovr ?? 60 })) } }), n = yes.apply && after(yes.apply);
   ok("rated, they come in as free agents with their positions", !yes.errors?.length && ["Erich EINS", "Fritz ZWEI", "Gustav DREI"].every(nm => { const p = n.players.find(x => x.name === nm);
     return p && p.ovr >= 25 && p.pos; }) && n.players.find(x => x.name === "Gustav DREI").ovr === 63, yes.errors); }
-{ const s = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", null, "NCH")] }] });
-  ok("an editor's list is of their own nationals", s.errors.some(e => /not a nationality of yours/.test(e)), s.errors); }
+{ const s = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", null, "NCH")] }] }), t = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", NCH_LVL - 1, "NCH")] }] });
+  ok("another nation's men in a list need ratings below its level", s.errors.some(e => /^Taro FREMD: a Nichirin national needs a rating below/.test(e)) && !t.errors.length, [s.errors, t.errors]); }
 { const s = plan(ED, { new: [{ ...LIST, side: teamKey(A) }] });
   ok("a list joining a full side is refused", s.errors.some(e => /has room for 0 of the 3/.test(e)), s.errors); }
 { const two = vacate(vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr), 14, h.labels(A), posFitCost, h.ovr);

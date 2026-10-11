@@ -6,15 +6,17 @@
 import { posFitCost } from "./positions.js";
 
 // squad: sixteen places, each empty, a record ID (a man on file) or a new man { pos, ovr, auto }.
-// labels: each place's position. ovrOf: a man on file's rating. Returns the squad with the rolled men rated, each
-// marked auto, so the next roll knows they are its own.
-export function rollSquad(squad, labels, target, ovrOf, rnd = Math.random) {
+// labels: each place's position. ovrOf: a man on file's rating. maxOf: the most a new man may be rated (an editor's man of
+// another nation stays below that nation's level). Returns the squad with the rolled men rated, each marked auto, so the
+// next roll knows they are its own.
+export function rollSquad(squad, labels, target, ovrOf, rnd = Math.random, maxOf = null) {
   const isNew = (v) => !!v && typeof v === "object";
   const n = squad.filter(Boolean).length, XI = Math.min(11, squad.length);
   const free = squad.map(v => isNew(v) && (!(+v.ovr > 0) || !!v.auto));
   const val = squad.map((v, i) => (!v || free[i] ? null : isNew(v) ? +v.ovr : ovrOf(v) ?? null));
   const gauss = () => { let u = 0, w = 0; while (!u) u = rnd(); while (!w) w = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
-  const clamp = (x) => Math.max(25, Math.min(99, x));
+  const top = squad.map(v => (isNew(v) && maxOf ? Math.min(99, maxOf(v) ?? 99) : 99));
+  const clamp = (i, x) => Math.max(25, Math.min(top[i], x));
   const posOf = (i) => (isNew(squad[i]) && squad[i].pos) || labels[i];
   // The starters a bench man backs up: those at his position, else those at the nearest one.
   const over = (pos) => { let best = Infinity, at = [];
@@ -23,12 +25,12 @@ export function rollSquad(squad, labels, target, ovrOf, rnd = Math.random) {
     return at; };
   const backs = squad.map((v, i) => (i >= XI && v ? over(posOf(i)) : []));
   const cap = (i) => Math.min(...backs[i].map(k => val[k] ?? 99));
-  for (let k = 0; k < XI; k++) if (free[k]) val[k] = clamp(Math.round(target + 1.3 + gauss() * 2.3));
+  for (let k = 0; k < XI; k++) if (free[k]) val[k] = clamp(k, Math.round(target + 1.3 + gauss() * 2.3));
   // A rolled starter is never below a typed bench man he stands in front of.
   for (let i = XI; i < squad.length; i++) if (squad[i] && !free[i] && val[i] != null)
-    for (const k of backs[i]) if (free[k] && val[k] <= val[i]) val[k] = clamp(val[i] + 1 + Math.round(Math.abs(gauss()) * 2));
+    for (const k of backs[i]) if (free[k] && val[k] <= val[i]) val[k] = clamp(k, val[i] + 1 + Math.round(Math.abs(gauss()) * 2));
   for (let i = XI; i < squad.length; i++)
-    if (free[i]) val[i] = clamp((backs[i].length ? cap(i) : Math.round(target)) - 1 - Math.round(Math.abs(gauss()) * 3));
+    if (free[i]) val[i] = clamp(i, (backs[i].length ? cap(i) : Math.round(target)) - 1 - Math.round(Math.abs(gauss()) * 3));
   // The dice answers for its own men: a rolled bench man stays below every starter he backs up, and a rolled starter
   // above any bench man behind him. Two typed men out of order are not the dice's to fix.
   const ok = () => { for (let i = XI; i < squad.length; i++) {
@@ -40,7 +42,7 @@ export function rollSquad(squad, labels, target, ovrOf, rnd = Math.random) {
   let need = Math.round(target * n) - val.reduce((s, x) => s + (x ?? 0), 0);
   for (let t = 0; need !== 0 && idx.length && t < 5000; t++) {
     const i = idx[Math.floor(rnd() * idx.length)], s = Math.sign(need), was = val[i];
-    if (clamp(was + s) === was) continue;
+    if (clamp(i, was + s) === was) continue;
     val[i] = was + s;
     if (ok()) need -= s; else val[i] = was;
   }

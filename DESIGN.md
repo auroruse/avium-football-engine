@@ -61,6 +61,17 @@ positions were set from where everyone played on 11 October 2026: club slot, the
 differ), past sheets for a second, and the club substitutes nobody had placed drawn inside their bench group to cover
 their side's eleven.
 
+**Who carries traits** (Moukden and Kirin, 11 October 2026). Only players rated 75 or more: one at 75-79, two at 80-89,
+three from 90. Bronze opens at 75, silver at 80, gold at 85, and a man's best trait is of the best tier his rating opens
+(one of it at most), the rest from the tiers below. A keeper carries Shot Stopper or Commanding, split evenly at each
+rating, and from 80 one of Long Ball, Short Passing or Composed. Inside a tier every trait is held by as many men as
+every other, give or take one. A trait goes only to positions it suits: where `test/specs/badges.mjs` measured it, and
+Dead Ball, Long Shot and First Touch also for forwards, Tackler and Long Ball also for full-backs and central
+midfielders, so that every man can take one of his top tier. `test/traits.mjs` chose them (one min-cost flow: every
+man his count, the equal totals, a top-tier trait for all 340 who could take one, then the best fits from his career
+a game against men of his position at his rating, and his age); `write` keeps any traits a man already has and counts
+them, so a rerun only fills the men without. The overseer edits any man's traits on his page afterwards.
+
 **Who managed whom** is src/data/spells.js (Moukden and Kirin, 9 October 2026): the archive credits every season from
 1931/32 on (the first with player statistics) to a manager. Everyone has run his current sides since then, except at the
 sides that file lists, which name their managers in order and the season each took over. The sheets' moves of 6
@@ -377,7 +388,10 @@ rule. A nation with no club sheet gets one with its first league, and editors wi
 **New records** are requests the overseer answers. A new player: name, nationality, date of birth, a position and a second if he has one, the side he
 joins (one of the editor's own sides, or none) and the rating the editor proposes or leaves blank. A new manager: name,
 nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
-in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). Beside a date of birth, Or Age picks a random date
+in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). An editor's new player may be of another nation when
+rated below its level, its national side's rating as the app shows it (rules.js `natLevel`; user, 11 October 2026): his
+rating cannot be left blank, the Rating box shows the limit, and Roll Ratings keeps him under it. New managers stay the
+editor's own nationals. Beside a date of birth, Or Age picks a random date
 that gives that age in the world's own time, and a die picks another. **Many** on New Player, and **Import** on a founding club's squad,
 take new players a line each, "Name, position", or "Name, position, second position" (Moukden and Kirin, 11 October 2026): read keepers first and down the
 pitch, one nationality for them all, each age drawn from a range (18 to 32 to start) with a date of birth for it, ratings
