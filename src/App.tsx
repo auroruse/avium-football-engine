@@ -3444,13 +3444,19 @@ function parseSeasonReport(text) {
     const body = rows.slice(1).filter(r => !/^\|[\s:|-]+\|?$/.test(r)).map(cells);
     return [{ head, body }, i];
   };
-  const rounds = []; let final = null; const rest = []; let cur = null;
+  const rounds = []; let final = null; const rest = [], extra = []; let cur = null, ex = null;
   for (let i = 0; i < lines.length; i++) {
     const L = lines[i];
     const rm = L.match(/^##\s+Round\s+(\d+)/i);
-    if (rm) { cur = { n: +rm[1], fixtures: null, table: null }; rounds.push(cur); continue; }
+    if (rm) { ex = null; cur = { n: +rm[1], fixtures: null, table: null }; rounds.push(cur); continue; }
     if (/^###\s+Table after Round/i.test(L)) { continue; }
-    if (/^##\s+Final Table/i.test(L)) { cur = "final"; continue; }
+    if (/^##\s+Final Table/i.test(L)) { ex = null; cur = "final"; continue; }
+    // A LEAGUE SEASON'S OWN SECTIONS (user, 11 October 2026: NL2's promotion playoff). Any other `## Heading` opens a
+    // section of its own, everything up to the next `##`, which the season page shows as a tab beside the rounds, drawn
+    // the way a tournament's stages are.
+    const xm = L.match(/^##\s+([^#].*)$/);
+    if (xm) { ex = { name: xm[1].trim(), body: [] }; extra.push(ex); cur = null; continue; }
+    if (ex) { if (!/^---+\s*$/.test(L)) ex.body.push(L); continue; }
     if (L.trim().startsWith("|")) {
       const [tbl, ni] = readTable(i); i = ni - 1;
       if (cur === "final") { final = tbl; cur = null; }
@@ -3461,11 +3467,10 @@ function parseSeasonReport(text) {
     }
     if (/^#\s+/.test(L)) continue;                       // the title restates the page header
     if (/^---+\s*$/.test(L) || /^\s*$/.test(L)) { if (!cur) rest.push(L); continue; }
-    if (/^##\s+/.test(L)) { cur = null; rest.push(L); continue; }
     if (!cur) rest.push(L);
   }
   const restMd = rest.filter(L => !/^---+\s*$/.test(L)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  return { rounds, final, rest: restMd };
+  return { rounds, final, rest: restMd, extra };
 }
 // A tournament report: every `## Heading` is a tab; what sits above the first one is the
 // preamble. The converter guarantees the shape, so this stays a dumb splitter.
@@ -3487,7 +3492,7 @@ function seasonFaces(s, report) {
   const R = typeof report === "string" ? parseSeasonReport(report) : null;
   const T = R && !R.rounds.length ? parseTournTabs(report) : null;
   const tabs = [];
-  if (R && R.rounds.length) tabs.push({ name: "Rounds", league: R });
+  if (R && R.rounds.length) { tabs.push({ name: "Rounds", league: R }); for (const x of R.extra) tabs.push({ name: x.name, body: x.body }); }
   else if (T && T.tabs.length) for (const tb of T.tabs) tabs.push({ name: tb.name, body: tb.body });
   else if (R) tabs.push({ name: "Report", raw: report });
   if (Object.keys(s.boards || {}).length) tabs.push({ name: "Player Statistics", stats: true });
@@ -15317,7 +15322,10 @@ export default function App() {
     const text = lgMd[s.id.replace(/\.tsv$/i, ".md")], views = [];
     if (typeof text === "string") {
       const R = uxRep(s);
-      if (R && (R.rounds.length || R.final)) views.push({ id: "table", name: "Table", league: R });
+      if (R && (R.rounds.length || R.final)) {
+        views.push({ id: "table", name: "Table", league: R });
+        for (const x of R.extra) views.push({ id: urlSlug(x.name), name: uxTitle(x.name), body: x.body });
+      }
       else for (const tb of parseTournTabs(text).tabs) views.push({ id: urlSlug(tb.name), name: uxTitle(tb.name), body: tb.body });
     }
     if (Object.keys(s.boards || {}).length) views.push({ id: "player-stats", name: "Player Stats", stats: true });

@@ -57,6 +57,13 @@ table (the exporter adds `Scorers`, and a `### Table after Round N` beside it), 
 `## Final Table`. That shape drives the round stepper: pick a round, see its results next to the
 standings they produced.
 
+**A league season can carry sections of its own** after its `## Final Table`, each a `## Heading` of
+its own: NL2 1935 closes with `## Promotion Playoff`, its `### Quarter-finals`, `### Semi-finals` and
+`### Final` captions over knockout fixture tables in the formats below. Each shows as a tab beside the
+rounds, drawn the way a tournament's stages are, and a club's page lists those matches with its
+season. The table, the champion and the player boards stay the league's own: playoff statistics are
+not added to the season's boards.
+
 **Everything else** — every tournament — is the canonical tab format: each `## Heading` renders
 as a tab inside the season, what sits above the first `##` is the preamble, and a `### Sub`
 heading captions whatever follows it. The tab sets are fixed: a group tournament is

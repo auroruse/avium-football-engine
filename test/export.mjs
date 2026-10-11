@@ -38,6 +38,14 @@ console.log("\nleague season");
   ok("a final table closes it", !!R.final && R.final.body.length === 4, R.final?.body.length);
   ok("nothing is left over as prose", R.rest === "", R.rest.slice(0, 60));
   ok("no champion line", !/champions/i.test(md));
+  // A league season can carry sections of its own after its table (NL2 1935's promotion playoff), each a tab beside the
+  // rounds: the rounds and the table read exactly as before, and the section keeps its stages for the tab.
+  const po = md + "\n---\n\n## Promotion Playoff\n\n### Final\n\n| Match | Score |\n|---|---|\n| **Alpha** vs Gamma | 1-0 |\n";
+  const P = READER.parseSeasonReport(po);
+  ok("a playoff after the table leaves the rounds and the table alone", P.rounds.length === 2 && P.final?.body.length === 4 && P.rest === "", [P.rounds.length, P.final?.body.length, P.rest]);
+  ok("...and is a section of its own, its stage and its tie kept", P.extra.length === 1 && P.extra[0].name === "Promotion Playoff"
+     && P.extra[0].body.some(l => l === "### Final") && P.extra[0].body.some(l => l.includes("**Alpha** vs Gamma")), P.extra);
+  ok("a season without one has none", R.extra.length === 0, R.extra);
 }
 
 console.log("\nknockout cup, one leg, a shootout and extra time");
