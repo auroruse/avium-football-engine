@@ -14811,10 +14811,10 @@ export default function App() {
     return (
       <div className="ux-col ux-psc">
         <section className="ux-panel ux-plc" aria-label={t.name}>
-          <div className="ux-plc-ban ux-tmc-ban" style={{ ["--c1"]: c1, ["--c2"]: c2, color: ink }} role="link" tabIndex={0} aria-label={t.name}
+          <div className={"ux-plc-ban ux-tmc-ban" + (photo ? " ux-tmc-shot" : "")} style={{ ["--c1"]: c1, ["--c2"]: c2, color: photo ? "#fff" : ink }} role="link" tabIndex={0} aria-label={t.name}
             onClick={go} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }}>
             {photo && <div className="ux-tmc-photo"><StadiumImg name={st} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 0, border: "none" }} /></div>}
-            <div className="ux-tmc-crest"><TeamCrest team={t} size={84} /></div>
+            <div className="ux-tmc-crest"><TeamCrest team={t} size={72} /></div>
             <div className="ux-plc-id">
               <span className="ux-plc-first">{nt ? "National Team" + (r.conf ? " · " + r.conf : "") : t.league}</span>
               <span className="ux-plc-last">{t.name}</span>
