@@ -1,8 +1,12 @@
-// TRAITS FOR EVERY PLAYER (Moukden and Kirin, 11 October 2026), by the user's rules. Only players rated 75 or more
-// carry traits: one at 75-79, two at 80-89, three from 90. Bronze unlocks at 75, silver at 80, gold at 85, and a man's
-// best trait comes from the top tier his rating unlocks (one of it at most), the rest from the tiers below. A keeper
-// carries Shot Stopper or Commanding, the two split evenly at each rating, and from 80 one passing trait: Long Ball,
-// Short Passing or Composed. Inside each tier every trait is held by as many men as every other, give or take one.
+// TRAITS FOR EVERY PLAYER (Moukden and Kirin, 11 October 2026), by the user's rules. A trait costs its pips (gold 3,
+// silver 2, bronze 1) and a man's rating gives him a budget to spend on any tiers (src/data/badges.js budgetOf: 75-79
+// two points, 80-84 three, 85-89 four, 90 and over six), in at most two traits below 90 and three from 90; nobody under
+// 75 carries any. He spends all of it, so the men of one rating come in shapes -- at 80-84 a single gold, or a silver
+// and a bronze -- and each position and band is split evenly between its shapes, the men whose record leans hardest
+// towards one getting it ("Give a points budget to each OVR tier and distribute it between golds, silvers, bronzes
+// appropriately with differentiation"). A keeper carries Shot Stopper or Commanding, split evenly at each rating, and
+// from 80 one passing trait: Long Ball, Short Passing or Composed (every keeper trait is bronze, so a keeper has no
+// budget to spend beyond that). Inside each tier every trait is held by as many men as every other, give or take one.
 //
 // Which man gets which. A trait can go to any position where it means something in a match (OPEN, either of his two
 // positions), not only where it was measured (NATURAL, test/specs/badges.mjs): the first run kept each trait to its
@@ -14,13 +18,14 @@
 // can take. Among those his record decides: his career a game off the season boards, as the radar on his page draws
 // it (goals, assists, chances created, defensive actions, average rating; saves for a keeper), measured against men of
 // his own position at his own rating, with his age as a lean for the traits no figure shows. A man who already
-// carries traits keeps them, and they count in the totals. The choice is one min-cost flow: every man his count, the
-// equal totals, then as many top-tier traits as fit, then variety, then the best fits.
+// carries traits keeps them, and they count in the totals. The choice is one min-cost flow: every man his shape, the
+// equal totals, then variety, then the best fits.
 //
 //   node test/traits.mjs                 prints what it would give, tier by tier
 //   node test/traits.mjs write           writes the traits into src/data/players.json
 //   node test/traits.mjs list <file>     writes the review list, club by club, as TSV
 //   ... redo ...                         gives everyone rated under 90 his traits again (the 90s are the user's own)
+//   KEEP_SINCE=<commit> ... redo ...     ...and keeps every man whose traits changed since that commit (the user's picks)
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,16 +37,21 @@ const DIR = mkdtempSync(join(tmpdir(), "traits-")), ENTRY = join(DIR, "e.js"), O
 writeFileSync(ENTRY, ["data/badges.js", "data/icclock.js"].map(f => `export * from ${JSON.stringify(join(ROOT, "src", f))};`).join("\n")
   + `\nexport { dumpRecords } from ${JSON.stringify(join(ROOT, "src/data/draft.js"))};\n`);
 execFileSync(join(ROOT, "node_modules/.bin/esbuild"), [ENTRY, "--bundle", "--format=esm", "--platform=node", `--outfile=${OUT}`, "--log-level=error"]);
-const { BADGES, badgeOrder, icNow, yearsBetween, dumpRecords } = await import(pathToFileURL(OUT).href);
+const { BADGES, badgeOrder, icNow, yearsBetween, dumpRecords, PRICE, budgetOf, maxTraitsOf, traitCost } = await import(pathToFileURL(OUT).href);
 
 const read = (f) => JSON.parse(readFileSync(join(ROOT, "src/data", f), "utf8"));
 const players = read("players.json"), teams = read("teams.json");
 const TIER = Object.fromEntries(BADGES.map(b => [b.id, b.tier])), NAME = Object.fromEntries(BADGES.map(b => [b.id, b.name]));
 
 // ── THE RULES ──
-const countOf = (o) => (o >= 90 ? 3 : o >= 80 ? 2 : o >= 75 ? 1 : 0);
-const unlocked = (o) => (o >= 85 ? ["gold", "silver", "bronze"] : o >= 80 ? ["silver", "bronze"] : o >= 75 ? ["bronze"] : []);
-const topTier = (o) => unlocked(o)[0] || null;
+const TIERS = ["gold", "silver", "bronze"];
+// Every way a man of this rating can spend his whole budget: so many golds, silvers and bronzes.
+const shapesOf = (o) => { const B = budgetOf(o), N = maxTraitsOf(o), out = [];
+  for (let g = 0; PRICE.gold * g <= B; g++) for (let s = 0; PRICE.gold * g + PRICE.silver * s <= B; s++) {
+    const b = (B - PRICE.gold * g - PRICE.silver * s) / PRICE.bronze, n = g + s + b;
+    if (Number.isInteger(b) && n >= 1 && n <= N) out.push({ gold: g, silver: s, bronze: b }); }
+  return out; };
+const shapeName = (sh) => TIERS.flatMap(t => Array(sh[t]).fill(t)).join(" + ");
 const KIND = { GK: "GK", CB: "CB", LB: "FB", RB: "FB", LWB: "FB", RWB: "FB", DM: "DM", CM: "CM", AM: "AM", LM: "W", RM: "W", LW: "W", RW: "W", ST: "ST" };
 const kinds = (o) => Object.fromEntries(Object.entries(o).map(([b, k]) => [b, k === "ALL" ? ["CB", "FB", "DM", "CM", "AM", "W", "ST"] : k.split(" ")]));
 // Where each trait was measured, and the first run's additions for forwards and for full-backs and central midfielders.
@@ -158,22 +168,44 @@ function fit(r, b, F) {
 // ── WHO CARRIES WHAT ──
 const isKeeper = (r) => (r.pos || []).includes("GK");
 const ARGS = process.argv.slice(2), REDO = ARGS.includes("redo"), KEEP_FROM = 90;
-const locked = new Map(players.filter(r => r.badges?.length && (!REDO || r.ovr >= KEEP_FROM)).map(r => [r.id, r.badges]));
+// In a redo the user's own picks stay: everyone rated 90 or more, and anyone whose traits changed since KEEP_SINCE.
+const before = process.env.KEEP_SINCE ? new Map(JSON.parse(execFileSync("git", ["show", process.env.KEEP_SINCE + ":src/data/players.json"], { cwd: ROOT, maxBuffer: 1 << 28 }).toString()).map(r => [r.id, (r.badges || []).join()])) : null;
+const picked = (r) => r.ovr >= KEEP_FROM || (before && before.has(r.id) && before.get(r.id) !== (r.badges || []).join());
+const locked = new Map(players.filter(r => r.badges?.length && (!REDO || picked(r))).map(r => [r.id, r.badges]));
 const lockedCount = {}; for (const bs of locked.values()) for (const b of bs) lockedCount[b] = (lockedCount[b] || 0) + 1;
 const band = (o) => (o >= 90 ? "90+" : o >= 85 ? "85-89" : o >= 80 ? "80-84" : "75-79");
 const men = [];
 for (const r of players) {
   if (r.ovr < 75 || locked.has(r.id)) continue;
   const F = figures(r), kinds = kindsOf(r), keeper = isKeeper(r);
-  if (keeper) { men.push({ r, F, keeper, count: r.ovr >= 80 ? 1 : 0, top: null, opts: r.ovr >= 80 ? KEEPER_PASS.map(b => ({ b, gate: false, ...fit(r, b, F) })) : [] }); continue; }
-  const tiers = unlocked(r.ovr), top = r.ovr >= 80 ? topTier(r.ovr) : null;
-  let opts = OUTFIELD.filter(b => tiers.includes(TIER[b]) && SUITS[b].some(k => kinds.includes(k))).map(b => ({ b, gate: TIER[b] === top, ...fit(r, b, F) }));
-  // A pair that cannot be held together, one through his top-tier gate and one not, keeps the top-tier one: it can be
-  // his best trait, and the other has company in its own tier.
-  for (const [a, c] of EXCL) { const A = opts.find(o => o.b === a), C = opts.find(o => o.b === c);
-    if (A && C && A.gate !== C.gate) opts = opts.filter(o => o !== (A.gate ? C : A)); }
-  men.push({ r, F, keeper, count: countOf(r.ovr), top, opts });
+  if (keeper) { men.push({ r, F, keeper, shape: r.ovr >= 80 ? { gold: 0, silver: 0, bronze: 1 } : null, opts: r.ovr >= 80 ? KEEPER_PASS.map(b => ({ b, ...fit(r, b, F) })) : [] }); continue; }
+  men.push({ r, F, keeper, shape: null, opts: OUTFIELD.filter(b => SUITS[b].some(k => kinds.includes(k))).map(b => ({ b, ...fit(r, b, F) })) });
 }
+// HIS SHAPE. What each shape would give him at best: the sum of his best fits for its places (a shape he cannot fill is
+// out). Then each position and band is split as evenly as it can be between its shapes, the men leaning furthest
+// towards a shape getting it first.
+const bestFor = (m, sh) => { let a = 0;
+  for (const t of TIERS) { if (!sh[t]) continue; const xs = m.opts.filter(o => TIER[o.b] === t).map(o => o.s).sort((x, y) => y - x);
+    if (xs.length < sh[t]) return -Infinity; a += xs.slice(0, sh[t]).reduce((x, y) => x + y, 0); }
+  return a; };
+{ const groups = new Map();
+  for (const m of men) if (!m.keeper) { const k = band(m.r.ovr) + " " + kindsOf(m.r)[0]; groups.set(k, [...(groups.get(k) || []), m]); }
+  for (const ms of groups.values()) {
+    const shapes = shapesOf(ms[0].r.ovr), room = shapes.map(() => Math.ceil(ms.length / shapes.length));
+    // Each man's lean: how much more one shape gives him than his average over the shapes he can fill.
+    const pairs = [];
+    for (const m of ms) { const v = shapes.map(sh => bestFor(m, sh)), ok = v.filter(Number.isFinite), mean = ok.reduce((a, b) => a + b, 0) / Math.max(1, ok.length);
+      shapes.forEach((sh, i) => { if (Number.isFinite(v[i])) pairs.push([m, i, v[i] - mean]); }); }
+    pairs.sort((a, b) => b[2] - a[2] || a[0].r.id.localeCompare(b[0].r.id));
+    for (const [m, i] of pairs) if (!m.shape && room[i] > 0) { m.shape = shapes[i]; room[i]--; }
+    for (const m of ms) if (!m.shape) m.shape = shapes.find(sh => Number.isFinite(bestFor(m, sh))) || null;
+  }
+}
+// A pair he cannot hold together across two of his tiers (Tackler, a bronze; Disciplined, a silver) keeps the one that
+// fits him better; a pair inside one tier is held apart in the flow.
+for (const m of men) if (m.shape) for (const [a, c] of EXCL) { const A = m.opts.find(o => o.b === a), C = m.opts.find(o => o.b === c);
+  if (A && C && TIER[a] !== TIER[c] && m.shape[TIER[a]] && m.shape[TIER[c]]) m.opts = m.opts.filter(o => o !== (A.s >= C.s ? C : A)); }
+const sizeOf = (sh) => (sh ? sh.gold + sh.silver + sh.bronze : 0);
 
 // ── THE FLOW ──
 class Graph {
@@ -211,32 +243,32 @@ class Graph {
     return { flow, total };
   }
 }
-const BIG = 1e7, MED = 1e4, PTS = 100;
+const BIG = 1e7, PTS = 100;
 // VARIETY: the men of one rating band and one position (his first; keepers apart) are a group. The n-th of a group to
 // take a trait pays SPREAD x n over the group's fair share of it (its places over the traits it can take), so no trait
 // becomes a position's habit unless a man's record or position earns it the price.
 const SPREAD = +(process.env.SPREAD || 150);
 const groupOf = (m) => band(m.r.ovr) + " " + (m.keeper ? "GK" : kindsOf(m.r)[0]);
 const GROUP = new Map();
-for (const m of men) { if (!m.count || !m.opts.length) continue;
+for (const m of men) { if (!sizeOf(m.shape)) continue;
   let x = GROUP.get(groupOf(m)); if (!x) GROUP.set(groupOf(m), x = { slots: 0, traits: new Set() });
-  x.slots += m.count; for (const o of m.opts) x.traits.add(o.b); }
-// The whole problem as a graph: every man his count, his top tier through a gate of one, pairs he cannot hold together
-// through a node of one, each choice through its group's node for that trait (the rising price), and each trait's
-// total between q and q + 1 for its tier (the q part priced BIG, so it fills first whenever it can).
+  x.slots += sizeOf(m.shape); for (const o of m.opts) if (m.shape[TIER[o.b]]) x.traits.add(o.b); }
+// The whole problem as a graph: every man his shape (a node for each of his tiers, holding that many of it), pairs he
+// cannot hold together through a node of one, each choice through its group's node for that trait (the rising price),
+// and each trait's total between q and q + 1 for its tier (the q part priced BIG, so it fills first whenever it can).
 function build(q, priced) {
   const g = new Graph(), s = g.node(), t = g.node(), tn = Object.fromEntries(OUTFIELD.map(b => [b, g.node()])), uses = [], via = new Map();
   const gt = (grp, b) => { const k = grp + "|" + b; let x = via.get(k); if (!x) via.set(k, x = { node: g.node(), grp, b, n: 0 }); x.n++; return x.node; };
   for (const m of men) {
-    if (!m.count || !m.opts.length) continue;
-    const u = g.node(); g.edge(s, u, m.count);
-    const gate = m.opts.some(o => o.gate) ? g.node() : null; if (gate != null) g.edge(u, gate, 1);
+    if (!sizeOf(m.shape)) continue;
+    const u = g.node(); g.edge(s, u, sizeOf(m.shape));
+    const tierNode = {}; for (const t of TIERS) if (m.shape[t]) { tierNode[t] = g.node(); g.edge(u, tierNode[t], m.shape[t]); }
     const pairOf = new Map();
     for (const [a, c] of EXCL) { const A = m.opts.find(o => o.b === a), C = m.opts.find(o => o.b === c);
-      if (A && C && !A.gate && !C.gate) { const p = g.node(); g.edge(u, p, 1); pairOf.set(a, p); pairOf.set(c, p); } }
+      if (A && C && TIER[a] === TIER[c] && tierNode[TIER[a]] != null) { const p = g.node(); g.edge(tierNode[TIER[a]], p, 1); pairOf.set(a, p); pairOf.set(c, p); } }
     for (const o of m.opts) {
-      const from = o.gate ? gate : pairOf.get(o.b) ?? u;
-      uses.push([m, o, g.edge(from, gt(groupOf(m), o.b), 1, priced ? -(o.gate ? MED : 0) - Math.round(o.s * PTS) : 0)]);
+      const from = pairOf.get(o.b) ?? tierNode[TIER[o.b]]; if (from == null) continue;
+      uses.push([m, o, g.edge(from, gt(groupOf(m), o.b), 1, priced ? -Math.round(o.s * PTS) : 0)]);
     }
   }
   for (const x of via.values()) { const G = GROUP.get(x.grp), fair = Math.max(1, G.slots / G.traits.size);
@@ -246,7 +278,7 @@ function build(q, priced) {
     lo[b] = g.edge(tn[b], t, Math.max(0, qb - have), priced ? -BIG : 0); hi[b] = g.edge(tn[b], t, Math.max(0, qb + 1 - Math.max(have, qb)), 0); }
   return { g, s, t, uses, lo, hi };
 }
-const slots = men.reduce((a, m) => a + (m.opts.length ? m.count : 0), 0);
+const slots = men.reduce((a, m) => a + sizeOf(m.shape), 0);
 // Each tier's q: as high as every one of its traits can be held that many times at once, top tier first. Checked in two
 // steps, the q parts alone and then the rest on top, which never takes back what the first step put in.
 function check(q) {
@@ -258,28 +290,11 @@ function check(q) {
   return { ok: true, fill: first + g.maxflow(s, t) };
 }
 const best = (tier, base) => { let lo = 0, hi = 1000; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (check({ ...base, [tier]: m }).ok) lo = m; else hi = m - 1; } return lo; };
-// The q parts priced, every man his count, then as many top-tier traits as fit, then the best fits.
-const solveAt = (q) => { const B = build(q, true), run = B.g.mincost(B.s, B.t);
-  const tops = new Set(); for (const [m, o, e] of B.uses) if (B.g.cap[e] === 0 && o.gate) tops.add(m.r.id);
-  const ok = OUTFIELD.every(b => B.g.cap[B.lo[b]] === 0);
-  return { ...B, run, q, ok, tops: tops.size }; };
-// Gold as common as it can be. Silver and bronze: a higher q spreads more of a tier onto the second traits of the men
-// above it, which can cost a man rated 80-84 his silver (the user's rule: his best trait from his top tier). So each
-// q is the one that leaves the most men with a trait of their top tier, the highest such q on a tie.
-const qg = best("gold", { gold: 0, silver: 0, bronze: 0 }), qsMax = best("silver", { gold: qg, silver: 0, bronze: 0 });
-// Every man who has a top-tier trait he could take getting one is the most there can be; the first q that gives it wins.
-const MAXTOP = men.filter(m => !m.keeper && m.opts.some(o => o.gate)).length, SLOTS = men.reduce((a, m) => a + (m.opts.length ? m.count : 0), 0);
-let pick = null;
-scan: for (let qs = qsMax; qs >= Math.max(0, qsMax - 25); qs--) {
-  const qbMax = best("bronze", { gold: qg, silver: qs, bronze: 0 });
-  for (let qb = qbMax, since = 0; qb >= 0 && since < 6; qb--, since++) {
-    const r = solveAt({ gold: qg, silver: qs, bronze: qb });
-    if (!r.ok || r.run.flow < SLOTS) continue;
-    if (!pick || r.tops > pick.tops) { pick = r; since = 0; }
-    if (r.tops === MAXTOP) break scan;
-  }
-}
-const { g, s, t, uses, run, q } = pick, full = check(q).fill;
+// The shapes fix how many of each tier there are; each tier's q is the most every one of its traits can be held at once.
+const q = { gold: 0, silver: 0, bronze: 0 };
+for (const t of TIERS) q[t] = best(t, q);
+const full = check(q).fill;
+const { g, s, t, uses } = build(q, true), run = g.mincost(s, t);
 
 // ── WHAT EACH MAN GOT ──
 const got = new Map();
@@ -298,12 +313,13 @@ for (const bd of ["75-79", "80-84", "85-89", "90+"]) {
 const problems = [];
 const total = {}; for (const [id, bs] of locked) for (const b of bs) total[b] = (total[b] || 0) + 1;
 for (const m of men) {
-  const os = got.get(m.r.id) || [], bs = os.map(o => o.b), want = m.keeper ? 1 + m.count : m.opts.length ? m.count : 0;
+  const os = got.get(m.r.id) || [], bs = os.map(o => o.b), want = (m.keeper ? 1 : 0) + sizeOf(m.shape);
   for (const b of bs) total[b] = (total[b] || 0) + 1;
   if (bs.length !== want) problems.push(`${m.r.name} (${m.r.ovr}) has ${bs.length} of ${want}`);
   if (new Set(bs).size !== bs.length) problems.push(`${m.r.name} holds a trait twice`);
-  if (!m.keeper && bs.some(b => !unlocked(m.r.ovr).includes(TIER[b]))) problems.push(`${m.r.name}: a tier his rating has not unlocked`);
-  if (!m.keeper && m.top && bs.filter(b => TIER[b] === m.top).length > 1) problems.push(`${m.r.name}: two of his top tier`);
+  if (!m.keeper && traitCost(bs) !== budgetOf(m.r.ovr)) problems.push(`${m.r.name} (${m.r.ovr}): ${traitCost(bs)} points of ${budgetOf(m.r.ovr)}`);
+  if (!m.keeper && bs.length > maxTraitsOf(m.r.ovr)) problems.push(`${m.r.name}: more traits than ${maxTraitsOf(m.r.ovr)}`);
+  if (!m.keeper && TIERS.some(t => bs.filter(b => TIER[b] === t).length !== m.shape[t])) problems.push(`${m.r.name}: not his shape`);
   for (const [a, c] of EXCL) if (bs.includes(a) && bs.includes(c)) problems.push(`${m.r.name}: ${a} with ${c}`);
 }
 for (const [tier, qt] of Object.entries(q)) for (const b of OUTFIELD.filter(x => TIER[x] === tier))
@@ -315,11 +331,11 @@ console.log(`${men.length} players rated 75 or more (${keepers.length} keepers);
 for (const tier of tiersOrder) console.log(`${tier.padEnd(6)} ${OUTFIELD.filter(b => TIER[b] === tier).map(b => `${NAME[b]} ${total[b] || 0}`).join(", ")}`);
 console.log(`keeper Shot Stopper ${total.shotstopper || 0}, Commanding ${total.commanding || 0}`);
 for (const bd of ["75-79", "80-84", "85-89", "90+"]) {
-  const ms = men.filter(m => band(m.r.ovr) === bd && !m.keeper), tops = ms.filter(m => (got.get(m.r.id) || []).some(o => TIER[o.b] === m.top)).length;
-  const mix = {}; for (const m of ms) for (const o of got.get(m.r.id) || []) mix[TIER[o.b]] = (mix[TIER[o.b]] || 0) + 1;
-  console.log(`${bd.padEnd(6)} ${ms.length} outfield, ${tiersOrder.filter(x => mix[x]).map(x => `${mix[x]} ${x}`).join(", ")}${bd !== "75-79" ? `; ${tops} with one of his top tier` : ""}`);
+  const ms = men.filter(m => band(m.r.ovr) === bd && !m.keeper), by = {};
+  for (const m of ms) by[shapeName(m.shape)] = (by[shapeName(m.shape)] || 0) + 1;
+  if (ms.length) console.log(`${bd.padEnd(6)} ${ms.length} outfield, budget ${budgetOf(ms[0].r.ovr)}: ${Object.entries(by).map(([k, n]) => `${n} ${k}`).join(", ")}`);
 }
-console.log(`top tier: ${pick.tops} of the ${MAXTOP} who could take one; q ${JSON.stringify(q)}`);
+console.log(`q ${JSON.stringify(q)}; kept as the user set them: ${locked.size}`);
 { let nat = 0, all = 0; for (const m of men) if (!m.keeper) for (const o of got.get(m.r.id) || []) { all++; if (NATURAL[o.b]?.some(k => kindsOf(m.r).includes(k))) nat++; }
   console.log(`crossing positions: ${all - nat} of ${all} traits given (${Math.round(100 * (all - nat) / Math.max(1, all))}%)`); }
 console.log(problems.length ? `PROBLEMS (${problems.length}):\n  ` + problems.slice(0, 30).join("\n  ") : "every rule holds");

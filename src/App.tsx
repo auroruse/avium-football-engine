@@ -14,7 +14,7 @@ import leaguesRec from "./data/leagues.json";
 import { sheetsFromRecords } from "./data/sheets.js";
 import { leagueMaps } from "./data/leagues.js";
 import { applyDraft, draftChanges, draftSize, draftWith, idOf, teamKey } from "./data/draft.js";
-import { BADGES, BADGE_BY_ID, badgeOrder } from "./data/badges.js";
+import { BADGES, BADGE_BY_ID, badgeOrder, PRICE, budgetOf, maxTraitsOf, traitCost, traitsProblem } from "./data/badges.js";
 // The playstyles' names, which are the registry file format (src/data/styles.js, shared with the registry server).
 import { STYLE_LBL } from "./data/styles.js";
 import { AFA_RANKINGS } from "./data/afa.js";
@@ -4722,12 +4722,16 @@ const BadgeIcon = ({ id, size = 22 }) => {
 // never in the pointer's way; under the trait, or over it near the window's foot, and inside the window's edges.
 const TIER_LBL = { gold: "Gold", silver: "Silver", bronze: "Bronze" };
 const TraitCard = () => {
-  const [at, setAt] = useState(null), [pos, setPos] = useState(null), ref = useRef(null);
+  // The trait under the pointer or the focus is held as its element itself, never wrapped in a fresh object: React may
+  // replay a queued update while a re-render runs, and an updater that returns a new object each time made every replay
+  // look like a new trait, which re-placed the card and re-rendered it until React gave up (ticking a trait in the
+  // editor's list did it).
+  const [el, setEl] = useState(null), [pos, setPos] = useState(null), ref = useRef(null);
   useEffect(() => {
     const find = (n) => (n && n.closest ? n.closest("[data-trait]") : null);
-    const show = (e) => { const el = find(e.target); setAt(a => (!el ? null : a?.el === el ? a : { id: el.getAttribute("data-trait"), el })); };
-    const leave = (e) => { if (!e.relatedTarget) setAt(null); };
-    const hide = () => setAt(null);
+    const show = (e) => setEl(find(e.target));
+    const leave = (e) => { if (!e.relatedTarget) setEl(null); };
+    const hide = () => setEl(null);
     document.addEventListener("pointerover", show); document.addEventListener("focusin", show);
     document.addEventListener("pointerout", leave); document.addEventListener("focusout", leave);
     window.addEventListener("scroll", hide, true); window.addEventListener("resize", hide);
@@ -4738,15 +4742,15 @@ const TraitCard = () => {
     };
   }, []);
   useLayoutEffect(() => {
-    if (!at || !ref.current) return;
-    const r = at.el.getBoundingClientRect(), c = ref.current.getBoundingClientRect(), M = 8, G = 6;
+    if (!el || !ref.current) return;
+    const r = el.getBoundingClientRect(), c = ref.current.getBoundingClientRect(), M = 8, G = 6;
     const left = Math.max(M, Math.min(window.innerWidth - c.width - M, r.left + r.width / 2 - c.width / 2));
     const top = r.bottom + G + c.height > window.innerHeight - M ? Math.max(M, r.top - G - c.height) : r.bottom + G;
-    setPos({ el: at.el, left, top });
-  }, [at]);
-  const b = at && BADGE_BY_ID[at.id];
+    setPos(p => (p && p.el === el && p.left === left && p.top === top ? p : { el, left, top }));
+  }, [el]);
+  const b = el && BADGE_BY_ID[el.getAttribute("data-trait")];
   if (!b) return null;
-  const placed = pos && pos.el === at.el ? pos : null;
+  const placed = pos && pos.el === el ? pos : null;
   return (
     <div ref={ref} className="ux-tcard" role="tooltip" style={placed ? { left: placed.left, top: placed.top } : { left: 0, top: 0, visibility: "hidden" }}>
       <div className="ux-tcard-h">
@@ -11728,15 +11732,24 @@ export default function App() {
   const edDots = (...xs) => xs.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && <span className="ux-ed-dot">&middot;</span>}{x}</Fragment>);
   // The national sides as a side picker's choices, and the sides this person may send a man to.
   // THE TRAITS, PICKED FROM A LIST (user, 11 October 2026): under each tier every trait by its art and name, ticked when
-  // the man carries it; each row toggles, and hovering one shows its card. toggle(id, on) gives or takes it.
-  const edTraitList = (sel, toggle) => (
-    <div className="ux-ed-tlist">{["gold", "silver", "bronze"].map(tier => (
-      <div key={tier} className="ux-ed-tcol" role="group" aria-label={TIER_LBL[tier] + " Traits"}>
-        <div className={"ux-ed-th ux-" + tier}>{TIER_LBL[tier]}</div>
-        {BADGES.filter(b => b.tier === tier).map(b => { const on = (sel || []).includes(b.id);
-          return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-tpick" + (on ? " ux-on" : "")} aria-pressed={on}
-            onClick={() => toggle(b.id, on)}><BadgeIcon id={b.id} size={20} /><span>{b.name}</span><i className="ux-ed-tbox" aria-hidden="true">{uxIcon("check", "ux-xs")}</i></button>; })}
-      </div>))}</div>);
+  // the man carries it; each row toggles, and hovering one shows its card. toggle(id, on) gives or takes it. Above them
+  // the points spent of the budget his rating gives him (badges.js: a trait costs its pips). With limit (an editor's new
+  // player) a trait he cannot afford, or one past the most he may carry, cannot be ticked.
+  const edTraitList = (sel, toggle, ovr = null, limit = false) => {
+    const ids = sel || [], o = Math.round(+ovr) || 0, budget = budgetOf(o), spent = traitCost(ids);
+    const fits = (id) => ids.includes(id) || (ids.length < maxTraitsOf(o) && spent + PRICE[BADGE_BY_ID[id].tier] <= budget);
+    return (
+      <div className="ux-ed-tpanel">
+        <div className={"ux-ed-tbud" + (spent > budget ? " ux-over" : "")}><span>Points</span><b style={mono}>{spent}</b><span>Of</span><b style={mono}>{budget}</b></div>
+        <div className="ux-ed-tlist">{["gold", "silver", "bronze"].map(tier => (
+          <div key={tier} className="ux-ed-tcol" role="group" aria-label={TIER_LBL[tier] + " Traits"}>
+            <div className={"ux-ed-th ux-" + tier}>{TIER_LBL[tier]}</div>
+            {BADGES.filter(b => b.tier === tier).map(b => { const on = ids.includes(b.id);
+              return <button key={b.id} type="button" data-trait={b.id} className={"ux-btnreset ux-ed-tpick" + (on ? " ux-on" : "")} aria-pressed={on}
+                disabled={limit && !fits(b.id)} onClick={() => toggle(b.id, on)}><BadgeIcon id={b.id} size={20} /><span>{b.name}</span><i className="ux-ed-tbox" aria-hidden="true">{uxIcon("check", "ux-xs")}</i></button>; })}
+          </div>))}</div>
+      </div>);
+  };
   const edNatChoices = (all) => [[null, [...natOptions.avium, ...(arterraOn ? natOptions.arterra : [])].filter(([c]) => all || (scope.nations || []).includes(c))
     .map(([c, n]) => ({ k: c, name: n, team: natTeamByCode.get(c), code: c }))]];
   // An editor's new player of another nation: the rating he must stay below, his nation's level (rules.js natLevel), or 0
@@ -12026,7 +12039,7 @@ export default function App() {
               {fact("Rating", uxBadge(p.ovr), <input className="ux-ed-in ux-ed-num" type="number" min={25} max={99} defaultValue={p.ovr} aria-label="Rating" style={mono}
                 onBlur={e => { const v = Math.round(+e.target.value); if (v >= 25 && v <= 99 && v !== p.ovr) setP({ ovr: v }); }} />)}
               {fact("Traits", badgeOrder(p.badges).length ? <span className="ux-ed-traits">{badgeOrder(p.badges).map(b => <BadgeIcon key={b} id={b} size={20} />)}</span> : "None",
-                edTraitList(p.badges, (id, on) => setP({ badges: badgeOrder(on ? p.badges.filter(x => x !== id) : [...(p.badges || []), id]) })))}
+                edTraitList(p.badges, (id, on) => setP({ badges: badgeOrder(on ? p.badges.filter(x => x !== id) : [...(p.badges || []), id]) }), p.ovr))}
             </dl>))}
           {uxPanel("Sides", null, (
             <div className="ux-ed-sides">
@@ -12129,7 +12142,7 @@ export default function App() {
     const g = { ...(f || {}), ...patch }, { men, bad } = edParseMen(g.text), ages = edAges(g);
     const redraw = "amin" in patch || "amax" in patch || "redraw" in patch, was = new Map((f?.list || []).map(m => [m.name + "|" + posText(m.pos), m]));
     const list = men.map(m => { const old = was.get(m.name + "|" + posText(m.pos));
-      return { ...m, nat: g.nat || "", born: !redraw && old?.born ? old.born : edBornIn(ages), ovr: old?.ovr ?? "" }; });
+      return { ...m, nat: g.nat || "", born: !redraw && old?.born ? old.born : edBornIn(ages), ovr: old?.ovr ?? "", ...(old?.badges?.length ? { badges: old.badges } : null) }; });
     delete g.redraw;
     return { ...g, list, bad };
   };
@@ -12153,8 +12166,9 @@ export default function App() {
     const blanks = list.filter(m => !(+m.ovr > 0)).length;
     const rated = list.every(m => !m.ovr || (+m.ovr >= 25 && +m.ovr <= 99));
     const fieldsOf = () => ({ what: "batch", name: `${list.length} New Players`, side: f.side || null,
-      men: list.map(m => ({ name: m.name, pos: m.pos, nat: m.nat, born: m.born, ovr: num(m.ovr) })) });
-    const ready = list.length > 0 && list.length <= 40 && !bad.length && rated && (!overseer || !blanks) && list.every(m => edUnderCap(m.nat, m.ovr));
+      men: list.map(m => ({ name: m.name, pos: m.pos, nat: m.nat, born: m.born, ovr: num(m.ovr), ...(m.badges?.length ? { badges: badgeOrder(m.badges) } : null) })) });
+    const ready = list.length > 0 && list.length <= 40 && !bad.length && rated && (!overseer || !blanks) && list.every(m => edUnderCap(m.nat, m.ovr))
+      && (overseer || list.every(m => !traitsProblem(m.badges, num(m.ovr))));
     return (
       <div className="ux-ed-rec">
         {uxPanel(review ? "Review New Players" : "New Players", review ? (f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span> : null) : edManyToggle(f), (
@@ -12173,10 +12187,10 @@ export default function App() {
             </dl>}
             {edBadLines(bad)}
             <div className="ux-pbody ux-ed-blist"><table className="ux-tbl">
-              <colgroup><col style={{ width: 66 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 120 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 40 }} /></colgroup>
-              <thead><tr><th>Pos</th><th>Name</th><th>Nationality</th><th>Born</th><th className="ux-n">Age</th><th className="ux-c">Rating</th><th /></tr></thead>
-              <tbody>{list.map((m, i) => (
-                <tr key={i + m.name}>
+              <colgroup><col style={{ width: 66 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 120 }} /><col style={{ width: 52 }} /><col style={{ width: 76 }} /><col style={{ width: 96 }} /><col style={{ width: 40 }} /></colgroup>
+              <thead><tr><th>Pos</th><th>Name</th><th>Nationality</th><th>Born</th><th className="ux-n">Age</th><th className="ux-c">Rating</th><th>Traits</th><th /></tr></thead>
+              <tbody>{list.map((m, i) => (<Fragment key={i + m.name}>
+                <tr>
                   <td><b style={{ ...mono, color: POS_CLR[posList(m.pos)[0]] }}>{posText(m.pos)}</b></td>
                   <td><span className="ux-fx">{m.name}</span></td>
                   <td><span className="ux-fx">{natOptions.name.get(m.nat) || m.nat || "–"}</span></td>
@@ -12184,9 +12198,15 @@ export default function App() {
                   <td className="ux-n" style={mono}>{m.born ? ageOf(m.born) : "–"}</td>
                   <td className="ux-c"><input className={"ux-ed-in ux-ed-ovrin" + ((review && !(+m.ovr > 0)) || !edUnderCap(m.nat, m.ovr) ? " ux-need" : "")} aria-label={"Rating, " + m.name}
                     placeholder={edCapOf(m.nat) != null ? "<" + edCapOf(m.nat) : "–"} style={mono} value={m.ovr ?? ""} onChange={e => upd({ list: list.map((x, j) => (j === i ? { ...x, ovr: e.target.value } : x)) })} /></td>
+                  <td><button type="button" className={"ux-btnreset ux-ed-btr" + (f.tsel === i ? " ux-on" : "") + (!overseer && traitsProblem(m.badges, num(m.ovr)) ? " ux-need" : "")}
+                    aria-expanded={f.tsel === i} aria-label={"Traits, " + m.name} onClick={() => upd({ tsel: f.tsel === i ? null : i })}>
+                    {(m.badges || []).length ? badgeOrder(m.badges).map(id => <BadgeIcon key={id} id={id} size={16} />) : <span className="ux-dim">Add</span>}</button></td>
                   <td>{review && <button type="button" className="ux-btnreset ux-cb-x" aria-label={"Remove " + m.name}
-                    onClick={() => upd({ list: list.filter((_, j) => j !== i) })}>{uxIcon("close", "ux-s")}</button>}</td>
-                </tr>))}</tbody></table>
+                    onClick={() => upd({ list: list.filter((_, j) => j !== i), tsel: null })}>{uxIcon("close", "ux-s")}</button>}</td>
+                </tr>
+                {f.tsel === i && <tr className="ux-ed-bxrow"><td colSpan={8}>{edTraitList(m.badges, (id, on) => upd({ list: list.map((x, j) => (j === i
+                  ? { ...x, badges: on ? (x.badges || []).filter(y => y !== id) : [...(x.badges || []), id] } : x)) }), m.ovr, !overseer)}</td></tr>}
+              </Fragment>))}</tbody></table>
               {!list.length && <div className="ux-empty-sm ux-ed-none">No Players Yet</div>}
             </div>
             {review && req && reqMsg[req.id] && <p className="ux-ed-rule ux-bad">{reqMsg[req.id]}</p>}
@@ -12227,7 +12247,7 @@ export default function App() {
       return (!at || edMine(teamKey(at))) && !edLockedMen.has("m:" + m.id); }).sort((a, b) => b.ovr - a.ovr).map(m => ({ k: m.id, name: fullDisplayName(m.name) }))]]];
     const fieldsOf = () => {
       const base = { what: k, name: (f.name || "").trim() };
-      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: posList([f.pos, f.pos2]), ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(overseer && f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
+      if (k === "players") return { ...base, nat: f.nat, born: f.born, pos: posList([f.pos, f.pos2]), ovr: f.ovr ? Math.round(+f.ovr) : null, side: f.side || null, ...(f.badges?.length ? { badges: badgeOrder(f.badges) } : null) };
       if (k === "managers") return { ...base, nat: f.nat, born: f.born, style: f.style, ovr: f.ovr ? Math.round(+f.ovr) : null };
       return { ...base, nation, code: (f.code || "").trim().toUpperCase(), home: f.home || "#888888", away: f.away || "#ffffff",
         stadium: (f.ground || "").trim() + (String(f.cap || "").trim() ? ` (${String(f.cap).trim()})` : ""), location: f.city || "", group: f.group || "",
@@ -12235,7 +12255,8 @@ export default function App() {
     };
     const cap = k === "players" ? edCapOf(f.nat) : null;
     const ready = (f.name || "").trim() && (k === "teams" ? f.code && f.group && f.city && (f.ground || "").trim() && squad.slice(0, 11).every(Boolean) && squad.filter(Boolean).length === 16
-      : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && edUnderCap(k === "players" ? f.nat : null, f.ovr) && (k !== "players" || f.pos) && (k !== "managers" || f.style));
+      : f.nat && f.born && (f.ovr ? +f.ovr >= 25 && +f.ovr <= 99 : !overseer) && edUnderCap(k === "players" ? f.nat : null, f.ovr) && (k !== "players" || f.pos) && (k !== "managers" || f.style)
+        && (k !== "players" || overseer || !traitsProblem(f.badges, f.ovr ? Math.round(+f.ovr) : null)));
     return (
       <div className="ux-ed-rec">
         {uxPanel(review ? `Review New ${kind}` : `New ${kind}`, review && f.by ? <span className="ux-cb-when" style={{ marginLeft: "auto" }}>{f.by} &middot; {ago(f.at)}</span>
@@ -12253,7 +12274,7 @@ export default function App() {
               {k === "managers" && field("Style", sel("Style", f.style, STYLES.map(s => [s, STYLE_LBL[s]]), v => upd({ style: v })))}
               {k !== "teams" && field("Rating", <input className={"ux-ed-in ux-ed-num" + (cap != null && !edUnderCap(f.nat, f.ovr) ? " ux-need" : "")} type="number" min={25} max={cap != null ? cap - 1 : 99}
                 placeholder={overseer ? "25 To 99" : cap != null ? `Below ${cap}` : "Blank"} value={f.ovr || ""} onChange={e => upd({ ovr: e.target.value })} style={mono} />)}
-              {overseer && k === "players" && field("Traits", edTraitList(f.badges, (id, on) => upd({ badges: on ? f.badges.filter(x => x !== id) : [...(f.badges || []), id] })))}
+              {k === "players" && field("Traits", edTraitList(f.badges, (id, on) => upd({ badges: on ? f.badges.filter(x => x !== id) : [...(f.badges || []), id] }), f.ovr, !overseer))}
               {k === "teams" && <>
                 {(overseer || (scope.nations || []).length > 1) && field("Nation", <UxSidePick label="Nation" value={nation} groups={edNatChoices(overseer)} placeholder="Search Nations" onPick={it => upd({ nation: it.k, group: "" })} />)}
                 {field("League", sel("League", f.group, leagues.map(g => [g, g]), v => upd({ group: v })))}
@@ -12479,7 +12500,7 @@ export default function App() {
         manager: edLgNew(cl.manager) ? { name: (cl.manager.name || "").trim(), nat: cl.manager.nat || nation, born: cl.manager.born, style: cl.manager.style, ovr: num(cl.manager.ovr) }
           : cl.manager || null,
         squad: cl.squad.map(v => (!v ? null : !edLgNew(v) ? v : { name: (v.name || "").trim(), pos: v.pos, nat: v.nat || nation, born: v.born, ovr: num(v.ovr),
-          ...(overseer && v.badges?.length ? { badges: badgeOrder(v.badges) } : null) })) })) });
+          ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) })) })) });
     const rateIn = (v, onChange, label) => (
       <input className={"ux-ed-in ux-ed-ovrin" + (+v.ovr > 0 ? "" : " ux-need")} aria-label={label} placeholder="–" style={mono} value={v.ovr || ""}
         onChange={e => onChange(e.target.value)} onClick={e => e.stopPropagation()} />);
@@ -12634,11 +12655,12 @@ export default function App() {
                 max={edCapOf(np.nat || nation) != null ? edCapOf(np.nat || nation) - 1 : 99} aria-label="Rating"
                 placeholder={overseer ? "25 To 99" : edCapOf(np.nat || nation) != null ? `Below ${edCapOf(np.nat || nation)}` : "Blank"}
                 value={np.ovr || ""} onChange={e => setNp({ ovr: e.target.value, auto: false })} style={mono} />)}
-              {overseer && field("Traits", edTraitList(np.badges, (id, on) => setNp({ badges: on ? np.badges.filter(x => x !== id) : [...(np.badges || []), id] })))}
+              {field("Traits", edTraitList(np.badges, (id, on) => setNp({ badges: on ? np.badges.filter(x => x !== id) : [...(np.badges || []), id] }), np.ovr, !overseer))}
             </dl>
             <div className="ux-ed-npf">
               <button type="button" className="ux-btnreset ux-btn" onClick={() => upd({ np: null })}>Cancel</button>
-              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born || (+np.ovr > 0 && !edUnderCap(np.nat || nation, np.ovr))}
+              <button type="button" className="ux-btnreset ux-btn ux-btn-pri" disabled={!(np.name || "").trim() || !np.pos || !np.born || (+np.ovr > 0 && !edUnderCap(np.nat || nation, np.ovr))
+                || (!overseer && !!traitsProblem(np.badges, +np.ovr > 0 ? Math.round(+np.ovr) : null))}
                 onClick={() => { const { at, age, pos2, ...man } = np, v = { ...man, pos: posList([man.pos, pos2]), name: man.name.trim(), nat: man.nat || nation };
                   if (at != null) upd({ clubs: clubs.map((x, j) => (j === oi ? { ...x, squad: x.squad.map((y, k) => (k === at ? v : y)) } : x)), np: null });
                   else put(v, v.pos); }}>{np.at != null ? "Save" : "Add"}</button></div>

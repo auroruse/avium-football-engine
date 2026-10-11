@@ -17,7 +17,7 @@ import { POS_ROLE, fitsPlace, posList } from "./positions.js";
 import { FORMATIONS } from "../engine/formations.ts";
 import { birthDateOk } from "./icclock.js";
 import { leagueNameFree, leagueRecord } from "./leagues.js";
-import { badgeOrder } from "./badges.js";
+import { badgeOrder, traitsProblem } from "./badges.js";
 
 export const NATIONAL = new Set(["AVIUM", "ARTERRA"]);
 const lc = (s) => String(s || "").toLowerCase();
@@ -202,6 +202,7 @@ function newProblems(rec, n, scope, over, h) {
   }
   if (n.what === "players") {
     if (!posOk(n.pos)) bad("a player has one or two positions");
+    if (!over) { const why = traitsProblem(n.badges, n.ovr); if (why) bad(why); }
     if (n.side) { const t = rec.teams.find(x => teamKey(x) === n.side);
       if (!t) bad("no such side"); else if (!owns(scope, t)) bad(`${t.name.trim()} is not one of your sides`);
       else if (isNational(t) && t.code !== n.nat) bad(`not a ${t.name.trim()} national`);
@@ -231,7 +232,7 @@ function newProblems(rec, n, scope, over, h) {
 }
 // A new man inside a request (a league's club, a list of new players): an editor's of their own nation, his rating left for
 // the overseer if they like, who must set it to let him in; or a player of another nation, rated below its level. Traits
-// only from the overseer.
+// within what his rating can afford.
 function newManProblems(rec, m, kind, scope, over, bad) {
   const w = m?.name || (kind === "players" ? "A new player" : "A new manager");
   if (!m || typeof m !== "object") { bad(`${w}: not a ${kind === "players" ? "player" : "manager"}`); return; }
@@ -241,7 +242,8 @@ function newManProblems(rec, m, kind, scope, over, bad) {
   if (!(m.born && birthDateOk(m.born))) bad(`${w}: a date of birth is a real date, for a man at least 14`);
   if (over ? !rating(m.ovr) : m.ovr != null && !rating(m.ovr)) bad(`${w}: a rating is a whole number from 25 to 99`);
   if (kind === "players" && !posOk(m.pos)) bad(`${w}: a player has one or two positions`);
-  if (kind === "players" && m.badges?.length && !over) bad(`${w}: traits are the overseer's`);
+  // An editor's new player may carry traits his rating can afford (badges.js traitsProblem); the overseer's anything.
+  if (kind === "players" && !over) { const why = traitsProblem(m.badges, m.ovr); if (why) bad(`${w}: ${why}`); }
   if (kind === "managers" && !styleName(m.style)) bad(`${w}: not a style`);
 }
 // Where a list of new men goes in a side: each in turn, keepers first, to the open place that fits him best.
@@ -331,7 +333,7 @@ function createDraft(rec, d, n, h) {
   let out = { v: 1, players: {}, ...(d || {}) };
   if (n.what === "players") {
     const id = nextId(next.players, "p"), side = n.side ? next.teams.find(t => teamKey(t) === n.side) : null;
-    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, pos: posList(n.pos), ...(n.badges?.length ? { badges: n.badges } : null) });
+    add.players.push({ id, name: n.name, nat: n.nat, ovr: n.ovr, born: n.born, pos: posList(n.pos), ...(n.badges?.length ? { badges: badgeOrder(n.badges) } : null) });
     out = { ...out, add };
     if (side) { const sq = squadIds(side), lab = h.labels(side), i = placeFor(sq, lab, h.fit, posList(n.pos));
       if (i < 0) return { errors: [`${side.name.trim()} has no free place for ${n.name}`] };

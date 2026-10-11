@@ -1343,8 +1343,20 @@ input.ux-ed-in[type=date] { max-width: 180px; color-scheme: dark; }
 /* The trait picker (App.tsx edTraitList): a list a tier, each row the trait's art, its name and a tick box. */
 .ux-ed-tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 16px; width: 100%; padding: 2px 0 6px; }
 .ux-ed-tcol { min-width: 0; display: flex; flex-direction: column; }
-.ux-ed-fact:has(> dd > .ux-ed-tlist) { align-items: start; }
-.ux-ed-fact:has(> dd > .ux-ed-tlist) > dt { padding-top: 14px; }
+.ux-ed-fact:has(> dd > .ux-ed-tpanel) { align-items: start; }
+.ux-ed-fact:has(> dd > .ux-ed-tpanel) > dt { padding-top: 10px; }
+/* The points he has spent of his rating's budget, over the list. */
+.ux-ed-tpanel { display: flex; flex-direction: column; width: 100%; min-width: 0; }
+.ux-ed-tbud { display: flex; align-items: baseline; gap: 5px; padding: 8px 8px 2px; font-size: 11px; color: var(--ux-text-3); }
+.ux-ed-tbud b { font-size: 13px; font-weight: 600; color: var(--ux-text); }
+.ux-ed-tbud.ux-over b:first-of-type { color: var(--ux-accent-ink); }
+.ux-ed-tpick:disabled { opacity: .35; cursor: not-allowed; }
+.ux-ed-tpick:disabled:hover { background: none; color: var(--ux-text-2); }
+/* The Many table's traits: the icons in the row, the list opening under it. */
+.ux-ed-btr { display: inline-flex; align-items: center; gap: 3px; min-width: 44px; height: 24px; padding: 0 6px; border: 1px solid var(--ux-line); border-radius: 6px; font-size: 12px; }
+.ux-ed-btr:hover, .ux-ed-btr.ux-on { background: var(--ux-panel-3); }
+.ux-ed-btr.ux-need { border-color: var(--ux-accent-ink); }
+.ux-ed-bxrow > td { background: var(--ux-panel-2); padding: 4px 8px 8px; }
 /* In New League's narrow player form the list scrolls in its own box, so the form never runs off the squad panel. */
 .ux-ed-np .ux-ed-tlist { max-height: 240px; overflow-y: auto; }
 .ux-ed-th { padding: 6px 8px; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }

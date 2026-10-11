@@ -61,9 +61,14 @@ positions were set from where everyone played on 11 October 2026: club slot, the
 differ), past sheets for a second, and the club substitutes nobody had placed drawn inside their bench group to cover
 their side's eleven.
 
-**Who carries traits** (Moukden and Kirin, 11 October 2026). Only players rated 75 or more: one at 75-79, two at 80-89,
-three from 90. Bronze opens at 75, silver at 80, gold at 85, and a man's best trait is of the best tier his rating opens
-(one of it at most), the rest from the tiers below. A keeper carries Shot Stopper or Commanding, split evenly at each
+**Who carries traits** (Moukden and Kirin, 11 October 2026). A trait costs its pips, gold 3, silver 2, bronze 1, and a
+man's rating gives him a budget to spend on any tiers (`src/data/badges.js` budgetOf: 75-79 two points, 80-84 three,
+85-89 four, 90 and over six), in at most two traits below 90 and three from 90; nobody under 75 carries any. He spends
+all of it, so one rating comes in shapes (80-84: a single gold, or a silver and a bronze), and `test/traits.mjs` splits
+each position and band evenly between its shapes ("Give a points budget to each OVR tier and distribute it between
+golds, silvers, bronzes appropriately with differentiation"). An editor's new player may carry what his rating affords
+(`traitsProblem`, checked by the registry's rules; the trait list shows the points spent and greys out what does not fit),
+and the overseer's own edits show the budget without being held to it. A keeper carries Shot Stopper or Commanding, split evenly at each
 rating, and from 80 one of Long Ball, Short Passing or Composed. Inside a tier every trait is held by as many men as
 every other, give or take one. A trait can cross into any position where it means something in a match (`OPEN` in
 `test/traits.mjs`), and is likelier where it was measured (`NATURAL`): the first run kept traits to their measured
@@ -394,7 +399,8 @@ Approve. A league made this way stands as a league of its own from its first clu
 rule. A nation with no club sheet gets one with its first league, and editors without clubs start here.
 
 **New records** are requests the overseer answers. A new player: name, nationality, date of birth, a position and a second if he has one, the side he
-joins (one of the editor's own sides, or none) and the rating the editor proposes or leaves blank. A new manager: name,
+joins (one of the editor's own sides, or none), the rating the editor proposes or leaves blank, and the traits that
+rating can afford (none without a rating of 75 or more). A new manager: name,
 nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
 in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). An editor's new player may be of another nation when
 rated below its level, its national side's rating as the app shows it (rules.js `natLevel`; user, 11 October 2026): his

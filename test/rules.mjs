@@ -104,6 +104,15 @@ const taro = (ovr) => ({ id: "n2", what: "players", name: "Taro YAMADA", nat: "N
   ok("nor unrated", blank.errors.some(e => /needs a rating below/.test(e)), blank.errors); }
 { const s = plan(ED, { new: [{ id: "n2", what: "managers", name: "Taro YAMADA", nat: "NCH", born: "1880-03-04", style: "counterattack", ovr: 60 }] });
   ok("an editor's new manager is of their own nation", s.errors.some(e => /not a nationality of yours/.test(e)), s.errors); }
+// Traits on an editor's new player: what his rating can afford, gold 3, silver 2, bronze 1 (82: three points, two traits).
+const hans = (ovr, badges) => ({ id: "n5", what: "players", name: "Hans TRAIT", nat: "ALE", born: "1912-03-04", pos: "ST", ovr, badges, side: "" });
+{ const s = plan(ED, { new: [hans(82, ["finisher"])] }), r = s.requests.find(x => x.kind === "new");
+  ok("an editor's new player may carry the traits his rating affords", !s.errors.length && r?.rec.badges?.[0] === "finisher", s.errors);
+  const yes = r && settle(OV, r, "accept");
+  ok("and keeps them when the overseer lets him in", !yes?.errors?.length && after(yes.apply).players.some(p => p.name === "Hans TRAIT" && p.badges?.join() === "finisher"), yes?.errors); }
+{ const over = plan(ED, { new: [hans(82, ["finisher", "vision"])] }), blank = plan(ED, { new: [hans(null, ["crosser"])] }), low = plan(ED, { new: [hans(74, ["crosser"])] });
+  ok("but not more than his budget", over.errors.some(e => /worth 5 points, over the 3 a 82 has/.test(e)), over.errors);
+  ok("nor any without a rating of 75 or more", blank.errors.some(e => /need a rating of 75/.test(e)) && low.errors.some(e => /need a rating of 75/.test(e)), [blank.errors, low.errors]); }
 { const s = plan(ED, { new: [{ id: "n3", what: "managers", name: "Karl BAUER", nat: "ALE", born: "1890-05-06", style: "counterattack", ovr: 72 }] });
   const r = s.requests[0], yes = r && settle(OV, r, "accept");
   ok("a new manager is let in by the overseer", !s.errors.length && !yes.errors.length && after(yes.apply).managers.some(m => m.name === "Karl BAUER" && m.style === "Counter-Attack"), [s.errors, yes?.errors]); }
@@ -190,6 +199,8 @@ let batchReq;
     return p && p.ovr >= 25 && p.pos; }) && n.players.find(x => x.name === "Gustav DREI").ovr === 63, yes.errors); }
 { const s = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", null, "NCH")] }] }), t = plan(ED, { new: [{ ...LIST, men: [lad("Taro FREMD", "CM", NCH_LVL - 1, "NCH")] }] });
   ok("another nation's men in a list need ratings below its level", s.errors.some(e => /^Taro FREMD: a Nichirin national needs a rating below/.test(e)) && !t.errors.length, [s.errors, t.errors]); }
+{ const ok1 = plan(ED, { new: [{ ...LIST, men: [{ ...lad("Fritz SILBER", "CM", 78), badges: ["vision"] }] }] }), bad1 = plan(ED, { new: [{ ...LIST, men: [{ ...lad("Fritz SILBER", "CM", 78), badges: ["vision", "crosser"] }] }] });
+  ok("a man in a list carries what his rating affords, and no more", !ok1.errors.length && bad1.errors.some(e => /^Fritz SILBER: traits worth 3 points, over the 2 a 78 has/.test(e)), [ok1.errors, bad1.errors]); }
 { const s = plan(ED, { new: [{ ...LIST, side: teamKey(A) }] });
   ok("a list joining a full side is refused", s.errors.some(e => /has room for 0 of the 3/.test(e)), s.errors); }
 { const two = vacate(vacate(ids(A), 15, h.labels(A), posFitCost, h.ovr), 14, h.labels(A), posFitCost, h.ovr);
