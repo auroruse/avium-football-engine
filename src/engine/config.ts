@@ -1360,10 +1360,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // into his path and never behind him, clamped to [thruVaMin, thruVaMax]. A man invited onto a ball
   // he is not already running for goes at spaceVd of his pace. Meetings sooner than meetTMin are a
   // ball to feet, and later than meetTMax are not a pass.
-  // 11 Oct 2026 (user: through balls "struck way too powerfully for the receiver"): 3.5 over his pace and up to 11 left
-  // no room for a ball that arrives a tenth early, which then rolls forty metres on to the keeper or out. With the
-  // runner now running his line onto it (match.ts, thruRun) 2.0 and 9.5 (set by reasoning, not measured).
-  thruOver: 2.0, thruVaMin: 6, thruVaMax: 9.5, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
+  // 11 Oct 2026 (user: through balls "struck way too powerfully for the receiver"): mostly the runner checking back onto
+  // it (match.ts, thruRun, fixed). Softened to 2.0 as well, the ball sat in the lane longer and was cut out more: through
+  // and space balls completed 74% -> 66% between the top twelve nations (cloud A/B). Back to 3.5, capped at 9.5.
+  thruOver: 3.5, thruVaMin: 6, thruVaMax: 9.5, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
   // How far a ball along the ground is ever played into space, and how long before a runner gets
   // there a ball over the top lands (so it is bouncing into his path, not dropping behind him).
   groundMaxD: 40, overLand: 0.15, overMinD: 14,
