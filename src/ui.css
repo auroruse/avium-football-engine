@@ -292,6 +292,9 @@
 .ux-pl-pos { right: -11px; background: var(--chrome-bg); border: 1px solid var(--pos); color: var(--pos); }
 /* A man out of his own positions (src/data/positions.js): the place's label in the loss colour beside his ringed rating. */
 .ux-pl-pos.ux-oop { border-color: var(--ux-loss); color: var(--ux-loss); }
+/* His traits on an arc just outside the bottom of his circle (App.tsx uxPlTraits); only the icons take the pointer. */
+.ux-pl-tr { position: absolute; inset: 0; pointer-events: none; --tr-r: 30px; }
+.ux-pl-tr img { position: absolute; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; pointer-events: auto; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .7)); }
 
 /* ── Finishes, one bar a season ──────────────────────────────────────────────────────────────── */
 .ux-chart { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 2px 12px 10px; }

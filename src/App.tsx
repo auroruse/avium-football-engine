@@ -4721,6 +4721,17 @@ const BadgeIcon = ({ id, size = 22 }) => {
 // whatever stands for a trait carries data-trait, its id. Fixed to the window, so no panel that clips can cut it, and
 // never in the pointer's way; under the trait, or over it near the window's foot, and inside the window's edges.
 const TIER_LBL = { gold: "Gold", silver: "Silver", bronze: "Bronze" };
+// A PLAYER'S TRAITS ON A PITCH (user, 11 October 2026): up to three, small, on an arc just outside the bottom of his
+// circle, between his rating and his position, each opening its card on hover. Angles in degrees, 90 straight down,
+// listed left to right so they read in the trait table's order, gold first.
+const UX_PL_ARC = { 1: [90], 2: [110, 70], 3: [125, 90, 55] };
+const uxPlTraits = (ids) => {
+  const xs = badgeOrder(ids || []).filter(id => BADGE_BY_ID[id]).slice(0, 3);
+  return xs.length > 0 && (
+    <span className="ux-pl-tr">{xs.map((id, i) => { const a = (UX_PL_ARC[xs.length][i] * Math.PI) / 180;
+      return <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id} draggable={false}
+        style={{ left: `calc(50% + ${Math.cos(a).toFixed(3)} * var(--tr-r))`, top: `calc(50% + ${Math.sin(a).toFixed(3)} * var(--tr-r))` }} />; })}</span>);
+};
 const TraitCard = () => {
   // The trait under the pointer or the focus is held as its element itself, never wrapped in a fresh object: React may
   // replay a queued update while a re-render runs, and an updater that returns a new object each time made every replay
@@ -11903,6 +11914,7 @@ export default function App() {
                       onClick={() => pickPlace(i)}>{id ? <PlayerShot name={nm} size="100%" /> : null}</button>
                     {p && uxPitchRtg(p.ovr, ownOfId(id), pos)}
                     <span className={"ux-pl-pos" + (p && uxOop(ownOfId(id), pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                    {p && uxPlTraits(p.badges)}
                   </div>); })}
               </div></div>), true)}
           {uxPanel("Bench", null, (
@@ -13292,6 +13304,7 @@ export default function App() {
                     <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                     {uxPitchRtg(ovr, p.own, pos)}
                     <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                    {uxPlTraits(p.badges)}
                   </div>); })}
             </div></div>), true)}
         </div>
@@ -16418,6 +16431,7 @@ export default function App() {
                 <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                 {uxPitchRtg(ovr, p.own, pos)}
                 <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                {uxPlTraits(p.badges)}
               </div>); })}
         </div></div>), true, side + "-xi");
     };
@@ -16706,6 +16720,7 @@ export default function App() {
                         <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                         {uxPitchRtg(ovr, p.own, pos)}
                         <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}</span>
+                        {uxPlTraits(p.badges)}
                       </div>); })}
                 </div></div>
                 <div className="ux-pbody"><table className="ux-tbl">
