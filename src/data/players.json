@@ -4627,7 +4627,5 @@
 {"id":"p4648","name":"Awad AL-WAHA","nat":"VAR","ovr":49,"born":"1902-08-26","pos":["CB"]},
 {"id":"p4649","name":"Mutlaq BAYDA","nat":"VAR","ovr":45,"born":"1914-03-05","pos":["CM"]},
 {"id":"p4650","name":"Salman AL-SAMM","nat":"VAR","ovr":46,"born":"1902-05-23","pos":["CM"]},
-{"id":"p4651","name":"Nayif AL-TARIQ","nat":"VAR","ovr":48,"born":"1910-05-30","pos":["ST"]},
-{"id":"p4652","name":"Vsevolod SHEREMETYEV","nat":"RUD","ovr":73,"born":"1913-04-23","pos":["CB","LB"]},
-{"id":"p4653","name":"Katsuoki TOKUGAWA","nat":"NCH","ovr":77,"born":"1915-03-23","pos":["ST"],"badges":["trickster"]}
+{"id":"p4651","name":"Nayif AL-TARIQ","nat":"VAR","ovr":48,"born":"1910-05-30","pos":["ST"]}
 ]
