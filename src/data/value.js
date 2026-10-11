@@ -4,6 +4,7 @@
 // the strength of the league his club plays in. The app (a player's page) and test/values.mjs (the report) both read
 // the five off the records through valueContext and trendsOf below, so the two always give the same figure.
 import { ageOf } from "./icclock.js";
+import { posList } from "./positions.js";
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -85,10 +86,11 @@ export function valueContext(teams, slotsFor, idOf) {
   return { posOf, clubOf, leagueMean };
 }
 
-// The five inputs for one man's record ({ id, name, ovr, born }), and his value.
+// The five inputs for one man's record ({ id, name, ovr, born, pos }), and his value. His position is his own first one
+// (src/data/positions.js), else the slot he fills.
 export function valueInputs(p, ctx, trends, at) {
   const club = ctx.clubOf.get(p.id) || null;
-  return { ovr: p.ovr, age: ageOf(p.born, at), pos: ctx.posOf.get(p.id) || null, trend: trends.get(nameKey(p.name)) || 0,
+  return { ovr: p.ovr, age: ageOf(p.born, at), pos: posList(p.pos)[0] || ctx.posOf.get(p.id) || null, trend: trends.get(nameKey(p.name)) || 0,
            leagueMean: club ? ctx.leagueMean.get(club.group) : null, club };
 }
 export const playerValue = (p, ctx, trends, at) => valueOf(valueInputs(p, ctx, trends, at));

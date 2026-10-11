@@ -17,7 +17,7 @@
 import { applyDraft, draftChanges, dumpRecords } from "../src/data/draft.js";
 import { sheetsFromRecords } from "../src/data/sheets.js";
 import { planSave, scopeOf, settleRequest } from "../src/data/rules.js";
-import { posFitCost, slotLabels } from "../src/data/positions.js";
+import { posFitCost, posList, slotLabels } from "../src/data/positions.js";
 import { sposFor } from "../src/engine/formations.ts";
 
 const API = "https://api.github.com", UA = "avium-football-registry", MAX_BODY = 256 * 1024;
@@ -109,8 +109,8 @@ function filesFor(rec, next) {
   return out;
 }
 // How squads are judged, against these records.
-const judge = (rec) => { const ovr = new Map(rec.players.map(r => [r.id, r.ovr]));
-  return { labels: (t) => slotLabels(sposFor, t.formation, t.squad.length), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0 }; };
+const judge = (rec) => { const ovr = new Map(rec.players.map(r => [r.id, r.ovr])), pos = new Map(rec.players.map(r => [r.id, posList(r.pos)]));
+  return { labels: (t) => slotLabels(sposFor, t.formation, t.squad.length), fit: posFitCost, ovr: (id) => ovr.get(id) ?? 0, pos: (id) => pos.get(id) || [] }; };
 
 // ── the web ───────────────────────────────────────────────────────────────────────────────────────
 const origins = (env) => String(env.APP_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);

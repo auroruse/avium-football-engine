@@ -42,6 +42,23 @@ ranking by rating, a bar a year from src/data/afa.js) stands where a club's leag
 the World Cup, its qualifying and the Nations League, then its manager (the old confederation championships have no
 column, and count only toward who managed it).
 
+**Positions** (Moukden and Kirin, 11 October 2026, over three rounds of questions). Every player has one or two positions of
+his own on his record (`pos`, `src/data/positions.js`) and plays both at his full rating. Anywhere else he keeps his own
+position's skills, the nearer of his two, and is never better than the slot's own player at anything
+(`src/engine/attributes.ts` meAttrs); the keeper's slot is apart, an outfielder in goal at half his rating as before.
+The app shows a man out of position at about the rating he plays the place at (`ovrAt`, from `POS_DROP`, which
+`test/posdrop.mjs` writes from what each skill is worth in each line, measured by `test/specs/positions.mjs`), ringed in
+the loss colour on every pitch, for the eleven only: the eleven's rating counts it, a side's own rating and the AFA
+Rankings do not. A player's page lights his own positions and puts any other place a side plays him in the loss colour;
+lists show "CM" or "CM/DM". Bench places keep a broad group (a club's keeper, defender, two midfielders and forward; a
+national side's the groups of its eleven): substitutes are sorted into the places their positions fit wherever men come
+or go, and a man left in another group's place is marked, not refused. Substitutions, injury and ban cover, rotation,
+formation changes and the manager's shape change all place men by their own positions; a substitute takes the slot of
+the man he replaces. Positions are the overseer's: an editor asks for a change by request (`kind: "pos"`). The first
+positions were set from where everyone played on 11 October 2026: club slot, then national slot (both where they
+differ), past sheets for a second, and the club substitutes nobody had placed drawn inside their bench group to cover
+their side's eleven.
+
 **Who managed whom** is src/data/spells.js (Moukden and Kirin, 9 October 2026): the archive credits every season from
 1931/32 on (the first with player statistics) to a manager. Everyone has run his current sides since then, except at the
 sides that file lists, which name their managers in order and the season each took over. The sheets' moves of 6
@@ -323,7 +340,8 @@ that record here; the old dialogs go.
 side and its clubs: their names and kits freely; their code, ground (with its capacity) and city by request to the
 overseer; their formations and the slots of their squads; who plays for them and who manages them, by moving men; and
 the name, tier and cup of their nation's leagues, outright. An
-editor never changes a man's rating, age or traits, and their editor shows those locked. A side's style follows its
+editor never changes a man's rating, age or traits, and their editor shows those locked; a player's positions are
+locked too, with Request A Change beside them for one of the editor's own men (a request to the overseer). A side's style follows its
 manager: appointing a manager brings his style, and only the overseer sets a style directly.
 
 **Teams** is a picker rail down the left (New Team at the top, a search, then the editor's own sides; the overseer sees
@@ -354,12 +372,12 @@ ratings (`src/data/roll.js`). The overseer reviews a league with every field ope
 Approve. A league made this way stands as a league of its own from its first club; the ones from before keep the six-club
 rule. A nation with no club sheet gets one with its first league, and editors without clubs start here.
 
-**New records** are requests the overseer answers. A new player: name, nationality, date of birth, position, the side he
+**New records** are requests the overseer answers. A new player: name, nationality, date of birth, a position and a second if he has one, the side he
 joins (one of the editor's own sides, or none) and the rating the editor proposes or leaves blank. A new manager: name,
 nationality, date of birth, style and a proposed or blank rating. The overseer sets every blank rating before he lets a man
 in (Moukden and Kirin, 11 October 2026: blank ratings everywhere). Beside a date of birth, Or Age picks a random date
 that gives that age in the world's own time, and a die picks another. **Many** on New Player, and **Import** on a founding club's squad,
-take new players a line each, "Name, position" (Moukden and Kirin, 11 October 2026): read keepers first and down the
+take new players a line each, "Name, position", or "Name, position, second position" (Moukden and Kirin, 11 October 2026): read keepers first and down the
 pitch, one nationality for them all, each age drawn from a range (18 to 32 to start) with a date of birth for it, ratings
 blank or typed. On the Players tab the list is one request to the overseer (`what: "batch"`), its men free or joining one
 side with room for them all; on a squad they take its open places, each the one that fits him. A New form being filled in is kept in this browser, one a
@@ -383,8 +401,7 @@ a note. The top bar's Cart and Requests stay as the quick view, and every change
 
 Written for the ACU's editors and readers (Moukden and Kirin, 10 October 2026): every screen and how the engine plays a
 match, in plain terms with few numbers. It opens from the settings menu. Its pages
-are tabs in the page bar (The App, Matches, Styles And Managers, Ratings, Tournaments; editing waits on the editor's
-rebuild). Each page lists its
+are tabs in the page bar (The App, Matches, Styles And Managers, Ratings, Tournaments, Editing). Each page lists its
 sections in a Contents panel on the left, lit as they are read, and reads in one panel beside it: the prose held to about
 820px, the tables the panel's width. A page and a section are part of the address. The text is `src/docs.js`; what can
 be read off the engine (the playstyles) is read live, so it cannot drift from what the engine plays.
@@ -658,7 +675,9 @@ on panels, no hover lift. No panel without a question to answer.
   waiting request locks), is `src/data/rules.js`, which the registry server (`server/worker.js`) enforces and the app
   previews; `test/rules.mjs` checks it on the real records. A change to the rules goes live when the server is redeployed.
   The leagues are `src/data/leagues.json` (`src/data/leagues.js` reads it), which the server writes beside the other
-  records and `node test/records.mjs check` holds to the clubs; Roll Ratings is `src/data/roll.js`. A screen not yet rebuilt sits under the two bars in
+  records and `node test/records.mjs check` holds to the clubs; Roll Ratings is `src/data/roll.js`. Positions are
+  `src/data/positions.js` (the drop table between its markers is written by `node test/posdrop.mjs write`), the bench's
+  groups `src/data/squads.js` arrangeBench, and `node test/records.mjs check` holds every player to one or two. A screen not yet rebuilt sits under the two bars in
   the old canvas, at its old size.
 - `test/tourn.mjs`, `test/import.mjs` and `test/export.mjs` cut the tournament's functions out of App.tsx by name, so
   rebuilding Tournaments keeps those names.

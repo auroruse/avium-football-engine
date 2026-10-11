@@ -4,6 +4,7 @@ import { meAerial, meAttrs, meBadgeFx, meDefLow, meDuel, meFinish, meGkDiveV, me
 import { mePlanOf, meStrategyOf, ME_STYLE_DEF, ME_STYLE_NAME } from "./tactics";
 import { meChaseStyle, meSetStyle, meShapeFor, meTenMenStyle } from "./manager";
 import { ME_DEF_FORM, formAtkW, pitchSlots, sposFor } from "./formations";
+import { POS_GROUP, ovrAt, posDrop } from "../data/positions.js";
 import { meHungarian } from "./assignment";
 import { BALL_SUB, GOAL_HALF_W, GOAL_H, meBallPredict, meBallRun, meBallSlice, meKickBall, meKnock, meShootBall } from "./ball";
 import { meDribbleTouch, meFirstTouch, meTouchTech } from "./touch";
@@ -250,7 +251,9 @@ export function meReshape(s, side, formation) {
     for (let c = 0; c < n; c++) {
       if (r >= outf.length || c >= sl.length - 1) { row.push(0); continue; }
       const p = ps[outf[r]], [bd, bw] = at(c + 1);
-      row.push((p._bd0 - bd) ** 2 + ((p._bw0 - bw) * 1.2) ** 2);
+      // ...and, for a man with positions of his own, what the new slot would cost him out of them: a rating point is
+      // worth about three and a half metres of moving across.
+      row.push((p._bd0 - bd) ** 2 + ((p._bw0 - bw) * 1.2) ** 2 + (p.own?.length ? 12 * (posDrop(p.own, spos[c + 1]) ?? 0) : 0));
     }
     cost.push(row);
   }
@@ -260,8 +263,11 @@ export function meReshape(s, side, formation) {
     if (!(j >= 1 && j < sl.length)) continue;
     const p = ps[outf[r]], [bd, bw] = at(j);
     p._bd0 = p._bd = bd; p._bw0 = p._bw = bw;
+    // A man with positions of his own is re-read whenever his slot changes: in one of his he is the slot's player,
+    // out of them he plays on his own position's skills.
+    const moved = p.own?.length && p.spos !== spos[j];
     p.spos = spos[j]; p.atkW = atk[j];
-    if (p.pos !== grp[j]) { p.pos = grp[j]; p._att = null; p._awO = undefined; }
+    if (p.pos !== grp[j] || moved) { p.pos = grp[j]; p._att = null; p._awO = undefined; }
   }
   (s.formations = s.formations || {})[side] = formation;
   mp.slots[side] = ps.filter(p => p && p.pos !== "GK").map(p => ({ bd: p._bd0, bw: p._bw0, wx: p.x, wy: p.y }));
@@ -1339,6 +1345,9 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   // He takes over the outgoing man's place in the shape, not a fresh one off the formation.
   for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
     inn[k] = gone[k];
+  // A man with positions of his own takes the outgoing man's slot as well as his place in the shape, and plays it on
+  // his own position's skills where it is not one of his (src/engine/attributes.ts). A keeper keeps his.
+  if (inn.own?.length && !meIsKeeper(inn) && gone.pos !== "GK") { inn.spos = gone.spos; inn.pos = gone.pos; inn.atkW = gone.atkW; }
   inn.vx = 0; inn.vy = 0; inn._att = null;          // his own attributes, recomputed on first use
   inn._duty = "hold"; inn._mk = -1; inn._mkPrev = -1;
   inn._runT = 0; inn._run = null; inn._cool = 0; inn._cut = 0;
@@ -1356,6 +1365,18 @@ export function meSub(s, side, outIdx, benchIdx, out) {
   meRoles(s, side);                                   // the hub and every unit, on who is out there now
   return true;
 }
+
+// WHAT A BENCH MAN IS WORTH IN THE PLACE HE WOULD TAKE. With positions of his own, the rating he plays it at (the
+// figure the app shows, src/data/positions.js ovrAt), and a nudge for his own position, so like for like wins a tie.
+// Without them, his rating and the old like-for-like bonus for the same line.
+export const meBenchWorth = (b, need, place) => (b.own?.length && place
+  ? ovrAt(b.ovr ?? 65, b.own, place) + (b.own.includes(place) ? 2 : 0)
+  : (b.ovr ?? 65) + (b.pos === need ? CFG.subSamePos : 0));
+// Whether a bench man is a keeper: by his own positions where he has them (a keeper may sit in another group's bench
+// place), else by the place he sits in.
+export const meIsKeeper = (b) => (b?.own?.length ? b.own.includes("GK") : b?.pos === "GK");
+// ...and what kind of man he is, for a manager chasing a match or seeing one out: his own first position's line.
+const meBenchKind = (b) => (b.own?.length ? POS_GROUP[b.own[0]] : b.pos);
 
 // WHO COMES OFF, AND WHEN. A man who cannot continue is replaced whatever the clock says; after
 // that it is the tired legs, and only once there is enough of a match left for it to be worth a
@@ -1379,13 +1400,13 @@ export function meAutoSubs(s, side, out) {
       if (tired < CFG.subStamina && tired < worst) { worst = tired; pick = i; }
     }
     if (pick < 0) return;
-    const need = s.players[side][pick].pos;
+    const need = s.players[side][pick].pos, place = s.players[side][pick].spos;
     let bi = -1, bv = -Infinity;
     for (let j = 0; j < bench.length; j++) {
       const b = bench[j]; if (!b) continue;
-      if (need === "GK" && b.pos !== "GK") continue;                // only a keeper goes in goal
-      if (need !== "GK" && b.pos === "GK") continue;
-      const v = (b.ovr ?? 65) + (b.pos === need ? CFG.subSamePos : 0);
+      if (need === "GK" && !meIsKeeper(b)) continue;                // only a keeper goes in goal
+      if (need !== "GK" && meIsKeeper(b)) continue;
+      const v = meBenchWorth(b, need, place);
       if (v > bv) { bv = v; bi = j; }
     }
     if (bi < 0) return;                                             // nobody suitable on the bench
@@ -1427,12 +1448,13 @@ export function meCoachSubs(s, side, out) {
     let bi = -1, bv = -Infinity;
     for (let j = 0; j < bench.length; j++) {
       const b = bench[j]; if (!b) continue;
-      if (need === "GK" && b.pos !== "GK") continue;
-      if (need !== "GK" && b.pos === "GK") continue;
-      let v = (b.ovr ?? 65) + (b.pos === need ? CFG.subSamePos : 0);
+      if (need === "GK" && !meIsKeeper(b)) continue;
+      if (need !== "GK" && meIsKeeper(b)) continue;
+      let v = meBenchWorth(b, need, out0.spos);
       // The game he is in decides which kind of man comes on, as much as the coach can read it.
-      if (want > 0) v += ((b.pos === "FWD" ? 6 : b.pos === "MID" ? 2 : -4)) * g;
-      if (want < 0) v += ((b.pos === "DEF" ? 6 : b.pos === "MID" ? 3 : -5)) * g;
+      const kind = meBenchKind(b);
+      if (want > 0) v += ((kind === "FWD" ? 6 : kind === "MID" ? 2 : -4)) * g;
+      if (want < 0) v += ((kind === "DEF" ? 6 : kind === "MID" ? 3 : -5)) * g;
       if (v > bv) { bv = v; bi = j; }
     }
     if (bi < 0) return;
@@ -1459,7 +1481,7 @@ export function meKeeperCrisis(s, side, out) {
   const bench = s.bench?.[side] || [];
   const cap = (s.subCap && s.subCap[side]) ?? CFG.subCap;
   s.subs = s.subs || { home: 0, away: 0 };
-  const bj = bench.findIndex(b => b && b.pos === "GK");
+  const bj = bench.findIndex(b => b && meIsKeeper(b));
 
   if (bj >= 0 && s.subs[side] < cap) {
     // Who makes way. An injured keeper makes way for himself; a sent-off one cannot, so the weakest
@@ -1476,7 +1498,7 @@ export function meKeeperCrisis(s, side, out) {
       const gk = ps[oi];
       if (gone) for (const k of ["_bd", "_bw", "_bd0", "_bw0", "_mind", "_bsx", "_bsy", "_tx", "_ty", "x", "y"])
         gk[k] = gone[k];
-      gk._duty = "gk"; gk._att = null;
+      gk._duty = "gk"; gk._att = null; gk.pos = "GK"; gk.spos = "GK"; gk.atkW = 0;
       return;
     }
   }
