@@ -12,8 +12,8 @@ import { BADGES, BADGE_BY_ID, badgeOrder } from "../src/data/badges.js";
 import { STYLE_LBL } from "../src/data/styles.js";
 import { isNational, owns, planSave } from "../src/data/rules.js";
 import { cartItems, withoutItem } from "../src/data/cart.js";
-import { placeFor, vacate, without } from "../src/data/squads.js";
-import { POS_ROLE, posFitCost } from "../src/data/positions.js";
+import { arrangeBench, placeFor, vacate, without } from "../src/data/squads.js";
+import { GROUP_NAME, POSITIONS, POS_ROLE, fitsPlace, ovrAt, ownFor, posDrop, posFitCost, posList, posText } from "../src/data/positions.js";
 // The repository, wherever it is checked out: every bundle built with this prelude sits in test/.
 const __root = __f2p(new URL("..", import.meta.url));
 const require_fs_shim = { readdirSync, existsSync };
