@@ -11170,6 +11170,7 @@ export default function App() {
   const [uxPsYear, setUxPsYear] = useState(null);
   const [uxPsSort, setUxPsSort] = useState({ k: "ovr", asc: false });
   const [uxPsAge, setUxPsAge] = useState("");
+  const [uxPsTrait, setUxPsTrait] = useState("");   // a trait's id: only the men who carry it
   const [uxPsPick, setUxPsPick] = useState(null);
   const [uxPsTop, setUxPsTop] = useState(0);
   const uxPsBox = useRef(null), uxPsRaf = useRef(0);
@@ -11346,7 +11347,7 @@ export default function App() {
     for (const t of teams) for (const e of t.squad || []) if (e?.rid && !rid.has(e.fullName || e.name)) rid.set(e.fullName || e.name, e.rid);
     for (const p of playerIndex) {
       const nm = p.fullName || p.name, id = p.rid || rid.get(nm) || null, rec = id ? recNow(id) : null;
-      out.set(nm, { rid: id, age: rec?.born ? ageOf(rec.born) : null, value: rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null });
+      out.set(nm, { rid: id, age: rec?.born ? ageOf(rec.born) : null, value: rec && pstats ? valueOf(valueInputs(rec, uxValueCtx, uxTrends)) : null, badges: rec?.badges || [] });
     }
     return out;
   }, [uxScreen, teams, playerIndex, recById, draft, pstats, uxValueCtx, uxTrends]);
@@ -11392,6 +11393,7 @@ export default function App() {
       if (lf && !hof && !p.clubs.some(c => c.league === lf)) continue;
       const f = uxPsFacts.get(nm) || null;
       if (!uxAgeOk(uxPsAge, f?.age)) continue;
+      if (uxPsTrait && !(f?.badges || []).includes(uxPsTrait)) continue;
       const se = uxPsSeason.get(key) || null, c = uxCareers.get(key) || null;
       if (view === "season" && !se) continue;
       if (view === "career" && !c?.gp) continue;
@@ -11415,11 +11417,11 @@ export default function App() {
       return d ? d * dir : (b.p.ovr || 0) - (a.p.ovr || 0) || a.disp.localeCompare(b.disp);
     });
     return out;
-  }, [uxScreen, pstats, playerIndex, playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsView, uxPsSort,
+  }, [uxScreen, pstats, playerIndex, playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsTrait, uxPsView, uxPsSort,
       uxPsFacts, uxPsSeason, uxCareers, careerRtg, teams, teamByName, natTeamByCode]);
   // A new list starts at its top; coming back to the page (Back from a player) finds it where it was left.
   useEffect(() => { if (uxPsBox.current) uxPsBox.current.scrollTop = 0; setUxPsTop(0); },
-    [playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsView, uxPsY, uxPsSort, world]);
+    [playerSearch, playerPosFilter, playerNatFilter, playerClubFilter, playerCompFilter, uxPsAge, uxPsTrait, uxPsView, uxPsY, uxPsSort, world]);
   useLayoutEffect(() => { if (uxScreen === "players" && uxPsBox.current) uxPsBox.current.scrollTop = uxPsTop; }, [uxScreen]);
   useEffect(() => { if (uxMgBox.current) uxMgBox.current.scrollTop = 0; uxMgTop.current = 0; }, [uxMgQ, uxMgStyle, uxMgSeat, uxMgNat, uxMgSort, world]);
   useLayoutEffect(() => { if (uxScreen === "managers" && uxMgBox.current) uxMgBox.current.scrollTop = uxMgTop.current; }, [uxScreen]);
@@ -13938,6 +13940,7 @@ export default function App() {
               groups={[[null, [{ k: "", name: "All Clubs" }, { k: "FA", name: "Free Agents" }, { k: "HOF", name: "Hall Of Fame" }]],
                 ...playerClubItems.filter(([lg]) => !playerCompFilter || lg === playerCompFilter)]} />
             {uxPickG("Age", uxPsAge, [[null, UX_AGES]], setUxPsAge)}
+            {uxPickG("Trait", uxPsTrait, [[null, [["", "All Traits"]]], ...["gold", "silver", "bronze"].map(t => [TIER_LBL[t], BADGES.filter(b => b.tier === t).map(b => [b.id, b.name])])], setUxPsTrait)}
             {warnChips.map(c => (
               <button key={c.key} type="button" className="ux-btnreset ux-fault" style={{ color: c.color }} title={c.title} onClick={() => setWarnOpen(w => (w === c.key ? null : c.key))}>
                 <span style={mono}>{c.lines.length}</span> {c.label[0].toUpperCase() + c.label.slice(1)}</button>))}
