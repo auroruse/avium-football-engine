@@ -145,15 +145,17 @@ const SLOT_GRP = (f) => { const d = f.split("-").map(Number), g = ["GK"];
 function meShapeForXI(s, side) {
   const f = s.formations?.[side], ps = s.players?.[side];
   if (!f || !ps || ps.length !== 11 || ps[0]?.pos !== "GK") return null;
+  // A man is judged by his own positions where he has them (the nearer of his two), else by the place he was picked for.
   const nat = (p) => p.natPos || p.spos || p.pos;
+  const cost = (p, x) => (p.own?.length ? Math.min(...p.own.map(o => posCost(o, x))) : posCost(nat(p), x));
   const sp0 = sposFor(f);
   let c0 = 0, worst = 0, short = null;
-  for (let i = 1; i < 11; i++) { const c = posCost(nat(ps[i]), sp0[i]); c0 += c; if (c > worst) { worst = c; short = sp0[i]; } }
+  for (let i = 1; i < 11; i++) { const c = cost(ps[i], sp0[i]); c0 += c; if (c > worst) { worst = c; short = sp0[i]; } }
   if (c0 < 2) return null;
   let best = null;
   for (const g of meFormAdj(f)) {
     const sp = sposFor(g), m = [];
-    for (let r = 1; r < 11; r++) m.push(sp.slice(1, 11).map(x => posCost(nat(ps[r]), x)));
+    for (let r = 1; r < 11; r++) m.push(sp.slice(1, 11).map(x => cost(ps[r], x)));
     const res = meHungarian(m, 10);
     let c = 0; for (let r = 0; r < 10; r++) c += m[r][res[r]];
     if (!best || c < best.c) best = { g, c, res };

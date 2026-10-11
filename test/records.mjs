@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIELD, isSlot, sheetsFromRecords } from "../src/data/sheets.js";
 import { dumpRecords, playerRecord } from "../src/data/draft.js";
+import { CLUB_BENCH, fitsPlace, posList } from "../src/data/positions.js";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PRE = join(ROOT, "src/presets"), DATA = join(ROOT, "src/data");
@@ -106,10 +107,11 @@ function importSheets() {
   }
   if (split.length) console.log(`${split.length} people carry different nationalities on different sheets (${kept} cells keep their own text):\n  ${split.join("\n  ")}`);
   const byId = (a, b) => +a.id.slice(1) - +b.id.slice(1);
-  // The sheets carry no badges and no dates of birth: a man's come from his record, by ID (a manager's too).
+  // The sheets carry no badges, no dates of birth and no positions: a man's come from his record, by ID (a manager's too).
   const badges = new Map((had?.players || []).filter(r => r.badges?.length).map(r => [r.id, r.badges]));
   const born = new Map([...(had?.players || []), ...(had?.managers || [])].filter(r => r.born).map(r => [r.id, r.born]));
-  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id), born: r.born ?? born.get(r.id) });
+  const posOf = new Map((had?.players || []).filter(r => r.pos).map(r => [r.id, r.pos]));
+  const order = (r) => playerRecord({ ...r, badges: badges.get(r.id), born: r.born ?? born.get(r.id), pos: r.pos ?? posOf.get(r.id) });
   // A man the records hold and no sheet lists is a free agent (or retired), not a deletion: he stays, as he was. A
   // manager no side lists is out of work the same way (Josue Alferinho, 9 Oct 2026).
   for (const r of had?.players || []) if (![...players.values()].some(x => x.id === r.id)) players.set(r.name, { ...r });
@@ -169,6 +171,16 @@ else if (cmd === "export") {
   for (const t of T) { if (NATIONAL.has(t.file) || !t.group || (t.file === "MISC" && AV.get(t.nation) === t.group)) continue;
     if (!has.has(t.nation + "|" + t.group)) { bad++; console.log(`${t.name.trim()} plays in ${t.group}, which has no league record`); } }
   for (const l of L) if (!T.some(t => t.nation === l.nation && t.group === l.name)) { bad++; console.log(`${l.name} has no clubs`); }
-  console.log(bad ? `${bad} problems between the sheets, the records and the leagues` : `every sheet written from the records is byte-identical to src/presets, and all ${L.length} leagues have their clubs`);
+  // Positions (src/data/positions.js): every player one or two of his own, and every club bench place a man of its group.
+  const P = records().players, byId = new Map(P.map(r => [r.id, r]));
+  for (const r of P) { const raw = Array.isArray(r.pos) ? r.pos : [];
+    if (!raw.length || raw.length > 2 || posList(raw).length !== raw.length) { bad++; if (bad < 40) console.log(`${r.name} (${r.id}) has positions ${JSON.stringify(r.pos)}`); } }
+  // A man in another group's bench place is the editor's choice, marked in the app: counted here, refused nowhere.
+  let odd = 0;
+  for (const t of T) { if (NATIONAL.has(t.file)) continue;
+    t.squad.slice(11).forEach((v, i) => { const id = typeof v === "string" ? v : v?.id, r = id && byId.get(id);
+      if (r && !fitsPlace(r.pos, CLUB_BENCH[i])) odd++; }); }
+  if (odd) console.log(`${odd} club substitutes sit in another group's bench place (allowed; the Editor marks them)`);
+  console.log(bad ? `${bad} problems between the sheets, the records and the leagues` : `every sheet written from the records is byte-identical to src/presets, all ${L.length} leagues have their clubs, and all ${P.length} players their positions`);
   process.exit(bad ? 1 : 0);
 } else { console.error("usage: node test/records.mjs import | export [dir] | check"); process.exit(2); }

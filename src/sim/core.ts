@@ -8,6 +8,7 @@
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
 import { FORMATIONS, FORM_SPOS, FPOS2, ME_MATCH_TICKS, formAtkW, meAdded, meAddedMin, meFinalise, meInit, meManagersPreMatch, meMinute, meShootout, meTick, pitchSlots, sposFor } from "../engine";
+import { ovrAt } from "../data/positions.js";
 // The formation tables live in the engine now (src/engine/formations.ts); the app still reads them here.
 export { FORMATIONS, FORM_SPOS, FPOS2, pitchSlots, sposFor };
 
@@ -178,6 +179,9 @@ export const FIT_OOP_DEPTH = 4, FIT_OOP_SIDE = 3, FIT_OOP_GK = 25;
 
 export const fitEffOvr = (p) => {
   const o = p.ovr || 65, np = p.natPos || p.spos || p.pos, sp = p.spos || p.pos;
+  // A man with positions of his own (src/data/positions.js) is worth what the app shows him at in this place: his
+  // rating in either of his, about what his own position's skills cost him anywhere else.
+  if (p.own?.length && sp) return Math.max(20, ovrAt(o, p.own, sp));
   if (!np || np === sp) return o;
   if ((np === "GK") !== (sp === "GK")) return Math.max(20, o - FIT_OOP_GK);
   const a = FIT_POS_XY[np], b = FIT_POS_XY[sp];
