@@ -358,7 +358,8 @@ the minute beside every man who came on or went off; between them possession, th
 count under Reds for a tournament's fixture, and the Top Player; and every goal along the bottom, playing on hover.
 
 **Copy Image** sits with the buttons, which keep out of the picture until the mouse moves. It copies the page to the
-clipboard as a 1920 by 1080 picture whatever the window's shape, without the buttons, ready to paste into Discord. Not
+clipboard as a 1920 by 1080 picture whatever the window's shape, without the buttons, ready to paste into Discord, and so
+does Command-C (Ctrl-C) with nothing selected. Not
 picked: the momentum chart on Full Time.
 
 ### Editor

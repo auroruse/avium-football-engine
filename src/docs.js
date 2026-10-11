@@ -83,7 +83,7 @@ export const DOCS = [
     ] },
     { id: "full-time", title: "Full Time", body: [
       "Full Time puts the whole match on one page, made to be screenshotted. Over the score sit the competition and round, with Pens, AET or Agg where they apply, and under it the ground. Each side has its code, its eleven's rating, its shape, and its manager with his style. Below come the timeline of cards, injuries and missed or saved penalties; both team sheets, with every man's figures and the minute each substitute came on or went off; possession and seventeen more numbers; the top player; and every goal along the bottom, replayed on hover.",
-      "Copy Image puts the page on the clipboard as a 1920 by 1080 picture, ready to paste into Discord. A friendly then offers New and Replay, and a tournament's fixture Import, Replay and Abandon.",
+      "Copy Image, or Command-C (Ctrl-C) with nothing selected, puts the page on the clipboard as a 1920 by 1080 picture, ready to paste into Discord. A friendly then offers New and Replay, and a tournament's fixture Import, Replay and Abandon.",
     ] },
     { id: "how-it-works", title: "How A Match Is Played", body: [
       "Every match is simulated in full. Twenty-two men and a ball move on a full-size pitch, 105 by 68 metres. The world moves on four times every simulated second and the ball a hundred times, so every touch, line and goal is settled at the moment it happens. Team ratings are never compared: a goal comes from a man reaching a position, striking the ball and beating the keeper.",

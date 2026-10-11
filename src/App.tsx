@@ -4820,17 +4820,22 @@ const TraitCard = () => {
       {TRAIT_DOC[b.id] && <p>{TRAIT_DOC[b.id]}</p>}
     </div>);
 };
+// Where each name's chain ended, for the session. A face mounted again starts on the picture the last one found instead
+// of asking for the missing ones first: the full-time picture is drawn from a second copy of the page, and on the live
+// site each missing picture costs a round trip (two for a name with an accent), so the copy was taken while its faces
+// were still on their way to the placeholder and they came out blank (user, 11 October 2026).
+const SHOT_AT = new Map();
 const PlayerShot = ({ name, size, style }) => {
   const chain = shotChain(name);
   // The step is STATE, not a scribble on the DOM node. React owns src, so reassigning
   // e.currentTarget.src is undone by the very next render -- which on a pitch that re-renders on
   // every tick means the token sits on a 404 forever and shows the browser's broken-image glyph.
-  const [step, setStep] = useState(0);
-  useEffect(() => { setStep(0); }, [name]);
+  const [step, setStep] = useState(() => SHOT_AT.get(name) ?? 0);
+  useEffect(() => { setStep(SHOT_AT.get(name) ?? 0); }, [name]);
   const i = Math.min(step, chain.length - 1);
   return (
     <img src={chain[i]} alt="" draggable={false}
-         onError={() => setStep((s) => (s < chain.length - 1 ? s + 1 : s))}
+         onError={() => { const n = Math.min(i + 1, chain.length - 1); SHOT_AT.set(name, n); setStep(n); }}
          style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover",
                   display: "block", background: "var(--chrome-bg-dd)", ...style }} />
   );
@@ -5903,7 +5908,15 @@ export default function App() {
       for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(() => r()));
       try {
         const el = ftShotRef.current; if (!el) throw new Error("no picture");
-        await Promise.all([...el.querySelectorAll("img")].map(im => im.decode().catch(() => {})));
+        // ...and every picture settled, loaded or given up on. A face, crest or logo with nothing on file walks its own
+        // fallback chain one missing file at a time, each a round trip on the live site, and the copy is new every time.
+        for (const t0 = performance.now(); ;) {
+          const ims = [...el.querySelectorAll("img")];
+          await Promise.all(ims.map(im => im.decode().catch(() => {})));
+          const open = ims.some(im => im.isConnected && getComputedStyle(im).display !== "none" && !(im.complete && im.naturalWidth > 0));
+          if (!open || performance.now() - t0 > 3000) break;
+          await new Promise(r => setTimeout(r, 50));
+        }
         const at = { position: "static", left: "0", top: "0" };
         const blob = await shotBlob(el, { width: 1600, height: 900, scale: 1920 / 1600, rootStyle: at })
           .catch(() => toBlob(el, { width: 1600, height: 900, pixelRatio: 1920 / 1600, cacheBust: false, style: at }));
@@ -5927,6 +5940,22 @@ export default function App() {
     if (meView !== "post") return;
     const id = setTimeout(() => { if (meRef.current?.ftDone) shotWarm(ftPageRef.current); }, 800);
     return () => clearTimeout(id);
+  }, [meView]);
+  // COMMAND-C ON THE FULL-TIME PAGE (Ctrl-C elsewhere) copies the picture, as Copy Image does, when nothing is selected
+  // (user, 11 October 2026). Selected text, or a field being typed in, copies as it always did. The key wakes the
+  // buttons, so Copying and Copied show where they always do.
+  const ftCopyRef = useRef(null);
+  useEffect(() => {
+    if (meView !== "post") return;
+    const onKey = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.repeat || (e.key || "").toLowerCase() !== "c") return;
+      const t = e.target;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (String(window.getSelection?.() ?? "") !== "" || !meRef.current?.ftDone || !ftCopyRef.current) return;
+      e.preventDefault(); ftCopyRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [meView]);
   // A TOURNAMENT FIXTURE'S CONTEXT, handed from the tournament tab to the match. Who was
   // available after suspensions and injuries, what the tie is worth, which ground, what leg
@@ -19091,6 +19120,7 @@ export default function App() {
                 w.then(() => setFtCopied("ok"), () => setFtCopied("fail"))
                  .finally(() => setTimeout(() => setFtCopied(""), 2400));
               };
+              ftCopyRef.current = ftCopy;
               const page = (k, dw, dh, shot) => {
                 // Spare height: six parts in ten to the goals, the rest to the middle band.
                 const goalsH = FT_GOALS + Math.round((dh - FT_H) * 0.6);
