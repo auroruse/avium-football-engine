@@ -187,6 +187,25 @@ export function play(E, hT, aT, seed) {
   return res;
 }
 
+// ---- one match, simulated --------------------------------------------------------------------------
+// The app's own Sim All: a fixture as a tournament plays it (src/sim/core.ts simPositionalMatch), the managers and the
+// injuries in and no home side, on whichever engine build E is. A spec with runner: "sim" plays its matches this way. It
+// keeps how the side DID, and who scored (G, moved out to the row, which the summary does not average).
+export function simMatch(E, hT, aT, seed) {
+  const r = E.simPositionalMatch(new E.RNG(seed >>> 0 || 7), hT.skill, aT.skill, false, hT.style, aT.style, hT.formation, aT.formation,
+    null, hT.strategy, aT.strategy, hT.squad, aT.squad, null, null, true, { home: hT.mgmt ?? null, away: aT.mgmt ?? null });
+  const res = {};
+  for (const sd of SIDES) {
+    const g = sd === "home" ? r.ftHome : r.ftAway, ga = sd === "home" ? r.ftAway : r.ftHome, men = r.playerData?.[sd] || [];
+    const by = (grp) => men.filter(p => p.pos === grp).reduce((t, p) => t + (p.goals || 0), 0);
+    res[sd] = { pts: g > ga ? 3 : g === ga ? 1 : 0, w: +(g > ga), d: +(g === ga), gf: g, ga,
+      top: Math.max(0, ...men.map(p => p.goals || 0)), gFwd: by("FWD"), gMid: by("MID"), gDef: by("DEF"),
+      yel: r.cards?.[sd]?.yellows ?? 0, red: r.cards?.[sd]?.reds ?? 0,
+      G: men.filter(p => p.goals).map(p => [p.fullName || p.name, p.goals]) };
+  }
+  return res;
+}
+
 // ---- the experiment ---------------------------------------------------------------------------
 const engines = new Map();
 const engineAt = async (path) => {
@@ -224,9 +243,11 @@ async function runJobIn(E, spec, arm, ci, k0, n) {
     const op = (arm.opp || spec.opp || ((t) => t))(fx.opp, E, H, { k, ci });
     // arm.seed replays the same fixtures on other dice: replicates of a base arm average its own luck away.
     const sd = (fx.seed + (arm.seed || 0) * 2654435761) >>> 0;
-    const r = fx.home ? play(E, me, op, sd) : play(E, op, me, sd);
+    const run = spec.runner === "sim" ? simMatch : play;
+    const r = fx.home ? run(E, me, op, sd) : run(E, op, me, sd);
     const S = fx.home ? r.home : r.away, O = fx.home ? r.away : r.home;
-    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O });
+    const G = S.G; delete S.G; delete O.G;
+    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O, ...(G ? { G } : null) });
   }
   return rows;
 }
@@ -277,10 +298,13 @@ export function summarise(rows, base, armOrder) {
   return lines;
 }
 
-const SHOW = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
+const SHOW_ALL = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
   "carry", "drib", "sh", "xgps", "shd", "fast", "reg", "regD", "regCP", "ppda", "line", "blen", "dwid", "awid", "run", "tkTry", "fouls"];
 function printTable(lines, base) {
   const fmt = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2);
+  // The columns a run has: a simulated one (runner: "sim") keeps only how the side did, so it prints its own.
+  const SHOW = SHOW_ALL.some(k => lines[0]?.[k] !== undefined) ? SHOW_ALL.filter(k => lines[0][k] !== undefined)
+    : Object.keys(lines[0] || {}).filter(k => k !== "arm" && k !== "n");
   const head = ["arm".padEnd(22), "n".padStart(5), ...SHOW.map(k => k.padStart(7))].join(" ");
   console.log(head);
   for (const o of lines) {
