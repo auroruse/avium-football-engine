@@ -2178,7 +2178,7 @@ export function meTick(s, rng, out) {
           }
         }
         if (sh) out.onTarget[sh.side]++;
-        if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
+        if (globalThis.__gfrom) globalThis.__gfrom.push(sh ? (sh.pen ? "penalty" : sh.fk ? "freekick" : sh.hdr ? "header" : sh.from || "set piece") : "no shot");
         if (sh && globalThis.__svd) globalThis.__svd.push([sh.d, 0]);
         else if (mp.lastSide === scorer) { out.shots[scorer]++; out.onTarget[scorer]++; }
         // Parried in. The shot was counted when he struck it, so it only needs the on-target credit
@@ -2679,6 +2679,7 @@ export function meTick(s, rng, out) {
             if (q.yc >= 2) meRed(s, out, bs, q, "second", mp.bx, mp.by); else meBook(out, bs, q);
           }
           if (!hbGoal) meEvt(out, "foul", bs, mp.bx, mp.by, mp.bx, mp.by, `Handball, ${q.fullName || q.name}`);
+          if (globalThis.__penWhy) globalThis.__penWhy.push({ side: meOther(bs), why: "hand" });
           meDead(s, "penalty", meOther(bs), 470, out);
           return true;
         }
@@ -3643,7 +3644,7 @@ export function meFoulCommit(s, rng, out, side, p, q, closeV, inArea0, lean) {
   meRate(q, card === "red" || card === "red2" ? -CFG.rateRed : card ? -CFG.rateYellow : 0);
   // Giving a penalty away is its own thing, separate from whatever card came with it, and the
   // man who drew it gets the credit for it.
-  if (inArea0) { meRate(q, -CFG.ratePenGave); meRate(p, CFG.ratePenWon); }
+  if (inArea0) { meRate(q, -CFG.ratePenGave); meRate(p, CFG.ratePenWon); if (globalThis.__penWhy) globalThis.__penWhy.push({ side, why: "foul" }); }
   if (card === "yellow") {
     q.yc = (q.yc || 0) + 1;
     (out.yellows = out.yellows || { home: 0, away: 0 })[fSide]++;

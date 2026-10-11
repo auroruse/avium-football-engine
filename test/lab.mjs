@@ -85,11 +85,13 @@ export function play(E, hT, aT, seed) {
     if (dep(sd, pp.sx) < 63) S.own60++;
   };
   globalThis.__shots = [];
+  // Set pieces: every free kick struck at goal, and every penalty given with what it was given for.
+  globalThis.__fk = []; globalThis.__penWhy = [];
   // Goals by what made them, for calibrating the recorder against the physics: the engine reports only the
   // origin, so the scorer is whichever side's count has just gone up.
   const GF = { home: {}, away: {} }; let lastG = { home: 0, away: 0 };
   globalThis.__gfrom = { push(f) { const sd = out.goals.away > lastG.away ? "away" : "home"; lastG = { ...out.goals };
-    const k = f === "header" ? "hdr" : f === "penalty" ? "pen" : f === "no shot" || f === "set piece" ? "other" : "foot";
+    const k = f === "header" ? "hdr" : f === "penalty" ? "pen" : f === "freekick" ? "fk" : f === "no shot" || f === "set piece" ? "other" : "foot";
     GF[sd][k] = (GF[sd][k] || 0) + 1; } };
   const O = { last: null, sp: true, lost: { home: -999, away: -999 },
     own: { home: 0, away: 0 }, fin: { home: 0, away: 0 }, reg: { home: [], away: [] },
@@ -150,7 +152,8 @@ export function play(E, hT, aT, seed) {
             : f === "feet" ? "feet" : f === "long" || f === "switch" ? "long" : f === "-" ? "solo" : "set";
     S.org[g]++; S.oxg[g] += r.xg;
   }
-  globalThis.__pass = null; globalThis.__shots = null; globalThis.__gfrom = null;
+  const FK = globalThis.__fk, PW = globalThis.__penWhy;
+  globalThis.__pass = null; globalThis.__shots = null; globalThis.__gfrom = null; globalThis.__fk = null; globalThis.__penWhy = null;
   const res = {};
   const pt = out.poss.home + out.poss.away || 1;
   for (const sd of SIDES) {
@@ -171,6 +174,9 @@ export function play(E, hT, aT, seed) {
       carry: out.carriesSide?.[sd] ?? 0, drib: sum("dribbles"), tko: sum("takeOns"), disp: sum("duelLost"), aer: sum("aerials"),
       sh: out.shots[sd], sot: out.onTarget[sd], xgps: r4(H.xg / (H.n || 1)), shd: r4(H.d / (H.n || 1)), hdr: r4(H.hdr / (H.n || 1)),
       fast: H.fast, xgFast: r4(H.xgFast), g_hdr: GF[sd].hdr || 0, g_pen: GF[sd].pen || 0, g_foot: GF[sd].foot || 0, g_oth: GF[sd].other || 0,
+      g_fk: GF[sd].fk || 0, fkTry: FK.filter(f => f.side === sd).length, fkD: r4(FK.filter(f => f.side === sd).reduce((t, f) => t + f.d, 0)),
+      fkWide: FK.filter(f => f.side === sd && f.dy > 12).length,
+      penF: PW.filter(x => x.side === sd && x.why === "foul").length, penH: PW.filter(x => x.side === sd && x.why === "hand").length,
       ...Object.fromEntries(ORG.map(k => ["o_" + k, H.org[k]])), ...Object.fromEntries(ORG.map(k => ["x_" + k, r4(H.oxg[k])])),
       tkTry: out.tackleTrySide?.[sd] ?? 0, tkWon: out.tackleWonSide?.[sd] ?? 0,
       reg: reg.length, regD: r4(reg.reduce((t, r) => t + r[0], 0) / (reg.length || 1)),
@@ -183,6 +189,25 @@ export function play(E, hT, aT, seed) {
       subT: SUB[sd].reduce((a, b) => a + b, 0),
       fouls: out.fouls[sd], yel: out.yellows?.[sd] ?? 0, red: out.reds?.[sd] ?? 0, cor: out.corners[sd],
     };
+  }
+  return res;
+}
+
+// ---- one match, simulated --------------------------------------------------------------------------
+// The app's own Sim All: a fixture as a tournament plays it (src/sim/core.ts simPositionalMatch), the managers and the
+// injuries in and no home side, on whichever engine build E is. A spec with runner: "sim" plays its matches this way. It
+// keeps how the side DID, and who scored (G, moved out to the row, which the summary does not average).
+export function simMatch(E, hT, aT, seed) {
+  const r = E.simPositionalMatch(new E.RNG(seed >>> 0 || 7), hT.skill, aT.skill, false, hT.style, aT.style, hT.formation, aT.formation,
+    null, hT.strategy, aT.strategy, hT.squad, aT.squad, null, null, true, { home: hT.mgmt ?? null, away: aT.mgmt ?? null });
+  const res = {};
+  for (const sd of SIDES) {
+    const g = sd === "home" ? r.ftHome : r.ftAway, ga = sd === "home" ? r.ftAway : r.ftHome, men = r.playerData?.[sd] || [];
+    const by = (grp) => men.filter(p => p.pos === grp).reduce((t, p) => t + (p.goals || 0), 0);
+    res[sd] = { pts: g > ga ? 3 : g === ga ? 1 : 0, w: +(g > ga), d: +(g === ga), gf: g, ga,
+      top: Math.max(0, ...men.map(p => p.goals || 0)), gFwd: by("FWD"), gMid: by("MID"), gDef: by("DEF"),
+      yel: r.cards?.[sd]?.yellows ?? 0, red: r.cards?.[sd]?.reds ?? 0,
+      G: men.filter(p => p.goals).map(p => [p.fullName || p.name, p.goals]) };
   }
   return res;
 }
@@ -224,9 +249,11 @@ async function runJobIn(E, spec, arm, ci, k0, n) {
     const op = (arm.opp || spec.opp || ((t) => t))(fx.opp, E, H, { k, ci });
     // arm.seed replays the same fixtures on other dice: replicates of a base arm average its own luck away.
     const sd = (fx.seed + (arm.seed || 0) * 2654435761) >>> 0;
-    const r = fx.home ? play(E, me, op, sd) : play(E, op, me, sd);
+    const run = spec.runner === "sim" ? simMatch : play;
+    const r = fx.home ? run(E, me, op, sd) : run(E, op, me, sd);
     const S = fx.home ? r.home : r.away, O = fx.home ? r.away : r.home;
-    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O });
+    const G = S.G; delete S.G; delete O.G;
+    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O, ...(G ? { G } : null) });
   }
   return rows;
 }
@@ -277,10 +304,13 @@ export function summarise(rows, base, armOrder) {
   return lines;
 }
 
-const SHOW = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
+const SHOW_ALL = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
   "carry", "drib", "sh", "xgps", "shd", "fast", "reg", "regD", "regCP", "ppda", "line", "blen", "dwid", "awid", "run", "tkTry", "fouls"];
 function printTable(lines, base) {
   const fmt = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2);
+  // The columns a run has: a simulated one (runner: "sim") keeps only how the side did, so it prints its own.
+  const SHOW = SHOW_ALL.some(k => lines[0]?.[k] !== undefined) ? SHOW_ALL.filter(k => lines[0][k] !== undefined)
+    : Object.keys(lines[0] || {}).filter(k => k !== "arm" && k !== "n");
   const head = ["arm".padEnd(22), "n".padStart(5), ...SHOW.map(k => k.padStart(7))].join(" ");
   console.log(head);
   for (const o of lines) {
