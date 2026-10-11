@@ -258,14 +258,13 @@ export function meOffsideLine(s, side) {
 // running away from the ball is now genuinely further from it than one standing still.
 import { CFG, ME_DT } from "./config";
 import { meAerial, meAttrs, meSpeed } from "./attributes";
-export function meTimeToBallMs(p, tx, ty, vmax, lagMul) {
+export function meTimeToBallMs(p, tx, ty, vmax, lagMul, seenMs) {
   const vx = (p.vx || 0) / ME_DT, vy = (p.vy || 0) / ME_DT;      // per-slice displacement -> m/s
   const rawD = Math.hypot(tx - p.x, ty - p.y);
   // Beyond 16 m the fine structure is noise; GF itself switches to a straight-line estimate.
   if (rawD > 16) return Math.hypot(tx - (p.x + vx * 0.2), ty - (p.y + vy * 0.2)) / (vmax * 0.75) * 1000;
   const vm = vmax * CFG.ttbVmax;
   const d = Math.hypot(tx - (p.x + vx * CFG.ttbDrift), ty - (p.y + vy * CFG.ttbDrift));
-  const r = CFG.ttbRadius + CFG.ttbRadiusV * vm;
   // The circle GROWS across those 700 ms -- it is not 700 ms of nothing followed by running. Adding
   // the constant flat meant a defender standing ON the ball's path was modelled as needing 700 ms to
   // reach a ball already at his feet, while the ball crossed him in 470. That single term is why the
@@ -277,7 +276,16 @@ export function meTimeToBallMs(p, tx, ty, vmax, lagMul) {
   // else. Here it reaches every query in the engine at once: intercepting, marking, chasing a loose
   // ball, closing a carrier down. A defender who reads it commits a quarter of a second sooner than
   // one who does not, and over a match that is the difference between getting there and watching.
-  const lag = CFG.ttbChangeMs * (1 - (meAttrs(p).position / 99 - 0.5) * CFG.ttbAnticip) * (lagMul ?? 1);
+  const lag0 = CFG.ttbChangeMs * (1 - (meAttrs(p).position / 99 - 0.5) * CFG.ttbAnticip) * (lagMul ?? 1);
+  // ...AND HE READS IT ONCE (user, 11 October 2026: defenders "jockey slowly around a ball when there's clearly a
+  // chance to change directions and intercept it"). The moment is between the BALL CHANGING and him acting on it,
+  // but this was asked afresh every slice, so a man already chasing a loose ball was charged the whole reading
+  // again each quarter second: the first point of its path he could "make" was always most of a second down it,
+  // and the designated man ran alongside a ball a metre from his feet, aimed at a spot ahead of it, while an
+  // opponent came in and took it. seenMs is how long ago the ball last changed (ball.ts, _pChg): that much of the
+  // reading is already done, and the circle he grows during it shrinks with what is left of it.
+  const lag = seenMs ? Math.max(0, lag0 - seenMs) : lag0;
+  const r = CFG.ttbRadius + CFG.ttbRadiusV * vm * (lag0 > 0 ? lag / lag0 : 1);
   const over = d - r;
   return over > 0 ? lag + over / vm * 1000
                   : lag * (d / Math.max(r, 0.01));
@@ -285,9 +293,9 @@ export function meTimeToBallMs(p, tx, ty, vmax, lagMul) {
 
 // Ball-side query: scan the forecast for the first slot this player can actually make, and return
 // where to run and how urgent it is. `run at where the ball WILL be` lives here.
-export function meIntercept(p, mp, vmax, hurry, lagMul) {
+export function meIntercept(p, mp, vmax, hurry, lagMul, seenMs, zCap) {
   const pred = mp.pred;
-  if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax, lagMul); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
+  if (!pred) { const ms = meTimeToBallMs(p, mp.bx, mp.by, vmax, lagMul, seenMs); return { x: mp.bx, y: mp.by, ms, slotMs: ms }; }
   for (let i = 0; i < pred.length; i++) {
     const [x, y, z] = pred[i];
     // Over HIS head there -- not over a flat 1.6 m that nobody could ever reach. Without this he
@@ -296,18 +304,19 @@ export function meIntercept(p, mp, vmax, hurry, lagMul) {
     // keeper's rush plan could not target any slot of a cross's flight above ~1.9 m -- he could
     // only ever plan to meet the ball where it DROPS, which is after the header contest is over.
     // That is most of why he would not come for crosses.
-    if (z >= (p.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(p), CFG))) continue;
+    // zCap: the height he means to take it at instead, for a ball he lets come down (match.ts, recvAirZ).
+    if (z >= (zCap ?? (p.pos === "GK" ? CFG.gkHigh : meAerial(meAttrs(p), CFG)))) continue;
     const t = i * ME_DT * 1000;
-    const need = meTimeToBallMs(p, x, y, vmax, lagMul);
+    const need = meTimeToBallMs(p, x, y, vmax, lagMul, seenMs);
     // 60 ms is "I can be standing there when it arrives". A man who HURRIES does not need to be
     // waiting -- the ball is still travelling through the point, so arriving inside the window it
     // takes to pass is enough, and that lets him meet it metres earlier in the flight. This is
     // what checking to the ball IS, and without a hurry allowance the engine could only ever
     // model a receiver who waits for delivery.
-    if (need <= t + (hurry || 60)) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1) };
+    if (need <= t + (hurry || 60)) return { x, y, ms: Math.max(need, t), slotMs: Math.max(t, 1), ok: 1 };
   }
   const last = pred[pred.length - 1];
-  return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax, lagMul), slotMs: (pred.length - 1) * ME_DT * 1000 };
+  return { x: last[0], y: last[1], ms: meTimeToBallMs(p, last[0], last[1], vmax, lagMul, seenMs), slotMs: (pred.length - 1) * ME_DT * 1000, ok: 0 };
 }
 
 // Can anybody actually get to this ball before it arrives? This is the SAME question the resolution
@@ -359,9 +368,11 @@ export function mePassRisk(s, side, x0, y0, x1, y1, speed, high, va, loft) {
     // scored as completely safe when the man it was really being played to was the goalkeeper --
     // which is exactly what it looked like. No special case is needed: a keeper forty metres from
     // the lane has a time-to-ball that contributes nothing, and one six metres from a ball rolling
-    // into his six-yard box beats it there. He is slower than an outfielder, so he is charged the
-    // same three-quarter pace the movement code gives him.
-    const vmaxQ = meSpeed(meAttrs(q), q.stamina) * (q.pos === "GK" ? 0.75 : 1);
+    // into his six-yard box beats it there. He is charged the pace the movement code gives a keeper
+    // who has come for a ball, gkScramble (match.ts). At the three-quarter pace of a keeper jogging his
+    // box he was half the man who actually came, so balls nine to fourteen metres from him scored as
+    // free and were played straight to him (user, 11 October 2026: "forward ones straight into the keeper").
+    const vmaxQ = meSpeed(meAttrs(q), q.stamina) * (q.pos === "GK" ? CFG.gkScramble : 1);
     let t = ((q.x - x0) * dx + (q.y - y0) * dy) / L2;
     if (t <= 0.04) continue;                                   // behind the passer; he cannot cut it
     t = Math.min(1.06, t);                                     // just past the target still counts

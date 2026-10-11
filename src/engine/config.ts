@@ -1360,7 +1360,10 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // into his path and never behind him, clamped to [thruVaMin, thruVaMax]. A man invited onto a ball
   // he is not already running for goes at spaceVd of his pace. Meetings sooner than meetTMin are a
   // ball to feet, and later than meetTMax are not a pass.
-  thruOver: 3.5, thruVaMin: 6, thruVaMax: 11, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
+  // 11 Oct 2026 (user: through balls "struck way too powerfully for the receiver"): 3.5 over his pace and up to 11 left
+  // no room for a ball that arrives a tenth early, which then rolls forty metres on to the keeper or out. With the
+  // runner now running his line onto it (match.ts, thruRun) 2.0 and 9.5 (set by reasoning, not measured).
+  thruOver: 2.0, thruVaMin: 6, thruVaMax: 9.5, spaceVd: 0.8, meetTMin: 0.35, meetTMax: 4.2,
   // How far a ball along the ground is ever played into space, and how long before a runner gets
   // there a ball over the top lands (so it is bouncing into his path, not dropping behind him).
   groundMaxD: 40, overLand: 0.15, overMinD: 14,
@@ -2119,6 +2122,21 @@ tkBeatT: 14, tkBeatSpd: 0.55,
   // ran straight over it -- inside gatherR of a ball receding along his approach, his pace is
   // capped at the ball's plus gatherOver, so he arrives with it playable instead of behind him.
   gatherR: 2.5, gatherOver: 1.5,
+  // A HIGH BALL IS TAKEN AS IT COMES DOWN (match.ts): unchallenged, the man it is played to goes to where the ball has
+  // dropped to recvAirZ m, unless the other side's best man would reach the ball recvAirMs sooner than he gets there,
+  // when he goes up for it. While it is above recvAirZ the ground-ball stand-off and walk-in do not apply.
+  recvAirZ: 1.0, recvAirMs: 300,
+  // The man a through ball is played to runs his line to its aim until the ball is within thruRunNear m of him.
+  thruRunNear: 3.0,
+  // A ball knockLooseR m or more off its dribbler's foot is won by their quickest man when he gets to it knockBeatMs
+  // before the dribbler does (match.ts).
+  knockLooseR: 1.6, knockBeatMs: 150,
+  // Inside looseAttackR m of a ball nobody has played, the man named for it goes at the ball, led by looseLead s of
+  // its travel, rather than at the forecast's next slot (match.ts).
+  looseAttackR: 2.5, looseLead: 0.1,
+  // A ball into a runner's path is not offered when their keeper, coming at gkScramble pace, would reach its meeting
+  // point sooner than gkFirstMs after the runner (mind/decide.ts): a ball he gets to first or with him is his.
+  gkFirstMs: 150,
   // How near a man COMMITTED to a spot has to get before he counts as arrived. It was 1.6 -- LOOSER
   // than the 1.3 for a man committed to nothing -- left over from set pieces, which take the mp.sp
   // branch above it and have not needed it for a long time. That spare metre and a half is what kept

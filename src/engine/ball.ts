@@ -242,6 +242,9 @@ export function meBallPredict(mp) {
   if (S && _PK.every((c, j) => Object.is(mp._pC[j], CFG[c])))
     for (let s = 0; s < PRED_SLOTS; s++) if (_pAt(S[s], mp)) { k = s; break; }
   if (k < 0) {
+    // The ball has changed (a touch, a ricochet, a restart): the moment everybody's reading of it starts again
+    // (meTimeToBallMs, seenMs).
+    mp._pChg = mp.tick;
     if (!S) S = mp._pS = Array.from({ length: PRED_SLOTS }, () => [0, 0, 0, 0, 0, 0]);
     mp._pC = _PK.map(c => CFG[c]);
     g.bx = mp.bx; g.by = mp.by; g.bz = mp.bz; g.bvx = mp.bvx; g.bvy = mp.bvy; g.bvz = mp.bvz;

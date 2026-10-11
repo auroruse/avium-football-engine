@@ -4732,14 +4732,31 @@ const uxPlTraits = (ids) => {
       return <img key={id} src={`${import.meta.env.BASE_URL}player-badges/${id}.svg`} alt={BADGE_BY_ID[id].name} data-trait={id} draggable={false}
         style={{ left: `calc(50% + ${Math.cos(a).toFixed(3)} * var(--tr-r))`, top: `calc(50% + ${Math.sin(a).toFixed(3)} * var(--tr-r))` }} />; })}</span>);
 };
+// THE OUT-OF-POSITION ALERT'S MARK (user, 11 October 2026): a red warning triangle. Wherever it stands, data-oop carries
+// what the card says: his own positions and each place he is out of position in, { own, rows: [{ side, place, ovr, at,
+// d }] }, the side named only where more than one may be meant, d what the place costs him.
+const UX_WARN = (
+  <svg className="ux-warn-i" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M10.27 3.5a2 2 0 0 1 3.46 0l8.66 15a2 2 0 0 1-1.73 3H3.34a2 2 0 0 1-1.73-3z" />
+    <path className="ux-warn-x" d="M12 9.5v4.5M12 17.6v.01" />
+  </svg>);
+// THE DRAWN ARROW AND CARET (user, 11 October 2026), for the triangles the app used to type (up, down, and the small ones
+// on sorted columns and closed lists): drawn in the colour of the text they sit in, as tall as its capitals, with a
+// stroke that keeps to its weight. The arrow is a gain or a loss, up or down; the caret a sort order or a list to open.
+const UxArrow = ({ up = false }) => (
+  <svg className={"ux-arw" + (up ? " ux-arw-up" : "")} viewBox="0 0 8 12" aria-hidden="true"><path d="M4 1.5v9M1.2 7.6L4 10.5l2.8-2.9" /></svg>);
+const UxCaret = ({ up = false }) => (
+  <svg className={"ux-crt" + (up ? " ux-crt-up" : "")} viewBox="0 0 10 6" aria-hidden="true"><path d="M1.2 1.2L5 4.8l3.8-3.6" /></svg>);
+// Who is out of position on any sheet, worked out once for each set of sides (App.tsx uxOopIdx).
+const UX_OOP_CACHE = new WeakMap();
 const TraitCard = () => {
   // The trait under the pointer or the focus is held as its element itself, never wrapped in a fresh object: React may
   // replay a queued update while a re-render runs, and an updater that returns a new object each time made every replay
   // look like a new trait, which re-placed the card and re-rendered it until React gave up (ticking a trait in the
-  // editor's list did it).
+  // editor's list did it). The out-of-position alert opens its card the same way, from data-oop.
   const [el, setEl] = useState(null), [pos, setPos] = useState(null), ref = useRef(null);
   useEffect(() => {
-    const find = (n) => (n && n.closest ? n.closest("[data-trait]") : null);
+    const find = (n) => (n && n.closest ? n.closest("[data-trait],[data-oop]") : null);
     const show = (e) => setEl(find(e.target));
     const leave = (e) => { if (!e.relatedTarget) setEl(null); };
     const hide = () => setEl(null);
@@ -4759,11 +4776,30 @@ const TraitCard = () => {
     const top = r.bottom + G + c.height > window.innerHeight - M ? Math.max(M, r.top - G - c.height) : r.bottom + G;
     setPos(p => (p && p.el === el && p.left === left && p.top === top ? p : { el, left, top }));
   }, [el]);
-  const b = el && BADGE_BY_ID[el.getAttribute("data-trait")];
-  if (!b) return null;
+  let o = null;
+  if (el && el.hasAttribute("data-oop")) { try { o = JSON.parse(el.getAttribute("data-oop")); } catch { o = null; } }
+  const b = !o && el && BADGE_BY_ID[el.getAttribute("data-trait")];
+  if (!b && !o?.rows?.length) return null;
   const placed = pos && pos.el === el ? pos : null;
+  const at = placed ? { left: placed.left, top: placed.top } : { left: 0, top: 0, visibility: "hidden" };
+  // Out of position: where he plays against his own positions, and what each place costs him.
+  if (o) return (
+    <div ref={ref} className="ux-tcard ux-ocard" role="tooltip" style={at}>
+      <div className="ux-tcard-h">
+        <span className="ux-ocard-i">{UX_WARN}</span>
+        <div><b>Out Of Position</b><span className="ux-ocard-own">{(o.own || []).length > 1 ? "His Positions" : "His Position"}
+          {(o.own || []).map(x => <b key={x} style={{ ...mono, color: POS_CLR[x] }}>{x}</b>)}</span></div>
+      </div>
+      <div className="ux-ocard-rows">{o.rows.map((r, i) => (
+        <div key={i} className="ux-ocard-r">
+          <span className="ux-ocard-s">{r.side || "Playing"}</span>
+          <b style={{ ...mono, color: POS_CLR[r.place] }}>{r.place}</b>
+          <span>{r.at != null && <>Plays As <b style={mono}>{r.at}</b></>}</span>
+          <b className="ux-ocard-d" style={mono}>{r.d != null && <><UxArrow />{r.d}</>}</b>
+        </div>))}</div>
+    </div>);
   return (
-    <div ref={ref} className="ux-tcard" role="tooltip" style={placed ? { left: placed.left, top: placed.top } : { left: 0, top: 0, visibility: "hidden" }}>
+    <div ref={ref} className="ux-tcard" role="tooltip" style={at}>
       <div className="ux-tcard-h">
         <img src={`${import.meta.env.BASE_URL}player-badges/${b.id}.svg`} alt="" width={40} height={40} draggable={false} />
         <div><b>{b.name}</b><span className={"ux-tcard-tier ux-" + b.tier}>{TIER_LBL[b.tier]}</span></div>
@@ -4893,7 +4929,7 @@ function FilterSelect({ label, value, onChange, groups, width = 190 }) {
                  borderColor: open ? "var(--chrome-brand-66)" : "var(--chrome-border)",
                  color: on ? "var(--chrome-brand)" : "var(--chrome-muted)" }}>
         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{on && cur ? cur.l : label}</span>
-        <span style={{ flexShrink: 0, fontSize: 8, opacity: 0.7 }}>{"\u25BC"}</span>
+        <span style={{ flexShrink: 0, display: "flex", opacity: 0.7 }}><UxCaret /></span>
       </button>
       {open && (<>
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 9996 }} />
@@ -8490,7 +8526,7 @@ export default function App() {
         return (tournSort.asc ? a - b : b - a) || (y.G ?? 0) - (x.G ?? 0);
       });
     const sortBy = k => setTournSort(p => p.k === k ? { k, asc: !p.asc } : { k, asc: false });
-    const arrow = k => key === k ? (tournSort.asc ? " ▴" : " ▾") : "";
+    const arrow = k => key === k ? <UxCaret up={tournSort.asc} /> : "";
     return (<>
       <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 14px", borderBottom: "1px solid var(--chrome-border)", flexShrink: 0 }}>
         <input value={tournQ} onChange={e => setTournQ(e.target.value)} placeholder="&#128269; Search"
@@ -10898,7 +10934,7 @@ export default function App() {
               <span className="ux-sub" style={mono}>{/^\d{4}$/.test(place.season) ? uxSeasonLabel(+place.season) : place.season}</span>
               {moved && (
                 <span className={"ux-pyr-mv ux-card-mv ux-" + moved} title={moved === "up" ? "Promoted" : "Relegated"}>
-                  <svg viewBox="0 0 10 10" aria-label={moved === "up" ? "Promoted" : "Relegated"}><path d={moved === "up" ? "M5 1.5l3.8 6H1.2z" : "M5 8.5L1.2 2.5h7.6z"} /></svg></span>)}</dd></div>)}
+                  <UxArrow up={moved === "up"} /></span>)}</dd></div>)}
           <div className="ux-kv"><dt>Manager</dt><dd>{uxMgrLink(t.manager)}{t.mgmt != null && <span style={{ ...ovrBlock(t.mgmt, true), ...mono }}>{showOvr(t.mgmt)}</span>}</dd></div>
           <div className="ux-kv"><dt>Style</dt><dd>{uxStyleName(t.style)}<span className="ux-sub" style={mono}>{t.formation || "4-3-3"}</span></dd></div>
           {st && <div className="ux-kv"><dt>Ground</dt><dd className="ux-still"><SlideName text={st} />{cap && <span className="ux-sub" style={mono}>{cap}</span>}</dd></div>}
@@ -11913,7 +11949,7 @@ export default function App() {
                     <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm ? `${fullDisplayName(nm)}, ${pos}` : `Open, ${pos}`} aria-pressed={edSel === i}
                       onClick={() => pickPlace(i)}>{id ? <PlayerShot name={nm} size="100%" /> : null}</button>
                     {p && uxPitchRtg(p.ovr, ownOfId(id), pos)}
-                    <span className={"ux-pl-pos" + (p && uxOop(ownOfId(id), pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                    <span className={"ux-pl-pos" + (p && uxOop(ownOfId(id), pos) ? " ux-oop" : "")} style={mono}>{pos}{p && uxPlWarn(p.ovr, ownOfId(id), pos)}</span>
                     {p && uxPlTraits(p.badges)}
                   </div>); })}
               </div></div>), true)}
@@ -11923,10 +11959,10 @@ export default function App() {
                   return (
                   <div key={i} className={"ux-ed-brow " + placeCls(i)} {...dnd(i)} title={held(id) ? "Waiting On A Request" : undefined}>
                     {/* A bench place takes a man of its group (a keeper, a defender, a midfielder or a forward): an open place shows
-                        its group, a filled one its man's own positions, in red when he is not of the group. */}
-                    {(() => { const own = id ? ownOfId(id) : [], odd = !!id && !fitsPlace(own, lab[i]);
-                      return <b className={"ux-ed-bpos" + (odd ? " ux-oop" : "")} style={{ ...mono, color: POS_CLR[id && own.length ? own[0] : lab[i]] }}
-                        title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` + (odd ? `: Not A ${GROUP_NAME[lab[i]]}` : "") : undefined}>{id && own.length ? posText(own) : lab[i]}</b>; })()}
+                        its group, a filled one the position of his that fits it (else his first), in red when he is not of the group. */}
+                    {(() => { const own = id ? ownOfId(id) : [], odd = !!id && !fitsPlace(own, lab[i]), shown = id && own.length ? own.find(x => fitsPlace([x], lab[i])) || own[0] : lab[i];
+                      return <b className={"ux-ed-bpos" + (odd ? " ux-oop" : "")} style={{ ...mono, color: POS_CLR[shown] }}
+                        title={GROUP_NAME[lab[i]] ? `${GROUP_NAME[lab[i]]}'s Place` + (odd ? `: Not A ${GROUP_NAME[lab[i]]}` : "") : undefined}>{shown}</b>; })()}
                     <button type="button" className="ux-btnreset ux-ed-bman" onClick={() => pickPlace(i)} aria-pressed={edSel === i}>
                       {id ? <><PlayerShot name={nm} size={24} /><span className="ux-ed-rn"><SlideName text={fullDisplayName(nm)} /></span></> : <span className="ux-ed-open">Open</span>}</button>
                     {p && uxBadge(p.ovr)}
@@ -13079,13 +13115,31 @@ export default function App() {
       </div>);
   };
   const uxBadge = (v, big) => <span style={{ ...ovrBlock(v), ...(big ? { minWidth: 40, padding: "5px 8px", fontSize: 15, lineHeight: "18px" } : {}), ...mono }}>{showOvr(v)}</span>;
+  // OUT OF POSITION (user, 11 October 2026) only where the place costs him rating (posDrop, src/data/positions.js): a move
+  // the engine plays for free, a left-back at right-back or a centre-mid holding, is no fault and gets no alert. Out of
+  // position he carries the alert, a red triangle and what the place costs him (a row of the card, uxOopRow), each opening
+  // the out-of-position card (TraitCard) on hover.
+  const uxOop = (own, place) => posDrop(own, place) !== 0;
+  const uxHasOvr = (v) => v != null && v !== "" && isFinite(Number(v));
+  const uxOopRow = (ovr, own, place, side = null) => { const has = uxHasOvr(ovr), at = has ? ovrAt(ovr, own, place) : null;
+    return { side, place, ovr: has ? showOvr(ovr) : null, at: has ? showOvr(at) : null, d: has ? Math.round(Number(ovr)) - Math.round(at) : posDrop(own, place) }; };
+  const uxOopTag = (own, rows) => JSON.stringify({ own: posList(own), rows });
+  // In a list, after the place he plays: the triangle, then the cost.
+  const uxOopMark = (ovr, own, place, cls = "") => { if (!uxOop(own, place)) return null;
+    const r = uxOopRow(ovr, own, place);
+    return (<span className={"ux-oopm" + (cls ? " " + cls : "")} data-oop={uxOopTag(own, [r])} role="img" aria-label={"Out Of Position" + (r.at ? ", Plays As " + r.at : "")}>
+      {UX_WARN}{r.d != null && <span><UxArrow />{r.d}</span>}</span>); };
   // A MAN'S RATING ON A PITCH (src/data/positions.js, Moukden and Kirin, 11 October 2026): in one of his own positions his
-  // rating; out of them the rating he plays the place at, ringed, with his own positions on hover.
-  const uxOop = (own, place) => !!(own?.length && place && POS_ROLE[place] && !own.includes(place));
-  const uxPitchRtg = (ovr, own, place) => { const oop = uxOop(own, place), v = oop ? ovrAt(ovr, own, place) : ovr;
-    return (<span className={"ux-pl-rtg" + (oop ? " ux-oop" : "")} title={oop ? `Out Of Position, ${posText(own)}: Plays As ${showOvr(v)}` : undefined}
+  // rating; out of them the rating he plays the place at, ringed, with what the place costs him in a block of its own width
+  // over it, and the triangle centred over his place's label (uxPlWarn, inside it).
+  const uxPitchRtg = (ovr, own, place) => { const oop = uxOop(own, place), v = oop && uxHasOvr(ovr) ? ovrAt(ovr, own, place) : ovr;
+    const r = oop ? uxOopRow(ovr, own, place) : null;
+    return (<span className={"ux-pl-rtg" + (oop ? " ux-oop" : "")} data-oop={r ? uxOopTag(own, [r]) : undefined}
       style={{ background: ovrSheen(ovrMetal(v)), color: OVR_INK, textShadow: OVR_TSHADOW, ...mono,
-        boxShadow: (oop ? "0 0 0 2px var(--ux-loss), " : "") + "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>{showOvr(v)}</span>); };
+        boxShadow: (oop ? "0 0 0 2px var(--ux-loss), " : "") + "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.34)" }}>
+      {showOvr(v)}{r && r.d != null && <span className="ux-pl-drop"><UxArrow />{r.d}</span>}</span>); };
+  const uxPlWarn = (ovr, own, place) => (uxOop(own, place)
+    ? <span className="ux-pl-warn" data-oop={uxOopTag(own, [uxOopRow(ovr, own, place)])} role="img" aria-label="Out Of Position" title="">{UX_WARN}</span> : null);
 
   // The map's pins, one kind at a time.
   const uxAtlasPins = useMemo(() => atlasPins.filter(p => p.kind === uxAtlasKind), [atlasPins, uxAtlasKind]);
@@ -13198,6 +13252,7 @@ export default function App() {
     if (isNT && ny != null) for (const s of pstats?.seasons || []) if (intl(s.comp) && yearOf(s) === ny) take(s, mine);
     const sq = t.squad || buildSquad(t.formation || "4-3-3", null), xi = sq.filter(p => !p.bench), bench = sq.filter(p => p.bench);
     const posOf = (p) => (p.bench ? benchSpos(p, playerByName.get(p.fullName || p.name)) : (p.spos || p.pos)) || p.pos;
+    const oopAny = xi.some(p => uxOop(p.own, posOf(p)));    // room for the alert after the place, when a man needs it
     const squadRow = (p, i) => {
       const nm = p.fullName || p.name, pe = playerByName.get(nm), x = mine.get(pFold(nm)), pos = posOf(p);
       // A club's man by his nation; a national side's by his club.
@@ -13206,10 +13261,10 @@ export default function App() {
       const sideCode = isNT ? (oc ? oc.code || abbr(oc.name, oc.code) : "") : pe?.natCode || "";
       return (
         <tr key={i} className="ux-link" onClick={() => pe && openPlayer(nm)}>
-          {/* His own positions (src/data/positions.js); in red when the eleven plays him outside them. */}
-          <td>{p.own?.length ? <span className="ux-pos" style={{ color: !p.bench && uxOop(p.own, p.spos) ? "var(--ux-loss)" : POS_CLR[p.own[0]] }}
-              title={!p.bench && uxOop(p.own, p.spos) ? `Playing ${p.spos}, Out Of Position` : undefined}>{posText(p.own)}</span>
-            : <span className="ux-pos" style={{ color: POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>}</td>
+          {/* Where he plays (user, 11 October 2026): the eleven's place, a bench man his own first position; out of position
+              (uxOop) in red, with the alert after it. */}
+          <td><span className="ux-pos" style={{ color: !p.bench && uxOop(p.own, pos) ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
+            {!p.bench && uxOopMark(p.ovr ?? t.skill, p.own, pos)}</td>
           <td className="ux-strong"><SlideName text={nm} /></td>
           <td title={isNT ? oc?.name : pe?.nationality}><div className="ux-tc">{side && <TeamCrest team={side} size={16} />}<b className="ux-code" style={mono}>{sideCode}</b></div></td>
           <td className="ux-c">{uxBadge(p.ovr ?? t.skill)}</td>
@@ -13266,7 +13321,7 @@ export default function App() {
           {uxPanel("Squad", isNT ? ntYears.length > 0 && uxPick("Season", "y" + ny, ntYears.map(y => ["y" + y, String(y)]), setUxStatSeason)
             : statSeasons.length > 0 && uxPick("Season", ss?.id || "", statSeasons.map(s => [s.id, uxSeasonName(s)]), setUxStatSeason), (
             <div className={"ux-pbody" + (isNT ? "" : " ux-fit")}><table className="ux-tbl">
-              <colgroup><col style={{ width: 58 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /><col style={{ width: 46 }} /></colgroup>
+              <colgroup><col style={{ width: oopAny ? 86 : 58 }} /><col /><col style={{ width: 62 }} /><col style={{ width: 44 }} /><col style={{ width: 34 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /><col style={{ width: 46 }} /></colgroup>
               <thead><tr><th>Pos</th><th>Player</th><th>{isNT ? "Club" : "Nat"}</th><th className="ux-c">Rtg</th><th className="ux-n">GP</th><th className="ux-n">G</th><th className="ux-n">A</th><th className="ux-n">Avg</th></tr></thead>
               <tbody>{xi.map(squadRow)}{bench.length > 0 && <tr className="ux-sep"><td colSpan={8} /></tr>}{bench.map((p, i) => squadRow(p, 100 + i))}</tbody>
             </table></div>), isNT)}
@@ -13303,7 +13358,7 @@ export default function App() {
                     <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                     <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                     {uxPitchRtg(ovr, p.own, pos)}
-                    <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                    <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}{uxPlWarn(ovr, p.own, pos)}</span>
                     {uxPlTraits(p.badges)}
                   </div>); })}
             </div></div>), true)}
@@ -13438,7 +13493,7 @@ export default function App() {
                       <b className={won ? "ux-gold" : undefined} style={mono}>{res.league ? ordinal(res.pos) : res.stage === "Winner" ? "1st" : uxStage(res.stage)}</b>
                       {res.league && res.of && <span className="ux-dim" style={mono}>/{res.of}</span>}
                       {mv && <span className={"ux-pyr-mv ux-card-mv ux-" + mv} title={mv === "up" ? "Promoted" : "Relegated"}>
-                        <svg viewBox="0 0 10 10" aria-label={mv === "up" ? "Promoted" : "Relegated"}><path d={mv === "up" ? "M5 1.5l3.8 6H1.2z" : "M5 8.5L1.2 2.5h7.6z"} /></svg></span>}
+                        <UxArrow up={mv === "up"} /></span>}
                     </div>) : <span className="ux-dim">&#8211;</span>}</td>
                   {STATS.map(([h, k]) => { const v = stat(res, k);
                     return <td key={h} className={"ux-n" + (v == null ? " ux-dim" : h === "Pts" ? " ux-strong" : "")} style={mono}>{v ?? "–"}</td>; })}
@@ -13509,7 +13564,7 @@ export default function App() {
         <span className="ux-pyr-crest"><TeamCrest team={t} size="100%" />
           {x?.moved && (
             <span className={"ux-pyr-mv ux-" + x.moved} title={x.moved === "up" ? "Promoted" : "Relegated"}>
-              <svg viewBox="0 0 10 10" aria-label={x.moved === "up" ? "Promoted" : "Relegated"}><path d={x.moved === "up" ? "M5 1.5l3.8 6H1.2z" : "M5 8.5L1.2 2.5h7.6z"} /></svg></span>)}
+              <UxArrow up={x.moved === "up"} /></span>)}
         </span>
         {x !== undefined && <span className={"ux-pyr-pos" + (champ ? " ux-gold" : "")} style={mono}>{x?.pos ?? "–"}</span>}
       </button>);
@@ -13539,7 +13594,7 @@ export default function App() {
                     {afaNow && <div><dt>AFA Ranking</dt><dd><span style={mono}>{ordinal(afaNow)}</span>
                       {afaThen && afaThen !== afaNow && (
                         <span className={"ux-facts-mv ux-" + (afaThen > afaNow ? "up" : "down")} style={mono} title={`${afaYears[afaYears.length - 2]}: ${ordinal(afaThen)}`}>
-                          <svg viewBox="0 0 10 10" aria-label={afaThen > afaNow ? "Up" : "Down"}><path d={afaThen > afaNow ? "M5 1.5l3.8 6H1.2z" : "M5 8.5L1.2 2.5h7.6z"} /></svg>
+                          <UxArrow up={afaThen > afaNow} />
                           {Math.abs(afaThen - afaNow)}</span>)}</dd></div>}
                     <div><dt>Manager</dt><dd>{uxMgrLink(nt.manager)}{nt.mgmt != null && <span style={{ ...ovrBlock(nt.mgmt, true), ...mono }}>{showOvr(nt.mgmt)}</span>}</dd></div>
                     <div><dt>Style</dt><dd>{uxStyleName(nt.style)}<span className="ux-facts-sub" style={mono}>{nt.formation || "4-3-3"}</span></dd></div>
@@ -13581,6 +13636,32 @@ export default function App() {
     }
     return out;
   };
+  // HIS SIDES THAT PLAY HIM OUT OF POSITION (user, 11 October 2026), as rows of its card with the side (t) beside; a line
+  // each on his page and his card (uxOopList), and on the Players list one alert for them all (uxOopMarkAll), its cost the
+  // worst of them. uxOopIdx finds them for the whole list at once, by his record where he has one, else his name.
+  const uxOopSides = (sheets, own, ovr) => (sheets || []).filter(({ e }) => !e.bench && uxOop(own, e.spos || e.pos))
+    .map(({ t, e }) => ({ t, ...uxOopRow(ovr, own, e.spos || e.pos, t.name) }))
+    .sort((a, b) => isIntlLeague(b.t.league) - isIntlLeague(a.t.league));
+  const uxOopIdx = () => {
+    let m = UX_OOP_CACHE.get(teams); if (m) return m;
+    m = new Map();
+    const add = (k, x) => { if (!k) return; const a = m.get(k) || []; a.push(x); m.set(k, a); };
+    for (const t of teams) for (const e of t.squad || []) if (e && !e.bench && uxOop(e.own, e.spos || e.pos)) { add(e.rid, { t, e }); add(e.fullName || e.name, { t, e }); }
+    UX_OOP_CACHE.set(teams, m); return m;
+  };
+  const uxOopTagOf = (rows, own) => uxOopTag(own, rows.map(({ t, ...r }) => r));
+  const uxOopList = (rows, own) => (
+    <div className="ux-oopl">{rows.map(r => (
+      <button key={r.t.id} type="button" className="ux-btnreset ux-oopl-r" onClick={() => openTeam(r.t)}>
+        {UX_WARN}
+        <span className="ux-oopl-t"><b>Out Of Position</b>
+          <span><TeamCrest team={r.t} size={14} /><SlideName text={r.t.name} style={{ flex: "0 1 auto" }} />&nbsp;&middot;&nbsp;<b style={{ ...mono, color: POS_CLR[r.place] }}>{r.place}</b>
+            {r.at != null && <>&nbsp;&middot;&nbsp;Plays As&nbsp;<b style={mono}>{r.at}</b></>}</span></span>
+        {r.d != null && <b className="ux-oopl-d" style={mono}><UxArrow />{r.d}</b>}
+      </button>))}</div>);
+  const uxOopMarkAll = (rows, own) => { if (!rows?.length) return null;
+    const worst = rows.reduce((a, r) => (r.d != null && (a == null || r.d > a) ? r.d : a), null);
+    return (<span className="ux-oopm" data-oop={uxOopTagOf(rows, own)} role="img" aria-label="Out Of Position">{UX_WARN}{worst != null && <span><UxArrow />{worst}</span>}</span>); };
   const uxRoleRows = (sheets) => sheets.map(({ t, e }) => ({ t, pos: e.bench ? null : e.spos || e.pos, role: e.bench ? null : ROLE_NAME[rolesOf(t)[e.name]] || null }))
     .sort((a, b) => isIntlLeague(b.t.league) - isIntlLeague(a.t.league));
   const uxRolesList = (roles) => (
@@ -13709,7 +13790,7 @@ export default function App() {
     const ownPos = posList(rec?.pos), shown = ownPos.length ? ownPos : pos.length ? pos : [...spots.keys()];
     // His roles: what each side he starts for deals him, as a match deals them (rolesOf: the side's style, its shape and
     // his slot); a man on the bench has none until he comes on. His country first, as the banner's crests run.
-    const roles = uxRoleRows(sheets);
+    const roles = uxRoleRows(sheets), oops = uxOopSides(sheets, ownPos, ovr);
     const traits = badgeOrder(rec?.badges || []).map(id => BADGE_BY_ID[id]).filter(Boolean);
     // The season picked, his newest by default.
     const years = [...new Set(rows.map(x => x.y))].sort((a, b) => b - a);
@@ -13758,7 +13839,8 @@ export default function App() {
     const honours = [...won.entries()].map(([c, ss]) => [c, ss.sort((a, b) => b.ord - a.ord)]).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
     // The pitch's column is as wide as the tallest pitch the window allows is wide (three quarters of its length, under the
     // banner and Traits), so the pitch fills its panel; the season and the career share the rest.
-    const right = rows.length > 0, under = (traits.length ? 12 + 38 + 44 * traits.length : 0) + (roles.length ? 1 + 44 * roles.length : 0);
+    const right = rows.length > 0, under = (traits.length ? 12 + 38 + 44 * traits.length : 0) + (roles.length ? 1 + 44 * roles.length : 0)
+      + (oops.length ? 1 + 44 * oops.length : 0);
     return (
       <div className="ux-body" style={{ gridTemplateColumns: `minmax(300px, calc((100vh - ${370 + under}px) * 0.75 + 26px)) minmax(0, 1fr)${right ? " 340px" : ""}`, gridTemplateRows: "auto minmax(0, 1fr)" }}>
         <section className="ux-panel ux-plb-panel" aria-label={disp}>
@@ -13786,15 +13868,17 @@ export default function App() {
             <div className="ux-pitch-wrap"><div className="ux-pitch" role="img" aria-label={[...spots.keys()].join(", ")}>
               {UX_PITCH_LINES}
               {/* His own positions lit (src/data/positions.js), each with the sides that play him there; a place a side plays
-                  him that is not one of his in the loss colour, with the rating he plays it at. */}
-              {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const on = spots.get(ps), mine = ownPos.includes(ps), oop = !!on && ownPos.length > 0 && !mine;
+                  him out of position (uxOop) in the loss colour, opening the out-of-position card. */}
+              {Object.entries(UX_POS_XY).map(([ps, [x, y]]) => { const on = spots.get(ps), mine = ownPos.includes(ps), oop = !!on && uxOop(ownPos, ps);
+                const sides = oop ? on.filter(Boolean).map(t => uxOopRow(ovr, ownPos, ps, t.name)) : [];
                 return (
                   <div key={ps} className={"ux-spot" + (on || mine ? " ux-on" : "") + (oop ? " ux-oop" : "")} style={{ left: x + "%", top: y + "%", ["--pos"]: oop ? "var(--ux-loss)" : POS_CLR[ps] }}
-                    title={oop && ovr != null ? `Out Of Position: Plays As ${showOvr(ovrAt(ovr, ownPos, ps))}` : undefined}>
+                    data-oop={sides.length ? uxOopTag(ownPos, sides) : undefined}>
                     {(on || mine) && <span style={mono}>{ps}</span>}
                     {on && on.length > 0 && <div className="ux-spot-cr">{on.map(t => <TeamCrest key={t.id} team={t} size="var(--cr)" />)}</div>}
                   </div>); })}
             </div></div>
+            {oops.length > 0 && uxOopList(oops, ownPos)}
             {roles.length > 0 && uxRolesList(roles)}
           </>), true)}
           {traits.length > 0 && uxPanel("Traits", null, (
@@ -13895,8 +13979,11 @@ export default function App() {
     const S = (k, label, cls, text, title) => uxSortTh(uxPsSort, setUxPsSort, k, label, cls, text, title);
     const setView = (v) => { setUxPsView(v); setUxPsSort(v === "overview" ? { k: "ovr", asc: false } : { k: "avg", asc: false }); };
     const nations = [...playerNations].sort((a, b) => a.name.localeCompare(b.name)).map(n => [n.name, n.name]);
-    const poss = (p) => { const ps = String(p.pos || "").split("/").filter(x => x && x !== "?");
-      return <td><span className="ux-poss" style={mono}>{ps.map(x => <b key={x} style={{ color: POS_CLR[x] || "var(--ux-text-2)" }}>{x}</b>)}</span></td>; };
+    // His own positions, and the alert when a side plays him out of position (uxOopMarkAll).
+    const oopIdx = uxOopIdx();
+    const poss = (r) => { const p = r.p, ps = String(p.pos || "").split("/").filter(x => x && x !== "?");
+      const oo = p.hof ? [] : uxOopSides(r.f?.rid ? oopIdx.get(r.f.rid) : oopIdx.get(r.nm), ps, p.ovr);
+      return <td><span className="ux-poss" style={mono}>{ps.map(x => <b key={x} style={{ color: POS_CLR[x] || "var(--ux-text-2)" }}>{x}</b>)}{uxOopMarkAll(oo, ps)}</span></td>; };
     const side = (t, none) => <td title={t?.name}><div className="ux-tc">{t && <TeamCrest team={t} size={16} />}<span className={t ? undefined : "ux-dim"}>{t ? t.name : none}</span></div></td>;
     const COLS = {
       overview: [40, 200, 88, 52, 80, 200, 60, 84, 60],
@@ -13917,7 +14004,7 @@ export default function App() {
         <tr key={r.nm} className={"ux-link" + (r === pick ? " ux-sel" : "")} onClick={() => setUxPsPick(r.nm)} onDoubleClick={() => uxPsGo(r)}>
           <td className="ux-dim" style={mono}>{i + 1}</td>
           <td><button type="button" className="ux-btnreset ux-a ux-nm" onClick={(e) => { e.stopPropagation(); uxPsGo(r); }}>{r.disp}</button></td>
-          {poss(r.p)}
+          {poss(r)}
           {view === "overview" ? (<>
             {uxNum(r.f?.age, "ux-c")}
             <td title={r.natT?.name || r.p.nationality}><div className="ux-tc">{r.natT && <TeamCrest team={r.natT} size={16} />}<b className="ux-code" style={mono}>{r.p.natCode || "–"}</b></div></td>
@@ -13988,7 +14075,7 @@ export default function App() {
     const kit = clubT || natT, c1 = kit?.primaryColor || "var(--ux-panel-3)", c2 = kit?.secondaryColor || c1;
     const ink = kit?.primaryColor && (lumOf(kit.primaryColor) ?? 0) > 0.55 ? "#101418" : "#ffffff";
     const { first, last } = splitSurname(disp, p.name), pos = String(p.pos || "").split("/").filter(x => x && x !== "?");
-    const roles = hof ? [] : uxRoleRows(uxSheetsOf(nm, r.f?.rid || null));
+    const sheets = hof ? [] : uxSheetsOf(nm, r.f?.rid || null), roles = uxRoleRows(sheets), oops = uxOopSides(sheets, pos, p.ovr);
     // His season: the year the Season view is on, else the newest he has figures in, every competition added up.
     const own = uxBoardIdx.get(r.key) || [], per = new Map();
     const ny = uxPsView === "season" && uxPsY != null ? uxPsY : own.reduce((y, [s]) => Math.max(y, uxYearOf(s)), -Infinity);
@@ -14018,7 +14105,7 @@ export default function App() {
           </dl>
           <div className="ux-plc-foot"><button type="button" className="ux-btnreset ux-btn" onClick={() => uxPsGo(r)}>View Player{uxIcon("fwd", "ux-s")}</button></div>
         </section>
-        {roles.length > 0 && uxPanel("Roles", null, uxRolesList(roles))}
+        {roles.length > 0 && uxPanel("Roles", null, <>{oops.length > 0 && uxOopList(oops, pos)}{uxRolesList(roles)}</>)}
         {yr.gp > 0 && uxPanel("Season " + uxSeasonLabel(ny), null, uxStrip([["GP", yr.gp], ["G", yr.G], ["A", yr.A], ["Avg", yv, yc]]))}
         {c && c.gp > 0 && uxPanel("Career", null, uxStrip([["Seasons", r.yrs], ["GP", c.gp], ["G", c.G], ["A", c.A], ["Avg", cv, cc]]))}
         {traits.length > 0 && uxPanel("Traits", null, (
@@ -16430,7 +16517,7 @@ export default function App() {
                 <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                 <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                 {uxPitchRtg(ovr, p.own, pos)}
-                <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}</span>
+                <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono}>{pos}{uxPlWarn(ovr, p.own, pos)}</span>
                 {uxPlTraits(p.badges)}
               </div>); })}
         </div></div>), true, side + "-xi");
@@ -16719,17 +16806,18 @@ export default function App() {
                         <div className="ux-pl-label">{first && <span className="ux-pl-first"><SlideName text={first} /></span>}<span className="ux-pl-last"><SlideName text={last} /></span></div>
                         <button type="button" className="ux-btnreset ux-pl-tok" aria-label={nm} onClick={() => playerByName.has(nm) && openPlayer(nm)}><PlayerShot name={nm} size="100%" /></button>
                         {uxPitchRtg(ovr, p.own, pos)}
-                        <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}</span>
+                        <span className={"ux-pl-pos" + (uxOop(p.own, pos) ? " ux-oop" : "")} style={mono} title={role ? role[0] : undefined}>{role ? role[1] : pos}{uxPlWarn(ovr, p.own, pos)}</span>
                         {uxPlTraits(p.badges)}
                       </div>); })}
                 </div></div>
                 <div className="ux-pbody"><table className="ux-tbl">
-                  <colgroup><col style={{ width: 46 }} /><col /><col style={{ width: 112 }} /></colgroup>
+                  <colgroup><col style={{ width: xi.some(p => uxOop(p.own, p.spos || p.pos)) ? 86 : 46 }} /><col /><col style={{ width: 112 }} /></colgroup>
                   <thead><tr><th>Pos</th><th>Role</th><th>Player</th></tr></thead>
                   <tbody>{xi.map((p, i) => { const nm = p.fullName || p.name, pos = p.spos || p.pos, role = roleFor(p);
                     return (
                       <tr key={i} className={playerByName.has(nm) ? "ux-link" : undefined} onClick={() => playerByName.has(nm) && openPlayer(nm)}>
-                        <td><span className="ux-pos" style={{ color: POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span></td>
+                        <td><span className="ux-pos" style={{ color: uxOop(p.own, pos) ? "var(--ux-loss)" : POS_CLR[pos] || POS_CLR[p.pos] || "var(--ux-text-2)" }}>{pos}</span>
+                          {uxOopMark(p.ovr ?? side.skill, p.own, pos)}</td>
                         <td>{role ? <>{role[0]} <span className="ux-dim" style={mono}>{role[1]}</span></> : <span className="ux-dim">&#8211;</span>}</td>
                         <td className="ux-strong"><SlideName text={splitSurname(nm, p.name).last} /></td>
                       </tr>); })}</tbody>
@@ -17243,7 +17331,7 @@ export default function App() {
               const rated = managerIndex.filter(m => m.ovr != null);
               const avg = rated.length ? rated.reduce((a, m) => a + m.ovr, 0) / rated.length : 0;
               const S = lgSortFlip(setMgrSort);
-              const A = (k) => mgrSort.k === k ? (mgrSort.asc ? " \u25B4" : " \u25BE") : "";
+              const A = (k) => mgrSort.k === k ? <UxCaret up={mgrSort.asc} /> : "";
               const on = (k) => mgrSort.k === k ? { color: "var(--chrome-brand)" } : null;
               const thStyle = thCellSticky, tdStyle = tdCell;
               // A seat: the crest and the side, then the four calls he makes there. Both seats are
@@ -17337,7 +17425,7 @@ export default function App() {
               batches.reverse();                                  // the file is oldest-first
               const open = batches.find(b => b.key === clOpen) || null;
               const flip = (k) => setClSort(p => p.k === k ? { k, asc: !p.asc } : { k, asc: k === "name" });
-              const arrow = (k) => clSort.k === k ? (clSort.asc ? " \u25B4" : " \u25BE") : "";
+              const arrow = (k) => clSort.k === k ? <UxCaret up={clSort.asc} /> : "";
               const hot = (k) => clSort.k === k ? { color: "var(--chrome-brand)" } : null;
               return (
               <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -17377,8 +17465,8 @@ export default function App() {
                             straight down the list. The net carries no symbol -- its colour is the
                             symbol. */}
                         <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, fontSize: 10, ...mono, whiteSpace: "pre" }}>
-                          <span style={{ color: "var(--ui-ok)" }}>{String(ups).padStart(3)} &#9650;</span>
-                          <span style={{ color: "var(--ui-danger)" }}>{String(dns).padStart(3)} &#9660;</span>
+                          <span style={{ color: "var(--ui-ok)" }}>{String(ups).padStart(3)} <UxArrow up /></span>
+                          <span style={{ color: "var(--ui-danger)" }}>{String(dns).padStart(3)} <UxArrow /></span>
                           <span style={{ color: net > 0 ? "var(--ui-ok)" : net < 0 ? "var(--ui-danger)" : "var(--chrome-muted-66)" }}>
                             {String(Math.abs(net)).padStart(3)} &#916;</span>
                         </span>
@@ -17594,7 +17682,7 @@ export default function App() {
                             of faces is noise. */}
                         <th style={thStyle} />
                         {(() => { const S = lgSortFlip(setLgPlayerSort);
-                          const A = (k) => lgPlayerSort.k === k ? (lgPlayerSort.asc ? " \u25B4" : " \u25BE") : "";
+                          const A = (k) => lgPlayerSort.k === k ? <UxCaret up={lgPlayerSort.asc} /> : "";
                           const on = (k) => lgPlayerSort.k === k ? { color: "var(--chrome-brand)" } : null;
                           return (<>
                         <th onClick={() => S("name")} style={{ ...thStyle, cursor: "pointer", ...on("name") }}>Player{A("name")}</th>
@@ -17603,7 +17691,7 @@ export default function App() {
                           </>); })()}
                         <th style={{ ...thStyle, textAlign: "center" }}>POS</th>
                         <th style={{ ...thStyle, paddingLeft: 8 }}>Nationality</th>
-                        <th onClick={() => lgSortFlip(setLgPlayerSort)("club")} style={{ ...thStyle, paddingLeft: 8, cursor: "pointer", ...(lgPlayerSort.k === "club" ? { color: "var(--chrome-brand)" } : null) }}>Club{lgPlayerSort.k === "club" ? (lgPlayerSort.asc ? " \u25B4" : " \u25BE") : ""}</th>
+                        <th onClick={() => lgSortFlip(setLgPlayerSort)("club")} style={{ ...thStyle, paddingLeft: 8, cursor: "pointer", ...(lgPlayerSort.k === "club" ? { color: "var(--chrome-brand)" } : null) }}>Club{lgPlayerSort.k === "club" ? <UxCaret up={lgPlayerSort.asc} /> : ""}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -18284,9 +18372,10 @@ export default function App() {
                   <div key={(benched ? "b" : "s") + i} style={{ display: "grid", gridTemplateColumns: z.cols,
                               alignItems: "center", fontSize: z.fs, gap: z.gap,
                               opacity: played ? 1 : 0.5, ...(z.rowH ? { height: z.rowH } : {}) }}>
-                    {/* The place he played, for a man with positions of his own (src/data/positions.js); in red when it
-                        was not one of them. A substitute who never came on shows his own first one. */}
-                    {(() => { const lab = q.own?.length ? (played && POS_ROLE[q.spos] ? q.spos : q.own[0]) : q.pos, oop = played && uxOop(q.own, q.spos);
+                    {/* The place he played, for a man with positions of his own (src/data/positions.js), a man in goal GK; in
+                        red when it was out of position (uxOop), with the alert after his name. A substitute who never came on
+                        shows his own first one. */}
+                    {(() => { const lab = q.own?.length ? (played && POS_ROLE[q.spos] ? (q.inGoal ? "GK" : q.spos) : q.own[0]) : q.pos, oop = played && uxOop(q.own, q.inGoal ? "GK" : q.spos);
                       return <span style={{ ...cellBase, ...mono, fontSize: z.posFs, fontWeight: 700, color: oop ? "var(--ux-loss)" : POS_CLR[lab] || POS_CLR[q.pos] || "var(--chrome-muted)" }}
                         title={oop ? `Out Of Position, ${posText(q.own)}` : undefined}>{lab}</span>; })()}
                     {/* AN OUTFIELD MAN IN GOAL IS HALF THE PLAYER. Every other row shows
@@ -18300,11 +18389,12 @@ export default function App() {
                                    fontStyle: q.inGoal ? "italic" : "normal" }}>
                       <OvrBadge v={q.inGoal ? q.ovr : (q.ovr0 ?? q.ovr ?? 70)}
                                 xs={z.badge === "xs"} sm={z.badge === "sm"} /></span>
-                    <span style={{ ...cellBase, whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                      {boldSurname(q.fullName || q.name, q.name)}
+                    <span style={{ ...cellBase, display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
+                      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{boldSurname(q.fullName || q.name, q.name)}</span>
                       {q.rc ? card("var(--ui-danger)") : null}
                       {!q.rc && q.yc ? card("var(--ui-warn)") : null}
                       {q.inj ? <span style={{ marginLeft: 4, fontSize: z.tagFs, color: "var(--ui-warn)" }}>INJ</span> : null}
+                      {played && uxOopMark(q.ovr0 ?? q.ovr ?? 70, q.own, q.inGoal ? "GK" : q.spos, "ux-oopm-xs")}
                     </span>
                     {val(q.goals, true)}
                     {val(q.assists, true)}
@@ -18321,8 +18411,8 @@ export default function App() {
                       const mn = (t) => { const x = meTickMin(m, t); return fmtMin(x.min, x.add); };
                       return (
                         <span style={{ ...cellBase, ...mono, fontSize: z.tagFs, textAlign: "right", whiteSpace: "nowrap", lineHeight: 1.1 }}>
-                          {on && <span style={{ display: "block", color: "var(--ui-ok)" }}>▲{mn(q._onAt)}</span>}
-                          {off && <span style={{ display: "block", color: "var(--ui-danger)" }}>▼{mn(q._offAt)}</span>}
+                          {on && <span style={{ display: "block", color: "var(--ui-ok)" }}><UxArrow up />{mn(q._onAt)}</span>}
+                          {off && <span style={{ display: "block", color: "var(--ui-danger)" }}><UxArrow />{mn(q._offAt)}</span>}
                         </span>);
                     })()}
                   </div>);
@@ -18922,7 +19012,12 @@ export default function App() {
                             // kickoff baseline (always up); tired legs move execution DOWN -- the
                             // engine strikes and passes at fatExLo of technique at zero stamina,
                             // and 25 OVR-equivalent is that span expressed on the rating scale.
-                            const dCoach = (p.ovr ?? 0) - (p.ovr0 ?? p.ovr ?? 0);
+                            // Where he plays (user, 11 October 2026): on the pitch his place, in goal GK; on the bench his own
+                            // first position, and the place he would take once a man is picked to come off. A man in goal
+                            // plays at half his rating (ovrAt), so his coaching is read against that, not against his own.
+                            const base = p.ovr0 ?? p.ovr ?? 70, place = kind === "off" ? (p.inGoal ? "GK" : p.spos || p.pos) : sel >= 0 ? on[sel]?.spos : null;
+                            const lab = kind === "off" ? place : p.own?.[0] || p.pos, oop = !!place && uxOop(p.own, place);
+                            const dCoach = (p.ovr ?? 0) - (p.inGoal ? ovrAt(base, p.own, "GK") : p.ovr0 ?? p.ovr ?? 0);
                             const dFat = -(1 - (ME_CFG.fatExLo ?? 0.72)) * (1 - st2 / 100) * 25;
                             const d = dCoach + dFat;
                             const dTip = "Coaching " + (dCoach >= 0 ? "+" : "") + dCoach.toFixed(1)
@@ -18934,9 +19029,8 @@ export default function App() {
                               <button key={kind + i} type="button" disabled={!!p.off} onClick={() => pick(side, kind, i)}
                                       className={"ux-btnreset ux-sub-row" + (kind === "off" && sel === i ? " ux-on" : "")}>
                                 <span className="ux-sub-face"><PlayerShot name={p.fullName || p.name} size="100%" /></span>
-                                {/* His own positions; on the pitch in red when he is playing outside them. */}
-                                <span className="ux-pos" style={{ color: kind === "off" && uxOop(p.own, p.spos) ? "var(--ux-loss)" : POS_CLR[p.own?.[0] || p.pos] || "var(--ux-text-3)" }}
-                                  title={kind === "off" && uxOop(p.own, p.spos) ? `Playing ${p.spos}, Out Of Position` : undefined}>{p.own?.length ? posText(p.own) : p.pos}</span>
+                                <span className="ux-sub-pos"><span className="ux-pos" style={{ color: kind === "off" && oop ? "var(--ux-loss)" : POS_CLR[lab] || "var(--ux-text-3)" }}>{lab}</span>
+                                  {oop && uxOopMark(base, p.own, place)}</span>
                                 <SlideName text={boldSurname(p.fullName || p.name, p.name)} />
                                 {/* The manager's personal orders, when this man is carrying some. */}
                                 <span className="ux-sub-ci">{ci && <span data-tip={"Individual orders\n" + Object.entries(ci).map(([k2, v2]) => (STRAT_LABELS[k2]?.name || k2) + " " + (v2 > 0 ? "+" : "") + (Math.round(v2 * 10) / 10)).join("\n")}>
@@ -18945,12 +19039,11 @@ export default function App() {
                                     <path d="M2 3.2l3 2.8-3 2.8" /><path d="M6.4 3.2l3 2.8-3 2.8" /></svg></span>}</span>
                                 {/* Coaching and legs against his listed rating, which is the one shown (base OVR, never live). */}
                                 <span className={"ux-sub-d" + (d > 0 ? " ux-up" : " ux-down")} data-tip={Math.abs(d) >= 0.05 ? dTip : undefined}>
-                                  {Math.abs(d) >= 0.05 ? (d > 0 ? "▲" : "▼") + Math.abs(d).toFixed(1) : ""}</span>
+                                  {Math.abs(d) >= 0.05 ? <><UxArrow up={d > 0} />{Math.abs(d).toFixed(1)}</> : ""}</span>
                                 <span className="ux-sub-st"><i style={{ width: `${st2}%`, background: stClr }} /></span>
                                 <span className="ux-sub-pc" style={st2 > 35 ? undefined : { color: "var(--ui-danger)" }}>{Math.round(st2)}%</span>
                                 {/* A substitute, once a man is picked to come off, at the rating he would play that place at. */}
-                                {(() => { const base = p.ovr0 ?? p.ovr ?? 70, place = kind === "on" && sel >= 0 ? on[sel]?.spos : kind === "off" ? p.spos : null;
-                                  const v = place && p.own?.length && !p.inGoal ? ovrAt(base, p.own, place) : base;
+                                {(() => { const v = place && p.own?.length ? ovrAt(base, p.own, place) : base;
                                   return <span title={v !== base ? `Plays ${place} As ${showOvr(v)}` : undefined}><OvrBadge v={v} sm /></span>; })()}
                               </button>); };
                           return (

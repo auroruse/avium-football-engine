@@ -122,6 +122,7 @@ export const MT = {
   // ---- runs ------------------------------------------------------------------------------------
   runEvery: 2,         // slices between looking for a run
   runCool: 10,         // slices before the same man runs again
+  throwStepIn: 5,      // m infield the thrower steps after a throw-in, to offer the return off the line (set by reasoning)
   runMaxBase: 2,       // men allowed on runs at once, before creativity
   runHoldMax: 8,       // slices a runner waits on the shoulder for the passer to look up
   runBehindL: 13,      // m beyond the line a run in behind goes
