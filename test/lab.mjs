@@ -84,12 +84,14 @@ export function play(E, hT, aT, seed) {
     S.fwd += f; if (f < -2) S.back++;
     if (dep(sd, pp.sx) < 63) S.own60++;
   };
-  globalThis.__shots = [];
+  globalThis.__shots = []; globalThis.__prov = [];
+  // Set pieces: every free kick struck at goal, and every penalty given with what it was given for.
+  globalThis.__fk = []; globalThis.__penWhy = []; globalThis.__fouls = [];
   // Goals by what made them, for calibrating the recorder against the physics: the engine reports only the
   // origin, so the scorer is whichever side's count has just gone up.
   const GF = { home: {}, away: {} }; let lastG = { home: 0, away: 0 };
   globalThis.__gfrom = { push(f) { const sd = out.goals.away > lastG.away ? "away" : "home"; lastG = { ...out.goals };
-    const k = f === "header" ? "hdr" : f === "penalty" ? "pen" : f === "no shot" || f === "set piece" ? "other" : "foot";
+    const k = f === "header" ? "hdr" : f === "penalty" ? "pen" : f === "freekick" ? "fk" : f === "no shot" ? "ns" : f === "set piece" ? "sp" : "foot";
     GF[sd][k] = (GF[sd][k] || 0) + 1; } };
   const O = { last: null, sp: true, lost: { home: -999, away: -999 },
     own: { home: 0, away: 0 }, fin: { home: 0, away: 0 }, reg: { home: [], away: [] },
@@ -150,7 +152,35 @@ export function play(E, hT, aT, seed) {
             : f === "feet" ? "feet" : f === "long" || f === "switch" ? "long" : f === "-" ? "solo" : "set";
     S.org[g]++; S.oxg[g] += r.xg;
   }
-  globalThis.__pass = null; globalThis.__shots = null; globalThis.__gfrom = null;
+  // THE ANATOMY OF A GOAL (12 Oct 2026): every open-play strike and header by where it was taken -- the six-yard box,
+  // the rest of the area, outside -- and how it ended, who took it, and every goal with what put it in.
+  const ZB = (r) => { const dep = Math.sqrt(Math.max(0, r.d * r.d - (r.y ?? 0) ** 2)), ay = Math.abs(r.y ?? 0);
+    return dep < 5.5 && ay < 9.16 ? 0 : dep < 16.5 && ay < 20.16 ? 1 : 2; };
+  const AN = {};
+  for (const sd of SIDES) {
+    const A = AN[sd] = { zf: [0, 0, 0], zgf: [0, 0, 0], zh: [0, 0, 0], zgh: [0, 0, 0], frf: [0, 0, 0], frh: [0, 0, 0],
+      out: { goal: 0, catch: 0, parry: 0, block: 0, wide: 0, post: 0, other: 0 }, hd: new Array(41).fill(0), hdrFrom: {}, SH: {}, GL: [] };
+    for (const r of globalThis.__shots) {
+      if (r.side !== sd) continue;
+      const z = ZB(r), g = r.out === "goal" ? 1 : 0;
+      if (r.hdr) { A.zh[z]++; A.zgh[z] += g; A.frh[z] += r.fr || 0; const k = r.from || "?"; A.hdrFrom[k] = (A.hdrFrom[k] || 0) + 1; }
+      else { A.zf[z]++; A.zgf[z] += g; A.frf[z] += r.fr || 0; A.hd[Math.min(40, Math.floor(r.d))]++; }
+      A.out[r.out || "other"]++;
+      if (r.nm) { const e = A.SH[r.nm] || (A.SH[r.nm] = [r.pos, 0, 0, 0]); e[1]++; e[2] += g; e[3] += r.xg || 0; }
+    }
+    for (const g of globalThis.__prov) {
+      if (g.side !== sd) continue;
+      const sh = g.r >= 0 ? globalThis.__shots[g.r] : null;
+      const kind = g.pen ? "pen" : g.dead ? "dead" : !g.noShot ? (g.hdr ? "hdr" : "foot") : g.og ? "og" : g.par === 1 ? "parry" : g.pk0 ? "pass:" + g.pk0
+        : g.car0 ? "carried" : (g.why || "?");
+      A.GL.push([kind, g.pos || "-", g.nm || "-", sh ? Math.round(sh.d) : -1, g.last || ""]);
+    }
+  }
+  // A harness may keep every strike and goal record of every match it plays (scratch probes slice them).
+  if (globalThis.__keep) { globalThis.__keep.shots.push(...globalThis.__shots.map(r => ({ ...r, m: globalThis.__keep.m })));
+    globalThis.__keep.goals.push(...globalThis.__prov.map(g => ({ ...g, m: globalThis.__keep.m }))); globalThis.__keep.m++; }
+  const FK = globalThis.__fk, PW = globalThis.__penWhy, FL = globalThis.__fouls; globalThis.__fouls = null; globalThis.__prov = null;
+  globalThis.__pass = null; globalThis.__shots = null; globalThis.__gfrom = null; globalThis.__fk = null; globalThis.__penWhy = null;
   const res = {};
   const pt = out.poss.home + out.poss.away || 1;
   for (const sd of SIDES) {
@@ -170,7 +200,15 @@ export function play(E, hT, aT, seed) {
       cLong: r4((S.kok.long + S.kok.sw + S.kok.over) / ((S.kn.long + S.kn.sw + S.kn.over) || 1)), cCross: r4(S.kok.cross / (S.kn.cross || 1)),
       carry: out.carriesSide?.[sd] ?? 0, drib: sum("dribbles"), tko: sum("takeOns"), disp: sum("duelLost"), aer: sum("aerials"),
       sh: out.shots[sd], sot: out.onTarget[sd], xgps: r4(H.xg / (H.n || 1)), shd: r4(H.d / (H.n || 1)), hdr: r4(H.hdr / (H.n || 1)),
-      fast: H.fast, xgFast: r4(H.xgFast), g_hdr: GF[sd].hdr || 0, g_pen: GF[sd].pen || 0, g_foot: GF[sd].foot || 0, g_oth: GF[sd].other || 0,
+      fast: H.fast, xgFast: r4(H.xgFast), g_hdr: GF[sd].hdr || 0, g_pen: GF[sd].pen || 0, g_foot: GF[sd].foot || 0, g_oth: (GF[sd].ns || 0) + (GF[sd].sp || 0),
+      g_ns: GF[sd].ns || 0, g_sp: GF[sd].sp || 0,
+      g_fk: GF[sd].fk || 0, fkTry: FK.filter(f => f.side === sd).length, fkD: r4(FK.filter(f => f.side === sd).reduce((t, f) => t + f.d, 0)),
+      fkWide: FK.filter(f => f.side === sd && f.dy > 12).length,
+      penF: PW.filter(x => x.side === sd && x.why === "foul").length, penH: PW.filter(x => x.side === sd && x.why === "hand").length,
+      // every foul in the match, both sides, by kind and whether it was in an area (mind/duel.ts __fouls)
+      flT: FL.filter(f => f[0] === "tackle").length, flTB: FL.filter(f => f[0] === "tackle" && f[1]).length,
+      flC: FL.filter(f => f[0] === "contact").length, flCB: FL.filter(f => f[0] === "contact" && f[1]).length,
+      flY: FL.filter(f => f[0] === "cynical").length, flYB: FL.filter(f => f[0] === "cynical" && f[1]).length,
       ...Object.fromEntries(ORG.map(k => ["o_" + k, H.org[k]])), ...Object.fromEntries(ORG.map(k => ["x_" + k, r4(H.oxg[k])])),
       tkTry: out.tackleTrySide?.[sd] ?? 0, tkWon: out.tackleWonSide?.[sd] ?? 0,
       reg: reg.length, regD: r4(reg.reduce((t, r) => t + r[0], 0) / (reg.length || 1)),
@@ -182,7 +220,27 @@ export function play(E, hT, aT, seed) {
       stamHT: r4(stamHT?.[sd] ?? 0), nsub: SUB[sd].length, sub45: SUB[sd].filter(m => m < 45).length, sub60: SUB[sd].filter(m => m < 60).length,
       subT: SUB[sd].reduce((a, b) => a + b, 0),
       fouls: out.fouls[sd], yel: out.yellows?.[sd] ?? 0, red: out.reds?.[sd] ?? 0, cor: out.corners[sd],
+      ...(globalThis.__anat ? { AN: { ...AN[sd], SH: Object.entries(AN[sd].SH).map(([n, e]) => [n, ...e.map(v => typeof v === "number" ? +v.toFixed(3) : v)]) } } : null),
     };
+  }
+  return res;
+}
+
+// ---- one match, simulated --------------------------------------------------------------------------
+// The app's own Sim All: a fixture as a tournament plays it (src/sim/core.ts simPositionalMatch), the managers and the
+// injuries in and no home side, on whichever engine build E is. A spec with runner: "sim" plays its matches this way. It
+// keeps how the side DID, and who scored (G, moved out to the row, which the summary does not average).
+export function simMatch(E, hT, aT, seed) {
+  const r = E.simPositionalMatch(new E.RNG(seed >>> 0 || 7), hT.skill, aT.skill, false, hT.style, aT.style, hT.formation, aT.formation,
+    null, hT.strategy, aT.strategy, hT.squad, aT.squad, null, null, true, { home: hT.mgmt ?? null, away: aT.mgmt ?? null });
+  const res = {};
+  for (const sd of SIDES) {
+    const g = sd === "home" ? r.ftHome : r.ftAway, ga = sd === "home" ? r.ftAway : r.ftHome, men = r.playerData?.[sd] || [];
+    const by = (grp) => men.filter(p => p.pos === grp).reduce((t, p) => t + (p.goals || 0), 0);
+    res[sd] = { pts: g > ga ? 3 : g === ga ? 1 : 0, w: +(g > ga), d: +(g === ga), gf: g, ga,
+      top: Math.max(0, ...men.map(p => p.goals || 0)), gFwd: by("FWD"), gMid: by("MID"), gDef: by("DEF"),
+      yel: r.cards?.[sd]?.yellows ?? 0, red: r.cards?.[sd]?.reds ?? 0,
+      G: men.filter(p => p.goals).map(p => [p.fullName || p.name, p.goals]) };
   }
   return res;
 }
@@ -224,9 +282,12 @@ async function runJobIn(E, spec, arm, ci, k0, n) {
     const op = (arm.opp || spec.opp || ((t) => t))(fx.opp, E, H, { k, ci });
     // arm.seed replays the same fixtures on other dice: replicates of a base arm average its own luck away.
     const sd = (fx.seed + (arm.seed || 0) * 2654435761) >>> 0;
-    const r = fx.home ? play(E, me, op, sd) : play(E, op, me, sd);
+    const run = spec.runner === "sim" ? simMatch : play;
+    const r = fx.home ? run(E, me, op, sd) : run(E, op, me, sd);
     const S = fx.home ? r.home : r.away, O = fx.home ? r.away : r.home;
-    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O });
+    const G = S.G; delete S.G; delete O.G;
+    const AN = S.AN, ANo = O.AN; delete S.AN; delete O.AN;
+    rows.push({ arm: arm.name, club: clubs[ci].code, k, opp: fx.opp.code, home: fx.home, S, O, ...(G ? { G } : null), ...(AN ? { AN, ANo } : null) });
   }
   return rows;
 }
@@ -277,10 +338,13 @@ export function summarise(rows, base, armOrder) {
   return lines;
 }
 
-const SHOW = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
+const SHOW_ALL = ["pts", "gf", "ga", "xgf", "xga", "poss", "terr", "tilt", "pass", "cmp", "plen", "pfwd", "phigh", "k_cross",
   "carry", "drib", "sh", "xgps", "shd", "fast", "reg", "regD", "regCP", "ppda", "line", "blen", "dwid", "awid", "run", "tkTry", "fouls"];
 function printTable(lines, base) {
   const fmt = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2);
+  // The columns a run has: a simulated one (runner: "sim") keeps only how the side did, so it prints its own.
+  const SHOW = SHOW_ALL.some(k => lines[0]?.[k] !== undefined) ? SHOW_ALL.filter(k => lines[0][k] !== undefined)
+    : Object.keys(lines[0] || {}).filter(k => k !== "arm" && k !== "n");
   const head = ["arm".padEnd(22), "n".padStart(5), ...SHOW.map(k => k.padStart(7))].join(" ");
   console.log(head);
   for (const o of lines) {
