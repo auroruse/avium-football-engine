@@ -22,7 +22,7 @@
 // What a man does with the ball is the player brain (mind/decide.ts). The keeper and the man running with
 // the ball keep the first brain's positioning (meKeeperPos, meCarrierPos) for now.
 import { CFG, ME_DT, NO_INSTRUCTIONS } from "../config";
-import { meAttrs, meBadgeFx, meSpeed } from "../attributes";
+import { meAttrs, meBadgeFx, meOvr, meSpeed } from "../attributes";
 import { meHungarian } from "../assignment";
 import { ME_HALF_W, ME_SIDES, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meIntercept, meLaneBlock, meOffsideLine,
          meOther, mePressure, meTimeToBallMs } from "../geometry";
@@ -1085,6 +1085,23 @@ function mindDefend(s, side) {
     for (const j of fresh) dg0.add(j);
   }
   (M.boxMk = M.boxMk || {})[side] = boxMk;
+  // ...AND TWO ON THEIR MAIN MAN (MT.boxDouble; 12 October 2026). With the pairs made, a defender left over goes to the
+  // most dangerous man in the box as well, in front of him on the ball's side while his marker stays goal-side: the
+  // target man every cross is aimed at is not left to one defender when there is a second to spare. Without it, a side
+  // with one good striker fed him four shots in ten and two goals in three (the Elvesterian league, Peshlakai).
+  let box2 = M.box2?.[side];
+  if (!nearBox || !MT.boxDouble) box2 = null;
+  else if (!box2 || stale || !danger.includes(box2[1]) || !zone.includes(box2[0]) || boxMk.has(box2[0])) {
+    box2 = null;
+    let bj = -1, bv = -Infinity;
+    for (const j of danger) { const q = them[j]; const v = meOvr(q) + (q.pos === "FWD" ? MT.boxDoubleFwd : 0); if (v > bv) { bv = v; bj = j; } }
+    if (bj >= 0) {
+      let bi = -1, bd = MT.boxMarkMax;
+      for (const i of free) { if (boxMk.has(i)) continue; const d = Math.hypot(us[i].x - them[bj].x, us[i].y - them[bj].y); if (d < bd) { bd = d; bi = i; } }
+      if (bi >= 0) box2 = [bi, bj];
+    }
+  }
+  (M.box2 = M.box2 || {})[side] = box2;
   for (const i of zone) {
     const p = us[i];
     if (p._cut > 0) p._cut--;
@@ -1123,6 +1140,16 @@ function mindDefend(s, side) {
         setTarget(p, q.x + ux / ul * 1.6 + (q.vx || 0) * 2, q.y + uy / ul * 1.6 + (q.vy || 0) * 2, 1);
         p._closing = true; p._eff = 1; p._duty = "mark"; continue;
       }
+    }
+    if (box2 && box2[0] === i) {
+      // The second man on him: a stride in front, on the ball's side, going with him.
+      const q = them[box2[1]];
+      const bx2 = mp.bx - q.x, by2 = mp.by - q.y, bl = Math.hypot(bx2, by2) || 1;
+      setTarget(p, q.x + bx2 / bl * MT.boxDoubleBall + (q.vx || 0) * 1.5, q.y + by2 / bl * MT.boxDoubleBall + (q.vy || 0) * 1.5, 1);
+      const dm = Math.hypot(p.x - p._tx, p.y - p._ty);
+      p._closing = true; p._duty = "mark"; p._mk2 = box2[1];
+      p._eff = (dm > 4 ? MT.effSprint : dm > 1.5 ? MT.effRun : MT.effJog) * (0.86 + 0.14 * mindAware(p));
+      continue;
     }
     if (boxMk.has(i)) {
       // Goal-side of his man, a stride off him, leaning toward the ball, and going with him.
