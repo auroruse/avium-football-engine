@@ -94,6 +94,9 @@ export const MT = {
   boxMarkMax: 16,      // m a defender will come across to pick one up
   boxMarkGS: 0.9,      // m goal-side of his man a box marker stands...
   boxMarkBall: 1.0,    // ...and this far toward the ball, between the man and the passer
+  boxDouble: 0,        // 1: a defender left over in the box doubles up on their most dangerous man (team.ts)...
+  boxDoubleBall: 1.2,  // ...a stride in front of him on the ball's side...
+  boxDoubleFwd: 4,     // ...the danger being his rating, a forward's counted this much higher
   boxMarkHold: 4,      // slices a box pairing holds before it is solved again
   sqzD: 24,            // m from our goal inside which a dribbler is closed by two...
   sqzY: 22,            // ...while he is this central
@@ -178,9 +181,17 @@ export const MT = {
   clrFwd: 12,          // ...and a pass has to go this far forward to count as getting it out
   switchW: 0.008,      // what the room a switch finds is worth (CFG.switchW 0.02 was the first brain's)
   blockK: 1.0,         // how much of blockRisk (a man in the way of the ball's first metres) he believes
+  shotBlockK: 0.5,     // ...and of it in the way of a shot he could take now (mind/decide.ts; 12 Oct 2026)
   // ---- duels -----------------------------------------------------------------------------------
   tkBar: 0.62,         // the chance of winning it a defender wants before he goes in, all else even
   cynBase: 0.035,      // a slice's chance of the foul on purpose to stop a break, before temperament
+  // IN HIS OWN AREA HE PULLS OUT OF IT: what is left there of a missed tackle's chance of being a foul, of the foul on
+  // purpose, and of holding or pushing a man (contact). The first brain had it (CFG.foulBoxScale); the second only for
+  // contact (0.22), and gave 0.89 penalties a match against a real 0.28, half a goal a match on its own (12 October 2026,
+  // test/specs/setpieces.mjs, 2000 NL1 matches an arm). Tackles at 0.3 and the foul on purpose at 0.1 took it to 0.38
+  // (0.15 or 0.5 moved it by 0.03 either way: what was left was contact, 0.18 a match, and handballs, 0.10); contact at
+  // 0.12 and CFG.handP at 0.0063 aim at the real 0.28.
+  boxTackleFoul: 0.3, boxCynFoul: 0.1, boxContactFoul: 0.12,
   contactFoul: 0.05,   // a slice's chance a man tight on the carrier holds, pushes or climbs on him
   sepR: 3.2,           // m; team-mates closer than this ease apart (the shape does the real spacing)
   sepW: 0.25,

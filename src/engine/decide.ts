@@ -2,7 +2,7 @@
 import { meCoachSt, CFG, ME_DT, ME_PAT_MAP, NO_INSTRUCTIONS, meZone } from "./config";
 import { meAtkW, meAttrs, meGkLow, meGkSkill } from "./attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine, meOther, mePassRisk, mePressure, meRun01, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "./geometry";
-import { meGroundMaxD, meLoftT } from "./ball";
+import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "./ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "./pass";
 import { meTouchNear } from "./touch";
 import { meMind, meTech } from "./attributes";
@@ -120,6 +120,29 @@ export function meShotP(s, side, p, x, y, rec, gkRef) {
     q += Math.max(0, cap - q) * open01;
   }
   return Math.max(0, Math.min(0.95, q));
+}
+
+// POINT BLANK, THE KEEPER IS THE GOAL (12 October 2026). Close in, the ball reaches him before he can move, so what he
+// stops is what he already covers standing -- and from two metres a keeper a stride in front covers the whole mouth.
+// meShotP's keeper term only asks whether the shooter has got BEHIND him, so a man a metre from the keeper, square in
+// front of him, rated his chance at a quarter and hit it into him: traced, two in five close-range shots through the
+// middle were struck with the keeper inside two metres of the ball, and came back off him to be struck again. This is
+// the share of the mouth, as the man on the ball sees it, inside the keeper's reach standing (keeper.ts `set`), in full
+// within gkFillNear of him and fading out by gkFillD, where the dive takes over. It belongs to the shot he can take NOW,
+// from where he is with the keeper where he is: priced into a pass or a carry it would read today's keeper into
+// tomorrow's chance.
+export function meKeeperFill(s, side, x, y) {
+  const gk = meKeeper(s.players[meOther(side)]);
+  if (!gk || !CFG.gkFillK) return 0;
+  const dr = meDir(side), fwdK = (gk.x - x) * dr, dk = Math.hypot(gk.x - x, gk.y - y);
+  if (fwdK <= 0 || dk >= CFG.gkFillD) return 0;
+  const fwdG = Math.max(0.3, (meGoalX(side) - x) * dr);
+  const a1 = Math.atan2(ME_HALF_W - GOAL_HALF_W - y, fwdG), a2 = Math.atan2(ME_HALF_W + GOAL_HALF_W - y, fwdG);
+  const reachK = CFG.gkSetReach * (CFG.gkSetLo + (1 - CFG.gkSetLo) * meGkSkill(meAttrs(gk))) + CFG.bodyR;
+  const ak = Math.atan2(gk.y - y, fwdK), hk = Math.atan2(reachK, Math.max(0.3, dk));
+  const cover = Math.max(0, Math.min(a2, ak + hk) - Math.max(a1, ak - hk)) / Math.max(1e-3, a2 - a1);
+  const near = Math.max(0, Math.min(1, (CFG.gkFillD - dk) / Math.max(0.1, CFG.gkFillD - CFG.gkFillNear)));
+  return Math.min(1, CFG.gkFillK * cover * near);
 }
 
 // THE WIND-UP. Nobody near him, the ball sitting right and not coming at him first time, and enough
