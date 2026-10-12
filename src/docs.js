@@ -28,9 +28,9 @@ export const DOCS = [
       "A nation's page opens on its national side as a banner: conference, rating, ground, AFA ranking, manager, style, last five results and the titles it holds. Under it, each division of its league is a band of club tiles. Last season's champion sits on gold, and the clubs that came up or went down carry an arrow.",
     ] },
     { id: "clubs", title: "Clubs And National Sides", body: [
-      "A club has two pages. Overview has the squad, the starting eleven on a pitch in the club's formation, the club's details, its honours, its league finishes and every result of the current season in every competition. Each bar in League Finishes opens that season.",
+      "A club has two pages. Overview runs left to right: the club's profile (its crest, kits, ground, manager, strength by line, and its squad's age and value); its squad, as a list of every man with his age, value, traits and season's figures, the bench's open places shown, or on a pitch in the club's formation with the bench beside it; its season and its honours; and every result of the current season in every competition.",
       "History is a row a season, newest first: the division, the finish, the record, the cup and continental runs, titles in gold and the manager. Every honour sits beside it, by competition, with the years it was won.",
-      "A national side has the same two pages. Its squad of 22 fills the first column with each man's club, and AFA Rankings stands where a club's league finishes would. Its History has columns for the World Cup, its qualifying and the Nations League.",
+      "A national side has the same two pages. Its squad shows each man's club and the year's international figures, and its latest tournament stands where a club's season is. Its History has columns for the World Cup, its qualifying, the Nations League and its AFA ranking that year.",
     ] },
     { id: "players", title: "Players", body: [
       "Players searches every player in the world picked. Filter by name, position, nationality, competition, club and age; the club filter also holds Free Agents and the Hall Of Fame. The table has three views: Overview, Season (one year in every competition) and Career. Click a column head to sort by it.",
