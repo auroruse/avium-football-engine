@@ -299,6 +299,11 @@ function mindAttack(s, side) {
       const runner = r.ln[2] === "attack" || (r.run.behind || 0) >= 0.4;
       d = Math.max(d, runner ? g.off - 1 : Math.min(g.off - MT.cntSupport, d + 8 + MT.cntSurge * (1 - r.rest)));
     }
+    // PROTOTYPE (13 Oct 2026, MT.tuckIn): with the ball central in front of their box, a wide forward on the last line
+    // comes in off the touchline to the channel, so the last line is three men across instead of one.
+    if (MT.tuckIn && r.lane[phi] === "wide" && r.ln[phi] === "attack" && !String(p._mr || "").startsWith("wb")
+        && (ph === "final" || ph === "counter" || (ph === "progress" && bD > 64)) && Math.abs(mp.by - ME_HALF_W) <= MT.tuckBallY && bD > MT.tuckFrom)
+      y += (ME_HALF_W + Math.sign(y - ME_HALF_W) * MT.tuckY - y) * MT.tuckIn;
     // The whole shape leans toward the ball, except the far wide man, who keeps the switch on.
     const wideLane = r.lane[phi] === "wide";
     const farWide = wideLane && Math.sign(y - ME_HALF_W) !== Math.sign(mp.by - ME_HALF_W);
@@ -324,7 +329,22 @@ function mindAttack(s, side) {
     const cand = cells.filter(c => !c.run && c.r.rest < 0.7 && Math.abs(c.p.y - mp.by) + Math.abs(depthOf(side, c.p.x) - bD) > 6)
                       .sort((a, b) => ((b.r.run.box || 0) - (a.r.run.box || 0))
                                       || (Math.hypot(depthOf(side, a.p.x) - 95, a.p.y - ME_HALF_W) - Math.hypot(depthOf(side, b.p.x) - 95, b.p.y - ME_HALF_W)));
-    cand.slice(0, Math.min(boxN, spots.length)).forEach((c, k) => {
+    const goers = cand.slice(0, Math.min(boxN, spots.length));
+    if (MT.boxAssign === 2 && goers.length > 1) {
+      // PROTOTYPE: who takes which spot changes from move to move (the possession's number turns the order round).
+      const rot = ((M.epi ?? 0) + (side === "home" ? 0 : 1)) % goers.length;
+      goers.forEach((c, k) => { const sp = spots[(k + rot) % goers.length]; c.d = sp[0]; c.y = ME_HALF_W + sp[1]; c.prio += 1.5; c.box = true; });
+    } else if (MT.boxAssign) {
+      // PROTOTYPE (13 Oct 2026, MT.boxAssign): the spots, best first, each to the nearest of the men going who is free.
+      const left = goers.slice();
+      for (let k = 0; k < goers.length; k++) {
+        const sx = spots[k][0], sy = ME_HALF_W + spots[k][1];
+        let bj = 0, bd = Infinity;
+        left.forEach((c, j) => { const dd = Math.hypot(depthOf(side, c.p.x) - sx, c.p.y - sy); if (dd < bd) { bd = dd; bj = j; } });
+        const c = left.splice(bj, 1)[0];
+        c.d = sx; c.y = sy; c.prio += 1.5; c.box = true;
+      }
+    } else goers.forEach((c, k) => {
       c.d = spots[k][0]; c.y = ME_HALF_W + spots[k][1]; c.prio += 1.5; c.box = true;
     });
   }
@@ -573,7 +593,18 @@ function boxRuns(s, side, carrier, wide, g) {
   const cand = ps.filter(q => q && q !== carrier && q !== wide && !q.off && q.pos !== "GK" && !((q._runT ?? 0) > 0)
                        && ((q._role2?.run?.box || 0) > 0.4))
                  .sort((a, b) => (b._role2.run.box - a._role2.run.box));
-  cand.slice(0, 3).forEach((q, k) => startRun(s, side, q, "box", 105 - spots[k][0], ME_HALF_W + spots[k][1]));
+  if (MT.boxAssign === 2) {
+    const go = cand.slice(0, 3), rot = ((s.mePos.mind?.epi ?? 0) + (side === "home" ? 0 : 1)) % Math.max(1, go.length);
+    go.forEach((q, k) => { const sp = spots[(k + rot) % go.length]; startRun(s, side, q, "box", 105 - sp[0], ME_HALF_W + sp[1]); });
+  } else if (MT.boxAssign) {
+    const left = cand.slice(0, 3);
+    for (let k = 0; k < spots.length && left.length; k++) {
+      const sx = 105 - spots[k][0], sy = ME_HALF_W + spots[k][1];
+      let bj = 0, bd = Infinity;
+      left.forEach((q, j) => { const dd = Math.hypot(depthOf(side, q.x) - sx, q.y - sy); if (dd < bd) { bd = dd; bj = j; } });
+      startRun(s, side, left.splice(bj, 1)[0], "box", sx, sy);
+    }
+  } else cand.slice(0, 3).forEach((q, k) => startRun(s, side, q, "box", 105 - spots[k][0], ME_HALF_W + spots[k][1]));
 }
 
 function supportTriangle(s, side, c, cells, g) {
@@ -662,6 +693,7 @@ function mindRuns(s, side, ph, g, carrier) {
   const canPlay = clamp((1.6 - cFace) / 1.0, 0, 1) * clamp((1.8 - cPress) / 1.2, 0, 1);
   const wide = Math.abs(carrier.y - ME_HALF_W) > 15;
   let best = null, bestU = 0;
+  const pool = [];
   for (let i = 0; i < ps.length; i++) {
     const p = ps[i];
     if (!p || p.off || p.pos === "GK" || p === carrier || (p._runT ?? 0) > 0 || (p._cool ?? 0) > 0) continue;
@@ -670,6 +702,7 @@ function mindRuns(s, side, ph, g, carrier) {
     const sameFlank = Math.sign(p.y - ME_HALF_W) === Math.sign(carrier.y - ME_HALF_W);
     const consider = (kind, u, rx, ry) => {
       if (u > bestU) { bestU = u; best = { p, kind, rx, ry }; }
+      if (MT.runPick && u > 0) pool.push({ p, kind, rx, ry, u });
     };
     // IN BEHIND: a man near the last line with grass beyond it in his lane, and a passer who can play it.
     if ((r.run.behind || 0) > 0 && pd > g.off - 9 && canPlay > 0.25) {
@@ -689,6 +722,11 @@ function mindRuns(s, side, ph, g, carrier) {
       const mk = roomAt(s, side, p.x, p.y);
       if (mk < 3.5) consider("drop", r.run.drop * 0.8, cD + 11, clamp(p.y, 22, PITCH_W - 22));
     }
+    // PROTOTYPE (13 Oct 2026, MT.lateRun): THE LATE RUN. With the ball central in front of their box and the man on it
+    // able to play, a man who gets into the box goes from behind the ball, past their last line, into it.
+    if (MT.lateRun && (r.run.box || 0) > 0 && !wide && cD > MT.lateFrom && canPlay > 0.25 && r.ln[PH_IX[ph] ?? 1] !== "attack"
+        && pd < g.off - 2 && pd > cD - MT.lateBehind)
+      consider("box", r.run.box * MT.lateRun, Math.min(99, g.off + MT.lateBeyond), clamp(p.y, ME_HALF_W - 11, ME_HALF_W + 11));
     // THE BOX: with the ball wide in the last third, the box men go for the near post, the spot, the far post.
     if ((r.run.box || 0) > 0 && wide && cD > 76 - Math.max(0, st.width || 0) * 4 && pd > 58) {
       const near = carrier.y < ME_HALF_W ? -1 : 1;
@@ -702,6 +740,13 @@ function mindRuns(s, side, ph, g, carrier) {
   // How often a good run is made, out of all the moments it could be: the reader, and the drilling.
   const want = clamp(bestU * 0.42 * (0.55 + 0.45 * mindAware(best.p)) * (0.65 + 0.55 * drill) * (0.8 + 0.4 * cAw), 0, 0.7);
   if (mindRand(M) >= want) return;
+  // PROTOTYPE (13 Oct 2026, MT.runPick): how often a run is made is the best one on offer, as before; who makes it is
+  // drawn from every man it suits, weighted by how much (u to the power runPick... 0 = the best man every time).
+  if (MT.runPick && pool.length > 1) {
+    let tot = 0; for (const o of pool) tot += Math.pow(o.u, MT.runPickPow);
+    let r = mindRand(M) * tot;
+    for (const o of pool) { r -= Math.pow(o.u, MT.runPickPow); if (r <= 0) { best = o; break; } }
+  }
   startRun(s, side, best.p, best.kind, best.rx, best.ry);
   // A RUN ANSWERS A RUN. A striker coming short has dragged a centre-half with him; the man best placed
   // to go into the space he left goes now.
