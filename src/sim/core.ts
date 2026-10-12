@@ -615,6 +615,7 @@ export function simPositionalMatch(rng, homeSkill, awaySkill, forceResult, homeS
   }
   meFinalise(st);
   globalThis.__mgrLog?.(out.mgrLog || null);            // a harness reading the dugout log (the result does not carry it)
+  globalThis.__simOut?.(out);                           // ...or the match's own counters (test/lab.mjs: corners, shots)
   const allP = (sd) => [...st.players[sd], ...((st.subbedOff && st.subbedOff[sd]) || [])];
   // A second yellow shows up in the engine as a red on a man already booked, so it is counted rather
   // than reported -- accumulateMatchStats needs it separately for the suspension rules.

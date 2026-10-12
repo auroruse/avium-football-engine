@@ -204,6 +204,9 @@ export const CFG = {
   // crossBoxY of the centre -- and is flighted to arrive at crossZ, a head. A header from a cross is
   // worth crossHeadK of a shot from the same spot to the man deciding whether to cross it.
   crossFromX: 32, crossFromY: 11, crossBoxX: 19, crossBoxY: 13, crossZ: 1.85, crossHeadK: 0.55,
+  // What a cross is believed to be worth, re-read on what crosses do (mind/decide.ts, A CROSS IS A HOPE): the chance
+  // it reaches us is logistic(crossCalA + crossCalB * logit(the ordinary belief)). 0 / 0 is the ordinary belief.
+  crossCalA: 0, crossCalB: 0,
   // PASS AND MOVE: the give-and-go. A man who plays a short ball forward of his own third goes past
   // his marker for the return: wallP of the time, more for a side that passes short (wallShort per
   // step of passingDir) or plays with freedom (wallCre per step of creativity). The run is wallRunL
