@@ -366,14 +366,17 @@ share one line under that, over the ground. Not picked: the scorers in the banne
 ratings.
 
 Then the timeline (cards, injuries and missed or saved penalties, never substitutions); the team sheets either side, with
-the minute beside every man who came on or went off; between them possession, the seventeen numbers, the Played Live
-count under Reds for a tournament's fixture; and every goal along the bottom, playing on hover. The top player is a star
+the minute beside every man who came on or went off; between them the momentum chart, possession, the seventeen numbers
+and the Played Live count under Reds for a tournament's fixture; and every goal along the bottom, playing on hover. The
+middle column fills from the foot (user, 12 October 2026: "Move the possession bar down and add the momentum graph on top
+of it with when the goals came. Make sure the bottom of the stats lines up with the bottom of the lineups regardless of
+bench size"): the numbers' last line is level with the longer sheet's last man, possession sits over them, and the chart
+takes the height left, its bars on a square root, each goal a dot at its side's edge with its minute. The top player is a star
 by his name in his sheet, no longer a card of his own.
 
 **Copy Image** sits with the buttons, which keep out of the picture until the mouse moves. It copies the page to the
 clipboard as a 1920 by 1310 picture whatever the window's shape, without the buttons, ready to paste into Discord, and so
-does Command-C (Ctrl-C) with nothing selected. Not
-picked: the momentum chart on Full Time.
+does Command-C (Ctrl-C) with nothing selected. The momentum chart, not picked on 10 October, was asked for on 12 October.
 
 ### Editor
 
