@@ -8,7 +8,7 @@
 // Nothing here is a copy. App.tsx imports these back, so there is still one implementation of a
 // football match in the project and the worker and the interface run the identical code.
 import { FORMATIONS, FORM_SPOS, FPOS2, ME_MATCH_TICKS, formAtkW, meAdded, meAddedMin, meFinalise, meInit, meManagersPreMatch, meMinute, meShootout, meTick, pitchSlots, sposFor } from "../engine";
-import { ovrAt } from "../data/positions.js";
+import { CLUB_BENCH, clubBenchRest, ovrAt } from "../data/positions.js";
 // The formation tables live in the engine now (src/engine/formations.ts); the app still reads them here.
 export { FORMATIONS, FORM_SPOS, FPOS2, pitchSlots, sposFor };
 
@@ -399,7 +399,7 @@ export function parseOvr(raw) { if (!raw) return {name:raw,ovr:null,nat:null}; l
 
 
 
-export function buildSquad(formation, names, benchSize) {
+export function buildSquad(formation, names, benchSize, club = false) {
   const n = names || [];
   // benchSize is explicit where the caller knows it (the TSV parser reads it off the row
   // width); otherwise it is inferred from the name count, which is how a rebuild from an
@@ -419,9 +419,19 @@ export function buildSquad(formation, names, benchSize) {
   // anything else keeps the classic 5. An 11-man bench mirrors the starting XI slot for slot,
   // so every starter has a like-for-like understudy; the 5-man bench keeps its own generic shape.
   const benchN = benchSize === 11 || benchSize === 5 ? benchSize : (n.length > 16 ? 11 : 5);
-  const benchPos = benchN === 11 ? sq.map(p => p.pos) : ["GK", "DEF", "MID", "MID", "FWD"];
-  const benchSpos = benchN === 11 ? sq.map(p => p.spos) : ["GK", "CB", "CM", "CM", "ST"];
-  const benchAtk = benchN === 11 ? sq.map(p => p.atkW) : [0, 8, 20, 25, 42];
+  // A CLUB'S ELEVEN-MAN BENCH (Moukden and Kirin, 12 October 2026) starts with the five a club bench always had, exactly as
+  // they were, so a club that has not yet filled its six new places plays exactly as before; the six after them stand in
+  // for the starters those five do not (src/data/positions.js clubBenchRest), each with that starter's place and duty.
+  const FIVE = { pos: ["GK", "DEF", "MID", "MID", "FWD"], spos: ["GK", "CB", "CM", "CM", "ST"], atk: [0, 8, 20, 25, 42] };
+  let rest = [];
+  if (benchN === 11 && club) {
+    const left = [...CLUB_BENCH], want = clubBenchRest(sq.map(p => p.pos)), taken = new Set();
+    for (const p of sq) { const i = left.indexOf(p.pos); if (i >= 0) { left.splice(i, 1); taken.add(p); } }
+    rest = want.map(g => { const p = sq.find(q => q.pos === g && !taken.has(q)); if (p) { taken.add(p); return p; }
+      return { pos: g, spos: g === "DEF" ? "CB" : g === "FWD" ? "ST" : g === "GK" ? "GK" : "CM", atkW: 20 }; }); }
+  const benchPos = benchN === 11 ? (club ? [...FIVE.pos, ...rest.map(p => p.pos)] : sq.map(p => p.pos)) : FIVE.pos;
+  const benchSpos = benchN === 11 ? (club ? [...FIVE.spos, ...rest.map(p => p.spos)] : sq.map(p => p.spos)) : FIVE.spos;
+  const benchAtk = benchN === 11 ? (club ? [...FIVE.atk, ...rest.map(p => p.atkW)] : sq.map(p => p.atkW)) : FIVE.atk;
   // A roster with gaps simply has a smaller bench. An unfilled slot is left out rather than filled
   // with a "#14" placeholder, because a placeholder is a selectable substitute rated at the team's
   // own skill — a nation listing 6 subs was getting 5 more for free. With no real names at all this
@@ -433,7 +443,8 @@ export function buildSquad(formation, names, benchSize) {
   for (let i = 0; i < benchN; i++) {
     const nm = n[11 + i];
     if (named && (!nm || String(nm).startsWith("#"))) continue;
-    sq.push({ name: nm || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i], benchSize: benchN, slot: 11 + i });
+    sq.push({ name: nm || "#"+(12+i), pos: benchPos[i], spos: benchSpos[i], bench: true, atkW: benchAtk[i], benchSize: benchN, slot: 11 + i,
+              ...(club && benchN === 11 ? { clubBench: true } : null) });
   }
   sq.forEach(p => { const {name,ovr} = parseOvr(p.name); p.name = name; p.ovr = ovr; if (!p.natPos) p.natPos = p.spos; });
   return sq;

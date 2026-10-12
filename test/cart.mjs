@@ -22,7 +22,7 @@ let fails = 0;
 const ok = (name, cond, got) => { if (!cond) fails++; console.log(`  ${cond ? "ok  " : "FAIL"}  ${name}${got === undefined ? "" : "   " + JSON.stringify(got)}`); };
 const rec = Object.fromEntries(["players", "managers", "teams", "sheets"].map(k => [k, JSON.parse(readFileSync(join(ROOT, `src/data/${k}.json`), "utf8"))]));
 const byKey = new Map(rec.teams.map(t => [teamKey(t), t])), ovr = new Map(rec.players.map(p => [p.id, p.ovr]));
-const ids = (t) => t.squad.map(v => idOf(v) ?? null), lab = (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length);
+const ids = (t) => t.squad.map(v => idOf(v) ?? null), lab = (t) => slotLabels(sposFor, String(t.formation).trim(), t.squad.length, !["AVIUM", "ARTERRA"].includes(t.file));
 const ovrOf = (id) => ovr.get(id) ?? 0, nat = (t) => t.file === "AVIUM" || t.file === "ARTERRA";
 const team = (f) => rec.teams.find(f);
 

@@ -1002,6 +1002,10 @@
 .ux-mbench { display: flex; flex-direction: column; padding-bottom: 8px; }
 .ux-mb-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 28px; padding: 0 12px; min-width: 0; font-size: 12px; }
 .ux-mb-row:nth-child(even) { background: var(--ux-panel-2); }
+/* An open place on a bench (12 October 2026): its group, and Vacant, both quiet; in the squad views only, never in a match. */
+.ux-vac, .ux-vac .ux-pos { color: var(--ux-text-3); }
+.ux-vac td:nth-child(2), .ux-vac .ux-mb-n { font-style: italic; }
+tr.ux-vac { cursor: default; }
 .ux-mb-sn { font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
 .ux-mb-n { display: block; min-width: 0; max-width: 100%; justify-self: start; text-align: left; overflow: hidden; }
 /* Between them: each figure faces the other across the line it measures. */

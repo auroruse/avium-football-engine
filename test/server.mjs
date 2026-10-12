@@ -90,7 +90,7 @@ async function signIn(login) {
 }
 const now = () => Object.fromEntries(["players", "teams", "managers"].map(k => [k, JSON.parse(gh.commits.get(gh.head)[`src/data/${k}.json`])]));
 const ids = (t) => t.squad.map(v => idOf(v) ?? null);
-const lab = (t) => slotLabels(E.sposFor, t.formation, t.squad.length);
+const lab = (t) => slotLabels(E.sposFor, t.formation, t.squad.length, !["AVIUM", "ARTERRA"].includes(t.file));
 const ovrOf = (rec) => (id) => rec.players.find(p => p.id === id)?.ovr ?? 0;
 
 console.log("signing in");

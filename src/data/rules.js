@@ -52,6 +52,10 @@ export const ownersOf = (editors, t) => [...new Set([
 const EDITOR_TEAM_FIELDS = new Set(["name", "home", "away", "formation", "style", "manager", "squad", "timeWasting"]);
 const BY_REQUEST = new Set(["code", "stadium", "location"]);
 const squadIds = (t) => t.squad.map(v => idOf(v) ?? null);
+// EVERY SQUAD HAS TWENTY-TWO PLACES, a club's as a national side's (Moukden and Kirin, 12 October 2026: "clubs will also be
+// given 11-man benches"). A club squad of sixteen (asked for before then, or kept on a form) takes its six new places open.
+export const PLACES = 22;
+const padPlaces = (sq) => { const out = Array.isArray(sq) ? [...sq] : []; while (out.length < PLACES) out.push(null); return out; };
 const world = (t) => (t.file === "ARTERRA" ? "arterra" : "avium");
 // A NATION'S LEVEL: its national side's rating as the app shows it, the average of its squad's ratings to a tenth and
 // then to a whole number. An editor may make a player of another nation rated below it (user, 11 October 2026). Null
@@ -139,7 +143,8 @@ function squadProblems(rec, next, keys, h) {
   for (const t of next.teams) if (!isNational(t)) for (const id of squadIds(t)) if (id) clubs.set(id, [...(clubs.get(id) || []), t.name.trim()]);
   for (const t of next.teams.filter(t => keys.has(teamKey(t)))) {
     const sq = squadIds(t), was = base.get(teamKey(t)), name = t.name.trim();
-    if (sq.length !== (was ? was.squad.length : isNational(t) ? 22 : 16)) out.push(`${name}: the squad must keep ${was ? was.squad.length : 16} places`);
+    const keep = was ? was.squad.length : PLACES;
+    if (sq.length !== keep && !(keep === 16 && sq.length === PLACES)) out.push(`${name}: the squad must keep ${keep} places`);
     if (sq.slice(0, 11).some(v => !v)) out.push(`${name}: the starting XI has an empty place`);
     const seen = new Set();
     for (const id of sq.filter(Boolean)) {
@@ -238,7 +243,7 @@ function newProblems(rec, n, scope, over, h) {
     for (const f of ["home", "away", "stadium", "location", "formation"]) if (!TEAM_VALUE[f](n[f])) bad(`not a usable ${TEAM_FIELD[f]}`);
     if (!clubs.some(t => t.group === n.group)) bad("not one of the nation's leagues");
     const { clubOf, mgrClubOf } = placesOf(rec), sq = Array.isArray(n.squad) ? n.squad : [];
-    if (sq.length !== 16 || sq.slice(0, 11).some(v => !v)) bad("a new club needs sixteen places, eleven of them filled");
+    if ((sq.length !== PLACES && sq.length !== 16) || sq.slice(0, 11).some(v => !v)) bad("a new club needs twenty-two places, eleven of them filled");
     if (n.timeWasting != null && !TIME_WASTING.includes(n.timeWasting)) bad("not a usable time wasting");
     const seen = new Set();
     for (const v of sq.filter(isNew)) newManProblems(rec, v, "players", scope, over, bad);
@@ -324,7 +329,7 @@ function leagueProblems(rec, n, scope, over) {
     if (!c.stadium) bad(C, "a club needs a ground");
     if (!c.location) bad(C, "a club needs a city");
     const sq = Array.isArray(c.squad) ? c.squad : [];
-    if (sq.length !== 16 || sq.slice(0, 11).some(v => !v)) bad(C, "a club needs sixteen places, eleven of them filled");
+    if ((sq.length !== PLACES && sq.length !== 16) || sq.slice(0, 11).some(v => !v)) bad(C, "a club needs twenty-two places, eleven of them filled");
     for (const v of sq) {
       if (!v) continue;
       if (isNew(v)) { newMan(v, "players", C); continue; }
@@ -361,7 +366,9 @@ function createDraft(rec, d, n, h) {
     if (side) { const sq = squadIds(side), lab = h.labels(side), at = Number.isInteger(n.at) && n.at >= 0 && n.at < sq.length && !sq[n.at] ? n.at : -1,
         i = at >= 0 ? at : placeFor(sq, lab, h.fit, posList(n.pos));
       if (i < 0) return { errors: [`${side.name.trim()} has no free place for ${n.name}`] };
-      sq[i] = id; out = draftWith(out, rec, n.side, { squad: benchSorted(sq, lab, { ...h, pos: (x) => (x === id ? posList(n.pos) : h.pos?.(x)) }) }, "teams"); }
+      // A man typed into a place of his own choosing stays in it (the Editor's Sheet, 12 October 2026): to the bench sort
+      // he fits wherever he stands. One placed by best fit is sorted with the rest.
+      sq[i] = id; out = draftWith(out, rec, n.side, { squad: benchSorted(sq, lab, { ...h, pos: (x) => (x === id ? (at >= 0 ? [] : posList(n.pos)) : h.pos?.(x)) }) }, "teams"); }
     return { errors: [], d: out, id };
   }
   if (n.what === "managers") {
@@ -390,7 +397,7 @@ function createDraft(rec, d, n, h) {
       cup: n.cup || null, listed: true }));
     const { clubOf, mgrClubOf } = placesOf(next), everyone = () => [...next.players, ...add.players];
     for (const c of n.clubs) {
-      const squad = c.squad.map(v => {
+      const squad = padPlaces(c.squad).map(v => {
         if (!isNew(v)) return v || null;
         const id = nextId(everyone(), "p");
         add.players.push({ id, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) });
@@ -428,7 +435,7 @@ function createDraft(rec, d, n, h) {
   const mgrRec = n.manager ? next.managers.find(m => m.id === n.manager) : null;
   const style = mgrSide?.style || styleName(mgrRec?.style) || "Balanced";
   // Its new men first, each a record of his own in his place.
-  const squad = n.squad.map(v => { if (!isNew(v)) return v || null; const pid = nextId([...next.players, ...add.players], "p");
+  const squad = padPlaces(n.squad).map(v => { if (!isNew(v)) return v || null; const pid = nextId([...next.players, ...add.players], "p");
     add.players.push({ id: pid, name: v.name, nat: v.nat, ovr: v.ovr, born: v.born, pos: posList(v.pos), ...(v.badges?.length ? { badges: badgeOrder(v.badges) } : null) }); return pid; });
   const ovrs = squad.filter(Boolean).map(pid => [...next.players, ...add.players].find(p => p.id === pid)?.ovr || 0);
   const team = { id, file, nation: n.nation, at: "", code: n.code, name: n.name, ovr: (ovrs.reduce((a, b) => a + b, 0) / Math.max(1, ovrs.length)).toFixed(1),
