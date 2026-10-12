@@ -25,8 +25,10 @@ import { rollSquad } from "./data/roll.js";
 import { moneyLabel, trendsOf, valueContext, valueInputs, valueOf } from "./data/value.js";
 // Who may change what (src/data/rules.js, the registry server's own rules) and the cart's items (src/data/cart.js).
 import editorsRec from "./data/editors.json";
-// Where every nation and city sits on the Avium Map (test/atlas.mjs).
+// Where every nation and city sits on the Avium Map: read off the deployed map when the app opens (src/data/atlas.js),
+// and until then the copy it was built with (test/atlas.mjs).
 import atlasRec from "./data/atlas.json";
+import { fetchAtlas } from "./data/atlas.js";
 import { OVERSEER, clubNations, isNational, natLevel, owns, ownersOf, planSave } from "./data/rules.js";
 import { cartItems, withoutItem } from "./data/cart.js";
 import { arrangeBench, placeFor, vacate, without } from "./data/squads.js";
@@ -5516,8 +5518,9 @@ function Shirt({ team, size = 48, away }) {
     </span>);
 }
 // THE ATLAS: Avium itself, drawn from the Avium Map's own tiles (auroruse.github.io/avium-map: the same 6000px world its
-// coordinates are in, src/data/atlas.json), with a pin for every national side and every club it can place. Drag to
-// move, wheel or the buttons to zoom. A pin's card shows while the pointer or focus is on it, and a click opens its page.
+// coordinates are in, src/data/atlas.js; `ver` is the tiles' versions), with a pin for every national side and every club
+// it can place. Drag to move, wheel or the buttons to zoom. A pin's card shows while the pointer or focus is on it, and a
+// click opens its page.
 // Seen whole, clubs are dots in their home colour; closer in they become crests, fanned out where a city has several.
 // `focus` rings one pin (the nation a list beside it is pointing at). Fullscreen lays the same map over the whole window
 // and asks the browser for the screen; Escape, the button or leaving the browser's fullscreen brings it back, with the
@@ -5611,7 +5614,7 @@ function atlasHull(pts) {
   for (const q of ps.reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
   return [...lo.slice(0, -1), ...up.slice(0, -1)];
 }
-function AtlasMap({ pins, card, onOpen, focus, radius = 10 }) {
+function AtlasMap({ pins, card, onOpen, focus, radius = 10, ver = atlasRec.tiles }) {
   const box = useRef(null), drag = useRef(null), wheelAcc = useRef(null), anim = useRef(0);
   const [vw, setVw] = useState({ w: 0, h: 0 });
   const [view, setView] = useState(null);                       // { s, cx, cy }: scale, and the world point at the centre
@@ -5793,9 +5796,9 @@ function AtlasMap({ pins, card, onOpen, focus, radius = 10 }) {
                overflow: "hidden", background: "#3e4e6f", cursor: drag.current?.on ? "grabbing" : "grab", touchAction: "none", userSelect: "none" }}>
       {tiles.map(t => (
         <Fragment key={t.k}>
-          <img src={`${ATLAS_TILES}base/${t.k}.png?v=${atlasRec.tiles.base}`} alt="" draggable={false} onError={e => { e.currentTarget.style.visibility = "hidden"; }}
+          <img src={`${ATLAS_TILES}base/${t.k}.png?v=${ver.base}`} alt="" draggable={false} onError={e => { e.currentTarget.style.visibility = "hidden"; }}
             style={{ position: "absolute", left: t.x, top: t.y, width: t.size + 0.6, height: t.size + 0.6, pointerEvents: "none" }} />
-          <img src={`${ATLAS_TILES}borders/${t.k}.png?v=${atlasRec.tiles.borders}`} alt="" draggable={false} onError={e => { e.currentTarget.style.visibility = "hidden"; }}
+          <img src={`${ATLAS_TILES}borders/${t.k}.png?v=${ver.borders}`} alt="" draggable={false} onError={e => { e.currentTarget.style.visibility = "hidden"; }}
             style={{ position: "absolute", left: t.x, top: t.y, width: t.size + 0.6, height: t.size + 0.6, pointerEvents: "none", opacity: 0.7 }} />
         </Fragment>))}
       <div style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transform: `translate(${-ox}px, ${-oy}px) scale(${k})`, transformOrigin: "0 0",
@@ -11015,11 +11018,19 @@ export default function App() {
   const [dynHover, setDynHover] = useState(null);                 // the stripe under the pointer: "<comp>|<season id>"
   const teamByKey = useMemo(() => new Map(teams.filter(t => t.rkey).map(t => [t.rkey, t])), [teams]);
   const teamByArch = useMemo(() => { const m = new Map(); for (const t of teams) m.set(archKey(t.name), t); return m; }, [teams]);
+  // The map's places as it is deployed now, so a city added to the map is on the Atlas and in the editors' city list
+  // without a new build; the copy the app was built with until they arrive, and if they never do.
+  const [atlas, setAtlas] = useState(atlasRec);
+  useEffect(() => {
+    let live = true;
+    fetchAtlas().then(a => { if (live) setAtlas(a); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
   // Every national side and club the map can place: a nation at its label, a club at its city.
   const atlasPins = useMemo(() => {
     const fold = (s) => pFold(stripVenue(String(s || ""))).trim();
-    const city = new Map(Object.entries(atlasRec.cities).map(([k, xy]) => [fold(k), xy]));
-    const nat = new Map(Object.entries(atlasRec.nations).map(([k, xy]) => [fold(k), xy]));
+    const city = new Map(Object.entries(atlas.cities).map(([k, xy]) => [fold(k), xy]));
+    const nat = new Map(Object.entries(atlas.nations).map(([k, xy]) => [fold(k), xy]));
     const out = [];
     for (const n of regNations) {
       if (n.world !== "avium") continue;
@@ -11028,7 +11039,7 @@ export default function App() {
       for (const c of n.clubs) { const k = fold(c.city), cxy = city.get(k); if (cxy) out.push({ key: c.id, kind: "club", x: cxy[0], y: cxy[1], team: c, city: k }); }
     }
     return out;
-  }, [regNations]);
+  }, [regNations, atlas]);
   const ordinal = (k) => { const s = ["th", "st", "nd", "rd"], v = k % 100; return k + (s[(v - 20) % 10] || s[v] || s[0]); };
   // Last season's final table for a league: its newest season with a report, as the names in finishing order.
   const lastMemo = useRef(new Map());
@@ -11913,7 +11924,7 @@ export default function App() {
   // The men an open request holds: none of them can move until it is settled.
   const edLockedMen = useMemo(() => new Set(requests.filter(r => !r.declined).flatMap(r => r.locks || []).filter(l => /^[pm]:/.test(l))), [requests]);
   // Every city on the map, for a side's city.
-  const edCities = useMemo(() => [[null, Object.keys(atlasRec.cities).sort((a, b) => a.localeCompare(b)).map(c => ({ k: c, name: c }))]], []);
+  const edCities = useMemo(() => [[null, Object.keys(atlas.cities).sort((a, b) => a.localeCompare(b)).map(c => ({ k: c, name: c }))]], [atlas]);
   // The sides on the rail: this person's own (every side for the overseer), the national sides first, then the clubs by league.
   const edSides = useMemo(() => {
     const own = curRecs.teams.filter(t => (overseer || ownsKey(teamKey(t))) && (arterraOn || t.file !== "ARTERRA"));
@@ -13713,7 +13724,7 @@ export default function App() {
                   onClick={() => setUxAtlasKind(k2)}>{l}</button>))}
             </div>, (
             <div className="ux-map"><div>
-              <AtlasMap pins={uxAtlasPins} focus={null} radius={0} card={(p) => regTeamCard(p.team)}
+              <AtlasMap pins={uxAtlasPins} focus={null} radius={0} ver={atlas.tiles} card={(p) => regTeamCard(p.team)}
                 onOpen={(p) => (p.kind === "nation" ? openNation(p.nation.code) : openTeam(p.team))} />
             </div></div>), true)}
         </div>
