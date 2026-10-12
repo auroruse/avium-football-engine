@@ -17,6 +17,17 @@ import { meFkArc, meKickBall, meShootBall } from "./ball";
 import { mePlanSave } from "./keeper";
 import { GOAL_HALF_W } from "./ball";
 
+// WHERE A FREE KICK IS STRUCK AT GOAL (user, 12 October 2026: "a lot of free kicks converted from ridiculously steep
+// angles"). Its range was measured along the length of the pitch alone, so a foul out by the corner flag counted as in
+// range and was shot at the near post from beside the byline. It has to be near the goal itself (spShootRange, in a
+// straight line) and see enough of it: the angle between the posts from the ball (spShootAng). Anything else is delivered.
+export function meFkAtGoal(gx, x, y) {
+  const dx = Math.abs(gx - x);
+  if (Math.hypot(dx, ME_HALF_W - y) >= CFG.spShootRange) return false;
+  const ang = Math.abs(Math.atan2(ME_HALF_W + GOAL_HALF_W - y, dx) - Math.atan2(ME_HALF_W - GOAL_HALF_W - y, dx));
+  return ang * 180 / Math.PI >= CFG.spShootAng;
+}
+
 // Which foot he kicks with, from where he plays. Left only if he is clearly a left-sided player.
 export const meFoot = (p) => ((p._bw0 ?? ME_HALF_W) < ME_HALF_W - CFG.spLeftOf ? -1 : 1);
 
@@ -489,7 +500,7 @@ export function meSPShape(s) {
     // Both posts covered, the near one only, or neither and everybody picks a man up instead.
     if (sp.v !== 2) dtake(gx - dir * 0.8, ME_HALF_W + nearSide * 3.4);
     if (sp.v === 0) dtake(gx - dir * 0.8, ME_HALF_W - nearSide * 3.4);
-  } else if (Math.abs(gx - sp.x) < CFG.spShootRange && (sp.kind === "freekick")) {
+  } else if (sp.kind === "freekick" && meFkAtGoal(gx, sp.x, sp.y)) {
     // A WALL, on the line between the ball and the goal, ten yards off it. Three, four or five men
     // in it: how many you put in a wall is a decision, and it was the same four every time.
     const wall = Math.max(2, CFG.spWall + sp.v - 1);
@@ -825,7 +836,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     const ok = rng.u() < Math.min(0.97, base + meGkSkill(meAttrs(g)) * skillW);
     mp.shot.readY = ok ? aimY : ME_HALF_W - (aimY - ME_HALF_W);
   };
-  const shooting = sp.kind === "freekick" && Math.abs(gx - sp.x) < CFG.spShootRange;
+  const shooting = sp.kind === "freekick" && meFkAtGoal(gx, sp.x, sp.y);
   meKickedBy(mp, side, sp.ti);
   mp.idx = -1; mp.flight = true; mp.fside = side; mp.fj = ti; mp.lastSide = side; mp.passPending = null;
   mp.bpass = side;                                   // a restart is a kick or a throw: the back-pass law holds
@@ -885,8 +896,9 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
     // and a dead ball is struck from wherever the foul happened.
     if (out.xgS) out.xgS[side] += CFG.spFkXg;
     if (out.shotDist) out.xg = (out.xg || 0) + CFG.spFkXg;
-    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick, xg: CFG.spFkXg };
+    mp.shot = { side, name: taker.name, full: taker.fullName || taker.name, i: sp.ti, t0: mp.tick, xg: CFG.spFkXg, fk: true };
     mp.fj = -1;
+    if (globalThis.__fk) globalThis.__fk.push({ side, d: +g.d.toFixed(1), dy: +Math.abs(sp.y - ME_HALF_W).toFixed(1) });
     meEvt(out, "shot", side, sp.x, sp.y, gx, away, `${taker.fullName || taker.name} strikes the free kick`);
     // Over the wall and under the bar, which is the whole act. meFkArc solves the pair; the target
     // height used to be a coin toss between one metre and two with the wall nowhere in it.
@@ -922,6 +934,7 @@ export function meSPTake(s, rng, out, meBallTo, meEvt, meKickedBy) {
   // pointed; the loft now lands where it is pointed.
   if (aerial && q && (gx - tx) * dir < 1.2) tx = gx - dir * 1.2;   // never flighted into the net
   if (sp.kind === "goalkick") mp._gkKick = mp.tick;   // provenance stamp; see __prov in match.ts
+  if (globalThis.__prov) mp._spLast = { k: longThrow ? "longthrow" : sp.kind, t: mp.tick, side };
   // ...and a throw-in is THROWN. It was struck along the ground like a pass.
   const high = sp.kind === "corner" || sp.kind === "throw"
     || (sp.kind === "goalkick" && ((s.strategy?.[side]?.gkDist || 0) > 0 || Math.hypot(tx - sp.x, ty - sp.y) > CFG.loftD))
