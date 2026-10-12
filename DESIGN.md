@@ -435,29 +435,43 @@ page's pitch, without traits, with its bench under it and its formation in its h
 there, or between it and the grid or the Free Agents panel, as in the sheet, and the row changes with it. Clicking a
 side's crest brings it forward. Clicking a chip opens his
 Record: name, nationality, date of birth, rating, positions, traits, value and his sides. The overseer changes all of it
-and can retire him; an editor sees it locked but for his positions, which are asked for. Free Agents lists every free
-player and manager, best first, with a search: dragging one onto an empty place signs him, onto a man sends that man to
-free agency in his stead, and dragging a man onto the panel releases him. Nationals opens while a national side is
+and can retire him; an editor sees it locked but for his positions, which are asked for. **Free Agents** lists every
+player and manager without a club, as Trades and the server count them, so a man who plays only for his national side is
+one (the user, 12 October 2026: "national team-only free agents aren't shown for some reason? Make player and manager
+free agents separate tabs"): Players and Managers are its two tabs, best first, each with a search and its New button,
+and new men in the cart without a side stand first, faint. Dragging one onto an empty place signs him, onto a man sends
+that man to free agency in his stead, and dragging a man onto the panel releases him. Nationals opens while a national side is
 picked: the nation's men playing abroad, best first, to drag up. Under a record stand its actions: **Sub Out** for a
 starter and **Sub In** for a substitute (the user: "an option to sub players in/out in the sidebar next to retire"), each
 opening the side's men he can change places with, a click swapping them; **Trade** on one's own man and **Make An
 Offer** on another nation's, each opening Trades with him in a deal; and the overseer's Retire.
 
 **New records** are made in the sheet. Typing "Name, position" into an empty place makes a new man there, "(84) Name, ST"
-with a rating, a second position after the first; pasting several lines into a run of places makes one in each. The +
-in an empty place opens the full form on the dock instead: name, nationality (the tab's to start), date of birth or an age
-(Or Age draws a date for it, a die another), positions, rating and the traits that rating affords. A manager is made the
-same way in an empty manager cell, with his style. **+ New Club** at the foot of each league band adds a row filled in
+with a rating, a second position after the first (a tab does for a comma); pasting several lines into a run of places
+makes one in each. **New Player** on Free Agents, and the + in an empty place, open the full form on the dock (the user,
+12 October 2026, asked what was missing from making a new player: a New Player button, the full form, opening typed men,
+"Ensure that bulk player import works"): name, nationality (the side's, or the tab's, to start), date of birth or an age
+(the age draws a date for it, a die another), position and second position by name, the side he joins (from the button),
+rating with another nation's limit, the traits that rating affords for editors too, and the portrait line; **Add To
+Cart** puts him in the cart and **Cancel** discards the form. A new man already made, in the cart or typed into a new
+club, opens in the same form, with **Done** and **Remove**. **Many**, on the form's head, opens the list form full width
+(a line a man, one nationality, an age range, a table to rate them): one request, its men shown in the places they will
+take or first on Free Agents. A manager is made the same way, from **New Manager** or an empty manager cell, with his
+style; made for a side he takes it over when let in. **+ New Club** at the foot of each league band adds a row filled in
 place: name, code, kits, city, ground, capacity, formation, manager and its sixteen places. **New League** at the foot of
 the tab adds a band for the league's name, tier and cup (picked from the nation's cups or named new), with its founding
-clubs as new rows. **Roll Ratings**, in a new club's row menu, is a tool and never a field: given a team rating it rates
+clubs as new rows. A club row's menu opens from its row number (a click, or the right button). **Roll Ratings**, in a
+new club's menu beside Remove, is a tool and never a field: given a team rating it rates
 every new man left blank or rolled before so the sixteen average it, starters about 1.3 over it with a spread of 2.3 and
 each bench man below the starter at his position, keeping typed ratings (`src/data/roll.js`). For an editor each new man,
 each new club with all it holds and each new league with its band is one request to the overseer, who may change any of
 it before letting it in. A rating may be left blank for the overseer to set; a new man of another nation needs a rating
 below that nation's level, its national side's rating as the app shows it (`natLevel`), and no traits come below 75. A
-new league lists on its own from its first club, and a nation's first league makes its club sheet. A form open on the
-dock is kept in the browser until it goes to the cart or is cancelled. One line under the forms gives the image rules:
+new league lists on its own from its first club, and a nation's first league makes its club sheet. A New form is kept in
+the browser until it goes to the cart or is cancelled; one left for something else comes back from **Finish New Player**
+(or Manager, Club, League, Players) over the sheet: a player or manager on the dock, a list, club or league in its form,
+full width. A New form left unfinished in the old editor stays kept the same way (Moukden and Kirin, 12 October 2026,
+asked how it should come back: "Reopen the old form"). One line under the forms gives the image rules:
 badges 500 by 500 with 50px of padding on every side and a 25px white outline, portraits a chest-up headshot in a plain
 white shirt, sent as a zip to @auroruse on Discord.
 
@@ -471,7 +485,9 @@ records as saved; others' saves arrive when the page is reloaded, with a note wh
 clashes with one made since is caught and shown. There is no editing together live.
 
 **The overseer** also drags a club's row into another league's band to move it there (promotion, relegation), and removes
-a club from its row menu: its men go to free agency and its seasons stay in the archive. A league's record is
+a club from its row menu (**Remove Club**, then **Confirm Remove**): a `removed` mark in the cart, and when it is saved the
+club leaves `src/data/teams.json` and its sheet, its men and manager go to free agency, and its seasons stay in the
+archive. The server refuses it while an offer or request names the club or holds one of its men, and from an editor. A league's record is
 `src/data/leagues.json`: a rename keeps the old name in `formerly`, so the archive's seasons, its badge and the clubs a
 saved tournament names still find it.
 

@@ -1308,6 +1308,7 @@
 /* A rail of the records this person may open beside the picked record: a side's head (its own details, then those changed
    by request), its squad on a pitch with the bench, its manager, and the search for signings or the trade being built. */
 .ux-ed { grid-template-columns: 300px minmax(0, 1fr); }
+.ux-ed.ux-ed-solo { grid-template-columns: minmax(0, 1fr); }
 .ux-ed-rail .ux-ph { padding: 0 8px; }
 .ux-ed-new { width: 100%; justify-content: center; height: 28px; }
 .ux-ed-search { padding: 0 8px 8px; flex-shrink: 0; }
@@ -1732,6 +1733,7 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-fxi { flex: none; font-size: 12px; font-style: italic; color: var(--ux-text-3); }
 .ux-sh-fxv { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--ux-text); }
 .ux-sh-msg { flex: none; font-size: 12px; color: var(--ux-loss); white-space: nowrap; }
+.ux-sh-finish { flex: none; }
 .ux-sh-ib { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--ux-text-2); }
 .ux-sh-ib:hover:not(:disabled) { background: var(--ux-panel-3); color: var(--ux-text); }
 .ux-sh-ib:disabled { opacity: .35; cursor: default; }
@@ -1841,12 +1843,37 @@ textarea.ux-ed-in.ux-ed-ta { height: auto; min-height: 112px; padding: 6px 8px; 
 .ux-sh-flist { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 6px 10px; }
 .ux-sh-frow { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border-radius: 6px; font-size: 12px; cursor: grab; }
 .ux-sh-frow:hover { background: var(--ux-panel-2); }
+.ux-sh-fhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 8px; }
+.ux-sh-fseg button { display: inline-flex; align-items: center; gap: 6px; }
+.ux-sh-fcount { font-size: 11px; font-weight: 500; color: var(--ux-text-3); }
+.ux-sh-fseg .ux-on .ux-sh-fcount { color: inherit; opacity: .75; }
+.ux-sh-fnew { flex: none; }
+.ux-sh-fpend { cursor: pointer; }
+.ux-sh-fpend .ux-sh-fn { color: var(--ux-text-2); }
+.ux-sh-fbatch { cursor: default; }
+.ux-sh-fface { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; border: 1px dashed var(--ux-line-2); color: var(--ux-text-3); }
 .ux-sh-fn { flex: 1 1 auto; min-width: 0; }
 .ux-sh-recact { display: flex; gap: 8px; flex-wrap: wrap; }
+.ux-sh-grow { flex: 1 1 auto; }
+.ux-sh-rule { margin: 0; font-size: 11px; line-height: 1.5; color: var(--ux-text-3); }
+.ux-sh-rh > .ux-seg.ux-sh-many { flex: none; flex-direction: row; gap: 2px; margin-left: 0; }
+.ux-sh-joins { min-width: 0; max-width: 64%; }
+.ux-sh-facts.ux-sh-wide .ux-sh-fr { grid-template-columns: 104px minmax(0, 1fr); }
+.ux-sh-born { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.ux-sh-born > input[type="date"] { flex: 1 1 auto; width: auto; min-width: 0; }
+.ux-sh-dice { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: var(--ux-text-2); }
+.ux-sh-dice:hover:not(:disabled) { background: var(--ux-panel-3); color: var(--ux-text); }
+.ux-sh-dice:disabled { opacity: .35; cursor: default; }
+.ux-sh-rn.ux-sh-rnm { cursor: pointer; }
+.ux-sh-rn.ux-sh-rnm:hover, .ux-sh-rn.ux-on { color: var(--ux-text) !important; background: var(--ux-panel-3) !important; }
+.ux-sh-rnc { display: grid; place-items: center; color: var(--ux-text-3); }
+.ux-scrim.ux-sh-rowscrim { z-index: 9994; }
+.ux-menu.ux-sh-rowmenu { position: fixed; right: auto; z-index: 9995; min-width: 210px; }
+.ux-menu-item.ux-sh-mdanger { color: var(--ux-loss); }
+.ux-menu-item.ux-sh-mdanger.ux-on { background: color-mix(in srgb, var(--ux-loss) 16%, transparent); }
+.ux-sh-roll { width: 260px; padding: 2px 8px 6px; display: flex; flex-direction: column; gap: 8px; }
 .ux-sh-dlr dd/* A new club's row and a new man: faint until the overseer lets them in; a new club's row number is its remove button. */
 .ux-sh-tbl tr.ux-sh-fresh > td.ux-sh-td { background: color-mix(in srgb, var(--ux-accent) 6%, var(--ux-panel)); }
-.ux-sh-rx { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ux-text-3); }
-.ux-sh-rx:hover { color: var(--ux-loss); }
 .ux-sh-bin { height: 24px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ux-line-2); background: var(--ux-panel); color: var(--ux-text); font: inherit; width: 200px; }
 .ux-sh-bin.ux-sh-bnum { width: 40px; text-align: center; }
 /* The + in an empty place: shown while the pointer is on the cell, it opens a new man's form on the dock. */

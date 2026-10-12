@@ -353,5 +353,24 @@ console.log("the sheet (12 October 2026)");
   const no = plan(ED, { new: [{ id: "n8", what: "managers", name: "Karl NEUMANN", nat: "ALE", born: "1885-04-04", style: "balanced", ovr: null, side: teamKey(B) }] });
   ok("not for another nation's side", no.errors.some(e => /not one of your sides/.test(e)), no.errors); }
 
+console.log("removing a club (12 October 2026)");
+{ const X = rec.teams.find(t => t.file === "ALE" && t.code === "BTV"), K = teamKey(X), men = ids(X).filter(Boolean), mgr = idOf(X.manager);
+  const ed = plan(ED, { teams: { [K]: { removed: true } } });
+  ok("an editor may not remove a club", ed.errors.some(e => /overseer's to change/.test(e)), ed.errors);
+  const s = plan(OV, { teams: { [K]: { removed: true } } }), n = s.apply && after(s.apply);
+  ok("the overseer removes one: gone from the records", !s.errors.length && !!n && !n.teams.some(t => t.id === X.id), s.errors);
+  ok("(its men and its manager are free of it)", !!n && men.every(id => !n.teams.some(t => !["AVIUM", "ARTERRA"].includes(t.file) && ids(t).includes(id)))
+    && !n.teams.some(t => t.file !== "AVIUM" && idOf(t.manager) === mgr));
+  ok("(its sheet is written without it)", !!n && !sheetsFromRecords(n).ALE.includes(X.name.trim()) && sheetsFromRecords(rec).ALE.includes(X.name.trim()));
+  const nt = plan(OV, { teams: { [teamKey(rec.teams.find(t => t.file === "AVIUM" && t.code === "ALE"))]: { removed: true } } });
+  ok("a national side is never removed", nt.errors.some(e => /never removed/.test(e)), nt.errors);
+  const offer = [{ id: "r1", kind: "deal", by: ED, team: teamKey(A), sides: [teamKey(A), K], moves: [{ kind: "player", id: men[0], to: teamKey(A) }], locks: ["p:" + men[0]] }];
+  const held = plan(OV, { teams: { [K]: { removed: true } } }, offer);
+  ok("not while an offer names it", held.errors.some(e => /waiting on a request/.test(e)), held.errors);
+  // One of its men signed by another club in the same cart, the club then removed.
+  const a = ids(A), sa = [...a]; sa[15] = men[15] || men[men.length - 1];
+  const both = plan(OV, { teams: { [K]: { removed: true }, [teamKey(A)]: { squad: sa } } }), nb = both.apply && after(both.apply);
+  ok("its man signed elsewhere in the same cart", !both.errors.length && !!nb && ids(nb.teams.find(t => t.id === A.id)).includes(sa[15]), both.errors); }
+
 console.log(fails ? `\n${fails} FAILED` : "\nall passed");
 process.exit(fails ? 1 : 0);

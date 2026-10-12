@@ -19,8 +19,9 @@ const KINDS = {
   // out of play for good while his record stays. born is his date of birth, "YYYY-MM-DD" (src/data/icclock.js ages it).
   players: { fields: ["name", "ovr", "nat", "born", "badges", "pos", "retired"], key: (r) => r.id, label: (r) => r.name },
   managers: { fields: ["name", "nat", "born", "style", "ovr"], key: (r) => r.id, label: (r) => r.name },
-  // timeWasting is the one tactic a side keeps of its own; group and file move a club into another league (the overseer's).
-  teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting", "group", "file"], key: teamKey,
+  // timeWasting is the one tactic a side keeps of its own; group and file move a club into another league, and removed
+  // takes a club out of the records (both the overseer's; its men and manager go free, its seasons stay in the archive).
+  teams: { fields: ["name", "code", "home", "away", "stadium", "location", "formation", "style", "manager", "squad", "timeWasting", "group", "file", "removed"], key: teamKey,
            label: (t) => t.name.trim() },
   leagues: { fields: ["name", "tier", "cup"], key: (l) => l.id, label: (l) => l.name },
 };
@@ -29,7 +30,7 @@ export const PLAYER_FIELDS = KINDS.players.fields;
 export const idOf = (v) => v && typeof v === "object" && "id" in v ? v.id : v;
 // A field as compared: badges in table order, a squad or a manager as the people it names, positions as a list.
 const norm = (f, v) => f === "badges" ? badgeOrder(v) : f === "squad" ? (v || []).map(s => idOf(s) ?? null)
-  : f === "manager" ? idOf(v) ?? null : f === "retired" ? !!v : f === "pos" ? (Array.isArray(v) ? (v.length ? v : null) : posList(v).length ? posList(v) : null)
+  : f === "manager" ? idOf(v) ?? null : f === "retired" || f === "removed" ? !!v : f === "pos" ? (Array.isArray(v) ? (v.length ? v : null) : posList(v).length ? posList(v) : null)
   : f === "born" || f === "cup" ? v || null : v;
 const same = (f, a, b) => JSON.stringify(norm(f, a) ?? null) === JSON.stringify(norm(f, b) ?? null);
 
@@ -70,7 +71,7 @@ export function applyDraft(rec, draft) {
   return { ...rec, leagues,
     players: [...rec.players.map(r => ps[r.id] ? playerRecord({ ...r, ...ps[r.id] }) : r), ...(add.players || [])],
     managers: [...rec.managers.map(r => ms[r.id] ? playerRecord({ ...r, ...ms[r.id] }) : r), ...(add.managers || [])],
-    teams: [...rec.teams.map(t => {
+    teams: [...rec.teams.filter(t => !ts[teamKey(t)]?.removed).map(t => {
       const p = ts[teamKey(t)];
       let n = p ? { ...t, ...Object.fromEntries(KINDS.teams.fields.filter(f => f in p).map(f => [f, p[f]])) } : t;
       if (p && "squad" in p) n = { ...n, squad: keepCells(t.squad, n.squad) };

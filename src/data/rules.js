@@ -87,9 +87,11 @@ const TEAM_VALUE = {
   timeWasting: (v) => TIME_WASTING.includes(v),
   // A club moved into another league (the overseer's): the league's name, and the sheet it is written on.
   group: (v) => text(v, 60), file: (v) => typeof v === "string" && /^[A-Z]{2,10}$/.test(v),
+  removed: (v) => v === true,
 };
 const TEAM_FIELD = { name: "name", code: "code", home: "home colour", away: "away colour", stadium: "stadium", location: "city",
-                     formation: "formation", style: "style", manager: "manager", squad: "squad", timeWasting: "time wasting", group: "league", file: "sheet" };
+                     formation: "formation", style: "style", manager: "manager", squad: "squad", timeWasting: "time wasting", group: "league", file: "sheet",
+                     removed: "removal" };
 const TIME_WASTING = ["Never", "Sometimes", "Constantly"];
 const codeClash = (teams, code, t) => teams.find(x => x !== t && x.code === code && world(x) === world(t));
 const tierOk = (v) => Number.isInteger(v) && v >= 0 && v <= 5;
@@ -119,6 +121,7 @@ function valueProblems(rec, next, changes) {
     if (c.kind !== "teams") continue;
     if (TEAM_VALUE[c.field] && !TEAM_VALUE[c.field](c.to)) bad(`not a usable ${TEAM_FIELD[c.field]}`);
     if (c.field === "manager" && c.to != null && !mgrs.has(c.to)) bad("no such manager");
+    if (c.field === "removed" && isNational(rec.teams.find(t => teamKey(t) === c.id))) bad("a national side is never removed");
     if (c.field === "code" && TEAM_VALUE.code(c.to)) {
       const clash = codeClash(next.teams, c.to, nextBy.get(c.id));
       if (clash) bad(`${clash.name.trim()} already has the code ${c.to}`);
@@ -491,6 +494,12 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
   }
 
   errors.push(...valueProblems(rec, nextAll, changes));
+  // A club removed (the overseer's) while an offer or request still names it, or holds one of its men, would break it.
+  for (const c of changes.filter(c => c.kind === "teams" && c.field === "removed" && c.to)) {
+    const t = teamBy.get(c.id), held = [...squadIds(t), idOf(t.manager)].filter(Boolean);
+    if (open.some(r => r.team === c.id || r.other === c.id || (r.sides || []).includes(c.id) || r.rec?.side === c.id)
+        || held.some(id => lockedMen.has("p:" + id) || lockedMen.has("m:" + id))) errors.push(`${c.name}: waiting on a request`);
+  }
 
   // What may be touched at all, and what an editor sends to the overseer.
   const details = new Map();                                          // team -> { code, stadium, location } asked for
@@ -530,6 +539,7 @@ export function planSave(rec, editors, pending, login, cart, h, now = new Date()
     if (!m.from) continue;
     const from = teamBy.get(m.from), fromNext = nextAll.teams.find(t => teamKey(t) === m.from);
     if (!over && !owns(scope, from)) { errors.push(`${name} is at ${from.name.trim()}: ask for him with a trade`); continue; }
+    if (!fromNext) continue;                                          // a club removed in the same cart holds nobody
     if (m.kind === "player" && squadIds(fromNext).includes(m.id)) errors.push(`${name} would be at two clubs: take him out of ${from.name.trim()} too`);
     if (m.kind === "manager" && idOf(fromNext.manager) === m.id) errors.push(`${name} already manages ${from.name.trim()}: change their manager too`);
   }
