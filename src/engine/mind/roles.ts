@@ -182,6 +182,7 @@ export function mindRoles(s, side) {
     const c = chosen?.[i];
     const r = c && ROLES[c] && (c === "gk") === (p.pos === "GK") ? c : pick[i] || (p.pos === "GK" ? "gk" : "cm");
     p._mr = r; p._role2 = traitRole(ROLES[r], p);
+    if (globalThis.__roleOv?.[r]) p._role2 = { ...p._role2, ...globalThis.__roleOv[r] };   // DIAGNOSTIC (13 Oct): a harness rewrites a role
   }
 }
 

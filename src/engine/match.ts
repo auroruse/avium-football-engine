@@ -2308,9 +2308,9 @@ export function meTick(s, rng, out) {
           // the shot; a goal with no live shot reads it at the crossing instead. Gated on a global
           // the app never sets, so a watched match pays one truthiness test per goal.
           if (globalThis.__prov) globalThis.__prov.push({
-            side: scorer, par: globalThis.__prov._parried || 0, pos: gp ? gp.pos : null, nm: gp ? gp.fullName || gp.name : null,
+            side: scorer, par: globalThis.__prov._parried || 0, pos: gp ? gp.pos : null, nm: gp ? gp.fullName || gp.name : null, role: gp ? gp._mr : null,
             r: sh && sh._r != null ? sh._r : -1, hdr: sh && sh.hdr ? 1 : 0, pk0: globalThis.__prov._pk0 || "", car0: globalThis.__prov._car0 || 0,
-            spK: mp._spLast && mp._spLast.side === scorer ? mp._spLast.k : "", spT: mp._spLast ? mp.tick - mp._spLast.t : 1e9,
+            spK: mp._spLast && mp._spLast.side === scorer && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "", spT: mp._spLast ? mp.tick - mp._spLast.t : 1e9,
             og: ownGoal ? 1 : 0, pen: sh && sh.pen ? 1 : 0,
             dead: sh && !sh.p ? 1 : 0, noShot: sh ? 0 : 1,
             lt: sh ? (sh.lt ?? 1e9) : mp.tick - (mp._loose ?? -1e9),
@@ -2421,6 +2421,7 @@ export function meTick(s, rng, out) {
                 mePenRes(out, sh);
                 meEvt(out, sh.pen ? "penmiss" : "miss", sh.side, mp.bx, mp.by, meGoalX(sh.side), cross.y,
                       sh.pen ? `${sh.full || sh.name} misses the penalty` : `${sh.full || sh.name} drags it wide`); }
+      if (globalThis.__byline) globalThis.__byline(mp, sh, cross, s);           // harness: what put it over the line
       if (cross.conceding === mp.touchSide) meDead(s, "corner", meOther(cross.conceding), CFG.cornerTicks, out);
       else meDead(s, "goalkick", cross.conceding, 200, out);
       return;
@@ -2763,6 +2764,7 @@ export function meTick(s, rng, out) {
                 mp.lastSide = ob; meKickedBy(mp, ob, ci);
                 c.aerials = (c.aerials || 0) + 1; meRate(c, CFG.rateAerial);
                 c.defActs = (c.defActs || 0) + 1; out.clears++; meBump(out, "clearsSide", ob);
+                if (globalThis.__passAir) globalThis.__passAir(mp.passPending, ob);     // harness: a ball headed away in the duel
                 mp.idx = -1; mp.flight = true; mp.fside = ob; mp.fj = -1; mp.passPending = null;
                 const ax = gxD - c.x, ay = ME_HALF_W - c.y, al = Math.hypot(ax, ay) || 1;
                 const tx = c.x - ax / al * CFG.headOut, ty = c.y - ay / al * CFG.headOut + (rng.u() - 0.5) * 14;
@@ -2790,8 +2792,10 @@ export function meTick(s, rng, out) {
                                     mine: pp0 ? (pp0.side === bs ? 1 : 0) : -1, rcv: pp0 && pp0.side === bs && pp0.fj === bi ? 1 : 0,
                                     z: +zHit.toFixed(2), duel: duel ? 1 : 0 }); }
           const _hFrom = globalThis.__shots ? (mp.passPending ? (mp.passPending.side === bs ? mp.passPending.k || "set" : "theirs") : mp._looseWhy || "loose") : null;
+          const hTheirs = mp.lastSide !== bs && !!mp.passPending && mp.passPending.side !== bs;   // a delivery of theirs he is meeting
           mp.lastSide = bs; meKickedBy(mp, bs, bi);
           q.aerials = (q.aerials || 0) + 1; meRate(q, CFG.rateAerial);
+          if (globalThis.__passAir && mp.passPending) globalThis.__passAir(mp.passPending, bs, bi);   // harness: a ball met with the head
           mp.idx = -1; mp.flight = true; mp.fside = bs; mp.fj = -1; mp.passPending = null;
           if (dGoalA < CFG.headShotR && !mp.shot) {
             // Close enough to attack it: a header at goal, and it counts as a shot like any strike.
@@ -2855,6 +2859,7 @@ export function meTick(s, rng, out) {
             mp.shot.fr0 = meOnFrame(mp, gxA);
             if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
               R.i = bi; R.nm = q.fullName || q.name; R.pos = q.pos; R.y = +(q.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0; R.from = _hFrom;
+              R.ph = mp.mind?.ph?.[bs]?.ph || "-"; R.role = q._mr; R.spK = mp._spLast && mp._spLast.side === bs && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
               R.duel = duel ? 1 : 0; }
             mePlanSave(s, mp.shot);
           } else {
@@ -2881,8 +2886,22 @@ export function meTick(s, rng, out) {
             // the ball landed on the edge of his own box at a fifty-fifty. A defensive header is
             // the one contact a defender puts everything through: headClearV and a real loft
             // carry it past the second ball.
+            if (relief && CFG.headGlance && hTheirs
+                && rng.u() < CFG.headGlance * (duel ? CFG.headGlanceDuel : 1)) {
+              // PROTOTYPE (13 Oct 2026, CFG.headGlance): HE ONLY GETS A TOUCH ON IT. Not every defensive header is
+              // a clean one: stretching, jumped by a man, or meeting a ball dropping over his shoulder, he glances
+              // it, and a glance goes on more or less where the ball was going -- across the box, or behind.
+              const ga = Math.atan2(mp.bvy, mp.bvx) + (rng.u() - 0.5) * 2 * CFG.headGlanceDeg * Math.PI / 180;
+              const gv = Math.hypot(mp.bvx, mp.bvy) * CFG.headGlanceKeep;
+              out.clears++; meBump(out, "clearsSide", meSideOfP(s, q)); q.defActs = (q.defActs || 0) + 1;
+              meEvt(out, "clear", bs, q.x, q.y, q.x + Math.cos(ga) * 8, q.y + Math.sin(ga) * 8, null);
+              meKnock(mp, rng, mp.bx + Math.cos(ga) * 8, mp.by + Math.sin(ga) * 8, gv, 1.5 + rng.u() * 2);
+              mp._loose = mp.tick; mp._looseWhy = "glanced header";
+              return true;
+            }
             if (relief) {
               meEvt(out, "clear", bs, q.x, q.y, tx, ty, null);
+              if (CFG.headKeep) { meHeadPhys(mp, rng, q, tx, ty, CFG.headClearV * power, CFG.headClearVz); mp._loose = mp.tick; mp._looseWhy = "relief header"; return true; }
               meKnock(mp, rng, tx, ty, CFG.headClearV * power, CFG.headClearVz);
               mp._loose = mp.tick; mp._looseWhy = "relief header";
               return true;
@@ -2894,7 +2913,8 @@ export function meTick(s, rng, out) {
             // turned out to be. Everything muted here still FIRES: the pitch draws it and every
             // counter, out.clears and the player T+C column included, still moves.
             meEvt(out, relief ? "clear" : "head", bs, q.x, q.y, tx, ty, null);
-            meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
+            if (CFG.headKeep) meHeadPhys(mp, rng, q, tx, ty, CFG.headV * power * 0.75, 0.9);
+            else meKnock(mp, rng, tx, ty, CFG.headV * power * 0.75, 0.9);
             mp._loose = mp.tick; mp._looseWhy = "knock-down header";  // a headed ball into an area is nobody's yet
           }
           return true;
@@ -3103,6 +3123,7 @@ export function meTick(s, rng, out) {
             mePenRes(out, mp.shot); mp.shot = null; }
           // A block ends the move: a goal off the rebound is nobody's assist. A deflection of a pass
           // does not, so the chain reads through it to the man who played the ball.
+          const theirBall = mp.lastSide !== bs;          // a ball the other side played: a cross, a shot, a pass of theirs
           mp.lastSide = bs; meKickedBy(mp, bs, bi, !wasBlock); mp.bpass = null;
           mp._loose = mp.tick; mp._looseWhy = "deflection";  // a squirt off a man: loose, not a backpass
           // Biased off the goalward line -- see CFG.deflectAway.
@@ -3115,7 +3136,7 @@ export function meTick(s, rng, out) {
           // most of it, a few degrees off line. That is what a deflected goal and most own goals are, and with the squirt
           // a defender was the last man to touch 0.5% of all goals against a real 8-9%.
           const inOwnBox = Math.abs(mp.bx - ownX) < CFG.gkBoxR && Math.abs(mp.by - ME_HALF_W) < CFG.boxHalfW;
-          if (CFG.deflectPhys && inOwnBox && mp.bvx * gwd > 4 && !isGK) {
+          if (CFG.deflectPhys && !isGK && ((inOwnBox && mp.bvx * gwd > 4) || (CFG.deflectPhysD && theirBall && Math.abs(mp.bx - ownX) < CFG.deflectPhysD))) {
             let nx = mp.bx - c.qx, ny = mp.by - c.qy;
             const nl = Math.hypot(nx, ny);
             if (nl < 1e-3) { nx = -mp.bvx / v2d; ny = -mp.bvy / v2d; } else { nx /= nl; ny /= nl; }
@@ -3908,6 +3929,7 @@ export function mePlay(s, rng, out, side, i, act, press, forced) {
     mp.shot.fr0 = meOnFrame(mp, gx);
     if (globalThis.__shots) { const R = globalThis.__shots[globalThis.__shots.length - 1]; mp.shot._r = globalThis.__shots.length - 1;
       R.i = shooter; R.nm = p.fullName || p.name; R.pos = p.pos; R.y = +(p.y - ME_HALF_W).toFixed(1); R.fr = mp.shot.fr0;
+      R.ph = mp.mind?.ph?.[side]?.ph || "-"; R.role = p._mr; R.spK = mp._spLast && mp._spLast.side === side && mp.tick - mp._spLast.t < 40 && (mp._spLast.d ?? 0) < 40 ? mp._spLast.k : "";
       R.sk = +sk.toFixed(3); R.wind = +wind.toFixed(2); R.v = +Math.hypot(mp.bvx, mp.bvy).toFixed(1); R.aim = +((aimY - ME_HALF_W) * away).toFixed(2); R.az = +aimZ.toFixed(2);
       if (gkp) { R.gkx = +Math.abs(gkp.x - gx).toFixed(2); R.gky = +(gkp.y - ME_HALF_W).toFixed(2); R.sx = +Math.abs(p.x - gx).toFixed(2); R.vy0 = +mp.bvy.toFixed(1); R.vx0 = +Math.abs(mp.bvx).toFixed(1); } }
     // THE KEEPER WATCHES IT. He used to commit to a side as it left the foot, right as often as his
@@ -4063,6 +4085,18 @@ function meFirstTime(s, rng, side, i, z) {
 // direction to a team-mate beyond him who is onside, from outside flickGoalD of goal. (Heading AT a
 // team-mate from anywhere was tried and is not a flick-on: every won header near the box teed somebody
 // up and goals nearly doubled.) Returns true if he played one.
+// A HEADER MEETS A BALL THAT IS GOING SOMEWHERE (13 October 2026; CFG.headKeep). Heading it away, he puts his pace on it
+// in the direction he wants -- but he cannot cancel the pace it arrived with, only add to it: a cross whipped across his
+// near post goes on across, and the one coming at him off the byline goes behind. Every header used to leave his head
+// on exactly the line he chose, whatever the ball was doing, so a defended cross almost never went out for a corner
+// (0.5 a match from headers and deflections together, against a real 4-5). The ball leaves at his own speed v along
+// his line, plus headKeep of the pace it came in with, and the same loft.
+function meHeadPhys(mp, rng, q, tx, ty, v, vz) {
+  const ax = tx - q.x, ay = ty - q.y, al = Math.hypot(ax, ay) || 1;
+  const vx = ax / al * v + mp.bvx * CFG.headKeep, vy = ay / al * v + mp.bvy * CFG.headKeep, sp = Math.hypot(vx, vy) || 0.1;
+  meKnock(mp, rng, q.x + vx / sp * al, q.y + vy / sp * al, sp, vz);
+}
+
 function meFlick(s, rng, out, side, i, q, power) {
   const mp = s.mePos, dir = meDir(side), gx = meGoalX(side);
   if (Math.hypot(gx - q.x, ME_HALF_W - q.y) < CFG.flickGoalD) return false;
