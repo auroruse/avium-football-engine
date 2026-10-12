@@ -1,45 +1,30 @@
 name: Lab
-
-# THE TACTICS LAB ON GITHUB'S MACHINES. Push a branch named lab/<anything> and the experiment named in
-# test/specs/run.env runs split across twenty runners (test/lab.mjs SHARD); each shard uploads its records, and
-# `gh run download <run id>` brings them back to concatenate into the same file one machine would have written.
-# Only lab/ branches: a push to main deploys the app (deploy.yml) and runs nothing here.
+# lab/ branch only: the club page in the real app (test/ftlive/club2.mjs) on an x64 runner with Chrome.
+# The registry is blocked, so nothing reaches the server.
 on:
   push:
     branches: ['lab/**']
-
 jobs:
-  shard:
-    # ARM and this exact Node: the same arithmetic as the Mac the lab was built on, so a cloud run replays a local one
-    # match for match (on x64 under Node 24.21 the same code drifted apart, equal only on average).
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 150
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  fulltime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.18.0
+          node-version: 22
           cache: npm
       - run: npm ci
-      - run: bash test/rebuild.sh
-      - name: Run shard ${{ matrix.shard }} of 20
+      - name: Full Time
         run: |
-          set -a; . test/specs/run.env; set +a
-          mkdir -p out
-          # LAB_TEST names a test file that splits itself the same way (SHARD=i/n) and prints its tallies, to be merged
-          # after (test/cards.mjs merge). A match that never finishes is cut off at fifteen minutes; the log names it.
-          if [ -n "$LAB_TEST" ]; then
-            SHARD=${{ matrix.shard }}/20 timeout 900 node "test/$LAB_TEST" > "out/lab-${{ matrix.shard }}.jsonl"
-          else
-            SHARD=${{ matrix.shard }}/20 node test/lab.mjs "test/specs/$LAB_SPEC" "$(nproc)" "out/lab-${{ matrix.shard }}.jsonl"
-          fi
+          npx vite --port 8123 --strictPort --host 127.0.0.1 > vite.log 2>&1 &
+          for i in $(seq 1 120); do curl -sf http://127.0.0.1:8123/ > /dev/null && break; sleep 1; done
+          node test/ftlive/club2.mjs http://127.0.0.1:8123/ out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lab-${{ matrix.shard }}
-          path: out/lab-${{ matrix.shard }}.jsonl
+          name: fulltime
+          path: |
+            out
+            vite.log
           retention-days: 7

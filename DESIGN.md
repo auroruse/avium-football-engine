@@ -34,13 +34,20 @@ or tournament already holding an Arterra side plays on.
 Each section's pages are tabs in the page bar under the top bar. A page about one thing (a club, a nation, a player)
 starts the page bar with its crest and name. Every page has its own address.
 
-A club has two pages: **Overview** (squad, pitch, club, honours, finishes, results; the squad lists the bench's eleven
-places, an open one a quiet row with its group and Vacant) and **History**, a row a season,
+A club has two pages: **Overview** and **History**. Overview runs left to right (user, 13 October 2026, after a squad
+column beside the pitch had squeezed it thin and cut names short): the **profile** (crest and name, the ground's photo, the
+club's facts, then Rating, Squad Value and Average Age); the **squad**, a Pitch or List switch in its title bar kept in the
+browser (the pitch in the formation; the list a row a man with his face, place and other position, traits, nation, age,
+rating, value and the season's figures, the bench's eleven places with an open one a quiet row and Vacant), its column at
+least 624 pixels and the pitch's full width when the window is tall enough; the **season** (place and league, then points
+leading the figures, form, top scorer and most assists) over **Honours**; and **Results**. League Finishes is gone from it.
+History is a row a season,
 newest first, with its division, finish, record, cup run and Club World Cup or Shield run, titles in gold, and its
 manager (both, where a year had two), and its honours beside it by competition with the years each was won. A national side has the same two pages: its squad of
-22 fills the first column with each man's club and the year's international figures, AFA Rankings (its place in the
-ranking by rating, a bar a year from src/data/afa.js) stands where a club's league finishes are, and History has a column each for
-the World Cup, its qualifying and the Nations League, then its manager (the old confederation championships have no
+22 is its squad, each man with his club and the year's international figures, its **latest tournament** (where it went
+out or that it won, its record, results, top scorer and most assists; user: "it should just say how the team did in the
+most recent int'l tournament") stands where a club's season is, and History has a column each for
+the World Cup, its qualifying and the Nations League, then its AFA ranking that year, then its manager (the old confederation championships have no
 column, and count only toward who managed it).
 
 **Positions** (Moukden and Kirin, 11 October 2026, over three rounds of questions). Every player has one or two positions of
