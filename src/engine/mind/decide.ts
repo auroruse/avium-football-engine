@@ -20,11 +20,11 @@ import { meCoachSt, CFG, ME_DT, ME_HOME_ADV, ME_PAT_MAP, NO_INSTRUCTIONS, meZone
 import { meAtkW, meAttrs, meBadgeFx, meGkSkill, meMind, mePassBadge, meTech, meSpeed } from "../attributes";
 import { meKeeper, ME_HALF_W, PITCH_L, PITCH_W, meDanger, meDir, meGoalX, meGroundT, meLaneBlock, meOffsideLine,
          meOther, mePassRisk, mePressure, meShotGeom, meThruCover, meTimeToBallMs, meVal, meValHere } from "../geometry";
-import { meGroundMaxD, meLoftT } from "../ball";
+import { GOAL_HALF_W, meGroundMaxD, meLoftT } from "../ball";
 import { meMeetGround, meMeetLoft, mePassExecD } from "../pass";
 import { meTouchNear } from "../touch";
 import { meOppDist } from "../brain";
-import { meCoverGoalSide, meShotP, meShotSit, meWindUp } from "../decide";
+import { meCoverGoalSide, meKeeperFill, meShotP, meShotSit, meWindUp } from "../decide";
 import { MT } from "./tune";
 import { mindAware, mindIx, mindLens } from "./perceive";
 import { dribSkill, tackSkill } from "./duel";
@@ -113,16 +113,29 @@ export function mindDecide(v, side, i, dwell, noCarry, ft) {
   const shotD = exD(meGoalX(side) - p.x, ME_HALF_W - p.y);
   const shotSit = meShotSit(s, side, p, meGoalX(side), ME_HALF_W);
   // A man with time and room at range knows he can set himself and pick his corner (meWindUp).
+  // ...and with the keeper filling the goal in front of him, there is not much of a shot (meKeeperFill).
+  // ...NOR THROUGH A MAN STANDING IN FRONT OF HIM (12 October 2026). The pass already knows a body in its first few
+  // metres takes it (blockRisk); the shot did not, and at the byline, closed down, the best-scoring thing left was a
+  // shot struck into the defender a metre away -- which came back off him to his feet to be struck into him again.
+  // Traced, half of all six-yard shots from beside the posts were blocked, one man hitting the same defender up to six
+  // times running. Read against the corner he would actually aim for, the side away from the keeper.
+  const gkS = meKeeper(s.players[meOther(side)]);
+  const shAimY = ME_HALF_W + (gkS && gkS.y > ME_HALF_W ? -1 : 1) * GOAL_HALF_W * 0.8;
   const sp = meShotP(s, side, p, p.x, p.y) * Math.max(0, 1 - shotD * CFG.execShotLoss)
-           * Math.max(0, 1 - shotSit * CFG.shotSitLoss)
+           * Math.max(0, 1 - shotSit * CFG.shotSitLoss) * (1 - meKeeperFill(s, side, p.x, p.y))
+           * (1 - blockRisk(s, side, p.x, p.y, meGoalX(side), shAimY, false) * MT.shotBlockK)
            * (1 + meWindUp(Math.hypot(meGoalX(side) - p.x, ME_HALF_W - p.y), shotSit, shotD, !!ft) * CFG.shotSetK);
   // Where a few strides more would take him: toward the goal mouth, and never past the line.
   const gdx = meGoalX(side) - p.x, gdy = ME_HALF_W - p.y, gdl = Math.hypot(gdx, gdy) || 1;
   const adv = Math.max(0, Math.min(CFG.carryAdv, gdl - 3));
   const _cx = p.x + gdx / gdl * adv, _cy = p.y + gdy / gdl * adv;
+  // ...and only as likely as he is to get there. With their men packed between him and the goal (shut), the better
+  // chance a few strides on is one he will mostly not be allowed to reach, and the sight of goal he has now is what there
+  // is: the man at the edge of a crowded area has a go (CFG.aheadShut; 0 prices the stride ahead as though it were free).
   const spAhead = adv < 0.5 ? sp : meShotP(s, side, p, _cx, _cy)
                 / (1 + press * CFG.carryDelay)
-                * Math.min(1, meOppDist(s, side, _cx, _cy) / (CFG.carryAdv * CFG.carryReach));
+                * Math.min(1, meOppDist(s, side, _cx, _cy) / (CFG.carryAdv * CFG.carryReach))
+                * (1 - (CFG.aheadShut || 0) * shut);
   if (sp > CFG.shotMinP) {
     const gsh = meShotGeom(side, p.x, p.y);
     const lane = meLaneBlock(s, side, p.x, p.y, meGoalX(side), ME_HALF_W);
