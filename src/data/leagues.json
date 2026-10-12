@@ -17,5 +17,6 @@
 {"id":"l0016","name":"Turulországi Felsőliga","nation":"TUR","tier":1,"cup":null},
 {"id":"l0017","name":"Liga-ye Mellī","nation":"VAR","tier":1,"cup":"Jām-e Mellī","down":1},
 {"id":"l0018","name":"Liga-ye Bālande","nation":"VAR","tier":2,"cup":"Jām-e Mellī","up":1},
-{"id":"l0019","name":"Divisione Prima Viciliana","nation":"VIC","tier":1,"cup":null}
+{"id":"l0019","name":"Divisione Prima Viciliana","nation":"VIC","tier":1,"cup":null},
+{"id":"l0020","name":"Livländische Liga","nation":"LVO","tier":1,"cup":null,"listed":true}
 ]

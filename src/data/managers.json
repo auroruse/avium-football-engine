@@ -245,5 +245,16 @@
 {"id":"m0244","name":"Josué ALFERINHO","nat":"ASK","ovr":85,"born":"1900-02-19","style":"Route One"},
 {"id":"m0245","name":"Dæltun LEAH","nat":"EIV","ovr":79,"born":"1887-09-09"},
 {"id":"m0246","name":"Fumio TAKAHATA","nat":"NCH","ovr":73,"born":"1888-01-05","style":"Cholismo"},
-{"id":"m0247","name":"Hidemasa ŌKŌCHI","nat":"NCH","ovr":71,"born":"1880-12-25","style":"Balanced"}
+{"id":"m0247","name":"Hidemasa ŌKŌCHI","nat":"NCH","ovr":71,"born":"1880-12-25","style":"Balanced"},
+{"id":"m0248","name":"Lothar Brenninger","nat":"VAR","ovr":68,"born":"1891-07-27","style":"Gegenpressing"},
+{"id":"m0249","name":"Anselm Keyserling","nat":"VAR","ovr":67,"born":"1879-08-10","style":"Tiki-Taka"},
+{"id":"m0250","name":"Ēvalds Krūmiņš","nat":"VAR","ovr":68,"born":"1890-04-14","style":"Zona Mista"},
+{"id":"m0251","name":"Kazys Gudaitis","nat":"VAR","ovr":68,"born":"1883-02-10","style":"Vertical Tiki-Taka"},
+{"id":"m0252","name":"Bronius Vaidila","nat":"VAR","ovr":64,"born":"1887-09-25","style":"La Nuestra"},
+{"id":"m0253","name":"Feliksas Šaulys","nat":"VAR","ovr":62,"born":"1884-12-09","style":"Counter-Attack"},
+{"id":"m0254","name":"Georg Petereit","nat":"VAR","ovr":65,"born":"1885-05-18","style":"Kick and Rush"},
+{"id":"m0255","name":"Leopold von Fircks","nat":"VAR","ovr":63,"born":"1876-05-13","style":"Juego de Posición"},
+{"id":"m0256","name":"Augusts Vētra","nat":"VAR","ovr":62,"born":"1893-02-25","style":"Wing Play"},
+{"id":"m0257","name":"Antons Ločs","nat":"VAR","ovr":60,"born":"1888-12-21","style":"Catenaccio"},
+{"id":"m0258","name":"Gustav Lindemann","nat":"VAR","ovr":58,"born":"1895-11-13","style":"Route One"}
 ]
